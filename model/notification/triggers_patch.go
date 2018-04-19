@@ -3,7 +3,10 @@ package notification
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -12,51 +15,105 @@ func init() {
 		patchValidator(patchFailure),
 		patchValidator(patchSuccess),
 	)
+	registry.AddPrefetch(event.ResourceTypePatch, patchFetch)
 }
 
-func patchValidator(t func(data *event.PatchEventData) (*notificationGenerator, error)) trigger {
-	return func(e *event.EventLogEntry) (*notificationGenerator, error) {
-		data, ok := e.Data.(*event.PatchEventData)
+func patchFetch(e *event.EventLogEntry) (interface{}, error) {
+	p, err := patch.FindOne(patch.ById(bson.ObjectIdHex(e.ResourceId)))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch patch")
+	}
+	if p == nil {
+		return nil, errors.New("couldn't find patch")
+	}
+
+	return p, nil
+}
+
+func patchValidator(t func(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error)) trigger {
+	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
+		p, ok := object.(*patch.Patch)
 		if !ok {
-			return nil, errors.New("unexpected event payload (expected EventPatchData)")
+			return nil, errors.New("expected a patch, received unknown type")
+		}
+		if p == nil {
+			return nil, errors.New("expected a patch, received nil data")
 		}
 
-		return t(data)
+		return t(e, p)
 	}
 }
 
-func patchOutcome(data *event.PatchEventData) (*notificationGenerator, error) {
+func patchSelectors(p *patch.Patch) []event.Selector {
+	return []event.Selector{
+		{
+			Type: "id",
+			Data: p.Id.Hex(),
+		},
+		{
+			Type: "object",
+			Data: "patch",
+		},
+		{
+			Type: "project",
+			Data: p.Project,
+		},
+		{
+			Type: "owner",
+			Data: p.Author,
+		},
+	}
+}
+
+func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "outcome"
+
+	if p.Status != evergreen.PatchSucceeded && p.Status != evergreen.PatchFailed {
+		return nil, nil
+	}
 
 	gen := notificationGenerator{
 		triggerName: name,
-		selectors:   patchBaseSelectors(data),
+		selectors:   patchSelectors(p),
+		evergreenWebhook: &util.EvergreenWebhook{
+			Body: []byte("test"),
+		},
 	}
 
 	return &gen, nil
 }
 
-func patchFailure(data *event.PatchEventData) (*notificationGenerator, error) {
+func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "failure"
 
-	if data.Status != evergreen.PatchFailed {
+	if p.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
 
-	return patchOutcome(data)
+	gen, err := patchOutcome(e, p)
+	if err != nil {
+		return nil, errors.Wrap(err, "failure trigger failed")
+	}
+	gen.triggerName = name
+	return gen, nil
 }
 
-func patchSuccess(data *event.PatchEventData) (*notificationGenerator, error) {
+func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "success"
 
-	if data.Status != evergreen.PatchSucceeded {
+	if p.Status != evergreen.PatchSucceeded {
 		return nil, nil
 	}
 
-	return patchOutcome(data)
+	gen, err := patchOutcome(e, p)
+	if err != nil {
+		return nil, errors.Wrap(err, "success trigger failed")
+	}
+	gen.triggerName = name
+	return gen, nil
 }
 
-//func patchTimeExceedsConstant(data *event.PatchEventData) (*notificationGenerator, error) {
+//func patchTimeExceedsConstant(p *patch.Patch) (*notificationGenerator, error) {
 //	const name = "time-exceeds-n-constant"
 //
 //	if data.Status != evergreen.PatchSucceeded || data.Status != evergreen.PatchFailed {
@@ -66,7 +123,7 @@ func patchSuccess(data *event.PatchEventData) (*notificationGenerator, error) {
 //	return patchOutcome(data)
 //}
 //
-//func patchTimeExceedsRelativePercent(data *event.PatchEventData) (*notificationGenerator, error) {
+//func patchTimeExceedsRelativePercent(p *patch.Patch) (*notificationGenerator, error) {
 //	const name = "time-exceeds-n%"
 //
 //	if data.Status != evergreen.PatchSucceeded || data.Status != evergreen.PatchFailed {

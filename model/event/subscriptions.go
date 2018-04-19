@@ -72,7 +72,7 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 			return errors.New("error unmarshaling extra data: unexpected extra data in subscription")
 		}
 		if err := temp.ExtraData.Unmarshal(s.ExtraData); err != nil {
-			return errors.Wrap(err, "error unmarshalling extra data")
+			return errors.Wrap(err, "error unmarshaling extra data")
 		}
 	}
 
