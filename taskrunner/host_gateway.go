@@ -94,7 +94,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 	grip.Info(message.Fields{"runner": RunnerName,
 		"message": "prepping host for agent",
 		"host":    hostObj.Id})
-	if err := agbh.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
+	if err = agbh.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 
@@ -119,7 +119,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 			}))
 		}
 
-		event.LogHostAgentDeployFailed(hostObj.Id)
+		event.LogHostAgentDeployFailed(hostObj.Id, err)
 
 		return errors.WithStack(err)
 	}
