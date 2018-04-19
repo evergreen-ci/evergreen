@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -88,12 +89,31 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	if len(bbpOptions.Projects) == 0 {
 		return fmt.Errorf("Must specify at least 1 Evergreen project")
 	}
-	for _, proj := range bbpOptions.Projects {
+	for projName, proj := range bbpOptions.Projects {
 		if proj.TicketCreateProject == "" {
 			return fmt.Errorf("ticket_create_project cannot be blank")
 		}
 		if len(proj.TicketSearchProjects) == 0 {
 			return fmt.Errorf("ticket_search_projects cannot be empty")
+		}
+		if proj.AlternativeEndpointURL != "" {
+			if _, err := url.Parse(proj.AlternativeEndpointURL); err != nil {
+				return errors.Wrapf(err, `Failed to parse alt_endpoint_url for project "%s"`, projName)
+			}
+			if proj.AlternativeEndpointUsername == "" && proj.AlternativeEndpointPassword != "" {
+				return errors.Errorf(`Failed validating configuration for project "%s": `+
+					"alt_endpoint_password must be blank if alt_endpoint_username is blank", projName)
+			}
+			if proj.AlternativeEndpointTimeoutSecs <= 0 {
+				return errors.Errorf(`Failed validating configuration for project "%s": `+
+					"alt_endpoint_timeout_secs must be positive", projName)
+			}
+		} else if proj.AlternativeEndpointUsername != "" || proj.AlternativeEndpointPassword != "" {
+			return errors.Errorf(`Failed validating configuration for project "%s": `+
+				"alt_endpoint_username and alt_endpoint_password must be blank alt_endpoint_url is blank", projName)
+		} else if proj.AlternativeEndpointTimeoutSecs != 0 {
+			return errors.Errorf(`Failed validating configuration for project "%s": `+
+				"alt_endpoint_timeout_secs must be zero when alt_endpoint_url is blank", projName)
 		}
 	}
 	bbp.opts = bbpOptions
