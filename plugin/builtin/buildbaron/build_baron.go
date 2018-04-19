@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -39,30 +38,13 @@ const (
 	maxNoteSize = 16 * 1024 // 16KB
 )
 
+type bbProject evergreen.BuildBaronProject
+
 type bbPluginOptions struct {
 	Host     string
 	Username string
 	Password string
 	Projects map[string]bbProject
-}
-
-type bbProject struct {
-	TicketCreateProject  string   `mapstructure:"ticket_create_project"`
-	TicketSearchProjects []string `mapstructure:"ticket_search_projects"`
-
-	AlternativeEndpointURL struct {
-		Scheme string `mapstructure:"scheme" bson:"scheme"`
-		Host   string `mapstructure:"host" bson:"host"`
-		Path   string `mapstructure:"path" bson:"path"`
-	} `mapstructure:"alt_endpoint_url" bson:"alt_endpoint_url"`
-
-	AlternativeEndpointCredentials struct {
-		Username string `mapstructure:"username" bson:"username"`
-		Password string `mapstructure:"password" bson:"password"`
-	} `mapstructure:"alt_endpoint_auth" bson:"alt_endpoint_auth"`
-
-	AlternativeEndpointTimeoutSecs int  `mapstructure:"alt_endpoint_timeout_secs" bson:"alt_endpoint_timeout_secs"`
-	AlternativeEndpointEnabled     bool `mapstructure:"alt_endpoint_enabled" bson:"alt_endpoint_enabled"`
 }
 
 type BuildBaronPlugin struct {
@@ -219,7 +201,7 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 	altEndpoint := altEndpointSuggest{bbProj}
 
 	var tickets []thirdparty.JiraTicket
-	if bbProj.AlternativeEndpointEnabled {
+	if bbProj.AlternativeEndpointURL != "" {
 		tickets, err = raceSuggesters(&fallback, &altEndpoint, t)
 	} else {
 		tickets, err = fallback.Suggest(context.TODO(), t)
@@ -324,23 +306,17 @@ func (aes *altEndpointSuggest) Suggest(ctx context.Context, t *task.Task) ([]thi
 	client := util.GetHTTPClient()
 	defer util.PutHTTPClient(client)
 
-	path := aes.bbProj.AlternativeEndpointURL.Path
-	path = strings.Replace(path, "{task_id}", t.Id, -1)
-	path = strings.Replace(path, "{execution}", strconv.Itoa(t.Execution), -1)
+	url := aes.bbProj.AlternativeEndpointURL
+	url = strings.Replace(url, "{task_id}", t.Id, -1)
+	url = strings.Replace(url, "{execution}", strconv.Itoa(t.Execution), -1)
 
-	altEndpointURL := url.URL{
-		Scheme: aes.bbProj.AlternativeEndpointURL.Scheme,
-		Host:   aes.bbProj.AlternativeEndpointURL.Host,
-		Path:   path,
-	}
-	req, err := http.NewRequest(http.MethodGet, altEndpointURL.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	creds := aes.bbProj.AlternativeEndpointCredentials
-	if creds.Username != "" {
-		req.SetBasicAuth(creds.Username, creds.Password)
+	if aes.bbProj.AlternativeEndpointUsername != "" {
+		req.SetBasicAuth(aes.bbProj.AlternativeEndpointUsername, aes.bbProj.AlternativeEndpointPassword)
 	}
 
 	req = req.WithContext(ctx)
