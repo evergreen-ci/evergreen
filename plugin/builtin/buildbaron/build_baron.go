@@ -260,7 +260,9 @@ func (js *jiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.
 }
 
 func (js *jiraSuggest) GetTimeout() time.Duration {
-	return time.Duration(0)
+	// This function is never called because we are willing to wait forever for the fallback handler
+	// to return JIRA ticket results.
+	return 0
 }
 
 type altEndpointSuggest struct {
