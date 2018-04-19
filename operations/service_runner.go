@@ -29,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const useNewScheduler = true
+const useNewScheduler = false
 
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
