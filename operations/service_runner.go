@@ -29,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const useNewScheduler = false
+const useNewScheduler = true
 
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
@@ -150,6 +150,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
@@ -211,7 +212,6 @@ var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
 	&monitor.Runner{},
 
-	&scheduler.Runner{},
 	&hostinit.Runner{},
 	&taskrunner.Runner{},
 }
@@ -227,14 +227,18 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	wg := &sync.WaitGroup{}
 
 	frequentRunners := []string{
-		scheduler.RunnerName,
 		hostinit.RunnerName,
 		taskrunner.RunnerName,
-		monitor.RunnerName,
 	}
 
 	infrequentRunners := []string{
 		alerts.RunnerName,
+		monitor.RunnerName,
+	}
+
+	if !useNewScheduler {
+		backgroundRunners = append(backgroundRunners, &scheduler.Runner{})
+		frequentRunners = append(frequentRunners, scheduler.RunnerName)
 	}
 
 	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{

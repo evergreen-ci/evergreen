@@ -81,7 +81,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	innerCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	go a.startMaxExecTimeoutWatch(ctx, tc, cancel)
+	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig), cancel)
 
 	tc.logger.Execution().Infof("Fetching expansions for project %s", taskConfig.Task.Project)
 	expVars, err := a.comm.FetchExpansionVars(innerCtx, tc.task)
@@ -181,24 +181,13 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 	return tc.currentCommand
 }
 
-func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
+func (tc *taskContext) setCurrentTimeout(dur time.Duration) {
 	tc.Lock()
 	defer tc.Unlock()
 
-	var timeout time.Duration
-	if cmd == nil {
-		timeout = defaultIdleTimeout
-	} else if dynamicTimeout := tc.taskConfig.GetIdleTimeout(); dynamicTimeout != 0 {
-		timeout = time.Duration(dynamicTimeout) * time.Second
-	} else if cmd.IdleTimeout() > 0 {
-		timeout = cmd.IdleTimeout()
-	} else {
-		timeout = defaultIdleTimeout
-	}
-
-	tc.timeout = timeout
+	tc.timeout = dur
 	tc.logger.Execution().Debugf("Set command timeout for '%s' (%s) to %s",
-		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), timeout)
+		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), dur)
 }
 
 func (tc *taskContext) getCurrentTimeout() time.Duration {
@@ -275,15 +264,15 @@ func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.Task
 	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef, confPatch)
 }
 
-func (tc *taskContext) getExecTimeout() time.Duration {
-	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout != 0 {
-		return time.Duration(dynamicTimeout) * time.Second
+func (a *Agent) getExecTimeoutSecs(taskConfig *model.TaskConfig) time.Duration {
+	pt := taskConfig.Project.FindProjectTask(taskConfig.Task.DisplayName)
+	if pt.ExecTimeoutSecs == 0 {
+		// if unspecified in the project task and the project, use the default value
+		if taskConfig.Project.ExecTimeoutSecs != 0 {
+			pt.ExecTimeoutSecs = taskConfig.Project.ExecTimeoutSecs
+		} else {
+			pt.ExecTimeoutSecs = defaultExecTimeoutSecs
+		}
 	}
-	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt.ExecTimeoutSecs != 0 {
-		return time.Duration(pt.ExecTimeoutSecs) * time.Second
-	}
-	if tc.taskConfig.Project.ExecTimeoutSecs != 0 {
-		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second
-	}
-	return defaultExecTimeout
+	return time.Duration(pt.ExecTimeoutSecs) * time.Second
 }

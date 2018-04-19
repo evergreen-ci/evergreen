@@ -60,6 +60,19 @@ func (d DistroStats) TasksMap() map[string]int {
 	return out
 }
 
+func (d DistroStats) MaxHostsExceeded() map[string]int {
+	out := map[string]int{}
+
+	for _, s := range d {
+		overage := -1 * (s.MaxHosts - s.Count)
+		if overage > 0 {
+			out[s.Distro] = overage
+		}
+	}
+
+	return out
+}
+
 // GetStatsByDistro returns counts of up hosts broken down by distro
 func GetStatsByDistro() (DistroStats, error) {
 	stats := []StatsByDistro{}

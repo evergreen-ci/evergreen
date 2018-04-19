@@ -86,15 +86,21 @@ func NewEventMetaJob(q amboy.Queue, ts string) amboy.Job {
 	return j
 }
 
-func (j *eventMetaJob) dispatchLoop() error {
+func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	// TODO: if this is a perf problem, it could be multithreaded. For now,
 	// we just log time
 	startTime := time.Now()
+	bulk, err := notification.BulkInserter(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
+	notifications := make([][]notification.Notification, len(j.events))
+
 	for i := range j.events {
-		var notifications []notification.Notification
-		notifications, err := notification.NotificationsFromEvent(&j.events[i])
+		notifications[i], err = notification.NotificationsFromEvent(&j.events[i])
 		catcher.Add(err)
 
 		grip.Error(message.WrapError(err, message.Fields{
@@ -106,15 +112,18 @@ func (j *eventMetaJob) dispatchLoop() error {
 			"event_type": j.events[i].ResourceType,
 		}))
 
-		// TODO: buffered writes after EVG-3062
-		if err = notification.InsertMany(notifications...); err != nil {
-			catcher.Add(err)
-			continue
+		for _, n := range notifications[0] {
+			catcher.Add(bulk.Append(n))
 		}
 
-		catcher.Add(j.dispatch(notifications))
-		catcher.Add(logger.MarkProcessed(&j.events[i]))
 	}
+	catcher.Add(bulk.Close())
+
+	for idx := range notifications {
+		catcher.Add(j.dispatch(notifications[idx]))
+		catcher.Add(logger.MarkProcessed(&j.events[idx]))
+	}
+
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
 
@@ -137,7 +146,6 @@ func (j *eventMetaJob) dispatch(notifications []notification.Notification) error
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
 			catcher.Add(j.q.Put(newEventNotificationJob(notifications[i].ID)))
-
 		} else {
 			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
 		}
@@ -146,7 +154,10 @@ func (j *eventMetaJob) dispatch(notifications []notification.Notification) error
 	return catcher.Resolve()
 }
 
-func (j *eventMetaJob) Run(_ context.Context) {
+func (j *eventMetaJob) Run(ctx context.Context) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 	defer j.MarkComplete()
 
 	if j.q == nil {
@@ -191,5 +202,5 @@ func (j *eventMetaJob) Run(_ context.Context) {
 		return
 	}
 
-	j.AddError(j.dispatchLoop())
+	j.AddError(j.dispatchLoop(ctx))
 }

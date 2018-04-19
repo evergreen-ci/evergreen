@@ -98,15 +98,16 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	)
 }
 
-// IsFree is a query that returns all running
-// Evergreen hosts without an assigned task.
-var IsFree = db.Query(
-	bson.M{
+func AllIdleEphemeral() ([]Host, error) {
+	query := db.Query(bson.M{
 		RunningTaskKey: bson.M{"$exists": false},
 		StartedByKey:   evergreen.User,
 		StatusKey:      evergreen.HostRunning,
-	},
-)
+		ProviderKey:    bson.M{"$in": evergreen.ProviderSpawnable},
+	})
+
+	return Find(query)
+}
 
 // ByUnprovisionedSince produces a query that returns all hosts
 // Evergreen never finished setting up that were created before

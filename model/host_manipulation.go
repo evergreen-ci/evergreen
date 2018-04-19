@@ -36,7 +36,7 @@ func UpdateStaticHosts() error {
 		return catcher.Resolve()
 	}
 
-	return host.MarkInactiveStaticHosts(activeHosts)
+	return host.MarkInactiveStaticHosts(activeHosts, "")
 }
 
 func UpdateStaticDistro(d distro.Distro) error {
@@ -49,7 +49,7 @@ func UpdateStaticDistro(d distro.Distro) error {
 		return errors.WithStack(err)
 	}
 
-	return host.MarkInactiveStaticHosts(hosts)
+	return host.MarkInactiveStaticHosts(hosts, d.Id)
 }
 
 func doStatcHostUpdate(d distro.Distro) ([]string, error) {
