@@ -415,3 +415,44 @@ task_groups:
 	assert.Equal("task_2", sorted[2].Id)
 	assert.Equal("task_3", sorted[3].Id)
 }
+
+func TestByGenerateTasks(t *testing.T) {
+	assert := assert.New(t)
+	tasks := []task.Task{
+		{
+			Id:           "task_1",
+			GenerateTask: true,
+		},
+		{
+			Id:           "task_2",
+			GenerateTask: false,
+		},
+		{
+			Id:           "task_3",
+			GenerateTask: true,
+		},
+		{
+			Id:           "task_4",
+			GenerateTask: false,
+		},
+	}
+	comparator := &CmpBasedTaskComparator{}
+	c, err := byGenerateTasks(tasks[0], tasks[2], comparator)
+	assert.NoError(err)
+	assert.Equal(0, c)
+	c, err = byGenerateTasks(tasks[1], tasks[3], comparator)
+	assert.NoError(err)
+	assert.Equal(0, c)
+	c, err = byGenerateTasks(tasks[0], tasks[1], comparator)
+	assert.NoError(err)
+	assert.Equal(1, c)
+	c, err = byGenerateTasks(tasks[2], tasks[3], comparator)
+	assert.NoError(err)
+	assert.Equal(1, c)
+	c, err = byGenerateTasks(tasks[1], tasks[0], comparator)
+	assert.NoError(err)
+	assert.Equal(-1, c)
+	c, err = byGenerateTasks(tasks[3], tasks[2], comparator)
+	assert.NoError(err)
+	assert.Equal(-1, c)
+}

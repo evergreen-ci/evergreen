@@ -849,32 +849,9 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 
 func validateGenerateTasks(p *model.Project) []ValidationError {
 	errs := []ValidationError{}
-	generateTasksCommand := "generate.tasks"
-
-	// get all functions that call `generate.tasks`
-	fs := map[string]struct{}{}
-	for f, cmds := range p.Functions {
-		for _, c := range cmds.List() {
-			if c.Command == generateTasksCommand {
-				fs[f] = struct{}{}
-			}
-		}
-	}
 
 	// get all tasks that call `generate.tasks`
-	ts := map[string]struct{}{}
-	for _, t := range p.Tasks {
-		for _, c := range t.Commands {
-			if c.Function != "" {
-				if _, ok := fs[c.Function]; ok {
-					ts[t.Name] = struct{}{}
-				}
-			}
-			if c.Command == generateTasksCommand {
-				ts[t.Name] = struct{}{}
-			}
-		}
-	}
+	ts := p.GenerateTasksTasks()
 
 	// validate that no buildvariant calls `generate.tasks` more than once
 	for _, bv := range p.BuildVariants {
@@ -886,7 +863,7 @@ func validateGenerateTasks(p *model.Project) []ValidationError {
 		}
 		if len(count) > 1 {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, generateTasksCommand, generateTasksCommand),
+				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, model.GenerateTasksCommand, model.GenerateTasksCommand),
 				Level:   Error,
 			})
 		}
