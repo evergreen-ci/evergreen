@@ -1019,7 +1019,7 @@ func (p *Project) GenerateTasksTasks() map[string]struct{} {
 	fs := map[string]struct{}{}
 	for f, cmds := range p.Functions {
 		for _, c := range cmds.List() {
-			if c.Command == GenerateTasksCommand {
+			if c.Command == GenerateTasksCommandName {
 				fs[f] = struct{}{}
 			}
 		}
@@ -1034,7 +1034,7 @@ func (p *Project) GenerateTasksTasks() map[string]struct{} {
 					ts[t.Name] = struct{}{}
 				}
 			}
-			if c.Command == GenerateTasksCommand {
+			if c.Command == GenerateTasksCommandName {
 				ts[t.Name] = struct{}{}
 			}
 		}
@@ -1045,10 +1045,8 @@ func (p *Project) GenerateTasksTasks() map[string]struct{} {
 // IsGenerateTask indicates that the task generates other tasks, which the
 // scheduler will use to prioritize this task.
 func (p *Project) IsGenerateTask(taskName string) bool {
-	if _, ok := p.GenerateTasksTasks()[taskName]; ok {
-		return true
-	}
-	return false
+	_, ok := p.GenerateTasksTasks()[taskName]
+	return ok
 }
 
 func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {

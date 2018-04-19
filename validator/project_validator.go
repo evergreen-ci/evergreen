@@ -863,7 +863,7 @@ func validateGenerateTasks(p *model.Project) []ValidationError {
 		}
 		if len(count) > 1 {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, model.GenerateTasksCommand, model.GenerateTasksCommand),
+				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, model.GenerateTasksCommandName, model.GenerateTasksCommandName),
 				Level:   Error,
 			})
 		}
