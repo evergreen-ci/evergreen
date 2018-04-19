@@ -206,3 +206,14 @@ func differentBuildOrTaskGroup(t1, t2 task.Task) bool {
 	}
 	return false
 }
+
+// byGenerateTasks schedules tasks that generate tasks ahead of tasks that do not.
+func byGenerateTasks(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
+	if t1.GenerateTask == t2.GenerateTask {
+		return 0, nil
+	}
+	if t1.GenerateTask {
+		return 1, nil
+	}
+	return -1, nil
+}

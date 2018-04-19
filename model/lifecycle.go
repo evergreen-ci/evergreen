@@ -823,6 +823,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		Revision:            v.Revision,
 		Project:             project.Identifier,
 		Priority:            buildVarTask.Priority,
+		GenerateTask:        project.IsGenerateTask(buildVarTask.Name),
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName
