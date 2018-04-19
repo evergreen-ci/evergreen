@@ -65,9 +65,15 @@ func (j *hostStatsCollector) statsByDistro() error {
 
 	tasks := 0
 	count := 0
+	excess := 0
 	for _, h := range hosts {
 		count += h.Count
 		tasks += h.NumTasks
+
+		overage := -1 * (h.MaxHosts - h.Count)
+		if overage > 0 {
+			excess += overage
+		}
 	}
 
 	j.logger.Info(message.Fields{
@@ -75,6 +81,12 @@ func (j *hostStatsCollector) statsByDistro() error {
 		"hosts_total":   count,
 		"running_tasks": tasks,
 		"data":          hosts,
+	})
+
+	j.logger.WarningWhen(excess > 0, message.Fields{
+		"report": "maxHosts exceeded",
+		"data":   hosts.MaxHostsExceeded(),
+		"total":  excess,
 	})
 
 	return nil

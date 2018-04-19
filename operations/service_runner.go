@@ -229,11 +229,11 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	frequentRunners := []string{
 		hostinit.RunnerName,
 		taskrunner.RunnerName,
-		monitor.RunnerName,
 	}
 
 	infrequentRunners := []string{
 		alerts.RunnerName,
+		monitor.RunnerName,
 	}
 
 	if !useNewScheduler {
