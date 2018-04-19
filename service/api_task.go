@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/bookkeeping"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -225,7 +224,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// TODO(EVG-223) process patch-specific triggers
 
 	// update the bookkeeping entry for the task
-	err = bookkeeping.UpdateExpectedDuration(t, t.TimeTaken)
+	err = task.UpdateExpectedDuration(t, t.TimeTaken)
 	if err != nil {
 		grip.Errorln("Error updating expected duration:", err)
 	}
