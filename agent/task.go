@@ -91,7 +91,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 	taskConfig.Expansions.Update(*expVars)
-	tc.taskConfig = taskConfig
+	tc.setTaskConfig(taskConfig)
 
 	// set up the system stats collector
 	tc.statsCollector = NewSimpleStatsCollector(
@@ -276,14 +276,25 @@ func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.Task
 }
 
 func (tc *taskContext) getExecTimeout() time.Duration {
-	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout != 0 {
+	tc.RLock()
+	defer tc.RUnlock()
+	if tc.taskConfig == nil {
+		return defaultExecTimeout
+	}
+	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
 		return time.Duration(dynamicTimeout) * time.Second
 	}
-	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt.ExecTimeoutSecs != 0 {
+	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt.ExecTimeoutSecs > 0 {
 		return time.Duration(pt.ExecTimeoutSecs) * time.Second
 	}
-	if tc.taskConfig.Project.ExecTimeoutSecs != 0 {
+	if tc.taskConfig.Project.ExecTimeoutSecs > 0 {
 		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second
 	}
 	return defaultExecTimeout
+}
+
+func (tc *taskContext) setTaskConfig(taskConfig *model.TaskConfig) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.taskConfig = taskConfig
 }
