@@ -50,10 +50,21 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(data.Patch) > patch.SizeLimit {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large."))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
 	variants := strings.Split(data.Variants, ",")
+
+	pref, err := model.FindOneProjectRef(data.Project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project %s is not specified", data.Project))
+		return
+	}
+
+	if pref.PatchingDisabled || !pref.Enabled {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("patching is disabled"))
+		return
+	}
 
 	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
 	if err != nil {

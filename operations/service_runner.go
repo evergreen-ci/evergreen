@@ -29,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const useNewScheduler = false
+const useNewScheduler = true
 
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
@@ -141,16 +141,20 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	}
 
 	const (
-		monitoringInterval      = time.Minute
-		taskPlanningInterval    = 15 * time.Second
-		backgroundStatsInterval = time.Minute
-		sysStatsInterval        = 15 * time.Second
+		monitoringInterval         = time.Minute
+		taskPlanningInterval       = 15 * time.Second
+		backgroundStatsInterval    = time.Minute
+		sysStatsInterval           = 15 * time.Second
+		infrequentAlertingInterval = 15 * time.Minute
 	)
 
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), infrequentAlertingInterval, time.Now(), opts, units.PopulateAlertingJobs())
 
 	if useNewScheduler {
 		amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
@@ -208,7 +212,6 @@ var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
 	&monitor.Runner{},
 
-	&scheduler.Runner{},
 	&hostinit.Runner{},
 	&taskrunner.Runner{},
 }
@@ -224,7 +227,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	wg := &sync.WaitGroup{}
 
 	frequentRunners := []string{
-		scheduler.RunnerName,
 		hostinit.RunnerName,
 		taskrunner.RunnerName,
 		monitor.RunnerName,
@@ -232,6 +234,11 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 
 	infrequentRunners := []string{
 		alerts.RunnerName,
+	}
+
+	if !useNewScheduler {
+		backgroundRunners = append(backgroundRunners, &scheduler.Runner{})
+		frequentRunners = append(frequentRunners, scheduler.RunnerName)
 	}
 
 	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{

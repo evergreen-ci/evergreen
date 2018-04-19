@@ -74,11 +74,10 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 
 func (h *generateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	if err := sc.GenerateTasks(h.taskID, h.files); err != nil {
-		grip.Error(message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
-			"error":   err,
 			"task_id": h.taskID,
-		})
+		}))
 		return ResponseData{}, errors.Wrap(err, "error generating tasks")
 	}
 	return ResponseData{}, nil

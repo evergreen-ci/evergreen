@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -146,12 +147,16 @@ func (s *SenderSuite) SetupTest() {
 	s.senders["github-comment"], err = NewGithubCommentLogger("ghcomment", 100, &GithubOptions{})
 	s.Require().NoError(err)
 
+	s.senders["github-status"], err = NewGithubStatusLogger("ghstatus", &GithubOptions{}, "master")
+	s.Require().NoError(err)
+
 	s.senders["gh-mocked"] = &githubLogger{
 		Base: NewBase("gh-mocked"),
 		opts: &GithubOptions{},
 		gh:   &githubClientMock{},
 	}
 	s.NoError(s.senders["gh-mocked"].SetFormatter(MakeDefaultFormatter()))
+
 	s.senders["gh-comment-mocked"] = &githubCommentLogger{
 		Base:  NewBase("gh-mocked"),
 		opts:  &GithubOptions{},
@@ -159,9 +164,23 @@ func (s *SenderSuite) SetupTest() {
 		issue: 200,
 	}
 	s.NoError(s.senders["gh-comment-mocked"].SetFormatter(MakeDefaultFormatter()))
+
+	s.senders["gh-status-mocked"] = &githubStatusMessageLogger{
+		Base: NewBase("gh-status-mocked"),
+		opts: &GithubOptions{},
+		gh:   &githubClientMock{},
+		ref:  "master",
+	}
+	s.NoError(s.senders["gh-status-mocked"].SetFormatter(MakeDefaultFormatter()))
 }
 
 func (s *SenderSuite) TearDownTest() {
+	if runtime.GOOS == "windows" {
+		_ = s.senders["native-file"].Close()
+		_ = s.senders["callsite-file"].Close()
+		_ = s.senders["json"].Close()
+		_ = s.senders["plain.file"].Close()
+	}
 	s.Require().NoError(os.RemoveAll(s.tempDir))
 }
 
@@ -242,7 +261,7 @@ func (s *SenderSuite) TestLevelSetterRejectsInvalidSettings() {
 	}
 }
 
-func (s *SenderSuite) TestCloserShouldUsusallyNoop() {
+func (s *SenderSuite) TestCloserShouldUsuallyNoop() {
 	for t, sender := range s.senders {
 		s.NoError(sender.Close(), string(t))
 	}
@@ -283,4 +302,74 @@ func TestBaseConstructor(t *testing.T) {
 
 	assert.Equal(6, sink.Len())
 	assert.True(sink.HasMessage())
+}
+
+func (s *SenderSuite) TestGithubStatusLogger() {
+	sender := s.senders["gh-status-mocked"].(*githubStatusMessageLogger)
+	client := sender.gh.(*githubClientMock)
+
+	// failed send test
+	client.failSend = true
+	c := message.NewGithubStatusMessage(level.Info, "example", message.GithubStatePending,
+		"https://example.com/hi", "description")
+
+	s.NoError(sender.SetErrorHandler(func(err error, c message.Composer) {
+		s.Equal("failed to create status", err.Error())
+	}))
+	sender.Send(c)
+	s.Equal(0, client.numSent)
+
+	// successful send test
+	client.failSend = false
+	s.NoError(sender.SetErrorHandler(func(err error, c message.Composer) {
+		s.T().Errorf("Got error, but shouldn't have: %s for composer: %s", err.Error(), c.String())
+	}))
+	sender.Send(c)
+	s.Equal(1, client.numSent)
+
+	// WithRepo constructor should override sender's defaults
+	p := message.GithubStatus{
+		Owner:       "somewhere",
+		Repo:        "over",
+		Ref:         "therainbow",
+		Context:     "example",
+		State:       message.GithubStatePending,
+		URL:         "https://example.com/hi",
+		Description: "description",
+	}
+	c = message.NewGithubStatusMessageWithRepo(level.Info, p)
+	s.True(c.Loggable())
+	sender.Send(c)
+	s.Equal(2, client.numSent)
+	s.Equal("somewhere/over@therainbow", client.lastRepo)
+
+	// don't send invalid messages
+	c = message.NewGithubStatusMessage(level.Info, "", message.GithubStatePending,
+		"https://example.com/hi", "description")
+	s.False(c.Loggable())
+	sender.Send(c)
+	s.Equal(2, client.numSent)
+}
+
+func (s *SenderSuite) TestGithubCommentLogger() {
+	sender := s.senders["gh-comment-mocked"].(*githubCommentLogger)
+	client := sender.gh.(*githubClientMock)
+
+	// failed send test
+	client.failSend = true
+	c := message.NewString("hi")
+
+	s.NoError(sender.SetErrorHandler(func(err error, c message.Composer) {
+		s.Equal("failed to create comment", err.Error())
+	}))
+	sender.Send(c)
+	s.Equal(0, client.numSent)
+
+	// successful send test
+	client.failSend = false
+	s.NoError(sender.SetErrorHandler(func(err error, c message.Composer) {
+		s.T().Errorf("Got error, but shouldn't have: %s for composer: %s", err.Error(), c.String())
+	}))
+	sender.Send(c)
+	s.Equal(1, client.numSent)
 }

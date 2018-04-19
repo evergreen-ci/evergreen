@@ -1,0 +1,22 @@
+command_type: system
+
+functions:
+  "foo":
+    - command: shell.exec
+      type: test
+      params:
+        shell: bash
+        script: |
+          sleep 10
+
+tasks:
+  - name: build
+    commands:
+      - func: "foo"
+
+buildvariants:
+- name: mock_build_variant
+  display_name: Mock Buildvariant
+  run_on:
+  - mock_distro_id
+  tasks: ["*"]

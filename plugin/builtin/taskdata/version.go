@@ -85,7 +85,6 @@ func uiGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	util.WriteJSON(w, http.StatusOK, jsonForTasks)
-	return
 }
 
 func uiGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {

@@ -17,6 +17,8 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -72,6 +74,11 @@ type Environment interface {
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
 	ClientConfig() *ClientConfig
+
+	// GetSender provides a grip Sender configured with the environment's
+	// settings. These Grip senders must be used with Composers that specify
+	// all message details.
+	GetSender(SenderKey) (send.Sender, error)
 }
 
 type envState struct {
@@ -81,6 +88,7 @@ type envState struct {
 	session      *mgo.Session
 	mu           sync.RWMutex
 	clientConfig *ClientConfig
+	senders      map[SenderKey]send.Sender
 }
 
 // Configure requires that either the path or DB is sent so that it can construct the
@@ -113,6 +121,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
+	catcher.Add(e.initSenders())
 	if confPath != "" {
 		catcher.Add(e.persistSettings())
 	}
@@ -214,6 +223,113 @@ func (e *envState) initClientConfig() (err error) {
 	return errors.WithStack(err)
 }
 
+func (e *envState) initSenders() error {
+	e.senders = map[SenderKey]send.Sender{}
+	if e.settings == nil {
+		return errors.New("no settings object, cannot build senders")
+	}
+
+	levelInfo := send.LevelInfo{
+		Default:   level.Notice,
+		Threshold: level.Notice,
+	}
+
+	if e.settings.Notify.SMTP != nil {
+		smtp := e.settings.Notify.SMTP
+		opts := send.SMTPOptions{
+			Name:              "evergreen",
+			Server:            smtp.Server,
+			Port:              smtp.Port,
+			UseSSL:            smtp.UseSSL,
+			Username:          smtp.Username,
+			Password:          smtp.Password,
+			From:              smtp.From,
+			PlainTextContents: false,
+			NameAsSubject:     true,
+		}
+		if len(smtp.AdminEmail) == 0 {
+			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
+				return errors.Wrap(err, "failed to setup email logger")
+			}
+
+		} else {
+			for i := range smtp.AdminEmail {
+				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
+					return errors.Wrap(err, "failed to setup email logger")
+				}
+			}
+		}
+		sender, err := send.NewSMTPLogger(&opts, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup email logger")
+		}
+		e.senders[SenderEmail] = sender
+	}
+
+	githubToken, err := e.settings.GetGithubOauthToken()
+	if err == nil && len(githubToken) > 0 {
+		var sender send.Sender
+		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+			Token: githubToken,
+		}, "")
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup github status logger")
+		}
+		e.senders[SenderGithubStatus] = sender
+	}
+
+	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
+		var sender send.Sender
+		sender, err = send.NewJiraLogger(&send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup jira issue logger")
+		}
+		e.senders[SenderJIRAIssue] = sender
+
+		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup jira comment logger")
+		}
+		e.senders[SenderJIRAComment] = sender
+	}
+
+	if slack := &e.settings.Slack; len(slack.Token) != 0 {
+		var sender send.Sender
+		sender, err = send.NewSlackLogger(&send.SlackOptions{
+			Channel: "#",
+			Name:    "evergreen",
+		}, slack.Token, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup slack logger")
+		}
+		e.senders[SenderSlack] = sender
+	}
+
+	var sender send.Sender
+	sender, err = util.NewEvergreenWebhookLogger()
+	if err != nil {
+		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
+	}
+	e.senders[SenderEvergreenWebhook] = sender
+
+	catcher := grip.NewBasicCatcher()
+	for _, s := range e.senders {
+		catcher.Add(s.SetLevel(levelInfo))
+	}
+
+	return catcher.Resolve()
+}
+
 type BuildBaronProject struct {
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
@@ -311,6 +427,18 @@ func (e *envState) ClientConfig() *ClientConfig {
 
 	config := *e.clientConfig
 	return &config
+}
+
+func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	sender, ok := e.senders[key]
+	if !ok {
+		return nil, errors.Errorf("unknown sender key %v", key)
+	}
+
+	return sender, nil
 }
 
 // getClientConfig should be called once at startup and looks at the

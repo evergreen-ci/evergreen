@@ -241,6 +241,10 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 	return false
 }
 
+func (t *Task) IsPatchRequest() bool {
+	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
@@ -1279,6 +1283,17 @@ func FindRunnable(distroID string) ([]Task, error) {
 		},
 	}
 
+	filterPatchingDisabledProjects := bson.M{
+		"$match": bson.M{"$or": []bson.M{
+			{
+				RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
+			},
+			{
+				"project_ref.0." + "patching_disabled": false,
+			},
+		}},
+	}
+
 	removeProjectRef := bson.M{
 		"$project": bson.M{
 			"project_ref": 0,
@@ -1294,6 +1309,7 @@ func FindRunnable(distroID string) ([]Task, error) {
 		replaceRoot,
 		joinProjectRef,
 		filterDisabledProejcts,
+		filterPatchingDisabledProjects,
 		removeProjectRef,
 	}
 

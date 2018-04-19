@@ -1,14 +1,8 @@
 package notification
 
-type EmailPayload struct {
-	Headers map[string]string `bson:"headers"`
-	Subject string            `bson:"subject"`
-	Body    []byte            `bson:"body"`
-}
+import "github.com/mongodb/grip/message"
 
-type GithubStatusAPIPayload struct {
-	Status      string `bson:"status"`
-	Context     string `bson:"context"`
-	Description string `bson:"description"`
-	URL         string `bson:"url"`
+type SlackPayload struct {
+	Body        string                    `bson:"body"`
+	Attachments []message.SlackAttachment `bson:"attachments"`
 }

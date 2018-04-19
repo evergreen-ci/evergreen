@@ -261,6 +261,12 @@ func (s *SlackSuite) TestSendMethod() {
 	m = message.NewDefaultMessage(level.Alert, "world")
 	sender.Send(m)
 	s.Equal(mock.numSent, 1)
+	s.Equal("#test", mock.lastTarget)
+
+	m = message.NewSlackMessage(level.Alert, "#somewhere", "Hi", nil)
+	sender.Send(m)
+	s.Equal(mock.numSent, 2)
+	s.Equal("#somewhere", mock.lastTarget)
 }
 
 func (s *SlackSuite) TestSendMethodWithError() {

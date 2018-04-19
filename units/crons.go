@@ -188,6 +188,15 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
+func EventMetaJobQueueOperation() amboy.QueueOperation {
+	return func(q amboy.Queue) error {
+		t := time.Now().Truncate(EventProcessingInterval / 2)
+		err := q.Put(NewEventMetaJob(q, t.Format(tsFormat)))
+
+		return errors.Wrap(err, "failed to queue event-metajob")
+	}
+}
+
 func PopulateTaskMonitoring() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -239,6 +248,51 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
+func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.MonitorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "monitor is disabled",
+				"impact":  "not submitting detecting idle hosts",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		hosts, err := host.AllIdleEphemeral()
+		catcher.Add(err)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"id":    idleHostJobName,
+			"hosts": hosts,
+		}))
+
+		grip.InfoWhen(sometimes.Percent(10), message.Fields{
+			"id":    idleHostJobName,
+			"op":    "dispatcher",
+			"hosts": hosts,
+			"num":   len(hosts),
+		})
+
+		for _, h := range hosts {
+			err := queue.Put(NewIdleHostTerminationJob(env, h, ts))
+			grip.Warning(message.WrapError(err, message.Fields{
+				"id":   idleHostJobName,
+				"host": h,
+			}))
+			catcher.Add(err)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSchedulerJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -254,18 +308,22 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 			})
 		}
 
+		catcher := grip.NewBasicCatcher()
+
 		lastPlanned, err := model.FindTaskQueueGenerationTimes()
-		if err != nil {
-			return errors.Wrap(err, "problem finding last task generation times")
-		}
+		catcher.Add(err)
 
 		names, err := distro.FindAllNames()
-		if err != nil {
-			return errors.Wrap(err, "problem finding all configured distros")
-		}
+		catcher.Add(err)
+
+		grip.InfoWhen(sometimes.Percent(10), message.Fields{
+			"runner":   "scheduler",
+			"previous": lastPlanned,
+			"distros":  names,
+			"op":       "dispatcher",
+		})
 
 		ts := util.RoundPartOfMinute(20)
-		catcher := grip.NewBasicCatcher()
 		for _, id := range names {
 			lastRun, ok := lastPlanned[id]
 			if ok && time.Since(lastRun) < 40*time.Second {
@@ -278,4 +336,38 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 
 		return catcher.Resolve()
 	}
+}
+
+// used for infrequently running system alerts
+func PopulateAlertingJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(addHostLongRunningTaskJobs(queue))
+		catcher.Add(addHostStatsJob(queue))
+
+		return catcher.Resolve()
+	}
+}
+
+func addHostLongRunningTaskJobs(queue amboy.Queue) error {
+	hosts, err := host.Find(host.IsRunningTask)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
+	catcher := grip.NewBasicCatcher()
+
+	for _, host := range hosts {
+		job := NewHostAlertingJob(host, ts)
+		catcher.Add(queue.Put(job))
+	}
+
+	return catcher.Resolve()
+}
+
+func addHostStatsJob(queue amboy.Queue) error {
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
+	job := NewHostStatsJob(ts)
+	return queue.Put(job)
 }

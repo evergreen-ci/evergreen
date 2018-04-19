@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
@@ -20,13 +19,6 @@ const (
 	// UnreachableCutoff is the threshold to wait for an unreachable host to become marked
 	// as reachable again before giving up and terminating it.
 	UnreachableCutoff = 5 * time.Minute
-
-	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
-	MaxTimeTilNextPayment = 5 * time.Minute
-
-	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
-	idleTimeCutoff            = 4 * time.Minute
-	idleWaitingForAgentCutoff = 10 * time.Minute
 )
 
 type hostFlagger struct {
@@ -38,66 +30,6 @@ type hostFlagger struct {
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
 type hostFlaggingFunc func(context.Context, []distro.Distro, *evergreen.Settings) ([]host.Host, error)
-
-// flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
-// long without running a task
-func flagIdleHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
-	// will ultimately contain all of the hosts determined to be idle
-	idleHosts := []host.Host{}
-
-	// fetch all hosts not currently running a task
-	freeHosts, err := host.Find(host.IsFree)
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding free hosts")
-	}
-
-	// go through the hosts, and see if they have idled long enough to
-	// be terminated
-	for _, freeHost := range freeHosts {
-		if !freeHost.IsEphemeral() {
-			// only flag excess hosts for spawnable distros
-			continue
-		}
-
-		// ask the host how long it has been idle
-		idleTime := freeHost.IdleTime()
-
-		// if the communication time is > 10 mins then there may not be an agent on the host.
-		communicationTime := freeHost.GetElapsedCommunicationTime()
-
-		// get a cloud manager for the host
-		cloudManager, err := cloud.GetCloudManager(ctx, freeHost.Provider, s)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error getting cloud manager for host %v", freeHost.Id)
-		}
-
-		// ask how long until the next payment for the host
-		tilNextPayment := cloudManager.TimeTilNextPayment(&freeHost)
-
-		if tilNextPayment > MaxTimeTilNextPayment {
-			continue
-		}
-
-		if freeHost.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
-			grip.Notice(message.Fields{
-				"runner":            RunnerName,
-				"message":           "not flagging idle host, waiting for an agent",
-				"host":              freeHost.Id,
-				"distro":            freeHost.Distro.Id,
-				"idle":              idleTime.String(),
-				"last_communicated": communicationTime.String(),
-			})
-			continue
-		}
-
-		// if we haven't heard from the host or it's been idle for longer than the cutoff, we should flag.
-		if communicationTime >= idleTimeCutoff || idleTime >= idleTimeCutoff {
-			idleHosts = append(idleHosts, freeHost)
-		}
-	}
-
-	return idleHosts, nil
-}
 
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
@@ -138,8 +70,18 @@ func flagExcessHosts(ctx context.Context, distros []distro.Distro, s *evergreen.
 					break
 				}
 			}
-		}
 
+			grip.Notice(message.Fields{
+				"runner":        RunnerName,
+				"message":       "found excess hosts",
+				"distro":        d.Id,
+				"max_hosts":     d.PoolSize,
+				"running_hosts": len(allHostsForDistro),
+				"idle":          counter,
+				"excess":        numExcessHosts,
+			})
+		}
 	}
+
 	return excessHosts, nil
 }

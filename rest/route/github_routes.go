@@ -149,6 +149,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 					Message:    err.Error(),
 				}
 			}
+
 			grip.Info(message.Fields{
 				"source":    "github hook",
 				"msg_id":    gh.msgID,

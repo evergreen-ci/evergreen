@@ -166,6 +166,17 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 		Identifier: "disabled",
 		Enabled:    false,
 	}
+
+	s.NoError(ref.Insert())
+
+	ref = &model.ProjectRef{
+		Identifier:       "patching-disabled",
+		PatchingDisabled: true,
+		Enabled:          true,
+	}
+
+	s.NoError(ref.Insert())
+
 }
 
 func (s *TaskFinderComparisonSuite) TearDownSuite() {
@@ -370,6 +381,27 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 				Project:   "disabled",
+			},
+			task.Task{
+				Id:        "bar",
+				Status:    evergreen.TaskUndispatched,
+				Activated: true,
+				Requester: evergreen.PatchVersionRequester,
+				Project:   "patching-disabled",
+			},
+			task.Task{
+				Id:        "baz",
+				Status:    evergreen.TaskUndispatched,
+				Activated: true,
+				Requester: evergreen.GithubPRRequester,
+				Project:   "patching-disabled",
+			},
+			task.Task{
+				Id:        "runnable",
+				Status:    evergreen.TaskUndispatched,
+				Activated: true,
+				Requester: evergreen.RepotrackerVersionRequester,
+				Project:   "patching-disabled",
 			},
 		}
 	}

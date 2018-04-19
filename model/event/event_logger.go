@@ -34,7 +34,7 @@ func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
 	if !event.ID.Valid() {
 		event.ID = bson.NewObjectId()
 	}
-	if !isSubscribable(event.ResourceType) {
+	if !registry.IsSubscribable(event.ResourceType, event.EventType) {
 		loc, _ := time.LoadLocation("UTC")
 		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
 		if err != nil {
@@ -68,4 +68,14 @@ func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	}
 
 	return nil
+}
+
+// MarkAllEventsProcessed marks all events processed with the current time
+func MarkAllEventsProcessed(collection string) error {
+	_, err := db.UpdateAll(collection, UnprocessedEvents(), bson.M{
+		"$set": bson.M{
+			processedAtKey: time.Now(),
+		},
+	})
+	return err
 }
