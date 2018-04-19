@@ -23,6 +23,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -180,9 +181,11 @@ func raceSuggesters(fallback, altEndpoint suggester, t *task.Task) ([]thirdparty
 	// for fetching the fallback results, but we instead just return back to the caller without
 	// waiting for the associated goroutine to complete.
 	if err != nil {
-		grip.Warningf(
-			"Failed to get results from alternative endpoint for task_id=%s, execution=%d: %s",
-			t.Id, t.Execution, err)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":   "failed to get results from alternative endpoint",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+		}))
 
 		fallbackChanRes := <-fallbackChan
 		return fallbackChanRes.Tickets, fallbackChanRes.Error
