@@ -163,10 +163,11 @@ func raceSuggesters(fallback, altEndpoint suggester, t *task.Task) ([]thirdparty
 
 	// thirdparty/jira.go and thirdparty/http.go do not expose an API that accepts a context.Context.
 	fallbackCtx := context.TODO()
-	fallbackChan := make(chan result)
+	fallbackChan := make(chan result, 1)
 	go func() {
 		suggestions, err := fallback.Suggest(fallbackCtx, t)
 		fallbackChan <- result{suggestions, err}
+		close(fallbackChan)
 	}()
 
 	altEndpointTimeout := altEndpoint.GetTimeout()
