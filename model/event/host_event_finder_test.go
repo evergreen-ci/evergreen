@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -90,4 +91,34 @@ func TestRecentHostStatusFinder(t *testing.T) {
 		assert.NoError(db.Insert(AllLogCollection, data[i]))
 	}
 	assert.True(AllRecentHostEventsMatchStatus("test", 2, "one"))
+}
+
+func TestAgentDeployStatusFinder(t *testing.T) {
+	assert := assert.New(t)
+
+	const hostID = "host-two"
+
+	assert.NoError(db.Clear(AllLogCollection))
+	stat, err := GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+	assert.Equal(10, stat.Total)
+	assert.Equal("", stat.Last)
+	assert.Equal(0, stat.Count)
+	assert.Equal(0, stat.Failed)
+	assert.Equal(0, stat.Success)
+
+	for i := 0; i < 20; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+	LogHostAgentDeployed(hostID)
+
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+
+	assert.Equal(EventHostAgentDeployed, stat.Last)
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(1, stat.Success)
+	assert.Equal(9, stat.Failed)
+
 }

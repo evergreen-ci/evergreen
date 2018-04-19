@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/mongodb/amboy/registry"
+	_ "github.com/mongodb/amboy/registry" // bleh
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"gopkg.in/mgo.v2/bson"
