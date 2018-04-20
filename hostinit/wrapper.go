@@ -42,7 +42,7 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 
 		if err != nil {
 			grip.Error(message.WrapError(err, m))
-			return err
+			return errors.Wrap(errRetryHost, err.Error())
 		}
 
 		grip.Info(m)

@@ -37,7 +37,7 @@ func makeCreateHostJob() *createHostJob {
 }
 
 func NewHostCreateJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
-	j := makeHostTerminationJob()
+	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
