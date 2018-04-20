@@ -557,10 +557,11 @@ var drawSingleTrendChart = function(params) {
     var hash = d.revision
 
     // Reduce number of calls if hash didn't changed
-    if (hash != scope.currentHash) {
-      scope.currentHash = hash;
-      scope.currentHashDate = d.startedAt
+    if (hash != scope.$parent.currentHash) {
+      scope.$parent.currentHash = hash;
+      scope.$parent.currentHashDate = d.startedAt
       scope.$emit('hashChanged', hash)
+      scope.$parent.$digest()
     }
   }
 
