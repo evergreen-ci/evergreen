@@ -1,9 +1,12 @@
 package notification
 
 import (
+	"encoding/json"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -73,12 +76,20 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen := notificationGenerator{
-		triggerName: name,
-		selectors:   patchSelectors(p),
-		evergreenWebhook: &util.EvergreenWebhook{
-			Body: []byte("test"),
-		},
+		triggerName:      name,
+		selectors:        patchSelectors(p),
+		evergreenWebhook: &util.EvergreenWebhook{},
 	}
+
+	api := restModel.APIPatch{}
+	if err := api.BuildFromService(*p); err != nil {
+		return nil, errors.Wrap(err, "error building json model")
+	}
+	bytes, err := json.Marshal(api)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building json model")
+	}
+	gen.evergreenWebhook.Body = bytes
 
 	return &gen, nil
 }

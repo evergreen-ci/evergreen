@@ -27,7 +27,6 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]Notification, error) {
 	notifications := []Notification{}
 	catcher := grip.NewSimpleCatcher()
 	for _, f := range triggers {
-
 		gen, err := f(e, data)
 		if err != nil {
 			catcher.Add(err)
