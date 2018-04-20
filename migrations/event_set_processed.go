@@ -33,7 +33,7 @@ func makeEventSetProcesedTimeMigration(collection string, left, right time.Time)
 
 		q := bson.M{
 			processedAtKey: bson.M{
-				"$exists": false,
+				"$eq": time.Time{},
 			},
 		}
 

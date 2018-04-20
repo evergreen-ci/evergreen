@@ -191,4 +191,7 @@ type Connector interface {
 
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 	GenerateTasks(string, []json.RawMessage) error
+
+	// Notifications
+	GetNotificationsStats() (*restModel.APIEventStats, error)
 }

@@ -2,7 +2,9 @@ package notification
 
 import (
 	"errors"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -10,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type notificationSuite struct {
@@ -336,4 +339,35 @@ func (s *notificationSuite) TestGithubPayload() {
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
+}
+
+func (s *notificationSuite) TestCollectUnsentNotificationStats() {
+	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
+		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
+		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType}
+
+	n := []Notification{}
+	// add one of every notification, unsent
+	for i, type_ := range types {
+		n = append(n, s.n)
+		n[i].ID = bson.NewObjectId().Hex()
+		n[i].Subscriber.Type = type_
+		s.NoError(db.Insert(Collection, n[i]))
+	}
+
+	// add one more, mark it sent
+	s.n.ID = bson.NewObjectId().Hex()
+	s.n.SentAt = time.Now()
+	s.NoError(db.Insert(Collection, s.n))
+
+	stats, err := CollectUnsentNotificationStats()
+	s.NoError(err)
+	s.Require().NotNil(stats)
+
+	// we should count 1 of each type
+	v := reflect.ValueOf(stats).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		s.Equal(1, int(f.Int()))
+	}
 }
