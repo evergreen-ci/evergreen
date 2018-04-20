@@ -136,7 +136,7 @@ func TestHostIsReady(t *testing.T) {
 			Convey("then checking for readiness should return false", func() {
 				for i := range hostsForTest {
 					h := hostsForTest[i]
-					ready, err := IsHostReady(ctx, &h, conf)
+					ready, err := isHostReady(ctx, &h, conf)
 					So(err, ShouldBeNil)
 					So(ready, ShouldBeFalse)
 				}
@@ -159,7 +159,7 @@ func TestHostIsReady(t *testing.T) {
 				Convey("then checking for readiness should return true", func() {
 					for i := range hostsForTest {
 						h := hostsForTest[i]
-						ready, err := IsHostReady(ctx, &h, conf)
+						ready, err := isHostReady(ctx, &h, conf)
 						So(err, ShouldBeNil)
 						So(ready, ShouldBeTrue)
 					}
@@ -175,7 +175,7 @@ func TestHostIsReady(t *testing.T) {
 				Convey("then checking for readiness should error", func() {
 					for i := range hostsForTest {
 						h := hostsForTest[i]
-						ready, err := IsHostReady(ctx, &h, conf)
+						ready, err := isHostReady(ctx, &h, conf)
 						So(err, ShouldNotBeNil)
 						So(ready, ShouldBeFalse)
 					}
@@ -194,7 +194,7 @@ func TestHostIsReady(t *testing.T) {
 			Convey("then checking for readiness should terminate", func() {
 				for i := range hostsForTest {
 					h := hostsForTest[i]
-					ready, err := IsHostReady(ctx, &h, conf)
+					ready, err := isHostReady(ctx, &h, conf)
 					So(err, ShouldNotBeNil)
 					So(ready, ShouldBeFalse)
 					So(h.Status, ShouldEqual, evergreen.HostTerminated)

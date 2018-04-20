@@ -21,7 +21,7 @@ import (
 )
 
 // SSHTimeout defines the timeout for the SSH commands in this package.
-const sshTimeout = 30 * time.Second
+const sshTimeout = 25 * time.Second
 
 func getHostMessage(h host.Host) message.Fields {
 	m := message.Fields{

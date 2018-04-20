@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
@@ -14,7 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-var retryHostError = errors.New("host status is starting after running provisioning")
+var (
+	errRetryHost           = errors.New("host status is starting after running provisioning")
+	errIgnorableCreateHost = errors.New("create host encountered internal error")
+)
 
 func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
@@ -27,7 +31,7 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 
 	// check whether or not the host is ready for its setup script to be run
 	// if the host isn't ready (for instance, it might not be up yet), skip it
-	if ready, err := IsHostReady(ctx, h, settings); !ready {
+	if ready, err := isHostReady(ctx, h, settings); !ready {
 		m := message.Fields{
 			"message": "host not ready for setup",
 			"hostid":  h.Id,
@@ -86,7 +90,7 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 	// In these cases, ProvisionHost returns a nil error but
 	// does not change the host status.
 	if h.Status == evergreen.HostStarting {
-		return errors.Wrapf(retryHostError, "retrying for '%s', after %d attempts",
+		return errors.Wrapf(errRetryHost, "retrying for '%s', after %d attempts",
 			h.Id, h.ProvisionAttempts)
 	}
 
@@ -98,6 +102,63 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 		"runner":   RunnerName,
 		"attempts": h.ProvisionAttempts,
 		"runtime":  time.Since(setupStartTime),
+	})
+
+	return nil
+}
+
+func CreateHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
+	hostStartTime := time.Now()
+	grip.Info(message.Fields{
+		"message": "attempting to start host",
+		"hostid":  h.Id,
+		"runner":  RunnerName,
+	})
+
+	cloudManager, err := cloud.GetCloudManager(ctx, h.Provider, settings)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "problem getting cloud provider for host",
+			"runner":  RunnerName,
+			"host":    h.Id,
+		}))
+		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+	}
+
+	if err = h.Remove(); err != nil {
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "problem removing intent host",
+			"runner":  RunnerName,
+			"host":    h.Id,
+		}))
+		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+	}
+
+	_, err = cloudManager.SpawnHost(ctx, h)
+	if err != nil {
+		// we should maybe try and continue-on-error
+		// here, if we get many errors, but the chance
+		// is that if one fails, the chances of others
+		// failing is quite high (at least while all
+		// cloud providers are typically the same
+		// service provider.)
+		return errors.Wrapf(err, "error spawning host %s", h.Id)
+	}
+
+	h.Status = evergreen.HostStarting
+	h.StartTime = time.Now()
+
+	_, err = h.Upsert()
+	if err != nil {
+		return errors.Wrapf(err, "error updating host %v", h.Id)
+	}
+
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"message": "successfully started host",
+		"hostid":  h.Id,
+		"DNS":     h.Host,
+		"runtime": time.Since(hostStartTime),
 	})
 
 	return nil

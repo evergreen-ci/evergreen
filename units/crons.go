@@ -425,3 +425,99 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 
 }
+
+func PopulateHostCreationJos(env evergreen.Environment, parts int) amboy.QueueOperation {
+	if !evergreen.UseNewHostStarting {
+		return func(_ amboy.Queue) error { return nil }
+
+	}
+
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostinitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "new hosts are not created in cloud providers",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		hosts, err := host.Find(host.IsUninitialized)
+		if err != nil {
+			return errors.Wrap(err, "error fetching uninitialized hosts")
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      createHostJobName,
+			"impact":    "hosts cannot start",
+		}))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		submitted := 0
+
+		for _, h := range hosts {
+			if h.UserHost {
+				// pass:
+				//    always start spawn hosts asap
+			} else if submitted > 16 {
+				// throttle hosts, so that we're starting very
+				// few hosts on every pass. Hostinit runs very
+				// frequently, lets not start too many all at
+				// once.
+
+				break
+			}
+
+			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateHostSetupJobs(env evergreen.Environment, parts int) amboy.QueueOperation {
+	if !evergreen.UseNewHostProvisioning {
+		return func(_ amboy.Queue) error { return nil }
+	}
+
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostinitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "new hosts are not setup or provisioned",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		hosts, err := host.Find(host.NeedsProvisioning())
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      setupHostJobName,
+			"impact":    "hosts cannot provision",
+		}))
+		if err != nil {
+			return errors.Wrap(err, "error fetching starting hosts")
+		}
+
+		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
+		}
+	}
+}
