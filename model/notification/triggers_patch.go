@@ -112,23 +112,3 @@ func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	gen.triggerName = name
 	return gen, nil
 }
-
-//func patchTimeExceedsConstant(p *patch.Patch) (*notificationGenerator, error) {
-//	const name = "time-exceeds-n-constant"
-//
-//	if data.Status != evergreen.PatchSucceeded || data.Status != evergreen.PatchFailed {
-//		return nil, nil
-//	}
-//
-//	return patchOutcome(data)
-//}
-//
-//func patchTimeExceedsRelativePercent(p *patch.Patch) (*notificationGenerator, error) {
-//	const name = "time-exceeds-n%"
-//
-//	if data.Status != evergreen.PatchSucceeded || data.Status != evergreen.PatchFailed {
-//		return nil, nil
-//	}
-//
-//	return patchOutcome(data)
-//}

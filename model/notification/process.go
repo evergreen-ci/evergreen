@@ -19,14 +19,14 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]Notification, error) {
 		return nil, errors.Errorf("no triggers for event type: '%s'", e.ResourceType)
 	}
 
+	data, err := prefetch(e)
+	if err != nil {
+		return nil, errors.Wrapf(err, "prefetch function for '%s' failed", e.ResourceType)
+	}
+
 	notifications := []Notification{}
 	catcher := grip.NewSimpleCatcher()
 	for _, f := range triggers {
-		data, err := prefetch(e)
-		if err != nil {
-			catcher.Add(err)
-			continue
-		}
 
 		gen, err := f(e, data)
 		if err != nil {

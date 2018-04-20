@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/util"
 )
 
 type prefetch func(*event.EventLogEntry) (interface{}, error)
@@ -56,34 +55,4 @@ func (r *triggerRegistry) Triggers(resourceType string) (prefetch, []trigger) {
 	}
 
 	return prefetch, triggers
-}
-
-// TODO delete this and test event after the first real event is implemented
-func init() {
-	registry.AddTrigger(event.ResourceTypeTest, testTrigger)
-	registry.AddPrefetch(event.ResourceTypeTest, func(_ *event.EventLogEntry) (interface{}, error) {
-		return nil, nil
-	})
-}
-
-func testTrigger(e *event.EventLogEntry, _ interface{}) (*notificationGenerator, error) {
-	data := e.Data.(*event.TestEvent)
-	selectors := []event.Selector{
-		{
-			Type: "test",
-			Data: "awesomeness",
-		},
-		{
-			Type: "test2",
-			Data: "notawesomeness",
-		},
-	}
-
-	return &notificationGenerator{
-		triggerName: "test",
-		selectors:   selectors,
-		evergreenWebhook: &util.EvergreenWebhook{
-			Body: []byte(fmt.Sprintf("event says '%s'", data.Message)),
-		},
-	}, nil
 }

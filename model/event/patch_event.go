@@ -9,7 +9,7 @@ import (
 
 func init() {
 	registry.AddType(ResourceTypePatch, patchEventFactory)
-	registry.AllowSubscription(ResourceTypePatch, PatchOutcomeEvent)
+	registry.AllowSubscription(ResourceTypePatch, PatchStateChange)
 	registry.RegisterExtraData(ResourceTypePatch, "time-exceeds-n-constant", 0)
 	registry.RegisterExtraData(ResourceTypePatch, "time-exceeds-n-percent", 0.0)
 }
@@ -21,7 +21,7 @@ func patchEventFactory() interface{} {
 const (
 	ResourceTypePatch = "PATCH"
 
-	PatchOutcomeEvent = "OUTCOME"
+	PatchStateChange = "STATE_CHANGE"
 )
 
 type PatchEventData struct {
@@ -36,7 +36,7 @@ func LogPatchStateChangeEvent(p *patch.Patch) {
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
 		ResourceId:   p.Id.Hex(),
 		ResourceType: ResourceTypePatch,
-		EventType:    PatchOutcomeEvent,
+		EventType:    PatchStateChange,
 		Data: &PatchEventData{
 			Author:   p.Author,
 			Version:  p.Version,
