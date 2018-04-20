@@ -12,7 +12,3 @@ func FromAPIString(in APIString) string {
 	}
 	return *in
 }
-
-func (as APIString) String() string {
-	return string(as)
-}
