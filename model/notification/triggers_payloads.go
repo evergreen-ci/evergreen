@@ -91,8 +91,14 @@ func webhookPayload(api restModel.Model, selectors []event.Selector) (*util.Ever
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
+	headers := map[string][]string{}
+	for i := range selectors {
+		headers[evergreenHeaderPrefix+selectors[i].Type] = append(headers[evergreenHeaderPrefix+selectors[i].Type], selectors[i].Data)
+	}
+
 	return &util.EvergreenWebhook{
-		Body: bytes,
+		Body:    bytes,
+		Headers: headers,
 	}, nil
 }
 
