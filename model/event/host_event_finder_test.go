@@ -101,6 +101,7 @@ func TestAgentDeployStatusFinder(t *testing.T) {
 	assert.NoError(db.Clear(AllLogCollection))
 	stat, err := GetRecentAgentDeployStatuses(hostID, 10)
 	assert.Error(err)
+	assert.Nil(stat)
 
 	for i := 0; i < 10; i++ {
 		LogHostAgentDeployFailed(hostID, errors.New(":("))
