@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
@@ -145,15 +144,18 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	)
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), agentDeployInterval, time.Now(), opts, units.PopulateAgentDeployJobs(env))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs(5))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateEventAlertProcessing(5),
+		units.PopulateRepotrackerPollingJobs(5)))
+
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateCatchupJobs(30),
 		units.PopulateAlertingJobs()))
@@ -208,7 +210,6 @@ var backgroundRunners = []processRunner{
 	&monitor.Runner{},
 
 	&hostinit.Runner{},
-	&taskrunner.Runner{},
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
@@ -223,7 +224,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 
 	frequentRunners := []string{
 		hostinit.RunnerName,
-		taskrunner.RunnerName,
 	}
 
 	infrequentRunners := []string{

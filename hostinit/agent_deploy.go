@@ -1,4 +1,4 @@
-package taskrunner
+package hostinit
 
 import (
 	"bytes"
@@ -20,25 +20,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// SSHTimeout defines the timeout for the SSH commands in this package.
-	sshTimeout = 30 * time.Second
-	agentFile  = "agent"
-)
-
-// HostGateway is responsible for kicking off tasks on remote machines.
-type HostGateway interface {
-	// run the specified task on the specified host, return the revision of the
-	// agent running the task on that host
-	StartAgentOnHost(context.Context, *evergreen.Settings, host.Host) error
-}
-
-// Implementation of the HostGateway that builds and copies over the MCI
-// agent to run tasks.
-type AgentHostGateway struct {
-	// Destination directory for the agent executables
-	ExecutablesDir string
-}
+// SSHTimeout defines the timeout for the SSH commands in this package.
+const sshTimeout = 30 * time.Second
 
 func getHostMessage(h host.Host) message.Fields {
 	m := message.Fields{
@@ -72,7 +55,7 @@ func getHostMessage(h host.Host) message.Fields {
 // Start an agent on the host specified.  First runs any necessary
 // preparation on the remote machine, then kicks off the agent process on the
 // machine. Returns an error if any step along the way fails.
-func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
+func StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
 	cloudHost, err := cloud.GetCloudHost(ctx, &hostObj, settings)
@@ -91,14 +74,15 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 	hostObj.Distro = d
 
 	// prep the remote host
-	grip.Info(message.Fields{"runner": RunnerName,
+	grip.Info(message.Fields{
+		"runner":  "taskrunner",
 		"message": "prepping host for agent",
 		"host":    hostObj.Id})
-	if err = agbh.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
+	if err = prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 
-	grip.Info(message.Fields{"runner": RunnerName, "message": "prepping host finished successfully", "host": hostObj.Id})
+	grip.Info(message.Fields{"runner": "taskrunner", "message": "prepping host finished successfully", "host": hostObj.Id})
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
@@ -113,7 +97,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 		// mark the host's provisioning as failed
 		if err = hostObj.SetUnprovisioned(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"runner":  RunnerName,
+				"runner":  "taskrunner",
 				"host_id": hostObj.Id,
 				"message": "unprovisioning host failed",
 			}))
@@ -123,7 +107,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 
 		return errors.WithStack(err)
 	}
-	grip.Info(message.Fields{"runner": RunnerName, "message": "agent successfully started for host", "host": hostObj.Id})
+	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host": hostObj.Id})
 
 	if err = hostObj.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
@@ -138,7 +122,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 }
 
 // Prepare the remote machine to run a task.
-func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
+func prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
@@ -152,7 +136,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 			"message": "error running setup script",
 			"host_id": hostObj.Id,
 			"distro":  hostObj.Distro.Id,
-			"runner":  RunnerName,
+			"runner":  "taskrunner",
 			"logs":    logs,
 		}))
 
@@ -181,7 +165,7 @@ func startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, hostO
 		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
 		fmt.Sprintf("--host_id='%s'", hostObj.Id),
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
-		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
+		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
 		"--cleanup",
 	}
@@ -192,7 +176,7 @@ func startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, hostO
 		"message": "starting agent on host",
 		"host":    hostObj.Id,
 		"command": remoteCmd,
-		"runner":  RunnerName,
+		"runner":  "taskrunner",
 	})
 
 	// compute any info necessary to ssh into the host
@@ -229,7 +213,7 @@ func startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, hostO
 	output := subprocess.OutputOptions{Output: cmdOutBuff, SendErrorToOutput: true}
 	if err = startAgentCmd.SetOutput(output); err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
-			"runner":    RunnerName,
+			"runner":    "taskrunner",
 			"operation": "setting up copy cli config command",
 			"distro":    hostObj.Distro.Id,
 			"host":      hostObj.Host,
@@ -246,7 +230,7 @@ func startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, hostO
 
 	// run cleanup regardless of what happens.
 	grip.Notice(message.WrapError(startAgentCmd.Stop(), message.Fields{
-		"runner":  RunnerName,
+		"runner":  "taskrunner",
 		"message": "cleaning command failed",
 	}))
 
