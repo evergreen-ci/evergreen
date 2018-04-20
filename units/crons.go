@@ -188,7 +188,7 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateEventProcessing(parts int) amboy.QueueOperation {
+func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -205,9 +205,8 @@ func PopulateEventProcessing(parts int) amboy.QueueOperation {
 		}
 
 		ts := util.RoundPartOfHour(parts).Format(tsFormat)
-		err := queue.Put(NewEventMetaJob(queue, ts))
 
-		return errors.Wrap(err, "failed to queue event-metajob")
+		return errors.Wrap(queue.Put(NewEventMetaJob(queue, ts)), "failed to queue event-metajob")
 	}
 }
 
@@ -362,11 +361,11 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 
 // PopulateHostAlertJobs adds alerting tasks infrequently for host
 // utilization monitoring.
-func PopulateHostAlertJobs() amboy.QueueOperation {
+func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 
-		ts := util.RoundPartOfHour(20).Format(tsFormat)
+		ts := util.RoundPartOfHour(parts).Format(tsFormat)
 
 		hosts, err := host.Find(host.IsRunningTask)
 		grip.Warning(message.WrapError(err, message.Fields{
@@ -409,7 +408,6 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
 			"impact":    "agents cannot start",
-			"cause":     "database error",
 		}))
 		if err != nil {
 			return errors.WithStack(err)

@@ -137,28 +137,29 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	}
 
 	const (
-		monitoringInterval      = time.Minute
 		backgroundStatsInterval = time.Minute
-		taskPlanningInterval    = 15 * time.Second
 		sysStatsInterval        = 15 * time.Second
 	)
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), agentDeployInterval, time.Now(), opts, units.PopulateAgentDeployJobs(env))
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateSchedulerJobs(),
+		units.PopulateAgentDeployJobs(env)))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateEventAlertProcessing(5),
 		units.PopulateRepotrackerPollingJobs(5)))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
+
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateCatchupJobs(30),
-		units.PopulateAlertingJobs()))
+		units.PopulateHostAlertJobs(20)))
 
 	// add jobs to a local queue every minute for stats collection and reporting.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
