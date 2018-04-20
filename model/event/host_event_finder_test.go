@@ -100,16 +100,12 @@ func TestAgentDeployStatusFinder(t *testing.T) {
 
 	assert.NoError(db.Clear(AllLogCollection))
 	stat, err := GetRecentAgentDeployStatuses(hostID, 10)
-	assert.NoError(err)
-	assert.Equal(10, stat.Total)
-	assert.Equal("", stat.Last)
-	assert.Equal(0, stat.Count)
-	assert.Equal(0, stat.Failed)
-	assert.Equal(0, stat.Success)
+	assert.Error(err)
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 10; i++ {
 		LogHostAgentDeployFailed(hostID, errors.New(":("))
 	}
+	time.Sleep(time.Millisecond)
 	LogHostAgentDeployed(hostID)
 
 	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
@@ -120,5 +116,44 @@ func TestAgentDeployStatusFinder(t *testing.T) {
 	assert.Equal(10, stat.Count)
 	assert.Equal(1, stat.Success)
 	assert.Equal(9, stat.Failed)
+	assert.False(stat.LastAttemptFailed())
+	assert.False(stat.AllAttemptsFailed())
 
+	// Invert the data
+	//
+	assert.NoError(db.Clear(AllLogCollection))
+
+	for i := 0; i < 10; i++ {
+		LogHostAgentDeployed(hostID)
+	}
+	time.Sleep(time.Millisecond)
+	LogHostAgentDeployFailed(hostID, errors.New(":("))
+
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(9, stat.Success)
+	assert.Equal(1, stat.Failed)
+	assert.True(stat.LastAttemptFailed())
+	assert.False(stat.AllAttemptsFailed())
+
+	// Everything Fails
+	//
+	assert.NoError(db.Clear(AllLogCollection))
+
+	for i := 0; i < 10; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(0, stat.Success)
+	assert.Equal(10, stat.Failed)
+	assert.True(stat.LastAttemptFailed())
+	assert.True(stat.AllAttemptsFailed())
 }
