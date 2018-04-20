@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
@@ -46,6 +47,19 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		message := errors.Wrapf(err, "Error marking task '%s' started", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
+	}
+
+	if len(updates.PatchNewStatus) != 0 {
+		var p *patch.Patch
+		p, err = patch.FindOne(patch.ByVersion(t.Version))
+		// don't quit, but log it
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "failed to fetch patch by version",
+			"version": t.Version,
+		}))
+		if err == nil && p != nil {
+			event.LogPatchStateChangeEvent(p)
+		}
 	}
 
 	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
@@ -162,6 +176,19 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
+	if len(updates.PatchNewStatus) != 0 {
+		var p *patch.Patch
+		p, err = patch.FindOne(patch.ByVersion(t.Version))
+		// don't quit, but log it
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "failed to fetch patch by version",
+			"version": t.Version,
+		}))
+		if err == nil && p != nil {
+			event.LogPatchStateChangeEvent(p)
+		}
+	}
+
 	if t.Requester == evergreen.GithubPRRequester {
 		if updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded {
 			job := units.NewGithubStatusUpdateJobForBuild(t.BuildId)

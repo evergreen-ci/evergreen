@@ -158,7 +158,6 @@ func jiraIssue(id, objectName, url, status string) (*message.JiraIssue, error) {
 const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> has {{ .PastTenseStatus }}!`
 
 func slack(id, objectName, url, status string) (*SlackPayload, error) {
-	// TODO cleanup
 	t := emailTemplateData{
 		Object:          objectName,
 		ID:              id,
