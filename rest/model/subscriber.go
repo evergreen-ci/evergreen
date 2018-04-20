@@ -1,12 +1,11 @@
 package model
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/pkg/errors"
 )
 
 type APISubscriber struct {
@@ -56,7 +55,7 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 			target = v.Target
 
 		default:
-			return fmt.Errorf("unknown subscriber type: '%s'", v.Type)
+			return errors.Errorf("unknown subscriber type: '%s'", v.Type)
 		}
 
 		s.Target = target
@@ -104,7 +103,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		target = s.Target
 
 	default:
-		return nil, fmt.Errorf("unknown subscriber type: '%s'", FromAPIString(s.Type))
+		return nil, errors.Errorf("unknown subscriber type: '%s'", FromAPIString(s.Type))
 	}
 
 	out.Target = target

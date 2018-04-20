@@ -103,7 +103,7 @@ func (s *Subscriber) String() string {
 func (s *Subscriber) Validate() error {
 	catcher := grip.NewBasicCatcher()
 	if !util.StringSliceContains(SubscriberTypes, s.Type) {
-		catcher.Add(fmt.Errorf("%s is not a valid subscriber type", s.Type))
+		catcher.Add(errors.Errorf("%s is not a valid subscriber type", s.Type))
 	}
 	if s.Target == nil {
 		catcher.Add(errors.New("type is required for subscriber"))
