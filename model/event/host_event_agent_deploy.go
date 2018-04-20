@@ -89,7 +89,7 @@ func (m *RecentHostAgentDeploys) String() string {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Predicates to support
+// Predicates to support error checking during the agent deploy process
 
 func (m *RecentHostAgentDeploys) LastAttemptFailed() bool { return m.Last == EventHostAgentDeployFailed }
 func (m *RecentHostAgentDeploys) AllAttemptsFailed() bool { return m.Count > 0 && m.Success == 0 }
