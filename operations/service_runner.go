@@ -29,8 +29,6 @@ import (
 	"github.com/urfave/cli"
 )
 
-const useNewScheduler = true
-
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		grip.SetName("evergreen.runner")
@@ -141,28 +139,25 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	}
 
 	const (
-		monitoringInterval         = time.Minute
-		taskPlanningInterval       = 15 * time.Second
-		backgroundStatsInterval    = time.Minute
-		sysStatsInterval           = 15 * time.Second
-		infrequentAlertingInterval = 15 * time.Minute
+		monitoringInterval      = time.Minute
+		backgroundStatsInterval = time.Minute
+		taskPlanningInterval    = 15 * time.Second
+		sysStatsInterval        = 15 * time.Second
 	)
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), infrequentAlertingInterval, time.Now(), opts, units.PopulateAlertingJobs())
-
-	if useNewScheduler {
-		amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
-	}
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs(5))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs(30))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationfactory(
+		units.PopulateCatchupJobs(30),
+		units.PopulateAlertingJobs()))
 
 	// add jobs to a local queue every minute for stats collection and reporting.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
