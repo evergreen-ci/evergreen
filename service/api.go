@@ -672,7 +672,6 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	status := apiRootOld.PathPrefix("/status/").Subrouter()
 	status.HandleFunc("/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
 	status.HandleFunc("/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
-	status.HandleFunc("/recent_tasks", as.recentTaskStatuses).Methods("GET")
 	status.HandleFunc("/stuck_hosts", as.getStuckHosts).Methods("GET")
 
 	// Hosts callback
