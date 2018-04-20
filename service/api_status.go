@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip/message"
@@ -240,13 +239,4 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 	}
 
 	as.WriteJSON(w, http.StatusOK, &out)
-}
-
-func (as *APIServer) recentTaskStatuses(w http.ResponseWriter, r *http.Request) {
-	tasks, err := task.GetRecentTasks(30 * time.Minute)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-	}
-
-	as.WriteJSON(w, http.StatusOK, task.GetResultCounts(tasks))
 }
