@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	eventMetaJobName        = "event-metajob"
-	EventProcessingInterval = 5 * time.Minute
+	eventMetaJobName = "event-metajob"
 )
 
 func init() {

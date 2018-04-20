@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
@@ -138,25 +137,29 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	}
 
 	const (
-		monitoringInterval      = time.Minute
 		backgroundStatsInterval = time.Minute
-		taskPlanningInterval    = 15 * time.Second
 		sysStatsInterval        = 15 * time.Second
 	)
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs(5))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateSchedulerJobs(),
+		units.PopulateAgentDeployJobs(env)))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateEventAlertProcessing(5),
+		units.PopulateRepotrackerPollingJobs(5)))
+
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
+
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateCatchupJobs(30),
-		units.PopulateAlertingJobs()))
+		units.PopulateHostAlertJobs(20)))
 
 	// add jobs to a local queue every minute for stats collection and reporting.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
@@ -208,7 +211,6 @@ var backgroundRunners = []processRunner{
 	&monitor.Runner{},
 
 	&hostinit.Runner{},
-	&taskrunner.Runner{},
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
@@ -223,7 +225,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 
 	frequentRunners := []string{
 		hostinit.RunnerName,
-		taskrunner.RunnerName,
 	}
 
 	infrequentRunners := []string{
