@@ -409,6 +409,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			"operation": "background task creation",
 			"cron":      agentDeployJobName,
 			"impact":    "agents cannot start",
+			"cause":     "database error",
 		}))
 		if err != nil {
 			return errors.WithStack(err)

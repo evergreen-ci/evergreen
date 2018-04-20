@@ -78,8 +78,13 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	if err != nil {
 		stat, err := event.GetRecentAgentDeployStatuses(j.HostID, 15)
 		j.AddError(err)
+		if err != nil {
+			return
+		}
+
 		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Total == 15 {
 			grip.Critical(stat)
 		}
+
 	}
 }
