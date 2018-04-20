@@ -1,13 +1,13 @@
 package notification
 
 import (
-	"encoding/json"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -76,20 +76,54 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen := notificationGenerator{
-		triggerName:      name,
-		selectors:        patchSelectors(p),
-		evergreenWebhook: &util.EvergreenWebhook{},
+		triggerName: name,
+		selectors:   patchSelectors(p),
 	}
+
+	url := ""
 
 	api := restModel.APIPatch{}
 	if err := api.BuildFromService(*p); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
 	}
-	bytes, err := json.Marshal(api)
+
+	var err error
+	gen.evergreenWebhook, err = webhookPayload(&api, gen.selectors)
 	if err != nil {
-		return nil, errors.Wrap(err, "error building json model")
+		return nil, errors.Wrap(err, "error building webhook payload")
 	}
-	gen.evergreenWebhook.Body = bytes
+
+	gen.email, err = emailPayload(p.Id.Hex(), "patch", url, p.Status, gen.selectors)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building email payload")
+	}
+
+	gen.jiraComment, err = jiraComment(p.Id.Hex(), "patch", url, p.Status)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building jira comment")
+	}
+	gen.jiraIssue, err = jiraIssue(p.Id.Hex(), "patch", url, p.Status)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building jira issue")
+	}
+
+	state := message.GithubStateSuccess
+	if p.Status == evergreen.PatchFailed {
+		state = message.GithubStateFailure
+	}
+
+	gen.githubStatusAPI = &message.GithubStatus{
+		Context:     "evergreen",
+		State:       state,
+		URL:         url,
+		Description: fmt.Sprintf("patch finished in %s", p.FinishTime.Sub(p.StartTime).String()),
+	}
+
+	// TODO improve slack body
+	gen.slack, err = slack(p.Id.Hex(), "patch", url, p.Status)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building slack message")
+	}
 
 	return &gen, nil
 }

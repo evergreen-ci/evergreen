@@ -33,5 +33,24 @@ func (s *payloadSuite) TestEmail() {
 	s.Contains(m.Body, "> has failed.")
 	s.Contains(m.Body, `href="`+url+`"`)
 	s.Contains(m.Body, "X-Evergreen-test:something")
+}
 
+func (s *payloadSuite) TestEmail() {
+	url := "https://example.com/patch/1234"
+	status := "failed"
+
+	m, err := emailPayload("1234", "patch", url, status, []event.Selector{
+		{
+			Type: "test",
+			Data: "something",
+		},
+	})
+	s.NoError(err)
+	s.Require().NotNil(m)
+
+	s.Equal(m.Subject, "Evergreen patch has failed!")
+	s.Contains(m.Body, "your Evergreen patch <")
+	s.Contains(m.Body, "> has failed.")
+	s.Contains(m.Body, `href="`+url+`"`)
+	s.Contains(m.Body, "X-Evergreen-test:something")
 }

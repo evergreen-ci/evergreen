@@ -20,7 +20,7 @@ type notificationGenerator struct {
 	jiraIssue        *message.JiraIssue
 	jiraComment      *string
 	githubStatusAPI  *message.GithubStatus
-	slack            *string
+	slack            *SlackPayload
 }
 
 func (p *notificationGenerator) get(subType string) (interface{}, error) {

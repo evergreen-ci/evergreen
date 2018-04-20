@@ -2,9 +2,13 @@ package notification
 
 import (
 	"bytes"
+	"encoding/json"
 	"html/template"
+	ttemplate "text/template"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -79,4 +83,101 @@ func emailPayload(id, objectName, url, status string, selectors []event.Selector
 	}
 
 	return &m, nil
+}
+
+func webhookPayload(api restModel.Model, selectors []event.Selector) (*util.EvergreenWebhook, error) {
+	bytes, err := json.Marshal(api)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building json model")
+	}
+
+	return &util.EvergreenWebhook{
+		Body: bytes,
+	}, nil
+}
+
+const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }}] has {{ .PastTenseStatus }}!`
+
+func jiraComment(id, objectName, url, status string) (*string, error) {
+	commentTmpl, err := ttemplate.New("jira-comment").Parse(jiraCommentTemplate)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse jira comment template")
+	}
+
+	t := emailTemplateData{
+		Object:          objectName,
+		ID:              id,
+		URL:             url,
+		PastTenseStatus: status,
+	}
+
+	buf := new(bytes.Buffer)
+	if err = commentTmpl.Execute(buf, t); err != nil {
+		return nil, errors.Wrap(err, "failed to make jira comment")
+	}
+	comment := buf.String()
+
+	return &comment, nil
+}
+
+const jiraIssueTitle string = "Evergreen {{ .Object }} has {{ .PastTenseStatus }}"
+
+func jiraIssue(id, objectName, url, status string) (*message.JiraIssue, error) {
+	// TODO cleanup
+	comment, err := jiraComment(id, objectName, url, status)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make jira issue")
+	}
+
+	t := emailTemplateData{
+		Object:          objectName,
+		ID:              id,
+		URL:             url,
+		PastTenseStatus: status,
+	}
+
+	issueTmpl, err := ttemplate.New("jira-issue").Parse(jiraIssueTitle)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse jira issue template")
+	}
+
+	buf := new(bytes.Buffer)
+	if err = issueTmpl.Execute(buf, t); err != nil {
+		return nil, errors.Wrap(err, "failed to make jira issue")
+	}
+	title := buf.String()
+
+	issue := message.JiraIssue{
+		Summary:     title,
+		Description: *comment,
+	}
+
+	return &issue, nil
+}
+
+const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> has {{ .PastTenseStatus }}!`
+
+func slack(id, objectName, url, status string) (*SlackPayload, error) {
+	// TODO cleanup
+	t := emailTemplateData{
+		Object:          objectName,
+		ID:              id,
+		URL:             url,
+		PastTenseStatus: status,
+	}
+
+	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse slack template")
+	}
+
+	buf := new(bytes.Buffer)
+	if err = issueTmpl.Execute(buf, t); err != nil {
+		return nil, errors.Wrap(err, "failed to make slack message")
+	}
+	msg := buf.String()
+
+	return &SlackPayload{
+		Body: msg,
+	}, nil
 }
