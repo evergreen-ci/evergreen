@@ -1,17 +1,13 @@
-package bookkeeping
+package task
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-var _ fmt.Stringer = nil
 
 const (
 	DefaultGuessDur           = time.Minute * 20
@@ -93,7 +89,7 @@ func upsertOneTaskBk(matcher interface{}, update interface{}) error {
 
 // update the expected duration that we expect the given task to take when run on the
 // given host
-func UpdateExpectedDuration(t *task.Task, timeTaken time.Duration) error {
+func UpdateExpectedDuration(t *Task, timeTaken time.Duration) error {
 	matcher := bson.M{
 		"name":          t.DisplayName,
 		"build_variant": t.BuildVariant,

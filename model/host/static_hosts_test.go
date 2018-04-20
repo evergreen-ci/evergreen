@@ -33,7 +33,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			}
 			So(inactiveTwo.Insert(), ShouldBeNil)
 
-			So(MarkInactiveStaticHosts(nil), ShouldBeNil)
+			So(MarkInactiveStaticHosts(nil, ""), ShouldBeNil)
 
 			found, err := Find(All)
 			So(err, ShouldBeNil)
@@ -88,7 +88,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			So(inactiveUnknownTypeOne.Insert(), ShouldBeNil)
 
 			activeStaticHosts := []string{"activeStaticOne", "activeStaticTwo"}
-			So(MarkInactiveStaticHosts(activeStaticHosts), ShouldBeNil)
+			So(MarkInactiveStaticHosts(activeStaticHosts, ""), ShouldBeNil)
 
 			found, err := Find(IsTerminated)
 			So(err, ShouldBeNil)

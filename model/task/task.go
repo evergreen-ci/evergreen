@@ -110,6 +110,10 @@ type Task struct {
 	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
 	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+
+	// GenerateTask indicates that the task generates other tasks, which the
+	// scheduler will use to prioritize this task.
+	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -239,6 +243,10 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 		}
 	}
 	return false
+}
+
+func (t *Task) IsPatchRequest() bool {
+	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
 // Checks whether the dependencies for the task have all completed successfully.
@@ -1279,6 +1287,17 @@ func FindRunnable(distroID string) ([]Task, error) {
 		},
 	}
 
+	filterPatchingDisabledProjects := bson.M{
+		"$match": bson.M{"$or": []bson.M{
+			{
+				RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
+			},
+			{
+				"project_ref.0." + "patching_disabled": false,
+			},
+		}},
+	}
+
 	removeProjectRef := bson.M{
 		"$project": bson.M{
 			"project_ref": 0,
@@ -1294,6 +1313,7 @@ func FindRunnable(distroID string) ([]Task, error) {
 		replaceRoot,
 		joinProjectRef,
 		filterDisabledProejcts,
+		filterPatchingDisabledProjects,
 		removeProjectRef,
 	}
 

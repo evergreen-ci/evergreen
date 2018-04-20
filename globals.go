@@ -196,6 +196,11 @@ const (
 const NameTimeFormat = "20060102150405"
 
 var (
+	PatchRequesters = []string{
+		PatchVersionRequester,
+		GithubPRRequester,
+	}
+
 	// UphostStatus is a list of all host statuses that are considered "up."
 	// This is used for query building.
 	UphostStatus = []string{

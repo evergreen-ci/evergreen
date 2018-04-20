@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -24,7 +25,7 @@ func UpdateStaticHosts() error {
 	activeHosts := []string{}
 	catcher := grip.NewBasicCatcher()
 	for _, d := range distros {
-		hosts, err := doStatcHostUpdate(d)
+		hosts, err := doStaticHostUpdate(d)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -36,7 +37,13 @@ func UpdateStaticHosts() error {
 		return catcher.Resolve()
 	}
 
-	return host.MarkInactiveStaticHosts(activeHosts)
+	grip.Info(message.Fields{
+		"op":     "all-static-host-update",
+		"hosts":  activeHosts,
+		"distro": "*",
+	})
+
+	return host.MarkInactiveStaticHosts(activeHosts, "")
 }
 
 func UpdateStaticDistro(d distro.Distro) error {
@@ -44,15 +51,25 @@ func UpdateStaticDistro(d distro.Distro) error {
 		return nil
 	}
 
-	hosts, err := doStatcHostUpdate(d)
+	hosts, err := doStaticHostUpdate(d)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	return host.MarkInactiveStaticHosts(hosts)
+	grip.Info(message.Fields{
+		"op":     "static-host-update",
+		"hosts":  hosts,
+		"distro": d.Id,
+	})
+
+	if d.Id == "" || len(hosts) == 0 {
+		return nil
+	}
+
+	return host.MarkInactiveStaticHosts(hosts, d.Id)
 }
 
-func doStatcHostUpdate(d distro.Distro) ([]string, error) {
+func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 	settings := &cloud.StaticSettings{}
 	err := mapstructure.Decode(d.ProviderSettings, settings)
 	if err != nil {

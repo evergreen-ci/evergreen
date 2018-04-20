@@ -1013,6 +1013,42 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
 }
 
+// GenerateTasksTasks returns a map of tasks that call `generate.tasks`.
+func (p *Project) GenerateTasksTasks() map[string]struct{} {
+	// get all functions that call `generate.tasks`
+	fs := map[string]struct{}{}
+	for f, cmds := range p.Functions {
+		for _, c := range cmds.List() {
+			if c.Command == GenerateTasksCommandName {
+				fs[f] = struct{}{}
+			}
+		}
+	}
+
+	// get all tasks that call `generate.tasks`
+	ts := map[string]struct{}{}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+				if _, ok := fs[c.Function]; ok {
+					ts[t.Name] = struct{}{}
+				}
+			}
+			if c.Command == GenerateTasksCommandName {
+				ts[t.Name] = struct{}{}
+			}
+		}
+	}
+	return ts
+}
+
+// IsGenerateTask indicates that the task generates other tasks, which the
+// scheduler will use to prioritize this task.
+func (p *Project) IsGenerateTask(taskName string) bool {
+	_, ok := p.GenerateTasksTasks()[taskName]
+	return ok
+}
+
 func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
 	displayTasks := []TVPair{}
 	alreadyAdded := map[string]bool{}

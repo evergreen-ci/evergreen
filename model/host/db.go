@@ -98,15 +98,16 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	)
 }
 
-// IsFree is a query that returns all running
-// Evergreen hosts without an assigned task.
-var IsFree = db.Query(
-	bson.M{
+func AllIdleEphemeral() ([]Host, error) {
+	query := db.Query(bson.M{
 		RunningTaskKey: bson.M{"$exists": false},
 		StartedByKey:   evergreen.User,
 		StatusKey:      evergreen.HostRunning,
-	},
-)
+		ProviderKey:    bson.M{"$in": evergreen.ProviderSpawnable},
+	})
+
+	return Find(query)
+}
 
 // ByUnprovisionedSince produces a query that returns all hosts
 // Evergreen never finished setting up that were created before
@@ -181,6 +182,9 @@ var IsRunningAndSpawned = db.Query(
 var IsRunningTask = db.Query(
 	bson.M{
 		RunningTaskKey: bson.M{"$exists": true},
+		StatusKey: bson.M{
+			"$ne": evergreen.HostTerminated,
+		},
 	},
 )
 
@@ -455,6 +459,38 @@ func QueryWithFullTaskPipeline(match bson.M) []bson.M {
 			"$unwind": bson.M{
 				"path": "$task_full",
 				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	}
+}
+
+type InactiveHostCounts struct {
+	HostType string `bson:"_id"`
+	Count    int    `bson:"count"`
+}
+
+func inactiveHostCountPipeline() []bson.M {
+	return []bson.M{
+		{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": []string{evergreen.HostDecommissioned, evergreen.HostQuarantined},
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				IdKey:       0,
+				StatusKey:   1,
+				ProviderKey: 1,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + ProviderKey,
+				"count": bson.M{
+					"$sum": 1,
+				},
 			},
 		},
 	}

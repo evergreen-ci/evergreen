@@ -48,15 +48,15 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 	// filter out any tasks whose dependencies are not met
 	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
 	dependencyCaches := make(map[string]task.Task)
-	for _, task := range undispatchedTasks {
-		ref, ok := projectRefCache[task.Project]
+	for _, t := range undispatchedTasks {
+		ref, ok := projectRefCache[t.Project]
 		if !ok {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
 				"outcome": "skipping",
-				"task":    task.Id,
-				"project": task.Project,
+				"task":    t.Id,
+				"project": t.Project,
 			})
 			continue
 		}
@@ -66,19 +66,30 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 				"runner":  RunnerName,
 				"message": "project disabled",
 				"outcome": "skipping",
-				"task":    task.Id,
-				"project": task.Project,
+				"task":    t.Id,
+				"project": t.Project,
 			})
 			continue
 		}
 
-		depsMet, err := task.DependenciesMet(dependencyCaches)
+		if t.IsPatchRequest() && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		depsMet, err := t.DependenciesMet(dependencyCaches)
 		if err != nil {
 			grip.Warning(message.Fields{
 				"runner":  RunnerName,
 				"message": "error checking dependencies for task",
 				"outcome": "skipping",
-				"task":    task.Id,
+				"task":    t.Id,
 				"error":   err.Error(),
 			})
 			continue
@@ -87,7 +98,7 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 			continue
 		}
 
-		runnableTasks = append(runnableTasks, task)
+		runnableTasks = append(runnableTasks, t)
 	}
 
 	return runnableTasks, nil
@@ -150,6 +161,17 @@ func AlternateTaskFinder(distroID string) ([]task.Task, error) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		if t.IsPatchRequest() && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
 				"outcome": "skipping",
 				"task":    t.Id,
 				"project": t.Project,
@@ -244,6 +266,17 @@ func ParallelTaskFinder(distroID string) ([]task.Task, error) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		if t.IsPatchRequest() && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
 				"outcome": "skipping",
 				"task":    t.Id,
 				"project": t.Project,

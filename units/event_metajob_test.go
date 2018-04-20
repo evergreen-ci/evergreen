@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -250,12 +251,15 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
-	time.Sleep(5 * time.Second)
+	grip.Info("waiting for dispatches")
+	amboy.WaitInterval(job.q, 10*time.Millisecond)
+	grip.Info("waiting for done")
+
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
 	s.Require().Len(out, 1)
 
-	s.NotZero(out[0].SentAt)
+	s.NotZero(out[0].SentAt, "%+v", out[0])
 	s.Empty(out[0].Error)
 }
 

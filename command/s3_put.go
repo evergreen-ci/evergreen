@@ -264,8 +264,7 @@ retryLoop:
 			if s3pc.isMulti() {
 				filesList, err = util.BuildFileList(s3pc.workDir, s3pc.LocalFilesIncludeFilter...)
 				if err != nil {
-					grip.Error(err)
-					return errors.Errorf("could not parse includes filter %s",
+					return errors.Wrapf(err, "error processing filter %s",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 			}

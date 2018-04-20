@@ -14,17 +14,26 @@ import (
 //
 // Previously this oepration marked these hosts as "decommissioned,"
 // which is not a state that makes sense for static hosts.
-func MarkInactiveStaticHosts(activeStaticHosts []string) error {
-	if activeStaticHosts == nil {
+//
+// If the distro is the empty string ("") then this operation affects
+// all distros.
+func MarkInactiveStaticHosts(activeStaticHosts []string, distro string) error {
+	if len(activeStaticHosts) == 0 {
 		return nil
 	}
+
+	query := bson.M{
+		IdKey:       bson.M{"$nin": activeStaticHosts},
+		ProviderKey: evergreen.HostTypeStatic,
+		StatusKey:   bson.M{"$ne": evergreen.HostQuarantined},
+	}
+
+	if distro != "" {
+		query[DistroKey] = distro
+	}
+
 	err := UpdateAll(
-		bson.M{
-			IdKey: bson.M{
-				"$nin": activeStaticHosts,
-			},
-			ProviderKey: evergreen.HostTypeStatic,
-		},
+		query,
 		bson.M{
 			"$set": bson.M{
 				StatusKey: evergreen.HostTerminated,

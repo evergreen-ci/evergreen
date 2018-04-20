@@ -307,7 +307,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	s.Equal(taskSecret, taskData.Secret)
 }
 
-// TestDynamicIdleTimeout tests that the `update.timeout` commmand sets timeout_secs.
+// TestDynamicIdleTimeout tests that the `update.timeout` command sets timeout_secs.
 func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -370,7 +370,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	s.Equal(taskSecret, taskData.Secret)
 }
 
-// TestDynamicExecTimeout tests that the `update.timeout` commmand sets exec_timeout_secs.
+// TestDynamicExecTimeout tests that the `update.timeout` command sets exec_timeout_secs.
 func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -58,6 +58,7 @@ var (
 	ExecutionTasksKey      = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey         = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey           = bsonutil.MustHaveTag(Task{}, "TaskGroup")
+	GenerateTaskKey        = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")

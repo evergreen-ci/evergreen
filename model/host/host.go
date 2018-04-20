@@ -730,3 +730,12 @@ func FindHostsToTerminate() ([]Host, error) {
 
 	return hosts, nil
 }
+
+func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
+	var counts []InactiveHostCounts
+	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &counts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error aggregating inactive hosts")
+	}
+	return counts, nil
+}
