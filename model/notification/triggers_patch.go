@@ -80,7 +80,18 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		selectors:   patchSelectors(p),
 	}
 
-	url := ""
+	ui := evergreen.UIConfig{}
+	if err := ui.Get(); err != nil {
+		return nil, errors.Wrap(err, "Failed to fetch ui config")
+	}
+
+	data := commonTemplateData{
+		Object:          "patch",
+		ID:              p.Id.Hex(),
+		URL:             fmt.Sprintf("%s/version/%s", ui.Url, p.Version),
+		PastTenseStatus: p.Status,
+		Headers:         makeHeaders(gen.selectors),
+	}
 
 	api := restModel.APIPatch{}
 	if err := api.BuildFromService(*p); err != nil {
@@ -88,21 +99,21 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	var err error
-	gen.evergreenWebhook, err = webhookPayload(&api, gen.selectors)
+	gen.evergreenWebhook, err = webhookPayload(&api, data.Headers)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building webhook payload")
 	}
 
-	gen.email, err = emailPayload(p.Id.Hex(), "patch", url, p.Status, gen.selectors)
+	gen.email, err = emailPayload(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building email payload")
 	}
 
-	gen.jiraComment, err = jiraComment(p.Id.Hex(), "patch", url, p.Status)
+	gen.jiraComment, err = jiraComment(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building jira comment")
 	}
-	gen.jiraIssue, err = jiraIssue(p.Id.Hex(), "patch", url, p.Status)
+	gen.jiraIssue, err = jiraIssue(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building jira issue")
 	}
@@ -115,12 +126,12 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	gen.githubStatusAPI = &message.GithubStatus{
 		Context:     "evergreen",
 		State:       state,
-		URL:         url,
+		URL:         data.URL,
 		Description: fmt.Sprintf("patch finished in %s", p.FinishTime.Sub(p.StartTime).String()),
 	}
 
 	// TODO improve slack body
-	gen.slack, err = slack(p.Id.Hex(), "patch", url, p.Status)
+	gen.slack, err = slack(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building slack message")
 	}

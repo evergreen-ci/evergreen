@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"html/template"
+	"net/http"
 	ttemplate "text/template"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -17,12 +18,12 @@ const (
 	evergreenHeaderPrefix = "X-Evergreen-"
 )
 
-type emailTemplateData struct {
+type commonTemplateData struct {
 	Object          string
 	ID              string
 	URL             string
 	PastTenseStatus string
-	Headers         map[string][]string
+	Headers         http.Header
 }
 
 const emailSubjectTemplate string = `Evergreen {{ .Object }} has {{ .PastTenseStatus }}!`
@@ -46,19 +47,16 @@ const emailTemplate string = `<html>
 </html>
 `
 
-func emailPayload(id, objectName, url, status string, selectors []event.Selector) (*message.Email, error) {
-	t := emailTemplateData{
-		Object:          objectName,
-		ID:              id,
-		URL:             url,
-		PastTenseStatus: status,
-		Headers:         map[string][]string{},
-	}
-
+func makeHeaders(selectors []event.Selector) http.Header {
+	headers := http.Header{}
 	for i := range selectors {
-		t.Headers[evergreenHeaderPrefix+selectors[i].Type] = append(t.Headers[evergreenHeaderPrefix+selectors[i].Type], selectors[i].Data)
+		headers[evergreenHeaderPrefix+selectors[i].Type] = append(headers[evergreenHeaderPrefix+selectors[i].Type], selectors[i].Data)
 	}
 
+	return headers
+}
+
+func emailPayload(t commonTemplateData) (*message.Email, error) {
 	bodyTmpl, err := template.New("emailBody").Parse(emailTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse body template")
@@ -85,15 +83,10 @@ func emailPayload(id, objectName, url, status string, selectors []event.Selector
 	return &m, nil
 }
 
-func webhookPayload(api restModel.Model, selectors []event.Selector) (*util.EvergreenWebhook, error) {
+func webhookPayload(api restModel.Model, headers http.Header) (*util.EvergreenWebhook, error) {
 	bytes, err := json.Marshal(api)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building json model")
-	}
-
-	headers := map[string][]string{}
-	for i := range selectors {
-		headers[evergreenHeaderPrefix+selectors[i].Type] = append(headers[evergreenHeaderPrefix+selectors[i].Type], selectors[i].Data)
 	}
 
 	return &util.EvergreenWebhook{
@@ -104,17 +97,10 @@ func webhookPayload(api restModel.Model, selectors []event.Selector) (*util.Ever
 
 const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }}] has {{ .PastTenseStatus }}!`
 
-func jiraComment(id, objectName, url, status string) (*string, error) {
+func jiraComment(t commonTemplateData) (*string, error) {
 	commentTmpl, err := ttemplate.New("jira-comment").Parse(jiraCommentTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse jira comment template")
-	}
-
-	t := emailTemplateData{
-		Object:          objectName,
-		ID:              id,
-		URL:             url,
-		PastTenseStatus: status,
 	}
 
 	buf := new(bytes.Buffer)
@@ -128,18 +114,10 @@ func jiraComment(id, objectName, url, status string) (*string, error) {
 
 const jiraIssueTitle string = "Evergreen {{ .Object }} has {{ .PastTenseStatus }}"
 
-func jiraIssue(id, objectName, url, status string) (*message.JiraIssue, error) {
-	// TODO cleanup
-	comment, err := jiraComment(id, objectName, url, status)
+func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
+	comment, err := jiraComment(t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make jira issue")
-	}
-
-	t := emailTemplateData{
-		Object:          objectName,
-		ID:              id,
-		URL:             url,
-		PastTenseStatus: status,
 	}
 
 	issueTmpl, err := ttemplate.New("jira-issue").Parse(jiraIssueTitle)
@@ -163,14 +141,7 @@ func jiraIssue(id, objectName, url, status string) (*message.JiraIssue, error) {
 
 const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> has {{ .PastTenseStatus }}!`
 
-func slack(id, objectName, url, status string) (*SlackPayload, error) {
-	t := emailTemplateData{
-		Object:          objectName,
-		ID:              id,
-		URL:             url,
-		PastTenseStatus: status,
-	}
-
+func slack(t commonTemplateData) (*SlackPayload, error) {
 	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")
