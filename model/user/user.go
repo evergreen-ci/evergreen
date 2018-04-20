@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
@@ -35,9 +36,16 @@ type PubKey struct {
 }
 
 type UserSettings struct {
-	Timezone     string     `json:"timezone" bson:"timezone"`
-	NewWaterfall bool       `json:"new_waterfall" bson:"new_waterfall"`
-	GithubUser   GithubUser `json:"github_user" bson:"github_user,omitempty"`
+	Timezone      string                  `json:"timezone" bson:"timezone"`
+	NewWaterfall  bool                    `json:"new_waterfall" bson:"new_waterfall"`
+	GithubUser    GithubUser              `json:"github_user" bson:"github_user,omitempty"`
+	SlackUsername string                  `bson:"slack_username" json:"slack_username"`
+	Notifications NotificationPreferences `bson:"notifications" json:"notifications"`
+}
+
+type NotificationPreferences struct {
+	BuildBreak  event.UserSubscriptionPreference `bson:"build_break" json:"build_break"`
+	PatchFinish event.UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
 }
 
 func (u *DBUser) Username() string {
