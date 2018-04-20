@@ -426,7 +426,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 
 }
 
-func PopulateHostCreationJos(env evergreen.Environment, parts int) amboy.QueueOperation {
+func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOperation {
 	if !evergreen.UseNewHostStarting {
 		return func(_ amboy.Queue) error { return nil }
 
@@ -484,7 +484,7 @@ func PopulateHostCreationJos(env evergreen.Environment, parts int) amboy.QueueOp
 	}
 }
 
-func PopulateHostSetupJobs(env evergreen.Environment, parts int) amboy.QueueOperation {
+func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOperation {
 	if !evergreen.UseNewHostProvisioning {
 		return func(_ amboy.Queue) error { return nil }
 	}
@@ -519,5 +519,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, parts int) amboy.QueueOper
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
 		}
+
+		return catcher.Resolve()
 	}
 }

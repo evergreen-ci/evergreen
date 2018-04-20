@@ -142,7 +142,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	)
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		untis.PopulateHostCreationJos(env, 0),
+		units.PopulateHostCreationJobs(env, 0),
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
