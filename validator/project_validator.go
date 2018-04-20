@@ -827,6 +827,7 @@ func validateTaskGroups(p *model.Project) []ValidationError {
 
 func checkTaskGroups(p *model.Project) []ValidationError {
 	errs := []ValidationError{}
+	tasksInTaskGroups := map[string]string{}
 	for _, tg := range p.TaskGroups {
 		if tg.MaxHosts < 1 {
 			errs = append(errs, ValidationError{
@@ -841,6 +842,19 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than half the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
+			})
+		}
+		for _, t := range tg.Tasks {
+			tasksInTaskGroups[t] = tg.Name
+		}
+	}
+	for t, tg := range tasksInTaskGroups {
+		spec := p.GetSpecForTask(t)
+		if len(spec.DependsOn) > 0 {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task %s in task group %s has a dependency on a task outside the task group, "+
+					"which can cause task group tasks to be scheduled out of order", t, tg),
+				Level: Error,
 			})
 		}
 	}

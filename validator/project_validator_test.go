@@ -1747,3 +1747,48 @@ buildvariants:
 	assert.Len(semanticErrs, 0)
 	assert.NoError(err)
 }
+
+func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{Id: "example_distro"}
+	require.NoError(d.Insert())
+	exampleYml := `
+tasks:
+- name: not_in_a_task_group
+  commands:
+  - command: shell.exec
+- name: task_in_a_task_group
+  commands:
+  - command: shell.exec
+  depends_on:
+  - name: not_in_a_task_group
+task_groups:
+- name: example_task_group
+  tasks:
+  - task_in_a_task_group
+buildvariants:
+- name: "bv"
+  run_on: "example_distro"
+  tasks:
+  - name: example_task_group
+`
+	proj := model.Project{}
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	assert.NotNil(proj)
+	assert.Empty(err)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("example_task_group", tg.Name)
+	assert.Len(tg.Tasks, 1)
+	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
+	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
+	syntaxErrs, err := CheckProjectSyntax(&proj)
+	assert.Len(syntaxErrs, 1)
+	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
+	assert.NoError(err)
+	semanticErrs := CheckProjectSemantics(&proj)
+	assert.Len(semanticErrs, 0)
+	assert.NoError(err)
+}
