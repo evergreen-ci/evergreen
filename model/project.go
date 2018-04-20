@@ -736,6 +736,23 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 	return p, nil
 }
 
+func FindProjectFromVersionID(versionStr string) (*Project, error) {
+	ver, err := version.FindOne(version.ById(versionStr))
+	if err != nil {
+		return nil, err
+	}
+	if ver == nil {
+		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
+	}
+
+	project := &Project{}
+	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+	}
+	return project, nil
+}
+
 func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	bv, err := p.BuildVariants.Get(t.BuildVariant)
 	if err != nil {
