@@ -6,10 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -19,49 +17,6 @@ var schedulerTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
-}
-
-const versionProjectString = `
-buildvariants:
-- name: ubuntu
-  display_name: ubuntu1404
-  run_on:
-  - ubuntu1404-test
-  expansions:
-    mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
-  tasks:
-  - name: agent
-  - name: plugin
-  - name: model
-tasks:
-- name: agent
-- name: plugin
-- name: model
-`
-
-// mock implementations, for testing purposes
-
-func MockFindRunnableTasks(_ string) ([]task.Task, error) {
-	return nil, errors.New("MockFindRunnableTasks not implemented")
-}
-
-type MockTaskPrioritizer struct{}
-
-func (self *MockTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error) {
-	return nil, errors.New("PrioritizeTasks not implemented")
-}
-
-type MockTaskQueuePersister struct{}
-
-func (self *MockTaskQueuePersister) PersistTaskQueue(distro string,
-	tasks []task.Task,
-	projectTaskDuration model.ProjectTaskDurations) ([]model.TaskQueueItem, error) {
-	return nil, errors.New("PersistTaskQueue not implemented")
-}
-
-func MockGetExpectedDurations(runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
-	return model.ProjectTaskDurations{}, errors.New("GetExpectedDurations not " +
-		"implemented")
 }
 
 type MockHostAllocator struct{}

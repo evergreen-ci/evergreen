@@ -34,14 +34,7 @@ const (
 	RunnerName = "scheduler"
 
 	underwaterPruningEnabled = true
-	allDistros               = ""
 )
-
-// versionBuildVariant is used to keep track of the version/buildvariant fields
-// for tasks that are to be split by distro
-type versionBuildVariant struct {
-	Version, BuildVariant string
-}
 
 type distroSchedulerResult struct {
 	distroId       string
