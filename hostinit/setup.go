@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -34,13 +33,7 @@ const (
 	SCPTimeout = time.Minute
 )
 
-// HostInit is responsible for running setup scripts on Evergreen hosts.
-type HostInit struct {
-	Settings *evergreen.Settings
-	GUID     string
-}
-
-func (init *HostInit) startHosts(ctx context.Context) error {
+func startHosts(ctx context.Context, settings *evergreen.Settings) error {
 
 	startTime := time.Now()
 
@@ -78,19 +71,17 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 
 		hostStartTime := time.Now()
 		grip.Info(message.Fields{
-			"GUID":    init.GUID,
 			"message": "attempting to start host",
 			"hostid":  h.Id,
 			"runner":  RunnerName,
 		})
 
-		cloudManager, err := cloud.GetCloudManager(ctx, h.Provider, init.Settings)
+		cloudManager, err := cloud.GetCloudManager(ctx, h.Provider, settings)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "problem getting cloud provider for host",
 				"runner":  RunnerName,
 				"host":    h.Id,
-				"GUID":    init.GUID,
 			}))
 			continue
 		}
@@ -101,7 +92,6 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 				"message": "problem removing intent host",
 				"runner":  RunnerName,
 				"host":    h.Id,
-				"GUID":    init.GUID,
 			}))
 			continue
 		}
@@ -131,7 +121,6 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		started++
 
 		grip.Info(message.Fields{
-			"GUID":    init.GUID,
 			"runner":  RunnerName,
 			"message": "successfully started host",
 			"hostid":  h.Id,
@@ -141,7 +130,6 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 	}
 
 	m := message.Fields{
-		"GUID":       init.GUID,
 		"runner":     RunnerName,
 		"method":     "startHosts",
 		"num_hosts":  started,
@@ -162,7 +150,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 }
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
-func (init *HostInit) setupReadyHosts(ctx context.Context) error {
+func setupReadyHosts(ctx context.Context, settings *evergreen.Settings) error {
 	// find all hosts in the uninitialized state
 	uninitializedHosts, err := host.Find(host.NeedsProvisioning())
 	if err != nil {
@@ -172,7 +160,6 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	grip.Info(message.Fields{
 		"message": "uninitialized hosts",
 		"number":  len(uninitializedHosts),
-		"GUID":    init.GUID,
 		"runner":  RunnerName,
 	})
 
@@ -207,94 +194,16 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						return
 					}
 
-					grip.Info(message.Fields{
-						"GUID":    init.GUID,
-						"message": "attempting to setup host",
-						"distro":  h.Distro.Id,
-						"hostid":  h.Id,
-						"DNS":     h.Host,
-						"runner":  RunnerName,
-					})
-
-					// check whether or not the host is ready for its setup script to be run
-					// if the host isn't ready (for instance, it might not be up yet), skip it
-					if ready, err := init.IsHostReady(ctx, &h); !ready {
-						m := message.Fields{
-							"GUID":    init.GUID,
-							"message": "host not ready for setup",
-							"hostid":  h.Id,
-							"DNS":     h.Host,
-							"distro":  h.Distro.Id,
-							"runner":  RunnerName,
-						}
-
-						if err != nil {
-							grip.Error(message.WrapError(err, m))
-						} else {
-							grip.Info(m)
-						}
+					err := SetupHost(ctx, &h, settings)
+					if errors.Cause(err) == retryHostError {
 						continue
 					}
 
-					if ctx.Err() != nil {
-						catcher.Add(errors.New("hostinit run canceled"))
-						return
-					}
-
-					setupStartTime := time.Now()
-					grip.Info(message.Fields{
-						"GUID":    init.GUID,
-						"message": "provisioning host",
-						"runner":  RunnerName,
-						"distro":  h.Distro.Id,
-						"hostid":  h.Id,
-						"DNS":     h.Host,
-					})
-
-					if err := init.ProvisionHost(ctx, &h); err != nil {
-						event.LogHostProvisionError(h.Id)
-
-						grip.Error(message.WrapError(err, message.Fields{
-							"GUID":    init.GUID,
-							"message": "provisioning host encountered error",
-							"runner":  RunnerName,
-							"distro":  h.Distro.Id,
-							"hostid":  h.Id,
-						}))
-
-						// notify the admins of the failure
-						subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
-							notify.ProvisionFailurePreface, h.Distro.Id)
-						hostLink := fmt.Sprintf("%v/host/%v", init.Settings.Ui.Url, h.Id)
-						message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
-							h.Distro.Id, h.Id, hostLink)
-						if err := notify.NotifyAdmins(subject, message, init.Settings); err != nil {
-							err = errors.Wrap(err, "problem sending host init error email")
-							catcher.Add(err)
-						}
+					catcher.Add(err)
+					if err != nil {
 						continue
 					}
 
-					// ProvisionHost allows hosts to fail provisioning a few
-					// times during host start up, to account for the fact
-					// that hosts often need extra time to come up.
-					//
-					// In these cases, ProvisionHost returns a nil error but
-					// does not change the host status.
-					if h.Status == evergreen.HostStarting {
-						continue
-					}
-
-					grip.Info(message.Fields{
-						"GUID":     init.GUID,
-						"message":  "successfully finished provisioning host",
-						"hostid":   h.Id,
-						"DNS":      h.Host,
-						"distro":   h.Distro.Id,
-						"runner":   RunnerName,
-						"attempts": h.ProvisionAttempts,
-						"runtime":  time.Since(setupStartTime),
-					})
 					hostsProvisioned.Inc()
 				}
 			}
@@ -304,7 +213,6 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	// let all setup routines finish
 	wg.Wait()
 	grip.Info(message.Fields{
-		"GUID":              init.GUID,
 		"duration_secs":     time.Since(startAt).Seconds(),
 		"runner":            RunnerName,
 		"num_hosts":         len(uninitializedHosts),
@@ -318,9 +226,9 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 // IsHostReady returns whether or not the specified host is ready for its setup script
 // to be run.
-func (init *HostInit) IsHostReady(ctx context.Context, host *host.Host) (bool, error) {
+func IsHostReady(ctx context.Context, host *host.Host, settings *evergreen.Settings) (bool, error) {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetCloudManager(ctx, host.Distro.Provider, init.Settings)
+	cloudMgr, err := cloud.GetCloudManager(ctx, host.Distro.Provider, settings)
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to get cloud manager for provider %s",
 			host.Distro.Provider)
@@ -384,9 +292,9 @@ func (init *HostInit) IsHostReady(ctx context.Context, host *host.Host) (bool, e
 // setupHost runs the specified setup script for an individual host. Returns
 // the output from running the script remotely, as well as any error that
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
-func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (string, error) {
+func setupHost(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) (string, error) {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetCloudManager(ctx, targetHost.Provider, init.Settings)
+	cloudMgr, err := cloud.GetCloudManager(ctx, targetHost.Provider, settings)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
@@ -412,7 +320,7 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 
 	// get expansions mapping using settings
 	if targetHost.Distro.Setup == "" {
-		exp := util.NewExpansions(init.Settings.Expansions)
+		exp := util.NewExpansions(settings.Expansions)
 		targetHost.Distro.Setup, err = exp.ExpandString(targetHost.Distro.Setup)
 		if err != nil {
 			return "", errors.Wrap(err, "expansions error")
@@ -420,7 +328,7 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = init.copyScript(ctx, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
+		err = copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
 			return "", errors.Wrapf(err, "error copying setup script %v to host %v",
 				evergreen.SetupScriptName, targetHost.Id)
@@ -428,7 +336,7 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	if targetHost.Distro.Teardown != "" {
-		err = init.copyScript(ctx, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
+		err = copyScript(ctx, settings, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {
 			return "", errors.Wrapf(err, "error copying teardown script %v to host %v",
 				evergreen.TeardownScriptName, targetHost.Id)
@@ -441,7 +349,7 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 // copyScript writes a given script as file "name" to the target host. This works
 // by creating a local copy of the script on the runner's machine, scping it over
 // then removing the local copy.
-func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, script string) error {
+func copyScript(ctx context.Context, settings *evergreen.Settings, target *host.Host, name, script string) error {
 	// parse the hostname into the user, host and port
 	hostInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
@@ -464,7 +372,6 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		errCtx := message.Fields{
 			"runner":    RunnerName,
 			"operation": "cleaning up after script copy",
-			"GUID":      init.GUID,
 			"file":      file.Name(),
 			"distro":    target.Distro.Id,
 			"host":      target.Host,
@@ -474,7 +381,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		grip.Error(message.WrapError(os.Remove(file.Name()), errCtx))
 	}()
 
-	expanded, err := init.expandScript(script)
+	expanded, err := expandScript(script, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error expanding script for host %s", target.Id)
 	}
@@ -482,7 +389,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		return errors.Wrap(err, "error writing local script")
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, settings)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
 	}
@@ -503,7 +410,6 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 
 	if err = scpCmd.SetOutput(output); err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
-			"GUID":      init.GUID,
 			"runner":    RunnerName,
 			"operation": "setting up copy script command",
 			"distro":    target.Distro.Id,
@@ -521,7 +427,6 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	if err = scpCmd.Run(ctx); err != nil {
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "problem copying script to host",
-			"GUID":    init.GUID,
 			"runner":  RunnerName,
 			"command": scpCmd,
 			"distro":  target.Distro.Id,
@@ -536,9 +441,9 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 }
 
 // Build the setup script that will need to be run on the specified host.
-func (init *HostInit) expandScript(s string) (string, error) {
+func expandScript(s string, settings *evergreen.Settings) (string, error) {
 	// replace expansions in the script
-	exp := util.NewExpansions(init.Settings.Expansions)
+	exp := util.NewExpansions(settings.Expansions)
 	script, err := exp.ExpandString(s)
 	if err != nil {
 		return "", errors.Wrap(err, "expansions error")
@@ -547,14 +452,14 @@ func (init *HostInit) expandScript(s string) (string, error) {
 }
 
 // Provision the host, and update the database accordingly.
-func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
+func provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
 	grip.Infoln(message.Fields{
 		"runner":  RunnerName,
 		"host":    h.Id,
 		"message": "setting up host",
 	})
 
-	output, err := init.setupHost(ctx, h)
+	output, err := setupHost(ctx, h, settings)
 	if err != nil {
 		incErr := h.IncProvisionAttempts()
 		grip.Critical(message.WrapError(incErr, message.Fields{
@@ -597,7 +502,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 	// If this is a spawn host
 	if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
 		grip.Infof("Uploading client binary to host %s", h.Id)
-		lcr, err := init.LoadClient(ctx, h)
+		lcr, err := LoadClient(ctx, h, settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to load client binary onto host",
@@ -613,7 +518,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 		}
 
-		cloudHost, err := cloud.GetCloudHost(ctx, h, init.Settings)
+		cloudHost, err := cloud.GetCloudHost(ctx, h, settings)
 		if err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
@@ -640,7 +545,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 				"runner":    RunnerName,
 				"host":      h.Id,
 			}))
-			return errors.Wrapf(err, "error finding distro %s", h.Distro.Id)
+
 		}
 		h.Distro = d
 
@@ -664,7 +569,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 				"runner":  RunnerName,
 			})
 
-			grip.Error(message.WrapError(init.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h),
+			grip.Error(message.WrapError(fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h, settings),
 				message.Fields{
 					"message": "failed to fetch data onto host",
 					"task":    h.ProvisionOptions.TaskId,
@@ -732,7 +637,7 @@ type LoadClientResult struct {
 // settings onto the host, and makes the binary appear in the $PATH when the user logs in.
 // If successful, returns an instance of LoadClientResult which contains the paths where the
 // binary and config file were written to.
-func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadClientResult, error) {
+func LoadClient(ctx context.Context, target *host.Host, settings *evergreen.Settings) (*LoadClientResult, error) {
 	if target.ProvisionOptions == nil {
 		return nil, errors.New("ProvisionOptions is nil")
 	}
@@ -754,7 +659,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, settings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to get cloud host for %s", target.Id)
 	}
@@ -799,7 +704,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	// place the binary into the directory
 	curlSetupCmd := subprocess.NewRemoteCommand(
-		target.CurlCommand(init.Settings.Ui.Url),
+		target.CurlCommand(settings.Ui.Url),
 		hostSSHInfo.Hostname,
 		target.User,
 		nil,   // env
@@ -836,8 +741,8 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		User          string `json:"user"`
 	}{
 		APIKey:        owner.APIKey,
-		APIServerHost: init.Settings.ApiUrl + "/api",
-		UIServerHost:  init.Settings.Ui.Url,
+		APIServerHost: settings.ApiUrl + "/api",
+		UIServerHost:  settings.Ui.Url,
 		User:          owner.Id,
 	}
 	outputJSON, err := json.Marshal(outputStruct)
@@ -888,13 +793,13 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	}, nil
 }
 
-func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, target *host.Host) error {
+func fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, target *host.Host, settings *evergreen.Settings) error {
 	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(ctx, target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, settings)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %v", target.Id)
 	}

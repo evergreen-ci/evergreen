@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -27,11 +26,6 @@ func (r *Runner) Name() string { return RunnerName }
 func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
 
-	init := &HostInit{
-		Settings: config,
-		GUID:     util.RandomString(),
-	}
-
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
@@ -40,7 +34,6 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  RunnerName,
 			"message": "hostinit is disabled, exiting",
-			"GUID":    init.GUID,
 		})
 		return nil
 	}
@@ -50,7 +43,6 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		"status":  "starting",
 		"time":    startTime,
 		"message": "starting runner process",
-		"GUID":    init.GUID,
 	})
 
 	// starting hosts and provisioning hosts don't need to run serially since
@@ -61,13 +53,12 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	go func() {
 		defer wg.Done()
 		msg := message.Fields{
-			"GUID":   init.GUID,
 			"runner": RunnerName,
 			"method": "startHosts",
 		}
 
 		var hadErrors bool
-		if err := init.startHosts(ctx); err != nil {
+		if err := startHosts(ctx, config); err != nil {
 			err = errors.Wrap(err, "Error starting hosts")
 			catcher.Add(err)
 			hadErrors = true
@@ -89,13 +80,12 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	go func() {
 		defer wg.Done()
 		msg := message.Fields{
-			"GUID":   init.GUID,
 			"runner": RunnerName,
 			"method": "setupReadyHosts",
 		}
 
 		var hadErrors bool
-		if err := init.setupReadyHosts(ctx); err != nil {
+		if err := setupReadyHosts(ctx, config); err != nil {
 			err = errors.Wrap(err, "Error provisioning hosts")
 			catcher.Add(err)
 			hadErrors = true
@@ -126,7 +116,6 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	}
 
 	grip.Info(message.Fields{
-		"GUID":    init.GUID,
 		"runner":  RunnerName,
 		"runtime": time.Since(startTime),
 		"span":    time.Since(startTime).String(),
