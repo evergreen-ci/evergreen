@@ -154,13 +154,13 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error {
 	for i, setupFunc := range self.setupFuncs {
 		if err := setupFunc(self); err != nil {
-			grip.Error(message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"message":        "error running sorting setup",
 				"distro":         distroId,
 				"runner":         RunnerName,
 				"operation":      "prioritize tasks",
 				"setup_func_idx": i,
-			})
+			}))
 			return errors.Wrap(err, "Error running setup for sorting")
 		}
 	}
