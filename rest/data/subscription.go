@@ -2,7 +2,6 @@ package data
 
 import (
 	"errors"
-	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
@@ -19,7 +18,6 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(subscriptions []event.Subsc
 }
 
 type MockSubscriptionConnector struct {
-	mu                sync.RWMutex
 	MockSubscriptions []event.Subscription
 }
 

@@ -6,5 +6,5 @@ package evergreen
 
 const (
 	UseNewHostProvisioning = false
-	UseNewHostStarting     = false
+	UseNewHostStarting     = true
 )
