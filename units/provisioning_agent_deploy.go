@@ -15,9 +15,10 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// this is the legacy taskrunner
-
-const agentDeployJobName = "agent-deploy"
+const (
+	agentDeployJobName = "agent-deploy"
+	agentPutRetries    = 10
+)
 
 func init() {
 	registry.AddJobType(agentDeployJobName, func() amboy.Job {
@@ -83,13 +84,13 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	err = hostinit.StartAgentOnHost(ctx, settings, *j.host)
 	j.AddError(err)
 	if err != nil {
-		stat, err := event.GetRecentAgentDeployStatuses(j.HostID, 15)
+		stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
 		j.AddError(err)
 		if err != nil {
 			return
 		}
 
-		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count == 15 {
+		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count == agentPutRetries {
 			grip.Critical(stat)
 		}
 
