@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -48,6 +49,7 @@ type unmarshalSubscription struct {
 	Selectors      []Selector    `bson:"selectors,omitempty"`
 	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
 	Subscriber     Subscriber    `bson:"subscriber"`
+	Owner          string        `bson:"owner"`
 	ExtraData      bson.Raw      `bson:"extra_data,omitempty"`
 }
 
@@ -62,8 +64,8 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 		s.ExtraData = data
 	}
 
-	// if ExtraData is a bson null
-	if temp.ExtraData.Kind == 0x0A {
+	// if there is no extra_data field in the db
+	if temp.ExtraData.Kind == 0x00 && len(temp.ExtraData.Data) == 0 {
 		if s.ExtraData != nil {
 			s.ExtraData = nil
 			return errors.New("error unmarshaling extra data: expected extra data in subscription; found none")
@@ -84,6 +86,7 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 	s.Selectors = temp.Selectors
 	s.RegexSelectors = temp.RegexSelectors
 	s.Subscriber = temp.Subscriber
+	s.Owner = temp.Owner
 
 	return nil
 }
@@ -189,20 +192,26 @@ func (s *Subscription) Upsert() error {
 	if len(s.ID.Hex()) == 0 {
 		s.ID = bson.NewObjectId()
 	}
+	update := bson.M{
+		"$set": bson.M{
+			subscriptionTypeKey:           s.Type,
+			subscriptionTriggerKey:        s.Trigger,
+			subscriptionSelectorsKey:      s.Selectors,
+			subscriptionRegexSelectorsKey: s.RegexSelectors,
+			subscriptionSubscriberKey:     s.Subscriber,
+			subscriptionOwnerKey:          s.Owner,
+		},
+	}
+	if s.ExtraData != nil {
+		update[subscriptionExtraDataKey] = s.ExtraData
+	}
+	pp.Println(update)
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
 	c, err := db.Upsert(SubscriptionsCollection, bson.M{
 		subscriptionIDKey:    s.ID,
 		subscriptionOwnerKey: s.Owner,
-	}, bson.M{
-		subscriptionTypeKey:           s.Type,
-		subscriptionTriggerKey:        s.Trigger,
-		subscriptionSelectorsKey:      s.Selectors,
-		subscriptionRegexSelectorsKey: s.RegexSelectors,
-		subscriptionSubscriberKey:     s.Subscriber,
-		subscriptionOwnerKey:          s.Owner,
-		subscriptionExtraDataKey:      s.ExtraData,
-	})
+	}, update)
 	if err != nil {
 		return err
 	}

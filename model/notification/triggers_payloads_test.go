@@ -36,7 +36,7 @@ func (s *payloadSuite) TestEmail() {
 	s.Require().NotNil(m)
 
 	s.Equal(m.Subject, "Evergreen patch has failed!")
-	s.Contains(m.Body, "your Evergreen patch <")
+	s.Contains(m.Body, "Your Evergreen patch <")
 	s.Contains(m.Body, "> has failed.")
 	s.Contains(m.Body, `href="`+url+`"`)
 	s.Contains(m.Body, "X-Evergreen-test:something")
