@@ -27,6 +27,7 @@ type DBConnector struct {
 	RepoTrackerConnector
 	CLIUpdateConnector
 	GenerateConnector
+	DBSubscriptionConnector
 	NotificationConnector
 }
 
@@ -60,6 +61,7 @@ type MockConnector struct {
 	MockRepoTrackerConnector
 	MockCLIUpdateConnector
 	MockGenerateConnector
+	MockSubscriptionConnector
 	MockNotificationConnector
 }
 

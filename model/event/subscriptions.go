@@ -23,6 +23,7 @@ var (
 	subscriptionSelectorsKey      = bsonutil.MustHaveTag(Subscription{}, "Selectors")
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
+	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 
 	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(groupedSubscribers{}, "Type")
 	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(groupedSubscribers{}, "Subscribers")
@@ -38,6 +39,7 @@ type Subscription struct {
 	Selectors      []Selector    `bson:"selectors,omitempty"`
 	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
 	Subscriber     Subscriber    `bson:"subscriber"`
+	Owner          string        `bson:"owner"`
 }
 
 type Selector struct {
@@ -152,15 +154,19 @@ func (s *Subscription) Upsert() error {
 		s.ID = bson.NewObjectId()
 	}
 
+	// note: this prevents changing the owner of an existing subscription, which is desired
 	c, err := db.Upsert(SubscriptionsCollection, bson.M{
-		subscriptionIDKey: s.ID,
-	}, bson.M{
-		subscriptionTypeKey:           s.Type,
-		subscriptionTriggerKey:        s.Trigger,
-		subscriptionSelectorsKey:      s.Selectors,
-		subscriptionRegexSelectorsKey: s.RegexSelectors,
-		subscriptionSubscriberKey:     s.Subscriber,
-	})
+		subscriptionIDKey:    s.ID,
+		subscriptionOwnerKey: s.Owner,
+	},
+		bson.M{
+			subscriptionTypeKey:           s.Type,
+			subscriptionTriggerKey:        s.Trigger,
+			subscriptionSelectorsKey:      s.Selectors,
+			subscriptionRegexSelectorsKey: s.RegexSelectors,
+			subscriptionSubscriberKey:     s.Subscriber,
+			subscriptionOwnerKey:          s.Owner,
+		})
 	if err != nil {
 		return err
 	}
@@ -183,4 +189,28 @@ func (s *Subscription) Remove() error {
 	return db.Remove(SubscriptionsCollection, bson.M{
 		subscriptionIDKey: s.ID,
 	})
+}
+
+func (s *Subscription) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if len(s.Selectors)+len(s.RegexSelectors) == 0 {
+		catcher.Add(errors.New("must specify at least 1 selector"))
+	}
+	if s.Type == "" {
+		catcher.Add(errors.New("subscription type is required"))
+	}
+	if s.Trigger == "" {
+		catcher.Add(errors.New("subscription trigger is required"))
+	}
+	catcher.Add(s.Subscriber.Validate())
+	return catcher.Resolve()
+}
+
+func FindSubscriptionsByOwner(owner string) ([]Subscription, error) {
+	query := db.Query(bson.M{
+		subscriptionOwnerKey: owner,
+	})
+	subscriptions := []Subscription{}
+	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
+	return subscriptions, errors.Wrapf(err, "error retrieving subscriptions for owner %s", owner)
 }

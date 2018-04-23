@@ -3,7 +3,9 @@ package event
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -16,6 +18,15 @@ const (
 	EmailSubscriberType             = "email"
 	SlackSubscriberType             = "slack"
 )
+
+var SubscriberTypes = []string{
+	GithubPullRequestSubscriberType,
+	JIRAIssueSubscriberType,
+	JIRACommentSubscriberType,
+	EvergreenWebhookSubscriberType,
+	EmailSubscriberType,
+	SlackSubscriberType,
+}
 
 //nolint: deadcode, megacheck
 var (
@@ -87,6 +98,17 @@ func (s *Subscriber) String() string {
 	}
 
 	return fmt.Sprintf("%s-%s", s.Type, subscriberStr)
+}
+
+func (s *Subscriber) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if !util.StringSliceContains(SubscriberTypes, s.Type) {
+		catcher.Add(errors.Errorf("%s is not a valid subscriber type", s.Type))
+	}
+	if s.Target == nil {
+		catcher.Add(errors.New("type is required for subscriber"))
+	}
+	return catcher.Resolve()
 }
 
 type WebhookSubscriber struct {
