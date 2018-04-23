@@ -89,7 +89,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 			return
 		}
 
-		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Total == 15 {
+		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count == 15 {
 			grip.Critical(stat)
 		}
 
