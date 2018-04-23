@@ -2418,4 +2418,14 @@ md-card-title .md-button {
 .eventsTable tbody tr:nth-child(even) td {
   background-color: rgba(0, 0, 0, 0.22);
 }
+.notificationTable {
+  width: 50%;
+}
+.notificationTable th,
+.notificationTable td {
+  padding: 10px;
+}
+.notificationTable md-radio-button {
+  width: 33%;
+}
 /*# sourceMappingURL=/static/dist/less.map */
