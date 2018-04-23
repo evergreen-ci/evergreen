@@ -1,7 +1,8 @@
-package notification
+package trigger
 
 import (
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -13,7 +14,7 @@ import (
 // It is possible for this function to return notifications and errors at the
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
-func NotificationsFromEvent(e *event.EventLogEntry) ([]Notification, error) {
+func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification, error) {
 	prefetch, triggers := registry.Triggers(e.ResourceType)
 	if len(triggers) == 0 {
 		return nil, errors.Errorf("no triggers for event type: '%s'", e.ResourceType)
@@ -24,7 +25,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]Notification, error) {
 		return nil, errors.Wrapf(err, "prefetch function for '%s' failed", e.ResourceType)
 	}
 
-	notifications := []Notification{}
+	notifications := []notification.Notification{}
 	catcher := grip.NewSimpleCatcher()
 	for _, f := range triggers {
 		gen, err := f(e, data)

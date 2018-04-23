@@ -4,7 +4,6 @@ import (
 	"regexp"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -205,7 +204,6 @@ func (s *Subscription) Upsert() error {
 	if s.ExtraData != nil {
 		update[subscriptionExtraDataKey] = s.ExtraData
 	}
-	pp.Println(update)
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
 	c, err := db.Upsert(SubscriptionsCollection, bson.M{

@@ -1,4 +1,4 @@
-package notification
+package trigger
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	ttemplate "text/template"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
@@ -147,7 +148,7 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 
 const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> has {{ .PastTenseStatus }}!`
 
-func slack(t commonTemplateData) (*SlackPayload, error) {
+func slack(t commonTemplateData) (*notification.SlackPayload, error) {
 	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")
@@ -159,7 +160,7 @@ func slack(t commonTemplateData) (*SlackPayload, error) {
 	}
 	msg := buf.String()
 
-	return &SlackPayload{
+	return &notification.SlackPayload{
 		Body: msg,
 	}, nil
 }

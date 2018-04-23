@@ -1,4 +1,4 @@
-package notification
+package trigger
 
 import (
 	"fmt"
