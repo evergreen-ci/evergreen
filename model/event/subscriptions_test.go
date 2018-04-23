@@ -239,26 +239,26 @@ func (s *subscriptionsSuite) TestExtraData() {
 			Target: "test@domain.invalid",
 		},
 		Owner: "someoneelse",
-		ExtraData: bson.M{
-			"test": "test",
-		},
 	}
 	s.NoError(subscription.Upsert())
 
 	out := Subscription{}
-	s.EqualError(db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+	q := db.Query(bson.M{
 		"_id": subscription.ID,
-	}), &out), "error unmarshaling extra data: unexpected extra data in subscription")
-	s.Zero(out)
-
-	subscription.ExtraData = nil
-	s.NoError(subscription.Upsert())
-
-	out = Subscription{}
+	})
 	s.NoError(db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
 		"_id": subscription.ID,
 	}), &out))
 	s.NotZero(out)
+
+	subscription.ExtraData = bson.M{
+		"test": "test",
+	}
+	s.NoError(subscription.Upsert())
+
+	out = Subscription{}
+	s.EqualError(db.FindOneQ(SubscriptionsCollection, q, &out), "error unmarshaling extra data: unexpected extra data in subscription")
+	s.Zero(out)
 }
 
 func (s *subscriptionsSuite) TestFindByOwner() {

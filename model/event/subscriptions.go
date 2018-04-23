@@ -192,14 +192,12 @@ func (s *Subscription) Upsert() error {
 		s.ID = bson.NewObjectId()
 	}
 	update := bson.M{
-		"$set": bson.M{
-			subscriptionTypeKey:           s.Type,
-			subscriptionTriggerKey:        s.Trigger,
-			subscriptionSelectorsKey:      s.Selectors,
-			subscriptionRegexSelectorsKey: s.RegexSelectors,
-			subscriptionSubscriberKey:     s.Subscriber,
-			subscriptionOwnerKey:          s.Owner,
-		},
+		subscriptionTypeKey:           s.Type,
+		subscriptionTriggerKey:        s.Trigger,
+		subscriptionSelectorsKey:      s.Selectors,
+		subscriptionRegexSelectorsKey: s.RegexSelectors,
+		subscriptionSubscriberKey:     s.Subscriber,
+		subscriptionOwnerKey:          s.Owner,
 	}
 	if s.ExtraData != nil {
 		update[subscriptionExtraDataKey] = s.ExtraData
@@ -209,7 +207,7 @@ func (s *Subscription) Upsert() error {
 	c, err := db.Upsert(SubscriptionsCollection, bson.M{
 		subscriptionIDKey:    s.ID,
 		subscriptionOwnerKey: s.Owner,
-	}, update)
+	}, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}
