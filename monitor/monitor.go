@@ -6,8 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -15,12 +13,6 @@ import (
 )
 
 var (
-	// the functions the host monitor will run through to find hosts needing
-	// to be terminated
-	defaultHostFlaggingFuncs = []hostFlagger{
-		{flagExcessHosts, "excess"},
-	}
-
 	// the functions the notifier will use to build notifications that need
 	// to be sent
 	defaultNotificationBuilders = []notificationBuilder{
@@ -31,35 +23,13 @@ var (
 
 // run all monitoring functions
 func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
-	// load in all of the distros
-	distros, err := distro.Find(db.Q{})
-	if err != nil {
-		return errors.Wrap(err, "error finding distros")
-	}
-
-	// initialize the host monitor
-	hostMonitor := &HostMonitor{
-		flaggingFuncs: defaultHostFlaggingFuncs,
-	}
-
-	// clean up any necessary hosts
-	err = hostMonitor.CleanupHosts(ctx, distros, settings)
-	grip.Error(message.WrapError(err, message.Fields{
-		"runner":  RunnerName,
-		"message": "Error cleaning up hosts",
-	}))
-
-	if ctx.Err() != nil {
-		return errors.New("monitor canceled")
-	}
-
 	// initialize the notifier
 	notifier := &Notifier{
 		notificationBuilders: defaultNotificationBuilders,
 	}
 
 	// send notifications
-	err = notifier.Notify(settings)
+	err := notifier.Notify(settings)
 	grip.Error(message.WrapError(err, message.Fields{
 		"runner":  RunnerName,
 		"message": "Error sending notifications",

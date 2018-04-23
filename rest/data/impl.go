@@ -28,6 +28,7 @@ type DBConnector struct {
 	CLIUpdateConnector
 	GenerateConnector
 	DBSubscriptionConnector
+	NotificationConnector
 }
 
 func (ctx *DBConnector) GetSuperUsers() []string   { return ctx.superUsers }
@@ -61,6 +62,7 @@ type MockConnector struct {
 	MockCLIUpdateConnector
 	MockGenerateConnector
 	MockSubscriptionConnector
+	MockNotificationConnector
 }
 
 func (ctx *MockConnector) GetSuperUsers() []string   { return ctx.superUsers }

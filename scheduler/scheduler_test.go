@@ -6,15 +6,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/stretchr/testify/assert"
 )
 
 var schedulerTestConf = testutil.TestConfig()
@@ -23,103 +19,11 @@ func init() {
 	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
 }
 
-const versionProjectString = `
-buildvariants:
-- name: ubuntu
-  display_name: ubuntu1404
-  run_on:
-  - ubuntu1404-test
-  expansions:
-    mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
-  tasks:
-  - name: agent
-  - name: plugin
-  - name: model
-tasks:
-- name: agent
-- name: plugin
-- name: model
-`
-
-// mock implementations, for testing purposes
-
-func MockFindRunnableTasks(_ string) ([]task.Task, error) {
-	return nil, errors.New("MockFindRunnableTasks not implemented")
-}
-
-type MockTaskPrioritizer struct{}
-
-func (self *MockTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error) {
-	return nil, errors.New("PrioritizeTasks not implemented")
-}
-
-type MockTaskQueuePersister struct{}
-
-func (self *MockTaskQueuePersister) PersistTaskQueue(distro string,
-	tasks []task.Task,
-	projectTaskDuration model.ProjectTaskDurations) ([]model.TaskQueueItem, error) {
-	return nil, errors.New("PersistTaskQueue not implemented")
-}
-
-func MockGetExpectedDurations(runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
-	return model.ProjectTaskDurations{}, errors.New("GetExpectedDurations not " +
-		"implemented")
-}
-
 type MockHostAllocator struct{}
 
 func (self *MockHostAllocator) NewHostsNeeded(ctx context.Context, d HostAllocatorData) (
 	map[string]int, error) {
 	return nil, errors.New("NewHostsNeeded not implemented")
-}
-
-func TestUpdateVersionBuildVarMap(t *testing.T) {
-	Convey("When updating a version build variant mapping... ", t, func() {
-		versionBuildVarMap := make(map[versionBuildVariant]model.BuildVariant)
-		schedulerInstance := &Scheduler{
-			schedulerTestConf,
-			&MockTaskPrioritizer{},
-			&MockTaskQueuePersister{},
-			&MockHostAllocator{},
-			MockGetExpectedDurations,
-			MockFindRunnableTasks,
-		}
-
-		Convey("if there are no versions with the given id, an error should "+
-			"be returned", func() {
-			_, err := schedulerInstance.getProject("versionStr")
-			So(err, ShouldNotBeNil)
-		})
-
-		Convey("if there is a version with the given id, no error should "+
-			"be returned and the map should be updated", func() {
-			v := &version.Version{
-				Id:     "versionStr",
-				Config: versionProjectString,
-			}
-
-			// insert the test version
-			So(v.Insert(), ShouldBeNil)
-			key := versionBuildVariant{"versionStr", "ubuntu"}
-			p, err := schedulerInstance.getProject("versionStr")
-			So(err, ShouldBeNil)
-			updateVersionBuildVarMap("versionStr", p, versionBuildVarMap)
-
-			// check versionBuildVariant map
-			buildVariant, ok := versionBuildVarMap[key]
-			So(ok, ShouldBeTrue)
-			So(buildVariant, ShouldNotBeNil)
-
-			// check buildvariant tasks
-			So(len(buildVariant.Tasks), ShouldEqual, 3)
-		})
-
-		Reset(func() {
-			So(db.Clear(version.Collection), ShouldBeNil)
-		})
-
-	})
-
 }
 
 func TestSpawnHosts(t *testing.T) {
@@ -182,13 +86,5 @@ func TestSpawnHosts(t *testing.T) {
 			So(db.Clear(distro.Collection), ShouldBeNil)
 			So(db.Clear(host.Collection), ShouldBeNil)
 		})
-	})
-}
-
-func TestGetDistrosForBuildVariantDoesNotPanicForNilProject(t *testing.T) {
-	assert := assert.New(t)
-	s := Scheduler{}
-	assert.NotPanics(func() {
-		_, _ = s.getDistrosForBuildVariant(task.Task{}, model.BuildVariant{}, nil)
 	})
 }

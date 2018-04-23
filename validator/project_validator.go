@@ -827,6 +827,7 @@ func validateTaskGroups(p *model.Project) []ValidationError {
 
 func checkTaskGroups(p *model.Project) []ValidationError {
 	errs := []ValidationError{}
+	tasksInTaskGroups := map[string]string{}
 	for _, tg := range p.TaskGroups {
 		if tg.MaxHosts < 1 {
 			errs = append(errs, ValidationError{
@@ -843,38 +844,28 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 				Level:   Warning,
 			})
 		}
+		for _, t := range tg.Tasks {
+			tasksInTaskGroups[t] = tg.Name
+		}
+	}
+	for t, tg := range tasksInTaskGroups {
+		spec := p.GetSpecForTask(t)
+		if len(spec.DependsOn) > 0 {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task %s in task group %s has a dependency on a task outside the task group, "+
+					"which can cause task group tasks to be scheduled out of order", t, tg),
+				Level: Error,
+			})
+		}
 	}
 	return errs
 }
 
 func validateGenerateTasks(p *model.Project) []ValidationError {
 	errs := []ValidationError{}
-	generateTasksCommand := "generate.tasks"
-
-	// get all functions that call `generate.tasks`
-	fs := map[string]struct{}{}
-	for f, cmds := range p.Functions {
-		for _, c := range cmds.List() {
-			if c.Command == generateTasksCommand {
-				fs[f] = struct{}{}
-			}
-		}
-	}
 
 	// get all tasks that call `generate.tasks`
-	ts := map[string]struct{}{}
-	for _, t := range p.Tasks {
-		for _, c := range t.Commands {
-			if c.Function != "" {
-				if _, ok := fs[c.Function]; ok {
-					ts[t.Name] = struct{}{}
-				}
-			}
-			if c.Command == generateTasksCommand {
-				ts[t.Name] = struct{}{}
-			}
-		}
-	}
+	ts := p.GenerateTasksTasks()
 
 	// validate that no buildvariant calls `generate.tasks` more than once
 	for _, bv := range p.BuildVariants {
@@ -886,7 +877,7 @@ func validateGenerateTasks(p *model.Project) []ValidationError {
 		}
 		if len(count) > 1 {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, generateTasksCommand, generateTasksCommand),
+				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, model.GenerateTasksCommandName, model.GenerateTasksCommandName),
 				Level:   Error,
 			})
 		}

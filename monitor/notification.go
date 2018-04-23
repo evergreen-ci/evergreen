@@ -197,7 +197,6 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification, err
 
 		// add it to the final list
 		warnings = append(warnings, hostNotification)
-
 	}
 
 	return warnings, nil

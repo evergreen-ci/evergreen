@@ -91,20 +91,26 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, cancel context.CancelFunc) {
-	timer := time.NewTimer(d)
+func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
 	defer recovery.LogStackTraceAndContinue("exec timeout watcher")
-	defer timer.Stop()
 	defer cancel()
+	ticker := time.NewTicker(time.Second)
+	timeTickerStarted := time.Now()
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			grip.Info("Exec timeout watch canceled")
 			return
-		case <-timer.C:
-			tc.logger.Execution().Errorf("Hit exec timeout (%s)", d)
-			tc.reachTimeOut()
-			return
+		case <-ticker.C:
+			timeout := tc.getExecTimeout()
+			timeSinceTickerStarted := time.Since(timeTickerStarted)
+
+			if timeSinceTickerStarted > timeout {
+				tc.logger.Execution().Errorf("Hit exec timeout (%s)", timeout)
+				tc.reachTimeOut()
+				return
+			}
 		}
 	}
 }

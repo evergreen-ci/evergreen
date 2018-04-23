@@ -195,4 +195,6 @@ type Connector interface {
 
 	// SaveSubscriptions saves a set of notification subscriptions
 	SaveSubscriptions([]event.Subscription) error
+	// Notifications
+	GetNotificationsStats() (*restModel.APIEventStats, error)
 }

@@ -86,8 +86,8 @@ func LogHostAgentDeployed(hostId string) {
 	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
 }
 
-func LogHostAgentDeployFailed(hostId string) {
-	LogHostEvent(hostId, EventHostAgentDeployFailed, HostEventData{})
+func LogHostAgentDeployFailed(hostId string, err error) {
+	LogHostEvent(hostId, EventHostAgentDeployFailed, HostEventData{Logs: err.Error()})
 }
 
 func LogHostProvisionError(hostId string) {

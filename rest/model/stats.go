@@ -15,6 +15,7 @@ type APITaskStats struct {
 	Succeeded          int `json:"succeeded"`
 	Failed             int `json:"failed"`
 	SystemFailed       int `json:"system-failed"`
+	SetupFailed        int `json:"setup-failed"`
 	SystemUnresponsive int `json:"system-unresponsive"`
 	SystemTimedOut     int `json:"system-timed-out"`
 	TestTimedOut       int `json:"test-timed-out"`
@@ -29,6 +30,7 @@ func (apiStatus *APITaskStats) BuildFromService(h interface{}) error {
 		apiStatus.Unstarted = v.Unstarted
 		apiStatus.Started = v.Started
 		apiStatus.Succeeded = v.Succeeded
+		apiStatus.SetupFailed = v.SetupFailed
 		apiStatus.Failed = v.Failed
 		apiStatus.SystemFailed = v.SystemFailed
 		apiStatus.SystemUnresponsive = v.SystemUnresponsive

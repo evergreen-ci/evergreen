@@ -17,7 +17,8 @@ const (
 	lintPrefix        = "lint"
 	lintVariant       = "ubuntu1604"
 	lintGroup         = "lint-group"
-	groupMaxHosts     = 1
+	commitMaxHosts    = 4
+	patchMaxHosts     = 1
 	evergreenLintTask = "evergreen"
 	jsonFilename      = "bin/generate-lint.json"
 	scriptsDir        = "scripts"
@@ -99,7 +100,9 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 		return nil, err
 	}
 	var targets []string
+	var maxHosts int
 	if len(changes) == 0 {
+		maxHosts = commitMaxHosts
 		args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
 		cmd := exec.Command(args[0], args[1:]...)
 		allPackages, err := cmd.Output()
@@ -119,6 +122,7 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 			}
 		}
 	} else {
+		maxHosts = patchMaxHosts
 		targets, err = targetsFromChangedFiles(changes)
 		if err != nil {
 			return nil, err
@@ -142,7 +146,7 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 	generate["task_groups"] = []map[string]interface{}{
 		map[string]interface{}{
 			"name":      lintGroup,
-			"max_hosts": groupMaxHosts,
+			"max_hosts": maxHosts,
 			"tasks":     executionTaskList,
 			"setup_group": []map[string]interface{}{
 				map[string]interface{}{

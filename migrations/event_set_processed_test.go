@@ -25,6 +25,11 @@ func TestEventSetProcessedAtMigration(t *testing.T) {
 }
 
 func (s *eventSetProcessedAtSuite) SetupTest() {
+	const (
+		idKey          = "_id"
+		tsKey          = "ts"
+		processedAtKey = "processed_at"
+	)
 	loc, err := time.LoadLocation("UTC")
 	s.NoError(err)
 
@@ -38,24 +43,32 @@ func (s *eventSetProcessedAtSuite) SetupTest() {
 	s.events = []anserdb.Document{
 		// within the time range, but already processed
 		anserdb.Document{
-			"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
-			"ts":           s.right.Add(-time.Hour),
-			"processed_at": s.right.Add(-time.Hour),
+			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
+			tsKey:          s.right.Add(-time.Hour),
+			processedAtKey: s.right.Add(-time.Hour),
 		},
 		// too old
 		anserdb.Document{
-			"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
-			"ts":  s.left.Add(-time.Hour),
+			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+			tsKey:          s.left.Add(-time.Hour),
+			processedAtKey: time.Time{},
 		},
 		// too new
 		anserdb.Document{
-			"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
-			"ts":  s.right.Add(time.Hour),
+			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
+			tsKey:          s.right.Add(time.Hour),
+			processedAtKey: time.Time{},
 		},
 		// just right
 		anserdb.Document{
-			"_id": bson.ObjectIdHex("5949645c9acd9604fdd202dA"),
-			"ts":  s.right.Add(-time.Hour),
+			idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202dA"),
+			tsKey:          s.right.Add(-time.Hour),
+			processedAtKey: time.Time{},
+		},
+		// right ts, but ineligible b/c field is missing
+		anserdb.Document{
+			idKey: bson.ObjectIdHex("5949645c9acd9604fdd202dB"),
+			tsKey: s.right.Add(-time.Hour),
 		},
 	}
 	for _, e := range s.events {
@@ -97,6 +110,12 @@ func (s *eventSetProcessedAtSuite) TestMigration() {
 	bttf, err := time.ParseInLocation(time.RFC3339, unsubscribableTime, loc)
 	s.NoError(err)
 	s.True(bttf.Equal(out.ProcessedAt))
+
+	s.Require().NoError(db.FindOneQ(allLogCollection, db.Query(bson.M{
+		"_id": bson.ObjectIdHex("5949645c9acd9604fdd202dB"),
+	}), &out))
+
+	s.True(out.ProcessedAt.IsZero())
 }
 
 func (s *eventSetProcessedAtSuite) TestMigrationPicksUpEverythingWithZeroTime() {
