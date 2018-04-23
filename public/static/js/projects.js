@@ -215,6 +215,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           repo_name: $scope.projectRef.repo_name,
           enabled: $scope.projectRef.enabled,
           private: $scope.projectRef.private,
+          patching_disabled: $scope.projectRef.patching_disabled,
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],

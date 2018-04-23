@@ -269,13 +269,13 @@ func (s *eventSuite) TestMarkProcessed() {
 
 	s.EqualError(logger.MarkProcessed(&event), "event has no ID")
 	event.ID = bson.NewObjectId()
-	s.EqualError(logger.MarkProcessed(&event), "failed to update process time: not found")
+	s.EqualError(logger.MarkProcessed(&event), "failed to update 'processed at' time: not found")
 
 	s.NoError(logger.LogEvent(&event))
 
 	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{
-		"$unset": bson.M{
-			"processed_at": 1,
+		"$set": bson.M{
+			"processed_at": time.Time{},
 		},
 	}))
 
@@ -316,22 +316,23 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		{
 			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
-		},
-		{
 			processedAtKey:  time.Time{},
-			resourceTypeKey: ResourceTypeHost,
-			DataKey:         bson.M{},
 		},
 		{
-			processedAtKey:  time.Now(),
 			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
+			processedAtKey:  time.Time{}.Add(time.Second),
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+			processedAtKey:  time.Now(),
 		},
 	}
 	for i := range data {
 		s.NoError(db.Insert(AllLogCollection, data[i]))
 	}
-	events, err := Find(AllLogCollection, db.Query(UnprocessedEvents()))
+	events, err := FindUnprocessedEvents()
 	s.NoError(err)
 	s.Len(events, 1)
 
@@ -407,14 +408,110 @@ func (s *eventSuite) TestTaskEventLogLegacyEvents() {
 	}
 }
 
+func (s *eventSuite) TestFindLastProcessedEvent() {
+	events := []EventLogEntry{
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-2 * time.Hour),
+			ResourceId:   "macos.example.com",
+			EventType:    "HOST_TASK_FINISHED",
+			ProcessedAt:  time.Now().Add(-time.Hour),
+			ResourceType: "HOST",
+			Data: &HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com2",
+			EventType:    "HOST_TASK_FINISHED",
+			ProcessedAt:  time.Now().Add(-30 * time.Minute),
+			ResourceType: "HOST",
+			Data: &HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com3",
+			EventType:    "HOST_TASK_FINISHED",
+			ResourceType: "HOST",
+			Data: &HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+	}
+	for i := range events {
+		s.NoError(db.Insert(AllLogCollection, events[i]))
+	}
+
+	e, err := FindLastProcessedEvent()
+	s.NoError(err)
+	s.Require().NotNil(e)
+	s.Equal("macos.example.com2", e.ResourceId)
+}
+
+func (s *eventSuite) TestCountUnprocessedEvents() {
+	events := []EventLogEntry{
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-2 * time.Hour),
+			ResourceId:   "macos.example.com",
+			EventType:    "HOST_TASK_FINISHED",
+			ResourceType: "HOST",
+			Data: HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com2",
+			EventType:    "HOST_TASK_FINISHED",
+			ProcessedAt:  time.Now().Add(-30 * time.Minute),
+			ResourceType: "HOST",
+			Data: HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com3",
+			EventType:    "HOST_TASK_FINISHED",
+			ResourceType: "HOST",
+			Data: HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+	}
+	for i := range events {
+		s.NoError(db.Insert(AllLogCollection, events[i]))
+	}
+
+	n, err := CountUnprocessedEvents()
+	s.NoError(err)
+	s.Equal(2, n)
+}
+
 func (s *eventSuite) TestMarkAllEventsProcessed() {
 	data := []bson.M{
 		{
 			resourceTypeKey: ResourceTypeHost,
+			processedAtKey:  time.Time{},
 			DataKey:         bson.M{},
 		},
 		{
 			resourceTypeKey: ResourceTypeHost,
+			processedAtKey:  time.Time{},
 			DataKey:         bson.M{},
 		},
 		{

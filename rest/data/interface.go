@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -191,4 +192,9 @@ type Connector interface {
 
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 	GenerateTasks(string, []json.RawMessage) error
+
+	// SaveSubscriptions saves a set of notification subscriptions
+	SaveSubscriptions([]event.Subscription) error
+	// Notifications
+	GetNotificationsStats() (*restModel.APIEventStats, error)
 }

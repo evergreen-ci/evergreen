@@ -19,12 +19,6 @@ ui:
 
 notify:
   logfile: "evg_notify.log"
-  smtp:
-    from: "notifications@example.com"
-    server: "localhost"
-    port: 25
-    admin_email:
-      - "admin@example.com"
 
 runner:
     intervalseconds: 10

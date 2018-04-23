@@ -61,7 +61,7 @@ func hostCreate() cli.Command {
 				return errors.Wrap(err, "problem contacting evergreen service")
 			}
 
-			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", host.Id)
+			grip.Infof("Spawn host created with ID '%s'. Visit the hosts page in Evergreen to check on its status.", model.FromAPIString(host.Id))
 			return nil
 		},
 	}
@@ -129,7 +129,7 @@ func hostlist() cli.Command {
 
 func printHosts(hosts []*model.APIHost) error {
 	for _, h := range hosts {
-		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s", h.Id, h.Distro.Id, h.Status, h.HostURL, h.User)
+		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s", model.FromAPIString(h.Id), h.Distro.Id, h.Status, h.HostURL, h.User)
 	}
 	return nil
 }

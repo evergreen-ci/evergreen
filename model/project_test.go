@@ -612,10 +612,26 @@ func (s *projectSuite) SetupTest() {
 			{
 				Name: "a_task_2",
 				Tags: []string{"a", "2"},
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+					{
+						Command: "generate.tasks",
+					},
+				},
 			},
 			{
 				Name: "b_task_1",
 				Tags: []string{"b", "1"},
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+					{
+						Function: "go generate a thing",
+					},
+				},
 			},
 			{
 				Name: "b_task_2",
@@ -637,6 +653,21 @@ func (s *projectSuite) SetupTest() {
 			{
 				Name:      "another_disabled_task",
 				Patchable: boolPtr(false),
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"go generate a thing": &YAMLCommandSet{
+				MultiCommand: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+					{
+						Command: "generate.tasks",
+					},
+					{
+						Command: "shell.exec",
+					},
+				},
 			},
 		},
 	}
@@ -1088,4 +1119,17 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 	s.Equal(b1.Id, builds[v1.Id][0].Id)
 	s.Equal(b2.Id, builds[v2.Id][0].Id)
 	s.Equal(b3.Id, builds[v3.Id][0].Id)
+}
+
+func (s *projectSuite) TestIsGenerateTask() {
+	s.False(s.project.IsGenerateTask("a_task_1"))
+	s.True(s.project.IsGenerateTask("a_task_2"))
+	s.True(s.project.IsGenerateTask("b_task_1"))
+	s.False(s.project.IsGenerateTask("b_task_2"))
+	s.False(s.project.IsGenerateTask("wow_task"))
+	s.False(s.project.IsGenerateTask("9001_task"))
+	s.False(s.project.IsGenerateTask("very_task"))
+	s.False(s.project.IsGenerateTask("disabled_task"))
+	s.False(s.project.IsGenerateTask("another_disabled_task"))
+	s.False(s.project.IsGenerateTask("task_does_not_exist"))
 }

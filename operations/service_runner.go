@@ -15,9 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
@@ -28,8 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
-
-const useNewScheduler = true
 
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
@@ -141,28 +137,31 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	}
 
 	const (
-		monitoringInterval         = time.Minute
-		taskPlanningInterval       = 15 * time.Second
-		backgroundStatsInterval    = time.Minute
-		sysStatsInterval           = 15 * time.Second
-		infrequentAlertingInterval = 15 * time.Minute
+		backgroundStatsInterval = time.Minute
+		sysStatsInterval        = 15 * time.Second
 	)
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateHostCreationJobs(env, 0),
 		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), infrequentAlertingInterval, time.Now(), opts, units.PopulateAlertingJobs())
 
-	if useNewScheduler {
-		amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
-	}
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateHostSetupJobs(env, 30),
+		units.PopulateSchedulerJobs(),
+		units.PopulateAgentDeployJobs(env)))
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs(5))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateEventAlertProcessing(5),
+		units.PopulateRepotrackerPollingJobs(5)))
+
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs(30))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateCatchupJobs(30),
+		units.PopulateHostAlertJobs(20)))
 
 	// add jobs to a local queue every minute for stats collection and reporting.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
@@ -179,7 +178,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		if flags.BackgroundStatsDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "background stats collection disabled",
-				"impact":  "host, task, latency, and amboy stats disabled",
+				"impact":  "host, task, latency, amboy, and notification stats disabled",
 				"mode":    "degraded",
 			})
 			return nil
@@ -192,6 +191,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		catcher.Add(queue.Put(units.NewHostStatsCollector(fmt.Sprintf("host-stats-%d", ts))))
 		catcher.Add(queue.Put(units.NewTaskStatsCollector(fmt.Sprintf("task-stats-%d", ts))))
 		catcher.Add(queue.Put(units.NewLatencyStatsCollector(fmt.Sprintf("latency-stats-%d", ts), time.Minute)))
+		catcher.Add(queue.Put(units.NewNotificationStatsCollector(fmt.Sprintf("notification-stats-%d", ts))))
 
 		return catcher.Resolve()
 	})
@@ -213,7 +213,6 @@ var backgroundRunners = []processRunner{
 	&monitor.Runner{},
 
 	&hostinit.Runner{},
-	&taskrunner.Runner{},
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
@@ -228,17 +227,11 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 
 	frequentRunners := []string{
 		hostinit.RunnerName,
-		taskrunner.RunnerName,
 	}
 
 	infrequentRunners := []string{
 		alerts.RunnerName,
 		monitor.RunnerName,
-	}
-
-	if !useNewScheduler {
-		backgroundRunners = append(backgroundRunners, &scheduler.Runner{})
-		frequentRunners = append(frequentRunners, scheduler.RunnerName)
 	}
 
 	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{
@@ -262,10 +255,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	})
 
 	for _, r := range backgroundRunners {
-		if useNewScheduler && r.Name() == scheduler.RunnerName {
-			continue
-		}
-
 		wg.Add(1)
 		if util.StringSliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)

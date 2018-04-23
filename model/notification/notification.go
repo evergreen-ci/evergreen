@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -18,7 +20,7 @@ import (
 // from the given event, with the given trigger, for the given subscriber.
 // This function will produce an ID that will collide to prevent duplicate
 // notifications from being inserted
-func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string { //nolint:interfacer
+func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string { //nolint: interfacer
 	return fmt.Sprintf("%s-%s-%s", event.ID.Hex(), trigger, subscriber.String())
 }
 
@@ -49,7 +51,7 @@ type Notification struct {
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    interface{}      `bson:"payload"`
 
-	SentAt time.Time `bson:"sent_at,omitempty"`
+	SentAt time.Time `bson:"sent_at"`
 	Error  string    `bson:"error,omitempty"`
 }
 
@@ -220,4 +222,74 @@ func (n *Notification) MarkError(sendErr error) error {
 	}
 
 	return nil
+}
+
+type NotificationStats struct {
+	GithubPullRequest int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
+	JIRAIssue         int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
+	JIRAComment       int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
+	EvergreenWebhook  int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
+	Email             int `json:"email" bson:"email" yaml:"email"`
+	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
+}
+
+func CollectUnsentNotificationStats() (*NotificationStats, error) {
+	const subscriberTypeKey = "type"
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				sentAtKey: bson.M{
+					"$eq": time.Time{},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + bsonutil.GetDottedKeyName(subscriberKey, subscriberTypeKey),
+				"n": bson.M{
+					"$sum": 1,
+				},
+			},
+		},
+	}
+
+	stats := []struct {
+		Key   string `bson:"_id"`
+		Count int    `bson:"n"`
+	}{}
+
+	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+		return nil, errors.Wrap(err, "failed to count unsent notifications")
+	}
+
+	nStats := NotificationStats{}
+
+	for _, data := range stats {
+		switch data.Key {
+		case event.GithubPullRequestSubscriberType:
+			nStats.GithubPullRequest = data.Count
+
+		case event.JIRAIssueSubscriberType:
+			nStats.JIRAIssue = data.Count
+
+		case event.JIRACommentSubscriberType:
+			nStats.JIRAComment = data.Count
+
+		case event.EvergreenWebhookSubscriberType:
+			nStats.EvergreenWebhook = data.Count
+
+		case event.EmailSubscriberType:
+			nStats.Email = data.Count
+
+		case event.SlackSubscriberType:
+			nStats.Slack = data.Count
+
+		default:
+			grip.Error(message.Fields{
+				"message": fmt.Sprintf("unknown subscriber %s", data.Key),
+			})
+		}
+	}
+
+	return &nStats, nil
 }

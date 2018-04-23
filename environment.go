@@ -330,9 +330,15 @@ func (e *envState) initSenders() error {
 	return catcher.Resolve()
 }
 
-type bbProject struct {
+type BuildBaronProject struct {
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
+
+	// The alternative endpoint is only enabled for projects where AlternativeEndpointURL isn't the empty string.
+	AlternativeEndpointURL         string `mapstructure:"alt_endpoint_url" bson:"alt_endpoint_url"`
+	AlternativeEndpointUsername    string `mapstructure:"alt_endpoint_username" bson:"alt_endpoint_username"`
+	AlternativeEndpointPassword    string `mapstructure:"alt_endpoint_password" bson:"alt_endpoint_password"`
+	AlternativeEndpointTimeoutSecs int    `mapstructure:"alt_endpoint_timeout_secs" bson:"alt_endpoint_timeout_secs"`
 }
 
 func (e *envState) persistSettings() error {
@@ -359,7 +365,7 @@ func (e *envState) persistSettings() error {
 		if pluginName == "buildbaron" {
 			for fieldName, field := range plugin {
 				if fieldName == "projects" {
-					var projects map[string]bbProject
+					var projects map[string]BuildBaronProject
 					err := mapstructure.Decode(field, &projects)
 					if err != nil {
 						return errors.Wrap(err, "problem decoding buildbaron projects")

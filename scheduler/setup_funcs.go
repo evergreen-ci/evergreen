@@ -79,6 +79,10 @@ func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {
 		if err != nil {
 			return errors.Wrapf(err, "error finding version %s for task %s", t.Id, t.Version)
 		}
+		// Version may not yet be created, so keep going.
+		if v == nil {
+			continue
+		}
 		p := project{}
 		if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
 			return errors.Wrapf(err, "error unmarshalling task groups from version %s for task %s", t.Id, t.Version)

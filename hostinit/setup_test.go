@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -24,15 +23,11 @@ func init() {
 
 func TestSetupReadyHosts(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestSetupReadyHosts")
+	conf := testutil.TestConfig()
+	mockCloud := cloud.GetMockProvider()
 
-	hostInit := &HostInit{
-		Settings: testutil.TestConfig(),
-		GUID:     util.RandomString(),
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	mockCloud := cloud.GetMockProvider()
 
 	Convey("When hosts are spawned but not running", t, func() {
 		testutil.HandleTestingErr(
@@ -52,8 +47,8 @@ func TestSetupReadyHosts(t *testing.T) {
 			So(h.Status, ShouldNotEqual, evergreen.HostRunning)
 		}
 		// call it twice to get around rate-limiting
-		So(hostInit.startHosts(ctx), ShouldBeNil)
-		So(hostInit.startHosts(ctx), ShouldBeNil)
+		So(startHosts(ctx, conf), ShouldBeNil)
+		So(startHosts(ctx, conf), ShouldBeNil)
 		Convey("and all of the hosts have failed", func() {
 			for id := range mockCloud.IterIDs() {
 				instance := mockCloud.Get(id)
@@ -63,7 +58,7 @@ func TestSetupReadyHosts(t *testing.T) {
 				mockCloud.Set(id, instance)
 			}
 			Convey("when running setup", func() {
-				So(hostInit.setupReadyHosts(ctx), ShouldBeNil)
+				So(setupReadyHosts(ctx, conf), ShouldBeNil)
 
 				Convey("then all of the hosts should be terminated", func() {
 					for instance := range mockCloud.IterInstances() {
@@ -88,7 +83,7 @@ func TestSetupReadyHosts(t *testing.T) {
 				mockCloud.Set(id, instance)
 			}
 			Convey("when running setup", func() {
-				err := hostInit.setupReadyHosts(ctx)
+				err := setupReadyHosts(ctx, conf)
 				So(err, ShouldBeNil)
 
 				Convey("then all of the 'OnUp' functions should have been run and "+
@@ -110,14 +105,9 @@ func TestSetupReadyHosts(t *testing.T) {
 }
 
 func TestHostIsReady(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestHostIsReady")
-
-	hostInit := &HostInit{
-		Settings: testutil.TestConfig(),
-		GUID:     util.RandomString(),
-	}
+	conf := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, conf, "TestHostIsReady")
 	mockCloud := cloud.GetMockProvider()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -146,7 +136,7 @@ func TestHostIsReady(t *testing.T) {
 			Convey("then checking for readiness should return false", func() {
 				for i := range hostsForTest {
 					h := hostsForTest[i]
-					ready, err := hostInit.IsHostReady(ctx, &h)
+					ready, err := isHostReady(ctx, &h, conf)
 					So(err, ShouldBeNil)
 					So(ready, ShouldBeFalse)
 				}
@@ -169,7 +159,7 @@ func TestHostIsReady(t *testing.T) {
 				Convey("then checking for readiness should return true", func() {
 					for i := range hostsForTest {
 						h := hostsForTest[i]
-						ready, err := hostInit.IsHostReady(ctx, &h)
+						ready, err := isHostReady(ctx, &h, conf)
 						So(err, ShouldBeNil)
 						So(ready, ShouldBeTrue)
 					}
@@ -185,7 +175,7 @@ func TestHostIsReady(t *testing.T) {
 				Convey("then checking for readiness should error", func() {
 					for i := range hostsForTest {
 						h := hostsForTest[i]
-						ready, err := hostInit.IsHostReady(ctx, &h)
+						ready, err := isHostReady(ctx, &h, conf)
 						So(err, ShouldNotBeNil)
 						So(ready, ShouldBeFalse)
 					}
@@ -204,7 +194,7 @@ func TestHostIsReady(t *testing.T) {
 			Convey("then checking for readiness should terminate", func() {
 				for i := range hostsForTest {
 					h := hostsForTest[i]
-					ready, err := hostInit.IsHostReady(ctx, &h)
+					ready, err := isHostReady(ctx, &h, conf)
 					So(err, ShouldNotBeNil)
 					So(ready, ShouldBeFalse)
 					So(h.Status, ShouldEqual, evergreen.HostTerminated)

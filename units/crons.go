@@ -188,12 +188,25 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func EventMetaJobQueueOperation() amboy.QueueOperation {
-	return func(q amboy.Queue) error {
-		t := time.Now().Truncate(EventProcessingInterval / 2)
-		err := q.Put(NewEventMetaJob(q, t.Format(tsFormat)))
+func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
-		return errors.Wrap(err, "failed to queue event-metajob")
+		if flags.AlertsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "alerts disabled",
+				"impact":  "not processing alerts for notifications",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+
+		return errors.Wrap(queue.Put(NewEventMetaJob(queue, ts)), "failed to queue event-metajob")
 	}
 }
 
@@ -214,9 +227,8 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 		}
 
 		ts := util.RoundPartOfHour(2).Format(tsFormat)
-		j := NewTaskExecutionMonitorJob(ts)
 
-		return queue.Put(j)
+		return queue.Put(NewTaskExecutionMonitorJob(ts))
 	}
 }
 
@@ -238,6 +250,12 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 
 		catcher := grip.NewBasicCatcher()
 		hosts, err := host.FindHostsToTerminate()
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      hostTerminationJobName,
+			"impact":    "hosts termination interrupted",
+		}))
+
 		catcher.Add(err)
 
 		for _, h := range hosts {
@@ -269,8 +287,10 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 		hosts, err := host.AllIdleEphemeral()
 		catcher.Add(err)
 		grip.Warning(message.WrapError(err, message.Fields{
-			"id":    idleHostJobName,
-			"hosts": hosts,
+			"cron":      idleHostJobName,
+			"operation": "background task creation",
+			"hosts":     hosts,
+			"impact":    "idle hosts termination",
 		}))
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -282,10 +302,6 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		for _, h := range hosts {
 			err := queue.Put(NewIdleHostTerminationJob(env, h, ts))
-			grip.Warning(message.WrapError(err, message.Fields{
-				"id":   idleHostJobName,
-				"host": h,
-			}))
 			catcher.Add(err)
 		}
 
@@ -323,6 +339,12 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 			"op":       "dispatcher",
 		})
 
+		grip.Error(message.WrapError(err, message.Fields{
+			"cron":      schedulerJobName,
+			"impact":    "new task scheduling non-operative",
+			"operation": "background task creation",
+		}))
+
 		ts := util.RoundPartOfMinute(20)
 		for _, id := range names {
 			lastRun, ok := lastPlanned[id]
@@ -330,44 +352,174 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 				continue
 			}
 
-			job := NewDistroSchedulerJob(id, ts)
-			catcher.Add(queue.Put(job))
+			catcher.Add(queue.Put(NewDistroSchedulerJob(id, ts)))
 		}
 
 		return catcher.Resolve()
 	}
 }
 
-// used for infrequently running system alerts
-func PopulateAlertingJobs() amboy.QueueOperation {
+// PopulateHostAlertJobs adds alerting tasks infrequently for host
+// utilization monitoring.
+func PopulateHostAlertJobs(parts int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		catcher.Add(addHostLongRunningTaskJobs(queue))
-		catcher.Add(addHostStatsJob(queue))
+
+		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+
+		hosts, err := host.Find(host.IsRunningTask)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"cron":      hostAlertingName,
+			"operation": "background task creation",
+			"impact":    "admin alerts not set",
+		}))
+
+		catcher.Add(err)
+		if err == nil {
+			for _, host := range hosts {
+				catcher.Add(queue.Put(NewHostAlertingJob(host, ts)))
+			}
+		}
+
+		catcher.Add(queue.Put(NewHostStatsJob(ts)))
 
 		return catcher.Resolve()
 	}
 }
 
-func addHostLongRunningTaskJobs(queue amboy.Queue) error {
-	hosts, err := host.Find(host.IsRunningTask)
-	if err != nil {
-		return errors.WithStack(err)
+func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.TaskrunnerDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "taskrunner disabled",
+				"impact":  "agents are not deployed",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		hosts, err := host.Find(host.NeedsNewAgent(time.Now()))
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      agentDeployJobName,
+			"impact":    "agents cannot start",
+		}))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		// don't do this more than once a minute:
+		ts := util.RoundPartOfMinute(30).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewAgentDeployJob(env, h, ts)))
+		}
+
+		return catcher.Resolve()
 	}
 
-	ts := util.RoundPartOfHour(2).Format(tsFormat)
-	catcher := grip.NewBasicCatcher()
-
-	for _, host := range hosts {
-		job := NewHostAlertingJob(host, ts)
-		catcher.Add(queue.Put(job))
-	}
-
-	return catcher.Resolve()
 }
 
-func addHostStatsJob(queue amboy.Queue) error {
-	ts := util.RoundPartOfHour(2).Format(tsFormat)
-	job := NewHostStatsJob(ts)
-	return queue.Put(job)
+func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOperation {
+	if !evergreen.UseNewHostStarting {
+		return func(_ amboy.Queue) error { return nil }
+
+	}
+
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostinitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "new hosts are not created in cloud providers",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		hosts, err := host.Find(host.IsUninitialized)
+		if err != nil {
+			return errors.Wrap(err, "error fetching uninitialized hosts")
+		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      createHostJobName,
+			"impact":    "hosts cannot start",
+		}))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		submitted := 0
+
+		for _, h := range hosts {
+			if h.UserHost {
+				// pass:
+				//    always start spawn hosts asap
+			} else if submitted > 16 {
+				// throttle hosts, so that we're starting very
+				// few hosts on every pass. Hostinit runs very
+				// frequently, lets not start too many all at
+				// once.
+
+				break
+			}
+
+			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOperation {
+	if !evergreen.UseNewHostProvisioning {
+		return func(_ amboy.Queue) error { return nil }
+	}
+
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostinitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "new hosts are not setup or provisioned",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		hosts, err := host.Find(host.NeedsProvisioning())
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "background task creation",
+			"cron":      setupHostJobName,
+			"impact":    "hosts cannot provision",
+		}))
+		if err != nil {
+			return errors.Wrap(err, "error fetching starting hosts")
+		}
+
+		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
+		}
+
+		return catcher.Resolve()
+	}
 }

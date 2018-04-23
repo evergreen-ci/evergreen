@@ -127,3 +127,6 @@ db.subscriptions.ensureIndex({ "type": 1, "trigger" : 1, "selectors": 1})
 
 //======users======//
 db.users.ensureIndex({ "settings.github_user.uid": 1 }, { unique: true })
+
+//======notifications======//
+db.notifications.ensureIndex({ "sent_at": 1 })

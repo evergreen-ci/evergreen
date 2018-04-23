@@ -436,9 +436,6 @@ tasks:
     name: test-monitor
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-taskrunner
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-evergreen
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -556,9 +553,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-monitor
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-taskrunner
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-evergreen

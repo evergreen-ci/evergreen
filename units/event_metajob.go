@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/mongodb/amboy"
@@ -20,8 +19,7 @@ import (
 )
 
 const (
-	eventMetaJobName        = "event-metajob"
-	EventProcessingInterval = 5 * time.Minute
+	eventMetaJobName = "event-metajob"
 )
 
 func init() {
@@ -185,7 +183,7 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 		return
 	}
 
-	j.events, err = event.Find(event.AllLogCollection, db.Query(event.UnprocessedEvents()))
+	j.events, err = event.FindUnprocessedEvents()
 	if err != nil {
 		j.AddError(err)
 		return

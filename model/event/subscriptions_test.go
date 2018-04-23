@@ -45,6 +45,7 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t1,
 			},
+			Owner: "me",
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -61,6 +62,7 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t2,
 			},
+			Owner: "you",
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -86,6 +88,7 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t3,
 			},
+			Owner: "someone",
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -102,6 +105,7 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t4,
 			},
+			Owner: "me",
 		},
 	}
 
@@ -252,4 +256,13 @@ func (s *subscriptionsSuite) TestExtraData() {
 		"_id": subscription.ID,
 	}), &out))
 	s.Zero(out)
+}
+
+func (s *subscriptionsSuite) TestFindByOwner() {
+	subscriptions, err := FindSubscriptionsByOwner("me")
+	s.NoError(err)
+	s.Len(subscriptions, 2)
+	for _, sub := range subscriptions {
+		s.Equal("me", sub.Owner)
+	}
 }

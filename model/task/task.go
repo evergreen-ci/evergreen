@@ -110,6 +110,10 @@ type Task struct {
 	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
 	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+
+	// GenerateTask indicates that the task generates other tasks, which the
+	// scheduler will use to prioritize this task.
+	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning

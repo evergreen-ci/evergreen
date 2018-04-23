@@ -736,6 +736,23 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 	return p, nil
 }
 
+func FindProjectFromVersionID(versionStr string) (*Project, error) {
+	ver, err := version.FindOne(version.ById(versionStr))
+	if err != nil {
+		return nil, err
+	}
+	if ver == nil {
+		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
+	}
+
+	project := &Project{}
+	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+	}
+	return project, nil
+}
+
 func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
 	bv, err := p.BuildVariants.Get(t.BuildVariant)
 	if err != nil {
@@ -1011,6 +1028,42 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	tasks.ExecTasks = IncludePatchDependencies(p, tasks.ExecTasks)
 
 	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
+}
+
+// GenerateTasksTasks returns a map of tasks that call `generate.tasks`.
+func (p *Project) GenerateTasksTasks() map[string]struct{} {
+	// get all functions that call `generate.tasks`
+	fs := map[string]struct{}{}
+	for f, cmds := range p.Functions {
+		for _, c := range cmds.List() {
+			if c.Command == GenerateTasksCommandName {
+				fs[f] = struct{}{}
+			}
+		}
+	}
+
+	// get all tasks that call `generate.tasks`
+	ts := map[string]struct{}{}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+				if _, ok := fs[c.Function]; ok {
+					ts[t.Name] = struct{}{}
+				}
+			}
+			if c.Command == GenerateTasksCommandName {
+				ts[t.Name] = struct{}{}
+			}
+		}
+	}
+	return ts
+}
+
+// IsGenerateTask indicates that the task generates other tasks, which the
+// scheduler will use to prioritize this task.
+func (p *Project) IsGenerateTask(taskName string) bool {
+	_, ok := p.GenerateTasksTasks()[taskName]
+	return ok
 }
 
 func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
