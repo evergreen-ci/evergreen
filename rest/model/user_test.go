@@ -3,7 +3,6 @@ package model
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,8 +17,8 @@ func TestUserSettings(t *testing.T) {
 			LastKnownAs: "peter",
 		},
 		Notifications: user.NotificationPreferences{
-			BuildBreak:  event.PreferenceEmail,
-			PatchFinish: event.PreferenceNone,
+			BuildBreak:  user.PreferenceEmail,
+			PatchFinish: user.PreferenceSlack,
 		},
 	}
 

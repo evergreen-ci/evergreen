@@ -22,6 +22,7 @@ func getUserSettingsRouteManager(route string, version int) *RouteManager {
 	h := userSettingsHandler{}
 	userSettingsPost := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    h.Handler(),
 		MethodType:        http.MethodPost,
 	}

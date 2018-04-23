@@ -39,14 +39,21 @@ type UserSettings struct {
 	Timezone      string                  `json:"timezone" bson:"timezone"`
 	NewWaterfall  bool                    `json:"new_waterfall" bson:"new_waterfall"`
 	GithubUser    GithubUser              `json:"github_user" bson:"github_user,omitempty"`
-	SlackUsername string                  `bson:"slack_username" json:"slack_username"`
-	Notifications NotificationPreferences `bson:"notifications" json:"notifications"`
+	SlackUsername string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
+	Notifications NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
 }
 
 type NotificationPreferences struct {
-	BuildBreak  event.UserSubscriptionPreference `bson:"build_break" json:"build_break"`
-	PatchFinish event.UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
+	BuildBreak  UserSubscriptionPreference `bson:"build_break" json:"build_break"`
+	PatchFinish UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
 }
+
+type UserSubscriptionPreference string
+
+const (
+	PreferenceEmail UserSubscriptionPreference = event.EmailSubscriberType
+	PreferenceSlack                            = event.SlackSubscriberType
+)
 
 func (u *DBUser) Username() string {
 	return u.Id
@@ -166,4 +173,13 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	}
 	return dbUser.PatchNumber, nil
 
+}
+
+func IsValidSubscriptionPreference(in string) bool {
+	switch in {
+	case event.EmailSubscriberType, event.SlackSubscriberType:
+		return true
+	default:
+		return false
+	}
 }

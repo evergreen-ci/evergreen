@@ -17,15 +17,6 @@ const (
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
 	EmailSubscriberType             = "email"
 	SlackSubscriberType             = "slack"
-	NoSubscriberType                = "none"
-)
-
-type UserSubscriptionPreference string
-
-const (
-	PreferenceEmail UserSubscriptionPreference = EmailSubscriberType
-	PreferenceSlack                            = SlackSubscriberType
-	PreferenceNone                             = NoSubscriberType
 )
 
 var SubscriberTypes = []string{
@@ -141,13 +132,4 @@ type GithubPullRequestSubscriber struct {
 
 func (s *GithubPullRequestSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%d-%s", s.Owner, s.Repo, s.PRNumber, s.Ref)
-}
-
-func IsValidSubscriptionPreference(in string) bool {
-	switch in {
-	case EmailSubscriberType, SlackSubscriberType, NoSubscriberType:
-		return true
-	default:
-		return false
-	}
 }

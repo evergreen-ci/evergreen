@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -55,7 +54,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	body := map[string]interface{}{
 		"notifications": map[string]string{
 			"build_break":  "slack",
-			"patch_finish": "none",
+			"patch_finish": "email",
 		},
 	}
 	jsonBody, err := json.Marshal(body)
@@ -71,6 +70,6 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 
 	dbUser, err := user.FindOne(user.ById("me"))
 	s.NoError(err)
-	s.EqualValues(event.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
-	s.EqualValues(event.PreferenceNone, dbUser.Settings.Notifications.PatchFinish)
+	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
+	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
 }

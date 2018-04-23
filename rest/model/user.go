@@ -128,7 +128,7 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		return nil, errors.New("Patch finish preference is not a valid type")
 	}
 	return user.NotificationPreferences{
-		BuildBreak:  event.UserSubscriptionPreference(buildbreak),
-		PatchFinish: event.UserSubscriptionPreference(patchFinish),
+		BuildBreak:  user.UserSubscriptionPreference(buildbreak),
+		PatchFinish: user.UserSubscriptionPreference(patchFinish),
 	}, nil
 }
