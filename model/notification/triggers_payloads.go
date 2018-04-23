@@ -38,7 +38,7 @@ const emailTemplate string = `<html>
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
 {{ range $i, $header := $value }}
-{{ $key }}:{{ $header}}\n
+{{ $key }}:{{ $header}}
 {{ end }}
 {{ end }}
 </span>
@@ -62,7 +62,10 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 		return nil, errors.Wrap(err, "failed to parse body template")
 	}
 	buf := new(bytes.Buffer)
-	bodyTmpl.Execute(buf, t)
+	err = bodyTmpl.Execute(buf, t)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to execute email template")
+	}
 	body := buf.String()
 
 	subjectTmpl, err := template.New("subject").Parse(emailSubjectTemplate)
@@ -70,7 +73,10 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 		return nil, errors.Wrap(err, "failed to parse subject template")
 	}
 	buf = new(bytes.Buffer)
-	subjectTmpl.Execute(buf, t)
+	err = subjectTmpl.Execute(buf, t)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to execute subject template")
+	}
 	subject := buf.String()
 
 	m := message.Email{

@@ -1,9 +1,9 @@
 package notification
 
 import (
+	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -19,12 +19,19 @@ func (s *payloadSuite) TestEmail() {
 	url := "https://example.com/patch/1234"
 	status := "failed"
 
-	m, err := emailPayload("1234", "patch", url, status, []event.Selector{
-		{
-			Type: "test",
-			Data: "something",
-		},
-	})
+	headers := http.Header{
+		"X-Evergreen-test": []string{"something"},
+	}
+
+	t := commonTemplateData{
+		Object:          "patch",
+		ID:              "1234",
+		URL:             url,
+		PastTenseStatus: status,
+		Headers:         headers,
+	}
+
+	m, err := emailPayload(t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
