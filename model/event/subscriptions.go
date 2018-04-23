@@ -154,8 +154,10 @@ func (s *Subscription) Upsert() error {
 		s.ID = bson.NewObjectId()
 	}
 
+	// note: this prevents changing the owner of an existing subscription, which is desired
 	c, err := db.Upsert(SubscriptionsCollection, bson.M{
-		subscriptionIDKey: s.ID,
+		subscriptionIDKey:    s.ID,
+		subscriptionOwnerKey: s.Owner,
 	},
 		bson.M{
 			subscriptionTypeKey:           s.Type,
