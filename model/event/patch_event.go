@@ -10,8 +10,6 @@ import (
 func init() {
 	registry.AddType(ResourceTypePatch, patchEventFactory)
 	registry.AllowSubscription(ResourceTypePatch, PatchStateChange)
-	registry.RegisterExtraData(ResourceTypePatch, "time-exceeds-n-constant", 0)
-	registry.RegisterExtraData(ResourceTypePatch, "time-exceeds-n-percent", 0.0)
 }
 
 func patchEventFactory() interface{} {

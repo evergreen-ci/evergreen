@@ -33,7 +33,7 @@ const emailTemplate string = `<html>
 <body>
 <p>Hi,</p>
 
-<p>your Evergreen {{ .Object }} <a href="{{ .URL }}">'{{ .ID }}'</a> has {{ .PastTenseStatus }}.</p>
+<p>Your Evergreen {{ .Object }} <a href="{{ .URL }}">'{{ .ID }}'</a> has {{ .PastTenseStatus }}.</p>
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}

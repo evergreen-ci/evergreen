@@ -99,8 +99,8 @@ func (r *eventRegistry) RegisterExtraData(resourceType, triggerName string, i in
 		panic(fmt.Sprintf("attempted to register extra data for event '%s', trigger: '%s' more than once", resourceType, triggerName))
 	}
 
-	if reflect.TypeOf(i).Kind() == reflect.Struct {
-		panic(fmt.Sprintf("extra data must be a pointer to a struct, saw Kind: %s", reflect.TypeOf(i).Kind().String()))
+	if reflect.TypeOf(i).Kind() != reflect.Struct {
+		panic(fmt.Sprintf("extra data must be a struct, saw type: %T", i))
 	}
 
 	r.extraData[e] = i
