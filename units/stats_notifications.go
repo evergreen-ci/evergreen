@@ -61,6 +61,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 
 	msg := message.Fields{
 		"start_time": j.TimeInfo().Start,
+		"stats":      "notifications",
 	}
 
 	e, err := event.FindLastProcessedEvent()
