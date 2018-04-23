@@ -10,9 +10,16 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 )
 
 const setupHostJobName = "provisioning-setup-host"
+
+func init() {
+	registry.AddJobType(setupHostJobName, func() amboy.Job {
+		return makeSetupHostJob()
+	})
+}
 
 type setupHostJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`

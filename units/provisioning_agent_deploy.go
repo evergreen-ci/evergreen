@@ -11,12 +11,19 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 )
 
 // this is the legacy taskrunner
 
 const agentDeployJobName = "agent-deploy"
+
+func init() {
+	registry.AddJobType(agentDeployJobName, func() amboy.Job {
+		return makeAgentDeployJob()
+	})
+}
 
 type agentDeployJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
