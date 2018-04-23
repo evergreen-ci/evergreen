@@ -7,8 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestUserSettings(t *testing.T) {
-	assert := assert.New(t)
+func TestFullUserSettings(t *testing.T) {
 	settings := user.UserSettings{
 		Timezone:      "east",
 		SlackUsername: "me",
@@ -22,11 +21,33 @@ func TestUserSettings(t *testing.T) {
 		},
 	}
 
+	runTests(t, settings)
+}
+
+func TestEmptySettings(t *testing.T) {
+	settings := user.UserSettings{}
+
+	runTests(t, settings)
+}
+
+func TestPartialSettings(t *testing.T) {
+	settings := user.UserSettings{
+		Notifications: user.NotificationPreferences{
+			BuildBreak:  user.PreferenceEmail,
+			PatchFinish: user.PreferenceSlack,
+		},
+	}
+
+	runTests(t, settings)
+}
+
+func runTests(t *testing.T, in user.UserSettings) {
+	assert := assert.New(t)
 	apiSettings := APIUserSettings{}
-	err := apiSettings.BuildFromService(settings)
+	err := apiSettings.BuildFromService(in)
 	assert.NoError(err)
 
 	origSettings, err := apiSettings.ToService()
 	assert.NoError(err)
-	assert.EqualValues(settings, origSettings)
+	assert.EqualValues(in, origSettings)
 }

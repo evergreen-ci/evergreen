@@ -177,7 +177,7 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 
 func IsValidSubscriptionPreference(in string) bool {
 	switch in {
-	case event.EmailSubscriberType, event.SlackSubscriberType:
+	case event.EmailSubscriberType, event.SlackSubscriberType, "":
 		return true
 	default:
 		return false

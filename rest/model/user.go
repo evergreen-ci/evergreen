@@ -1,7 +1,6 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
@@ -121,10 +120,10 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	buildbreak := FromAPIString(n.BuildBreak)
 	patchFinish := FromAPIString(n.PatchFinish)
-	if !event.IsValidSubscriptionPreference(buildbreak) {
+	if !user.IsValidSubscriptionPreference(buildbreak) {
 		return nil, errors.New("Build break preference is not a valid type")
 	}
-	if !event.IsValidSubscriptionPreference(patchFinish) {
+	if !user.IsValidSubscriptionPreference(patchFinish) {
 		return nil, errors.New("Patch finish preference is not a valid type")
 	}
 	return user.NotificationPreferences{
