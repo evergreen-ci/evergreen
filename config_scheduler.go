@@ -8,8 +8,7 @@ import (
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	MergeToggle int    `bson:"merge_toggle" json:"merge_toggle" yaml:"mergetoggle"`
-	TaskFinder  string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	TaskFinder string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -26,8 +25,7 @@ func (c *SchedulerConfig) Get() error {
 func (c *SchedulerConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"merge_toggle": c.MergeToggle,
-			"task_finder":  c.TaskFinder,
+			"task_finder": c.TaskFinder,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
