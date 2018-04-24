@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 
@@ -62,6 +63,7 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 		userSettings.GithubUser = user.GithubUser{}
 	} else if u.Settings.GithubUser.LastKnownAs != userSettings.GithubUser.LastKnownAs {
 		var token string
+		var ghUser *github.User
 		token, err = adminSettings.GetGithubOauthToken()
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "Error retrieving Github token")
@@ -70,7 +72,7 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		ghUser, err := thirdparty.GetGithubUser(ctx, token, userSettings.GithubUser.LastKnownAs)
+		ghUser, err = thirdparty.GetGithubUser(ctx, token, userSettings.GithubUser.LastKnownAs)
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "Error fetching user from Github")
 		}
