@@ -4,6 +4,7 @@
   var user_tz = {{.Data.Timezone}};
   var new_waterfall = {{.Data.NewWaterfall}}
   var notifications = {{.Data.Notifications}}
+  var slack_username = {{.Data.SlackUsername}}
   var github_user = {{ .GithubUser }};
   var github_uid = {{ .GithubUID }};
   var userApiKey = {{.User.APIKey}};
@@ -79,9 +80,15 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
               </div>
             </div>
             <div class="form-group">
-              <label for="timezone" class="col-sm-4 control-label">Github Username</label>
+              <label class="col-sm-4 control-label">Github Username</label>
               <div class="col-sm-8">
                   <input type="text" placeholder="ocotocat" ng-model="github_user" /> <label ng-show="{{ .GithubUID }} !== 0">Github UID Number: {{ .GithubUID }}</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="col-sm-4 control-label">Slack Username</label>
+              <div class="col-sm-8">
+                <input type="text" ng-model="slack_username" />
               </div>
             </div>
             <h3><i class="fa fa-bell"></i> Notification Settings</h3>
@@ -95,7 +102,7 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
                   <td colspan="3">
                     <md-radio-group layout="row" style="width:100%" ng-model="notifications.build_break" md-no-ink="true">
                       <md-radio-button value="email"></md-radio-button>
-                      <md-radio-button value="slack"></md-radio-button>
+                      <md-radio-button value="slack" ng-disabled='!slack_username || slack_username == ""'></md-radio-button>
                       <md-radio-button value=""></md-radio-button>
                     </md-radio-group>
                   </td>
@@ -105,7 +112,7 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
                   <td colspan="3">
                     <md-radio-group layout="row" style="width:100%" ng-model="notifications.patch_finish" md-no-ink="true">
                       <md-radio-button value="email"></md-radio-button>
-                      <md-radio-button value="slack"></md-radio-button>
+                      <md-radio-button value="slack" ng-disabled='!slack_username || slack_username == ""'></md-radio-button>
                       <md-radio-button value=""></md-radio-button>
                     </md-radio-group>
                   </td>

@@ -49,6 +49,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
+  $scope.slack_username = $window.slack_username;
 
   $scope.newKey = function(){
     if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
@@ -69,6 +70,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     data = {
         timezone: new_tz,
         new_waterfall: new_waterfall,
+        slack_username: $scope.slack_username,
         github_user: {
             last_known_as: $scope.github_user,
         },
