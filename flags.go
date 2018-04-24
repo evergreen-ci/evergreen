@@ -5,6 +5,6 @@ package evergreen
 // migrate from the legacy implementation to the amboy-backed queues.
 
 const (
-	UseNewHostProvisioning = false
+	UseNewHostProvisioning = true
 	UseNewHostStarting     = true
 )
