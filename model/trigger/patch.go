@@ -68,17 +68,16 @@ func patchSelectors(p *patch.Patch) []event.Selector {
 	}
 }
 
-func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
-	const name = "outcome"
-
-	if p.Status != evergreen.PatchSucceeded && p.Status != evergreen.PatchFailed {
-		return nil, nil
-	}
-
+func generatorFromPatch(triggerName string, p *patch.Patch) (*notificationGenerator, error) {
 	gen := notificationGenerator{
-		triggerName: name,
+		triggerName: triggerName,
 		selectors:   patchSelectors(p),
 	}
+
+	gen.selectors = append(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: triggerName,
+	})
 
 	ui := evergreen.UIConfig{}
 	if err := ui.Get(); err != nil {
@@ -86,8 +85,9 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	data := commonTemplateData{
-		Object:          "patch",
 		ID:              p.Id.Hex(),
+		Object:          "patch",
+		Project:         p.Project,
 		URL:             fmt.Sprintf("%s/version/%s", ui.Url, p.Version),
 		PastTenseStatus: p.Status,
 		Headers:         makeHeaders(gen.selectors),
@@ -139,6 +139,16 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	return &gen, nil
 }
 
+func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+	const name = "outcome"
+
+	if p.Status != evergreen.PatchSucceeded && p.Status != evergreen.PatchFailed {
+		return nil, nil
+	}
+
+	return generatorFromPatch(name, p)
+}
+
 func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "failure"
 
@@ -146,12 +156,7 @@ func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		return nil, nil
 	}
 
-	gen, err := patchOutcome(e, p)
-	if err != nil {
-		return nil, errors.Wrap(err, "failure trigger failed")
-	}
-	gen.triggerName = name
-	return gen, nil
+	return generatorFromPatch(name, p)
 }
 
 func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
@@ -161,10 +166,5 @@ func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		return nil, nil
 	}
 
-	gen, err := patchOutcome(e, p)
-	if err != nil {
-		return nil, errors.Wrap(err, "success trigger failed")
-	}
-	gen.triggerName = name
-	return gen, nil
+	return generatorFromPatch(name, p)
 }

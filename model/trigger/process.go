@@ -36,6 +36,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 		if gen == nil {
 			continue
 		}
+
 		notes, err := gen.generate(e)
 		if err != nil {
 			catcher.Add(err)
