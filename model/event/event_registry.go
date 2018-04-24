@@ -79,8 +79,11 @@ func (r *eventRegistry) IsSubscribable(resourceType, eventType string) bool {
 	return r.isSubscribable[e]
 }
 
-// RegisterExtraData allows a pair of (resourceType, trigger) to deserialize
-// data from the ExtraData field. Once registered, the data is required.
+// RegisterExtraData associates a struct with the pair (resourceType, trigger).
+// When a Subscription is deserialized that matches the pair, the extra_data
+// field will be initialized to the registered struct.
+// By registering extra data, the extra_data field becomes required in the
+// Subscription model
 func (r *eventRegistry) RegisterExtraData(resourceType, triggerName string, i interface{}) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
