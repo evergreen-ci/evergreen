@@ -5,11 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
-
-var taskComparatorTestConf = testutil.TestConfig()
 
 func TestCmpBasedTaskComparator(t *testing.T) {
 
@@ -260,9 +257,8 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 		Convey("With both repotracker tasks and patch tasks, the toggle should determine how often a patch task is interleaved", func() {
 
-			Convey("A MergeToggle of 2 should interleave tasks evenly", func() {
+			Convey("Tasks should interleave evenly", func() {
 
-				taskComparatorTestConf.Scheduler.MergeToggle = 2
 				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
 				patchTasks := []task.Task{tasks[3], tasks[4], tasks[5]}
 
@@ -280,35 +276,9 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				So(mergedTasks[5].Id, ShouldEqual, taskIds[2])
 
 			})
-
-			Convey("A MergeToggle of 3 should interleave a patch task every third task", func() {
-				taskComparator.mergeToggle = 3
-
-				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3]}
-				patchTasks := []task.Task{tasks[4], tasks[5]}
-
-				tqs := CmpBasedTaskQueues{
-					RepotrackerTasks: repoTrackerTasks,
-					PatchTasks:       patchTasks,
-				}
-				mergedTasks := taskComparator.mergeTasks(&tqs)
-
-				So(len(mergedTasks), ShouldEqual, 6)
-				So(mergedTasks[0].Id, ShouldEqual, taskIds[4])
-				So(mergedTasks[1].Id, ShouldEqual, taskIds[5])
-				So(mergedTasks[2].Id, ShouldEqual, taskIds[0])
-				So(mergedTasks[3].Id, ShouldEqual, taskIds[1])
-				So(mergedTasks[4].Id, ShouldEqual, taskIds[2])
-				So(mergedTasks[5].Id, ShouldEqual, taskIds[3])
-
-			})
-
 		})
 
 		Convey("With a lot of patch tasks, the extras should be added on the end", func() {
-
-			taskComparator.mergeToggle = 2
-
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1]}
 			patchTasks := []task.Task{tasks[2], tasks[3], tasks[4], tasks[5]}
 			tqs := CmpBasedTaskQueues{
@@ -328,7 +298,6 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 		Convey("With a lot of repotracker tasks, the extras should be added on the end", func() {
 
-			taskComparatorTestConf.Scheduler.MergeToggle = 2
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]}
 			patchTasks := []task.Task{tasks[5]}
 

@@ -149,8 +149,7 @@ func MockConfig() *evergreen.Settings {
 			MaxConcurrentRequests:      30,
 		},
 		Scheduler: evergreen.SchedulerConfig{
-			MergeToggle: 10,
-			TaskFinder:  "legacy",
+			TaskFinder: "legacy",
 		},
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:         true,

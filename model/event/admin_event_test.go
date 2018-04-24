@@ -123,12 +123,10 @@ func (s *AdminEventSuite) TestNoSpuriousLogging() {
 
 func (s *AdminEventSuite) TestNoChanges() {
 	before := evergreen.SchedulerConfig{
-		MergeToggle: 5,
-		TaskFinder:  "legacy",
+		TaskFinder: "legacy",
 	}
 	after := evergreen.SchedulerConfig{
-		MergeToggle: 5,
-		TaskFinder:  "legacy",
+		TaskFinder: "legacy",
 	}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
@@ -138,12 +136,10 @@ func (s *AdminEventSuite) TestNoChanges() {
 
 func (s *AdminEventSuite) TestReverting() {
 	before := evergreen.SchedulerConfig{
-		TaskFinder:  "legacy",
-		MergeToggle: 5,
+		TaskFinder: "legacy",
 	}
 	after := evergreen.SchedulerConfig{
-		TaskFinder:  "alternate",
-		MergeToggle: 10,
+		TaskFinder: "alternate",
 	}
 	s.NoError(after.Set())
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
