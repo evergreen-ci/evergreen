@@ -61,7 +61,8 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 	if len(userSettings.GithubUser.LastKnownAs) == 0 {
 		userSettings.GithubUser = user.GithubUser{}
 	} else if u.Settings.GithubUser.LastKnownAs != userSettings.GithubUser.LastKnownAs {
-		token, err := adminSettings.GetGithubOauthToken()
+		var token string
+		token, err = adminSettings.GetGithubOauthToken()
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "Error retrieving Github token")
 		}
