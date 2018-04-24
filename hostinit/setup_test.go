@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -21,8 +22,67 @@ func init() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
+func startHosts(ctx context.Context, settings *evergreen.Settings) error {
+	hostsToStart, err := host.Find(host.IsUninitialized)
+	if err != nil {
+		return errors.Wrap(err, "error fetching uninitialized hosts")
+	}
+
+	catcher := grip.NewBasicCatcher()
+
+	var started int
+	for _, h := range hostsToStart {
+		if h.UserHost {
+			// pass:
+			//    always start spawn hosts asap
+		} else if started > 12 {
+			// throttle hosts, so that we're starting very
+			// few hosts on every pass. Hostinit runs very
+			// frequently, lets not start too many all at
+			// once.
+
+			continue
+		}
+
+		err = CreateHost(ctx, &h, settings)
+
+		if errors.Cause(err) == errIgnorableCreateHost {
+			continue
+		} else if err != nil {
+			catcher.Add(err)
+			continue
+		}
+
+		started++
+	}
+
+	return catcher.Resolve()
+}
+
+// setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
+func setupReadyHosts(ctx context.Context, settings *evergreen.Settings) error {
+	// find all hosts in the uninitialized state
+	uninitializedHosts, err := host.Find(host.NeedsProvisioning())
+	if err != nil {
+		return errors.Wrap(err, "error fetching starting hosts")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, h := range uninitializedHosts {
+
+		err := SetupHost(ctx, &h, settings)
+		if errors.Cause(err) == errRetryHost {
+			continue
+		}
+
+		catcher.Add(err)
+	}
+	return catcher.Resolve()
+}
+
 func TestSetupReadyHosts(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestSetupReadyHosts")
+
 	conf := testutil.TestConfig()
 	mockCloud := cloud.GetMockProvider()
 
