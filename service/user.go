@@ -108,6 +108,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		"base", "settings.html", "base_angular.html", "menu.html")
 }
 
+// TODO: remove this once the UI changes to use the restV2 version
 func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
 	userSettings := user.UserSettings{}
