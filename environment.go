@@ -189,20 +189,20 @@ func (e *envState) initDB(settings DBSettings) error {
 func (e *envState) createNotificationsQueue() error {
 	e.notificationsQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
 
-	notificationsTarget := e.settings.Notify.NotificationsTarget
-	notificationsPeriod := e.settings.Notify.NotificationsPeriod * time.Second
-	if notificationsTarget <= 0 || notificationsPeriod <= 0 {
-		notificationsTarget = 20
-		notificationsPeriod = time.Minute
+	target := e.settings.Notify.NotificationsTarget
+	period := e.settings.Notify.NotificationsPeriod * time.Second
+	if target <= 0 || period <= 0 {
+		target = 20
+		period = time.Minute
 		grip.Warning(message.Fields{
 			"message": "invalid notifications target or period, overriding",
-			"target":  notificationsTarget,
-			"period":  notificationsPeriod,
+			"target":  target,
+			"period":  period,
 		})
 	}
 
 	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
-		notificationsTarget, notificationsPeriod, e.notificationsQueue)
+		target, period, e.notificationsQueue)
 	if err != nil {
 		return errors.Wrap(err, "Failed to make notifications queue runner")
 	}
