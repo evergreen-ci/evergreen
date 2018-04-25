@@ -160,6 +160,6 @@ func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
 	s.PanicsWithValue("no user attached to request", func() {
 		ctx := context.Background()
 		h := &subscriptionGetHandler{}
-		h.ParseAndValidate(ctx, nil)
+		_ = h.ParseAndValidate(ctx, nil)
 	})
 }

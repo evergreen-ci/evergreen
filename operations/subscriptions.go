@@ -20,7 +20,6 @@ func Subscriptions() cli.Command {
 }
 
 func subscriptionsList() cli.Command {
-	const userFlag = "user"
 	return cli.Command{
 		Name:  "list",
 		Usage: "list subscriptions belonging to a user",

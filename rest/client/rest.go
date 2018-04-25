@@ -577,6 +577,9 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	apiSubs := []model.APISubscription{}
 
 	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read subscriptions from response")
+	}
 	if err := json.Unmarshal(bytes, &apiSubs); err != nil {
 		apiSub := model.APISubscription{}
 		if err = json.Unmarshal(bytes, &apiSub); err != nil {
