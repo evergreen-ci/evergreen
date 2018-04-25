@@ -15,7 +15,6 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 	var runningTaskIds []string
 	var hostIds []string
 	var dist distro.Distro
-	var hostAllocator *DeficitBasedHostAllocator
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -23,7 +22,6 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 	Convey("With a deficit based host allocator,"+
 		" determining the number of new hosts to spin up...", t, func() {
 
-		hostAllocator = DeficitBasedHostAllocator
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		runningTaskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		hostIds = []string{"h1", "h2", "h3", "h4", "h5"}
