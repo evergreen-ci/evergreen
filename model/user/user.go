@@ -176,16 +176,15 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 
 func (u *DBUser) PatchSubscriber() (*event.Subscriber, error) {
 	if u.Settings.Notifications.PatchFinish == PreferenceEmail {
-		return &event.Subscriber{
-			Type:   event.EmailSubscriberType,
-			Target: u.EmailAddress,
-		}, nil
+		sub := event.NewEmailSubscriber(u.EmailAddress)
+		return &sub, nil
 
 	} else if u.Settings.Notifications.PatchFinish == PreferenceSlack {
-		return &event.Subscriber{
-			Type:   event.SlackSubscriberType,
-			Target: u.Settings.SlackUsername,
-		}, nil
+		sub := event.NewSlackSubscriber(u.Settings.SlackUsername)
+		return &sub, nil
+
+	} else if len(u.Settings.Notifications.PatchFinish) == 0 {
+		return nil, nil
 	}
 
 	return nil, errors.Errorf("unknown subscriber preference: %s", u.Settings.Notifications.PatchFinish)
