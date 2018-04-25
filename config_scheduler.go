@@ -7,8 +7,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var taskFinderKey = "task_finder"
-
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
 	TaskFinder    string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
@@ -29,7 +27,8 @@ func (c *SchedulerConfig) Get() error {
 func (c *SchedulerConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			taskFinderKey: c.TaskFinder,
+			"task_finder":    c.TaskFinder,
+			"host_allocator": c.HostAllocator,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
