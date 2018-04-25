@@ -126,6 +126,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"activated_by":    j.task.ActivatedBy,
 		"project":         j.task.Project,
 		"variant":         j.task.BuildVariant,
+		"version":         j.task.Version,
+		"build":           j.task.BuildId,
 		"distro":          j.host.Distro.Id,
 		"provider":        j.host.Distro.Provider,
 		"host":            j.host.Id,
