@@ -214,3 +214,18 @@ func FindSubscriptionsByOwner(owner string) ([]Subscription, error) {
 	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
 	return subscriptions, errors.Wrapf(err, "error retrieving subscriptions for owner %s", owner)
 }
+
+func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
+	const ResourceTypePatch = "PATCH"
+	return Subscription{
+		Type:    ResourceTypePatch,
+		Trigger: "outcome",
+		Selectors: []Selector{
+			{
+				Type: "id",
+				Data: id,
+			},
+		},
+		Subscriber: sub,
+	}
+}
