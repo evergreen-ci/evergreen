@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -154,5 +155,5 @@ type Communicator interface {
 
 	// GetSubscriptions fetches the subscriptions for the user defined
 	// in the local evergreen yaml
-	GetSubscriptions(context.Context) ([]restmodel.APISubscription, error)
+	GetSubscriptions(context.Context) ([]event.Subscription, error)
 }

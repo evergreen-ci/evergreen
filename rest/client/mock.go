@@ -14,6 +14,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -23,6 +24,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Mock mocks EvergreenREST for testing.
@@ -498,26 +500,26 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 	return nil
 }
 
-func (c *Mock) GetSubscriptions(_ context.Context) ([]model.APISubscription, error) {
+func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error) {
 	if c.GetSubscriptionsFail {
 		return nil, errors.New("failed to fetch subscriptions")
 	}
 
-	return []model.APISubscription{
+	return []event.Subscription{
 		{
-			ID:      model.ToAPIString("test"),
-			Type:    model.ToAPIString("type"),
-			Trigger: model.ToAPIString("trigger"),
-			Owner:   model.ToAPIString("owner"),
-			Selectors: []model.APISelector{
+			ID:      bson.NewObjectId(),
+			Type:    "type",
+			Trigger: "trigger",
+			Owner:   "owner",
+			Selectors: []event.Selector{
 				{
-					Type: model.ToAPIString("id"),
-					Data: model.ToAPIString("data"),
+					Type: "id",
+					Data: "data",
 				},
 			},
-			Subscriber: model.APISubscriber{
-				Type:   model.ToAPIString("email"),
-				Target: model.ToAPIString("a@domain.invalid"),
+			Subscriber: event.Subscriber{
+				Type:   "email",
+				Target: "a@domain.invalid",
 			},
 		},
 	}, nil

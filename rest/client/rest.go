@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -552,13 +553,13 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 	return &config, nil
 }
 
-func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]model.APISubscription, error) {
+func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscription, error) {
 	info := requestInfo{
 		path:    "/subscriptions",
 		method:  get,
 		version: apiVersion2,
 	}
-	resp, err := c.retryRequest(ctx, info, nil)
+	resp, err := c.request(ctx, info, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -566,17 +567,38 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]model.APISub
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 	if resp.StatusCode != http.StatusOK {
-		restErr := rest.APIError{}
-		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
-			return nil, errors.Wrap(&restErr, "server returned error while fetching subscriptions")
+		restErr := &rest.APIError{}
+		if err = util.ReadJSONInto(resp.Body, restErr); err != nil {
+			return nil, errors.Wrap(restErr, "server returned error while fetching subscriptions")
 		}
 		return nil, errors.Wrapf(err, "expected 200 OK while fetching subscriptions, got %d %s, and couldn't unmarshal error", resp.StatusCode, resp.Status)
 	}
 
-	subs := []model.APISubscription{}
-	err = util.ReadJSONInto(resp.Body, &subs)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal subscriptions")
+	apiSubs := []model.APISubscription{}
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err := json.Unmarshal(bytes, &apiSubs); err != nil {
+		apiSub := model.APISubscription{}
+		if err = json.Unmarshal(bytes, &apiSub); err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal subscriptions")
+		}
+
+		apiSubs = append(apiSubs, apiSub)
+	}
+
+	subs := make([]event.Subscription, len(apiSubs))
+	for i := range apiSubs {
+		var iface interface{}
+		iface, err = apiSubs[i].ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to convert api model")
+		}
+
+		var ok bool
+		subs[i], ok = iface.(event.Subscription)
+		if !ok {
+			return nil, errors.New("received unexpected type from server")
+		}
 	}
 
 	return subs, nil
