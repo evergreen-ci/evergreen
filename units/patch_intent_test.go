@@ -216,6 +216,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
+	s.Zero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester)
@@ -251,6 +252,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
+	s.NotZero(patchDoc.CreateTime)
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
 	s.Equal(dbUser.Id, patchDoc.Author)
@@ -297,7 +299,6 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.NotEmpty(patchDoc.Patches)
 	s.True(patchDoc.Activated)
 	s.NotEmpty(patchDoc.PatchedConfig)
-	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)
