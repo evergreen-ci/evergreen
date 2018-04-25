@@ -332,6 +332,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	for _, mount := range ec2Settings.MountPoints {
 		size = size + int64(mount.Size)
 	}
+	h.VolumeTotalSize = size
 	if _, err := h.SetVolumeSize(); err != nil {
 		return nil, errors.Wrap(err, "error setting volume size in db")
 	}

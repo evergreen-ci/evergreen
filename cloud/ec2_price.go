@@ -273,17 +273,7 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
-	instanceID := h.Id
 	var err error
-	if isHostSpot(h) {
-		instanceID, err = client.GetSpotInstanceId(ctx, h)
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting spot instance ID")
-		}
-		if instanceID == "" {
-			return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-		}
-	}
 	dur := t.end.Sub(t.start)
 	size, err := getVolumeSize(ctx, client, h)
 	if err != nil {
