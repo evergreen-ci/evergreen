@@ -207,6 +207,9 @@ func (s *Subscription) Validate() error {
 }
 
 func FindSubscriptionsByOwner(owner string) ([]Subscription, error) {
+	if len(owner) == 0 {
+		return nil, nil
+	}
 	query := db.Query(bson.M{
 		subscriptionOwnerKey: owner,
 	})
