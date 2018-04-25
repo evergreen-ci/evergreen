@@ -124,7 +124,6 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 		catcher.Add(e.initDB(e.settings.Database))
 	}
 	catcher.Add(e.createQueues(ctx))
-	catcher.Add(e.createNotificationsQueue())
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
 	catcher.Add(e.initSenders())
@@ -183,10 +182,6 @@ func (e *envState) initDB(settings DBSettings) error {
 	e.session, _, err = sf.GetSession()
 
 	return errors.Wrap(err, "problem getting database session")
-}
-
-func (e *envState) createNotificationsQueue() error {
-	return nil
 }
 
 func (e *envState) createQueues(ctx context.Context) error {
