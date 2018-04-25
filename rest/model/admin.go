@@ -944,13 +944,15 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder APIString `json:"task_finder"`
+	TaskFinder    APIString `json:"task_finder"`
+	HostAllocator APIString `json:"host_allocator"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.SchedulerConfig:
 		a.TaskFinder = ToAPIString(v.TaskFinder)
+		a.HostAllocator = ToAPIString(v.HostAllocator)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}

@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -10,7 +11,8 @@ var taskFinderKey = "task_finder"
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	TaskFinder string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	TaskFinder    string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	HostAllocator string `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -37,15 +39,26 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	finders := []string{"legacy", "alternate", "parallel", "pipeline"}
 
 	if c.TaskFinder == "" {
-		// default to alternate
+		// default to legacy
 		c.TaskFinder = finders[0]
 		return nil
 	}
 
-	if !sliceContains(finders, c.TaskFinder) {
+	if !util.StringSliceContains(finders, c.TaskFinder) {
 		return errors.Errorf("supported finders are %s; %s is not supported",
 			finders, c.TaskFinder)
-
 	}
+
+	allocators := []string{"duration", "deficit"}
+	if c.HostAllocator == "" {
+		c.HostAllocator = allocators[0]
+		return nil
+	}
+
+	if !util.StringSliceContains(allocators, c.HostAllocator) {
+		return errors.Errorf("supported allocators are %s; %s is not suported",
+			allocators, c.HostAllocator)
+	}
+
 	return nil
 }

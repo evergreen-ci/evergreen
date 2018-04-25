@@ -126,14 +126,10 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 
 }
 
-type hostScheduler struct {
-	HostAllocator
-}
-
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func (s *hostScheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {
+func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {
 	startTime := time.Now()
 
 	// loop over the distros, spawning up the appropriate number of hosts
