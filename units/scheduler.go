@@ -25,7 +25,7 @@ type distroSchedulerJob struct {
 	DistroID string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
-	env envergreen.Environment
+	env evergreen.Environment
 }
 
 func makeDistroSchedulerJob() *distroSchedulerJob {
