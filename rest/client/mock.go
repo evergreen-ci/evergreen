@@ -53,6 +53,7 @@ type Mock struct {
 	HeartbeatShouldAbort   bool
 	HeartbeatShouldErr     bool
 	TaskExecution          int
+	GetSubscriptionsFail   bool
 
 	AttachedFiles map[string][]*artifact.File
 
@@ -495,4 +496,29 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 		return errors.New("mock failed, wrong secret")
 	}
 	return nil
+}
+
+func (c *Mock) GetSubscriptions(_ context.Context) ([]model.APISubscription, error) {
+	if c.GetSubscriptionsFail {
+		return nil, errors.New("failed to fetch subscriptions")
+	}
+
+	return []model.APISubscription{
+		{
+			ID:      model.ToAPIString("test"),
+			Type:    model.ToAPIString("type"),
+			Trigger: model.ToAPIString("trigger"),
+			Owner:   model.ToAPIString("owner"),
+			Selectors: []model.APISelector{
+				{
+					Type: model.ToAPIString("id"),
+					Data: model.ToAPIString("data"),
+				},
+			},
+			Subscriber: model.APISubscriber{
+				Type:   model.ToAPIString("email"),
+				Target: model.ToAPIString("a@domain.invalid"),
+			},
+		},
+	}, nil
 }

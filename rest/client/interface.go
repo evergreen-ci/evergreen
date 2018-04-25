@@ -151,4 +151,8 @@ type Communicator interface {
 
 	// GetClientConfig fetches the ClientConfig for the evergreen server
 	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)
+
+	// GetSubscriptions fetches the subscriptions for the user defined
+	// in the local evergreen yaml
+	GetSubscriptions(context.Context) ([]restmodel.APISubscription, error)
 }

@@ -551,3 +551,33 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 
 	return &config, nil
 }
+
+func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]model.APISubscription, error) {
+	info := requestInfo{
+		path:    "/subscriptions",
+		method:  get,
+		version: apiVersion2,
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch subscriptions")
+	}
+	if resp.StatusCode != http.StatusOK {
+		restErr := rest.APIError{}
+		if err = util.ReadJSONInto(resp.Body, &restErr); err != nil {
+			return nil, errors.Wrap(&restErr, "server returned error while fetching subscriptions")
+		}
+		return nil, errors.Wrapf(err, "expected 200 OK while fetching subscriptions, got %d %s, and couldn't unmarshal error", resp.StatusCode, resp.Status)
+	}
+
+	subs := []model.APISubscription{}
+	err = util.ReadJSONInto(resp.Body, &subs)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal subscriptions")
+	}
+
+	return subs, nil
+}
