@@ -54,6 +54,14 @@ func insertTestDocuments() error {
 				Provider: "ec2",
 			},
 		},
+		Host{
+			Id:     "six",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id:       "bar",
+				Provider: evergreen.ProviderNameStatic,
+			},
+		},
 	}
 
 	return db.InsertMany(Collection, input...)
@@ -67,7 +75,7 @@ func TestHostStatsByProvider(t *testing.T) {
 	result := ProviderStats{}
 
 	assert.NoError(db.Aggregate(Collection, statsByProviderPipeline(), &result))
-	assert.Len(result, 2, "%+v", result)
+	assert.Len(result, 3, "%+v", result)
 
 	rmap := result.Map()
 	assert.Equal(1, rmap["ec2-spot"])
@@ -88,7 +96,7 @@ func TestHostStatsByDistro(t *testing.T) {
 	result := DistroStats{}
 
 	assert.NoError(db.Aggregate(Collection, statsByDistroPipeline(), &result))
-	assert.Len(result, 2, "%+v", result)
+	assert.Len(result, 3, "%+v", result)
 
 	rcmap := result.CountMap()
 	assert.Equal(2, rcmap["debian"])
@@ -97,6 +105,10 @@ func TestHostStatsByDistro(t *testing.T) {
 	rtmap := result.TasksMap()
 	assert.Equal(2, rtmap["debian"])
 	assert.Equal(1, rtmap["redhat"])
+
+	exceeded := result.MaxHostsExceeded()
+	assert.Len(exceeded, 2)
+	assert.NotContains(exceeded, "bar")
 
 	alt, err := GetStatsByDistro()
 	assert.NoError(err)
