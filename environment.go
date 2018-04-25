@@ -9,15 +9,18 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -70,6 +73,8 @@ type Environment interface {
 	// between process restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
+	// NotificationsQueue is the rate limited queue for sending notifications
+	NotificationsQueue() amboy.Queue
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
@@ -82,13 +87,14 @@ type Environment interface {
 }
 
 type envState struct {
-	remoteQueue  amboy.Queue
-	localQueue   amboy.Queue
-	settings     *Settings
-	session      *mgo.Session
-	mu           sync.RWMutex
-	clientConfig *ClientConfig
-	senders      map[SenderKey]send.Sender
+	remoteQueue        amboy.Queue
+	localQueue         amboy.Queue
+	notificationsQueue amboy.Queue
+	settings           *Settings
+	session            *mgo.Session
+	mu                 sync.RWMutex
+	clientConfig       *ClientConfig
+	senders            map[SenderKey]send.Sender
 }
 
 // Configure requires that either the path or DB is sent so that it can construct the
@@ -119,6 +125,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 		catcher.Add(e.initDB(e.settings.Database))
 	}
 	catcher.Add(e.createQueues(ctx))
+	catcher.Add(e.createNotificationsQueue())
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
 	catcher.Add(e.initSenders())
@@ -179,6 +186,32 @@ func (e *envState) initDB(settings DBSettings) error {
 	return errors.Wrap(err, "problem getting database session")
 }
 
+func (e *envState) createNotificationsQueue() error {
+	e.notificationsQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+
+	notificationsTarget := e.settings.Notify.NotificationsTarget
+	notificationsPeriod := e.settings.Notify.NotificationsPeriod * time.Second
+	if notificationsTarget <= 0 || notificationsPeriod <= 0 {
+		notificationsTarget = 20
+		notificationsPeriod = time.Minute
+		grip.Warning(message.Fields{
+			"message": "invalid notifications target or period, overriding",
+			"target":  notificationsTarget,
+			"period":  notificationsPeriod,
+		})
+	}
+
+	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
+		notificationsTarget, notificationsPeriod, e.notificationsQueue)
+	if err != nil {
+		return errors.Wrap(err, "Failed to make notifications queue runner")
+	}
+	if err := e.notificationsQueue.SetRunner(runner); err != nil {
+		return errors.Wrap(err, "failed to set notifications queue runner")
+	}
+	return nil
+}
+
 func (e *envState) createQueues(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
@@ -208,6 +241,7 @@ func (e *envState) initQueues(ctx context.Context) []error {
 
 	catcher.Add(e.localQueue.Start(ctx))
 	catcher.Add(e.remoteQueue.Start(ctx))
+	catcher.Add(e.notificationsQueue.Start(ctx))
 
 	return catcher.Errors()
 }
@@ -439,6 +473,12 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 	}
 
 	return sender, nil
+}
+
+func (e *envState) NotificationsQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.notificationsQueue
 }
 
 // getClientConfig should be called once at startup and looks at the

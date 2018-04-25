@@ -1,6 +1,8 @@
 package evergreen
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -8,7 +10,9 @@ import (
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
-	SMTP *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
+	NotificationsTarget int           `bson:"notifications_target" json:"notifications_target" yaml:"notifications_target"`
+	NotificationsPeriod time.Duration `bson:"notifications_period" json:"notifications_period" yaml:"notifications_period"`
+	SMTP                *SMTPConfig   `bson:"smtp" json:"smtp" yaml:"smtp"`
 }
 
 func (c *NotifyConfig) SectionId() string { return "notify" }
@@ -24,15 +28,12 @@ func (c *NotifyConfig) Get() error {
 
 func (c *NotifyConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
-		"$set": bson.M{
-			"smtp": c.SMTP,
-		},
+		"$set": c,
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
 func (c *NotifyConfig) ValidateAndDefault() error {
-
 	return nil
 }
 

@@ -95,5 +95,13 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 }
 
 func (e *Environment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	return e.InternalSender, nil
+}
+
+func (e *Environment) NotificationsQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.Local
 }

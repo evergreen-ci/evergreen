@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/send"
@@ -679,7 +680,9 @@ func (a *APINewRelicConfig) ToService() (interface{}, error) {
 }
 
 type APINotifyConfig struct {
-	SMTP *APISMTPConfig `json:"smtp"`
+	NotificationsTarget int            `json:"notifications_target"`
+	NotificationsPeriod time.Duration  `json:"notifications_period"`
+	SMTP                *APISMTPConfig `json:"smtp"`
 }
 
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
@@ -691,6 +694,8 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 				return err
 			}
 		}
+		a.NotificationsTarget = v.NotificationsTarget
+		a.NotificationsPeriod = v.NotificationsPeriod
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -707,7 +712,9 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 		config = smtp.(*evergreen.SMTPConfig)
 	}
 	return evergreen.NotifyConfig{
-		SMTP: config,
+		NotificationsTarget: a.NotificationsTarget,
+		NotificationsPeriod: a.NotificationsPeriod,
+		SMTP:                config,
 	}, nil
 }
 
