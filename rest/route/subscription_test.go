@@ -114,7 +114,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	s.Equal("new type", dbSubscriptions[0].Type)
 }
 
-func (s *SubscriptionRouteSuite) TestUnauthorizedUser() {
+func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
@@ -136,4 +136,30 @@ func (s *SubscriptionRouteSuite) TestUnauthorizedUser() {
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
 	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot change subscriptions for anyone other than yourself")
+}
+
+func (s *SubscriptionRouteSuite) TestGet() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+
+	h := &subscriptionGetHandler{}
+	s.NoError(h.ParseAndValidate(ctx, nil))
+	subs, err := h.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Len(subs.Result, 0)
+
+	s.TestSubscriptionPost()
+
+	s.NoError(h.ParseAndValidate(ctx, nil))
+	subs, err = h.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Len(subs.Result, 1)
+}
+
+func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
+	s.PanicsWithValue("no user attached to request", func() {
+		ctx := context.Background()
+		h := &subscriptionGetHandler{}
+		h.ParseAndValidate(ctx, nil)
+	})
 }

@@ -11,27 +11,33 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 )
 
-type subscriptionPostHandler struct {
-	Subscriptions   *[]model.APISubscription `json:"subscriptions"`
-	dbSubscriptions []event.Subscription
-}
-
 func getSubscriptionRouteManager(route string, version int) *RouteManager {
 	h := &subscriptionPostHandler{}
 
-	handler := MethodHandler{
+	postHandler := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    h.Handler(),
 		MethodType:        http.MethodPost,
 	}
+	getHandler := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    &subscriptionGetHandler{},
+		MethodType:        http.MethodGet,
+	}
 
 	routeManager := RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{handler},
+		Methods: []MethodHandler{postHandler, getHandler},
 		Version: version,
 	}
 	return &routeManager
+}
+
+type subscriptionPostHandler struct {
+	Subscriptions   *[]model.APISubscription `json:"subscriptions"`
+	dbSubscriptions []event.Subscription
 }
 
 func (s *subscriptionPostHandler) Handler() RequestHandler {
@@ -90,4 +96,35 @@ func (s *subscriptionPostHandler) Execute(ctx context.Context, sc data.Connector
 	}
 
 	return ResponseData{}, nil
+}
+
+type subscriptionGetHandler struct {
+	id string
+}
+
+func (s *subscriptionGetHandler) Handler() RequestHandler {
+	return &subscriptionGetHandler{}
+}
+
+func (s *subscriptionGetHandler) ParseAndValidate(ctx context.Context, _ *http.Request) error {
+	u := MustHaveUser(ctx)
+	s.id = u.Id
+
+	return nil
+}
+
+func (s *subscriptionGetHandler) Execute(_ context.Context, sc data.Connector) (ResponseData, error) {
+	subs, err := sc.GetSubscriptions(s.id)
+	if err != nil {
+		return ResponseData{}, err
+	}
+
+	model := make([]model.Model, len(subs))
+	for i := range subs {
+		model[i] = &subs[i]
+	}
+
+	return ResponseData{
+		Result: model,
+	}, nil
 }
