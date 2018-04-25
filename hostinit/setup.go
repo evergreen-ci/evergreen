@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	RunnerName = "hostinit"
 	scpTimeout = time.Minute
 )
 
@@ -120,7 +121,6 @@ func setupHost(ctx context.Context, targetHost *host.Host, settings *evergreen.S
 	// run the function scheduled for when the host is up
 	if err = cloudMgr.OnUp(ctx, targetHost); err != nil {
 		err = errors.Wrapf(err, "OnUp callback failed for host %s", targetHost.Id)
-		grip.Error(err)
 		return "", err
 	}
 

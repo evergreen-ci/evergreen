@@ -1,15 +1,12 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -106,53 +103,4 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
-}
-
-// TODO: remove this once the UI changes to use the restV2 version
-func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) {
-	currentUser := MustHaveUser(r)
-	userSettings := user.UserSettings{}
-
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &userSettings); err != nil {
-		err = errors.Wrap(err, "JSON is invalid")
-		uis.LoggedError(w, r, http.StatusBadRequest, err)
-		return
-	}
-
-	if len(userSettings.GithubUser.LastKnownAs) == 0 {
-		userSettings.GithubUser = user.GithubUser{}
-
-	} else if currentUser.Settings.GithubUser.LastKnownAs != userSettings.GithubUser.LastKnownAs {
-		token, err := uis.Settings.GetGithubOauthToken()
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrap(err, "Error fetching user from Github"))
-			return
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		ghUser, err := thirdparty.GetGithubUser(ctx, token, userSettings.GithubUser.LastKnownAs)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrap(err, "Error fetching user from Github"))
-			return
-		}
-
-		userSettings.GithubUser.LastKnownAs = *ghUser.Login
-		userSettings.GithubUser.UID = *ghUser.ID
-
-	} else {
-		userSettings.GithubUser.UID = currentUser.Settings.GithubUser.UID
-	}
-
-	if err := model.SaveUserSettings(currentUser.Username(), userSettings); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "Error saving user settings"))
-		return
-	}
-
-	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Settings were saved."))
-	uis.WriteJSON(w, http.StatusOK, "Updated user settings successfully")
 }
