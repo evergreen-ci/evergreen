@@ -8,9 +8,9 @@ import (
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
-	NotificationsTarget       int         `bson:"notifications_target" json:"notifications_target" yaml:"notifications_target"`
-	NotificationsPeriodInSecs int         `bson:"notifications_period_in_secs" json:"notifications_period_in_secs" yaml:"notifications_period_in_secs"`
-	SMTP                      *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
+	BufferTargetPerInterval int         `bson:"buffer_target_per_interval" json:"buffer_target_per_interval" yaml:"buffer_target_per_interval"`
+	BufferIntervalSeconds   int         `bson:"buffer_interval_seconds" json:"buffer_interval_seconds" yaml:"buffer_interval_seconds"`
+	SMTP                    *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
 }
 
 func (c *NotifyConfig) SectionId() string { return "notify" }
@@ -32,12 +32,20 @@ func (c *NotifyConfig) Set() error {
 }
 
 func (c *NotifyConfig) ValidateAndDefault() error {
-	if c.NotificationsPeriodInSecs == 0 {
-		c.NotificationsPeriodInSecs = 60
+	if c.BufferIntervalSeconds <= 0 {
+		c.BufferIntervalSeconds = 60
 	}
-	if c.NotificationsTarget == 0 {
-		c.NotificationsTarget = 20
+	if c.BufferTargetPerInterval <= 0 {
+		c.BufferTargetPerInterval = 20
 	}
+
+	// cap to 100 jobs/sec per server
+	jobsPerSecond := c.BufferIntervalSeconds / c.BufferTargetPerInterval
+	if jobsPerSecond > maxNotificationsPerSecond {
+		return errors.Errorf("maximum notification jobs per second is %d", maxNotificationsPerSecond)
+
+	}
+
 	return nil
 }
 

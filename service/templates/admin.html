@@ -769,12 +769,12 @@ Admin Settings
               <md-card-content>
                 <div class="muted small" style="height:25px;">All settings are applied per-server</div>
                 <md-input-container class="control" style="width:45%;">
-                  <label>Notifications Pool Target</label>
-                  <input type="number" ng-model="Settings.notify.notifications_target">
+                  <label>Notifications Rate Limit Target per Time Interval</label>
+                  <input type="number" ng-model="Settings.notify.buffer_target_per_interval">
                 </md-input-container>
                 <md-input-container class="control" style="width:45%;">
-                  <label>Notifications Pool Period (seconds)</label>
-                  <input type="number" ng-model="Settings.notify.notifications_period_in_secs">
+                  <label>Notifications Rate Limit Time Interval (seconds)</label>
+                  <input type="number" ng-model="Settings.notify.buffer_interval_seconds">
                 </md-input-container>
               </md-card-content>
             </md-card>

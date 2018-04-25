@@ -206,7 +206,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 
 		ts := util.RoundPartOfHour(parts).Format(tsFormat)
 
-		return errors.Wrap(queue.Put(NewEventMetaJob(nil, ts)), "failed to queue event-metajob")
+		return errors.Wrap(queue.Put(NewEventMetaJob(queue, ts)), "failed to queue event-metajob")
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
@@ -72,8 +73,6 @@ type Environment interface {
 	// between process restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
-	// NotificationsQueue is the rate limited queue for sending notifications
-	NotificationsQueue() amboy.Queue
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
@@ -123,10 +122,10 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if e.session == nil {
 		catcher.Add(e.initDB(e.settings.Database))
 	}
+	catcher.Add(e.initSenders())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
-	catcher.Add(e.initSenders())
 	if confPath != "" {
 		catcher.Add(e.persistSettings())
 	}
@@ -206,16 +205,21 @@ func (e *envState) createQueues(ctx context.Context) error {
 	e.remoteQueue = rq
 
 	// Notifications queue w/ moving weight avg pool
-	e.notificationsQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
 
 	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
-		e.settings.Notify.NotificationsTarget, time.Duration(e.settings.Notify.NotificationsPeriodInSecs)*time.Second,
+		e.settings.Notify.BufferTargetPerInterval,
+		time.Duration(e.settings.Notify.BufferIntervalSeconds)*time.Second,
 		e.notificationsQueue)
 	if err != nil {
 		return errors.Wrap(err, "Failed to make notifications queue runner")
 	}
 	if err = e.notificationsQueue.SetRunner(runner); err != nil {
 		return errors.Wrap(err, "failed to set notifications queue runner")
+	}
+
+	for k, v := range e.senders {
+		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, v)
 	}
 
 	return nil
@@ -458,12 +462,6 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 	}
 
 	return sender, nil
-}
-
-func (e *envState) NotificationsQueue() amboy.Queue {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.notificationsQueue
 }
 
 // getClientConfig should be called once at startup and looks at the
