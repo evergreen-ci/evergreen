@@ -13,6 +13,17 @@ func Subscriptions() cli.Command {
 		Name:   "subscriptions",
 		Usage:  "for managing subscriptions in Evergreen",
 		Before: setPlainLogger,
+		Subcommands: []cli.Command{
+			subscriptionsList(),
+		},
+	}
+}
+
+func subscriptionsList() cli.Command {
+	const userFlag = "user"
+	return cli.Command{
+		Name:  "list",
+		Usage: "list subscriptions belonging to a user",
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
