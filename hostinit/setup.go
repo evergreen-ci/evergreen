@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	RunnerName = "hostinit"
 	scpTimeout = time.Minute
 )
 
