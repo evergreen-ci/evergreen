@@ -961,7 +961,8 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder: FromAPIString(a.TaskFinder),
+		TaskFinder:    FromAPIString(a.TaskFinder),
+		HostAllocator: FromAPIString(a.HostAllocator),
 	}, nil
 }
 
