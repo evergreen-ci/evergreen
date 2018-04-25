@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -62,7 +63,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -78,7 +79,13 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	}).Insert())
 
 	s.NoError((&user.DBUser{
-		Id: evergreen.GithubPatchUser,
+		Id:           evergreen.GithubPatchUser,
+		EmailAddress: "test@domain.invalid",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				PatchFinish: user.PreferenceEmail,
+			},
+		},
 	}).Insert())
 
 	s.NoError((&model.ProjectVars{
@@ -221,6 +228,10 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+
+	out := []bson.M{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &out))
+	s.Len(out, 1)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
@@ -233,7 +244,11 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 				UID:         1234,
 				LastKnownAs: "somebody",
 			},
+			Notifications: user.NotificationPreferences{
+				PatchFinish: user.PreferenceEmail,
+			},
 		},
+		EmailAddress: "test@domain.invalid",
 	}
 	s.NoError(dbUser.Insert())
 	s.user = dbUser.Id
@@ -266,6 +281,24 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &out))
+	s.Len(out, 2)
+	for i := range out {
+		if out[i].Subscriber.Type == event.EmailSubscriberType {
+			s.Equal("test@domain.invalid", *(out[i].Subscriber.Target.(*string)))
+
+		} else if out[i].Subscriber.Type == event.GithubPullRequestSubscriberType {
+			ghsub := out[i].Subscriber.Target.(*event.GithubPullRequestSubscriber)
+			s.Equal("evergreen-ci", ghsub.Owner)
+			s.Equal("evergreen", ghsub.Repo)
+			s.Equal(448, ghsub.PRNumber)
+			s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", ghsub.Ref)
+		} else {
+			s.T().Errorf("unexpected subscriber type: %s", out[i].Subscriber.Type)
+		}
+	}
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
