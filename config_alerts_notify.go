@@ -1,8 +1,6 @@
 package evergreen
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -10,9 +8,9 @@ import (
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
-	NotificationsTarget int           `bson:"notifications_target" json:"notifications_target" yaml:"notifications_target"`
-	NotificationsPeriod time.Duration `bson:"notifications_period" json:"notifications_period" yaml:"notifications_period"`
-	SMTP                *SMTPConfig   `bson:"smtp" json:"smtp" yaml:"smtp"`
+	NotificationsTarget       int         `bson:"notifications_target" json:"notifications_target" yaml:"notifications_target"`
+	NotificationsPeriodInSecs int         `bson:"notifications_period_in_secs" json:"notifications_period_in_secs" yaml:"notifications_period_in_secs"`
+	SMTP                      *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
 }
 
 func (c *NotifyConfig) SectionId() string { return "notify" }
@@ -34,6 +32,12 @@ func (c *NotifyConfig) Set() error {
 }
 
 func (c *NotifyConfig) ValidateAndDefault() error {
+	if c.NotificationsPeriodInSecs == 0 {
+		c.NotificationsPeriodInSecs = 60
+	}
+	if c.NotificationsTarget == 0 {
+		c.NotificationsTarget = 20
+	}
 	return nil
 }
 

@@ -20,7 +20,6 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -187,28 +186,6 @@ func (e *envState) initDB(settings DBSettings) error {
 }
 
 func (e *envState) createNotificationsQueue() error {
-	e.notificationsQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
-
-	target := e.settings.Notify.NotificationsTarget
-	period := e.settings.Notify.NotificationsPeriod * time.Second
-	if target <= 0 || period <= 0 {
-		target = 20
-		period = time.Minute
-		grip.Warning(message.Fields{
-			"message": "invalid notifications target or period, overriding",
-			"target":  target,
-			"period":  period,
-		})
-	}
-
-	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
-		target, period, e.notificationsQueue)
-	if err != nil {
-		return errors.Wrap(err, "Failed to make notifications queue runner")
-	}
-	if err := e.notificationsQueue.SetRunner(runner); err != nil {
-		return errors.Wrap(err, "failed to set notifications queue runner")
-	}
 	return nil
 }
 
@@ -232,6 +209,19 @@ func (e *envState) createQueues(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 	e.remoteQueue = rq
+
+	// Notifications queue w/ moving weight avg pool
+	e.notificationsQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+
+	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
+		e.settings.Notify.NotificationsTarget, time.Duration(e.settings.Notify.NotificationsPeriodInSecs)*time.Second,
+		e.notificationsQueue)
+	if err != nil {
+		return errors.Wrap(err, "Failed to make notifications queue runner")
+	}
+	if err = e.notificationsQueue.SetRunner(runner); err != nil {
+		return errors.Wrap(err, "failed to set notifications queue runner")
+	}
 
 	return nil
 }
