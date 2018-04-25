@@ -164,26 +164,29 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		}},
 		// Join test results to this task
 		{"$lookup": bson.M{
-			"from":         testresult.Collection,
-			"localField":   task.IdKey,
-			"foreignField": testresult.TaskIDKey,
-			"as":           testResultsKey,
+			"from": testresult.Collection,
+			"as":   testResultsKey,
+			"let": bson.M{
+				"task_id":   "$" + task.IdKey,
+				"execution": "$" + task.ExecutionKey,
+			},
+			"pipeline": []bson.M{{
+				"$match": bson.M{
+					"$expr": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + testresult.TaskIDKey, "$$task_id"}},
+							{"$eq": []string{"$" + testresult.ExecutionKey, "$$execution"}},
+						},
+					},
+				},
+			}},
 		}},
 		// Project only relevant fields.
 		{"$project": bson.M{
 			task.DisplayNameKey:  1,
 			task.BuildVariantKey: 1,
-			testResultsKey: bson.M{
-				"$filter": bson.M{
-					// Filter off non-matching executions. This should be replaced once
-					// multi-key $lookups are supported in 3.6
-					"input": "$" + testResultsKey,
-					"as":    "tr",
-					"cond": bson.M{
-						"$eq": []string{"$$tr.task_execution", "$execution"}},
-				},
-			},
-			task.IdKey: 1,
+			testResultsKey:       1,
+			task.IdKey:           1,
 		}},
 		// Group these tasks by display name and buildvariant -
 		// this returns the most recently completed grouped by task display name
@@ -282,10 +285,22 @@ func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFai
 		}},
 		// Join test results to this task
 		{"$lookup": bson.M{
-			"from":         testresult.Collection,
-			"localField":   task.IdKey,
-			"foreignField": testresult.TaskIDKey,
-			"as":           testResultsKey,
+			"from": testresult.Collection,
+			"as":   testResultsKey,
+			"let": bson.M{
+				"task_id":   "$" + task.IdKey,
+				"execution": "$" + task.ExecutionKey,
+			},
+			"pipeline": []bson.M{{
+				"$match": bson.M{
+					"$expr": bson.M{
+						"$and": []bson.M{
+							{"$eq": []string{"$" + testresult.TaskIDKey, "$$task_id"}},
+							{"$eq": []string{"$" + testresult.ExecutionKey, "$$execution"}},
+						},
+					},
+				},
+			}},
 		}},
 		// Project only relevant fields.
 		{"$project": bson.M{
@@ -293,16 +308,7 @@ func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFai
 			task.RevisionKey:     1,
 			task.BuildVariantKey: 1,
 			task.IdKey:           1,
-			"l": bson.M{
-				"$filter": bson.M{
-					// Filter off non-matching executions. This should be replaced once
-					// multi-key $lookups are supported in 3.6
-					"input": "$" + testResultsKey,
-					"as":    "tr",
-					"cond": bson.M{
-						"$eq": []string{"$$tr.task_execution", "$execution"}},
-				},
-			},
+			"l":                  "$" + testResultsKey,
 		}},
 		// Flatten out the test results
 		{"$unwind": "$l"},
