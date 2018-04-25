@@ -427,11 +427,6 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 }
 
 func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOperation {
-	if !evergreen.UseNewHostStarting {
-		return func(_ amboy.Queue) error { return nil }
-
-	}
-
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -468,7 +463,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			if h.UserHost {
 				// pass:
 				//    always start spawn hosts asap
-			} else if submitted > 16 {
+			} else if submitted > 12 {
 				// throttle hosts, so that we're starting very
 				// few hosts on every pass. Hostinit runs very
 				// frequently, lets not start too many all at
@@ -485,10 +480,6 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 }
 
 func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOperation {
-	if !evergreen.UseNewHostProvisioning {
-		return func(_ amboy.Queue) error { return nil }
-	}
-
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {

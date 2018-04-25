@@ -171,6 +171,7 @@ type Connector interface {
 
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
+	UpdateSettings(string, user.UserSettings) error
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 

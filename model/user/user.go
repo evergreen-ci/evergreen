@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
@@ -35,10 +36,24 @@ type PubKey struct {
 }
 
 type UserSettings struct {
-	Timezone     string     `json:"timezone" bson:"timezone"`
-	NewWaterfall bool       `json:"new_waterfall" bson:"new_waterfall"`
-	GithubUser   GithubUser `json:"github_user" bson:"github_user,omitempty"`
+	Timezone      string                  `json:"timezone" bson:"timezone"`
+	NewWaterfall  bool                    `json:"new_waterfall" bson:"new_waterfall"`
+	GithubUser    GithubUser              `json:"github_user" bson:"github_user,omitempty"`
+	SlackUsername string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
+	Notifications NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
 }
+
+type NotificationPreferences struct {
+	BuildBreak  UserSubscriptionPreference `bson:"build_break" json:"build_break"`
+	PatchFinish UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
+}
+
+type UserSubscriptionPreference string
+
+const (
+	PreferenceEmail UserSubscriptionPreference = event.EmailSubscriberType
+	PreferenceSlack                            = event.SlackSubscriberType
+)
 
 func (u *DBUser) Username() string {
 	return u.Id
@@ -158,4 +173,13 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	}
 	return dbUser.PatchNumber, nil
 
+}
+
+func IsValidSubscriptionPreference(in string) bool {
+	switch in {
+	case event.EmailSubscriberType, event.SlackSubscriberType, "":
+		return true
+	default:
+		return false
+	}
 }

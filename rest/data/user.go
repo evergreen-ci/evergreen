@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
@@ -29,6 +30,10 @@ func (u *DBUserConnector) AddPublicKey(user *user.DBUser, keyName, keyValue stri
 
 func (u *DBUserConnector) DeletePublicKey(user *user.DBUser, keyName string) error {
 	return user.DeletePublicKey(keyName)
+}
+
+func (u *DBUserConnector) UpdateSettings(userId string, settings user.UserSettings) error {
+	return model.SaveUserSettings(userId, settings)
 }
 
 // MockUserConnector stores a cached set of users that are queried against by the
@@ -85,4 +90,8 @@ func (muc *MockUserConnector) DeletePublicKey(u *user.DBUser, keyName string) er
 	}
 	cu.PubKeys = newKeys
 	return nil
+}
+
+func (muc *MockUserConnector) UpdateSettings(userId string, settings user.UserSettings) error {
+	return errors.New("UpdateSettings not implemented for mock connector")
 }

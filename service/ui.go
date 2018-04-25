@@ -231,7 +231,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 
 	// User settings
 	r.HandleFunc("/settings", requireLogin(uis.loadCtx(uis.userSettingsPage))).Methods("GET")
-	r.HandleFunc("/settings", requireLogin(uis.loadCtx(uis.userSettingsModify))).Methods("PUT")
 	r.HandleFunc("/settings/newkey", requireLogin(uis.loadCtx(uis.newAPIKey))).Methods("POST")
 
 	// Task stats
