@@ -21,11 +21,14 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var taskTestConfig = testutil.TestConfig()
 
-func insertTaskForTesting(taskId, versionId, projectName string, testResult testresult.TestResult) (*task.Task, error) {
+func insertTaskForTesting(taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -64,7 +67,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResult test
 	if err != nil {
 		return nil, err
 	}
-	return task, testresult.InsertMany([]testresult.TestResult{testResult})
+	return task, testresult.InsertMany(testResults)
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -106,7 +109,7 @@ func TestGetTaskInfo(t *testing.T) {
 			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		testTask, err := insertTaskForTesting(taskId, versionId, projectName, testResult)
+		testTask, err := insertTaskForTesting(taskId, versionId, projectName, []testresult.TestResult{testResult})
 		So(err, ShouldBeNil)
 
 		file := artifact.File{
@@ -398,4 +401,74 @@ func TestGetTaskStatus(t *testing.T) {
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
+}
+
+func TestGetDisplayTaskInfo(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	require.NoError(err)
+
+	uis := UIServer{
+		RootURL:     taskTestConfig.Ui.Url,
+		Settings:    *taskTestConfig,
+		UserManager: userManager,
+	}
+
+	home := evergreen.FindEvergreenHome()
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+	})
+	require.NoError(uis.InitPlugins())
+	router := mux.NewRouter()
+	err = uis.AttachRoutes(router)
+	require.NoError(err)
+
+	require.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	executionTaskId := "execution-task"
+	displayTaskId := "display-task"
+	versionId := "my-version"
+	projectName := "project_test"
+
+	testResult := testresult.TestResult{
+		Status:    "success",
+		TaskID:    executionTaskId,
+		Execution: 0,
+		TestFile:  "some-test",
+		URL:       "some-url",
+		StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
+		EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
+	}
+	_, err = insertTaskForTesting(executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
+	displayTask, err := insertTaskForTesting(displayTaskId, versionId, projectName, []testresult.TestResult{})
+	displayTask.ExecutionTasks = []string{executionTaskId}
+	err = db.Update(task.Collection,
+		bson.M{task.IdKey: displayTaskId},
+		bson.M{"$set": bson.M{
+			task.ExecutionTasksKey: []string{executionTaskId},
+			task.DisplayOnlyKey:    true,
+		}})
+	require.NoError(err)
+
+	url, err := router.Get("task_info").URL("task_id", displayTaskId)
+	require.NoError(err)
+
+	request, err := http.NewRequest("GET", url.String(), nil)
+	require.NoError(err)
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	assert.Equal(http.StatusOK, response.Code)
+
+	var jsonBody map[string]interface{}
+	err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
+
+	assert.NoError(err)
+	assert.Equal(displayTask.Id, jsonBody["id"])
+	found := jsonBody["test_results"].(map[string]interface{})
+	assert.Contains(found, "some-test")
 }

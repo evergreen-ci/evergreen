@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type taskStatusContent struct {
@@ -139,8 +140,18 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.StatusDetails.TimeoutStage = srcTask.Details.Description
 
 	// Copy over the test results
-	destTask.LocalTestResults = make(taskTestResultsByName, len(srcTask.LocalTestResults))
-	for _, _testResult := range srcTask.LocalTestResults {
+	testResults := srcTask.LocalTestResults
+	if srcTask.DisplayOnly {
+		testResults, err = srcTask.GetTestResultsForDisplayTask()
+		if err != nil {
+			err := errors.Wrapf(err, "Error finding test results for display task", srcTask.Id)
+			grip.Error(err)
+			restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: err.Error()})
+			return
+		}
+	}
+	destTask.LocalTestResults = make(taskTestResultsByName, len(testResults))
+	for _, _testResult := range testResults {
 		numSecs := _testResult.EndTime - _testResult.StartTime
 		testResult := taskTestResult{
 			Status:    _testResult.Status,
