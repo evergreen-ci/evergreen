@@ -127,6 +127,7 @@ func statsByDistroPipeline() []bson.M {
 					"$addToSet": "$" + RunningTaskKey,
 				},
 				"provider": bson.M{
+					// Grab any key, since all hosts in a distro have the same key
 					"$first": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
 				},
 			},
