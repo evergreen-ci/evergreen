@@ -9,7 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSpawnhostAlertJob(t *testing.T) {
@@ -27,13 +29,14 @@ func TestSpawnhostAlertJob(t *testing.T) {
 	j := makeSpawnhostTerminationAlertJob()
 	j.User = u.Id
 	j.Host = "someHost"
-	j.UseMock = true
+	internalSender := send.MakeInternalLogger()
+	j.sender = internalSender
 	ctx := context.Background()
 	j.Run(ctx)
 	assert.NoError(j.Error())
+	assert.True(j.Status().Completed)
 
-	assert.Len(j.sentMails, 1)
-	assert.Equal(fmt.Sprintf(emailBody, "someHost"), j.sentMails[0].Body)
-	assert.Equal(emailSubject, j.sentMails[0].Subject)
-	assert.Equal(u.EmailAddress, j.sentMails[0].Recipients[0])
+	require.New(t).True(internalSender.HasMessage())
+	msg := internalSender.GetMessage().Message.String()
+	assert.Contains(msg, fmt.Sprintf(emailBody, j.Host))
 }
