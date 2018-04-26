@@ -566,13 +566,18 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
 	if resp.StatusCode != http.StatusOK {
 		restErr := &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "Unknown error",
 		}
-		if err = util.ReadJSONInto(resp.Body, restErr); err != nil {
-			return nil, errors.Wrapf(err, "expected 200 OK while fetching subscriptions, got %d %s, and couldn't unmarshal error", resp.StatusCode, resp.Status)
+		if err = json.Unmarshal(bytes, restErr); err != nil {
+			return nil, errors.Errorf("expected 200 OK while fetching subscriptions, got %s. Raw response was: %s", resp.Status, string(bytes))
 		}
 
 		return nil, errors.Wrap(restErr, "server returned error while fetching subscriptions")
@@ -580,10 +585,6 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 
 	apiSubs := []model.APISubscription{}
 
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read subscriptions from response")
-	}
 	if err := json.Unmarshal(bytes, &apiSubs); err != nil {
 		apiSub := model.APISubscription{}
 		if err = json.Unmarshal(bytes, &apiSub); err != nil {

@@ -27,7 +27,7 @@ func subscriptionsList() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.Parent().Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
@@ -44,7 +44,7 @@ func subscriptionsList() cli.Command {
 			}
 
 			for i := range subs {
-				grip.Info(subs[i])
+				grip.Info(subs[i].String())
 			}
 
 			return nil
