@@ -3,13 +3,14 @@ package units
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func TestSpawnhostAlertJob(t *testing.T) {
 	assert := assert.New(t)
 	config := testutil.TestConfig()
 	db.SetGlobalSessionProvider(config.SessionFactory())
-	testutil.HandleTestingErr(db.ClearCollections(user.Collection), t, "error clearing collections")
+	assert.NoError(db.ClearCollections(user.Collection), t, "error clearing collections")
 	assert.NoError(evergreen.UpdateConfig(config))
 	u := user.DBUser{
 		Id:           "me",
@@ -29,14 +30,16 @@ func TestSpawnhostAlertJob(t *testing.T) {
 	j := makeSpawnhostTerminationAlertJob()
 	j.User = u.Id
 	j.Host = "someHost"
-	internalSender := send.MakeInternalLogger()
-	j.sender = internalSender
 	ctx := context.Background()
+	env := &mock.Environment{}
+	j.env = env
+	assert.NoError(j.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
 	j.Run(ctx)
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	require.New(t).True(internalSender.HasMessage())
-	msg := internalSender.GetMessage().Message.String()
+	require.New(t).True(env.InternalSender.HasMessage())
+	msg := env.InternalSender.GetMessage().Message.String()
 	assert.Contains(msg, fmt.Sprintf(emailBody, j.Host))
 }

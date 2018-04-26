@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +34,7 @@ type spawnhostTerminationAlertJob struct {
 	User string `bson:"user"`
 	Host string `bson:"host"`
 
-	sender send.Sender
+	env evergreen.Environment
 }
 
 func makeSpawnhostTerminationAlertJob() *spawnhostTerminationAlertJob {
@@ -48,11 +47,12 @@ func makeSpawnhostTerminationAlertJob() *spawnhostTerminationAlertJob {
 		},
 	}
 
+	j.SetPriority(-2)
 	j.SetDependency(dependency.NewAlways())
 	return j
 }
 
-func NewSpawnhostTerminationAlertJob(user, host string, useMock bool, id string) amboy.Job {
+func NewSpawnhostTerminationAlertJob(user, host string, id string) amboy.Job {
 	job := makeSpawnhostTerminationAlertJob()
 	job.User = user
 	job.Host = host
@@ -82,13 +82,14 @@ func (j *spawnhostTerminationAlertJob) Run(_ context.Context) {
 	}
 	address := dbUser.Email()
 
-	if j.sender == nil {
-		env := evergreen.GetEnvironment()
-		j.sender, err = env.GetSender(evergreen.SenderEmail)
-		if err != nil {
-			j.AddError(err)
-			return
-		}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
+	sender, err := j.env.GetSender(evergreen.SenderEmail)
+	if err != nil {
+		j.AddError(err)
+		return
 	}
 
 	email := message.Email{
@@ -98,5 +99,5 @@ func (j *spawnhostTerminationAlertJob) Run(_ context.Context) {
 		PlainTextContents: true,
 	}
 
-	j.sender.Send(message.MakeEmailMessage(email))
+	sender.Send(message.MakeEmailMessage(email))
 }
