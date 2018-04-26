@@ -443,7 +443,9 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 		EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 	}
 	_, err = insertTaskForTesting(executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
+	assert.NoError(err)
 	displayTask, err := insertTaskForTesting(displayTaskId, versionId, projectName, []testresult.TestResult{})
+	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
 	err = db.Update(task.Collection,
 		bson.M{task.IdKey: displayTaskId},
