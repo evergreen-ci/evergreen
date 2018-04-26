@@ -14,8 +14,9 @@ import (
 )
 
 type Configuration struct {
-	DistroID   string
-	TaskFinder string
+	DistroID      string
+	TaskFinder    string
+	HostAllocator string
 }
 
 func PlanDistro(ctx context.Context, conf Configuration) error {
@@ -70,10 +71,6 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		return errors.Wrap(err, "with host query")
 	}
 
-	hs := &hostScheduler{
-		HostAllocator: &DurationBasedHostAllocator{},
-	}
-
 	allocatorArgs := HostAllocatorData{
 		projectTaskDurations: projectDurations,
 		taskQueueItems: map[string][]model.TaskQueueItem{
@@ -85,12 +82,13 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		},
 	}
 
-	newHosts, err := hs.NewHostsNeeded(ctx, allocatorArgs)
+	allocator := GetHostAllocator(conf.HostAllocator)
+	newHosts, err := allocator(ctx, allocatorArgs)
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
 
-	hostsSpawned, err := hs.spawnHosts(ctx, newHosts)
+	hostsSpawned, err := spawnHosts(ctx, newHosts)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}

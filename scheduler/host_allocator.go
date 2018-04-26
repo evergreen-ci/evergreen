@@ -16,9 +16,7 @@ import (
 //  projectTaskDurations: the expected duration of tasks by project and variant
 //  taskRunDistros: a map of task id -> distros the task is allowed to run on
 // Returns a map of distro name -> how many hosts need to be spun up for that distro.
-type HostAllocator interface {
-	NewHostsNeeded(context.Context, HostAllocatorData) (map[string]int, error)
-}
+type HostAllocator func(context.Context, HostAllocatorData) (map[string]int, error)
 
 // HostAllocatorData is the set of parameters passed to a HostAllocator.
 type HostAllocatorData struct {
@@ -27,4 +25,15 @@ type HostAllocatorData struct {
 	taskRunDistros       map[string][]string
 	distros              map[string]distro.Distro
 	projectTaskDurations model.ProjectTaskDurations
+}
+
+func GetHostAllocator(name string) HostAllocator {
+	switch name {
+	case "deficit":
+		return DeficitBasedHostAllocator
+	case "duration":
+		return DurationBasedHostAllocator
+	default:
+		return DurationBasedHostAllocator
+	}
 }

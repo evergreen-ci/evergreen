@@ -76,8 +76,12 @@ type Host struct {
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
+
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
+	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
+	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
+
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
 
@@ -558,6 +562,33 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
 				CreateTimeKey: h.CreationTime,
+			},
+		},
+	)
+}
+
+func (h *Host) SetZoneAndStartTime() (*mgo.ChangeInfo, error) {
+	return UpsertOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				ZoneKey:      h.Zone,
+				StartTimeKey: h.StartTime,
+			},
+		},
+	)
+}
+
+func (h *Host) SetVolumeSize() (*mgo.ChangeInfo, error) {
+	return UpsertOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				VolumeSizeKey: h.VolumeTotalSize,
 			},
 		},
 	)
