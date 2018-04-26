@@ -390,3 +390,21 @@ mciServices.rest.factory('mciUserSettingsService', ['mciBaseRestService', functi
     }
     return service;
 }]);
+
+mciServices.rest.factory('mciSubscriptionsService', ['mciBaseRestService', function(baseSvc) {
+    var resource = mciServices.rest.RestV2Resource("subscriptions");
+
+    var service = {};
+
+    service.get = function(callbacks) {
+      baseSvc.getResource(resource, [], {}, callbacks);
+    }
+
+    service.push = function(settings, callbacks) {
+      var config = {
+          data: settings
+      };
+      baseSvc.postResource(resource, [], config, callbacks);
+    }
+    return service;
+}]);
