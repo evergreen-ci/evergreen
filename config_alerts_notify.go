@@ -25,9 +25,7 @@ func (c *NotifyConfig) Get() error {
 }
 
 func (c *NotifyConfig) Set() error {
-	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
-		"$set": c,
-	})
+	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), c)
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 

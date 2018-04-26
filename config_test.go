@@ -485,3 +485,33 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.NotNil(pluginMap)
 	s.Equal("pluginVal", pluginMap["pluginKey"])
 }
+
+func (s *AdminSuite) TestNotifyConfig() {
+	config := NotifyConfig{
+		SMTP: &SMTPConfig{
+			Server:     "server",
+			Port:       2285,
+			UseSSL:     true,
+			Username:   "username",
+			Password:   "password",
+			From:       "from",
+			AdminEmail: []string{"email"},
+		},
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Notify)
+
+	config.BufferIntervalSeconds = 1
+	config.BufferTargetPerInterval = 2
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Notify)
+}
