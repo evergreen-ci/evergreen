@@ -623,6 +623,15 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 				"distro":        h.Distro.Id,
 			}))
 		}
+		if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+			grip.Error(message.Fields{
+				"message":       "error finding instance",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			})
+			return errors.Errorf("error finding instance for %s", h.Id)
+		}
 		instance := resp.Reservations[0].Instances[0]
 		for _, vol := range instance.BlockDeviceMappings {
 			if *vol.DeviceName == "" {
