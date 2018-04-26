@@ -1166,6 +1166,19 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
+// GetTestResultsForDisplayTask returns the test results for the execution tasks
+// for a display task.
+func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
+	if !t.DisplayOnly {
+		return nil, errors.Errorf("%s is not a display task", t.Id)
+	}
+	tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results for display task")
+	}
+	return tasks[0].LocalTestResults, nil
+}
+
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
 // test results populated. Note that the order may change. The second parameter
 // can be used to use a specific test result filtering query, otherwise all test
