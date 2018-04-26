@@ -146,7 +146,12 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		return nil, nil
 	}
 
-	return generatorFromPatch(name, p)
+	gen, err := generatorFromPatch(name, p)
+	gen.selectors = append(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: name,
+	})
+	return gen, err
 }
 
 func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
@@ -156,7 +161,12 @@ func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		return nil, nil
 	}
 
-	return generatorFromPatch(name, p)
+	gen, err := generatorFromPatch(name, p)
+	gen.selectors = append(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: name,
+	})
+	return gen, err
 }
 
 func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
@@ -166,5 +176,10 @@ func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		return nil, nil
 	}
 
-	return generatorFromPatch(name, p)
+	gen, err := generatorFromPatch(name, p)
+	gen.selectors = append(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: name,
+	})
+	return gen, err
 }

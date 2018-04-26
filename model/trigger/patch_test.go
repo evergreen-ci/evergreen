@@ -143,6 +143,10 @@ func (s *patchSuite) TestPatchSuccess() {
 	s.NoError(err)
 	s.NotNil(gen)
 	s.False(gen.isEmpty())
+	s.Contains(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: "success",
+	})
 }
 
 func (s *patchSuite) TestPatchFailure() {
@@ -156,6 +160,10 @@ func (s *patchSuite) TestPatchFailure() {
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
+	s.Contains(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: "failure",
+	})
 }
 
 func (s *patchSuite) TestPatchOutcome() {
@@ -175,4 +183,8 @@ func (s *patchSuite) TestPatchOutcome() {
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
+	s.Contains(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: "outcome",
+	})
 }
