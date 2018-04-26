@@ -309,7 +309,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateSchedulerJobs() amboy.QueueOperation {
+func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -352,7 +352,7 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewDistroSchedulerJob(id, ts)))
+			catcher.Add(queue.Put(NewDistroSchedulerJob(env, id, ts)))
 		}
 
 		return catcher.Resolve()

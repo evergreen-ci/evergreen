@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -23,6 +24,8 @@ func init() {
 type distroSchedulerJob struct {
 	DistroID string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+
+	env evergreen.Environment
 }
 
 func makeDistroSchedulerJob() *distroSchedulerJob {
@@ -40,20 +43,28 @@ func makeDistroSchedulerJob() *distroSchedulerJob {
 	return j
 }
 
-func NewDistroSchedulerJob(distroID string, ts time.Time) amboy.Job {
+func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.Time) amboy.Job {
 	j := makeDistroSchedulerJob()
 	j.DistroID = distroID
 	j.SetID(fmt.Sprintf("%s.%s.%s", schedulerJobName, distroID, ts.Format(tsFormat)))
 
+	j.env = env
 	return j
 }
 
 func (j *distroSchedulerJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
+	settings := j.env.Settings()
+
 	conf := scheduler.Configuration{
-		DistroID:   j.DistroID,
-		TaskFinder: "legacy",
+		DistroID:      j.DistroID,
+		TaskFinder:    settings.Scheduler.TaskFinder,
+		HostAllocator: settings.Scheduler.HostAllocator,
 	}
 
 	err := scheduler.PlanDistro(ctx, conf)
