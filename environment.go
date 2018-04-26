@@ -218,8 +218,8 @@ func (e *envState) createQueues(ctx context.Context) error {
 		return errors.Wrap(err, "failed to set notifications queue runner")
 	}
 
-	for k, v := range e.senders {
-		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, v)
+	for k := range e.senders {
+		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
 	}
 
 	return nil
