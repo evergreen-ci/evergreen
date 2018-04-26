@@ -36,7 +36,7 @@ func subscriptionsList() cli.Command {
 			com := conf.GetRestCommunicator(ctx)
 			subs, err := com.GetSubscriptions(ctx)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "error fetching subscriptions")
 			}
 
 			if len(subs) == 0 {
@@ -44,7 +44,7 @@ func subscriptionsList() cli.Command {
 			}
 
 			for i := range subs {
-				grip.Info(subs[i].String())
+				grip.Info(subs[i])
 			}
 
 			return nil

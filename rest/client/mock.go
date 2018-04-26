@@ -24,7 +24,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Mock mocks EvergreenREST for testing.
@@ -507,7 +506,6 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 
 	return []event.Subscription{
 		{
-			ID:      bson.NewObjectId(),
 			Type:    "type",
 			Trigger: "trigger",
 			Owner:   "owner",

@@ -217,7 +217,7 @@ func (s *Subscription) String() string {
 		fmt.Sprintf("ID: %s", id),
 		"",
 		fmt.Sprintf("when the '%s' event, matching the '%s' trigger occurs,", s.Type, s.Trigger),
-		fmt.Sprintf("and the following attributes match:"),
+		"and the following attributes match:",
 	}
 
 	for i := range s.Selectors {
@@ -226,9 +226,8 @@ func (s *Subscription) String() string {
 	for i := range s.RegexSelectors {
 		tmpl = append(tmpl, fmt.Sprintf("\t%s: %s", s.RegexSelectors[i].Type, s.RegexSelectors[i].Data))
 	}
-	tmpl = append(tmpl, "")
-	tmpl = append(tmpl, "issue the following notification:")
-	tmpl = append(tmpl, fmt.Sprintf("\t%s", s.Subscriber))
+	tmpl = append(tmpl, "", "issue the following notification:",
+		fmt.Sprintf("\t%s", s.Subscriber))
 
 	out := ""
 	for i := range tmpl {

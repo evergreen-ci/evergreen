@@ -567,11 +567,15 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 	if resp.StatusCode != http.StatusOK {
-		restErr := &rest.APIError{}
-		if err = util.ReadJSONInto(resp.Body, restErr); err != nil {
-			return nil, errors.Wrap(restErr, "server returned error while fetching subscriptions")
+		restErr := &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "Unknown error",
 		}
-		return nil, errors.Wrapf(err, "expected 200 OK while fetching subscriptions, got %d %s, and couldn't unmarshal error", resp.StatusCode, resp.Status)
+		if err = util.ReadJSONInto(resp.Body, restErr); err != nil {
+			return nil, errors.Wrapf(err, "expected 200 OK while fetching subscriptions, got %d %s, and couldn't unmarshal error", resp.StatusCode, resp.Status)
+		}
+
+		return nil, errors.Wrap(restErr, "server returned error while fetching subscriptions")
 	}
 
 	apiSubs := []model.APISubscription{}
