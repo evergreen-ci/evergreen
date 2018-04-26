@@ -55,6 +55,7 @@ func buildApp() *cli.App {
 		operations.List(),
 		operations.TestHistory(),
 		operations.LastGreen(),
+		operations.Subscriptions(),
 
 		// Patch creation and management commands (top-level)
 		operations.Patch(),

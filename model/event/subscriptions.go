@@ -1,6 +1,7 @@
 package event
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -206,7 +207,41 @@ func (s *Subscription) Validate() error {
 	return catcher.Resolve()
 }
 
+func (s *Subscription) String() string {
+	id := "???"
+	if s.ID.Valid() {
+		id = s.ID.Hex()
+	}
+
+	tmpl := []string{
+		fmt.Sprintf("ID: %s", id),
+		"",
+		fmt.Sprintf("when the '%s' event, matching the '%s' trigger occurs,", s.Type, s.Trigger),
+		"and the following attributes match:",
+	}
+
+	for i := range s.Selectors {
+		tmpl = append(tmpl, fmt.Sprintf("\t%s: %s", s.Selectors[i].Type, s.Selectors[i].Data))
+	}
+	for i := range s.RegexSelectors {
+		tmpl = append(tmpl, fmt.Sprintf("\t%s: %s", s.RegexSelectors[i].Type, s.RegexSelectors[i].Data))
+	}
+	tmpl = append(tmpl, "", "issue the following notification:",
+		fmt.Sprintf("\t%s", s.Subscriber))
+
+	out := ""
+	for i := range tmpl {
+		out += tmpl[i]
+		out += "\n"
+	}
+
+	return out
+}
+
 func FindSubscriptionsByOwner(owner string) ([]Subscription, error) {
+	if len(owner) == 0 {
+		return nil, nil
+	}
 	query := db.Query(bson.M{
 		subscriptionOwnerKey: owner,
 	})
