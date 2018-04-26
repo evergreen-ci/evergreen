@@ -114,7 +114,6 @@ arranger:
 
 scheduler:
     logfile: "/tmp/scheduler_test.log"
-    mergetoggle: 3
 
 taskrunner:
     logfile: "/tmp/taskrunner_test.log"

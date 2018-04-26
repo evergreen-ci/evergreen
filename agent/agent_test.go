@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -344,7 +345,21 @@ func (s *AgentSuite) TestAbort() {
 	err := s.a.runTask(ctx, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
+	shouldFind := map[string]bool{
+		"initial task setup":              false,
+		"Running post-task commands":      false,
+		"Sending final status as: failed": false,
+	}
+	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
+		for toFind, _ := range shouldFind {
+			if strings.Contains(m.Message, toFind) {
+				shouldFind[toFind] = true
+			}
+		}
+	}
+	for toFind, found := range shouldFind {
+		s.True(found, fmt.Sprintf("Expected to find '%s'", toFind))
+	}
 }
 
 func (s *AgentSuite) TestWaitCompleteSuccess() {

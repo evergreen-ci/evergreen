@@ -372,3 +372,21 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
 
     return service;
 }]);
+
+mciServices.rest.factory('mciUserSettingsService', ['mciBaseRestService', function(baseSvc) {
+    var resource = mciServices.rest.RestV2Resource("user/settings");
+
+    var service = {};
+
+    service.getUserSettings = function(callbacks) {
+      baseSvc.getResource(resource, [], {}, callbacks);
+    }
+
+    service.saveUserSettings = function(settings, callbacks) {
+      var config = {
+          data: settings
+      };
+      baseSvc.postResource(resource, [], config, callbacks);
+    }
+    return service;
+}]);

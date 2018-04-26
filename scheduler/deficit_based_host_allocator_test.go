@@ -15,7 +15,6 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 	var runningTaskIds []string
 	var hostIds []string
 	var dist distro.Distro
-	var hostAllocator *DeficitBasedHostAllocator
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -23,7 +22,6 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 	Convey("With a deficit based host allocator,"+
 		" determining the number of new hosts to spin up...", t, func() {
 
-		hostAllocator = &DeficitBasedHostAllocator{}
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		runningTaskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		hostIds = []string{"h1", "h2", "h3", "h4", "h5"}
@@ -47,7 +45,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					},
 				}
 
-				So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData,
+				So(deficitNumNewHostsForDistro(ctx, hostAllocatorData,
 					dist), ShouldEqual, 0)
 			})
 
@@ -68,7 +66,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 			hosts := []host.Host{
 				{Id: hostIds[0]},
@@ -87,7 +85,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 
@@ -118,7 +116,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 
@@ -148,7 +146,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 
 		})
@@ -179,7 +177,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 
@@ -214,7 +212,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 
 			dist.PoolSize = 8
@@ -229,7 +227,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 			dist.PoolSize = 7
 			hostAllocatorData = &HostAllocatorData{
@@ -243,7 +241,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 2)
 			dist.PoolSize = 6
 			hostAllocatorData = &HostAllocatorData{
@@ -257,7 +255,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 1)
 		})
 
@@ -284,7 +282,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
+			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 

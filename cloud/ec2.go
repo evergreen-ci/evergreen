@@ -327,6 +327,16 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
 	}
 
+	// Cache size of mount points since we have them now. This will be used later in cost jobs.
+	var size int64
+	for _, mount := range ec2Settings.MountPoints {
+		size = size + int64(mount.Size)
+	}
+	h.VolumeTotalSize = size
+	if _, err := h.SetVolumeSize(); err != nil {
+		return nil, errors.Wrap(err, "error setting volume size in db")
+	}
+
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
@@ -613,6 +623,15 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 				"distro":        h.Distro.Id,
 			}))
 		}
+		if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+			grip.Error(message.Fields{
+				"message":       "error finding instance",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			})
+			return errors.Errorf("error finding instance for %s", h.Id)
+		}
 		instance := resp.Reservations[0].Instances[0]
 		for _, vol := range instance.BlockDeviceMappings {
 			if *vol.DeviceName == "" {
@@ -672,6 +691,16 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 			return "", errors.Wrap(err, "error getting instance info")
 		}
 	}
+
+	// Cache launch time and availability zone in host document, since we
+	// have access to this information now. Cost jobs will use this
+	// information later.
+	h.Zone = *instance.Placement.AvailabilityZone
+	h.StartTime = *instance.LaunchTime
+	if _, err := h.SetZoneAndStartTime(); err != nil {
+		return "", errors.Wrap(err, "error updating host document in db")
+	}
+
 	return *instance.PublicDnsName, nil
 }
 

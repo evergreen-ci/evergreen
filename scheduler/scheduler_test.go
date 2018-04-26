@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -19,13 +18,6 @@ func init() {
 	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
 }
 
-type MockHostAllocator struct{}
-
-func (self *MockHostAllocator) NewHostsNeeded(ctx context.Context, d HostAllocatorData) (
-	map[string]int, error) {
-	return nil, errors.New("NewHostsNeeded not implemented")
-}
-
 func TestSpawnHosts(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -33,11 +25,6 @@ func TestSpawnHosts(t *testing.T) {
 	Convey("When spawning hosts", t, func() {
 
 		distroIds := []string{"d1", "d2", "d3"}
-
-		hs := &hostScheduler{
-			HostAllocator: &MockHostAllocator{},
-		}
-
 		Convey("if there are no hosts to be spawned, the Scheduler should not"+
 			" make any calls to the CloudManager", func() {
 			newHostsNeeded := map[string]int{
@@ -46,7 +33,7 @@ func TestSpawnHosts(t *testing.T) {
 				distroIds[2]: 0,
 			}
 
-			newHostsSpawned, err := hs.spawnHosts(ctx, newHostsNeeded)
+			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
 			So(err, ShouldBeNil)
 			So(len(newHostsSpawned[distroIds[0]]), ShouldEqual, 0)
 			So(len(newHostsSpawned[distroIds[1]]), ShouldEqual, 0)
@@ -68,7 +55,7 @@ func TestSpawnHosts(t *testing.T) {
 				So(d.Insert(), ShouldBeNil)
 			}
 
-			newHostsSpawned, err := hs.spawnHosts(ctx, newHostsNeeded)
+			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
 			So(err, ShouldBeNil)
 			distroZeroHosts := newHostsSpawned[distroIds[0]]
 			distroOneHosts := newHostsSpawned[distroIds[1]]

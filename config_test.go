@@ -367,8 +367,7 @@ func (s *AdminSuite) TestRepotrackerConfig() {
 
 func (s *AdminSuite) TestSchedulerConfig() {
 	config := SchedulerConfig{
-		MergeToggle: 10,
-		TaskFinder:  "task_finder",
+		TaskFinder: "task_finder",
 	}
 
 	err := config.Set()

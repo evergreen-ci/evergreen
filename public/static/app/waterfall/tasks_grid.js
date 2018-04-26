@@ -126,21 +126,21 @@ function stringifyNanoseconds(input, skipDayMax, skipSecMax) {
 // The main class that binds to the root div. This contains all the distros, builds, and tasks
 function Grid ({data, project, collapseInfo, buildVariantFilter, taskFilter}) {
   return (
-    React.createElement("div", {className: "waterfall-grid"}, 
-      
+    React.createElement("div", {className: "waterfall-grid"},
+
         data.rows.filter(function(row){
           return row.build_variant.display_name.toLowerCase().indexOf(buildVariantFilter.toLowerCase()) != -1;
         })
         .map(function(row){
           return React.createElement(Variant, {row: row, project: project, collapseInfo: collapseInfo, versions: data.versions, taskFilter: taskFilter, currentTime: data.current_time});
         })
-      
-    ) 
+
+    )
   )
 };
 
 function filterActiveTasks(tasks, activeStatuses){
-  return _.filter(tasks, function(task) { 
+  return _.filter(tasks, function(task) {
       return _.contains(activeStatuses, task.status);
     });
 }
@@ -149,25 +149,25 @@ function filterActiveTasks(tasks, activeStatuses){
 // of versions.
 function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}) {
       return (
-      React.createElement("div", {className: "row variant-row"}, 
-        React.createElement("div", {className: "col-xs-2 build-variants"}, 
+      React.createElement("div", {className: "row variant-row"},
+        React.createElement("div", {className: "col-xs-2 build-variants"},
           row.build_variant.display_name
-        ), 
-        React.createElement("div", {className: "col-xs-10"}, 
-          React.createElement("div", {className: "row build-cells"}, 
-            
+        ),
+        React.createElement("div", {className: "col-xs-10"},
+          React.createElement("div", {className: "row build-cells"},
+
               versions.map(function(version, i){
-                  return(React.createElement("div", {className: "waterfall-build"}, 
-                    React.createElement(Build, {key: version.ids[0], 
-                                build: row.builds[version.ids[0]], 
-                                rolledUp: version.rolled_up, 
-                                collapseInfo: collapseInfo, 
-                                taskFilter: taskFilter, 
+                  return(React.createElement("div", {className: "waterfall-build"},
+                    React.createElement(Build, {key: version.ids[0],
+                                build: row.builds[version.ids[0]],
+                                rolledUp: version.rolled_up,
+                                collapseInfo: collapseInfo,
+                                taskFilter: taskFilter,
                                 currentTime: currentTime})
                   )
                   );
               })
-            
+
           )
         )
       )
@@ -186,7 +186,7 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
 
   // no build for this version
   if (!build) {
-    return React.createElement(EmptyBuild, null)  
+    return React.createElement(EmptyBuild, null)
   }
 
 
@@ -198,15 +198,15 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
         React.createElement(CollapsedBuild, {build: build, activeTaskStatuses: collapseInfo.activeTaskStatuses})
       )
     }
-    // Can be modified to show combinations of tasks by statuses  
+    // Can be modified to show combinations of tasks by statuses
     var activeTasks = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses)
     return (
-      React.createElement("div", null, 
-        React.createElement(CollapsedBuild, {build: build, activeTaskStatuses: collapseInfo.activeTaskStatuses}), 
+      React.createElement("div", null,
+        React.createElement(CollapsedBuild, {build: build, activeTaskStatuses: collapseInfo.activeTaskStatuses}),
         React.createElement(ActiveBuild, {tasks: activeTasks, currentTime: currentTime})
       )
     )
-  } 
+  }
   // uncollapsed active build
   return (
       React.createElement(ActiveBuild, {tasks: build.tasks, taskFilter: taskFilter, currentTime: currentTime})
@@ -214,7 +214,7 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
 }
 
 // At least one task in the version is not inactive, so we display all build tasks with their appropiate colors signifying their status
-function ActiveBuild({tasks, taskFilter, currentTime}){  
+function ActiveBuild({tasks, taskFilter, currentTime}){
 
   if (taskFilter != null){
     tasks = _.filter(tasks, function(task){
@@ -223,12 +223,12 @@ function ActiveBuild({tasks, taskFilter, currentTime}){
   }
 
   return (
-    React.createElement("div", {className: "active-build"}, 
-      
+    React.createElement("div", {className: "active-build"},
+
         _.map(tasks, function(task){
           return React.createElement(Task, {task: task, currentTime: currentTime})
         })
-      
+
     )
   )
 }
@@ -252,13 +252,13 @@ function TooltipContent({task, eta}) {
   if (task.status !='failed' || !task.failed_test_names || task.failed_test_names.length == 0) {
     if (task.status == 'started') {
       return(
-        React.createElement("span", {className: "waterfall-tooltip"}, 
+        React.createElement("span", {className: "waterfall-tooltip"},
           topLineContent, " - ", eta
         )
         )
     }
     return (
-        React.createElement("span", {className: "waterfall-tooltip"}, 
+        React.createElement("span", {className: "waterfall-tooltip"},
           topLineContent
         )
         )
@@ -266,29 +266,29 @@ function TooltipContent({task, eta}) {
 
   if (task.failed_test_names.length > MaxFailedTestDisplay) {
     return (
-        React.createElement("span", {className: "waterfall-tooltip"}, 
-          React.createElement("span", null, topLineContent), 
-        React.createElement("div", {className: "header"}, 
-          React.createElement("i", {className: "fa fa-times icon"}), 
-          task.failed_test_names.length, " failed tests" 
+        React.createElement("span", {className: "waterfall-tooltip"},
+          React.createElement("span", null, topLineContent),
+        React.createElement("div", {className: "header"},
+          React.createElement("i", {className: "fa fa-times icon"}),
+          task.failed_test_names.length, " failed tests"
           )
        )
         )
   }
   return(
-      React.createElement("span", {className: "waterfall-tooltip"}, 
-        React.createElement("span", null, topLineContent), 
-      React.createElement("div", {className: "failed-tests"}, 
-        
+      React.createElement("span", {className: "waterfall-tooltip"},
+        React.createElement("span", null, topLineContent),
+      React.createElement("div", {className: "failed-tests"},
+
           task.failed_test_names.map(function(failed_test_name){
             return (
-                React.createElement("div", null, 
-                 React.createElement("i", {className: "fa fa-times icon"}), 
+                React.createElement("div", null,
+                 React.createElement("i", {className: "fa fa-times icon"}),
                   endOfPath(failed_test_name)
                 )
                 )
           })
-        
+
         )
         )
       )
@@ -328,8 +328,9 @@ class ETADisplay extends React.Component {
     this.countdownClock = this.props.countdownClock;
 
     var nsString = stringifyNanoseconds(this.countdownClock.getNanosecondsRemaining());
+    var remaining = this.countdownClock.getNanosecondsRemaining();
 
-    if (this.countdownClock.getNanosecondsRemaining() <= 0) {
+    if (remaining <= 0 || isNaN(remaining)) {
       nsString = 'unknown';
     }
     this.state = {
@@ -381,12 +382,12 @@ function Task({task, currentTime}) {
     var eta = (React.createElement(ETADisplay, {countdownClock: clock}));
   }
   var tooltip = (
-      React.createElement(Tooltip, {id: "tooltip"}, 
+      React.createElement(Tooltip, {id: "tooltip"},
         React.createElement(TooltipContent, {task: task, eta: eta})
       )
       )
   return (
-    React.createElement(OverlayTrigger, {placement: "top", overlay: tooltip, animation: false}, 
+    React.createElement(OverlayTrigger, {placement: "top", overlay: tooltip, animation: false},
       React.createElement("a", {href: "/task/" + task.id, className: "waterfall-box " + taskStatusClass(task)})
     )
   )
@@ -398,10 +399,10 @@ function CollapsedBuild({build, activeTaskStatuses}){
   var taskStats = build.taskStatusCount;
 
   var taskTypes = {
-    "success"      : taskStats.succeeded, 
-    "dispatched"   : taskStats.started, 
+    "success"      : taskStats.succeeded,
+    "dispatched"   : taskStats.started,
     "system-failed": taskStats.timed_out,
-    "undispatched" : taskStats.undispatched, 
+    "undispatched" : taskStats.undispatched,
     "inactive"     : taskStats.inactive,
     "failed"       : taskStats.failed,
   };
@@ -410,20 +411,20 @@ function CollapsedBuild({build, activeTaskStatuses}){
   taskTypes = _.pick(taskTypes, function(count, status){
     return count > 0 && !(_.contains(activeTaskStatuses, status))
   });
-  
+
   return (
-    React.createElement("div", {className: "collapsed-build"}, 
-      
+    React.createElement("div", {className: "collapsed-build"},
+
         _.map(taskTypes, function(count, status) {
           return React.createElement(TaskSummary, {status: status, count: count, build: build});
-        }) 
-      
+        })
+
     )
   )
 }
 
 // A TaskSummary is the class for one rolled up task type
-// A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks 
+// A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks
 function TaskSummary({status, count, build}){
   var id_link = "/build/" + build.id;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
@@ -432,8 +433,8 @@ function TaskSummary({status, count, build}){
   var tt = React.createElement(Tooltip, {id: "tooltip"}, count, " ", status);
   var classes = "task-summary " + status
   return (
-    React.createElement(OverlayTrigger, {placement: "top", overlay: tt, animation: false}, 
-      React.createElement("a", {href: id_link, className: classes}, 
+    React.createElement(OverlayTrigger, {placement: "top", overlay: tt, animation: false},
+      React.createElement("a", {href: id_link, className: classes},
         count
       )
     )

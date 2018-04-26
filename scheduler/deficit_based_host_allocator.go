@@ -9,16 +9,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DeficitBasedHostAllocator uses the difference between the number of free hosts
-// and the number of tasks that need to be run as a metric for how many new
-// hosts need to be spun up
-type DeficitBasedHostAllocator struct{}
-
-// NewHostsNeeded decides how many new hosts are needed for a distro by seeing if
+// DeficitBasedHostAllocator decides how many new hosts are needed for a distro by seeing if
 // the number of tasks that need to be run for the distro is greater than the number
 // of hosts currently free to run a task. Returns a map of distro-># of hosts to spawn.
-func (self *DeficitBasedHostAllocator) NewHostsNeeded(ctx context.Context,
-	hostAllocatorData HostAllocatorData) (map[string]int, error) {
+func DeficitBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (map[string]int, error) {
 
 	newHostsNeeded := make(map[string]int)
 
@@ -35,7 +29,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 				distroId)
 		}
 
-		newHostsNeeded[distroId] = self.numNewHostsForDistro(ctx,
+		newHostsNeeded[distroId] = deficitNumNewHostsForDistro(ctx,
 			&hostAllocatorData, distro)
 	}
 
@@ -44,7 +38,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro
-func (self *DeficitBasedHostAllocator) numNewHostsForDistro(ctx context.Context,
+func deficitNumNewHostsForDistro(ctx context.Context,
 	hostAllocatorData *HostAllocatorData, distro distro.Distro) int {
 
 	if !distro.IsEphemeral() {

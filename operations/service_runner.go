@@ -12,12 +12,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
-	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -150,7 +148,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateHostSetupJobs(env, 30),
-		units.PopulateSchedulerJobs(),
+		units.PopulateSchedulerJobs(env),
 		units.PopulateAgentDeployJobs(env)))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
@@ -211,56 +209,23 @@ type processRunner interface {
 var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
 	&monitor.Runner{},
-
-	&hostinit.Runner{},
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
 // returns a channel on which all runners listen on, for when to terminate.
 func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct{}) {
-	const (
-		frequentRunInterval   = 10 * time.Second
-		infrequentRunInterval = 300 * time.Second
-	)
+	const runInterval = 300 * time.Second
 
 	wg := &sync.WaitGroup{}
 
-	frequentRunners := []string{
-		hostinit.RunnerName,
-	}
-
-	infrequentRunners := []string{
-		alerts.RunnerName,
-		monitor.RunnerName,
-	}
-
-	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{
-		"cause":        "programmer error",
-		"frequent":     frequentRunners,
-		"infrequent":   infrequentRunners,
-		"runner_count": len(backgroundRunners),
-	})
-
 	grip.Notice(message.Fields{
-		"frequent": message.Fields{
-			"interval": frequentRunInterval,
-			"span":     frequentRunInterval.String(),
-			"runners":  frequentRunners,
-		},
-		"infrequent": message.Fields{
-			"interval": infrequentRunInterval,
-			"span":     infrequentRunInterval.String(),
-			"runners":  infrequentRunners,
-		},
+		"interval_secs": runInterval.Seconds(),
+		"runners":       backgroundRunners,
 	})
 
 	for _, r := range backgroundRunners {
 		wg.Add(1)
-		if util.StringSliceContains(frequentRunners, r.Name()) {
-			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
-		} else if util.StringSliceContains(infrequentRunners, r.Name()) {
-			go runnerBackgroundWorker(ctx, r, s, infrequentRunInterval, wg)
-		}
+		go runnerBackgroundWorker(ctx, r, s, runInterval, wg)
 	}
 
 	grip.Notice("waiting for runner processes to terminate")
