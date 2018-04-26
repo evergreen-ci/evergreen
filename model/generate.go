@@ -1,6 +1,8 @@
 package model
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
@@ -99,19 +101,19 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project.
-func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task, *projectMaps, error) {
+func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task, *projectMaps, int, error) {
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrapf(err, "error finding task %s", g.TaskID)
+		return nil, nil, nil, nil, http.StatusInternalServerError, errors.Wrapf(err, "error finding task %s", g.TaskID)
 	}
 	v, err := version.FindOneId(t.Version)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrapf(err, "error finding version %s", t.Version)
+		return nil, nil, nil, nil, http.StatusInternalServerError, errors.Wrapf(err, "error finding version %s", t.Version)
 	}
 	p := &Project{}
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error reading project yaml")
+		return nil, nil, nil, nil, http.StatusBadRequest, errors.Wrap(err, "error reading project yaml")
 	}
 
 	// Cache project data in maps for quick lookup
@@ -119,18 +121,18 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 
 	// Validate generated project against original project.
 	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "generated project is invalid")
+		return nil, nil, nil, nil, http.StatusBadRequest, errors.Wrap(err, "generated project is invalid")
 	}
 
 	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error creating config from generated config")
+		return nil, nil, nil, nil, http.StatusInternalServerError, errors.Wrap(err, "error creating config from generated config")
 	}
 	v.Config = config
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error reading project yaml")
+		return nil, nil, nil, nil, http.StatusInternalServerError, errors.Wrap(err, "error reading project yaml")
 	}
-	return p, v, t, &cachedProject, nil
+	return p, v, t, &cachedProject, http.StatusOK, nil
 }
 
 func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm *projectMaps) error {

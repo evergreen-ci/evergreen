@@ -199,9 +199,10 @@ func TestGenerateTasks(t *testing.T) {
 	}
 	require.NoError(sampleTask.Insert())
 	gc := GenerateConnector{}
-	assert.NoError(gc.GenerateTasks("sample_task", sampleGeneratedProject))
+	_, err := gc.GenerateTasks("sample_task", sampleGeneratedProject)
+	assert.NoError(err)
 	tasks := []task.Task{}
-	err := db.FindAllQ(task.Collection, task.ByBuildId("sample_build_id"), &tasks)
+	err = db.FindAllQ(task.Collection, task.ByBuildId("sample_build_id"), &tasks)
 	assert.NoError(err)
 	assert.Len(tasks, 4)
 	all_tasks := map[string]bool{

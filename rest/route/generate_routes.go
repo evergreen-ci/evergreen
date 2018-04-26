@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 func getGenerateManager(route string, version int) *RouteManager {
@@ -73,12 +72,15 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 }
 
 func (h *generateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	if err := sc.GenerateTasks(h.taskID, h.files); err != nil {
+	if code, err := sc.GenerateTasks(h.taskID, h.files); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
 			"task_id": h.taskID,
 		}))
-		return ResponseData{}, errors.Wrap(err, "error generating tasks")
+		return ResponseData{}, &rest.APIError{
+			StatusCode: code,
+			Message:    err.Error(),
+		}
 	}
 	return ResponseData{}, nil
 }
