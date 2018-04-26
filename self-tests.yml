@@ -101,12 +101,12 @@ variables:
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "set-var set-project-var load-smoke-data" }
-      - command: shell.exec
+      - command: subprocess.exec
         params:
           silent: true
-          shell: bash
-          script: |
-            set -o errexit
+          command: |
+            bash -c
+            'set -o errexit
 
             cd gopath/src/github.com/evergreen-ci/evergreen
             mkdir -p clients
@@ -120,7 +120,7 @@ variables:
 
             ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
             ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
-            ./bin/set-var -dbName mci_smoke -collection hosts -id localhost -key agent_revision -value $(git rev-parse HEAD)
+            ./bin/set-var -dbName mci_smoke -collection hosts -id localhost -key agent_revision -value $(git rev-parse HEAD)'
       - func: run-make
         vars:
           target: "${task_name}"
@@ -158,33 +158,33 @@ functions:
     params:
       directory: gopath/src/github.com/evergreen-ci/evergreen
   run-make:
-    command: shell.exec
+    command: subprocess.exec
     params:
-       shell: bash
-       script: |
-         set -o xtrace
-         set -o errexit
+      command: |
+        bash -c
+        'set -o xtrace
+        set -o errexit
 
-         # Configure a local go path for this build.
-         export GOPATH=`pwd`/gopath
+        # Configure a local go path for this build.
+        export GOPATH=`pwd`/gopath
 
-         # Set the path to nodejs binaries
-         export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:$PATH
+        # Set the path to nodejs binaries
+        export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:$PATH
 
-         cd gopath/src/github.com/evergreen-ci/evergreen
+        cd gopath/src/github.com/evergreen-ci/evergreen
 
-         # configure path to the settings file
-         export SETTINGS_OVERRIDE=`pwd`/creds.yml
+        # configure path to the settings file
+        export SETTINGS_OVERRIDE=`pwd`/creds.yml
 
-         # on windows we need to turn the slashes the other way
-         if [ "Windows_NT" == "$OS" ]; then
-            export GOPATH=$(cygpath -m $GOPATH)
-            export SETTINGS_OVERRIDE=$(cygpath -m $SETTINGS_OVERRIDE)
-         fi
+        # on windows we need to turn the slashes the other way
+        if [ "Windows_NT" == "$OS" ]; then
+           export GOPATH=$(cygpath -m $GOPATH)
+           export SETTINGS_OVERRIDE=$(cygpath -m $SETTINGS_OVERRIDE)
+        fi
 
-         # Run make, called with proper environment variables set,
-         # running the target.
-         ${build_env} make ${make_args|} ${target}
+        # Run make, called with proper environment variables set,
+        # running the target.
+        ${build_env} make ${make_args|} ${target}'
   get-dist-test:
     command: s3.get
     params:
@@ -194,10 +194,11 @@ functions:
       bucket: mciuploads
       local_file: dist-test.tar.gz
   run-cross:
-    command: shell.exec
+    command: subprocess.exec
     param:
-      script: |
-        set -o xtrace
+      command: |
+        bash -c
+        'set -o xtrace
         set -o errexit
 
         tar -zxvf dist-test.tar.gz
@@ -205,14 +206,15 @@ functions:
         export EVGHOME=`pwd`/evergreen-test
         export SETTINGS_OVERRIDE=`pwd`/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
 
-        $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m
+        $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m'
   set-up-credentials:
-    command: shell.exec
+    command: subprocess.exec
     type: setup
     params:
       silent: true
-      script: |
-        set -o errexit
+      command: |
+        bash -c
+        'set -o errexit
 
         mkdir -p gopath/src/github.com/evergreen-ci/evergreen
 
@@ -268,14 +270,15 @@ functions:
           manifest:
             github_token: "${github_token}"
         github_pr_creator_org: "10gen"
-        EOF
+        EOF'
 
   set-up-mongodb:
-    - command: shell.exec
+    - command: subprocess.exec
       type: setup
       params:
-        script: |
-          set -o xtrace
+        command: |
+          bash -c
+          'set -o xtrace
           set -o errexit
 
           rm -rf mongodb
@@ -289,29 +292,31 @@ functions:
           rm -rf db_files
           rm -rf db_logs
           mkdir db_files
-          mkdir db_logs
-    - command: shell.exec
+          mkdir db_logs'
+    - command: subprocess.exec
       type: setup
       params:
         background: true
-        script: |
-          set -o xtrace
+        command: |
+          bash -c
+          'set -o xtrace
           set -o errexit
 
           cd mongodb
           echo "starting mongod..."
           ./mongod${extension|} --dbpath ./db_files &
-          echo "waiting for mongod to start up"
-    - command: shell.exec
+          echo "waiting for mongod to start up"'
+    - command: subprocess.exec
       type: setup
       params:
-        script: |
-          set -o xtrace
+        command: |
+          bash -c
+          'set -o xtrace
           set -o errexit
 
           cd mongodb
-          ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
-          echo "mongod is up."
+          ./mongo${extension|} --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
+          echo "mongod is up."'
   attach-test-results:
     - command: gotest.parse_files
       type: system
@@ -324,14 +329,14 @@ functions:
         files:
           - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
   remove-test-results:
-    - command: shell.exec
+    - command: subprocess.exec
       type: system
       params:
-        shell: bash
-        script: |
-          set -o xtrace
+        command: |
+          bash -c
+          'set -o xtrace
           rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
-          rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
+          rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml'
 
 #######################################
 #                Tasks                #
