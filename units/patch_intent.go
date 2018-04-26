@@ -247,7 +247,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, "error computing patch num")
 	}
 
-	if !patchDoc.CreateTime.IsZero() {
+	if patchDoc.CreateTime.IsZero() {
 		patchDoc.CreateTime = time.Now()
 	}
 	patchDoc.Id = j.PatchID
