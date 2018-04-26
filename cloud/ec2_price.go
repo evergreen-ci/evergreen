@@ -64,7 +64,11 @@ func getZone(ctx context.Context, client AWSClient, h *host.Host) (string, error
 	if h.Zone != "" {
 		return h.Zone, nil
 	}
-	instance, err := client.GetInstanceInfo(ctx, h.Id)
+	instanceID := h.Id
+	if h.ExternalIdentifier != nil {
+		instanceID = h.ExternalIdentifier
+	}
+	instance, err := client.GetInstanceInfo(ctx, instanceID)
 	if err != nil {
 		return "", errors.Wrap(err, "error getting instance info")
 	}
