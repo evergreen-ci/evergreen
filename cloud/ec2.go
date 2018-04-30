@@ -691,7 +691,7 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	if err != nil {
 		return "", errors.Wrapf(err, "error getting volume size for host %s", h.Id)
 	}
-	if _, err := h.CacheHostData(); err != nil {
+	if err := h.CacheHostData(); err != nil {
 		return "", errors.Wrap(err, "error updating host document in db")
 	}
 	return *instance.PublicDnsName, nil

@@ -567,8 +567,8 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 	)
 }
 
-func (h *Host) CacheHostData() (*mgo.ChangeInfo, error) {
-	return UpsertOne(
+func (h *Host) CacheHostData() error {
+	_, err := UpsertOne(
 		bson.M{
 			IdKey: h.Id,
 		},
@@ -580,6 +580,7 @@ func (h *Host) CacheHostData() (*mgo.ChangeInfo, error) {
 			},
 		},
 	)
+	return err
 }
 
 func (h *Host) Insert() error {
