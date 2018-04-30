@@ -46,7 +46,9 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 	}
 
 	rq := queue.NewRemoteUnordered(2)
-	rq.SetDriver(e.Driver)
+	if err := rq.SetDriver(e.Driver); err != nil {
+		return err
+	}
 	e.Remote = rq
 	e.Local = queue.NewLocalUnordered(2)
 
@@ -95,5 +97,7 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 }
 
 func (e *Environment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	return e.InternalSender, nil
 }
