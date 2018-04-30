@@ -80,9 +80,10 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			// the process has called subprocesses. It will wait until a subprocess
 			// finishes, instead of returning immediately when the context is canceled.
 			// We therefore check both if the context is cancled and if Wait() has finished.
-			cmdChan := make(chan error)
+			cmdChan := make(chan error, 1)
 			go func() {
 				defer func() {
+					// this channel will get read from twice even though we only send once, hence why it's buffered
 					cmdChan <- recovery.HandlePanicWithError(recover(), nil,
 						fmt.Sprintf("problem running command '%s'", cmd.Name()))
 				}()
