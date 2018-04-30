@@ -103,9 +103,10 @@ variables:
         vars: { target: "set-var set-project-var load-smoke-data run-smoke" }
       - command: subprocess.exec
         params:
-          silent: false
+          silent: true
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
           command: |
-            gopath/src/github.com/evergreen-ci/evergreen/bin/run-smoke -githubToken ${github_token} -awsKey ${aws_key} -awsSecret ${aws_secret}
+            bin/run-smoke -githubToken ${github_token} -awsKey ${aws_key} -awsSecret ${aws_secret}
       - func: run-make
         vars:
           target: "${task_name}"

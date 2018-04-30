@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,18 +33,20 @@ func main() {
 		return
 	}
 
-	err = os.MkdirAll(testDataDir, 0777)
+	f, err := os.OpenFile(smokeConfigFile, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Printf(errors.Wrap(err, "unable to create testdata directory").Error())
+		fmt.Printf(errors.Wrap(err, "unable to open smoke config").Error())
 		return
 	}
-	data := fmt.Sprintf(`log_path:"STDOUT"
-    credentials: {
-    github: "%s",
-  }`, githubToken)
-	err = ioutil.WriteFile(smokeConfigFile, []byte(data), 0777)
+	data := fmt.Sprintf("\nlog_path: \"STDOUT\"\n\ncredentials: {\n  github: \"%s\"\n}\n", githubToken)
+	_, err = f.Write([]byte(data))
 	if err != nil {
-		fmt.Printf(errors.Wrap(err, "unable to create create smoke config").Error())
+		fmt.Printf(errors.Wrap(err, "unable to write smoke config").Error())
+		return
+	}
+	err = f.Close()
+	if err != nil {
+		fmt.Printf(errors.Wrap(err, "unable to close smoke config").Error())
 		return
 	}
 
