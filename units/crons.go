@@ -443,6 +443,11 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		}
 
 		hosts, err := host.Find(host.IsUninitialized)
+		grip.Info(message.Fields{
+			"message": "uninitialized hosts",
+			"number":  len(hosts),
+			"runner":  "hostinit",
+		})
 		if err != nil {
 			return errors.Wrap(err, "error fetching uninitialized hosts")
 		}

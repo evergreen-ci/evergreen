@@ -67,6 +67,7 @@ Admin Settings
             <div>Background Processing</div>
             <li class="link" ng-click="scrollTo('amboy')">Amboy</li>
             <li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
+            <li class="link" ng-click="scrollTo('notifications')">Notifications Config</li>
             <div>Cloud Providers</div>
             <li class="link" ng-click="scrollTo('aws')">AWS</li>
             <li class="link" ng-click="scrollTo('docker')">Docker</li>
@@ -757,7 +758,30 @@ Admin Settings
                 </md-input-container>
               </md-card-content>
             </md-card>
+          </section>
 
+          <section layout="row" flex>
+            <md-card flex=50 id="notifications" style="height:180px">
+              <md-card-title>
+                <md-card-title-text>
+                  <span>Notifications Config</span>
+                </md-card-title-text>
+                <md-button ng-click="clearSection('notifications')">
+                  <i class="fa fa-trash"></i>
+                </md-button>
+              </md-card-title>
+              <md-card-content>
+                <div class="muted small" style="height:25px;">All settings are applied per-server</div>
+                <md-input-container class="control" style="width:45%;">
+                  <label>Notifications Rate Limit Target per Time Interval</label>
+                  <input type="number" ng-model="Settings.notify.buffer_target_per_interval">
+                </md-input-container>
+                <md-input-container class="control" style="width:45%;">
+                  <label>Notifications Rate Limit Time Interval (seconds)</label>
+                  <input type="number" ng-model="Settings.notify.buffer_interval_seconds">
+                </md-input-container>
+              </md-card-content>
+            </md-card>
           </section>
 
           <section layout="row" flex>

@@ -9,11 +9,14 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/logger"
+	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -82,13 +85,14 @@ type Environment interface {
 }
 
 type envState struct {
-	remoteQueue  amboy.Queue
-	localQueue   amboy.Queue
-	settings     *Settings
-	session      *mgo.Session
-	mu           sync.RWMutex
-	clientConfig *ClientConfig
-	senders      map[SenderKey]send.Sender
+	remoteQueue        amboy.Queue
+	localQueue         amboy.Queue
+	notificationsQueue amboy.Queue
+	settings           *Settings
+	session            *mgo.Session
+	mu                 sync.RWMutex
+	clientConfig       *ClientConfig
+	senders            map[SenderKey]send.Sender
 }
 
 // Configure requires that either the path or DB is sent so that it can construct the
@@ -118,10 +122,10 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if e.session == nil {
 		catcher.Add(e.initDB(e.settings.Database))
 	}
+	catcher.Add(e.initSenders())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
-	catcher.Add(e.initSenders())
 	if confPath != "" {
 		catcher.Add(e.persistSettings())
 	}
@@ -200,6 +204,24 @@ func (e *envState) createQueues(ctx context.Context) error {
 	}
 	e.remoteQueue = rq
 
+	// Notifications queue w/ moving weight avg pool
+	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
+
+	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
+		e.settings.Notify.BufferTargetPerInterval,
+		time.Duration(e.settings.Notify.BufferIntervalSeconds)*time.Second,
+		e.notificationsQueue)
+	if err != nil {
+		return errors.Wrap(err, "Failed to make notifications queue runner")
+	}
+	if err = e.notificationsQueue.SetRunner(runner); err != nil {
+		return errors.Wrap(err, "failed to set notifications queue runner")
+	}
+
+	for k := range e.senders {
+		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
+	}
+
 	return nil
 }
 
@@ -208,6 +230,7 @@ func (e *envState) initQueues(ctx context.Context) []error {
 
 	catcher.Add(e.localQueue.Start(ctx))
 	catcher.Add(e.remoteQueue.Start(ctx))
+	catcher.Add(e.notificationsQueue.Start(ctx))
 
 	return catcher.Errors()
 }

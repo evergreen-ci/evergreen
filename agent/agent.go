@@ -114,6 +114,7 @@ LOOP:
 			if err != nil {
 				// task secret doesn't match, get another task
 				if errors.Cause(err) == client.HTTPConflictError {
+					timer.Reset(0)
 					continue LOOP
 				}
 				return errors.Wrap(err, "error getting next task")
@@ -126,6 +127,7 @@ LOOP:
 				if exit {
 					// Query for next task, this time with an empty task group,
 					// to get a ShouldExit from the API, and set NeedsNewAgent.
+					timer.Reset(0)
 					continue LOOP
 				}
 				if err := a.resetLogging(lgrCtx, tc); err != nil {

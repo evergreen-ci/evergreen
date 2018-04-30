@@ -244,8 +244,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, ref := range conflictingRefs {
-			if ref.Identifier != id {
-				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", id))
+			if ref.PRTestingEnabled && ref.Identifier != id {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", ref.Identifier))
 				return
 			}
 		}

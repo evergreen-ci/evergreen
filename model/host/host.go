@@ -567,31 +567,20 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 	)
 }
 
-func (h *Host) SetZoneAndStartTime() (*mgo.ChangeInfo, error) {
-	return UpsertOne(
+func (h *Host) CacheHostData() error {
+	_, err := UpsertOne(
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:      h.Zone,
-				StartTimeKey: h.StartTime,
-			},
-		},
-	)
-}
-
-func (h *Host) SetVolumeSize() (*mgo.ChangeInfo, error) {
-	return UpsertOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
+				ZoneKey:       h.Zone,
+				StartTimeKey:  h.StartTime,
 				VolumeSizeKey: h.VolumeTotalSize,
 			},
 		},
 	)
+	return err
 }
 
 func (h *Host) Insert() error {
@@ -705,7 +694,7 @@ func FindHostsToTerminate() ([]Host, error) {
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
 		provisioningCutoff = 25 * time.Minute
 
-		// unreachableCutoff is the threshold to wait for an unreachable host to become marked
+		// unreachableCutoff is the threshold to wait for an decommissioned host to become marked
 		// as reachable again before giving up and terminating it.
 		unreachableCutoff = 5 * time.Minute
 	)
@@ -735,15 +724,9 @@ func FindHostsToTerminate() ([]Host, error) {
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
-			{ // unreachable
-				StatusKey: evergreen.HostUnreachable,
-				"$or": []bson.M{
-					{LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)}},
-					{
-						NeedsNewAgentKey:         false,
-						LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
-					},
-				},
+			{ // decommissioned hosts that have not checked in recently
+				StatusKey:                evergreen.HostDecommissioned,
+				LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)},
 			},
 		},
 	}
