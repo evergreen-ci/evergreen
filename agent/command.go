@@ -83,6 +83,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			cmdChan := make(chan error, 1)
 			go func() {
 				defer func() {
+					// this channel will get read from twice even though we only send once, hence why it's buffered
 					cmdChan <- recovery.HandlePanicWithError(recover(), nil,
 						fmt.Sprintf("problem running command '%s'", cmd.Name()))
 				}()
