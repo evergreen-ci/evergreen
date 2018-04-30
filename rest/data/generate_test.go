@@ -199,7 +199,7 @@ func TestGenerateTasks(t *testing.T) {
 	}
 	require.NoError(sampleTask.Insert())
 	gc := GenerateConnector{}
-	_, err := gc.GenerateTasks("sample_task", sampleGeneratedProject)
+	err := gc.GenerateTasks("sample_task", sampleGeneratedProject)
 	assert.NoError(err)
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, task.ByBuildId("sample_build_id"), &tasks)

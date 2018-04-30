@@ -200,7 +200,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 				return resp, nil
 			} else if resp.StatusCode == http.StatusConflict {
 				return nil, HTTPConflictError
-			} else if resp.StatusCode == http.StatusBadRequest {
+			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 				apiErr := rest.APIError{}
 				if err := util.ReadJSONInto(resp.Body, err); err != nil {
 					return nil, errors.Wrapf(apiErr, "server returned %d", http.StatusBadRequest)
