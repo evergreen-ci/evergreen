@@ -736,14 +736,8 @@ func FindHostsToTerminate() ([]Host, error) {
 				StatusKey:      evergreen.HostDecommissioned,
 			},
 			{ // unreachable
-				StatusKey: evergreen.HostUnreachable,
-				"$or": []bson.M{
-					{LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)}},
-					{
-						NeedsNewAgentKey:         false,
-						LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
-					},
-				},
+				StatusKey:                bson.M{"$in": []string{evergreen.HostUnreachable, evergreen.HostDecommissioned}},
+				LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)},
 			},
 		},
 	}
