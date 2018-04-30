@@ -1,0 +1,57 @@
+<md-dialog aria-label="Add Subscription">
+    <md-dialog-content>
+        <div class="modal-header">
+            <h4>[[ verb ]] Subscription</h4>
+        </div>
+        <div class="modal-body" style="padding-left:10px; padding-right:10px;">
+            <p>when
+            <select ng-model="trigger" ng-options="t as t.label for t in triggers track by t.value"></select>
+            </p>
+
+            <p>
+            then notify by:
+            <select ng-model="method" ng-options="t as t.label for t in subscription_methods track by t.value"></select>
+            </p>
+            <div id="methods">
+                <div ng-show="method.value === 'jira-comment'">
+                    <label for="issue-id">JIRA Issue</label>
+                    <input id="issue-id" ng-model="targets['jira-comment']" placeholder="ABC-123"></input>
+                </div>
+                <div ng-show="method.value === 'jira-issue'">
+                    <label for="project">JIRA Project</label>
+                    <input id="project" ng-model="targets['jira-issue']" placeholder="ABC"></input>
+                </div>
+                <div ng-show="method.value === 'slack'">
+                    <label for="slack">Slack Username or Channel</label>
+                    <input id="slack" ng-model="targets['slack']" placeholder="@user"></input>
+                    <!-- add me button -->
+                </div>
+                <div ng-show="method.value === 'email'">
+                    <label for="email">Email Address</label>
+                    <input id="email" ng-model="targets['email']" placeholder="larry@oracle.com"></input>
+                    <!-- add me button -->
+                </div>
+                <div ng-show="method.value === 'evergreen-webhook'">
+                    <md-list>
+                        <md-list-item>
+                            <label for="webhook-url">Webhook URL</label>
+                            <input id="webhook-url" ng-model="targets['evergreen-webhook'].url" placeholder="https://example.com"></input>
+                        </md-list-item>
+                        <md-list-item>
+                            <label for="webhook-secret">Webhook Secret</label>
+                            <input id="webhook-secret" ng-model="targets['evergreen-webhook'].secret" ng-disabled="true"></input>
+                        </md-list-item>
+                    </md-list>
+                </div>
+            </div>
+        </div>
+    </md-dialog-content>
+    <md-dialog-actions>
+      <md-button ng-disabled="!valid()" ng-click="closeDialog(true)" class="md-primary">
+        Save and Close
+      </md-button>
+      <md-button ng-click="closeDialog(false)" class="md-warn">
+        Close
+      </md-button>
+    </md-dialog-actions>
+</md-dialog>

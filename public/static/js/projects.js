@@ -1,4 +1,4 @@
-mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) {
+mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, $mdDialog) {
 
   $scope.availableTriggers = $window.availableTriggers
   $scope.userId = $window.user.Id;
@@ -22,6 +22,45 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.newProjectMessage="";
 
   $scope.isDirty = false;
+  $scope.triggers = [
+      // TODO uncomment as we implement these
+      //{
+      //    id: "failure",
+      //    object: "TASK"
+      //    label: "any task fails",
+      //},
+      //{
+      //    id: "first-failure-by-variant",
+      //    object: "TASK"
+      //    label: "the first task failure occurs",
+      //},
+      //{
+      //    id: "first-failure-by-variant",
+      //    object: "BUILD"
+      //    label: "the first failure within each variant occurs",
+      //},
+      //{
+      //    id: "first-failure-by-name",
+      //    object: "TASK"
+      //    label: "the first failure for each task name occurs",
+      //},
+      //{
+      //    id: "regression",
+      //    object: "TASK"
+      //    label: "a previously passing task fails",
+      //},
+      {
+          value: "done",
+          object: "TEAPOT",
+          label: "my tea is done",
+      },
+  ];
+  $scope.subdialog = function () {
+      var promise = addSubscriber($mdDialog, $scope.triggers, function(x) {
+          console.log(x);
+      });
+      $mdDialog.show(promise);
+  };
 
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
