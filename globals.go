@@ -22,7 +22,6 @@ const (
 	HostStarting        = "starting"
 	HostInitializing    = "provisioning"
 	HostProvisionFailed = "provision failed"
-	HostUnreachable     = "unreachable"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
 

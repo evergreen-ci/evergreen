@@ -705,7 +705,7 @@ func FindHostsToTerminate() ([]Host, error) {
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
 		provisioningCutoff = 25 * time.Minute
 
-		// unreachableCutoff is the threshold to wait for an unreachable host to become marked
+		// unreachableCutoff is the threshold to wait for an decommissioned host to become marked
 		// as reachable again before giving up and terminating it.
 		unreachableCutoff = 5 * time.Minute
 	)
@@ -735,8 +735,8 @@ func FindHostsToTerminate() ([]Host, error) {
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
-			{ // unreachable
-				StatusKey:                bson.M{"$in": []string{evergreen.HostUnreachable, evergreen.HostDecommissioned}},
+			{ // decommissioned hosts that have not checked in recently
+				StatusKey:                evergreen.HostDecommissioned,
 				LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)},
 			},
 		},
