@@ -567,31 +567,20 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 	)
 }
 
-func (h *Host) SetZoneAndStartTime() (*mgo.ChangeInfo, error) {
-	return UpsertOne(
+func (h *Host) CacheHostData() error {
+	_, err := UpsertOne(
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ZoneKey:      h.Zone,
-				StartTimeKey: h.StartTime,
-			},
-		},
-	)
-}
-
-func (h *Host) SetVolumeSize() (*mgo.ChangeInfo, error) {
-	return UpsertOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
+				ZoneKey:       h.Zone,
+				StartTimeKey:  h.StartTime,
 				VolumeSizeKey: h.VolumeTotalSize,
 			},
 		},
 	)
+	return err
 }
 
 func (h *Host) Insert() error {

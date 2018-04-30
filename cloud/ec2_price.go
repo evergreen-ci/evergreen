@@ -291,7 +291,6 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 	return cpf.ebsCost(region, size, dur)
 }
 
-// TODO: Remove this function in favor of just using h.VolumeTotalSize once all running EC2 hosts have h.VolumeTotalSize set.
 func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, error) {
 	if h.VolumeTotalSize != 0 {
 		return h.VolumeTotalSize, nil
