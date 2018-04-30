@@ -25,12 +25,20 @@ var (
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
+	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
 
 	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(groupedSubscribers{}, "Type")
 	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(groupedSubscribers{}, "Subscribers")
 
 	subscriberWithRegexKey               = bsonutil.MustHaveTag(subscriberWithRegex{}, "Subscriber")
 	subscriberWithRegexRegexSelectorsKey = bsonutil.MustHaveTag(subscriberWithRegex{}, "RegexSelectors")
+)
+
+type OwnerType string
+
+const (
+	OwnerTypePerson  OwnerType = "person"
+	OwnerTypeProject           = "project"
 )
 
 type Subscription struct {
@@ -41,6 +49,7 @@ type Subscription struct {
 	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
+	OwnerType      OwnerType     `bson:"owner_type"`
 }
 
 type Selector struct {
@@ -167,6 +176,7 @@ func (s *Subscription) Upsert() error {
 			subscriptionRegexSelectorsKey: s.RegexSelectors,
 			subscriptionSubscriberKey:     s.Subscriber,
 			subscriptionOwnerKey:          s.Owner,
+			subscriptionOwnerTypeKey:      s.OwnerType,
 		})
 	if err != nil {
 		return err
@@ -238,14 +248,26 @@ func (s *Subscription) String() string {
 	return out
 }
 
-func FindSubscriptionsByOwner(owner string) ([]Subscription, error) {
+func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription, error) {
 	if len(owner) == 0 {
 		return nil, nil
 	}
 	query := db.Query(bson.M{
-		subscriptionOwnerKey: owner,
+		subscriptionOwnerKey:     owner,
+		subscriptionOwnerTypeKey: ownerType,
 	})
 	subscriptions := []Subscription{}
 	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
 	return subscriptions, errors.Wrapf(err, "error retrieving subscriptions for owner %s", owner)
+}
+
+func IsValidOwnerType(in string) bool {
+	switch in {
+	case string(OwnerTypePerson):
+		return true
+	case string(OwnerTypeProject):
+		return true
+	default:
+		return false
+	}
 }

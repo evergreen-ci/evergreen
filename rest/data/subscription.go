@@ -20,15 +20,15 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(subscriptions []event.Subsc
 	return catcher.Resolve()
 }
 
-func (dc *DBSubscriptionConnector) GetSubscriptions(user string) ([]restModel.APISubscription, error) {
-	if len(user) == 0 {
+func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
+	if len(owner) == 0 {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    "no user provided",
+			Message:    "no subscription owner provided",
 		}
 	}
 
-	subs, err := event.FindSubscriptionsByOwner(user)
+	subs, err := event.FindSubscriptionsByOwner(owner, ownerType)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
@@ -49,7 +49,7 @@ type MockSubscriptionConnector struct {
 	MockSubscriptions []event.Subscription
 }
 
-func (mc *MockSubscriptionConnector) GetSubscriptions(user string) ([]restModel.APISubscription, error) {
+func (mc *MockSubscriptionConnector) GetSubscriptions(user string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
 	return nil, errors.New("MockSubscriptionConnector unimplemented")
 }
 

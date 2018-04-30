@@ -45,7 +45,8 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t1,
 			},
-			Owner: "me",
+			Owner:     "me",
+			OwnerType: OwnerTypePerson,
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -62,7 +63,8 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t2,
 			},
-			Owner: "you",
+			Owner:     "you",
+			OwnerType: OwnerTypePerson,
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -105,7 +107,8 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t4,
 			},
-			Owner: "me",
+			Owner:     "me",
+			OwnerType: OwnerTypePerson,
 		},
 	}
 
@@ -223,7 +226,7 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 }
 
 func (s *subscriptionsSuite) TestFindByOwner() {
-	subscriptions, err := FindSubscriptionsByOwner("me")
+	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypePerson)
 	s.NoError(err)
 	s.Len(subscriptions, 2)
 	for _, sub := range subscriptions {

@@ -193,6 +193,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
+		AlertOnBuildFailure bool `json:"alert_on_failure"`
 		SetupGithubHook     bool `json:"setup_github_hook"`
 		ForceRepotrackerRun bool `json:"force_repotracker_run"`
 	}{}
@@ -265,6 +266,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
+	projectRef.AlertOnBuildFailure = responseRef.AlertOnBuildFailure
 
 	projectRef.Alerts = map[string][]model.AlertConfig{}
 	for triggerId, alerts := range responseRef.AlertConfig {
