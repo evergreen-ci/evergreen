@@ -1,3 +1,13 @@
+function lookupTrigger(triggers, name) {
+    t = _.filter(triggers, function(t) {
+        return t.trigger == name;
+    });
+    if (t.length === 1) {
+        return t[0];
+    }
+
+    return null;
+}
 mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, $mdDialog) {
 
   $scope.availableTriggers = $window.availableTriggers
@@ -55,24 +65,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           label: "my tea is done",
       },
   ];
-  $scope.subdialog = function (v) {
-      var promise;
-      if (v == true) {
-          promise = editSubscriber($mdDialog, $scope.triggers, function(t, s) {
-              console.log(t, s);
-          }, "done", {
-              type: "email",
-              target:"a@b.com"
-          });
-
-      }else {
-          promise = addSubscriber($mdDialog, $scope.triggers, function(t, s) {
-              console.log(t, s);
-          });
-      }
-      $mdDialog.show(promise);
-  };
-
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
   // depending on the user.
@@ -273,8 +265,23 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           force_repotracker_run: false,
-          delete_aliases: []
+          delete_aliases: [],
         };
+
+        data.Subscriptions = [{
+          trigger: "done",
+            subscriber: {
+                type:"email",
+                target: "a@b.com"
+            }
+        }];
+        $scope.subscriptions = data.Subscriptions || [];
+        $scope.subscriptions = _.map($scope.subscriptions, function(v) {
+          v.trigger_data = lookupTrigger($scope.triggers, v.trigger);
+          v.subscriber.label = subscriberLabel(v.subscriber);
+            console.log(v);
+          return v;
+        });
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
         $location.hash($scope.projectRef.identifier);
@@ -492,6 +499,37 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     }
 
     return true;
+  };
+
+
+  $scope.addSubscription = function() {
+      promise = addSubscriber($mdDialog, $scope.triggers, function(t, s) {
+          console.log(t, s);
+          s.label = subscriberLabel(s);
+          $scope.subscriptions.push({
+              trigger: t.trigger,
+              trigger_data: t,
+              subscriber: s,
+          })
+      });
+      $mdDialog.show(promise);
+  };
+  $scope.editSubscription = function(index) {
+      console.log($scope.subscriptions[index]);
+      promise = editSubscriber($mdDialog, $scope.triggers, function(t, s) {
+          s.label = subscriberLabel(s);
+          $scope.subscriptions[index].trigger = t.trigger;
+          $scope.subscriptions[index].trigger_data = t;
+          $scope.subscriptions[index].subscriber = s;
+      }, $scope.subscriptions[index].trigger, $scope.subscriptions[index].subscriber);
+
+      $mdDialog.show(promise);
+  };
+
+  $scope.removeSubscription = function(index) {
+      $scope.subscriptions = _.filter($scope.subscriptions, function(s, i) {
+          return index !== i;
+      });
   };
 
 });

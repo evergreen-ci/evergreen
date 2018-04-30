@@ -1,3 +1,22 @@
+function subscriberLabel(subscriber) {
+    if (subscriber.type === 'jira-comment') {
+        return "Post a comment on JIRA issue " + subscriber.target;
+
+    }else if (subscriber.type === 'jira-issue') {
+        return "Create a JIRA issue in " + subscriber.target;
+
+    }else if (subscriber.type === 'slack') {
+        return "Send a slack message to " + subscriber.target;
+
+    }else if (subscriber.type === 'email') {
+        return "Send an email to " + subscriber.target;
+
+    }else if (subscriber.type === 'evergreen-webhook') {
+        return "Post to external server " + subscriber.target.url;
+    }
+
+    return ""
+}
 function addSubscriber($mdDialog, triggers, callback) {
     return subscriberPromise($mdDialog, "Add", triggers, callback)
 }
