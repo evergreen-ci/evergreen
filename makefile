@@ -98,8 +98,11 @@ $(buildDir)/set-var:scripts/set-var.go
 	go build -o $@ $<
 $(buildDir)/set-project-var:scripts/set-project-var.go
 	go build -o $@ $<
+$(buildDir)/run-smoke:scripts/run-smoke.go
+	go build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
+run-smoke:$(buildDir)/run-smoke
 load-smoke-data:$(buildDir)/.load-smoke-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<

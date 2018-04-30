@@ -100,27 +100,12 @@ variables:
       - func: get-project
       - func: set-up-mongodb
       - func: run-make
-        vars: { target: "set-var set-project-var load-smoke-data" }
+        vars: { target: "set-var set-project-var load-smoke-data run-smoke" }
       - command: subprocess.exec
         params:
-          silent: true
+          silent: false
           command: |
-            bash -c
-            'set -o errexit
-
-            cd gopath/src/github.com/evergreen-ci/evergreen
-            mkdir -p clients
-
-            cat >> testdata/smoke_config.yml <<EOF
-            log_path: "STDOUT"
-            credentials: {
-              github: "${github_token}",
-            }
-            EOF
-
-            ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
-            ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
-            ./bin/set-var -dbName mci_smoke -collection hosts -id localhost -key agent_revision -value $(git rev-parse HEAD)'
+            gopath/src/github.com/evergreen-ci/evergreen/bin/run-smoke -githubToken ${github_token} -awsKey ${aws_key} -awsSecret ${aws_secret}
       - func: run-make
         vars:
           target: "${task_name}"
@@ -328,15 +313,6 @@ functions:
       params:
         files:
           - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
-  remove-test-results:
-    - command: subprocess.exec
-      type: system
-      params:
-        command: |
-          bash -c
-          'set -o xtrace
-          rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
-          rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml'
 
 #######################################
 #                Tasks                #
