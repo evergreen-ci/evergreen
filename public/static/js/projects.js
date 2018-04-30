@@ -50,15 +50,26 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       //    label: "a previously passing task fails",
       //},
       {
-          value: "done",
-          object: "TEAPOT",
+          trigger: "done",
+          resource_type: "TEAPOT",
           label: "my tea is done",
       },
   ];
-  $scope.subdialog = function () {
-      var promise = addSubscriber($mdDialog, $scope.triggers, function(x) {
-          console.log(x);
-      });
+  $scope.subdialog = function (v) {
+      var promise;
+      if (v == true) {
+          promise = editSubscriber($mdDialog, $scope.triggers, function(t, s) {
+              console.log(t, s);
+          }, "done", {
+              type: "email",
+              target:"a@b.com"
+          });
+
+      }else {
+          promise = addSubscriber($mdDialog, $scope.triggers, function(t, s) {
+              console.log(t, s);
+          });
+      }
       $mdDialog.show(promise);
   };
 

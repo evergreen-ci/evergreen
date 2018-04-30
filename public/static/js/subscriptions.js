@@ -2,7 +2,11 @@ function addSubscriber($mdDialog, triggers, callback) {
     return subscriberPromise($mdDialog, "Add", triggers, callback)
 }
 
-function subscriberPromise($mdDialog, verb, triggers, callback) {
+function editSubscriber($mdDialog, triggers, callback, trigger, subscriber) {
+    return subscriberPromise($mdDialog, "Edit", triggers, callback, trigger, subscriber)
+}
+
+function subscriberPromise($mdDialog, verb, triggers, callback, trigger, subscriber) {
     return $mdDialog.alert({
         title:"test",
         templateUrl: "static/partials/subscription_modal.html",
@@ -10,15 +14,16 @@ function subscriberPromise($mdDialog, verb, triggers, callback) {
         locals: {
             triggers: triggers,
             verb: verb,
-            callback: callback
+            callback: callback,
+            trigger: trigger,
+            subscriber: subscriber
         },
     });
 }
 
-function subCtrl($scope, $mdDialog, verb, triggers, callback) {
+function subCtrl($scope, $mdDialog, verb, triggers, callback, trigger, subscriber) {
     // labels should complete the following sentence fragment:
     // 'then notify by ...'
-    $scope.subscriber = {};
     $scope.subscription_methods = [
         {
             value: "email",
@@ -50,7 +55,7 @@ function subCtrl($scope, $mdDialog, verb, triggers, callback) {
                 type: $scope.method.value,
                 target: $scope.targets[$scope.method.value],
             }
-            callback(subscriber);
+            callback($scope.trigger, subscriber);
         }
         $mdDialog.hide();
     };
@@ -66,8 +71,11 @@ function subCtrl($scope, $mdDialog, verb, triggers, callback) {
     };
 
     $scope.valid = function() {
-        if ($scope.trigger == null ) {
+        if ($scope.trigger == null || $scope.method == null) {
             return false;
+        }
+        if ($scope.targets[$scope.method.value] == null) {
+            return false
         }
 
         if ($scope.method.value === 'jira-comment') {
@@ -98,4 +106,17 @@ function subCtrl($scope, $mdDialog, verb, triggers, callback) {
             secret: $scope.generateSecret(),
         },
     };
+    if (subscriber !== undefined) {
+        $scope.targets[subscriber.type] = subscriber.target;
+        t = _.filter($scope.subscription_methods, function(t) { return t.value == subscriber.type; });
+        console.log(t);
+        if (t.length === 1) {
+            $scope.method = t[0];
+        }
+        t = _.filter($scope.triggers, function(t) { return t.trigger == trigger; });
+        if (t.length === 1) {
+            $scope.trigger = t[0];
+        }
+    }
+    $scope.subscriber = {};
 }

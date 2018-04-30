@@ -5,7 +5,7 @@
         </div>
         <div class="modal-body" style="padding-left:10px; padding-right:10px;">
             <p>when
-            <select ng-model="trigger" ng-options="t as t.label for t in triggers track by t.value"></select>
+            <select ng-model="trigger" ng-options="t as t.label for t in triggers track by t.trigger"></select>
             </p>
 
             <p>
@@ -51,7 +51,7 @@
         Save and Close
       </md-button>
       <md-button ng-click="closeDialog(false)" class="md-warn">
-        Close
+        Cancel
       </md-button>
     </md-dialog-actions>
 </md-dialog>
