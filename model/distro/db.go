@@ -44,11 +44,8 @@ func FindActive() ([]string, error) {
 	err := db.Aggregate(Collection, []bson.M{
 		{
 			"$match": bson.M{
-				"$or": []bson.M{
-					{DisabledKey: false},
-					{DisabledKey: bson.M{
-						"$exists": false,
-					}},
+				DisabledKey: bson.M{
+					"$exists": false,
 				},
 			},
 		},
