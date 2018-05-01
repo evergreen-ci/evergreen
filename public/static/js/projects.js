@@ -35,28 +35,28 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.triggers = [
       // TODO uncomment as we implement these
       //{
-      //    id: "failure",
-      //    object: "TASK"
+      //    trigger: "failure",
+      //    resource_type: "TASK"
       //    label: "any task fails",
       //},
       //{
-      //    id: "first-failure-by-variant",
-      //    object: "TASK"
+      //    trigger: "first-failure-by-variant",
+      //    resource_type: "TASK"
       //    label: "the first task failure occurs",
       //},
       //{
-      //    id: "first-failure-by-variant",
-      //    object: "BUILD"
+      //    trigger: "first-failure-by-variant",
+      //    resource_type: "BUILD"
       //    label: "the first failure within each variant occurs",
       //},
       //{
-      //    id: "first-failure-by-name",
-      //    object: "TASK"
+      //    trigger: "first-failure-by-name",
+      //    resource_type: "TASK"
       //    label: "the first failure for each task name occurs",
       //},
       //{
-      //    id: "regression",
-      //    object: "TASK"
+      //    trigger: "regression",
+      //    resource_type: "TASK"
       //    label: "a previously passing task fails",
       //},
       {

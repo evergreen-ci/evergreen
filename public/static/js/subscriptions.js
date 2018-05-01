@@ -18,10 +18,20 @@ function subscriberLabel(subscriber) {
     return ""
 }
 
+// triggers are javascript objects that look like this:
+// {
+//      trigger: "trigger-name",
+//      label: "human readable name for trigger that completes the fragment 'when ...'"
+//      resource_type: "event resource type, like PATCH, HOST, etc."
+// }
+
+// Return a promise for the add subscription modal, with the list of triggers
 function addSubscriber($mdDialog, triggers) {
     return subscriberPromise($mdDialog, "Add", triggers)
 }
 
+// Return a promise for the edit subscription modal, with the list of triggers.
+// "trigger"
 function editSubscriber($mdDialog, triggers, trigger, subscriber) {
     return subscriberPromise($mdDialog, "Edit", triggers, trigger, subscriber)
 }
