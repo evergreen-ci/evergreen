@@ -521,6 +521,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           return index !== i;
       });
   };
+  $scope.show_build_break = true;
 
 });
 
