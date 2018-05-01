@@ -29,6 +29,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	t2 := "someone2@example.com"
 	t3 := "someone3@example.com"
 	t4 := "someone4@example.com"
+	t5 := "slack_user"
 	s.subscriptions = []Subscription{
 		{
 			ID:      bson.NewObjectId(),
@@ -110,6 +111,24 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner:     "me",
 			OwnerType: OwnerTypePerson,
 		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    "type2",
+			Trigger: "trigger2",
+			Selectors: []Selector{
+				{
+					Type: "data",
+					Data: "somethingspecial",
+				},
+			},
+			RegexSelectors: []Selector{},
+			Subscriber: Subscriber{
+				Type:   SlackSubscriberType,
+				Target: &t5,
+			},
+			Owner:     "myProject",
+			OwnerType: OwnerTypeProject,
+		},
 	}
 
 	for _, sub := range s.subscriptions {
@@ -121,7 +140,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 	out := []Subscription{}
 	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
 
-	s.Require().Len(out, 4)
+	s.Require().Len(out, 5)
 
 	for _, sub := range out {
 		if sub.ID == s.subscriptions[3].ID {
@@ -153,7 +172,7 @@ func (s *subscriptionsSuite) TestFind() {
 		},
 	})
 	s.NoError(err)
-	s.Len(subs, 1)
+	s.Len(subs, 2)
 	s.NotPanics(func() {
 		s.Len(subs[EmailSubscriberType], 1)
 		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Type)
@@ -225,11 +244,20 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 	s.False(regexSelectorsMatch(selectors, &a))
 }
 
-func (s *subscriptionsSuite) TestFindByOwner() {
+func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
 	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypePerson)
 	s.NoError(err)
 	s.Len(subscriptions, 2)
 	for _, sub := range subscriptions {
 		s.Equal("me", sub.Owner)
+		s.EqualValues(OwnerTypePerson, sub.OwnerType)
 	}
+}
+
+func (s *subscriptionsSuite) TestFindByOwnerForProject() {
+	subscriptions, err := FindSubscriptionsByOwner("myProject", OwnerTypeProject)
+	s.NoError(err)
+	s.Len(subscriptions, 1)
+	s.Equal("myProject", subscriptions[0].Owner)
+	s.EqualValues(OwnerTypeProject, subscriptions[0].OwnerType)
 }
