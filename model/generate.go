@@ -105,18 +105,18 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task, *projectMaps, error) {
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
-	if t == nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
-	}
 	if err != nil {
 		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
 	}
-	v, err := version.FindOneId(t.Version)
-	if v == nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
+	if t == nil {
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
 	}
+	v, err := version.FindOneId(t.Version)
 	if err != nil {
 		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
+	}
+	if v == nil {
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
 	}
 	p := &Project{}
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
