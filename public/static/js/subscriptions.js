@@ -1,17 +1,23 @@
+const SUBSCRIPTION_JIRA_COMMENT = 'jira-comment';
+const SUBSCRIPTION_JIRA_ISSUE = 'jira-issue';
+const SUBSCRIPTION_SLACK = 'slack';
+const SUBSCRIPTION_EMAIL = 'email';
+const SUBSCRIPTION_EVERGREEN_WEBHOOK = 'evergreen-webhook';
+
 function subscriberLabel(subscriber) {
-    if (subscriber.type === 'jira-comment') {
+    if (subscriber.type === SUBSCRIPTION_JIRA_COMMENT) {
         return "Post a comment on JIRA issue " + subscriber.target;
 
-    }else if (subscriber.type === 'jira-issue') {
+    }else if (subscriber.type === SUBSCRIPTION_JIRA_ISSUE) {
         return "Create a JIRA issue in " + subscriber.target;
 
-    }else if (subscriber.type === 'slack') {
+    }else if (subscriber.type === SUBSCRIPTION_SLACK) {
         return "Send a slack message to " + subscriber.target;
 
-    }else if (subscriber.type === 'email') {
+    }else if (subscriber.type === SUBSCRIPTION_EMAIL) {
         return "Send an email to " + subscriber.target;
 
-    }else if (subscriber.type === 'evergreen-webhook') {
+    }else if (subscriber.type === SUBSCRIPTION_EVERGREEN_WEBHOOK) {
         return "Post to external server " + subscriber.target.url;
     }
 
@@ -31,12 +37,12 @@ function addSubscriber($mdDialog, triggers) {
 }
 
 // Return a promise for the edit subscription modal, with the list of triggers.
-// "trigger"
-function editSubscriber($mdDialog, triggers, trigger, subscriber) {
-    return subscriberPromise($mdDialog, "Edit", triggers, trigger, subscriber)
+// trigger and subscriber are the selected trigger and subscriber
+function editSubscriber($mdDialog, triggers, subscription) {
+    return subscriberPromise($mdDialog, "Edit", triggers, subscription)
 }
 
-function subscriberPromise($mdDialog, verb, triggers, trigger, subscriber) {
+function subscriberPromise($mdDialog, verb, triggers, subscription) {
     return $mdDialog.confirm({
         title:"test",
         templateUrl: "static/partials/subscription_modal.html",
@@ -46,8 +52,7 @@ function subscriberPromise($mdDialog, verb, triggers, trigger, subscriber) {
         locals: {
             triggers: triggers,
             verb: verb,
-            trigger: trigger,
-            subscriber: subscriber
+            subscription: subscription
         },
     });
 }
@@ -58,27 +63,28 @@ function subCtrl($scope, $mdDialog) {
     // 'when ...'
     $scope.subscription_methods = [
         {
-            value: "email",
+            value: SUBSCRIPTION_EMAIL,
             label: "sending an email",
         },
         {
-            value: "slack",
+            value: SUBSCRIPTION_SLACK,
             label: "sending a slack message",
         },
         {
-            value: "jira-comment",
+            value: SUBSCRIPTION_JIRA_COMMENT,
             label: "making a comment on a JIRA issue",
         },
         {
-            value: "jira-issue",
+            value: SUBSCRIPTION_JIRA_ISSUE,
             label: "making a JIRA issue",
         },
         {
-            value: "evergreen-webhook",
+            value: SUBSCRIPTION_EVERGREEN_WEBHOOK,
             label: "posting to an external server",
         },
         // Github status api is deliberately omitted here
     ];
+
     $scope.closeDialog = function(save) {
         if(save === true) {
             subscriber = {
@@ -86,10 +92,12 @@ function subCtrl($scope, $mdDialog) {
                 target: $scope.targets[$scope.method.value],
             }
             subscriber.label = subscriberLabel(subscriber);
+
             d = {
                 subscriber: subscriber,
+                resource_type: $scope.trigger.resource_type,
                 trigger: $scope.trigger.trigger,
-                trigger_data: $scope.trigger
+                trigger_label: $scope.trigger.label
             };
             $mdDialog.hide(d);
         }
@@ -114,43 +122,41 @@ function subCtrl($scope, $mdDialog) {
             return false
         }
 
-        if ($scope.method.value === 'jira-comment') {
-            return $scope.targets['jira-comment'].match(".+-[0-9]+") !== null
+        if ($scope.method.value === SUBSCRIPTION_JIRA_COMMENT) {
+            return $scope.targets[SUBSCRIPTION_JIRA_COMMENT].match(".+-[0-9]+") !== null
 
-        }else if ($scope.method.value === 'jira-issue') {
-            return $scope.targets['jira-issue'].match(".+") !== null
+        }else if ($scope.method.value === SUBSCRIPTION_JIRA_ISSUE) {
+            return $scope.targets[SUBSCRIPTION_JIRA_ISSUE].match(".+") !== null
 
-        }else if ($scope.method.value === 'slack') {
-            return $scope.targets['slack'].match("(#|@).+") !== null
+        }else if ($scope.method.value === SUBSCRIPTION_SLACK) {
+            return $scope.targets[SUBSCRIPTION_SLACK].match("(#|@).+") !== null
 
-        }else if ($scope.method.value === 'email') {
-            return $scope.targets['email'].match(".+@.+") !== null
+        }else if ($scope.method.value === SUBSCRIPTION_EMAIL) {
+            return $scope.targets[SUBSCRIPTION_EMAIL].match(".+@.+") !== null
 
-        }else if ($scope.method.value === 'evergreen-webhook') {
-            if ($scope.targets['evergreen-webhook'] == undefined) {
+        }else if ($scope.method.value === SUBSCRIPTION_EVERGREEN_WEBHOOK) {
+            if ($scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] == undefined) {
                 return false;
             }
-            return ($scope.targets['evergreen-webhook'].secret.length >= 32 &&
-                $scope.targets['evergreen-webhook'].url.match("https://.+") !== null)
+            return ($scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK].secret.length >= 32 &&
+                $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK].url.match("https://.+") !== null)
         }
 
         return false;
     };
+
     $scope.method = {};
     $scope.targets = {
-        'evergreen-webhook': {
+        SUBSCRIPTION_EVERGREEN_WEBHOOK: {
             secret: $scope.generateSecret(),
         },
     };
-    if ($scope.c.subscriber !== undefined) {
-        $scope.targets[$scope.c.subscriber.type] = $scope.c.subscriber.target;
-        t = _.filter($scope.subscription_methods, function(t) { return t.value == $scope.c.subscriber.type; });
+    if ($scope.c.subscription !== undefined) {
+        $scope.targets[$scope.c.subscription.subscriber.type] = $scope.c.subscription.subscriber.target;
+        t = _.filter($scope.subscription_methods, function(t) { return t.value == $scope.c.subscription.subscriber.type; });
         if (t.length === 1) {
             $scope.method = t[0];
         }
-        t = _.filter($scope.c.triggers, function(t) { return t.trigger == $scope.c.trigger; });
-        if (t.length === 1) {
-            $scope.trigger = t[0];
-        }
+        $scope.trigger = lookupTrigger($scope.c.triggers, $scope.c.subscription.trigger, $scope.c.subscription.resource_type);
     }
 }

@@ -1,6 +1,6 @@
-function lookupTrigger(triggers, name) {
+function lookupTrigger(triggers, trigger, resource_type) {
     t = _.filter(triggers, function(t) {
-        return t.trigger == name;
+        return t.trigger == trigger && t.resource_type == resource_type;
     });
     if (t.length === 1) {
         return t[0];
@@ -269,15 +269,15 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         };
 
         data.Subscriptions = [{
-          trigger: "done",
+            trigger: "done",
+            resource_type: "TEAPOT",
             subscriber: {
                 type:"email",
                 target: "a@b.com"
             }
         }];
-        $scope.subscriptions = data.Subscriptions || [];
-        $scope.subscriptions = _.map($scope.subscriptions, function(v) {
-          v.trigger_data = lookupTrigger($scope.triggers, v.trigger);
+        $scope.subscriptions = _.map(data.Subscriptions || [], function(v) {
+          v.trigger_label = lookupTrigger($scope.triggers, v.trigger, v.resource_type).label;
           v.subscriber.label = subscriberLabel(v.subscriber);
           return v;
         });
@@ -505,21 +505,21 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     return true;
   };
 
-
   $scope.addSubscription = function() {
       promise = addSubscriber($mdDialog, $scope.triggers);
+
       $mdDialog.show(promise).then(function(data){
+          data.changed = true;
           $scope.subscriptions.push(data);
-          $scope.subscriptions[index].changed = true;
       });
   };
 
   $scope.editSubscription = function(index) {
-      promise = editSubscriber($mdDialog, $scope.triggers, $scope.subscriptions[index].trigger, $scope.subscriptions[index].subscriber);
+      promise = editSubscriber($mdDialog, $scope.triggers, $scope.subscriptions[index]);
 
-      $mdDialog.show(promise).then(function(t){
-          $scope.subscriptions[index] = t;
-          $scope.subscriptions[index].changed = true;
+      $mdDialog.show(promise).then(function(data){
+          data.changed = true;
+          $scope.subscriptions[index] = data;
       });
   };
 
