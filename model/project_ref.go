@@ -46,7 +46,7 @@ type ProjectRef struct {
 	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
 
 	// TODO: remove the alerts field above and replace with a list of subscriptions
-	NotifyOnBuildFailure bool `bson:"alert_on_failure" json:"alert_on_failure"`
+	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
