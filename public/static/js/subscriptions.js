@@ -128,7 +128,6 @@ function subCtrl($scope, $mdDialog, verb, triggers, callback, trigger, subscribe
     if (subscriber !== undefined) {
         $scope.targets[subscriber.type] = subscriber.target;
         t = _.filter($scope.subscription_methods, function(t) { return t.value == subscriber.type; });
-        console.log(t);
         if (t.length === 1) {
             $scope.method = t[0];
         }

@@ -279,7 +279,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.subscriptions = _.map($scope.subscriptions, function(v) {
           v.trigger_data = lookupTrigger($scope.triggers, v.trigger);
           v.subscriber.label = subscriberLabel(v.subscriber);
-            console.log(v);
           return v;
         });
 
@@ -504,7 +503,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.addSubscription = function() {
       promise = addSubscriber($mdDialog, $scope.triggers, function(t, s) {
-          console.log(t, s);
           s.label = subscriberLabel(s);
           $scope.subscriptions.push({
               trigger: t.trigger,
@@ -515,7 +513,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       $mdDialog.show(promise);
   };
   $scope.editSubscription = function(index) {
-      console.log($scope.subscriptions[index]);
       promise = editSubscriber($mdDialog, $scope.triggers, function(t, s) {
           s.label = subscriberLabel(s);
           $scope.subscriptions[index].trigger = t.trigger;
