@@ -16,6 +16,33 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     $("#content").addClass("bannerMargin");
   }
 
+  // handle resizing of left sidebar. Since everything on this page is in containers
+  // that have position:absolute, we need to manually adjust widths/positions like this
+  var isResizing = false;
+  var lastXPos = 0;
+  $(function () {
+    var container = $('#page'),
+        left = $('#drawer'),
+        right = $('#page-content'),
+        handle = $('#drag');
+
+    handle.on('mousedown', function (e) {
+        isResizing = true;
+        lastXPos = e.clientX;
+    });
+
+    $(document).on('mousemove', function (e) {
+        if (!isResizing)
+            return;
+
+        var offset = e.clientX - container.offset().left;
+        left.css('width', offset);
+        right.css('left', offset);
+    }).on('mouseup', function (e) {
+        isResizing = false;
+    });
+  });
+
   // helper to convert the history fetched from the backend into revisions,
   // grouped by date, for front-end display
   function groupHistory(history) {
