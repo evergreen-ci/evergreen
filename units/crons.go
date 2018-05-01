@@ -329,7 +329,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		lastPlanned, err := model.FindTaskQueueGenerationTimes()
 		catcher.Add(err)
 
-		names, err := distro.FindAllNames()
+		names, err := distro.FindActive()
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{

@@ -6,7 +6,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateName(t *testing.T) {
@@ -49,4 +52,50 @@ func TestGenerateGceName(t *testing.T) {
 	d.Id = strings.Repeat("abc", 10)
 	tooManyChars := d.GenerateName()
 	assert.True(r.Match([]byte(tooManyChars)))
+}
+
+func TestFindActive(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	db.Clear(Collection)
+	assert := assert.New(t)
+	require := require.New(t)
+
+	active, err := FindActive()
+	assert.Error(err)
+	assert.Len(active, 0)
+
+	d := Distro{
+		Id: "foo",
+	}
+	require.NoError(d.Insert())
+	active, err = FindActive()
+	assert.NoError(err)
+	assert.Len(active, 1)
+
+	d = Distro{
+		Id:       "bar",
+		Disabled: false,
+	}
+	require.NoError(d.Insert())
+	active, err = FindActive()
+	assert.NoError(err)
+	assert.Len(active, 2)
+
+	d = Distro{
+		Id:       "baz",
+		Disabled: true,
+	}
+	require.NoError(d.Insert())
+	active, err = FindActive()
+	assert.NoError(err)
+	assert.Len(active, 2)
+
+	d = Distro{
+		Id:       "qux",
+		Disabled: true,
+	}
+	require.NoError(d.Insert())
+	active, err = FindActive()
+	assert.NoError(err)
+	assert.Len(active, 2)
 }

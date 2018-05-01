@@ -451,7 +451,11 @@ Evergreen - Distros
 	    <div>
 	      <p class="distro-checkbox checkbox">
 		<input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.spawn_allowed">
-		Allow users to spawn these hosts for personal use
+		Allow users to spawn these hosts for personal use.
+	      </p>
+	      <p class="distro-checkbox checkbox">
+		        <input type="checkbox" ng-model="activeDistro.disabled">
+            Disable scheduling this distro. Tasks already in the schedule will be dispatched.
 	      </p>
 	    </div>
 	  </div>
