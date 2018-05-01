@@ -252,6 +252,9 @@ func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription
 	if len(owner) == 0 {
 		return nil, nil
 	}
+	if !IsValidOwnerType(string(ownerType)) {
+		return nil, errors.Errorf("%s is not a valid owner type", ownerType)
+	}
 	query := db.Query(bson.M{
 		subscriptionOwnerKey:     owner,
 		subscriptionOwnerTypeKey: ownerType,
