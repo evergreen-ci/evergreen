@@ -344,6 +344,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         alias.tags = alias.tags_temp.split(',');
       }
     }
+
+    $scope.settingsFormData.subscriptions = _.filter($scope.subscriptions, function(d) {
+        return d.changed;
+    });
+
     $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.patch_aliases);
     if ($scope.admin_name) {
       $scope.addAdmin();
@@ -505,6 +510,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       promise = addSubscriber($mdDialog, $scope.triggers);
       $mdDialog.show(promise).then(function(data){
           $scope.subscriptions.push(data);
+          $scope.subscriptions[index].changed = true;
       });
   };
 
@@ -513,6 +519,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
       $mdDialog.show(promise).then(function(t){
           $scope.subscriptions[index] = t;
+          $scope.subscriptions[index].changed = true;
       });
   };
 

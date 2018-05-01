@@ -30,7 +30,9 @@ function subscriberPromise($mdDialog, verb, triggers, trigger, subscriber) {
     return $mdDialog.confirm({
         title:"test",
         templateUrl: "static/partials/subscription_modal.html",
+        controllerAs: "c",
         controller: subCtrl,
+        bindToController: true,
         locals: {
             triggers: triggers,
             verb: verb,
@@ -40,9 +42,10 @@ function subscriberPromise($mdDialog, verb, triggers, trigger, subscriber) {
     });
 }
 
-function subCtrl($scope, $mdDialog, verb, triggers, trigger, subscriber) {
-    // labels should complete the following sentence fragment:
+function subCtrl($scope, $mdDialog) {
+    // labels should complete the following sentence fragments:
     // 'then notify by ...'
+    // 'when ...'
     $scope.subscription_methods = [
         {
             value: "email",
@@ -66,8 +69,6 @@ function subCtrl($scope, $mdDialog, verb, triggers, trigger, subscriber) {
         },
         // Github status api is deliberately omitted here
     ];
-    $scope.triggers = triggers;
-    $scope.verb = verb;
     $scope.closeDialog = function(save) {
         if(save === true) {
             subscriber = {
@@ -131,16 +132,15 @@ function subCtrl($scope, $mdDialog, verb, triggers, trigger, subscriber) {
             secret: $scope.generateSecret(),
         },
     };
-    if (subscriber !== undefined) {
-        $scope.targets[subscriber.type] = subscriber.target;
-        t = _.filter($scope.subscription_methods, function(t) { return t.value == subscriber.type; });
+    if ($scope.c.subscriber !== undefined) {
+        $scope.targets[$scope.c.subscriber.type] = $scope.c.subscriber.target;
+        t = _.filter($scope.subscription_methods, function(t) { return t.value == $scope.c.subscriber.type; });
         if (t.length === 1) {
             $scope.method = t[0];
         }
-        t = _.filter($scope.triggers, function(t) { return t.trigger == trigger; });
+        t = _.filter($scope.c.triggers, function(t) { return t.trigger == $scope.c.trigger; });
         if (t.length === 1) {
             $scope.trigger = t[0];
         }
     }
-    $scope.subscriber = {};
 }

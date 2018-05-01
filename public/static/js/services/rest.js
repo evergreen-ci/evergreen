@@ -400,11 +400,8 @@ mciServices.rest.factory('mciSubscriptionsService', ['mciBaseRestService', funct
       baseSvc.getResource(resource, [], {}, callbacks);
     }
 
-    service.push = function(settings, callbacks) {
-      var config = {
-          data: settings
-      };
-      baseSvc.postResource(resource, [], config, callbacks);
+    service.post = function(subscriptions, callbacks) {
+      baseSvc.postResource(resource, [], {data: subscriptions}, callbacks);
     }
     return service;
 }]);
