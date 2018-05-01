@@ -17,30 +17,30 @@ function subscriberLabel(subscriber) {
 
     return ""
 }
-function addSubscriber($mdDialog, triggers, callback) {
-    return subscriberPromise($mdDialog, "Add", triggers, callback)
+
+function addSubscriber($mdDialog, triggers) {
+    return subscriberPromise($mdDialog, "Add", triggers)
 }
 
-function editSubscriber($mdDialog, triggers, callback, trigger, subscriber) {
-    return subscriberPromise($mdDialog, "Edit", triggers, callback, trigger, subscriber)
+function editSubscriber($mdDialog, triggers, trigger, subscriber) {
+    return subscriberPromise($mdDialog, "Edit", triggers, trigger, subscriber)
 }
 
-function subscriberPromise($mdDialog, verb, triggers, callback, trigger, subscriber) {
-    return $mdDialog.alert({
+function subscriberPromise($mdDialog, verb, triggers, trigger, subscriber) {
+    return $mdDialog.confirm({
         title:"test",
         templateUrl: "static/partials/subscription_modal.html",
         controller: subCtrl,
         locals: {
             triggers: triggers,
             verb: verb,
-            callback: callback,
             trigger: trigger,
             subscriber: subscriber
         },
     });
 }
 
-function subCtrl($scope, $mdDialog, verb, triggers, callback, trigger, subscriber) {
+function subCtrl($scope, $mdDialog, verb, triggers, trigger, subscriber) {
     // labels should complete the following sentence fragment:
     // 'then notify by ...'
     $scope.subscription_methods = [
@@ -74,9 +74,15 @@ function subCtrl($scope, $mdDialog, verb, triggers, callback, trigger, subscribe
                 type: $scope.method.value,
                 target: $scope.targets[$scope.method.value],
             }
-            callback($scope.trigger, subscriber);
+            subscriber.label = subscriberLabel(subscriber);
+            d = {
+                subscriber: subscriber,
+                trigger: $scope.trigger.trigger,
+                trigger_data: $scope.trigger
+            };
+            $mdDialog.hide(d);
         }
-        $mdDialog.hide();
+        $mdDialog.cancel();
     };
 
     $scope.generateSecret = function() {

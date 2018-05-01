@@ -502,25 +502,18 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
 
   $scope.addSubscription = function() {
-      promise = addSubscriber($mdDialog, $scope.triggers, function(t, s) {
-          s.label = subscriberLabel(s);
-          $scope.subscriptions.push({
-              trigger: t.trigger,
-              trigger_data: t,
-              subscriber: s,
-          })
+      promise = addSubscriber($mdDialog, $scope.triggers);
+      $mdDialog.show(promise).then(function(data){
+          $scope.subscriptions.push(data);
       });
-      $mdDialog.show(promise);
   };
-  $scope.editSubscription = function(index) {
-      promise = editSubscriber($mdDialog, $scope.triggers, function(t, s) {
-          s.label = subscriberLabel(s);
-          $scope.subscriptions[index].trigger = t.trigger;
-          $scope.subscriptions[index].trigger_data = t;
-          $scope.subscriptions[index].subscriber = s;
-      }, $scope.subscriptions[index].trigger, $scope.subscriptions[index].subscriber);
 
-      $mdDialog.show(promise);
+  $scope.editSubscription = function(index) {
+      promise = editSubscriber($mdDialog, $scope.triggers, $scope.subscriptions[index].trigger, $scope.subscriptions[index].subscriber);
+
+      $mdDialog.show(promise).then(function(t){
+          $scope.subscriptions[index] = t;
+      });
   };
 
   $scope.removeSubscription = function(index) {
