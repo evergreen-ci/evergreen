@@ -213,6 +213,9 @@ func (s *Subscription) Validate() error {
 	if s.Trigger == "" {
 		catcher.Add(errors.New("subscription trigger is required"))
 	}
+	if !IsValidOwnerType(string(s.OwnerType)) {
+		catcher.Add(errors.Errorf("%s is not a valid owner type", s.OwnerType))
+	}
 	catcher.Add(s.Subscriber.Validate())
 	return catcher.Resolve()
 }
