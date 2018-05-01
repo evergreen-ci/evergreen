@@ -55,7 +55,7 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 	for _, subscription := range *s.Subscriptions {
 		subscriptionInterface, err := subscription.ToService()
 		if err != nil {
-			return rest.APIError{
+			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Error parsing request body: " + err.Error(),
 			}
@@ -63,14 +63,14 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 
 		dbSubscription, ok := subscriptionInterface.(event.Subscription)
 		if !ok {
-			return rest.APIError{
+			return &rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    "Error parsing subscription interface",
 			}
 		}
 
 		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner != u.Username() {
-			return rest.APIError{
+			return &rest.APIError{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "Cannot change subscriptions for anyone other than yourself",
 			}
@@ -78,7 +78,7 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 
 		err = dbSubscription.Validate()
 		if err != nil {
-			return rest.APIError{
+			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Error validating subscription: " + err.Error(),
 			}
