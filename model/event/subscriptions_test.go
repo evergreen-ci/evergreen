@@ -126,7 +126,7 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   SlackSubscriberType,
 				Target: &t5,
 			},
-			Owner:     "myProject",
+			Owner:     "me",
 			OwnerType: OwnerTypeProject,
 		},
 	}
@@ -255,9 +255,9 @@ func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
 }
 
 func (s *subscriptionsSuite) TestFindByOwnerForProject() {
-	subscriptions, err := FindSubscriptionsByOwner("myProject", OwnerTypeProject)
+	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypeProject)
 	s.NoError(err)
-	s.Len(subscriptions, 1)
-	s.Equal("myProject", subscriptions[0].Owner)
+	s.Require().Len(subscriptions, 1)
+	s.Equal("me", subscriptions[0].Owner)
 	s.EqualValues(OwnerTypeProject, subscriptions[0].OwnerType)
 }
