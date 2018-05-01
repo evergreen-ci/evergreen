@@ -49,6 +49,12 @@ const emailTemplate string = `<html>
 </html>
 `
 
+const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+
+const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .ID }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
+
+const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+
 func makeHeaders(selectors []event.Selector) http.Header {
 	headers := http.Header{}
 	for i := range selectors {
@@ -103,8 +109,6 @@ func webhookPayload(api restModel.Model, headers http.Header) (*util.EvergreenWe
 	}, nil
 }
 
-const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
-
 func jiraComment(t commonTemplateData) (*string, error) {
 	commentTmpl, err := ttemplate.New("jira-comment").Parse(jiraCommentTemplate)
 	if err != nil {
@@ -119,8 +123,6 @@ func jiraComment(t commonTemplateData) (*string, error) {
 
 	return &comment, nil
 }
-
-const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .ID }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
 
 func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 	comment, err := jiraComment(t)
@@ -146,8 +148,6 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 
 	return &issue, nil
 }
-
-const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
 func slack(t commonTemplateData) (*notification.SlackPayload, error) {
 	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)

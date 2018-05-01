@@ -69,6 +69,12 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]notification
 		return nil, errors.Errorf("trigger %s has no selectors", g.triggerName)
 	}
 	if g.isEmpty() {
+		grip.Warning(message.Fields{
+			"event_id": e.ID.Hex(),
+			"trigger":  g.triggerName,
+			"cause":    "programmer error",
+			"message":  "a trigger created an empty generator; it should've just returned nil",
+		})
 		return nil, errors.New("generator has no payloads, and cannot yield any notifications")
 	}
 

@@ -130,7 +130,7 @@ func generatorFromPatch(triggerName string, p *patch.Patch) (*notificationGenera
 		Description: fmt.Sprintf("patch finished in %s", p.FinishTime.Sub(p.StartTime).String()),
 	}
 
-	// TODO improve slack body
+	// TODO improve slack body with additional info, like failing variants
 	gen.slack, err = slack(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "error building slack message")

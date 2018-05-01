@@ -7,7 +7,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 )
 
+// prefetch is a function that take an event, and fetches the data needed to
+// build a notification, and it's payloads. Exactly one prefetch type must exist
+// per EventLogEntry ResourceType.
 type prefetch func(*event.EventLogEntry) (interface{}, error)
+
+// trigger is a function that given an event, and the data fetched by
+// the prefetch function, produces an initialized notificationGenerator
+// (which) can simply have the generate method called to create notifications
+//
+// In the event of an error, the notificationGenerator should be ignored.
+// It is valid for both the generator and error to be nil, in which case the
+// trigger does not apply to the given event.
 type trigger func(*event.EventLogEntry, interface{}) (*notificationGenerator, error)
 
 var registry = triggerRegistry{
