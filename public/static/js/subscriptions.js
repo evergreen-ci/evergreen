@@ -86,6 +86,7 @@ function subCtrl($scope, $mdDialog) {
     ];
 
     $scope.closeDialog = function(save) {
+        console.log(save)
         if(save === true) {
             subscriber = {
                 type: $scope.method.value,
