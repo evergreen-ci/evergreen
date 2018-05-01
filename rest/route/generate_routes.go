@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 func getGenerateManager(route string, version int) *RouteManager {
@@ -78,7 +77,7 @@ func (h *generateHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 			"message": "error generating tasks",
 			"task_id": h.taskID,
 		}))
-		return ResponseData{}, errors.Wrap(err, "error generating tasks")
+		return ResponseData{}, err
 	}
 	return ResponseData{}, nil
 }
