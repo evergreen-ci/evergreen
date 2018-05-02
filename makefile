@@ -98,11 +98,16 @@ $(buildDir)/set-var:scripts/set-var.go
 	go build -o $@ $<
 $(buildDir)/set-project-var:scripts/set-project-var.go
 	go build -o $@ $<
-$(buildDir)/run-smoke:scripts/run-smoke.go
+$(buildDir)/setup-smoke-config:scripts/setup-smoke-config.go
 	go build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
-run-smoke:$(buildDir)/run-smoke
+setup-smoke-config:$(buildDir)/setup-smoke-config
+	@touch $@
+set-smoke-vars:$(buildDir)/.load-smoke-data
+	./bin/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
+	./bin/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
+	./bin/set-var -dbName mci_smoke -collection hosts -id localhost -key agent_revision -value $(currentHash)
 load-smoke-data:$(buildDir)/.load-smoke-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<

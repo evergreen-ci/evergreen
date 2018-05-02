@@ -100,16 +100,21 @@ variables:
       - func: get-project
       - func: set-up-mongodb
       - func: run-make
-        vars: { target: "set-var set-project-var load-smoke-data run-smoke" }
+        vars: { target: "set-var set-project-var load-smoke-data setup-smoke-config" }
       - command: subprocess.exec
         params:
           silent: true
           working_dir: gopath/src/github.com/evergreen-ci/evergreen
           command: |
-            bin/run-smoke -githubToken ${github_token} -awsKey ${aws_key} -awsSecret ${aws_secret}
+            bin/setup-smoke-config -githubToken ${github_token}
+      - func: run-make
+        vars:
+          target: set-smoke-vars
+          build_env: AWS_KEY=${aws_key} AWS_SECRET=${aws_secret}
       - func: run-make
         vars:
           target: "${task_name}"
+          build_env: "GOROOT=/opt/go1.8/go PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH"
   - &version-constants
     nodejs_version: "6.11.1"
   - &run-generate-lint
