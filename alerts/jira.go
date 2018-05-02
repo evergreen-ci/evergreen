@@ -34,6 +34,7 @@ const (
 	jiraFailingVariantField   = "customfield_14277"
 	jiraEvergreenProjectField = "customfield_14278"
 	jiraFailingRevisionField  = "customfield_14851"
+	jiraMaxTitleLength        = 254
 )
 
 // supportedJiraProjects are all of the projects, by name that we
@@ -150,19 +151,35 @@ func getSummary(ctx AlertContext) string {
 	}
 
 	fmt.Fprintf(subj, "%s on %s ", ctx.Task.DisplayName, ctx.Build.DisplayName)
+	fmt.Fprintf(subj, "[%s @ %s] ", ctx.ProjectRef.DisplayName, ctx.Version.Revision[0:8])
 
-	// include test names if <= 4 failed, otherwise print two plus the number remaining
 	if len(failed) > 0 {
-		subj.WriteString("(")
-		if len(failed) <= 4 {
-			subj.WriteString(strings.Join(failed, ", "))
-		} else {
-			fmt.Fprintf(subj, "%s, %s, +%v more", failed[0], failed[1], len(failed)-2)
-		}
-		subj.WriteString(") ")
-	}
+		// Include an additional 10 characters for overhead, like the
+		// parens and number of failures.
+		remaining := jiraMaxTitleLength - subj.Len() - 10
 
-	fmt.Fprintf(subj, "[%s @ %s]", ctx.ProjectRef.DisplayName, ctx.Version.Revision[0:8])
+		if remaining < len(failed[0]) {
+			return subj.String()
+		}
+		subj.WriteString("(")
+		toPrint := []string{}
+		for _, fail := range failed {
+			if remaining-len(fail) > 0 {
+				toPrint = append(toPrint, fail)
+			}
+			remaining = remaining - len(fail) - 2
+		}
+		fmt.Fprint(subj, strings.Join(toPrint, ", "))
+		if len(failed)-len(toPrint) > 0 {
+			fmt.Fprintf(subj, " +%d more", len(failed)-len(toPrint))
+		}
+		subj.WriteString(")")
+	}
+	// Truncate string in case we made some mistake above, since it's better
+	// to have a truncated title than to miss a Jira ticket.
+	if subj.Len() > jiraMaxTitleLength {
+		return subj.String()[:jiraMaxTitleLength]
+	}
 	return subj.String()
 }
 
