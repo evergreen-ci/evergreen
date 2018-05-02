@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -132,13 +133,20 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	subscriptions, err := event.FindSubscriptionsByOwner(projRef.Identifier, event.OwnerTypeProject)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	data := struct {
 		ProjectRef      *model.ProjectRef
 		ProjectVars     *model.ProjectVars
 		ProjectAliases  []model.ProjectAlias    `json:"aliases,omitempty"`
 		ConflictingRefs []string                `json:"pr_testing_conflicting_refs,omitempty"`
 		GithubHook      restModel.APIGithubHook `json:"github_hook"`
-	}{projRef, projVars, projectAliases, conflictingRefs, apiHook}
+		Subscriptions   []event.Subscription    `json:"subscriptions"`
+	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, subscriptions}
 
 	// the project context has all projects so make the ui list using all projects
 	uis.WriteJSON(w, http.StatusOK, data)
@@ -193,8 +201,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		SetupGithubHook     bool `json:"setup_github_hook"`
-		ForceRepotrackerRun bool `json:"force_repotracker_run"`
+		NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
+		SetupGithubHook      bool                 `json:"setup_github_hook"`
+		ForceRepotrackerRun  bool                 `json:"force_repotracker_run"`
+		Subscriptions        []event.Subscription `json:"subscriptions"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -265,6 +275,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
+	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 
 	projectRef.Alerts = map[string][]model.AlertConfig{}
 	for triggerId, alerts := range responseRef.AlertConfig {
@@ -347,6 +358,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
+	}
+
+	for _, subscription := range responseRef.Subscriptions {
+		if err = subscription.Upsert(); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	// If the variable is private, and if the variable in the submission is

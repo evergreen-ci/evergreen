@@ -16,10 +16,11 @@ func TestGetSubscriptions(t *testing.T) {
 
 	subs := []event.Subscription{
 		{
-			ID:      bson.NewObjectId(),
-			Owner:   "someone",
-			Type:    "PATCH",
-			Trigger: "outcome",
+			ID:        bson.NewObjectId(),
+			Owner:     "someone",
+			OwnerType: event.OwnerTypePerson,
+			Type:      "PATCH",
+			Trigger:   "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -32,10 +33,11 @@ func TestGetSubscriptions(t *testing.T) {
 			},
 		},
 		{
-			ID:      bson.NewObjectId(),
-			Owner:   "someoneelse",
-			Type:    "PATCH",
-			Trigger: "outcomeelse",
+			ID:        bson.NewObjectId(),
+			Owner:     "someoneelse",
+			OwnerType: event.OwnerTypePerson,
+			Type:      "PATCH",
+			Trigger:   "outcomeelse",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -54,19 +56,19 @@ func TestGetSubscriptions(t *testing.T) {
 	}
 
 	c := &DBSubscriptionConnector{}
-	apiSubs, err := c.GetSubscriptions("someone")
+	apiSubs, err := c.GetSubscriptions("someone", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 1)
 
-	apiSubs, err = c.GetSubscriptions("someoneelse")
+	apiSubs, err = c.GetSubscriptions("someoneelse", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 1)
 
-	apiSubs, err = c.GetSubscriptions("who")
+	apiSubs, err = c.GetSubscriptions("who", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 0)
 
-	apiSubs, err = c.GetSubscriptions("")
-	assert.EqualError(err, "no user provided")
+	apiSubs, err = c.GetSubscriptions("", event.OwnerTypePerson)
+	assert.EqualError(err, "no subscription owner provided")
 	assert.Len(apiSubs, 0)
 }
