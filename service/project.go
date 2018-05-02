@@ -138,15 +138,22 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	apiSubscriptions := make([]restModel.APISubscription, len(subscriptions))
+	for i := range subscriptions {
+		if err = apiSubscriptions[i].BuildFromService(subscriptions[i]); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
 
 	data := struct {
 		ProjectRef      *model.ProjectRef
 		ProjectVars     *model.ProjectVars
-		ProjectAliases  []model.ProjectAlias    `json:"aliases,omitempty"`
-		ConflictingRefs []string                `json:"pr_testing_conflicting_refs,omitempty"`
-		GithubHook      restModel.APIGithubHook `json:"github_hook"`
-		Subscriptions   []event.Subscription    `json:"subscriptions"`
-	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, subscriptions}
+		ProjectAliases  []model.ProjectAlias        `json:"aliases,omitempty"`
+		ConflictingRefs []string                    `json:"pr_testing_conflicting_refs,omitempty"`
+		GithubHook      restModel.APIGithubHook     `json:"github_hook"`
+		Subscriptions   []restModel.APISubscription `json:"subscriptions"`
+	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, apiSubscriptions}
 
 	// the project context has all projects so make the ui list using all projects
 	uis.WriteJSON(w, http.StatusOK, data)
@@ -201,10 +208,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
-		SetupGithubHook      bool                 `json:"setup_github_hook"`
-		ForceRepotrackerRun  bool                 `json:"force_repotracker_run"`
-		Subscriptions        []event.Subscription `json:"subscriptions"`
+		NotifyOnBuildFailure bool                        `json:"notify_on_failure"`
+		SetupGithubHook      bool                        `json:"setup_github_hook"`
+		ForceRepotrackerRun  bool                        `json:"force_repotracker_run"`
+		Subscriptions        []restModel.APISubscription `json:"subscriptions"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -360,7 +367,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, subscription := range responseRef.Subscriptions {
+	for _, apiSubscription := range responseRef.Subscriptions {
+		var subscriptionIface interface{}
+		subscriptionIface, err = apiSubscription.ToService()
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		subscription := subscriptionIface.(event.Subscription)
+		subscription.Selectors = []event.Selector{
+			{
+				Type: "project",
+				Data: projectRef.Identifier,
+			},
+		}
+		subscription.OwnerType = event.OwnerTypeProject
+		subscription.Owner = projectRef.Identifier
 		if err = subscription.Upsert(); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

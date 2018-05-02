@@ -14,7 +14,7 @@ type APISelector struct {
 
 type APISubscription struct {
 	ID             APIString     `json:"id"`
-	Type           APIString     `json:"type"`
+	Type           APIString     `json:"resource_type"`
 	Trigger        APIString     `json:"trigger"`
 	Selectors      []APISelector `json:"selectors"`
 	RegexSelectors []APISelector `json:"regex_selectors"`
