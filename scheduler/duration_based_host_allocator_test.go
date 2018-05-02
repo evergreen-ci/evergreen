@@ -550,7 +550,6 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 
 		remainingDurationOneSecs := remainingDurationOne.Seconds()
 		remainingDurationTwoSecs := remainingDurationTwo.Seconds()
-		//remainingDurationThreeSecs := remainingDurationThree.Seconds()
 
 		So(db.Clear(task.Collection), ShouldBeNil)
 
