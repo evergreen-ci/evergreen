@@ -34,7 +34,7 @@ const (
 	jiraFailingVariantField   = "customfield_14277"
 	jiraEvergreenProjectField = "customfield_14278"
 	jiraFailingRevisionField  = "customfield_14851"
-	jiraMaxTitleLength        = 255
+	jiraMaxTitleLength        = 254
 )
 
 // supportedJiraProjects are all of the projects, by name that we
@@ -177,7 +177,7 @@ func getSummary(ctx AlertContext) string {
 	}
 	// Truncate string in case we made some mistake above, since it's better
 	// to have a truncated title than to miss a Jira ticket.
-	if subj.Len() > 255 {
+	if subj.Len() > jiraMaxTitleLength {
 		return subj.String()[:jiraMaxTitleLength]
 	}
 	return subj.String()
