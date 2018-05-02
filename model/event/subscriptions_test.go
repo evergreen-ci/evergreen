@@ -161,11 +161,11 @@ func (s *subscriptionsSuite) TestRemove() {
 
 func (s *subscriptionsSuite) TestFind() {
 	// Empty selectors should select nothing (because technically, they match everything)
-	subs, err := FindSubscribers("type2", "trigger2", nil)
+	subs, err := FindSubscriptions("type2", "trigger2", nil)
 	s.NoError(err)
 	s.Nil(subs)
 
-	subs, err = FindSubscribers("type2", "trigger2", []Selector{
+	subs, err = FindSubscriptions("type2", "trigger2", []Selector{
 		{
 			Type: "data",
 			Data: "somethingspecial",
@@ -175,12 +175,12 @@ func (s *subscriptionsSuite) TestFind() {
 	s.Len(subs, 2)
 	s.NotPanics(func() {
 		s.Len(subs[EmailSubscriberType], 1)
-		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Type)
-		s.Equal("someone4@example.com", *subs[EmailSubscriberType][0].Target.(*string))
+		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Subscriber.Type)
+		s.Equal("someone4@example.com", *subs[EmailSubscriberType][0].Subscriber.Target.(*string))
 	})
 
 	// this query hits a subscriber with a regex selector
-	subs, err = FindSubscribers("type1", "trigger1", []Selector{
+	subs, err = FindSubscriptions("type1", "trigger1", []Selector{
 		{
 			Type: "data1",
 			Data: "something",
@@ -225,7 +225,7 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 		},
 	}
 
-	a := subscriberWithRegex{
+	a := Subscription{
 		RegexSelectors: []Selector{
 			{
 				Type: "type",
@@ -238,10 +238,49 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 		},
 	}
 
-	s.True(regexSelectorsMatch(selectors, &a))
+	s.True(regexSelectorsMatch(selectors, a.RegexSelectors))
 
 	a.RegexSelectors[0].Data = "^S"
-	s.False(regexSelectorsMatch(selectors, &a))
+	s.False(regexSelectorsMatch(selectors, a.RegexSelectors))
+}
+
+func (s *subscriptionsSuite) TestExtraData() {
+	subscription := Subscription{
+		ID:      bson.NewObjectId(),
+		Type:    ResourceTypePatch,
+		Trigger: "time-exceeds-n-constant",
+		Selectors: []Selector{
+			{
+				Type: "data1",
+				Data: "something",
+			},
+		},
+		RegexSelectors: []Selector{},
+		Subscriber: Subscriber{
+			Type:   EmailSubscriberType,
+			Target: "test@domain.invalid",
+		},
+		Owner: "someoneelse",
+	}
+	s.NoError(subscription.Upsert())
+
+	out := Subscription{}
+	q := db.Query(bson.M{
+		"_id": subscription.ID,
+	})
+	s.NoError(db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+		"_id": subscription.ID,
+	}), &out))
+	s.NotZero(out)
+
+	subscription.ExtraData = bson.M{
+		"test": "test",
+	}
+	s.NoError(subscription.Upsert())
+
+	out = Subscription{}
+	s.EqualError(db.FindOneQ(SubscriptionsCollection, q, &out), "error unmarshaling extra data: unexpected extra data in subscription")
+	s.Zero(out)
 }
 
 func (s *subscriptionsSuite) TestFindByOwnerForPerson() {

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
@@ -48,7 +49,7 @@ func (s *eventMetaJobSuite) SetupTest() {
 
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 
-	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection, patch.Collection))
 
 	events := []event.EventLogEntry{
 		{
@@ -182,11 +183,22 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Require().NoError(err)
 	defer ln.Close()
 
+	p := &patch.Patch{
+		Id:      bson.NewObjectId(),
+		Project: "test",
+		Status:  evergreen.PatchFailed,
+		Author:  "somebody",
+	}
+	s.NoError(p.Insert())
+
 	e := event.EventLogEntry{
-		ResourceType: event.ResourceTypeTest,
-		EventType:    "test",
-		Data: &event.TestEvent{
-			Message: "i'm an event driven notification",
+		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchStateChange,
+		ResourceId:   p.Id.Hex(),
+		Data: &event.PatchEventData{
+			Author:   "somebody",
+			Status:   evergreen.PatchFailed,
+			Duration: time.Hour,
 		},
 	}
 
@@ -197,11 +209,11 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 		{
 			ID:      bson.NewObjectId(),
 			Type:    e.ResourceType,
-			Trigger: "test",
+			Trigger: "outcome",
 			Selectors: []event.Selector{
 				{
-					Type: "test",
-					Data: "awesomeness",
+					Type: "owner",
+					Data: "somebody",
 				},
 			},
 			Subscriber: event.Subscriber{
@@ -215,7 +227,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 		{
 			ID:      bson.NewObjectId(),
 			Type:    e.ResourceType,
-			Trigger: "test",
+			Trigger: "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "test",
@@ -253,7 +265,9 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	grip.Info("waiting for dispatches")
 	amboy.WaitInterval(job.q, 10*time.Millisecond)
-	grip.Info("waiting for done")
+	grip.Info("waiting for senders")
+	amboy.Wait(job.q)
+	grip.Info("senders are done")
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))

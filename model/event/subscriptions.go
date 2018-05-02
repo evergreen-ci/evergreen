@@ -26,19 +26,17 @@ var (
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
+	subscriptionExtraDataKey      = bsonutil.MustHaveTag(Subscription{}, "ExtraData")
 
-	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(groupedSubscribers{}, "Type")
-	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(groupedSubscribers{}, "Subscribers")
-
-	subscriberWithRegexKey               = bsonutil.MustHaveTag(subscriberWithRegex{}, "Subscriber")
-	subscriberWithRegexRegexSelectorsKey = bsonutil.MustHaveTag(subscriberWithRegex{}, "RegexSelectors")
+	groupedSubscriptionsTypeKey          = bsonutil.MustHaveTag(groupedSubscriptions{}, "Type")
+	groupedSubscriptionsSubscriptionsKey = bsonutil.MustHaveTag(groupedSubscriptions{}, "Subscriptions")
 )
 
 type OwnerType string
 
 const (
 	OwnerTypePerson  OwnerType = "person"
-	OwnerTypeProject           = "project"
+	OwnerTypeProject OwnerType = "project"
 )
 
 type Subscription struct {
@@ -50,6 +48,57 @@ type Subscription struct {
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
 	OwnerType      OwnerType     `bson:"owner_type"`
+	ExtraData      interface{}   `bson:"extra_data,omitempty"`
+}
+
+type unmarshalSubscription struct {
+	ID             bson.ObjectId `bson:"_id"`
+	Type           string        `bson:"type"`
+	Trigger        string        `bson:"trigger"`
+	Selectors      []Selector    `bson:"selectors,omitempty"`
+	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
+	Subscriber     Subscriber    `bson:"subscriber"`
+	Owner          string        `bson:"owner"`
+	OwnerType      OwnerType     `bson:"owner_type"`
+	ExtraData      bson.Raw      `bson:"extra_data,omitempty"`
+}
+
+func (s *Subscription) SetBSON(raw bson.Raw) error {
+	temp := unmarshalSubscription{}
+
+	if err := raw.Unmarshal(&temp); err != nil {
+		return errors.Wrap(err, "error unmarshalling subscriber")
+	}
+
+	if data := registry.GetExtraData(temp.Type, temp.Trigger); data != nil {
+		s.ExtraData = data
+	}
+
+	// if there is no extra_data field in the db
+	if temp.ExtraData.Kind == 0x00 && len(temp.ExtraData.Data) == 0 {
+		if s.ExtraData != nil {
+			s.ExtraData = nil
+			return errors.New("error unmarshaling extra data: expected extra data in subscription; found none")
+		}
+
+	} else {
+		if s.ExtraData == nil {
+			return errors.New("error unmarshaling extra data: unexpected extra data in subscription")
+		}
+		if err := temp.ExtraData.Unmarshal(s.ExtraData); err != nil {
+			return errors.Wrap(err, "error unmarshaling extra data")
+		}
+	}
+
+	s.ID = temp.ID
+	s.Type = temp.Type
+	s.Trigger = temp.Trigger
+	s.Selectors = temp.Selectors
+	s.RegexSelectors = temp.RegexSelectors
+	s.Subscriber = temp.Subscriber
+	s.Owner = temp.Owner
+
+	return nil
 }
 
 type Selector struct {
@@ -57,21 +106,18 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-type groupedSubscribers struct {
-	Type        string                `bson:"_id"`
-	Subscribers []subscriberWithRegex `bson:"subscribers"`
+type groupedSubscriptions struct {
+	Type          string         `bson:"_id"`
+	Subscriptions []Subscription `bson:"subscriptions"`
 }
 
-type subscriberWithRegex struct {
-	Subscriber     Subscriber `bson:"subscriber"`
-	RegexSelectors []Selector `bson:"regex_selectors"`
-}
-
-// FindSubscribers finds all subscriptions that match the given information
-func FindSubscribers(subscriptionType, triggerType string, selectors []Selector) (map[string][]Subscriber, error) {
+// FindSubscriptions finds all subscriptions that match the given information,
+// returning them in a map by subscriber type
+func FindSubscriptions(subscriptionType, triggerType string, selectors []Selector) (map[string][]Subscription, error) {
 	if len(selectors) == 0 {
 		return nil, nil
 	}
+
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -80,9 +126,7 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 			},
 		},
 		{
-			"$project": bson.M{
-				subscriptionSubscriberKey:     1,
-				subscriptionRegexSelectorsKey: 1,
+			"$addFields": bson.M{
 				"keep": bson.M{
 					"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
 				},
@@ -96,46 +140,41 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 		{
 			"$group": bson.M{
 				"_id": "$" + bsonutil.GetDottedKeyName(subscriptionSubscriberKey, subscriberTypeKey),
-				"subscribers": bson.M{
-					"$push": bson.M{
-						subscriberWithRegexKey:               "$" + subscriptionSubscriberKey,
-						subscriberWithRegexRegexSelectorsKey: "$" + subscriptionRegexSelectorsKey,
-					},
+				"subscriptions": bson.M{
+					"$push": "$$ROOT",
 				},
 			},
 		},
 	}
 
-	gs := []groupedSubscribers{}
+	gs := []groupedSubscriptions{}
 	if err := db.Aggregate(SubscriptionsCollection, pipeline, &gs); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 
-	out := map[string][]Subscriber{}
+	out := map[string][]Subscription{}
 	for i := range gs {
-		subscribers := []Subscriber{}
-		for j := range gs[i].Subscribers {
-			sub := &gs[i].Subscribers[j]
-			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub) {
+		for j := range gs[i].Subscriptions {
+			sub := &gs[i].Subscriptions[j]
+			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub.RegexSelectors) {
 				continue
 			}
 
-			subscribers = append(subscribers, sub.Subscriber)
+			out[gs[i].Type] = append(out[gs[i].Type], *sub)
 		}
-		out[gs[i].Type] = subscribers
 	}
 
 	return out, nil
 }
 
-func regexSelectorsMatch(selectors []Selector, s *subscriberWithRegex) bool {
-	for i := range s.RegexSelectors {
-		selector := findSelector(selectors, s.RegexSelectors[i].Type)
+func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
+	for i := range regexSelectors {
+		selector := findSelector(selectors, regexSelectors[i].Type)
 		if selector == nil {
 			return false
 		}
 
-		matched, err := regexp.MatchString(s.RegexSelectors[i].Data, selector.Data)
+		matched, err := regexp.MatchString(regexSelectors[i].Data, selector.Data)
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "notifications-errors",
 			"message": "bad regex in db",
@@ -162,6 +201,17 @@ func findSelector(selectors []Selector, selectorType string) *Selector {
 func (s *Subscription) Upsert() error {
 	if len(s.ID.Hex()) == 0 {
 		s.ID = bson.NewObjectId()
+	}
+	update := bson.M{
+		subscriptionTypeKey:           s.Type,
+		subscriptionTriggerKey:        s.Trigger,
+		subscriptionSelectorsKey:      s.Selectors,
+		subscriptionRegexSelectorsKey: s.RegexSelectors,
+		subscriptionSubscriberKey:     s.Subscriber,
+		subscriptionOwnerKey:          s.Owner,
+	}
+	if s.ExtraData != nil {
+		update[subscriptionExtraDataKey] = s.ExtraData
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
