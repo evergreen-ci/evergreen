@@ -49,7 +49,7 @@ func (v *CachedIntValue) String() string {
 // SetRefresher sets CachedIntValueRefresher for the object which is
 // needed when reading CachedIntValue objects out of the database.
 //
-// It is not permissible to set the refrehser to either nil or a value
+// It is not permissible to set the refresher to either nil or a value
 // when it is *not* nil.
 func (v *CachedIntValue) SetRefresher(r CachedIntValueRefresher) error {
 	if r == nil {
@@ -128,7 +128,7 @@ func (v *CachedDurationValue) String() string {
 // SetRefresher sets CachedDurationValueRefresher for the object which is
 // needed when reading CachedDurationValue objects out of the database.
 //
-// It is not permissible to set the refrehser to either nil or a value
+// It is not permissible to set the refresher to either nil or a value
 // when it is *not* nil.
 func (v *CachedDurationValue) SetRefresher(r CachedDurationValueRefresher) error {
 	if r == nil {

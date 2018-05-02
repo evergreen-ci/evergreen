@@ -531,7 +531,6 @@ func TestComputeDurationBasedNumNewHosts(t *testing.T) {
 }
 
 func TestComputeRunningTasksDuration(t *testing.T) {
-	var testTaskDuration time.Duration
 	var hostIds []string
 	var runningTaskIds []string
 
