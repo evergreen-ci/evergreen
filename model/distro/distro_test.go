@@ -55,10 +55,10 @@ func TestGenerateGceName(t *testing.T) {
 }
 
 func TestFindActive(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	db.Clear(Collection)
 	assert := assert.New(t)
 	require := require.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	require.NoError(db.Clear(Collection))
 
 	active, err := FindActive()
 	assert.Error(err)
