@@ -41,7 +41,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 {{ if not .ProjectData.Patch }}
 <div id="page">
   <div ng-controller="TaskHistoryDrawerCtrl" id="drawer">
-    <div id="drag" style="cursor: e-resize;">
+    <div id="drag" style="cursor: ew-resize;">
       <div id="drawer-contents">
         <div id="drawer-filled">
           <div ng-repeat="revisionsForDate in groupedRevisions">
