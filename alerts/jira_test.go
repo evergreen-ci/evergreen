@@ -148,7 +148,7 @@ func TestJIRASummary(t *testing.T) {
 			}
 			subj := getSummary(ctx)
 			So(subj, ShouldNotEqual, "")
-			Convey("and list the tests, but not exceed 255 characters", func() {
+			Convey("and list the tests, but not exceed 254 characters", func() {
 				So(subj, ShouldContainSubstring, "Failures")
 				So(subj, ShouldContainSubstring, TaskName)
 				So(subj, ShouldContainSubstring, BuildName)
