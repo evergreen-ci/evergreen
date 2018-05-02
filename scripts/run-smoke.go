@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -38,7 +39,11 @@ func main() {
 		fmt.Printf(errors.Wrap(err, "unable to open smoke config").Error())
 		return
 	}
-	data := fmt.Sprintf("\nlog_path: \"STDOUT\"\n\ncredentials: {\n  github: \"%s\"\n}\n", githubToken)
+	data := fmt.Sprintf(`
+log_path: "STDOUT"
+credentials: {
+  github: "%s"
+}`, githubToken)
 	_, err = f.Write([]byte(data))
 	if err != nil {
 		fmt.Printf(errors.Wrap(err, "unable to write smoke config").Error())
@@ -71,7 +76,7 @@ func main() {
 	}
 
 	cmd = exec.Command("bin/set-var", "-dbName", "mci_smoke", "-collection", "hosts",
-		"-id", "localhost", "-key", "agent_revision", "-value", rev.String())
+		"-id", "localhost", "-key", "agent_revision", "-value", strings.TrimSpace(rev.String()))
 	if err = cmd.Run(); err != nil {
 		fmt.Printf(errors.Wrap(err, "unable to set project variables").Error())
 	}
