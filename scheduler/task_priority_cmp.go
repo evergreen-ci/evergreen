@@ -3,6 +3,8 @@ package scheduler
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -193,6 +195,26 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 			}
 		}
 	}
+	tasksFromTaskGroup := []string{}
+	for _, tg := range comparator.projects[t1.Version].TaskGroups {
+		if tg.Name == t1.TaskGroup {
+			tasksFromTaskGroup = append(tasksFromTaskGroup, tg.Tasks...)
+		}
+	}
+	grip.Error(message.Fields{
+		"message":                 "something went wrong sorting by task group order",
+		"ticket":                  "EVG-3305",
+		"t1_id":                   t1.Id,
+		"t1_display_name":         t1.DisplayName,
+		"t1_version":              t1.Version,
+		"t1_group":                t1.TaskGroup,
+		"t2_id":                   t2.Id,
+		"t2_display_name":         t2.DisplayName,
+		"t2_version":              t2.Version,
+		"t2_group":                t2.TaskGroup,
+		"comparator_projects_len": len(comparator.projects),
+		"tasks_from_task_group":   tasksFromTaskGroup,
+	})
 	return 0, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, t1.TaskGroup)
 }
 
