@@ -76,8 +76,12 @@ type Host struct {
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
+
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
+	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
+	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
+
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
 
@@ -563,6 +567,22 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 	)
 }
 
+func (h *Host) CacheHostData() error {
+	_, err := UpsertOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				ZoneKey:       h.Zone,
+				StartTimeKey:  h.StartTime,
+				VolumeSizeKey: h.VolumeTotalSize,
+			},
+		},
+	)
+	return err
+}
+
 func (h *Host) Insert() error {
 	event.LogHostCreated(h.Id)
 	return db.Insert(Collection, h)
@@ -674,7 +694,7 @@ func FindHostsToTerminate() ([]Host, error) {
 		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
 		provisioningCutoff = 25 * time.Minute
 
-		// unreachableCutoff is the threshold to wait for an unreachable host to become marked
+		// unreachableCutoff is the threshold to wait for an decommissioned host to become marked
 		// as reachable again before giving up and terminating it.
 		unreachableCutoff = 5 * time.Minute
 	)
@@ -704,15 +724,9 @@ func FindHostsToTerminate() ([]Host, error) {
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
-			{ // unreachable
-				StatusKey: evergreen.HostUnreachable,
-				"$or": []bson.M{
-					{LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)}},
-					{
-						NeedsNewAgentKey:         false,
-						LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
-					},
-				},
+			{ // decommissioned hosts that have not checked in recently
+				StatusKey:                evergreen.HostDecommissioned,
+				LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)},
 			},
 		},
 	}

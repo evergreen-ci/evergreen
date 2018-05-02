@@ -1,8 +1,11 @@
 package model
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -103,15 +106,21 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrapf(err, "error finding task %s", g.TaskID)
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
+	}
+	if t == nil {
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
 	}
 	v, err := version.FindOneId(t.Version)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrapf(err, "error finding version %s", t.Version)
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
+	}
+	if v == nil {
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
 	}
 	p := &Project{}
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error reading project yaml")
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
 
 	// Cache project data in maps for quick lookup
@@ -119,16 +128,16 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 
 	// Validate generated project against original project.
 	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "generated project is invalid")
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
 	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error creating config from generated config")
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	v.Config = config
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "error reading project yaml")
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
 	return p, v, t, &cachedProject, nil
 }

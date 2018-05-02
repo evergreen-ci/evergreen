@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -50,9 +51,10 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"type":    "atype",
-		"trigger": "atrigger",
-		"owner":   "me",
+		"type":       "atype",
+		"trigger":    "atrigger",
+		"owner":      "me",
+		"owner_type": "person",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",
@@ -74,7 +76,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	s.NoError(err)
 	s.NotNil(resp)
 
-	dbSubscriptions, err := event.FindSubscriptionsByOwner("me")
+	dbSubscriptions, err := event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Len(dbSubscriptions, 1)
 	s.Equal("atype", dbSubscriptions[0].Type)
@@ -84,10 +86,11 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	// test updating the same subscription
 	id := dbSubscriptions[0].ID
 	body = []map[string]interface{}{{
-		"id":      id.Hex(),
-		"type":    "new type",
-		"trigger": "atrigger",
-		"owner":   "me",
+		"id":         id.Hex(),
+		"type":       "new type",
+		"trigger":    "atrigger",
+		"owner":      "me",
+		"owner_type": "person",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",
@@ -108,19 +111,95 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	s.NoError(err)
 	s.NotNil(resp)
 
-	dbSubscriptions, err = event.FindSubscriptionsByOwner("me")
+	dbSubscriptions, err = event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Len(dbSubscriptions, 1)
 	s.Equal("new type", dbSubscriptions[0].Type)
 }
 
-func (s *SubscriptionRouteSuite) TestUnauthorizedUser() {
+func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"type":    "atype",
-		"trigger": "atrigger",
-		"owner":   "not_me",
+		"type":       "atype",
+		"trigger":    "atrigger",
+		"owner":      "myproj",
+		"owner_type": "project",
+		"selectors": []map[string]string{{
+			"type": "seltype",
+			"data": "seldata",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "email message",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+
+	// create a new subscription
+	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+
+	dbSubscriptions, err := event.FindSubscriptionsByOwner("myproj", event.OwnerTypeProject)
+	s.NoError(err)
+	s.Len(dbSubscriptions, 1)
+	s.Equal("atype", dbSubscriptions[0].Type)
+	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
+	s.Equal("email", dbSubscriptions[0].Subscriber.Type)
+
+	// test updating the same subscription
+	id := dbSubscriptions[0].ID
+	body = []map[string]interface{}{{
+		"id":         id.Hex(),
+		"type":       "new type",
+		"trigger":    "atrigger",
+		"owner":      "myproj",
+		"owner_type": "project",
+		"selectors": []map[string]string{{
+			"type": "seltype",
+			"data": "seldata",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "email message",
+		},
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+
+	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+
+	// get the updated subscription
+	h := &subscriptionGetHandler{}
+	h.owner = "myproj"
+	h.ownerType = string(event.OwnerTypeProject)
+	subs, err := h.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Require().Len(subs.Result, 1)
+	sub := subs.Result[0].(*model.APISubscription)
+	s.Equal("new type", model.FromAPIString(sub.Type))
+}
+
+func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	body := []map[string]interface{}{{
+		"type":       "atype",
+		"trigger":    "atrigger",
+		"owner":      "not_me",
+		"owner_type": "person",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",
@@ -136,4 +215,32 @@ func (s *SubscriptionRouteSuite) TestUnauthorizedUser() {
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
 	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot change subscriptions for anyone other than yourself")
+}
+
+func (s *SubscriptionRouteSuite) TestGet() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+
+	h := &subscriptionGetHandler{}
+	h.owner = "me"
+	h.ownerType = string(event.OwnerTypePerson)
+	subs, err := h.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Len(subs.Result, 0)
+
+	s.TestSubscriptionPost()
+
+	h.owner = "me"
+	h.ownerType = string(event.OwnerTypePerson)
+	subs, err = h.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Len(subs.Result, 1)
+}
+
+func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
+	s.PanicsWithValue("no user attached to request", func() {
+		ctx := context.Background()
+		h := &subscriptionGetHandler{}
+		_ = h.ParseAndValidate(ctx, nil)
+	})
 }

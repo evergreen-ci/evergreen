@@ -45,6 +45,9 @@ type ProjectRef struct {
 	// the set of alert deliveries to be processed for that trigger.
 	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
 
+	// TODO: remove the alerts field above
+	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
+
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`

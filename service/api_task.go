@@ -564,4 +564,5 @@ func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
 	response.TaskSecret = t.Secret
 	response.TaskGroup = t.TaskGroup
 	response.Version = t.Version
+	response.Build = t.BuildId
 }

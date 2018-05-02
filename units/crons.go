@@ -309,7 +309,7 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateSchedulerJobs() amboy.QueueOperation {
+func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -329,7 +329,7 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 		lastPlanned, err := model.FindTaskQueueGenerationTimes()
 		catcher.Add(err)
 
-		names, err := distro.FindAllNames()
+		names, err := distro.FindActive()
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
@@ -352,7 +352,7 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewDistroSchedulerJob(id, ts)))
+			catcher.Add(queue.Put(NewDistroSchedulerJob(env, id, ts)))
 		}
 
 		return catcher.Resolve()
@@ -443,6 +443,11 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 		}
 
 		hosts, err := host.Find(host.IsUninitialized)
+		grip.Info(message.Fields{
+			"message": "uninitialized hosts",
+			"number":  len(hosts),
+			"runner":  "hostinit",
+		})
 		if err != nil {
 			return errors.Wrap(err, "error fetching uninitialized hosts")
 		}
@@ -463,7 +468,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 			if h.UserHost {
 				// pass:
 				//    always start spawn hosts asap
-			} else if submitted > 12 {
+			} else if submitted > 16 {
 				// throttle hosts, so that we're starting very
 				// few hosts on every pass. Hostinit runs very
 				// frequently, lets not start too many all at

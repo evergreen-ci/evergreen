@@ -51,6 +51,7 @@ var (
 	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
+	VolumeSizeKey              = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
 	NotificationsKey           = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey   = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -290,9 +291,7 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": false}},
-			{StatusKey: bson.M{
-				"$in": []string{evergreen.HostRunning, evergreen.HostUnreachable},
-			}},
+			{StatusKey: evergreen.HostRunning},
 			{StartedByKey: evergreen.User},
 			{"$or": []bson.M{
 				{LastCommunicationTimeKey: bson.M{"$lte": threshold}},

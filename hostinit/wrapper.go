@@ -146,6 +146,9 @@ func CreateHost(ctx context.Context, h *host.Host, settings *evergreen.Settings)
 	}
 
 	h.Status = evergreen.HostStarting
+
+	// Provisionally set h.StartTime to now. Cloud providers may override
+	// this value with the time the host was created.
 	h.StartTime = time.Now()
 
 	_, err = h.Upsert()

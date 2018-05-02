@@ -114,6 +114,7 @@ LOOP:
 			if err != nil {
 				// task secret doesn't match, get another task
 				if errors.Cause(err) == client.HTTPConflictError {
+					timer.Reset(0)
 					continue LOOP
 				}
 				return errors.Wrap(err, "error getting next task")
@@ -126,6 +127,7 @@ LOOP:
 				if exit {
 					// Query for next task, this time with an empty task group,
 					// to get a ShouldExit from the API, and set NeedsNewAgent.
+					timer.Reset(0)
 					continue LOOP
 				}
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
@@ -151,7 +153,7 @@ LOOP:
 func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (*taskContext, bool) {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
-	if tc.taskConfig == nil || nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
+	if nextTaskHasDifferentTaskGroupOrBuild(nextTask, tc) {
 		defer a.removeTaskDirectory(tc)
 		defer a.killProcs(tc, true)
 		setupGroup = true
@@ -170,6 +172,18 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		runGroupSetup: setupGroup,
 		taskDirectory: taskDirectory,
 	}, false
+}
+
+func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
+	if tc.taskConfig == nil ||
+		nextTask.TaskGroup == "" ||
+		nextTask.TaskGroup != tc.taskGroup ||
+		// TODO The Version case is redundant, and can be removed after agents roll over after a deploy.
+		nextTask.Version != tc.taskConfig.Task.Version ||
+		nextTask.Build != tc.taskConfig.Task.BuildId {
+		return true
+	}
+	return false
 }
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {

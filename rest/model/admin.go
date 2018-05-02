@@ -679,7 +679,9 @@ func (a *APINewRelicConfig) ToService() (interface{}, error) {
 }
 
 type APINotifyConfig struct {
-	SMTP *APISMTPConfig `json:"smtp"`
+	BufferTargetPerInterval int            `json:"buffer_target_per_interval"`
+	BufferIntervalSeconds   int            `json:"buffer_interval_seconds"`
+	SMTP                    *APISMTPConfig `json:"smtp"`
 }
 
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
@@ -691,6 +693,8 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 				return err
 			}
 		}
+		a.BufferTargetPerInterval = v.BufferTargetPerInterval
+		a.BufferIntervalSeconds = v.BufferIntervalSeconds
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -707,6 +711,8 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 		config = smtp.(*evergreen.SMTPConfig)
 	}
 	return evergreen.NotifyConfig{
+		BufferTargetPerInterval: a.BufferTargetPerInterval,
+		BufferIntervalSeconds:   a.BufferIntervalSeconds,
 		SMTP: config,
 	}, nil
 }
@@ -944,13 +950,15 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder APIString `json:"task_finder"`
+	TaskFinder    APIString `json:"task_finder"`
+	HostAllocator APIString `json:"host_allocator"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.SchedulerConfig:
 		a.TaskFinder = ToAPIString(v.TaskFinder)
+		a.HostAllocator = ToAPIString(v.HostAllocator)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -959,7 +967,8 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder: FromAPIString(a.TaskFinder),
+		TaskFinder:    FromAPIString(a.TaskFinder),
+		HostAllocator: FromAPIString(a.HostAllocator),
 	}, nil
 }
 

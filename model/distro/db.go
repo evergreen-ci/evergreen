@@ -20,11 +20,10 @@ var (
 	SSHKeyKey           = bsonutil.MustHaveTag(Distro{}, "SSHKey")
 	SSHOptionsKey       = bsonutil.MustHaveTag(Distro{}, "SSHOptions")
 	WorkDirKey          = bsonutil.MustHaveTag(Distro{}, "WorkDir")
-
-	UserDataKey = bsonutil.MustHaveTag(Distro{}, "UserData")
-
-	SpawnAllowedKey = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
-	ExpansionsKey   = bsonutil.MustHaveTag(Distro{}, "Expansions")
+	UserDataKey         = bsonutil.MustHaveTag(Distro{}, "UserData")
+	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
+	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
+	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
 )
 
 const Collection = "distro"
@@ -38,11 +37,18 @@ func FindOne(query db.Q) (Distro, error) {
 	return d, db.FindOneQ(Collection, query, &d)
 }
 
-func FindAllNames() ([]string, error) {
+func FindActive() ([]string, error) {
 	out := []struct {
 		Distros []string `bson:"distros"`
 	}{}
 	err := db.Aggregate(Collection, []bson.M{
+		{
+			"$match": bson.M{
+				DisabledKey: bson.M{
+					"$exists": false,
+				},
+			},
+		},
 		{
 			"$project": bson.M{
 				IdKey: 1,

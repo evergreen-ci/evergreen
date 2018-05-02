@@ -84,7 +84,7 @@ func (j *hostAlertingJob) Run(_ context.Context) {
 
 func (j *hostAlertingJob) monitorLongRunningTasks() {
 	const noticeThreshold = 12 * time.Hour
-	const errorThreshold = 24 * time.Hour
+	const warningThreshold = 24 * time.Hour
 
 	runningTask, err := task.FindOne(task.ById(j.host.RunningTask))
 	if err != nil {
@@ -105,6 +105,6 @@ func (j *hostAlertingJob) monitorLongRunningTasks() {
 		"elapsed":     elapsed.String(),
 		"elapsed_raw": elapsed,
 	}
-	j.logger.NoticeWhen(elapsed > noticeThreshold && elapsed <= errorThreshold, msg)
-	j.logger.ErrorWhen(elapsed > errorThreshold, msg)
+	j.logger.NoticeWhen(elapsed > noticeThreshold && elapsed <= warningThreshold, msg)
+	j.logger.WarningWhen(elapsed > warningThreshold, msg)
 }
