@@ -205,10 +205,13 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 		"message":                 "something went wrong sorting by task group order",
 		"ticket":                  "EVG-3305",
 		"t1_id":                   t1.Id,
+		"t1_display_name":         t1.DisplayName,
 		"t1_version":              t1.Version,
 		"t1_group":                t1.TaskGroup,
 		"t2_id":                   t2.Id,
+		"t2_display_name":         t2.DisplayName,
 		"t2_version":              t2.Version,
+		"t2_group":                t2.TaskGroup,
 		"comparator_projects_len": len(comparator.projects),
 		"tasks_from_task_group":   tasksFromTaskGroup,
 	})
