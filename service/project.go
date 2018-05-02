@@ -212,6 +212,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		SetupGithubHook      bool                        `json:"setup_github_hook"`
 		ForceRepotrackerRun  bool                        `json:"force_repotracker_run"`
 		Subscriptions        []restModel.APISubscription `json:"subscriptions"`
+		DeleteSubscriptions  []bson.ObjectId             `json:"delete_subscriptions"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -367,12 +368,12 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	catcher := grip.NewSimpleCatcher()
 	for _, apiSubscription := range responseRef.Subscriptions {
 		var subscriptionIface interface{}
 		subscriptionIface, err = apiSubscription.ToService()
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+			catcher.Add(err)
 		}
 		subscription := subscriptionIface.(event.Subscription)
 		subscription.Selectors = []event.Selector{
@@ -384,9 +385,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		subscription.OwnerType = event.OwnerTypeProject
 		subscription.Owner = projectRef.Identifier
 		if err = subscription.Upsert(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+			catcher.Add(err)
 		}
+	}
+
+	for _, id := range responseRef.DeleteSubscriptions {
+		catcher.Add(event.RemoveSubscription(id))
+	}
+
+	if catcher.HasErrors() {
+		uis.LoggedError(w, r, http.StatusInternalServerError, catcher.Resolve())
+		return
 	}
 
 	// If the variable is private, and if the variable in the submission is
@@ -409,7 +418,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	catcher := grip.NewSimpleCatcher()
 	for i := range responseRef.ProjectAliases {
 		responseRef.ProjectAliases[i].ProjectID = id
 		catcher.Add(responseRef.ProjectAliases[i].Upsert())

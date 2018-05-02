@@ -256,6 +256,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           force_repotracker_run: false,
           delete_aliases: [],
+          delete_subscriptions: [],
         };
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
@@ -509,9 +510,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.removeSubscription = function(index) {
+      $scope.settingsFormData.delete_subscriptions.push($scope.subscriptions[index].id);
       $scope.subscriptions = _.filter($scope.subscriptions, function(s, i) {
           return index !== i;
       });
+      $scope.isDirty = true;
   };
   $scope.show_build_break = true;
 
