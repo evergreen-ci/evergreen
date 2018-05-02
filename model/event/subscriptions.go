@@ -36,7 +36,7 @@ type OwnerType string
 
 const (
 	OwnerTypePerson  OwnerType = "person"
-	OwnerTypeProject           = "project"
+	OwnerTypeProject OwnerType = "project"
 )
 
 type Subscription struct {
@@ -59,6 +59,7 @@ type unmarshalSubscription struct {
 	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
+	OwnerType      OwnerType     `bson:"owner_type"`
 	ExtraData      bson.Raw      `bson:"extra_data,omitempty"`
 }
 
@@ -96,6 +97,7 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 	s.RegexSelectors = temp.RegexSelectors
 	s.Subscriber = temp.Subscriber
 	s.Owner = temp.Owner
+	s.OwnerType = temp.OwnerType
 
 	return nil
 }
