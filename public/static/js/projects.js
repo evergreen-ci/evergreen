@@ -213,7 +213,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.githubHookID = data.github_hook.hook_id || 0;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
-        $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false,
+        $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
 
         $scope.aliases = data.aliases || [];
         $scope.aliases = _.sortBy($scope.aliases, function(v) {
@@ -510,7 +510,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.removeSubscription = function(index) {
-      $scope.settingsFormData.delete_subscriptions.push($scope.subscriptions[index].id);
+      if ($scope.subscriptions[index].id !== undefined) {
+          $scope.settingsFormData.delete_subscriptions.push($scope.subscriptions[index].id);
+      }
       $scope.subscriptions = _.filter($scope.subscriptions, function(s, i) {
           return index !== i;
       });

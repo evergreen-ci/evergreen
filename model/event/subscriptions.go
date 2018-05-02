@@ -194,7 +194,7 @@ func (s *Subscription) Upsert() error {
 
 func RemoveSubscription(id bson.ObjectId) error {
 	if !id.Valid() {
-		return errors.New("subscription has no ID, cannot remove")
+		return errors.New("id is not valid, cannot remove")
 	}
 
 	return db.Remove(SubscriptionsCollection, bson.M{
