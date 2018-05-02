@@ -1392,7 +1392,7 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 
 	if t.DurationPrediction.Value == 0 && t.ExpectedDuration != 0 {
 		t.DurationPrediction.Value = t.ExpectedDuration
-		t.DurationPrediction.CollectedAt = time.Now().Sub(time.Minute)
+		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
 	}
 
 	err := t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
