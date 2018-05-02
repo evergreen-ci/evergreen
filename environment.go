@@ -205,7 +205,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 	e.remoteQueue = rq
 
 	// Notifications queue w/ moving weight avg pool
-	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
+	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.PoolSizeLocal)
 
 	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
 		e.settings.Notify.BufferTargetPerInterval,
