@@ -64,7 +64,11 @@ func getZone(ctx context.Context, client AWSClient, h *host.Host) (string, error
 	if h.Zone != "" {
 		return h.Zone, nil
 	}
-	instance, err := client.GetInstanceInfo(ctx, h.Id)
+	instanceID := h.Id
+	if h.ExternalIdentifier != "" {
+		instanceID = h.ExternalIdentifier
+	}
+	instance, err := client.GetInstanceInfo(ctx, instanceID)
 	if err != nil {
 		return "", errors.Wrap(err, "error getting instance info")
 	}
@@ -287,7 +291,6 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 	return cpf.ebsCost(region, size, dur)
 }
 
-// TODO: Remove this function in favor of just using h.VolumeTotalSize once all running EC2 hosts have h.VolumeTotalSize set.
 func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, error) {
 	if h.VolumeTotalSize != 0 {
 		return h.VolumeTotalSize, nil

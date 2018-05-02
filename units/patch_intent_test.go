@@ -223,6 +223,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
+	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester)
@@ -252,8 +253,9 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	}
 	s.NoError(dbUser.Insert())
 	s.user = dbUser.Id
-
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
+	patchEvent := testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "")
+	intent, err := patch.NewGithubIntent("1", patchEvent)
+	tempPatch := intent.NewPatch()
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -266,6 +268,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
+	s.True(patchDoc.CreateTime.Equal(tempPatch.CreateTime))
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
 	s.Equal(dbUser.Id, patchDoc.Author)
@@ -330,7 +333,6 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.NotEmpty(patchDoc.Patches)
 	s.True(patchDoc.Activated)
 	s.NotEmpty(patchDoc.PatchedConfig)
-	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)
@@ -351,6 +353,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Len(patchDoc.Tasks, 2)
 	s.Contains(patchDoc.Tasks, "dist")
 	s.Contains(patchDoc.Tasks, "dist-test")
+	s.NotZero(patchDoc.CreateTime)
 }
 
 func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester string) {

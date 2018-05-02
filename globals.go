@@ -22,7 +22,6 @@ const (
 	HostStarting        = "starting"
 	HostInitializing    = "provisioning"
 	HostProvisionFailed = "provision failed"
-	HostUnreachable     = "unreachable"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
 
@@ -190,6 +189,7 @@ const (
 	defaultAmboyLocalStorageSize = 1024
 	defaultAmboyQueueName        = "evg.service"
 	defaultAmboyDBName           = "amboy"
+	maxNotificationsPerSecond    = 100
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.
