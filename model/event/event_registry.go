@@ -168,3 +168,7 @@ func taskProcessResourceEventFactory() interface{} {
 func adminEventFactory() interface{} {
 	return &rawAdminEventData{}
 }
+
+func buildEventFactory() interface{} {
+	return &BuildEventData{}
+}
