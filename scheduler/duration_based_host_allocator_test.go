@@ -536,7 +536,6 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 
 	Convey("When calling computeRunningTasksDuration...", t, func() {
 		// set all variables
-		testTaskDuration = time.Duration(4) * time.Minute
 		hostIds = []string{"h1", "h2", "h3", "h4", "h5", "h6"}
 		runningTaskIds = []string{"t1", "t2", "t3", "t4", "t5", "t6"}
 
