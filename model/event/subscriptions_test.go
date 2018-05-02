@@ -29,6 +29,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	t2 := "someone2@example.com"
 	t3 := "someone3@example.com"
 	t4 := "someone4@example.com"
+	t5 := "slack_user"
 	s.subscriptions = []Subscription{
 		{
 			ID:      bson.NewObjectId(),
@@ -45,7 +46,8 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t1,
 			},
-			Owner: "me",
+			Owner:     "me",
+			OwnerType: OwnerTypePerson,
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -62,7 +64,8 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t2,
 			},
-			Owner: "you",
+			Owner:     "you",
+			OwnerType: OwnerTypePerson,
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -105,7 +108,26 @@ func (s *subscriptionsSuite) SetupTest() {
 				Type:   EmailSubscriberType,
 				Target: &t4,
 			},
-			Owner: "me",
+			Owner:     "me",
+			OwnerType: OwnerTypePerson,
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    "type2",
+			Trigger: "trigger2",
+			Selectors: []Selector{
+				{
+					Type: "data",
+					Data: "somethingspecial",
+				},
+			},
+			RegexSelectors: []Selector{},
+			Subscriber: Subscriber{
+				Type:   SlackSubscriberType,
+				Target: &t5,
+			},
+			Owner:     "me",
+			OwnerType: OwnerTypeProject,
 		},
 	}
 
@@ -118,7 +140,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 	out := []Subscription{}
 	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
 
-	s.Require().Len(out, 4)
+	s.Require().Len(out, 5)
 
 	for _, sub := range out {
 		if sub.ID == s.subscriptions[3].ID {
@@ -150,7 +172,7 @@ func (s *subscriptionsSuite) TestFind() {
 		},
 	})
 	s.NoError(err)
-	s.Len(subs, 1)
+	s.Len(subs, 2)
 	s.NotPanics(func() {
 		s.Len(subs[EmailSubscriberType], 1)
 		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Subscriber.Type)
@@ -261,11 +283,20 @@ func (s *subscriptionsSuite) TestExtraData() {
 	s.Zero(out)
 }
 
-func (s *subscriptionsSuite) TestFindByOwner() {
-	subscriptions, err := FindSubscriptionsByOwner("me")
+func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
+	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypePerson)
 	s.NoError(err)
 	s.Len(subscriptions, 2)
 	for _, sub := range subscriptions {
 		s.Equal("me", sub.Owner)
+		s.EqualValues(OwnerTypePerson, sub.OwnerType)
 	}
+}
+
+func (s *subscriptionsSuite) TestFindByOwnerForProject() {
+	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypeProject)
+	s.NoError(err)
+	s.Require().Len(subscriptions, 1)
+	s.Equal("me", subscriptions[0].Owner)
+	s.EqualValues(OwnerTypeProject, subscriptions[0].OwnerType)
 }

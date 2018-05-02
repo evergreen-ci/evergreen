@@ -478,19 +478,6 @@ func GetServiceFlags() (*ServiceFlags, error) {
 	return flags, nil
 }
 
-func sliceContains(slice []string, elem string) bool {
-	if slice == nil {
-		return false
-	}
-	for _, i := range slice {
-		if i == elem {
-			return true
-		}
-	}
-
-	return false
-}
-
 type ClientBinary struct {
 	Arch string `yaml:"arch" json:"arch"`
 	OS   string `yaml:"os" json:"os"`

@@ -44,30 +44,35 @@ func init() {
 func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	os := getOsName(h)
 	if isHostOnDemand(h) {
-		instance, err := client.GetInstanceInfo(ctx, h.Id)
+		zone, err := getZone(ctx, client, h)
 		if err != nil {
-			return 0, errors.Wrap(err, "error getting instance info")
+			return 0, errors.Wrap(err, "could not get zone for host")
 		}
 		dur := t.end.Sub(t.start)
-		region := azToRegion(*instance.Placement.AvailabilityZone)
-		price, err := cpf.getEC2OnDemandCost(os, *instance.InstanceType, region)
+		region := azToRegion(zone)
+		price, err := cpf.getEC2OnDemandCost(os, h.InstanceType, region)
 		if err != nil {
 			return 0, err
 		}
 		return price * dur.Hours(), nil
 	}
-	instanceId, err := client.GetSpotInstanceId(ctx, h)
+	return cpf.calculateSpotCost(ctx, client, h, os, t)
+}
+
+// TODO: Remove this function in favor of just using h.Zone once all running EC2 hosts have h.Zone set.
+func getZone(ctx context.Context, client AWSClient, h *host.Host) (string, error) {
+	if h.Zone != "" {
+		return h.Zone, nil
+	}
+	instanceID := h.Id
+	if h.ExternalIdentifier != "" {
+		instanceID = h.ExternalIdentifier
+	}
+	instance, err := client.GetInstanceInfo(ctx, instanceID)
 	if err != nil {
-		return 0, errors.Wrap(err, "error getting spot instance ID")
+		return "", errors.Wrap(err, "error getting instance info")
 	}
-	if instanceId == "" {
-		return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-	}
-	instance, err := client.GetInstanceInfo(ctx, instanceId)
-	if err != nil {
-		return 0, errors.Wrap(err, "error getting instance info")
-	}
-	return cpf.calculateSpotCost(ctx, client, instance, os, t)
+	return *instance.Placement.AvailabilityZone, nil
 }
 
 func (cpf *cachingPriceFetcher) getEC2OnDemandCost(os osType, instance, region string) (float64, error) {
@@ -272,24 +277,34 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
-	instanceID := h.Id
 	var err error
-	if isHostSpot(h) {
-		instanceID, err = client.GetSpotInstanceId(ctx, h)
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting spot instance ID")
-		}
-		if instanceID == "" {
-			return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
-		}
+	dur := t.end.Sub(t.start)
+	size, err := getVolumeSize(ctx, client, h)
+	if err != nil {
+		return 0, errors.Wrap(err, "error getting volume size")
+	}
+	zone, err := getZone(ctx, client, h)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get zone for host")
+	}
+	region := azToRegion(zone)
+	return cpf.ebsCost(region, size, dur)
+}
+
+func getVolumeSize(ctx context.Context, client AWSClient, h *host.Host) (int64, error) {
+	if h.VolumeTotalSize != 0 {
+		return h.VolumeTotalSize, nil
+	}
+	instanceID := h.Id
+	if h.ExternalIdentifier != "" {
+		instanceID = h.ExternalIdentifier
 	}
 	instance, err := client.GetInstanceInfo(ctx, instanceID)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}
-	dur := t.end.Sub(t.start)
 	devices := instance.BlockDeviceMappings
-	cost := 0.0
+	var totalSize int64
 	if len(devices) > 0 {
 		volumeIds := []*string{}
 		for i := range devices {
@@ -299,19 +314,13 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 			VolumeIds: volumeIds,
 		})
 		if err != nil {
-			return 0, err
+			return 0, errors.Wrap(err, "error describing volumes")
 		}
 		for _, v := range vols.Volumes {
-			// an amazon region is just the availability zone minus the final letter
-			region := azToRegion(*v.AvailabilityZone)
-			p, err := cpf.ebsCost(region, *v.Size, dur)
-			if err != nil {
-				return 0, errors.Wrapf(err, "EBS volume %v", v.VolumeId)
-			}
-			cost += p
+			totalSize = totalSize + *v.Size
 		}
 	}
-	return cost, nil
+	return totalSize, nil
 }
 
 // ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
@@ -413,16 +422,20 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 
 // calculateSpotCost is a helper for fetching spot price history and computing the
 // cost of a task across a host's billing cycles.
-func (cpf *cachingPriceFetcher) calculateSpotCost(ctx context.Context, client AWSClient, i *ec2.Instance, os osType, t timeRange) (float64, error) {
+func (cpf *cachingPriceFetcher) calculateSpotCost(ctx context.Context, client AWSClient, h *host.Host, os osType, t timeRange) (float64, error) {
+	zone, err := getZone(ctx, client, h)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not get zone for host")
+	}
 	rates, err := cpf.describeHourlySpotPriceHistory(ctx, client, hourlySpotPriceHistoryInput{
-		iType: *i.InstanceType,
-		zone:  *i.Placement.AvailabilityZone,
+		iType: h.InstanceType,
+		zone:  zone,
 		os:    os,
-		start: *i.LaunchTime,
+		start: h.StartTime,
 		end:   t.end,
 	})
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "error getting hourly spot price history")
 	}
 	return spotCostForRange(t.start, t.end, rates), nil
 }

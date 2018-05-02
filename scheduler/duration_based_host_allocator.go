@@ -86,11 +86,6 @@ type ScheduledDistroTasksData struct {
 	currentDistroId string
 }
 
-// DurationBasedHostAllocator computes the total time to completion of tasks
-// running - per distro - and then uses that as a heuristic in determining
-// how many new hosts to spin up
-type DurationBasedHostAllocator struct{}
-
 // helper type to sort distros by the number of static hosts they have
 type sortableDistroByNumStaticHost struct {
 	distros []distro.Distro
@@ -99,9 +94,7 @@ type sortableDistroByNumStaticHost struct {
 // NewHostsNeeded decides if new hosts are needed for a
 // distro while taking the duration of running/scheduled tasks into
 // consideration. Returns a map of distro to number of hosts to spawn.
-func (self *DurationBasedHostAllocator) NewHostsNeeded(ctx context.Context,
-	hostAllocatorData HostAllocatorData) (newHostsNeeded map[string]int, err error) {
-
+func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (newHostsNeeded map[string]int, err error) {
 	queueDistros := make([]distro.Distro, 0,
 		len(hostAllocatorData.taskQueueItems))
 
@@ -143,9 +136,8 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 
 	// now, for each distro, see if we need to spin up any new hosts
 	for _, d := range distros {
-		newHostsNeeded[d.Id], err = self.
-			numNewHostsForDistro(ctx, &hostAllocatorData, d, tasksAccountedFor,
-				distroScheduleData)
+		newHostsNeeded[d.Id], err = durationNumNewHostsForDistro(ctx,
+			&hostAllocatorData, d, tasksAccountedFor, distroScheduleData)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  RunnerName,
@@ -431,7 +423,7 @@ func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
 
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro.
-func (self *DurationBasedHostAllocator) numNewHostsForDistro(ctx context.Context,
+func durationNumNewHostsForDistro(ctx context.Context,
 	hostAllocatorData *HostAllocatorData, distro distro.Distro,
 	tasksAccountedFor map[string]bool,
 	distroScheduleData map[string]DistroScheduleData) (numNewHosts int,

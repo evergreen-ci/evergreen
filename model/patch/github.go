@@ -63,6 +63,9 @@ type githubIntent struct {
 	// Title is the title of the Github PR
 	Title string `bson:"Title"`
 
+	// PushedAt was the time the Github Head Repository was pushed to
+	PushedAt time.Time `bson:"pushed_at"`
+
 	// CreatedAt is the time that this intent was stored in the database
 	CreatedAt time.Time `bson:"created_at"`
 
@@ -98,7 +101,7 @@ var (
 // or returns an error if the some part of the struct is invalid
 func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Intent, error) {
 	if event.Action == nil || event.Number == nil ||
-		event.Repo == nil || event.Repo.FullName == nil ||
+		event.Repo == nil || event.Repo.FullName == nil || event.Repo.PushedAt == nil ||
 		event.Sender == nil || event.Sender.Login == nil ||
 		event.PullRequest == nil ||
 		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
@@ -141,6 +144,7 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 		HeadHash:     *event.PullRequest.Head.SHA,
 		Title:        *event.PullRequest.Title,
 		IntentType:   GithubIntentType,
+		PushedAt:     event.Repo.PushedAt.Time,
 	}, nil
 }
 
@@ -219,6 +223,7 @@ func (g *githubIntent) NewPatch() *Patch {
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
+		CreateTime:  g.PushedAt,
 		GithubPatchData: GithubPatch{
 			PRNumber:   g.PRNumber,
 			BaseOwner:  baseRepo[0],

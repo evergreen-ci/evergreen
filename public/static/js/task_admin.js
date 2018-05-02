@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestService', 'notificationService', function($scope, $rootScope, taskRestService, notifier) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mciTasksRestService', 'notificationService', function($scope, $window, $rootScope, taskRestService, notifier) {
     $scope.modalOpen = false;
     $scope.modalTitle = 'Modify Task';
     $scope.adminOptionVals = {};
@@ -16,11 +16,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
         $scope.canSetPriority = ($scope.task.status == "undispatched");
 	};
 
-    function doModalSuccess(message, data){
+    function doModalSuccess(message, data, reload){
         $scope.closeAdminModal();
-        $rootScope.$broadcast("task_updated", data);
-        $scope.setTask(data);
-        notifier.pushNotification(message, 'notifyHeader', 'success');
+        if (reload) {
+          $window.location.reload();
+        } else {
+          $rootScope.$broadcast("task_updated", data);
+          $scope.setTask(data);
+          notifier.pushNotification(message, 'notifyHeader', 'success');
+        }
     }
 
 	$scope.abort = function() {
@@ -30,7 +34,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             {},
             {
                 success: function(resp) {
-                    doModalSuccess("Task aborted.", resp.data);
+                    doModalSuccess("Task aborted.", resp.data, $scope.task.display_only);
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error aborting: ' + resp.data.error,'errorModal');
@@ -47,7 +51,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             {},
             {
                 success: function(resp) {
-                    doModalSuccess("Task scheduled to restart.", resp.data);
+                    doModalSuccess("Task scheduled to restart.", resp.data, $scope.task.display_only);
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error restarting: ' + resp.data,'errorModal');
@@ -64,7 +68,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             {
                 success: function(resp) {
                     var data = resp.data;
-                    doModalSuccess("Priority for task updated to "+ data.priority +".", data);
+                    doModalSuccess("Priority for task updated to "+ data.priority +".", data, $scope.task.display_only);
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error setting priority: ' + resp.data,'errorModal');
@@ -81,7 +85,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             {
                 success: function(resp) {
                     var data = resp.data;
-                    doModalSuccess("Task marked as " + (active ? "scheduled." : "unscheduled."), data);
+                    doModalSuccess("Task marked as " + (active ? "scheduled." : "unscheduled."), data, $scope.task.display_only);
                 },
                 error: function(resp) {
                     notifier.pushNotification('Error setting active = ' + active + ': ' + resp.data,'errorModal');

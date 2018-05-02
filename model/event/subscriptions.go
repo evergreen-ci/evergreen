@@ -1,6 +1,7 @@
 package event
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -24,10 +25,18 @@ var (
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
+	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
 	subscriptionExtraDataKey      = bsonutil.MustHaveTag(Subscription{}, "ExtraData")
 
 	groupedSubscriptionsTypeKey          = bsonutil.MustHaveTag(groupedSubscriptions{}, "Type")
 	groupedSubscriptionsSubscriptionsKey = bsonutil.MustHaveTag(groupedSubscriptions{}, "Subscriptions")
+)
+
+type OwnerType string
+
+const (
+	OwnerTypePerson  OwnerType = "person"
+	OwnerTypeProject           = "project"
 )
 
 type Subscription struct {
@@ -38,6 +47,7 @@ type Subscription struct {
 	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
+	OwnerType      OwnerType     `bson:"owner_type"`
 	ExtraData      interface{}   `bson:"extra_data,omitempty"`
 }
 
@@ -198,6 +208,7 @@ func (s *Subscription) Upsert() error {
 		subscriptionRegexSelectorsKey: s.RegexSelectors,
 		subscriptionSubscriberKey:     s.Subscriber,
 		subscriptionOwnerKey:          s.Owner,
+		subscriptionOwnerTypeKey:      s.OwnerType,
 	}
 	if s.ExtraData != nil {
 		update[subscriptionExtraDataKey] = s.ExtraData
@@ -207,7 +218,7 @@ func (s *Subscription) Upsert() error {
 	c, err := db.Upsert(SubscriptionsCollection, bson.M{
 		subscriptionIDKey:    s.ID,
 		subscriptionOwnerKey: s.Owner,
-	}, bson.M{"$set": update})
+	}, update)
 	if err != nil {
 		return err
 	}
@@ -243,15 +254,67 @@ func (s *Subscription) Validate() error {
 	if s.Trigger == "" {
 		catcher.Add(errors.New("subscription trigger is required"))
 	}
+	if !IsValidOwnerType(string(s.OwnerType)) {
+		catcher.Add(errors.Errorf("%s is not a valid owner type", s.OwnerType))
+	}
 	catcher.Add(s.Subscriber.Validate())
 	return catcher.Resolve()
 }
 
-func FindSubscriptionsByOwner(owner string) ([]Subscription, error) {
+func (s *Subscription) String() string {
+	id := "???"
+	if s.ID.Valid() {
+		id = s.ID.Hex()
+	}
+
+	tmpl := []string{
+		fmt.Sprintf("ID: %s", id),
+		"",
+		fmt.Sprintf("when the '%s' event, matching the '%s' trigger occurs,", s.Type, s.Trigger),
+		"and the following attributes match:",
+	}
+
+	for i := range s.Selectors {
+		tmpl = append(tmpl, fmt.Sprintf("\t%s: %s", s.Selectors[i].Type, s.Selectors[i].Data))
+	}
+	for i := range s.RegexSelectors {
+		tmpl = append(tmpl, fmt.Sprintf("\t%s: %s", s.RegexSelectors[i].Type, s.RegexSelectors[i].Data))
+	}
+	tmpl = append(tmpl, "", "issue the following notification:",
+		fmt.Sprintf("\t%s", s.Subscriber))
+
+	out := ""
+	for i := range tmpl {
+		out += tmpl[i]
+		out += "\n"
+	}
+
+	return out
+}
+
+func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription, error) {
+	if len(owner) == 0 {
+		return nil, nil
+	}
+	if !IsValidOwnerType(string(ownerType)) {
+		return nil, errors.Errorf("%s is not a valid owner type", ownerType)
+	}
 	query := db.Query(bson.M{
-		subscriptionOwnerKey: owner,
+		subscriptionOwnerKey:     owner,
+		subscriptionOwnerTypeKey: ownerType,
 	})
 	subscriptions := []Subscription{}
 	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
 	return subscriptions, errors.Wrapf(err, "error retrieving subscriptions for owner %s", owner)
+}
+
+func IsValidOwnerType(in string) bool {
+	switch in {
+	case string(OwnerTypePerson):
+		return true
+	case string(OwnerTypeProject):
+		return true
+	default:
+		return false
+	}
 }

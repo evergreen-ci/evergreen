@@ -3,8 +3,10 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -16,24 +18,33 @@ type GenerateConnector struct{}
 func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
 	projects, err := ParseProjects(jsonBytes)
 	if err != nil {
-		return errors.Wrap(err, "error parsing JSON from `generate.tasks`")
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "error parsing JSON from `generate.tasks`").Error(),
+		}
 	}
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = taskID
 	p, v, t, pm, err := g.NewVersion()
 	if err != nil {
-		return errors.Wrap(err, "error generating new version")
+		return err
 	}
 	syntaxErrs, err := validator.CheckProjectSyntax(p)
 	if err != nil {
-		return errors.Wrap(err, "error checking project syntax")
+		return err
 	}
 	if len(syntaxErrs) > 0 {
-		return errors.New(fmt.Sprintf("project syntax is invalid: %s", validator.ValidationErrorsToString(syntaxErrs)))
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project syntax is invalid: %s", validator.ValidationErrorsToString(syntaxErrs)),
+		}
 	}
 	semanticErrs := validator.CheckProjectSemantics(p)
 	if len(semanticErrs) > 0 {
-		return errors.New(fmt.Sprintf("project semantics is invalid: %s", validator.ValidationErrorsToString(semanticErrs)))
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project semantics is invalid: %s", validator.ValidationErrorsToString(semanticErrs)),
+		}
 	}
 	return g.Save(p, v, t, pm)
 }
