@@ -218,26 +218,30 @@ Admin Settings
                 </md-card-content>
               </md-card>
 
-              <md-card flex=50 id="announcements" style="height:240px">
-                <md-card-title>
-                  <md-card-title-text>
-                    <span>Announcements</span>
-                  </md-card-title-text>
-                </md-card-title>
-                <md-card-content>
-                  <md-input-container class="control">
-                    <label>Site-wide banner:</label>
-                    <input type="text" id="txtBanner" ng-model="Settings.banner" placeholder="Enter banner text here">
-                  </md-input-container>
-                  <md-input-container class="control">
-                    <label>Banner style:</label>
-                    <md-select ng-model="Settings.banner_theme">
-                      <md-option ng-repeat="t in ValidThemes" value="[[t]]">[[t]]</md-option>
-                    </md-select>
-                  </md-input-container>
-                </md-card-content>
+              <section layout="column" flex=50>
+                <md-button type="submit" class="md-raised" ng-click="saveSettings()" style="width:20%; right:-78%">Save Changes</md-button>
 
-              </md-card>
+                <md-card flex=50 id="announcements" style="height:240px">
+                  <md-card-title>
+                    <md-card-title-text>
+                      <span>Announcements</span>
+                    </md-card-title-text>
+                  </md-card-title>
+                  <md-card-content>
+                    <md-input-container class="control">
+                      <label>Site-wide banner:</label>
+                      <input type="text" id="txtBanner" ng-model="Settings.banner" placeholder="Enter banner text here">
+                    </md-input-container>
+                    <md-input-container class="control">
+                      <label>Banner style:</label>
+                      <md-select ng-model="Settings.banner_theme">
+                        <md-option ng-repeat="t in ValidThemes" value="[[t]]">[[t]]</md-option>
+                      </md-select>
+                    </md-input-container>
+                  </md-card-content>
+
+                </md-card>
+              </section>
             </section>
 
             <section layout="row" flex>
