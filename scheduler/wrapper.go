@@ -76,17 +76,12 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		return errors.Wrap(err, "error getting runnable tasks")
 	}
 
-	projectDurations, err := GetExpectedDurations(runnableTasks)
-	if err != nil {
-		return errors.Wrap(err, "problem calculating duration")
-	}
-
 	ds := &distroSchedueler{
 		TaskPrioritizer:    &CmpBasedTaskPrioritizer{},
 		TaskQueuePersister: &DBTaskQueuePersister{},
 	}
 
-	res := ds.scheduleDistro(conf.DistroID, runnableTasks, versions, projectDurations)
+	res := ds.scheduleDistro(conf.DistroID, runnableTasks, versions)
 	if res.err != nil {
 		return errors.Wrap(res.err, "problem calculating distro plan")
 	}
@@ -108,7 +103,6 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 	}
 
 	allocatorArgs := HostAllocatorData{
-		projectTaskDurations: projectDurations,
 		taskQueueItems: map[string][]model.TaskQueueItem{
 			conf.DistroID: res.taskQueueItem,
 		},

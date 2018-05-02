@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -50,8 +51,6 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 			taskIds[3]: {distroIds[1], distroIds[2]},
 			taskIds[4]: {distroIds[0], distroIds[2]},
 		}
-
-		taskDurations := model.ProjectTaskDurations{}
 
 		distroSlice := []distro.Distro{
 			{
@@ -114,8 +113,7 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 						distroIds[1]: distroSlice[1],
 						distroIds[2]: distroSlice[2],
 					},
-					projectTaskDurations: taskDurations,
-					taskRunDistros:       taskRunDistros,
+					taskRunDistros: taskRunDistros,
 				}
 
 				// integration test of duration based host allocator
@@ -536,7 +534,6 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 	var testTaskDuration time.Duration
 	var hostIds []string
 	var runningTaskIds []string
-	var taskDurations model.ProjectTaskDurations
 
 	Convey("When calling computeRunningTasksDuration...", t, func() {
 		// set all variables
@@ -548,36 +545,24 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 		startTimeTwo := startTimeOne.Add(-time.Duration(1) * time.Minute)
 		startTimeThree := startTimeOne.Add(-time.Duration(2) * time.Minute)
 
-		remainingDurationOne := (time.Duration(4) * time.Minute).Seconds()
-		remainingDurationTwo := (time.Duration(3) * time.Minute).Seconds()
-		remainingDurationThree := (time.Duration(2) * time.Minute).Seconds()
+		remainingDurationOne := 4 * time.Minute
+		remainingDurationTwo := 3 * time.Minute
+		remainingDurationThree := 2 * time.Minute
 
-		// durations of tasks we know
-		taskDurations = model.ProjectTaskDurations{
-			TaskDurationByProject: map[string]*model.BuildVariantTaskDurations{
-				"": {
-					TaskDurationByBuildVariant: map[string]*model.TaskDurations{
-						"": {
-							TaskDurationByDisplayName: map[string]time.
-								Duration{
-								"": testTaskDuration,
-							},
-						},
-					},
-				},
-			},
-		}
+		remainingDurationOneSecs := remainingDurationOne.Seconds()
+		remainingDurationTwoSecs := remainingDurationTwo.Seconds()
+		//remainingDurationThreeSecs := remainingDurationThree.Seconds()
 
 		So(db.Clear(task.Collection), ShouldBeNil)
 
 		Convey("the total duration of running tasks with similar start times "+
-			" should be the total of the remaining time using estimates from "+
+			"should be the total of the remaining time using estimates from "+
 			"the project task duration data for running tasks", func() {
 			// tasks running on hosts
 			runningTasks := []task.Task{
-				{Id: runningTaskIds[0], StartTime: startTimeOne},
-				{Id: runningTaskIds[1], StartTime: startTimeOne},
-				{Id: runningTaskIds[2], StartTime: startTimeOne},
+				{Id: runningTaskIds[0], StartTime: startTimeOne, DurationPrediction: util.CachedDurationValue{Value: remainingDurationOne}},
+				{Id: runningTaskIds[1], StartTime: startTimeOne, DurationPrediction: util.CachedDurationValue{Value: remainingDurationOne}},
+				{Id: runningTaskIds[2], StartTime: startTimeOne, DurationPrediction: util.CachedDurationValue{Value: remainingDurationOne}},
 			}
 
 			for _, runningTask := range runningTasks {
@@ -593,15 +578,14 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 				{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
 
-			runningTasksDuration, err :=
-				computeRunningTasksDuration(existingDistroHosts, taskDurations)
+			runningTasksDuration, err := computeRunningTasksDuration(existingDistroHosts)
 
 			So(err, ShouldBeNil)
 
 			// the running task duration should be a total of the remaining
 			// duration of running tasks - 3 in this case
 			// due to scheduling variables, we allow a 10 second tolerance
-			So(runningTasksDuration, ShouldAlmostEqual, remainingDurationOne*3, 10)
+			So(runningTasksDuration, ShouldAlmostEqual, remainingDurationOneSecs*3, 10)
 		})
 
 		Convey("the total duration of running tasks with different start "+
@@ -620,26 +604,26 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 
 			// tasks running on hosts
 			runningTasks := []task.Task{
-				{Id: runningTaskIds[0], StartTime: startTimeThree},
-				{Id: runningTaskIds[1], StartTime: startTimeTwo},
-				{Id: runningTaskIds[2], StartTime: startTimeOne},
-				{Id: runningTaskIds[3], StartTime: startTimeTwo},
-				{Id: runningTaskIds[4], StartTime: startTimeOne},
-				{Id: runningTaskIds[5], StartTime: startTimeThree},
+				{Id: runningTaskIds[0], StartTime: startTimeThree, DurationPrediction: util.CachedDurationValue{Value: remainingDurationThree + time.Second}},
+				{Id: runningTaskIds[1], StartTime: startTimeTwo, DurationPrediction: util.CachedDurationValue{Value: remainingDurationTwo}},
+				{Id: runningTaskIds[2], StartTime: startTimeOne, DurationPrediction: util.CachedDurationValue{Value: remainingDurationOne}},
+				{Id: runningTaskIds[3], StartTime: startTimeTwo, DurationPrediction: util.CachedDurationValue{Value: remainingDurationTwo}},
+				{Id: runningTaskIds[4], StartTime: startTimeOne, DurationPrediction: util.CachedDurationValue{Value: remainingDurationOne}},
+				{Id: runningTaskIds[5], StartTime: startTimeThree, DurationPrediction: util.CachedDurationValue{Value: remainingDurationThree + time.Second}},
 			}
 
 			for _, runningTask := range runningTasks {
 				So(runningTask.Insert(), ShouldBeNil)
 			}
 
-			runningTasksDuration, err :=
-				computeRunningTasksDuration(existingDistroHosts, taskDurations)
+			runningTasksDuration, err := computeRunningTasksDuration(existingDistroHosts)
 			So(err, ShouldBeNil)
 			// the running task duration should be a total of the remaining
 			// duration of running tasks - 6 in this case
 			// due to scheduling variables, we allow a 5 second tolerance
-			expectedResult := remainingDurationOne*2 + remainingDurationTwo*2 +
-				remainingDurationThree*2
+			totalRunTime := 2 * (remainingDurationOne + remainingDurationTwo + remainingDurationThree)
+			timeSpent := 2 * (time.Since(startTimeOne) + time.Since(startTimeTwo) + time.Since(startTimeThree))
+			expectedResult := (totalRunTime - timeSpent).Seconds()
 			So(runningTasksDuration, ShouldAlmostEqual, expectedResult, 5)
 		})
 
@@ -655,20 +639,19 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 
 			// tasks running on hosts
 			runningTasks := []task.Task{
-				{Id: runningTaskIds[0], StartTime: startTimeThree, DisplayName: "unknown"},
-				{Id: runningTaskIds[1], StartTime: startTimeTwo},
-				{Id: runningTaskIds[2], StartTime: startTimeOne, DisplayName: "unknown"},
+				{Id: runningTaskIds[0], StartTime: startTimeThree, DisplayName: "unknown", DurationPrediction: util.CachedDurationValue{Value: 0}},
+				{Id: runningTaskIds[1], StartTime: startTimeTwo, DurationPrediction: util.CachedDurationValue{Value: remainingDurationTwo}},
+				{Id: runningTaskIds[2], StartTime: startTimeOne, DisplayName: "unknown", DurationPrediction: util.CachedDurationValue{Value: 0}},
 			}
 
 			for _, runningTask := range runningTasks {
 				So(runningTask.Insert(), ShouldBeNil)
 			}
 
-			runningTasksDuration, err :=
-				computeRunningTasksDuration(existingDistroHosts, taskDurations)
+			runningTasksDuration, err := computeRunningTasksDuration(existingDistroHosts)
 			So(err, ShouldBeNil)
 			// only task 1's duration is known, so the others should use the default.
-			expectedDur := remainingDurationTwo + float64((2*model.DefaultTaskDuration)/time.Second)
+			expectedDur := remainingDurationTwoSecs + float64((2*10*time.Minute)/time.Second)
 			So(runningTasksDuration, ShouldAlmostEqual, expectedDur, 200)
 		})
 
@@ -684,22 +667,21 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 
 			// tasks running on hosts
 			runningTasks := []task.Task{
-				{Id: runningTaskIds[0], StartTime: startTimeOne},
-				{Id: runningTaskIds[1], StartTime: startTimeOne.Add(-time.Duration(4) * time.Hour)},
-				{Id: runningTaskIds[2], StartTime: startTimeTwo},
+				{Id: runningTaskIds[0], StartTime: startTimeOne, DurationPrediction: util.CachedDurationValue{Value: remainingDurationOne}},
+				{Id: runningTaskIds[1], StartTime: startTimeOne.Add(-4 * time.Hour), DurationPrediction: util.CachedDurationValue{Value: remainingDurationOne}},
+				{Id: runningTaskIds[2], StartTime: startTimeTwo, DurationPrediction: util.CachedDurationValue{Value: remainingDurationTwo}},
 			}
 
 			for _, runningTask := range runningTasks {
 				So(runningTask.Insert(), ShouldBeNil)
 			}
 
-			runningTasksDuration, err :=
-				computeRunningTasksDuration(existingDistroHosts, taskDurations)
+			runningTasksDuration, err := computeRunningTasksDuration(existingDistroHosts)
 			So(err, ShouldBeNil)
 			// task 2's duration should be ignored
 			// due to scheduling variables, we allow a 5 second tolerance
-			expectedResult := remainingDurationOne + remainingDurationTwo
-			So(runningTasksDuration, ShouldAlmostEqual, expectedResult, 5)
+			expectedResult := (remainingDurationOne + remainingDurationTwo) - (time.Since(startTimeOne) + time.Since(startTimeTwo))
+			So(runningTasksDuration, ShouldAlmostEqual, expectedResult.Seconds(), 5)
 		})
 
 		Convey("the total duration if there are no running tasks should be "+
@@ -713,8 +695,7 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 				{Id: hostIds[3]},
 			}
 
-			runningTasksDuration, err :=
-				computeRunningTasksDuration(existingDistroHosts, taskDurations)
+			runningTasksDuration, err := computeRunningTasksDuration(existingDistroHosts)
 			So(err, ShouldBeNil)
 			// the running task duration should be a total of the remaining
 			// duration of running tasks
@@ -847,8 +828,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 	var runningTaskIds []string
 	var hostIds []string
 	var dist distro.Distro
-	var testTaskDuration time.Duration
-	var taskDurations model.ProjectTaskDurations
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -860,20 +839,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 		runningTaskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		hostIds = []string{"h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9"}
 		dist = distro.Distro{Provider: "ec2"}
-		testTaskDuration = time.Duration(2) * time.Minute
-		taskDurations = model.ProjectTaskDurations{
-			TaskDurationByProject: map[string]*model.BuildVariantTaskDurations{
-				"": {
-					TaskDurationByBuildVariant: map[string]*model.TaskDurations{
-						"": {
-							TaskDurationByDisplayName: map[string]time.Duration{
-								"": testTaskDuration,
-							},
-						},
-					},
-				},
-			},
-		}
 
 		So(db.Clear(task.Collection), ShouldBeNil)
 
@@ -1050,7 +1015,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -1118,7 +1082,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 			tasksAccountedFor := make(map[string]bool)
 			distroScheduleData := make(map[string]DistroScheduleData)
@@ -1146,7 +1109,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 
 			tasksAccountedFor = make(map[string]bool)
@@ -1167,7 +1129,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 
 			tasksAccountedFor = make(map[string]bool)
@@ -1190,7 +1151,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 			tasksAccountedFor = make(map[string]bool)
 
@@ -1233,7 +1193,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -1278,7 +1237,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -1330,7 +1288,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
@@ -1388,7 +1345,6 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distros: map[string]distro.Distro{
 					"": dist,
 				},
-				projectTaskDurations: taskDurations,
 			}
 
 			tasksAccountedFor := make(map[string]bool)
