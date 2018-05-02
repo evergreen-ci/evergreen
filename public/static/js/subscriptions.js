@@ -86,7 +86,6 @@ function subCtrl($scope, $mdDialog) {
     ];
 
     $scope.closeDialog = function(save) {
-        console.log(save)
         if(save === true) {
             subscriber = {
                 type: $scope.method.value,
@@ -94,12 +93,11 @@ function subCtrl($scope, $mdDialog) {
             }
             subscriber.label = subscriberLabel(subscriber);
 
-            d = {
-                subscriber: subscriber,
-                resource_type: $scope.trigger.resource_type,
-                trigger: $scope.trigger.trigger,
-                trigger_label: $scope.trigger.label
-            };
+            d = Object.assign({}, $scope.c.subscription);
+            d.subscriber = subscriber;
+            d.resource_type = $scope.trigger.resource_type;
+            d.trigger = $scope.trigger.trigger;
+            d.trigger_label = $scope.trigger.label;
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -160,4 +158,18 @@ function subCtrl($scope, $mdDialog) {
         }
         $scope.trigger = lookupTrigger($scope.c.triggers, $scope.c.subscription.trigger, $scope.c.subscription.resource_type);
     }
+}
+
+// Lookup a trigger with given (name, resource_type) pair in triggers, an
+// array of of trigger objects, as described above.
+// returns trigger object, or null
+function lookupTrigger(triggers, trigger, resource_type) {
+    t = _.filter(triggers, function(t) {
+        return t.trigger == trigger && t.resource_type == resource_type;
+    });
+    if (t.length === 1) {
+        return t[0];
+    }
+
+    return null;
 }

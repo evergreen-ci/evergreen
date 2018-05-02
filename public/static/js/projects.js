@@ -1,13 +1,3 @@
-function lookupTrigger(triggers, trigger, resource_type) {
-    t = _.filter(triggers, function(t) {
-        return t.trigger == trigger && t.resource_type == resource_type;
-    });
-    if (t.length === 1) {
-        return t[0];
-    }
-
-    return null;
-}
 mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, $mdDialog) {
 
   $scope.availableTriggers = $window.availableTriggers
@@ -268,16 +258,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           delete_aliases: [],
         };
 
-        data.Subscriptions = [{
-            trigger: "done",
-            resource_type: "TEAPOT",
-            subscriber: {
-                type:"email",
-                target: "a@b.com"
-            }
-        }];
-        $scope.subscriptions = _.map(data.Subscriptions || [], function(v) {
-          v.trigger_label = lookupTrigger($scope.triggers, v.trigger, v.resource_type).label;
+        $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
+          t = lookupTrigger($scope.triggers, v.trigger, v.resource_type);
+          v.trigger_label = t.label;
           v.subscriber.label = subscriberLabel(v.subscriber);
           return v;
         });
@@ -510,6 +493,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
       $mdDialog.show(promise).then(function(data){
           data.changed = true;
+          $scope.isDirty = true;
           $scope.subscriptions.push(data);
       });
   };
@@ -519,6 +503,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
       $mdDialog.show(promise).then(function(data){
           data.changed = true;
+          $scope.isDirty = true;
           $scope.subscriptions[index] = data;
       });
   };
