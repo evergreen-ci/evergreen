@@ -39,6 +39,7 @@ type NextTaskResponse struct {
 	TaskSecret string `json:"task_secret,omitempty"`
 	TaskGroup  string `json:"task_group,omitempty"`
 	Version    string `json:"version,omitempty"`
+	Build      string `json:"build,omitempty"`
 	// ShouldExit indicates that something has gone wrong, so the agent
 	// should exit immediately when it receives this message. ShouldExit can
 	// interrupt a task group.
