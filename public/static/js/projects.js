@@ -49,11 +49,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       //    resource_type: "TASK"
       //    label: "a previously passing task fails",
       //},
-      {
-          trigger: "done",
-          resource_type: "TEAPOT",
-          label: "my tea is done",
-      },
   ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
