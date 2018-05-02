@@ -20,6 +20,7 @@ type APISubscription struct {
 	RegexSelectors []APISelector `json:"regex_selectors"`
 	Subscriber     APISubscriber `json:"subscriber"`
 	Owner          APIString     `json:"owner"`
+	OwnerType      APIString     `json:"owner_type"`
 }
 
 func (s *APISelector) BuildFromService(h interface{}) error {
@@ -48,6 +49,7 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 		s.Type = ToAPIString(v.Type)
 		s.Trigger = ToAPIString(v.Trigger)
 		s.Owner = ToAPIString(v.Owner)
+		s.OwnerType = ToAPIString(string(v.OwnerType))
 		err := s.Subscriber.BuildFromService(v.Subscriber)
 		if err != nil {
 			return err
@@ -91,6 +93,7 @@ func (s *APISubscription) ToService() (interface{}, error) {
 		Type:           FromAPIString(s.Type),
 		Trigger:        FromAPIString(s.Trigger),
 		Owner:          FromAPIString(s.Owner),
+		OwnerType:      event.OwnerType(FromAPIString(s.OwnerType)),
 		Selectors:      []event.Selector{},
 		RegexSelectors: []event.Selector{},
 	}

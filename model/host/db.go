@@ -291,9 +291,7 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": false}},
-			{StatusKey: bson.M{
-				"$in": []string{evergreen.HostRunning, evergreen.HostUnreachable},
-			}},
+			{StatusKey: evergreen.HostRunning},
 			{StartedByKey: evergreen.User},
 			{"$or": []bson.M{
 				{LastCommunicationTimeKey: bson.M{"$lte": threshold}},

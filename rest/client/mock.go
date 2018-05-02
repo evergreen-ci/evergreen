@@ -14,6 +14,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -53,6 +54,7 @@ type Mock struct {
 	HeartbeatShouldAbort   bool
 	HeartbeatShouldErr     bool
 	TaskExecution          int
+	GetSubscriptionsFail   bool
 
 	AttachedFiles map[string][]*artifact.File
 
@@ -495,4 +497,28 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 		return errors.New("mock failed, wrong secret")
 	}
 	return nil
+}
+
+func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error) {
+	if c.GetSubscriptionsFail {
+		return nil, errors.New("failed to fetch subscriptions")
+	}
+
+	return []event.Subscription{
+		{
+			Type:    "type",
+			Trigger: "trigger",
+			Owner:   "owner",
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: "data",
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   "email",
+				Target: "a@domain.invalid",
+			},
+		},
+	}, nil
 }

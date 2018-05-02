@@ -190,8 +190,22 @@
           <i class="fa fa-times" ng-click="showTagForm=false"></i>
         </div>
       </div>
-      <div><a href="/plugin/json/task/[[task.id]]/perf/">Raw data</a>&nbsp;<i class="fa fa-download"></i></div>
-      <div><a href="/plugin/json/history/[[task.id]]/perf">Historical data</a>&nbsp;<i class="fa fa-download"></i></div>
+      <div>
+        <a href="/plugin/json/task/[[task.id]]/perf/">Raw data</a>
+        <a href="/plugin/json/task/[[task.id]]/perf/"
+          download="[[task.id]].json"
+          title="Download JSON">
+          <i class="fa fa-download"></i>
+        </a>
+      </div>
+      <div>
+        <a href="/plugin/json/history/[[task.id]]/perf">Historical data</a>
+        <a href="/plugin/json/history/[[task.id]]/perf"
+          download="[[task.id]].json"
+          title="Download JSON">
+          <i class="fa fa-download"></i>
+        </a>
+      </div>
       <div ng-if="user">
         <a href="/perfdiscovery/#?from=[[task.version_id]]">Performance Discovery</a>
       </div>

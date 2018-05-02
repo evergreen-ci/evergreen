@@ -195,15 +195,6 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 	})
 }
 
-func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
-	job := newEventNotificationJob(s.webhook.ID).(*eventNotificationJob)
-	job.Run(s.ctx)
-	s.NoError(job.Error())
-
-	pattern := "evergreen-webhook failed to send webhook data: Post http://127.0.0.1:12345: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
-	s.NotZero(s.notificationHasError(s.webhook.ID, pattern))
-}
-
 func (s *eventNotificationSuite) TestSlack() {
 	job := newEventNotificationJob(s.slack.ID).(*eventNotificationJob)
 	job.env = s.env

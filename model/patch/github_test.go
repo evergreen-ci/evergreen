@@ -220,7 +220,7 @@ func (s *GithubSuite) TestNewPatch() {
 	s.Zero(patchDoc.PatchNumber)
 	s.Empty(patchDoc.Version)
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
-	s.Zero(patchDoc.CreateTime)
+	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.Empty(patchDoc.BuildVariants)

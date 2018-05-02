@@ -1,6 +1,10 @@
 package testutil
 
-import "github.com/google/go-github/github"
+import (
+	"time"
+
+	"github.com/google/go-github/github"
+)
 
 func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, title string) *github.PullRequestEvent {
 	return &github.PullRequestEvent{
@@ -8,6 +12,7 @@ func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, 
 		Number: github.Int(prNumber),
 		Repo: &github.Repository{
 			FullName: github.String(baseRepoName),
+			PushedAt: &github.Timestamp{time.Now().Truncate(time.Millisecond)},
 		},
 		Sender: &github.User{
 			Login: github.String(user),
