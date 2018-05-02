@@ -14,7 +14,7 @@ type APISelector struct {
 
 type APISubscription struct {
 	ID             APIString     `json:"id"`
-	Type           APIString     `json:"resource_type"`
+	ResourceType   APIString     `json:"resource_type"`
 	Trigger        APIString     `json:"trigger"`
 	Selectors      []APISelector `json:"selectors"`
 	RegexSelectors []APISelector `json:"regex_selectors"`
@@ -46,7 +46,7 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.Subscription:
 		s.ID = ToAPIString(v.ID.Hex())
-		s.Type = ToAPIString(v.Type)
+		s.ResourceType = ToAPIString(v.Type)
 		s.Trigger = ToAPIString(v.Trigger)
 		s.Owner = ToAPIString(v.Owner)
 		s.OwnerType = ToAPIString(string(v.OwnerType))
@@ -90,7 +90,7 @@ func (s *APISubscription) ToService() (interface{}, error) {
 	}
 	out := event.Subscription{
 		ID:             id,
-		Type:           FromAPIString(s.Type),
+		Type:           FromAPIString(s.ResourceType),
 		Trigger:        FromAPIString(s.Trigger),
 		Owner:          FromAPIString(s.Owner),
 		OwnerType:      event.OwnerType(FromAPIString(s.OwnerType)),
