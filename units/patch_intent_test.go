@@ -298,6 +298,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 			s.Equal("evergreen", ghsub.Repo)
 			s.Equal(448, ghsub.PRNumber)
 			s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", ghsub.Ref)
+
 		} else {
 			s.T().Errorf("unexpected subscriber type: %s", out[i].Subscriber.Type)
 		}

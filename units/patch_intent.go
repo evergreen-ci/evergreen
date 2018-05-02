@@ -257,7 +257,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return err
 	}
 
-	subscriber, err := j.user.PatchSubscriber()
+	subscriber, err := j.user.PatchFinishSubscriber()
 	if err != nil {
 		j.AddError(err)
 	}

@@ -52,7 +52,7 @@ type UserSubscriptionPreference string
 
 const (
 	PreferenceEmail UserSubscriptionPreference = event.EmailSubscriberType
-	PreferenceSlack                            = event.SlackSubscriberType
+	PreferenceSlack UserSubscriptionPreference = event.SlackSubscriberType
 )
 
 func (u *DBUser) Username() string {
@@ -174,20 +174,34 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 	return dbUser.PatchNumber, nil
 }
 
-func (u *DBUser) PatchSubscriber() (*event.Subscriber, error) {
-	if u.Settings.Notifications.PatchFinish == PreferenceEmail {
-		sub := event.NewEmailSubscriber(u.EmailAddress)
-		return &sub, nil
-
-	} else if u.Settings.Notifications.PatchFinish == PreferenceSlack {
-		sub := event.NewSlackSubscriber(u.Settings.SlackUsername)
-		return &sub, nil
-
-	} else if len(u.Settings.Notifications.PatchFinish) == 0 {
-		return nil, nil
+func (u *DBUser) PatchFinishSubscriber() (*event.Subscriber, error) {
+	if !IsValidSubscriptionPreference(string(u.Settings.Notifications.PatchFinish)) {
+		return nil, errors.Errorf("unknown subscriber preference: %s", u.Settings.Notifications.PatchFinish)
 	}
 
-	return nil, errors.Errorf("unknown subscriber preference: %s", u.Settings.Notifications.PatchFinish)
+	return u.subscriber(u.Settings.Notifications.PatchFinish), nil
+}
+
+func (u *DBUser) BuildBreakSubscriber() (*event.Subscriber, error) {
+	if !IsValidSubscriptionPreference(string(u.Settings.Notifications.BuildBreak)) {
+		return nil, errors.Errorf("unknown subscriber preference: %s", u.Settings.Notifications.PatchFinish)
+	}
+
+	return u.subscriber(u.Settings.Notifications.BuildBreak), nil
+}
+
+func (u *DBUser) subscriber(pref UserSubscriptionPreference) *event.Subscriber {
+	switch pref {
+	case PreferenceEmail:
+		sub := event.NewEmailSubscriber(u.EmailAddress)
+		return &sub
+
+	case PreferenceSlack:
+		sub := event.NewSlackSubscriber(u.Settings.SlackUsername)
+		return &sub
+	}
+
+	return nil
 }
 
 func IsValidSubscriptionPreference(in string) bool {
