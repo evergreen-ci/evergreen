@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/mux"
 )
 
 func getSubscriptionRouteManager(route string, version int) *RouteManager {
@@ -54,7 +55,7 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 	for _, subscription := range *s.Subscriptions {
 		subscriptionInterface, err := subscription.ToService()
 		if err != nil {
-			return rest.APIError{
+			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Error parsing request body: " + err.Error(),
 			}
@@ -62,14 +63,14 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 
 		dbSubscription, ok := subscriptionInterface.(event.Subscription)
 		if !ok {
-			return rest.APIError{
+			return &rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    "Error parsing subscription interface",
 			}
 		}
 
-		if dbSubscription.Owner != u.Username() {
-			return rest.APIError{
+		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner != u.Username() {
+			return &rest.APIError{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "Cannot change subscriptions for anyone other than yourself",
 			}
@@ -77,7 +78,7 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 
 		err = dbSubscription.Validate()
 		if err != nil {
-			return rest.APIError{
+			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Error validating subscription: " + err.Error(),
 			}
@@ -99,22 +100,43 @@ func (s *subscriptionPostHandler) Execute(ctx context.Context, sc data.Connector
 }
 
 type subscriptionGetHandler struct {
-	id string
+	owner     string
+	ownerType string
 }
 
 func (s *subscriptionGetHandler) Handler() RequestHandler {
 	return &subscriptionGetHandler{}
 }
 
-func (s *subscriptionGetHandler) ParseAndValidate(ctx context.Context, _ *http.Request) error {
+func (s *subscriptionGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	u := MustHaveUser(ctx)
-	s.id = u.Id
+	vars := mux.Vars(r)
+	s.owner = vars["owner"]
+	s.ownerType = vars["type"]
+	if !event.IsValidOwnerType(s.ownerType) {
+		return rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Invalid owner type",
+		}
+	}
+	if s.owner == "" {
+		return rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Owner cannot be blank",
+		}
+	}
+	if s.ownerType == string(event.OwnerTypePerson) && s.owner != u.Username() {
+		return rest.APIError{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Cannot get subscriptions for someone other than yourself",
+		}
+	}
 
 	return nil
 }
 
 func (s *subscriptionGetHandler) Execute(_ context.Context, sc data.Connector) (ResponseData, error) {
-	subs, err := sc.GetSubscriptions(s.id)
+	subs, err := sc.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
 	if err != nil {
 		return ResponseData{}, err
 	}

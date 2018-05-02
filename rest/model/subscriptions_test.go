@@ -11,10 +11,11 @@ import (
 func TestSubscriptionModels(t *testing.T) {
 	assert := assert.New(t)
 	subscription := event.Subscription{
-		ID:      bson.NewObjectId(),
-		Type:    "atype",
-		Trigger: "atrigger",
-		Owner:   "me",
+		ID:        bson.NewObjectId(),
+		Type:      "atype",
+		Trigger:   "atrigger",
+		Owner:     "me",
+		OwnerType: event.OwnerTypePerson,
 		Selectors: []event.Selector{
 			{
 				Type: "type1",
