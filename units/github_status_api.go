@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -239,7 +240,7 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 
 		patchVersion = b.Version
 		status.Context = fmt.Sprintf("evergreen/%s", b.BuildVariant)
-		status.Description = taskStatusToDesc(b)
+		status.Description = trigger.TaskStatusToDesc(b)
 		status.URLPath = fmt.Sprintf("/build/%s", b.Id)
 
 		switch b.Status {
@@ -342,74 +343,6 @@ func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 	}
 }
 
-// TODO: EVG-3087 Remove everything below this line
-func taskStatusToDesc(b *build.Build) string {
-	success := 0
-	failed := 0
-	systemError := 0
-	other := 0
-	noReport := 0
-	for _, task := range b.Tasks {
-		switch task.Status {
-		case evergreen.TaskSucceeded:
-			success++
-
-		case evergreen.TaskFailed:
-			failed++
-
-		case evergreen.TaskSystemFailed, evergreen.TaskTimedOut,
-			evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut,
-			evergreen.TaskTestTimedOut:
-			systemError++
-
-		case evergreen.TaskStarted, evergreen.TaskUnstarted,
-			evergreen.TaskUndispatched, evergreen.TaskDispatched,
-			evergreen.TaskConflict, evergreen.TaskInactive:
-			noReport++
-
-		default:
-			other++
-		}
-	}
-
-	grip.ErrorWhen(other > 0, message.Fields{
-		"source":   "status updates",
-		"message":  "unknown task status",
-		"build_id": b.Id,
-	})
-	grip.ErrorWhen(noReport > 0, message.Fields{
-		"source":   "status updates",
-		"message":  "updating status for incomplete build",
-		"build_id": b.Id,
-	})
-
-	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
-		return "no tasks were run"
-	}
-
-	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
-		taskStatusSubformat(failed, "failed"))
-	if systemError > 0 {
-		desc += fmt.Sprintf(", %d internal errors", systemError)
-	}
-	if other > 0 {
-		desc += fmt.Sprintf(", %d other", other)
-	}
-
-	return appendTime(b, desc)
-}
-
-func taskStatusSubformat(n int, verb string) string {
-	if n == 0 {
-		return fmt.Sprintf("none %s", verb)
-	}
-	return fmt.Sprintf("%d %s", n, verb)
-}
-
 func repoReference(owner, repo string, prNumber int, ref string) string {
 	return fmt.Sprintf("%s/%s#%d@%s", owner, repo, prNumber, ref)
-}
-
-func appendTime(b *build.Build, txt string) string {
-	return fmt.Sprintf("%s in %s", txt, b.FinishTime.Sub(b.StartTime).String())
 }
