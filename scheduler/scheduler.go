@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -49,7 +50,7 @@ type distroSchedueler struct {
 }
 
 func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
-	taskExpectedDuration model.ProjectTaskDurations) distroSchedulerResult {
+	versions map[string]*version.Version, taskExpectedDuration model.ProjectTaskDurations) distroSchedulerResult {
 
 	res := distroSchedulerResult{
 		distroId: distroId,
@@ -60,7 +61,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 		"num_tasks": len(runnableTasksForDistro),
 	})
 
-	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro)
+	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro, versions)
 	if err != nil {
 		res.err = errors.Wrap(err, "Error prioritizing tasks")
 		return res

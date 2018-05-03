@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -71,23 +70,12 @@ type project struct {
 // of model.LoadProjectInto and only unmarshals task groups for efficiency.
 func cacheTaskGroups(comparator *CmpBasedTaskComparator) error {
 	comparator.projects = make(map[string]project)
-	for _, t := range comparator.tasks {
-		if _, ok := comparator.projects[t.Version]; ok {
-			continue
-		}
-		v, err := version.FindOneId(t.Version)
-		if err != nil {
-			return errors.Wrapf(err, "error finding version %s for task %s", t.Id, t.Version)
-		}
-		// Version may not yet be created, so keep going.
-		if v == nil {
-			continue
-		}
+	for _, v := range comparator.versions {
 		p := project{}
 		if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
-			return errors.Wrapf(err, "error unmarshalling task groups from version %s for task %s", t.Id, t.Version)
+			return errors.Wrapf(err, "error unmarshalling task groups from version %s", v.Id)
 		}
-		comparator.projects[t.Version] = p
+		comparator.projects[v.Id] = p
 	}
 	return nil
 }
