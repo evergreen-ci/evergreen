@@ -68,9 +68,12 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 
 	finder := GetTaskFinder(conf.TaskFinder)
 	tasks, err := finder(conf.DistroID)
-	runnableTasks, versions, err := GetRunnableTasksAndVersions(tasks)
 	if err != nil {
 		return errors.Wrap(err, "problem calculating task finder")
+	}
+	runnableTasks, versions, err := GetRunnableTasksAndVersions(tasks)
+	if err != nil {
+		return errors.Wrap(err, "error getting runnable tasks")
 	}
 
 	projectDurations, err := GetExpectedDurations(runnableTasks)
