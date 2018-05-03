@@ -31,7 +31,7 @@ const (
 
 	// if we have no data on a given task, default to 10 minutes so we
 	// have some new hosts spawned
-	defaultTaskDuration = time.Duration(10) * time.Minute
+	defaultTaskDuration = 10 * time.Minute
 )
 
 var (
@@ -397,6 +397,19 @@ func (t *Task) SetExpectedDuration(duration time.Duration) error {
 		bson.M{
 			"$set": bson.M{
 				ExpectedDurationKey:   duration,
+				DurationPredictionKey: t.DurationPrediction,
+			},
+		},
+	)
+}
+
+func (t *Task) cacheExpectedDuration() error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
 				DurationPredictionKey: t.DurationPrediction,
 			},
 		},
@@ -1387,10 +1400,13 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 
 func (t *Task) FetchExpectedDuration() time.Duration {
 	if t.DurationPrediction.TTL == 0 {
-		t.DurationPrediction.TTL = util.JitterInterval(5 * time.Minute)
+		t.DurationPrediction.TTL = util.JitterInterval(15 * time.Minute)
 	}
 
 	if t.DurationPrediction.Value == 0 && t.ExpectedDuration != 0 {
+		// this is probably just backfill, if we have an
+		// expected duration, let's assume it was collected
+		// before now slightly.
 		t.DurationPrediction.Value = t.ExpectedDuration
 		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
 	}
@@ -1418,7 +1434,7 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 
 		ret := time.Duration(vals[0].ExpectedDuration)
 		if ret == 0 {
-			ret = defaultTaskDuration
+			return defaultTaskDuration, true
 		}
 
 		return ret, true
@@ -1437,6 +1453,13 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 			grip.Error(message.WrapError(err, message.Fields{
 				"task":    t.Id,
 				"message": "problem updating projected task duration",
+			}))
+		}
+	} else {
+		if err := t.cacheExpectedDuration(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task":    t.Id,
+				"message": "caching expected duration",
 			}))
 		}
 	}
