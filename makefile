@@ -327,6 +327,15 @@ clean:
 phony += clean
 # end dependency targets
 
+# mongod utility targets
+start-mongod:
+	./mongodb/mongod --dbpath ./mongodb/db_files
+	echo "waiting for mongod to start up"
+check-mongod:
+	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
+	echo "mongod is up"
+#
+
 # configure special (and) phony targets
 .FORCE:
 .PHONY:$(phony) .FORCE

@@ -178,7 +178,7 @@ functions:
 
         # Run make, called with proper environment variables set,
         # running the target.
-        make ${make_args|} ${target}'
+        ${build_env} make ${make_args|} ${target}'
   get-dist-test:
     command: s3.get
     params:
@@ -190,17 +190,7 @@ functions:
   run-cross:
     command: subprocess.exec
     param:
-      command: |
-        bash -c
-        'set -o xtrace
-        set -o errexit
-
-        tar -zxvf dist-test.tar.gz
-
-        export EVGHOME=`pwd`/evergreen-test
-        export SETTINGS_OVERRIDE=`pwd`/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
-
-        $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m'
+      command: scripts/run-cross.sh
   set-up-credentials:
     command: subprocess.exec
     type: setup
@@ -270,47 +260,19 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        command: |
-          bash -c
-          'set -o xtrace
-          set -o errexit
-
-          rm -rf mongodb
-          mkdir mongodb
-          cd mongodb
-          curl ${mongodb_url} -o mongodb${archiveExt|.tgz}
-
-          ${decompress} mongodb${archiveExt|.tgz}
-          chmod +x ./mongodb-*/bin/*
-          mv ./mongodb-*/bin/* .
-          rm -rf db_files
-          rm -rf db_logs
-          mkdir db_files
-          mkdir db_logs'
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        command: ${bash}scripts/setup-mongodb.sh ${mongodb_url} ${decompress}
     - command: subprocess.exec
       type: setup
       params:
         background: true
-        command: |
-          bash -c
-          'set -o xtrace
-          set -o errexit
-
-          cd mongodb
-          echo "starting mongod..."
-          ./mongod${extension|} --dbpath ./db_files &
-          echo "waiting for mongod to start up"'
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen/
+        command: make start-mongod
     - command: subprocess.exec
       type: setup
       params:
-        command: |
-          bash -c
-          'set -o xtrace
-          set -o errexit
-
-          cd mongodb
-          ./mongo${extension|} --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
-          echo "mongod is up."'
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        command: make check-mongod
   attach-test-results:
     - command: gotest.parse_files
       type: system
@@ -689,6 +651,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.4.zip
       extension: ".exe"
       archiveExt: ".zip"
+      bash: "bash "
     tasks:
       - name: ".nodb .test"
       - name: ".agent .test"
