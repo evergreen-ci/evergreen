@@ -3,9 +3,11 @@ package scheduler
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)
@@ -182,6 +184,22 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 		return 0, nil
 	}
 
+	// if version wasn't cached, cache it
+	if p, ok := comparator.projects[t1.Version]; !ok {
+		v, err := version.FindOneId(t1.Version)
+		if err != nil {
+			return 0, errors.Wrapf(err, "error finding version for task %s (%s)", t1.Id, t1.Version)
+		}
+		if v == nil {
+			return 0, errors.Wrapf(err, "no version found for task %s (%s)", t1.Id, t1.Version)
+		}
+		p = project{}
+		if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
+			return 0, errors.Wrapf(err, "error unmarshalling task groups for task %s (%s)", t1.Id, t1.Version)
+		}
+		comparator.projects[t1.Version] = p
+	}
+
 	// find earlier task
 	for _, tg := range comparator.projects[t1.Version].TaskGroups {
 		if tg.Name == t1.TaskGroup {
@@ -195,10 +213,16 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 			}
 		}
 	}
+
+	// TODO: EVG-3305 Remove this logging
 	tasksFromTaskGroup := []string{}
+	foundTaskGroup := false
+	_, ok := comparator.projects[t1.Version]
+	foundVersion := ok
 	for _, tg := range comparator.projects[t1.Version].TaskGroups {
 		if tg.Name == t1.TaskGroup {
 			tasksFromTaskGroup = append(tasksFromTaskGroup, tg.Tasks...)
+			foundTaskGroup = true
 		}
 	}
 	grip.Error(message.Fields{
@@ -214,7 +238,11 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 		"t2_group":                t2.TaskGroup,
 		"comparator_projects_len": len(comparator.projects),
 		"tasks_from_task_group":   tasksFromTaskGroup,
+		"found_version":           foundVersion,
+		"found_task_group":        foundTaskGroup,
+		"task_groups_in_version":  len(comparator.projects[t1.Version].TaskGroups),
 	})
+
 	return 0, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, t1.TaskGroup)
 }
 
