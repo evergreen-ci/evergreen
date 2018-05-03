@@ -4,6 +4,7 @@ const SUBSCRIPTION_SLACK = 'slack';
 const SUBSCRIPTION_EMAIL = 'email';
 const SUBSCRIPTION_EVERGREEN_WEBHOOK = 'evergreen-webhook';
 
+// Return a human readable label for a given subscriber object
 function subscriberLabel(subscriber) {
     if (subscriber.type === SUBSCRIPTION_JIRA_COMMENT) {
         return "Post a comment on JIRA issue " + subscriber.target;
@@ -93,7 +94,7 @@ function subCtrl($scope, $mdDialog) {
             }
             subscriber.label = subscriberLabel(subscriber);
 
-            d = Object.assign({}, $scope.c.subscription);
+            d = $scope.c.subscription || {};
             d.subscriber = subscriber;
             d.resource_type = $scope.trigger.resource_type;
             d.trigger = $scope.trigger.trigger;
@@ -114,10 +115,10 @@ function subCtrl($scope, $mdDialog) {
     };
 
     $scope.valid = function() {
-        if ($scope.trigger == null || $scope.method == null) {
+        if (!$scope.trigger || !$scope.method) {
             return false;
         }
-        if ($scope.targets[$scope.method.value] == null) {
+        if (!$scope.targets[$scope.method.value]) {
             return false
         }
 
@@ -134,9 +135,14 @@ function subCtrl($scope, $mdDialog) {
             return $scope.targets[SUBSCRIPTION_EMAIL].match(".+@.+") !== null
 
         }else if ($scope.method.value === SUBSCRIPTION_EVERGREEN_WEBHOOK) {
-            if ($scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] == undefined) {
+            if (!$scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK]) {
                 return false;
             }
+            if (!$scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK].url ||
+                !$scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK].secret) {
+                return false;
+            }
+
             return ($scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK].secret.length >= 32 &&
                 $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK].url.match("https://.+") !== null)
         }
@@ -145,12 +151,11 @@ function subCtrl($scope, $mdDialog) {
     };
 
     $scope.method = {};
-    $scope.targets = {
-        SUBSCRIPTION_EVERGREEN_WEBHOOK: {
+    $scope.targets = {};
+    $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {
             secret: $scope.generateSecret(),
-        },
     };
-    if ($scope.c.subscription !== undefined) {
+    if ($scope.c.subscription) {
         $scope.targets[$scope.c.subscription.subscriber.type] = $scope.c.subscription.subscriber.target;
         t = _.filter($scope.subscription_methods, function(t) { return t.value == $scope.c.subscription.subscriber.type; });
         if (t.length === 1) {

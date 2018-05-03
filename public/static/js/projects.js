@@ -26,27 +26,27 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       // TODO uncomment as we implement these
       //{
       //    trigger: "failure",
-      //    resource_type: "TASK"
+      //    resource_type: "TASK",
       //    label: "any task fails",
       //},
       //{
       //    trigger: "first-failure-by-variant",
-      //    resource_type: "TASK"
+      //    resource_type: "TASK",
       //    label: "the first task failure occurs",
       //},
       //{
       //    trigger: "first-failure-by-variant",
-      //    resource_type: "BUILD"
+      //    resource_type: "BUILD",
       //    label: "the first failure within each variant occurs",
       //},
       //{
       //    trigger: "first-failure-by-name",
-      //    resource_type: "TASK"
+      //    resource_type: "TASK",
       //    label: "the first failure for each task name occurs",
       //},
       //{
       //    trigger: "regression",
-      //    resource_type: "TASK"
+      //    resource_type: "TASK",
       //    label: "a previously passing task fails",
       //},
   ];
@@ -505,7 +505,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   };
 
   $scope.removeSubscription = function(index) {
-      if ($scope.subscriptions[index].id !== undefined) {
+      if ($scope.subscriptions[index] && $scope.subscriptions[index].id) {
           $scope.settingsFormData.delete_subscriptions.push($scope.subscriptions[index].id);
       }
       $scope.subscriptions = _.filter($scope.subscriptions, function(s, i) {
