@@ -7,8 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSubscriberModels(t *testing.T) {
+func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 	assert := assert.New(t)
+
 	prSubscriber := event.Subscriber{
 		Type: event.GithubPullRequestSubscriberType,
 		Target: event.GithubPullRequestSubscriber{
@@ -18,6 +19,18 @@ func TestSubscriberModels(t *testing.T) {
 			Ref:      "abc",
 		},
 	}
+	apiPrSubscriber := APISubscriber{}
+	err := apiPrSubscriber.BuildFromService(prSubscriber)
+	assert.NoError(err)
+
+	origPrSubscriber, err := apiPrSubscriber.ToService()
+	assert.NoError(err)
+	assert.EqualValues(prSubscriber, origPrSubscriber)
+}
+
+func TestSubscriberModelsWebhook(t *testing.T) {
+	assert := assert.New(t)
+
 	webhookSubscriber := event.Subscriber{
 		Type: event.EvergreenWebhookSubscriberType,
 		Target: event.WebhookSubscriber{
@@ -25,27 +38,27 @@ func TestSubscriberModels(t *testing.T) {
 			Secret: []byte("bar"),
 		},
 	}
+	apiWebhookSubscriber := APISubscriber{}
+	err := apiWebhookSubscriber.BuildFromService(webhookSubscriber)
+	assert.NoError(err)
+
+	origWebhookSubscriber, err := apiWebhookSubscriber.ToService()
+	assert.NoError(err)
+	assert.EqualValues(webhookSubscriber, origWebhookSubscriber)
+}
+
+func TestSubscriberModelsSlack(t *testing.T) {
+	assert := assert.New(t)
+
 	slackSubscriber := event.Subscriber{
 		Type:   event.SlackSubscriberType,
 		Target: "slack message",
 	}
 
-	apiPrSubscriber := APISubscriber{}
-	err := apiPrSubscriber.BuildFromService(prSubscriber)
-	assert.NoError(err)
-	apiWebhookSubscriber := APISubscriber{}
-	err = apiWebhookSubscriber.BuildFromService(webhookSubscriber)
-	assert.NoError(err)
 	apiSlackSubscriber := APISubscriber{}
-	err = apiSlackSubscriber.BuildFromService(slackSubscriber)
+	err := apiSlackSubscriber.BuildFromService(slackSubscriber)
 	assert.NoError(err)
 
-	origPrSubscriber, err := apiPrSubscriber.ToService()
-	assert.NoError(err)
-	assert.EqualValues(prSubscriber, origPrSubscriber)
-	origWebhookSubscriber, err := apiWebhookSubscriber.ToService()
-	assert.NoError(err)
-	assert.EqualValues(webhookSubscriber, origWebhookSubscriber)
 	origSlackSubscriber, err := apiSlackSubscriber.ToService()
 	assert.NoError(err)
 	assert.EqualValues(slackSubscriber, origSlackSubscriber)

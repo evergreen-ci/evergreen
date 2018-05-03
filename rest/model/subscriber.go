@@ -116,13 +116,11 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 }
 
 func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case event.GithubPullRequestSubscriber:
-		s.Owner = ToAPIString(v.Owner)
-		s.Repo = ToAPIString(v.Repo)
-		s.Ref = ToAPIString(v.Ref)
-		s.PRNumber = v.PRNumber
+	if v, ok := h.(event.GithubPullRequestSubscriber); ok {
+		h = &v
+	}
 
+	switch v := h.(type) {
 	case *event.GithubPullRequestSubscriber:
 		s.Owner = ToAPIString(v.Owner)
 		s.Repo = ToAPIString(v.Repo)
@@ -146,11 +144,11 @@ func (s *APIGithubPRSubscriber) ToService() (interface{}, error) {
 }
 
 func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case event.WebhookSubscriber:
-		s.URL = ToAPIString(v.URL)
-		s.Secret = ToAPIString(string(v.Secret))
+	if v, ok := h.(event.WebhookSubscriber); ok {
+		h = &v
+	}
 
+	switch v := h.(type) {
 	case *event.WebhookSubscriber:
 		s.URL = ToAPIString(v.URL)
 		s.Secret = ToAPIString(string(v.Secret))
