@@ -106,7 +106,9 @@ type Task struct {
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 
-	// how long we expect the task to take from start to finish
+	// how long we expect the task to take from start to
+	// finish. expected duration is the legacy value, but the UI
+	// probably depends on it, so we maintain both values.
 	ExpectedDuration   time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
 	DurationPrediction util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
