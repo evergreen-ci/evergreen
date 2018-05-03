@@ -117,4 +117,9 @@ func TestTruncateString(t *testing.T) {
 	assert.Empty(head)
 	assert.Len(head, 0)
 	assert.Equal("12345", tail)
+
+	head, tail = truncateString(sample, -1)
+	assert.Empty(head)
+	assert.Len(head, 0)
+	assert.Equal("12345", tail)
 }

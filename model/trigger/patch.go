@@ -195,7 +195,7 @@ func patchCreated(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		githubStatusAPI: &message.GithubStatus{
 			Context:     "evergreen",
 			State:       message.GithubStatePending,
-			URL:         fmt.Sprintf("/version/%s", p.Id.Hex()),
+			URL:         fmt.Sprintf("%s/version/%s", ui.Url, p.Id.Hex()),
 			Description: "preparing to run tasks",
 		},
 	}
@@ -225,7 +225,7 @@ func patchStarted(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 		githubStatusAPI: &message.GithubStatus{
 			Context:     "evergreen",
 			State:       message.GithubStatePending,
-			URL:         fmt.Sprintf("/version/%s", p.Id.Hex()),
+			URL:         fmt.Sprintf("%s/version/%s", ui.Url, p.Id.Hex()),
 			Description: "tasks are running",
 		},
 	}

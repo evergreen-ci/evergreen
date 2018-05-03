@@ -2,12 +2,14 @@ package trigger
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -30,17 +32,31 @@ func (s *patchSuite) SetupSuite() {
 
 func (s *patchSuite) SetupTest() {
 	s.NoError(db.ClearCollections(event.AllLogCollection, patch.Collection, event.SubscriptionsCollection))
+	startTime := time.Now().Truncate(time.Millisecond)
+
+	patchID := bson.ObjectIdHex("5aeb4514f27e4f9984646d97")
 
 	s.patch = patch.Patch{
-		Id:      bson.NewObjectId(),
-		Project: "test",
-		Author:  "someone",
+		Id:         patchID,
+		Project:    "test",
+		Author:     "someone",
+		StartTime:  startTime,
+		FinishTime: startTime.Add(10 * time.Minute),
+		GithubPatchData: patch.GithubPatch{
+			BaseOwner: "evergreen-ci",
+			BaseRepo:  "evergreen",
+			HeadOwner: "tychoish",
+			HeadRepo:  "evergreen",
+			PRNumber:  448,
+			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
+		},
 	}
+	s.patch.Version = s.patch.Id.Hex()
 	s.NoError(s.patch.Insert())
 
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
-		ResourceId:   s.patch.Id.Hex(),
+		ResourceId:   patchID.Hex(),
 	}
 
 	s.subs = []event.Subscription{
@@ -106,6 +122,11 @@ func (s *patchSuite) SetupTest() {
 	for i := range s.subs {
 		s.NoError(s.subs[i].Upsert())
 	}
+
+	ui := &evergreen.UIConfig{
+		Url: "https://evergreen.mongodb.com",
+	}
+	s.NoError(ui.Set())
 }
 
 func (s *patchSuite) TestAllTriggers() {
@@ -187,4 +208,40 @@ func (s *patchSuite) TestPatchOutcome() {
 		Type: "trigger",
 		Data: "outcome",
 	})
+}
+
+func (s *patchSuite) TestPatchCreated() {
+	gen, err := patchCreated(&s.event, &s.patch)
+	s.Nil(err)
+	s.Nil(gen)
+
+	s.patch.Status = evergreen.PatchCreated
+	gen, err = patchCreated(&s.event, &s.patch)
+	s.Nil(err)
+	s.Require().NotNil(gen)
+	s.Require().NotNil(gen.githubStatusAPI)
+
+	s.Equal("evergreen", gen.githubStatusAPI.Context)
+	s.Equal(message.GithubStatePending, gen.githubStatusAPI.State)
+	s.Equal("preparing to run tasks", gen.githubStatusAPI.Description)
+
+	s.Equal("https://evergreen.mongodb.com/version/5aeb4514f27e4f9984646d97", gen.githubStatusAPI.URL)
+}
+
+func (s *patchSuite) TestPatchStarted() {
+	gen, err := patchStarted(&s.event, &s.patch)
+	s.Nil(err)
+	s.Nil(gen)
+
+	s.patch.Status = evergreen.PatchStarted
+	gen, err = patchStarted(&s.event, &s.patch)
+	s.Nil(err)
+	s.Require().NotNil(gen)
+	s.Require().NotNil(gen.githubStatusAPI)
+
+	s.Equal("evergreen", gen.githubStatusAPI.Context)
+	s.Equal(message.GithubStatePending, gen.githubStatusAPI.State)
+	s.Equal("tasks are running", gen.githubStatusAPI.Description)
+
+	s.Equal("https://evergreen.mongodb.com/version/5aeb4514f27e4f9984646d97", gen.githubStatusAPI.URL)
 }

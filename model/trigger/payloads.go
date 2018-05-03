@@ -143,10 +143,14 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 		return nil, errors.Wrap(err, "failed to make jira issue")
 	}
 	title, remainder := truncateString(buf.String(), maxSummary)
+	desc := *comment
+	if len(remainder) != 0 {
+		desc = fmt.Sprintf("...\n%s\n%s", remainder, desc)
+	}
 
 	issue := message.JiraIssue{
 		Summary:     title,
-		Description: fmt.Sprintf("...\n%s\n%s", remainder, *comment),
+		Description: desc,
 	}
 
 	return &issue, nil
@@ -161,7 +165,7 @@ func truncateString(s string, capacity int) (string, string) {
 	if len(s) <= capacity {
 		return s, ""
 	}
-	if capacity == 0 {
+	if capacity <= 0 {
 		return "", s
 	}
 
