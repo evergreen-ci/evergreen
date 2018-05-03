@@ -36,6 +36,7 @@ type TestResult struct {
 
 var (
 	// BSON fields for the task struct
+	IDKey        = bsonutil.MustHaveTag(TestResult{}, "ID")
 	StatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
 	LineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
 	TestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
@@ -106,12 +107,12 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 }
 
 // TestResultsPipeline is an aggregation pipeline for returning test results to the REST v2 API.
-func TestResultsPipeline(id, filename, status string, limit, sort, execution int) []bson.M {
+func TestResultsPipeline(taskId, testId, status string, limit, sort, execution int) []bson.M {
 	// match test results
 	pipeline := []bson.M{
 		bson.M{
 			"$match": bson.M{
-				TaskIDKey:    id,
+				TaskIDKey:    taskId,
 				ExecutionKey: execution,
 			},
 		},
@@ -129,11 +130,13 @@ func TestResultsPipeline(id, filename, status string, limit, sort, execution int
 	if sort < 0 {
 		sortOperator = "$lte"
 	}
+	if testId != "" {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{IDKey: bson.M{sortOperator: bson.ObjectId(testId)}}})
+	}
 	pipeline = append(pipeline,
 		bson.M{
-			"$match": bson.M{TestFileKey: bson.M{sortOperator: filename}}},
-		bson.M{
-			"$sort": bson.M{TestFileKey: 1},
+			"$sort": bson.M{IDKey: 1},
 		},
 	)
 
