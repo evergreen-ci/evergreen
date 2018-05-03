@@ -342,6 +342,7 @@ func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 	}
 }
 
+// TODO: EVG-3087 Remove everything below this line
 func taskStatusToDesc(b *build.Build) string {
 	success := 0
 	failed := 0
