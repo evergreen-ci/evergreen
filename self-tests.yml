@@ -105,8 +105,7 @@ variables:
         params:
           silent: true
           working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          command: |
-            bin/setup-smoke-config -githubToken ${github_token}
+          command: bin/setup-smoke-config -githubToken ${github_token}
       - func: run-make
         vars:
           target: set-smoke-vars
@@ -189,72 +188,15 @@ functions:
       local_file: dist-test.tar.gz
   run-cross:
     command: subprocess.exec
-    param:
-      command: scripts/run-cross.sh
+    params:
+      command: scripts/run-cross.sh ${target}
   set-up-credentials:
     command: subprocess.exec
     type: setup
     params:
       silent: true
-      command: |
-        bash -c
-        'set -o errexit
-
-        mkdir -p gopath/src/github.com/evergreen-ci/evergreen
-
-        echo "building creds file!"
-
-        cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
-        database:
-          url: "mongodb://localhost:27017"
-          db: "mci"
-          write_concern:
-            wmode: majority
-
-        configdir: "config_test"
-        client_binaries_dir: "clients"
-        credentials: {
-          github: "${github_token}",
-        }
-
-        api_url: http://localhost:8080
-        api:
-          github_webhook_secret: "test"
-        ui:
-          secret: "secret for UI"
-          defaultproject: "mci"
-          url: "http://localhost:9090"
-
-        notify:
-          smtp:
-            from: "mci-notifications+test@mongodb.com"
-            server: "localhost"
-            port: 25
-            admin_email:
-              - "mci@10gen.com"
-
-
-        jira:
-          host: ${jiraserver}
-          username: ${crowduser}
-          password: ${crowdpw}
-
-        providers:
-          aws:
-            aws_id: "${aws_key}"
-            aws_secret: "${aws_secret}"
-
-        auth:
-          crowd:
-            username: ${crowduser}
-            password: ${crowdpw}
-            urlroot: ${crowdserver}
-
-        plugins:
-          manifest:
-            github_token: "${github_token}"
-        github_pr_creator_org: "10gen"
-        EOF'
+      working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      command: scripts/setup-credentials.sh ${github_token} ${jiraserver} ${crowduser} ${crowdpw} ${aws_key} ${aws_secret} ${crowdserver}
 
   set-up-mongodb:
     - command: subprocess.exec
