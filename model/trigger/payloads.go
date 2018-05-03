@@ -3,6 +3,7 @@ package trigger
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"net/http"
 	ttemplate "text/template"
@@ -125,6 +126,8 @@ func jiraComment(t commonTemplateData) (*string, error) {
 }
 
 func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
+	const maxSummary = 254
+
 	comment, err := jiraComment(t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make jira issue")
@@ -139,14 +142,33 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 	if err = issueTmpl.Execute(buf, t); err != nil {
 		return nil, errors.Wrap(err, "failed to make jira issue")
 	}
-	title := buf.String()
+	title, remainder := truncateString(buf.String(), maxSummary)
 
 	issue := message.JiraIssue{
 		Summary:     title,
-		Description: *comment,
+		Description: fmt.Sprintf("...\n%s\n%s", remainder, *comment),
 	}
 
 	return &issue, nil
+}
+
+// truncateString splits a string into two parts, with the following behavior:
+// If the entire string is <= capacity, it's returned unchanged.
+// Otherwise, the string is split at the (capacity-3)'th byte. The first string
+// returned will be this string + '...', and the second string will be the
+// remaining characters, if any
+func truncateString(s string, capacity int) (string, string) {
+	if len(s) <= capacity {
+		return s, ""
+	}
+	if capacity == 0 {
+		return "", s
+	}
+
+	head := s[0:capacity-3] + "..."
+	tail := s[capacity-3:]
+
+	return head, tail
 }
 
 func slack(t commonTemplateData) (*notification.SlackPayload, error) {
