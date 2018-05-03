@@ -1,10 +1,12 @@
 package model
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
@@ -14,15 +16,15 @@ type APISubscriber struct {
 }
 
 type APIGithubPRSubscriber struct {
-	Owner    APIString `json:"owner"`
-	Repo     APIString `json:"repo"`
-	PRNumber int       `json:"pr_number"`
-	Ref      APIString `json:"ref"`
+	Owner    APIString `json:"owner" mapstructure:"owner"`
+	Repo     APIString `json:"repo" mapstructure:"repo"`
+	PRNumber int       `json:"pr_number" mapstructure:"pr_number"`
+	Ref      APIString `json:"ref" mapstructure:"ref"`
 }
 
 type APIWebhookSubscriber struct {
-	URL    APIString `json:"url"`
-	Secret APIString `json:"secret"`
+	URL    APIString `json:"url" mapstructure:"url"`
+	Secret APIString `json:"secret" mapstructure:"secret"`
 }
 
 func (s *APISubscriber) BuildFromService(h interface{}) error {
@@ -76,8 +78,8 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 	switch FromAPIString(s.Type) {
 
 	case event.GithubPullRequestSubscriberType:
-		apiModel, ok := s.Target.(APIGithubPRSubscriber)
-		if !ok {
+		apiModel := APIGithubPRSubscriber{}
+		if err := mapstructure.Decode(s.Target, &apiModel); err != nil {
 			return nil, rest.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Subscriber target is malformed",
@@ -89,9 +91,12 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 		}
 
 	case event.EvergreenWebhookSubscriberType:
-		apiModel, ok := s.Target.(APIWebhookSubscriber)
-		if !ok {
-			return nil, errors.New("unable to convert to APIWebhookSubscriber")
+		apiModel := APIWebhookSubscriber{}
+		if err := mapstructure.Decode(s.Target, &apiModel); err != nil {
+			return nil, rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("webhook subscriber is malformed: %s", err.Error()),
+			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
@@ -117,6 +122,13 @@ func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
 		s.Repo = ToAPIString(v.Repo)
 		s.Ref = ToAPIString(v.Ref)
 		s.PRNumber = v.PRNumber
+
+	case *event.GithubPullRequestSubscriber:
+		s.Owner = ToAPIString(v.Owner)
+		s.Repo = ToAPIString(v.Repo)
+		s.Ref = ToAPIString(v.Ref)
+		s.PRNumber = v.PRNumber
+
 	default:
 		return errors.New("unknown type for APIGithubPRSubscriber")
 	}
@@ -138,6 +150,11 @@ func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
 	case event.WebhookSubscriber:
 		s.URL = ToAPIString(v.URL)
 		s.Secret = ToAPIString(string(v.Secret))
+
+	case *event.WebhookSubscriber:
+		s.URL = ToAPIString(v.URL)
+		s.Secret = ToAPIString(string(v.Secret))
+
 	default:
 		return errors.New("unknown type for APIWebhookSubscriber")
 	}
