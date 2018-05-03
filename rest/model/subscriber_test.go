@@ -26,6 +26,21 @@ func TestSubscriberModelsGithubStatusAPI(t *testing.T) {
 	origPrSubscriber, err := apiPrSubscriber.ToService()
 	assert.NoError(err)
 	assert.EqualValues(prSubscriber, origPrSubscriber)
+
+	// incoming subscribers have target serialized as a map
+	incoming := APISubscriber{
+		Type: ToAPIString(event.GithubPullRequestSubscriberType),
+		Target: map[string]interface{}{
+			"owner":     "me",
+			"repo":      "mine",
+			"pr_number": 5,
+			"ref":       "abc",
+		},
+	}
+
+	serviceModel, err := incoming.ToService()
+	assert.NoError(err)
+	assert.EqualValues(origPrSubscriber, serviceModel)
 }
 
 func TestSubscriberModelsWebhook(t *testing.T) {
@@ -45,6 +60,19 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	origWebhookSubscriber, err := apiWebhookSubscriber.ToService()
 	assert.NoError(err)
 	assert.EqualValues(webhookSubscriber, origWebhookSubscriber)
+
+	// incoming subscribers have target serialized as a map
+	incoming := APISubscriber{
+		Type: ToAPIString(event.EvergreenWebhookSubscriberType),
+		Target: map[string]interface{}{
+			"url":    "foo",
+			"secret": "bar",
+		},
+	}
+
+	serviceModel, err := incoming.ToService()
+	assert.NoError(err)
+	assert.EqualValues(origWebhookSubscriber, serviceModel)
 }
 
 func TestSubscriberModelsSlack(t *testing.T) {
