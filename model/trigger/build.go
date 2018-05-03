@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -14,16 +13,16 @@ import (
 )
 
 func init() {
-	registry.AddTrigger(event.ResourceTypePatch,
+	registry.AddTrigger(event.ResourceTypeBuild,
 		buildValidator(buildOutcome),
 		buildValidator(buildFailure),
 		buildValidator(buildSuccess),
 	)
-	registry.AddPrefetch(event.ResourceTypePatch, patchFetch)
+	registry.AddPrefetch(event.ResourceTypeBuild, buildFetch)
 }
 
 func buildFetch(e *event.EventLogEntry) (interface{}, error) {
-	p, err := patch.FindOne(build.ById(e.ResourceId))
+	p, err := build.FindOne(build.ById(e.ResourceId))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch patch")
 	}
@@ -128,7 +127,7 @@ func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenera
 		Context:     fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		State:       state,
 		URL:         data.URL,
-		Description: taskStatusToDesc(b),
+		Description: TaskStatusToDesc(b),
 	}
 
 	// TODO improve slack body with additional info, like failing variants
@@ -176,7 +175,8 @@ func buildSuccess(e *event.EventLogEntry, b *build.Build) (*notificationGenerato
 	return gen, err
 }
 
-func taskStatusToDesc(b *build.Build) string {
+// TODO: EVG-3087 stop using this in units and make it private
+func TaskStatusToDesc(b *build.Build) string {
 	success := 0
 	failed := 0
 	systemError := 0
