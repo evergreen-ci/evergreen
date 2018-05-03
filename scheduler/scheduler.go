@@ -48,7 +48,7 @@ type distroSchedueler struct {
 	TaskQueuePersister
 }
 
-func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]*version.Version) distroSchedulerResult {
+func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]version.Version) distroSchedulerResult {
 	res := distroSchedulerResult{
 		distroId: distroId,
 	}

@@ -8,8 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -19,36 +17,6 @@ type Configuration struct {
 	DistroID      string
 	TaskFinder    string
 	HostAllocator string
-}
-
-// GetRunnableTasksAndVersions finds tasks whose versions have already been
-// created, and returns those tasks, as well as a map of version IDs to versions.
-func GetRunnableTasksAndVersions(tasks []task.Task) ([]task.Task, map[string]*version.Version, error) {
-	runnableTasks := []task.Task{}
-	versions := make(map[string]*version.Version)
-	for _, t := range tasks {
-		// If we already have the version, the task is runnable. Continue. Append tasks to runnable tasks.
-		if _, ok := versions[t.Version]; ok {
-			runnableTasks = append(runnableTasks, t)
-			continue
-		}
-
-		// Otherwise, try to find the version.
-		v, err := version.FindOneId(t.Version)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error finding version %s for task %s", t.Id, t.Version)
-		}
-
-		// If the version doesn't exist yet, keep going, and do not append tasks to runnableTasks.
-		if v == nil {
-			continue
-		}
-
-		// There was a version, so cache it, and append the task to runnable tasks.
-		runnableTasks = append(runnableTasks, t)
-		versions[t.Version] = v
-	}
-	return runnableTasks, versions, nil
 }
 
 func PlanDistro(ctx context.Context, conf Configuration) error {
@@ -71,7 +39,8 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 	if err != nil {
 		return errors.Wrap(err, "problem calculating task finder")
 	}
-	runnableTasks, versions, err := GetRunnableTasksAndVersions(tasks)
+
+	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
 	if err != nil {
 		return errors.Wrap(err, "error getting runnable tasks")
 	}

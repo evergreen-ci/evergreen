@@ -173,6 +173,13 @@ func FindOneId(id string) (*Version, error) {
 	return FindOne(ById(id))
 }
 
+func FindByIds(ids []string) ([]Version, error) {
+	return Find(db.Query(bson.M{
+		IdKey: bson.M{
+			"$in": ids,
+		}}))
+}
+
 func Find(query db.Q) ([]Version, error) {
 	versions := []Version{}
 	err := db.FindAllQ(Collection, query, &versions)
