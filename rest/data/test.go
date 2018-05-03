@@ -12,10 +12,10 @@ import (
 // from the Connector through interactions with the backing database.
 type DBTestConnector struct{}
 
-func (tc *DBTestConnector) FindTestsByTaskId(taskId, filename, status string, limit,
+func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, status string, limit,
 	sort, execution int) ([]testresult.TestResult, error) {
 
-	pipeline := testresult.TestResultsPipeline(taskId, filename, status, limit, sort, execution)
+	pipeline := testresult.TestResultsPipeline(taskId, testId, status, limit, sort, execution)
 	res := []testresult.TestResult{}
 
 	err := testresult.Aggregate(pipeline, &res)
@@ -45,15 +45,15 @@ type MockTestConnector struct {
 	StoredError error
 }
 
-func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testFilename, status string, limit,
+func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, status string, limit,
 	sort, execution int) ([]testresult.TestResult, error) {
 	if mtc.StoredError != nil {
 		return []testresult.TestResult{}, mtc.StoredError
 	}
 
-	// loop until the filename is found
+	// loop until the testId is found
 	for ix, t := range mtc.CachedTests {
-		if t.TestFile == testFilename {
+		if string(t.ID) == testId {
 			// We've found the test
 			var testsToReturn []testresult.TestResult
 			if sort < 0 {
