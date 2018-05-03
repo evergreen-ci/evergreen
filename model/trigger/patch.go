@@ -148,7 +148,6 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen, err := generatorFromPatch(name, p)
-	gen.triggerName = name
 	return gen, err
 }
 
@@ -160,7 +159,6 @@ func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen, err := generatorFromPatch(name, p)
-	gen.triggerName = name
 	return gen, err
 }
 
@@ -172,7 +170,6 @@ func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen, err := generatorFromPatch(name, p)
-	gen.triggerName = name
 	return gen, err
 }
 

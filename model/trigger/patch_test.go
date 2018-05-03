@@ -164,6 +164,7 @@ func (s *patchSuite) TestPatchSuccess() {
 	s.NoError(err)
 	s.NotNil(gen)
 	s.False(gen.isEmpty())
+	s.Equal("success", gen.triggerName)
 	s.Contains(gen.selectors, event.Selector{
 		Type: "trigger",
 		Data: "success",
@@ -181,6 +182,7 @@ func (s *patchSuite) TestPatchFailure() {
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
+	s.Equal("failure", gen.triggerName)
 	s.Contains(gen.selectors, event.Selector{
 		Type: "trigger",
 		Data: "failure",
@@ -204,6 +206,7 @@ func (s *patchSuite) TestPatchOutcome() {
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
+	s.Equal("outcome", gen.triggerName)
 	s.Contains(gen.selectors, event.Selector{
 		Type: "trigger",
 		Data: "outcome",
@@ -220,11 +223,15 @@ func (s *patchSuite) TestPatchCreated() {
 	s.Nil(err)
 	s.Require().NotNil(gen)
 	s.Require().NotNil(gen.githubStatusAPI)
+	s.Contains(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: "created",
+	})
 
+	s.Equal("created", gen.triggerName)
 	s.Equal("evergreen", gen.githubStatusAPI.Context)
 	s.Equal(message.GithubStatePending, gen.githubStatusAPI.State)
 	s.Equal("preparing to run tasks", gen.githubStatusAPI.Description)
-
 	s.Equal("https://evergreen.mongodb.com/version/5aeb4514f27e4f9984646d97", gen.githubStatusAPI.URL)
 }
 
@@ -238,10 +245,14 @@ func (s *patchSuite) TestPatchStarted() {
 	s.Nil(err)
 	s.Require().NotNil(gen)
 	s.Require().NotNil(gen.githubStatusAPI)
+	s.Contains(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: "started",
+	})
 
+	s.Equal("started", gen.triggerName)
 	s.Equal("evergreen", gen.githubStatusAPI.Context)
 	s.Equal(message.GithubStatePending, gen.githubStatusAPI.State)
 	s.Equal("tasks are running", gen.githubStatusAPI.Description)
-
 	s.Equal("https://evergreen.mongodb.com/version/5aeb4514f27e4f9984646d97", gen.githubStatusAPI.URL)
 }
