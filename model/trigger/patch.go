@@ -17,6 +17,8 @@ func init() {
 		patchValidator(patchOutcome),
 		patchValidator(patchFailure),
 		patchValidator(patchSuccess),
+		patchValidator(patchCreated),
+		patchValidator(patchStarted),
 	)
 	registry.AddPrefetch(event.ResourceTypePatch, patchFetch)
 }
@@ -73,7 +75,6 @@ func generatorFromPatch(triggerName string, p *patch.Patch) (*notificationGenera
 		triggerName: triggerName,
 		selectors:   patchSelectors(p),
 	}
-
 	gen.selectors = append(gen.selectors, event.Selector{
 		Type: "trigger",
 		Data: triggerName,
@@ -147,10 +148,7 @@ func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen, err := generatorFromPatch(name, p)
-	gen.selectors = append(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: name,
-	})
+	gen.triggerName = name
 	return gen, err
 }
 
@@ -162,10 +160,7 @@ func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen, err := generatorFromPatch(name, p)
-	gen.selectors = append(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: name,
-	})
+	gen.triggerName = name
 	return gen, err
 }
 
@@ -177,9 +172,67 @@ func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 	}
 
 	gen, err := generatorFromPatch(name, p)
+	gen.triggerName = name
+	return gen, err
+}
+
+// patchCreated and patchStarted are for Github Status API use only
+func patchCreated(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+	const name = "created"
+
+	if p.Status != evergreen.PatchCreated {
+		return nil, nil
+	}
+
+	ui := evergreen.UIConfig{}
+	if err := ui.Get(); err != nil {
+		return nil, errors.Wrap(err, "Failed to fetch ui config")
+	}
+
+	gen := &notificationGenerator{
+		triggerName: name,
+		selectors:   patchSelectors(p),
+		githubStatusAPI: &message.GithubStatus{
+			Context:     "evergreen",
+			State:       message.GithubStatePending,
+			URL:         fmt.Sprintf("/version/%s", p.Id.Hex()),
+			Description: "preparing to run tasks",
+		},
+	}
 	gen.selectors = append(gen.selectors, event.Selector{
 		Type: "trigger",
 		Data: name,
 	})
-	return gen, err
+
+	return gen, nil
+}
+
+func patchStarted(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+	const name = "started"
+
+	if p.Status != evergreen.PatchStarted {
+		return nil, nil
+	}
+
+	ui := evergreen.UIConfig{}
+	if err := ui.Get(); err != nil {
+		return nil, errors.Wrap(err, "Failed to fetch ui config")
+	}
+
+	gen := &notificationGenerator{
+		triggerName: name,
+		selectors:   patchSelectors(p),
+		githubStatusAPI: &message.GithubStatus{
+			Context:     "evergreen",
+			State:       message.GithubStatePending,
+			URL:         fmt.Sprintf("/version/%s", p.Id.Hex()),
+			Description: "tasks are running",
+		},
+	}
+	gen.selectors = append(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: name,
+	})
+
+	return gen, nil
 }
