@@ -107,14 +107,12 @@ variables:
           working_dir: gopath/src/github.com/evergreen-ci/evergreen
           command: |
             bin/setup-smoke-config -githubToken ${github_token}
-      - func: run-make-silent
+      - func: run-make
         vars:
           target: set-smoke-vars
-          build_env: AWS_KEY=${aws_key} AWS_SECRET=${aws_secret}
       - func: run-make
         vars:
           target: "${task_name}"
-          build_env: "GOROOT=/opt/go1.8/go PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH"
   - &version-constants
     nodejs_version: "6.11.1"
   - &run-generate-lint
@@ -151,6 +149,11 @@ functions:
   run-make:
     command: subprocess.exec
     params:
+      env:
+        AWS_KEY: ${aws_key}
+        AWS_SECRET: ${aws_secret}
+        EVERGREEN_ALL: "true"
+        GOROOT: "/opt/go1.8/go"
       command: |
         bash -c
         'set -o xtrace
@@ -160,7 +163,7 @@ functions:
         export GOPATH=`pwd`/gopath
 
         # Set the path to nodejs binaries
-        export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:$PATH
+        export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:/opt/go1.8/go/bin:$PATH
 
         cd gopath/src/github.com/evergreen-ci/evergreen
 
@@ -175,36 +178,7 @@ functions:
 
         # Run make, called with proper environment variables set,
         # running the target.
-        ${build_env} make ${make_args|} ${target}'
-  run-make-silent:
-    command: subprocess.exec
-    params:
-      silent: true
-      command: |
-        bash -c
-        'set -o xtrace
-        set -o errexit
-
-        # Configure a local go path for this build.
-        export GOPATH=`pwd`/gopath
-
-        # Set the path to nodejs binaries
-        export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:$PATH
-
-        cd gopath/src/github.com/evergreen-ci/evergreen
-
-        # configure path to the settings file
-        export SETTINGS_OVERRIDE=`pwd`/creds.yml
-
-        # on windows we need to turn the slashes the other way
-        if [ "Windows_NT" == "$OS" ]; then
-           export GOPATH=$(cygpath -m $GOPATH)
-           export SETTINGS_OVERRIDE=$(cygpath -m $SETTINGS_OVERRIDE)
-        fi
-
-        # Run make, called with proper environment variables set,
-        # running the target.
-        ${build_env} make ${make_args|} ${target}'
+        make ${make_args|} ${target}'
   get-dist-test:
     command: s3.get
     params:
