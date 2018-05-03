@@ -37,7 +37,6 @@ type testGetHandlerArgs struct {
 	taskId        string
 	testStatus    string
 	testExecution int
-	testId        string
 }
 
 // testGetHandler is the MethodHandler for the GET /tasks/{task_id}/tests route.
