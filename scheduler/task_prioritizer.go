@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -17,13 +18,14 @@ type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error)
+	PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]*version.Version) ([]task.Task, error)
 }
 
 // CmpBasedTaskComparator runs the tasks through a slice of comparator functions
 // determining which is more important.
 type CmpBasedTaskComparator struct {
 	tasks          []task.Task
+	versions       map[string]*version.Version
 	errsDuringSort []error
 	setupFuncs     []sortSetupFunc
 	comparators    []taskPriorityCmp
@@ -75,9 +77,10 @@ type CmpBasedTaskPrioritizer struct{}
 // whether they are part of patch versions or automatically created versions.
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
-func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error) {
+func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]*version.Version) ([]task.Task, error) {
 
 	comparator := NewCmpBasedTaskComparator()
+	comparator.versions = versions
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
 	taskQueues := comparator.splitTasksByRequester(tasks)
