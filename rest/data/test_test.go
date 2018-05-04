@@ -23,11 +23,11 @@ func TestFindTestsByTaskId(t *testing.T) {
 	serviceContext := &DBConnector{}
 	numTests := 10
 	numTasks := 2
-	testObjects := make([]string, numTests)
-	for ix := range testObjects {
-		testObjects[ix] = fmt.Sprintf("object_id_%d_", ix)
+	testFileNames := make([]string, numTests)
+	for ix := range testFileNames {
+		testFileNames[ix] = fmt.Sprintf("file_%d", ix)
 	}
-	sort.StringSlice(testObjects).Sort()
+	sort.StringSlice(testFileNames).Sort()
 
 	Convey("When there are task and test documents in the database", t, func() {
 		testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing"+
@@ -49,7 +49,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 					TaskID:    id,
 					Execution: 0,
 					Status:    status,
-					TestFile:  testObjects[j],
+					TestFile:  testFileNames[j],
 				}
 			}
 			So(testTask.Insert(), ShouldBeNil)
@@ -81,10 +81,22 @@ func TestFindTestsByTaskId(t *testing.T) {
 			taskId := "task_1"
 			for _, sort := range []int{1, -1} {
 				for i := 0; i < numTests; i++ {
-					foundTests, err := serviceContext.FindTestsByTaskId(taskId, "", "", 0, sort, 0)
+					foundTests, err := serviceContext.FindTestsByTaskId(taskId, testFileNames[i], "", 0, sort, 0)
 					So(err, ShouldBeNil)
 
-					So(len(foundTests), ShouldEqual, numTests)
+					startAt := 0
+					if sort < 0 {
+						startAt = len(testFileNames) - 1
+					}
+
+					So(len(foundTests), ShouldEqual, (numTests-startAt)-i*sort)
+					for ix, t := range foundTests {
+						index := ix
+						if sort > 0 {
+							index += i
+						}
+						So(t.TestFile, ShouldEqual, testFileNames[index])
+					}
 				}
 			}
 		})
@@ -93,9 +105,14 @@ func TestFindTestsByTaskId(t *testing.T) {
 			taskname := "task_0"
 			limit := 2
 			for i := 0; i < numTests/limit; i++ {
-				foundTests, err := serviceContext.FindTestsByTaskId(taskname, "", "", limit, 1, 0)
+				index := i * limit
+				testName := testFileNames[index]
+				foundTests, err := serviceContext.FindTestsByTaskId(taskname, testName, "", limit, 1, 0)
 				So(err, ShouldBeNil)
 				So(len(foundTests), ShouldEqual, limit)
+				for ix, t := range foundTests {
+					So(t.TestFile, ShouldEqual, testFileNames[ix+index])
+				}
 			}
 
 		})
@@ -117,7 +134,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(foundTests), ShouldEqual, 1)
 				test1 := foundTests[0]
-				So(test1.TestFile, ShouldEqual, testObjects[0])
+				So(test1.TestFile, ShouldEqual, testFileNames[0])
 			})
 	})
 }

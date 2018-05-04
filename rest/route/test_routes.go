@@ -149,7 +149,7 @@ func makeNextTestsPage(tests []testresult.TestResult, limit int) *Page {
 		nextLimit := len(tests) - limit
 		nextPage = &Page{
 			Relation: "next",
-			Key:      string(tests[limit].ID),
+			Key:      tests[limit].TestFile,
 			Limit:    nextLimit,
 		}
 	}
@@ -161,7 +161,7 @@ func makePrevTestsPage(tests []testresult.TestResult) *Page {
 	if len(tests) > 1 {
 		prevPage = &Page{
 			Relation: "prev",
-			Key:      string(tests[0].ID),
+			Key:      tests[0].TestFile,
 			Limit:    len(tests),
 		}
 	}
