@@ -159,7 +159,6 @@ var Root = function (_React$Component2) {
       if (this.currentSkip <= 0) {
         this.prevSkip = -1;
       }
-      console.log(this.currentSkip, this.nextSkip, this.prevSkip);
     }
   }, {
     key: "loadDataPortion",
