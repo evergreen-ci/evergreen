@@ -159,6 +159,7 @@ var Root = function (_React$Component2) {
       if (this.currentSkip <= 0) {
         this.prevSkip = -1;
       }
+      console.log(this.currentSkip, this.nextSkip, this.prevSkip);
     }
   }, {
     key: "loadDataPortion",
@@ -171,6 +172,7 @@ var Root = function (_React$Component2) {
 
         _this3.updatePaginationContext(data);
         _this3.setState({ data: data });
+        updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
       });
     }
   }, {

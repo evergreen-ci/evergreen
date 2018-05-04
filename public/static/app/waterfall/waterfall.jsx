@@ -141,6 +141,7 @@ class Root extends React.Component{
       .then(({data}) => {
         this.updatePaginationContext(data)
         this.setState({data})
+        updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
       })
   }
 
