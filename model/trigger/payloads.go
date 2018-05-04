@@ -70,7 +70,7 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse body template")
 	}
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	err = bodyTmpl.Execute(buf, t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute email template")
@@ -81,7 +81,7 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse subject template")
 	}
-	buf = new(bytes.Buffer)
+	buf = &bytes.Buffer{}
 	err = subjectTmpl.Execute(buf, t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute subject template")
@@ -116,7 +116,7 @@ func jiraComment(t commonTemplateData) (*string, error) {
 		return nil, errors.Wrap(err, "failed to parse jira comment template")
 	}
 
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	if err = commentTmpl.Execute(buf, t); err != nil {
 		return nil, errors.Wrap(err, "failed to make jira comment")
 	}
@@ -138,7 +138,7 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 		return nil, errors.Wrap(err, "failed to parse jira issue template")
 	}
 
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	if err = issueTmpl.Execute(buf, t); err != nil {
 		return nil, errors.Wrap(err, "failed to make jira issue")
 	}
@@ -181,7 +181,7 @@ func slack(t commonTemplateData) (*notification.SlackPayload, error) {
 		return nil, errors.Wrap(err, "failed to parse slack template")
 	}
 
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	if err = issueTmpl.Execute(buf, t); err != nil {
 		return nil, errors.Wrap(err, "failed to make slack message")
 	}

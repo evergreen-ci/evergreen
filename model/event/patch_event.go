@@ -8,11 +8,11 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypePatch, patchEventFactory)
+	registry.AddType(ResourceTypePatch, patchEventDataFactory)
 	registry.AllowSubscription(ResourceTypePatch, PatchStateChange)
 }
 
-func patchEventFactory() interface{} {
+func patchEventDataFactory() interface{} {
 	return &PatchEventData{}
 }
 

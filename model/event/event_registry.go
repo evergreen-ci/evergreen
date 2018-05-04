@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type eventFactory func() interface{}
+type eventDataFactory func() interface{}
 
 type extraDataKey struct {
 	ResourceType string
@@ -16,13 +16,13 @@ type extraDataKey struct {
 type eventRegistry struct {
 	lock sync.RWMutex
 
-	types          map[string]eventFactory
+	types          map[string]eventDataFactory
 	isSubscribable map[EventLogEntry]bool
 	extraData      map[extraDataKey]interface{}
 }
 
 var registry eventRegistry = eventRegistry{
-	types:          map[string]eventFactory{},
+	types:          map[string]eventDataFactory{},
 	isSubscribable: map[EventLogEntry]bool{},
 	extraData:      map[extraDataKey]interface{}{},
 }
@@ -30,7 +30,7 @@ var registry eventRegistry = eventRegistry{
 // AddType adds an event data factory to the registry with the given resource
 // type. AddType will panic if you attempt to add the same resourceType more
 // than once
-func (r *eventRegistry) AddType(resourceType string, f eventFactory) {
+func (r *eventRegistry) AddType(resourceType string, f eventDataFactory) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -141,30 +141,30 @@ func NewEventFromType(resourceType string) interface{} {
 	return f()
 }
 
-func taskEventFactory() interface{} {
+func taskEventDataFactory() interface{} {
 	return &TaskEventData{}
 }
 
-func hostEventFactory() interface{} {
+func hostEventDataFactory() interface{} {
 	return &HostEventData{}
 }
 
-func distroEventFactory() interface{} {
+func distroEventDataFactory() interface{} {
 	return &DistroEventData{}
 }
 
-func schedulerEventFactory() interface{} {
+func schedulerEventDataFactory() interface{} {
 	return &SchedulerEventData{}
 }
 
-func taskSystemResourceEventFactory() interface{} {
+func taskSystemResourceEventDataFactory() interface{} {
 	return &TaskSystemResourceData{}
 }
 
-func taskProcessResourceEventFactory() interface{} {
+func taskProcessResourceEventDataFactory() interface{} {
 	return &TaskProcessResourceData{}
 }
 
-func adminEventFactory() interface{} {
+func adminEventDataFactory() interface{} {
 	return &rawAdminEventData{}
 }
