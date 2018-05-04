@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -23,6 +24,7 @@ const (
 	// SkipQueryParam is the string field for the skip value in the URL
 	// (how many versions to skip).
 	SkipQueryParam = "skip"
+	BVFilterParam  = "bv_filter"
 
 	InactiveStatus = "inactive"
 )
@@ -195,12 +197,38 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskSt
 	return waterfallTasks, statusCount
 }
 
+// For given build variant, variant display name and variant search query
+// checks if matched variant has active tasks
+func variantHasActiveTasks(
+	b build.Build,
+	bvDisplayName string,
+	variantQuery string,
+) bool {
+	if strings.Contains(
+		strings.ToUpper(bvDisplayName),
+		strings.ToUpper(variantQuery),
+	) {
+		for _, task := range b.Tasks {
+			if task.Activated {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // Fetch versions until 'numVersionElements' elements are created, including
 // elements consisting of multiple versions rolled-up into one.
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func getVersionsAndVariants(skip, numVersionElements int, project *model.Project) (versionVariantData, error) {
+func getVersionsAndVariants(
+	skip,
+	numVersionElements int,
+	project *model.Project,
+	variantQuery string,
+) (versionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []waterfallVersion{}
 
@@ -255,6 +283,8 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			// see if there are any active tasks in the version
 			versionActive := anyActiveTasks(buildsInVersion)
 
+			variantMatched := false
+
 			// add any represented build variants to the set and initialize rows
 			for _, b := range buildsInVersion {
 				bvSet[b.BuildVariant] = true
@@ -269,6 +299,18 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 						" (removed)"
 				}
 
+				// When versions is active and variane query matches
+				// variant display name, mark the version as inactive
+				if variantQuery != "" {
+					if versionActive && !variantMatched {
+						variantMatched = variantHasActiveTasks(
+							b, buildVariant.DisplayName, variantQuery,
+						)
+					}
+				} else {
+					variantMatched = true
+				}
+
 				if _, ok := waterfallRows[b.BuildVariant]; !ok {
 					waterfallRows[b.BuildVariant] = waterfallRow{
 						Builds:       map[string]waterfallBuild{},
@@ -280,7 +322,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 			// if it is inactive, roll up the version and don't create any
 			// builds for it
-			if !versionActive {
+			if !versionActive || !variantMatched {
 				if lastRolledUpVersion == nil {
 					lastRolledUpVersion = &waterfallVersion{RolledUp: true, RevisionOrderNumber: versionFromDB.RevisionOrderNumber}
 				}
@@ -446,8 +488,14 @@ func anyActiveTasks(builds []build.Build) bool {
 // Calculates how many actual versions would appear on the previous page, given
 // the starting skip for the current page as well as the number of version
 // elements per page (including elements containing rolled-up versions).
-func countOnPreviousPage(skip int, numVersionElements int,
-	project *model.Project) (int, error) {
+func countOnPreviousPage(
+	skip int,
+	numVersionElements int,
+	project *model.Project,
+	variantQuery string,
+) (int, error) {
+
+	buildVariantMappings := project.GetVariantMappings()
 
 	// if there is no previous page
 	if skip == 0 {
@@ -487,10 +535,41 @@ func countOnPreviousPage(skip int, numVersionElements int,
 		// created
 		for i := len(versionsFromDB) - 1; i >= 0; i-- {
 
+			versionFromDB := versionsFromDB[i]
+
 			// increment the versions we've fetched
 			versionsFetched += 1
 			// if there are any active tasks
-			if anyActiveTasks(buildsByVersion[versionsFromDB[i].Id]) {
+			buildsInVersion := buildsByVersion[versionFromDB.Id]
+
+			variantMatched := false
+
+			if anyActiveTasks(buildsInVersion) {
+
+				for _, b := range buildsInVersion {
+					bvDisplayName := buildVariantMappings[b.BuildVariant]
+
+					if bvDisplayName == "" {
+						bvDisplayName = b.BuildVariant + " (removed)"
+					}
+
+					// When versions is active and variane query matches
+					// variant display name, mark the version as inactive
+					if variantQuery != "" {
+						if !variantMatched {
+							variantMatched = variantHasActiveTasks(
+								b, bvDisplayName, variantQuery,
+							)
+						}
+					} else {
+						variantMatched = true
+					}
+				}
+
+				// Skip versions which doen't match variant search query
+				if variantMatched == false {
+					continue
+				}
 
 				// we may have stepped one over where the versions end, if
 				// the last was inactive
@@ -531,31 +610,14 @@ func countOnPreviousPage(skip int, numVersionElements int,
 	}
 }
 
-// Create and return the waterfall data we need to render the page.
-// Http handler for the waterfall page
-func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil {
-		uis.ProjectNotFound(projCtx, w, r)
-		return
-	}
-
-	skip, err := skipValue(r)
-	if err != nil {
-		skip = 0
-	}
-
+func waterfallDataAdaptor(
+	vvData versionVariantData,
+	project *model.Project,
+	skip int,
+	variantQuery string,
+) (waterfallData, error) {
+	var err error
 	finalData := waterfallData{}
-
-	// first, get all of the versions and variants we will need
-	vvData, err := getVersionsAndVariants(skip,
-		VersionItemsToCreate, project)
-
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
 	var wfv waterfallVersions = vvData.Versions
 
 	sort.Sort(wfv)
@@ -571,15 +633,15 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	// compute the total number of versions that exist
 	finalData.TotalVersions, err = version.Count(version.ByProjectId(project.Identifier))
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
+		//uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return waterfallData{}, err
 	}
 
 	// compute the number of versions on the previous page
-	finalData.PreviousPageCount, err = countOnPreviousPage(skip, VersionItemsToCreate, project)
+	finalData.PreviousPageCount, err = countOnPreviousPage(skip, VersionItemsToCreate, project, variantQuery)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
+		//uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return waterfallData{}, err
 	}
 
 	// add in the skip value
@@ -588,9 +650,76 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	// pass it the current time
 	finalData.CurrentTime = time.Now().UnixNano()
 
+	return finalData, nil
+}
+
+// Create and return the waterfall data we need to render the page.
+// Http handler for the waterfall page
+func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
+		uis.ProjectNotFound(projCtx, w, r)
+		return
+	}
+
+	skip, err := skipValue(r)
+	if err != nil {
+		skip = 0
+	}
+
+	variantQuery := strings.TrimSpace(r.URL.Query().Get(BVFilterParam))
+
+	// first, get all of the versions and variants we will need
+	vvData, err := getVersionsAndVariants(
+		skip, VersionItemsToCreate, project, variantQuery,
+	)
+
+	finalData, err := waterfallDataAdaptor(vvData, project, skip, variantQuery)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Data     waterfallData
 		JiraHost string
 		ViewData
 	}{finalData, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
+}
+
+func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveRESTContext(r)
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding project"})
+		return
+	}
+
+	query := r.URL.Query()
+	// 0 is fail safe defailt value
+	skip, _ := strconv.Atoi(query.Get(SkipQueryParam))
+	limit, err := strconv.Atoi(query.Get("limit"))
+
+	if err != nil {
+		limit = VersionItemsToCreate
+	}
+
+	variantQuery := strings.TrimSpace(query.Get(BVFilterParam))
+
+	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery)
+
+	if err != nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error"})
+		return
+	}
+
+	finalData, err := waterfallDataAdaptor(vvData, project, skip, variantQuery)
+
+	if err != nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error"})
+		return
+	}
+
+	restapi.WriteJSON(w, http.StatusOK, finalData)
 }
