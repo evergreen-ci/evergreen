@@ -39,7 +39,9 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 		Session:  session,
 	}
 
-	app, err := opts.Application(mock.NewEnvironment(), evgEnv)
+	m, err := DefaultMigrations(evgEnv)
+	assert.NoError(err)
+	app, err := opts.Application(mock.NewEnvironment(), m)
 	assert.NoError(err)
 	assert.NotNil(app)
 

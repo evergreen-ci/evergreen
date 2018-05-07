@@ -27,6 +27,8 @@ type Options struct {
 	Session  db.Session
 }
 
+var ()
+
 // Setup configures the migration environment, configuring the backing
 // queue and a database session.
 func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
@@ -69,7 +71,7 @@ type migrationGeneratorFactory func(anser.Environment, migrationGeneratorFactory
 // before being handed off to another calling environment for
 // execution. See the anser documentation and the
 // anser/example_test.go for an example.
-func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environment) (*anser.Application, error) {
+func (opts Options) Application(env anser.Environment, generatorFactories map[string]migrationGeneratorFactory) (*anser.Application, error) {
 	app := &anser.Application{
 		Options: model.ApplicationOptions{
 			Limit:  opts.Limit,
@@ -77,26 +79,6 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		},
 	}
 
-	githubToken, err := evgEnv.Settings().GetGithubOauthToken()
-	if err != nil {
-		return nil, err
-	}
-
-	generatorFactories := map[string]migrationGeneratorFactory{
-		// Early Migrations, disabled because the generator queries are not properly indexed.
-		//
-		// migrationTestResultsLegacyExecution: addExecutionToTasksGenerator,
-		// migrationTestResultsOldTasks: oldTestResultsGenerator,
-		// migrationTestResultstasks: testResultsGenerator,
-
-		migrationProjectAliasesToCollection:   projectAliasesToCollectionGenerator,
-		migrationGithubHooksToCollection:      githubHooksToCollectionGenerator,
-		migrationZeroDateFix:                  zeroDateFixGenerator(githubToken),
-		migrationAdminEventRestructure:        adminEventRestructureGenerator,
-		migrationEventRtypeRestructureAllLogs: makeEventRTypeMigration(event.AllLogCollection),
-		migrationSetDefaultBranch:             setDefaultBranchMigrationGenerator,
-		migrationAdminMapRestructure:          adminMapRestructureGenerator,
-	}
 	catcher := grip.NewBasicCatcher()
 
 	for _, id := range opts.IDs {
@@ -137,6 +119,35 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 	}
 
 	return app, nil
+}
+
+func DefaultMigrations(evgEnv evergreen.Environment) (map[string]migrationGeneratorFactory, error) {
+	githubToken, err := evgEnv.Settings().GetGithubOauthToken()
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]migrationGeneratorFactory{
+		// Early Migrations, disabled because the generator queries are not properly indexed.
+		//
+		// migrationTestResultsLegacyExecution: addExecutionToTasksGenerator,
+		// migrationTestResultsOldTasks: oldTestResultsGenerator,
+		// migrationTestResultstasks: testResultsGenerator,
+
+		migrationProjectAliasesToCollection:   projectAliasesToCollectionGenerator,
+		migrationGithubHooksToCollection:      githubHooksToCollectionGenerator,
+		migrationZeroDateFix:                  zeroDateFixGenerator(githubToken),
+		migrationAdminEventRestructure:        adminEventRestructureGenerator,
+		migrationEventRtypeRestructureAllLogs: makeEventRTypeMigration(event.AllLogCollection),
+		migrationSetDefaultBranch:             setDefaultBranchMigrationGenerator,
+		migrationAdminMapRestructure:          adminMapRestructureGenerator,
+	}, nil
+}
+
+func PerfMigrations(copyArgs PerfCopyVariantArgs) map[string]migrationGeneratorFactory {
+	return map[string]migrationGeneratorFactory{
+		perfCopyVariantMigrationName: perfCopyVariantFactoryFactory(copyArgs),
+	}
 }
 
 func (opts Options) shouldSkipMigration(id string) bool {
