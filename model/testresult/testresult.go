@@ -106,6 +106,15 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 		results)
 }
 
+// Aggregate runs an aggregation with a hint against the testresults collection.
+func AggregateWithHint(pipeline []bson.M, hint bson.D, results interface{}) error {
+	return db.AggregateWithHint(
+		Collection,
+		pipeline,
+		hint,
+		results)
+}
+
 // TestResultsPipeline is an aggregation pipeline for returning test results to the REST v2 API.
 func TestResultsPipeline(taskId, testId, status string, limit, sort, execution int) []bson.M {
 	// match test results

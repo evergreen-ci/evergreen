@@ -2259,6 +2259,7 @@ type Pipe struct {
 	pipeline   interface{}
 	allowDisk  bool
 	batchSize  int
+	hint       bson.D
 }
 
 type pipeCmd struct {
@@ -2267,6 +2268,7 @@ type pipeCmd struct {
 	Cursor    *pipeCmdCursor ",omitempty"
 	Explain   bool           ",omitempty"
 	AllowDisk bool           "allowDiskUse,omitempty"
+	Hint      bson.D         "hint,omitempty"
 }
 
 type pipeCmdCursor struct {
@@ -2319,6 +2321,7 @@ func (p *Pipe) Iter() *Iter {
 		Aggregate: c.Name,
 		Pipeline:  p.pipeline,
 		AllowDisk: p.allowDisk,
+		Hint:      p.hint,
 		Cursor:    &pipeCmdCursor{p.batchSize},
 	}
 	err := c.Database.Run(cmd, &result)
@@ -2446,6 +2449,7 @@ func (p *Pipe) Explain(result interface{}) error {
 		Aggregate: c.Name,
 		Pipeline:  p.pipeline,
 		AllowDisk: p.allowDisk,
+		Hint:      p.hint,
 		Explain:   true,
 	}
 	return c.Database.Run(cmd, result)
@@ -2455,6 +2459,12 @@ func (p *Pipe) Explain(result interface{}) error {
 // that aggregation pipelines do not have to be held entirely in memory.
 func (p *Pipe) AllowDiskUse() *Pipe {
 	p.allowDisk = true
+	return p
+}
+
+// Hint enables selecting an index for an aggregation.
+func (p *Pipe) Hint(hint bson.D) *Pipe {
+	p.hint = hint
 	return p
 }
 

@@ -320,3 +320,20 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	pipe := db.C(collection).Pipe(pipeline).AllowDiskUse()
 	return errors.WithStack(pipe.All(out))
 }
+
+// AggregateWithHint runs an aggregation pipeline with a hint on a collection
+// and unmarshals the results to the given "out" interface (usually a pointer to
+// an array of structs/bson.M).
+func AggregateWithHint(collection string, pipeline interface{}, hint bson.D, out interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		err = errors.Wrap(err, "error establishing db connection")
+		grip.Error(err)
+		return err
+	}
+	defer session.Close()
+
+	session.SetSocketTimeout(0)
+	pipe := db.C(collection).Pipe(pipeline).AllowDiskUse().Hint(hint)
+	return errors.WithStack(pipe.All(out))
+}

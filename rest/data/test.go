@@ -6,6 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest"
+	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	taskIDKey        = "task_id"
+	taskExecutionKey = "task_execution"
 )
 
 // DBTestConnector is a struct that implements the Test related methods
@@ -18,7 +24,18 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, status string, limi
 	pipeline := testresult.TestResultsPipeline(taskId, testId, status, limit, sort, execution)
 	res := []testresult.TestResult{}
 
-	err := testresult.Aggregate(pipeline, &res)
+	hint := bson.D{
+		{
+			Name:  taskIDKey,
+			Value: 1,
+		},
+		{
+			Name:  taskExecutionKey,
+			Value: 1,
+		},
+	}
+
+	err := testresult.AggregateWithHint(pipeline, hint, &res)
 	if err != nil {
 		return []testresult.TestResult{}, err
 	}
