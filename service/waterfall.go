@@ -567,7 +567,7 @@ func countOnPreviousPage(
 				}
 
 				// Skip versions which doen't match variant search query
-				if variantMatched == false {
+				if !variantMatched {
 					continue
 				}
 
@@ -674,6 +674,11 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	vvData, err := getVersionsAndVariants(
 		skip, VersionItemsToCreate, project, variantQuery,
 	)
+
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusNotFound, err)
+		return
+	}
 
 	finalData, err := waterfallDataAdaptor(vvData, project, skip, variantQuery)
 	if err != nil {
