@@ -1,6 +1,7 @@
 package user
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -197,7 +198,7 @@ func (u *DBUser) subscriber(pref UserSubscriptionPreference) *event.Subscriber {
 		return &sub
 
 	case PreferenceSlack:
-		sub := event.NewSlackSubscriber(u.Settings.SlackUsername)
+		sub := event.NewSlackSubscriber(fmt.Sprintf("@%s", u.Settings.SlackUsername))
 		return &sub
 	}
 

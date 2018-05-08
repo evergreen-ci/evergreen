@@ -3,10 +3,12 @@ package route
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -81,6 +83,18 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 		userSettings.GithubUser.UID = *ghUser.ID
 	} else {
 		userSettings.GithubUser.UID = u.Settings.GithubUser.UID
+	}
+
+	if strings.HasPrefix(userSettings.SlackUsername, "#") {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "expected a Slack username, not a channel",
+		}
+	}
+
+	// remove leading @ symbol
+	if strings.HasPrefix(userSettings.SlackUsername, "@") {
+		userSettings.SlackUsername = userSettings.SlackUsername[1:]
 	}
 
 	if err = sc.UpdateSettings(u.Username(), userSettings); err != nil {
