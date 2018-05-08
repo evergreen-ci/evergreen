@@ -27,6 +27,10 @@ type commonTemplateData struct {
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
+
+	apiModel          restModel.Model
+	githubState       message.GithubState
+	githubDescription string
 }
 
 const emailSubjectTemplate string = `Evergreen {{ .Object }} has {{ .PastTenseStatus }}!`
@@ -190,4 +194,53 @@ func slack(t commonTemplateData) (*notification.SlackPayload, error) {
 	return &notification.SlackPayload{
 		Body: msg,
 	}, nil
+}
+
+func makeCommonGenerator(triggerName string, selectors []event.Selector,
+	data commonTemplateData) (*notificationGenerator, error) {
+	gen := notificationGenerator{
+		triggerName: triggerName,
+		selectors:   selectors,
+	}
+	gen.selectors = append(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: triggerName,
+	})
+
+	data.Headers = makeHeaders(selectors)
+
+	var err error
+	gen.evergreenWebhook, err = webhookPayload(data.apiModel, data.Headers)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building webhook payload")
+	}
+
+	gen.email, err = emailPayload(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building email payload")
+	}
+
+	gen.jiraComment, err = jiraComment(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building jira comment")
+	}
+	gen.jiraIssue, err = jiraIssue(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building jira issue")
+	}
+
+	gen.githubStatusAPI = &message.GithubStatus{
+		Context:     "evergreen",
+		State:       data.githubState,
+		URL:         data.URL,
+		Description: data.githubDescription,
+	}
+
+	// TODO improve slack body with additional info, like failing variants
+	gen.slack, err = slack(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building slack message")
+	}
+
+	return &gen, nil
 }
