@@ -99,6 +99,9 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 		Headers:           t.Headers,
 	}
 
+	// prevent Gmail from threading notifications with similar subjects
+	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s", t.Object, t.ID)}
+
 	return &m, nil
 }
 
