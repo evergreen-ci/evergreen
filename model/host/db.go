@@ -158,16 +158,15 @@ var IsUninitialized = db.Query(
 	bson.M{StatusKey: evergreen.HostUninitialized},
 )
 
-// NeedsProvisioning returns a query used by the hostinit process to
-// determine hosts that have been started, but need additional provisioning.
-//
-// It's likely true that Starting and Initializing are redundant, and
-// EVG-2754 will address this issue.
+// NotRunning returns a query that finds hosts that we do not yet know to be running.
+func NotRunning() db.Q {
+	return db.Query(bson.M{StatusKey: evergreen.HostStarting})
+}
+
+// NeedsProvisioning returns a query used by the hostinit process to determine hosts that are
+// started according to the cloud provider, but have not yet been provisioned by Evergreen.
 func NeedsProvisioning() db.Q {
-	return db.Query(bson.M{StatusKey: bson.M{"$in": []string{
-		evergreen.HostStarting,
-		evergreen.HostInitializing,
-	}}})
+	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
@@ -278,7 +277,7 @@ var IsActive = db.Query(
 		StartedByKey: evergreen.User,
 		StatusKey: bson.M{
 			"$nin": []string{
-				evergreen.HostTerminated, evergreen.HostDecommissioned, evergreen.HostInitializing,
+				evergreen.HostTerminated, evergreen.HostDecommissioned,
 			},
 		},
 	},

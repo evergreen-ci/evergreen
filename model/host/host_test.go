@@ -888,12 +888,12 @@ func TestHostStats(t *testing.T) {
 	host5 := &Host{
 		Id:     "host5",
 		Distro: distro.Distro{Id: d2},
-		Status: evergreen.HostInitializing,
+		Status: evergreen.HostProvisioning,
 	}
 	host6 := &Host{
 		Id:     "host6",
 		Distro: distro.Distro{Id: d2},
-		Status: evergreen.HostInitializing,
+		Status: evergreen.HostProvisioning,
 	}
 	host7 := &Host{
 		Id:          "host7",
@@ -931,7 +931,7 @@ func TestHostStats(t *testing.T) {
 			if entry.Status == evergreen.HostRunning {
 				assert.Equal(2, entry.Count)
 				assert.Equal(1, entry.NumTasks)
-			} else if entry.Status == evergreen.HostInitializing {
+			} else if entry.Status == evergreen.HostProvisioning {
 				assert.Equal(2, entry.Count)
 				assert.Equal(0, entry.NumTasks)
 			}

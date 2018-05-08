@@ -103,7 +103,7 @@ func (m *mockState) IterInstances() <-chan MockInstance {
 	return out
 }
 
-// mockManager implements the CloudManager interface for testing
+// mockManager implements the Manager interface for testing
 // purposes. It contains a map of MockInstances that it knows about
 // which its various functions return information about. Once set before
 // testing, this map should only be touched either through the associated
@@ -113,7 +113,7 @@ type mockManager struct {
 	mutex     *sync.RWMutex
 }
 
-func makeMockManager() CloudManager {
+func makeMockManager() Manager {
 	return &mockManager{
 		Instances: globalMockState.instances,
 		mutex:     &globalMockState.mutex,
@@ -237,4 +237,11 @@ func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 		return time.Duration(0)
 	}
 	return instance.TimeTilNextPayment
+}
+
+func (mockMgr *mockManager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+	if len(hosts) != 2 {
+		return nil, errors.New("expecting 2 hosts")
+	}
+	return []CloudStatus{StatusRunning, StatusRunning}, nil
 }

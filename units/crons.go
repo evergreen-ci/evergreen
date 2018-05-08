@@ -507,7 +507,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			"impact":    "hosts cannot provision",
 		}))
 		if err != nil {
-			return errors.Wrap(err, "error fetching starting hosts")
+			return errors.Wrap(err, "error fetching provisioning hosts")
 		}
 
 		ts := util.RoundPartOfMinute(part).Format(tsFormat)
@@ -515,6 +515,30 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
 		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateCloudJobs(env evergreen.Environment, part int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.HostinitDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "host init disabled",
+				"impact":  "new hosts are not setup or provisioned",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(queue.Put(NewCloudJob(env, ts)))
 
 		return catcher.Resolve()
 	}

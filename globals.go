@@ -20,7 +20,7 @@ const (
 	HostTerminated      = "terminated"
 	HostUninitialized   = "initializing"
 	HostStarting        = "starting"
-	HostInitializing    = "provisioning"
+	HostProvisioning    = "provisioning"
 	HostProvisionFailed = "provision failed"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
@@ -207,7 +207,7 @@ var (
 		HostRunning,
 		HostUninitialized,
 		HostStarting,
-		HostInitializing,
+		HostProvisioning,
 		HostProvisionFailed,
 	}
 
@@ -216,7 +216,7 @@ var (
 	ActiveStatus = []string{
 		HostRunning,
 		HostStarting,
-		HostInitializing,
+		HostProvisioning,
 		HostProvisionFailed,
 	}
 

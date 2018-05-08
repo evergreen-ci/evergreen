@@ -110,7 +110,7 @@ type ec2Manager struct {
 }
 
 // NewEC2Manager creates a new manager of EC2 spot and on-demand instances.
-func NewEC2Manager(opts *EC2ManagerOptions) CloudManager {
+func NewEC2Manager(opts *EC2ManagerOptions) Manager {
 	return &ec2Manager{opts, nil}
 }
 
@@ -424,6 +424,64 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	event.LogHostStarted(h.Id)
 
 	return h, nil
+}
+
+// GetInstanceStatuses returns the current status of a slice of EC2 instances.
+func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+	spotHostIDs := []*string{}
+	onDemandHostIDs := []*string{}
+	instanceIdToHostMap := map[string]string{}
+	hostToStatusMap := map[string]CloudStatus{}
+
+	// Populate spot and on-demand slices
+	for i := range hosts {
+		if isHostSpot(&hosts[i]) {
+			spotHostIDs = append(spotHostIDs, &hosts[i].Id)
+		}
+		if isHostOnDemand(&hosts[i]) {
+			instanceIdToHostMap[hosts[i].Id] = hosts[i].Id
+			onDemandHostIDs = append(onDemandHostIDs, &hosts[i].Id)
+		}
+	}
+
+	// Get instance IDs for spot instances
+	spotOut, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
+		SpotInstanceRequestIds: spotHostIDs,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error describing spot instances")
+	}
+	if len(spotOut.SpotInstanceRequests) != len(spotHostIDs) {
+		return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
+	}
+	hostsToCheck := []*string{}
+	for i := range spotHostIDs {
+		if spotOut.SpotInstanceRequests[i].InstanceId == nil || *spotOut.SpotInstanceRequests[i].InstanceId == "" {
+			hostToStatusMap[*spotHostIDs[i]] = cloudStatusFromSpotStatus(*spotOut.SpotInstanceRequests[i].State)
+			continue
+		}
+		hostsToCheck = append(hostsToCheck, spotOut.SpotInstanceRequests[i].InstanceId)
+		instanceIdToHostMap[*spotOut.SpotInstanceRequests[i].InstanceId] = *spotHostIDs[i]
+	}
+
+	// Get host statuses
+	hostsToCheck = append(hostsToCheck, onDemandHostIDs...)
+	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: hostsToCheck,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error describing instances")
+	}
+	for i, res := range out.Reservations {
+		hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]]] = ec2StatusToEvergreenStatus(*res.Instances[0].State.Name)
+	}
+
+	// Populate cloud statuses
+	statuses := []CloudStatus{}
+	for _, h := range hosts {
+		statuses = append(statuses, hostToStatusMap[h.Id])
+	}
+	return statuses, nil
 }
 
 // GetInstanceStatus returns the current status of an EC2 instance.
@@ -748,10 +806,10 @@ func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (C
 
 	//Spot request is not fulfilled. Either it's failed/closed for some reason,
 	//or still pending evaluation
-	return cloudStatusFromSpotStatus(h.Id, *spotInstance.State), nil
+	return cloudStatusFromSpotStatus(*spotInstance.State), nil
 }
 
-func cloudStatusFromSpotStatus(id, state string) CloudStatus {
+func cloudStatusFromSpotStatus(state string) CloudStatus {
 	switch state {
 	case SpotStatusOpen:
 		return StatusPending
@@ -764,11 +822,6 @@ func cloudStatusFromSpotStatus(id, state string) CloudStatus {
 	case SpotStatusFailed:
 		return StatusFailed
 	default:
-		grip.Error(message.Fields{
-			"message": "Unexpected status code in spot request",
-			"code":    state,
-			"id":      id,
-		})
 		return StatusUnknown
 	}
 }
