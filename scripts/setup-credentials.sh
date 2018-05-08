@@ -14,7 +14,7 @@ database:
 configdir: "config_test"
 client_binaries_dir: "clients"
 credentials: {
-  github: "$1",
+  github: "$GITHUBTOKEN",
 }
 
 api_url: http://localhost:8080
@@ -35,23 +35,23 @@ notify:
 
 
 jira:
-  host: $2
-  username: $3
-  password: $4
+  host: "$JIRASERVER"
+  username: "$CROWDUSER"
+  password: "$CROWDPW"
 
 providers:
   aws:
-    aws_id: "$5"
-    aws_secret: "$6"
+    aws_id: "$AWSKEY"
+    aws_secret: "$AWSSECRET"
 
 auth:
   crowd:
-    username: $3
-    password: $4
-    urlroot: $7
+    username: "$CROWDUSER"
+    password: "$CROWDPW"
+    urlroot: "$CROWDSERVER"
 
 plugins:
   manifest:
-    github_token: "$1"
+    github_token: "$GITHUBTOKEN"
 github_pr_creator_org: "10gen"
 EOF
