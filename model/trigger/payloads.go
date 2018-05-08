@@ -33,14 +33,14 @@ type commonTemplateData struct {
 	githubDescription string
 }
 
-const emailSubjectTemplate string = `Evergreen {{ .Object }} has {{ .PastTenseStatus }}!`
+const emailSubjectTemplate string = `Evergreen: {{ .Object }} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 const emailTemplate string = `<html>
 <head>
 </head>
 <body>
 <p>Hi,</p>
 
-<p>Your Evergreen {{ .Object }} <a href="{{ .URL }}">'{{ .ID }}'</a> has {{ .PastTenseStatus }}.</p>
+<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .ID }}</a> has {{ .PastTenseStatus }}.</p>
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
@@ -163,6 +163,23 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 	return &issue, nil
 }
 
+func slack(t commonTemplateData) (*notification.SlackPayload, error) {
+	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse slack template")
+	}
+
+	buf := &bytes.Buffer{}
+	if err = issueTmpl.Execute(buf, t); err != nil {
+		return nil, errors.Wrap(err, "failed to make slack message")
+	}
+	msg := buf.String()
+
+	return &notification.SlackPayload{
+		Body: msg,
+	}, nil
+}
+
 // truncateString splits a string into two parts, with the following behavior:
 // If the entire string is <= capacity, it's returned unchanged.
 // Otherwise, the string is split at the (capacity-3)'th byte. The first string
@@ -182,23 +199,9 @@ func truncateString(s string, capacity int) (string, string) {
 	return head, tail
 }
 
-func slack(t commonTemplateData) (*notification.SlackPayload, error) {
-	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse slack template")
-	}
-
-	buf := &bytes.Buffer{}
-	if err = issueTmpl.Execute(buf, t); err != nil {
-		return nil, errors.Wrap(err, "failed to make slack message")
-	}
-	msg := buf.String()
-
-	return &notification.SlackPayload{
-		Body: msg,
-	}, nil
-}
-
+// For patches, versions, builds, and tasks, the outcome, success and  failure
+// triggers all have the same structure. The common generator returned by this
+// function is suitable for creating payloads for all of these
 func makeCommonGenerator(triggerName string, selectors []event.Selector,
 	data commonTemplateData) (*notificationGenerator, error) {
 	gen := notificationGenerator{
