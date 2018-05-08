@@ -14,9 +14,10 @@ import (
 )
 
 type Configuration struct {
-	DistroID      string
-	TaskFinder    string
-	HostAllocator string
+	DistroID         string
+	TaskFinder       string
+	HostAllocator    string
+	FreeHostFraction float64
 }
 
 func PlanDistro(ctx context.Context, conf Configuration) error {
@@ -79,6 +80,7 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		distros: map[string]distro.Distro{
 			conf.DistroID: distroSpec,
 		},
+		freeHostFraction: conf.FreeHostFraction,
 	}
 
 	allocator := GetHostAllocator(conf.HostAllocator)

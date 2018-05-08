@@ -24,6 +24,7 @@ type HostAllocatorData struct {
 	existingDistroHosts map[string][]host.Host
 	taskRunDistros      map[string][]string
 	distros             map[string]distro.Distro
+	freeHostFraction    float64
 }
 
 func GetHostAllocator(name string) HostAllocator {
@@ -32,6 +33,8 @@ func GetHostAllocator(name string) HostAllocator {
 		return DeficitBasedHostAllocator
 	case "duration":
 		return DurationBasedHostAllocator
+	case "utilization":
+		return UtilizationBasedHostAllocator
 	default:
 		return DurationBasedHostAllocator
 	}
