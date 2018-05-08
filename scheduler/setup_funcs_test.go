@@ -128,7 +128,7 @@ task_groups:
 task_groups:
 - name: even_task_group
 `
-	versionMap := map[string]*version.Version{}
+	versionMap := map[string]version.Version{}
 	for i := 0; i < 10; i++ {
 		versionId := fmt.Sprintf("version-%d", i)
 		v := version.Version{
@@ -141,7 +141,7 @@ task_groups:
 			v.Config = oddYml
 		}
 		require.NoError(v.Insert())
-		versionMap[v.Id] = &v
+		versionMap[v.Id] = v
 		versions = append(versions, v)
 		tasks = append(tasks, task.Task{
 			Id:      fmt.Sprintf("task-%d", i),
