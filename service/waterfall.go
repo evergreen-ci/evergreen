@@ -200,9 +200,7 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskSt
 // For given build variant, variant display name and variant search query
 // checks if matched variant has active tasks
 func variantHasActiveTasks(
-	b build.Build,
-	bvDisplayName string,
-	variantQuery string,
+	b build.Build, bvDisplayName string, variantQuery string,
 ) bool {
 	if strings.Contains(
 		strings.ToUpper(bvDisplayName),
@@ -633,14 +631,12 @@ func waterfallDataAdaptor(
 	// compute the total number of versions that exist
 	finalData.TotalVersions, err = version.Count(version.ByProjectId(project.Identifier))
 	if err != nil {
-		//uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return waterfallData{}, err
 	}
 
 	// compute the number of versions on the previous page
 	finalData.PreviousPageCount, err = countOnPreviousPage(skip, VersionItemsToCreate, project, variantQuery)
 	if err != nil {
-		//uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return waterfallData{}, err
 	}
 
@@ -715,14 +711,20 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery)
 
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error"})
+		restapi.WriteJSON(
+			w, http.StatusNotFound, responseError{Message: errors.Wrap(
+				err, "Error while loading versions and variants data").Error()},
+		)
 		return
 	}
 
 	finalData, err := waterfallDataAdaptor(vvData, project, skip, variantQuery)
 
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error"})
+		restapi.WriteJSON(
+			w, http.StatusNotFound, responseError{Message: errors.Wrap(
+				err, "Error while processing versions and variants data").Error()},
+		)
 		return
 	}
 
