@@ -189,21 +189,20 @@ functions:
   run-cross:
     command: subprocess.exec
     params:
-      command: scripts/run-cross.sh ${target}
+      command: bash scripts/run-cross.sh "${target}"
   set-up-credentials:
     command: subprocess.exec
     type: setup
     params:
       silent: true
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
-      command: scripts/setup-credentials.sh ${github_token} ${jiraserver} ${crowduser} ${crowdpw} ${aws_key} ${aws_secret} ${crowdserver}
-
+      command: bash scripts/setup-credentials.sh "${github_token}" "${jiraserver}" "${crowduser}" "${crowdpw}" "${aws_key}" "${aws_secret}" "${crowdserver}"
   set-up-mongodb:
     - command: subprocess.exec
       type: setup
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
-        command: ${bash}scripts/setup-mongodb.sh ${mongodb_url} ${decompress}
+        command: bash scripts/setup-mongodb.sh "${mongodb_url}" "${decompress}"
     - command: subprocess.exec
       type: setup
       params:
@@ -593,7 +592,6 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.4.zip
       extension: ".exe"
       archiveExt: ".zip"
-      bash: "bash "
     tasks:
       - name: ".nodb .test"
       - name: ".agent .test"
