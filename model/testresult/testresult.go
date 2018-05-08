@@ -106,54 +106,33 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 		results)
 }
 
-// TestResultsPipeline is an aggregation pipeline for returning test results to the REST v2 API.
-func TestResultsPipeline(taskId, testId, status string, limit, sort, execution int) []bson.M {
-	// match test results
-	pipeline := []bson.M{
-		bson.M{
-			"$match": bson.M{
-				TaskIDKey:    taskId,
-				ExecutionKey: execution,
-			},
-		},
-	}
-
-	// match status
-	if status != "" {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{StatusKey: status},
-		})
-	}
-
-	// sort
+// TestResultsQuery is a query for returning test results to the REST v2 API.
+func TestResultsQuery(taskId, testId, status string, limit, sort, execution int) db.Q {
 	sortOperator := "$gte"
 	if sort < 0 {
 		sortOperator = "$lte"
 	}
+
+	match := bson.M{
+		TaskIDKey:    taskId,
+		ExecutionKey: execution,
+	}
+	if status != "" {
+		match[StatusKey] = status
+	}
 	if testId != "" {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{IDKey: bson.M{sortOperator: bson.ObjectId(testId)}}})
+		match[IDKey] = bson.M{sortOperator: bson.ObjectId(testId)}
 	}
-	pipeline = append(pipeline,
-		bson.M{
-			"$sort": bson.M{IDKey: 1},
-		},
-	)
+	q := db.Query(match)
 
-	// limit
+	q = q.Sort([]string{IDKey})
 	if limit > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$limit": limit,
-		})
+		q = q.Limit(limit)
 	}
-
-	// project out task and execution
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			TaskIDKey:    0,
-			ExecutionKey: 0,
-		},
+	q = q.Project(bson.M{
+		TaskIDKey:    0,
+		ExecutionKey: 0,
 	})
 
-	return pipeline
+	return q
 }
