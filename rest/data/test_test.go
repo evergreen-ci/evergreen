@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	mgo "gopkg.in/mgo.v2"
 )
 
 func TestFindTestsByTaskId(t *testing.T) {
@@ -35,9 +34,6 @@ func TestFindTestsByTaskId(t *testing.T) {
 			" '%v' collection", task.Collection)
 		testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "Error clearing"+
 			" '%v' collection", testresult.Collection)
-		db.EnsureIndex(testresult.Collection, mgo.Index{
-			Key: []string{testresult.TaskIDKey, testresult.ExecutionKey},
-		})
 		for i := 0; i < numTasks; i++ {
 			id := fmt.Sprintf("task_%d", i)
 			testTask := &task.Task{
