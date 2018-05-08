@@ -151,7 +151,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 func (s *subscriptionsSuite) TestRemove() {
 	for i := range s.subscriptions {
-		s.NoError(s.subscriptions[i].Remove())
+		s.NoError(RemoveSubscription(s.subscriptions[i].ID))
 
 		out := []Subscription{}
 		s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))

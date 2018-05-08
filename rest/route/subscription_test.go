@@ -51,10 +51,10 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"type":       "atype",
-		"trigger":    "atrigger",
-		"owner":      "me",
-		"owner_type": "person",
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",
@@ -78,7 +78,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
-	s.Len(dbSubscriptions, 1)
+	s.Require().Len(dbSubscriptions, 1)
 	s.Equal("atype", dbSubscriptions[0].Type)
 	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
 	s.Equal("slack", dbSubscriptions[0].Subscriber.Type)
@@ -86,11 +86,11 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	// test updating the same subscription
 	id := dbSubscriptions[0].ID
 	body = []map[string]interface{}{{
-		"id":         id.Hex(),
-		"type":       "new type",
-		"trigger":    "atrigger",
-		"owner":      "me",
-		"owner_type": "person",
+		"id":            id.Hex(),
+		"resource_type": "new type",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",
@@ -121,10 +121,10 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"type":       "atype",
-		"trigger":    "atrigger",
-		"owner":      "myproj",
-		"owner_type": "project",
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "myproj",
+		"owner_type":    "project",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",
@@ -148,7 +148,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("myproj", event.OwnerTypeProject)
 	s.NoError(err)
-	s.Len(dbSubscriptions, 1)
+	s.Require().Len(dbSubscriptions, 1)
 	s.Equal("atype", dbSubscriptions[0].Type)
 	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
 	s.Equal("email", dbSubscriptions[0].Subscriber.Type)
@@ -156,11 +156,11 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	// test updating the same subscription
 	id := dbSubscriptions[0].ID
 	body = []map[string]interface{}{{
-		"id":         id.Hex(),
-		"type":       "new type",
-		"trigger":    "atrigger",
-		"owner":      "myproj",
-		"owner_type": "project",
+		"id":            id.Hex(),
+		"resource_type": "new type",
+		"trigger":       "atrigger",
+		"owner":         "myproj",
+		"owner_type":    "project",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",
@@ -189,17 +189,17 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	s.NoError(err)
 	s.Require().Len(subs.Result, 1)
 	sub := subs.Result[0].(*model.APISubscription)
-	s.Equal("new type", model.FromAPIString(sub.Type))
+	s.Equal("new type", model.FromAPIString(sub.ResourceType))
 }
 
 func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"type":       "atype",
-		"trigger":    "atrigger",
-		"owner":      "not_me",
-		"owner_type": "person",
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "not_me",
+		"owner_type":    "person",
 		"selectors": []map[string]string{{
 			"type": "seltype",
 			"data": "seldata",

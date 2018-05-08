@@ -235,13 +235,13 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
-func (s *Subscription) Remove() error {
-	if len(s.ID.Hex()) == 0 {
-		return errors.New("subscription has no ID, cannot remove")
+func RemoveSubscription(id bson.ObjectId) error {
+	if !id.Valid() {
+		return errors.New("id is not valid, cannot remove")
 	}
 
 	return db.Remove(SubscriptionsCollection, bson.M{
-		subscriptionIDKey: s.ID,
+		subscriptionIDKey: id,
 	})
 }
 

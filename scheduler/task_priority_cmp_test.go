@@ -330,6 +330,8 @@ task_groups:
 	}
 	require.NoError(v.Insert())
 	taskComparator.tasks = tasks
+	versionMap := map[string]*version.Version{"version_id": v}
+	taskComparator.versions = versionMap
 	assert.NoError(cacheTaskGroups(taskComparator))
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
@@ -346,6 +348,8 @@ task_groups:
 `
 	v.Config = yml
 	require.NoError(v.Insert())
+	versionMap = map[string]*version.Version{"version_id": v}
+	taskComparator.versions = versionMap
 	assert.NoError(cacheTaskGroups(taskComparator))
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
@@ -367,11 +371,13 @@ task_groups:
 		Id:     "version_1",
 		Config: yml,
 	}
+	versions := map[string]*version.Version{"version_1": v}
 	require.NoError(v.Insert())
 	v = &version.Version{
 		Id:     "version_2",
 		Config: yml,
 	}
+	versions["version_2"] = v
 	require.NoError(v.Insert())
 	tasks := []task.Task{
 		{
@@ -408,7 +414,7 @@ task_groups:
 		},
 	}
 	prioritizer := &CmpBasedTaskPrioritizer{}
-	sorted, err := prioritizer.PrioritizeTasks("distro", tasks)
+	sorted, err := prioritizer.PrioritizeTasks("distro", tasks, versions)
 	assert.NoError(err)
 	assert.Equal("task_4", sorted[0].Id)
 	assert.Equal("task_1", sorted[1].Id)

@@ -1045,6 +1045,9 @@ func (t *Task) Archive() error {
 			if err != nil {
 				return errors.Wrap(err, "error retrieving execution task")
 			}
+			if execTask == nil {
+				return errors.Errorf("unable to find execution task %s from display task %s", et, t.Id)
+			}
 			if err = execTask.Archive(); err != nil {
 				return errors.Wrap(err, "error archiving execution task")
 			}

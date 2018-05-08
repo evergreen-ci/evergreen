@@ -195,10 +195,16 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 			}
 		}
 	}
+
+	// TODO: EVG-3305 Remove this logging
 	tasksFromTaskGroup := []string{}
+	foundTaskGroup := false
+	_, ok := comparator.projects[t1.Version]
+	foundVersion := ok
 	for _, tg := range comparator.projects[t1.Version].TaskGroups {
 		if tg.Name == t1.TaskGroup {
 			tasksFromTaskGroup = append(tasksFromTaskGroup, tg.Tasks...)
+			foundTaskGroup = true
 		}
 	}
 	grip.Error(message.Fields{
@@ -214,7 +220,11 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 		"t2_group":                t2.TaskGroup,
 		"comparator_projects_len": len(comparator.projects),
 		"tasks_from_task_group":   tasksFromTaskGroup,
+		"found_version":           foundVersion,
+		"found_task_group":        foundTaskGroup,
+		"task_groups_in_version":  len(comparator.projects[t1.Version].TaskGroups),
 	})
+
 	return 0, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, t1.TaskGroup)
 }
 
