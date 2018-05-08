@@ -67,6 +67,10 @@ func patchSelectors(p *patch.Patch) []event.Selector {
 			Type: "owner",
 			Data: p.Author,
 		},
+		{
+			Type: "status",
+			Data: p.Status,
+		},
 	}
 }
 
