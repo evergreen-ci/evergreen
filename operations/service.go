@@ -34,6 +34,7 @@ func deploy() cli.Command {
 		Usage: "deployment helpers for evergreen site administration",
 		Subcommands: []cli.Command{
 			deployMigration(),
+			deployCopyPerfData(),
 			deployDataTransforms(),
 			smokeStartEvergreen(),
 			smokeTestEndpoints(),
