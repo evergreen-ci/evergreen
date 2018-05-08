@@ -26,7 +26,6 @@ var (
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
-	subscriptionExtraDataKey      = bsonutil.MustHaveTag(Subscription{}, "ExtraData")
 
 	groupedSubscriptionsTypeKey          = bsonutil.MustHaveTag(groupedSubscriptions{}, "Type")
 	groupedSubscriptionsSubscriptionsKey = bsonutil.MustHaveTag(groupedSubscriptions{}, "Subscriptions")
@@ -48,7 +47,6 @@ type Subscription struct {
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
 	OwnerType      OwnerType     `bson:"owner_type"`
-	ExtraData      interface{}   `bson:"extra_data,omitempty"`
 }
 
 type unmarshalSubscription struct {
@@ -60,7 +58,6 @@ type unmarshalSubscription struct {
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
 	OwnerType      OwnerType     `bson:"owner_type"`
-	ExtraData      bson.Raw      `bson:"extra_data,omitempty"`
 }
 
 func (s *Subscription) SetBSON(raw bson.Raw) error {
@@ -68,26 +65,6 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "error unmarshalling subscriber")
-	}
-
-	if data := registry.GetExtraData(temp.Type, temp.Trigger); data != nil {
-		s.ExtraData = data
-	}
-
-	// if there is no extra_data field in the db
-	if temp.ExtraData.Kind == 0x00 && len(temp.ExtraData.Data) == 0 {
-		if s.ExtraData != nil {
-			s.ExtraData = nil
-			return errors.New("error unmarshaling extra data: expected extra data in subscription; found none")
-		}
-
-	} else {
-		if s.ExtraData == nil {
-			return errors.New("error unmarshaling extra data: unexpected extra data in subscription")
-		}
-		if err := temp.ExtraData.Unmarshal(s.ExtraData); err != nil {
-			return errors.Wrap(err, "error unmarshaling extra data")
-		}
 	}
 
 	s.ID = temp.ID
@@ -211,9 +188,6 @@ func (s *Subscription) Upsert() error {
 		subscriptionSubscriberKey:     s.Subscriber,
 		subscriptionOwnerKey:          s.Owner,
 		subscriptionOwnerTypeKey:      s.OwnerType,
-	}
-	if s.ExtraData != nil {
-		update[subscriptionExtraDataKey] = s.ExtraData
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired

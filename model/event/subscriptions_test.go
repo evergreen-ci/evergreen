@@ -244,45 +244,6 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 	s.False(regexSelectorsMatch(selectors, a.RegexSelectors))
 }
 
-func (s *subscriptionsSuite) TestExtraData() {
-	subscription := Subscription{
-		ID:      bson.NewObjectId(),
-		Type:    ResourceTypePatch,
-		Trigger: "time-exceeds-n-constant",
-		Selectors: []Selector{
-			{
-				Type: "data1",
-				Data: "something",
-			},
-		},
-		RegexSelectors: []Selector{},
-		Subscriber: Subscriber{
-			Type:   EmailSubscriberType,
-			Target: "test@domain.invalid",
-		},
-		Owner: "someoneelse",
-	}
-	s.NoError(subscription.Upsert())
-
-	out := Subscription{}
-	q := db.Query(bson.M{
-		"_id": subscription.ID,
-	})
-	s.NoError(db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
-		"_id": subscription.ID,
-	}), &out))
-	s.NotZero(out)
-
-	subscription.ExtraData = bson.M{
-		"test": "test",
-	}
-	s.NoError(subscription.Upsert())
-
-	out = Subscription{}
-	s.EqualError(db.FindOneQ(SubscriptionsCollection, q, &out), "error unmarshaling extra data: unexpected extra data in subscription")
-	s.Zero(out)
-}
-
 func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
 	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypePerson)
 	s.NoError(err)
