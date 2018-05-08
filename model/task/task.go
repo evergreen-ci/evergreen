@@ -1413,7 +1413,7 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
 	}
 
-	err := t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
+	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, util.ZeroTime, time.Now().Add(-taskCompletionEstimateWindow))
 		grip.Notice(message.WrapError(err, message.Fields{
 			"name":      t.DisplayName,
@@ -1440,14 +1440,10 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 		}
 
 		return ret, true
-	})
-
-	if err != nil {
-		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "problem setting cached value refresher",
-			"cause":   "programmer error",
-		}))
-	}
+	}), message.Fields{
+		"message": "problem setting cached value refresher",
+		"cause":   "programmer error",
+	}))
 
 	expectedDuration, ok := t.DurationPrediction.Get()
 	if ok {
