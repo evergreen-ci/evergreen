@@ -196,9 +196,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 		EventType:    event.PatchStateChange,
 		ResourceId:   p.Id.Hex(),
 		Data: &event.PatchEventData{
-			Author:   "somebody",
-			Status:   evergreen.PatchFailed,
-			Duration: time.Hour,
+			Status: evergreen.PatchFailed,
 		},
 	}
 
