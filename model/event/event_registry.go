@@ -7,11 +7,6 @@ import (
 
 type eventDataFactory func() interface{}
 
-type extraDataKey struct {
-	ResourceType string
-	Trigger      string
-}
-
 type eventRegistry struct {
 	lock sync.RWMutex
 
