@@ -36,6 +36,7 @@ type TestResult struct {
 
 var (
 	// BSON fields for the task struct
+	IDKey        = bsonutil.MustHaveTag(TestResult{}, "ID")
 	StatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
 	LineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
 	TestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
@@ -105,52 +106,33 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 		results)
 }
 
-// TestResultsPipeline is an aggregation pipeline for returning test results to the REST v2 API.
-func TestResultsPipeline(id, filename, status string, limit, sort, execution int) []bson.M {
-	// match test results
-	pipeline := []bson.M{
-		bson.M{
-			"$match": bson.M{
-				TaskIDKey:    id,
-				ExecutionKey: execution,
-			},
-		},
-	}
-
-	// match status
-	if status != "" {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{StatusKey: status},
-		})
-	}
-
-	// sort
+// TestResultsQuery is a query for returning test results to the REST v2 API.
+func TestResultsQuery(taskId, testId, status string, limit, sort, execution int) db.Q {
 	sortOperator := "$gte"
 	if sort < 0 {
 		sortOperator = "$lte"
 	}
-	pipeline = append(pipeline,
-		bson.M{
-			"$match": bson.M{TestFileKey: bson.M{sortOperator: filename}}},
-		bson.M{
-			"$sort": bson.M{TestFileKey: 1},
-		},
-	)
 
-	// limit
-	if limit > 0 {
-		pipeline = append(pipeline, bson.M{
-			"$limit": limit,
-		})
+	match := bson.M{
+		TaskIDKey:    taskId,
+		ExecutionKey: execution,
 	}
+	if status != "" {
+		match[StatusKey] = status
+	}
+	if testId != "" {
+		match[IDKey] = bson.M{sortOperator: bson.ObjectId(testId)}
+	}
+	q := db.Query(match)
 
-	// project out task and execution
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			TaskIDKey:    0,
-			ExecutionKey: 0,
-		},
+	q = q.Sort([]string{IDKey})
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	q = q.Project(bson.M{
+		TaskIDKey:    0,
+		ExecutionKey: 0,
 	})
 
-	return pipeline
+	return q
 }

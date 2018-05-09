@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -51,6 +52,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Requester:           requesters[0],
 				Revision:            gitspecs[0],
 				Project:             projects[0],
+				DurationPrediction:  util.CachedDurationValue{Value: durations[0]},
 			},
 			{
 				Id:                  taskIds[1],
@@ -60,6 +62,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Requester:           requesters[1],
 				Revision:            gitspecs[1],
 				Project:             projects[1],
+				DurationPrediction:  util.CachedDurationValue{Value: durations[1]},
 			},
 			{
 				Id:                  taskIds[2],
@@ -69,6 +72,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Requester:           requesters[2],
 				Revision:            gitspecs[2],
 				Project:             projects[2],
+				DurationPrediction:  util.CachedDurationValue{Value: durations[2]},
 			},
 			{
 				Id:                  taskIds[3],
@@ -78,6 +82,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Requester:           requesters[3],
 				Revision:            gitspecs[3],
 				Project:             projects[3],
+				DurationPrediction:  util.CachedDurationValue{Value: durations[3]},
 			},
 			{
 				Id:                  taskIds[4],
@@ -87,47 +92,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Requester:           requesters[4],
 				Revision:            gitspecs[4],
 				Project:             projects[4],
-			},
-		}
-
-		durationMappings := model.ProjectTaskDurations{
-			TaskDurationByProject: map[string]*model.BuildVariantTaskDurations{
-				projects[0]: {
-					map[string]*model.TaskDurations{
-						buildVariants[0]: {
-							map[string]time.Duration{
-								displayNames[0]: durations[0],
-							},
-						},
-					},
-				},
-				projects[1]: {
-					map[string]*model.TaskDurations{
-						buildVariants[1]: {
-							map[string]time.Duration{
-								displayNames[1]: durations[1],
-							},
-						},
-					},
-				},
-				projects[2]: {
-					map[string]*model.TaskDurations{
-						buildVariants[2]: {
-							map[string]time.Duration{
-								displayNames[2]: durations[2],
-							},
-						},
-					},
-				},
-				projects[3]: {
-					map[string]*model.TaskDurations{
-						buildVariants[3]: {
-							map[string]time.Duration{
-								displayNames[3]: durations[3],
-							},
-						},
-					},
-				},
+				DurationPrediction:  util.CachedDurationValue{},
 			},
 		}
 
@@ -137,12 +102,10 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			"correct ordering of tasks along with the relevant average task "+
 			"completion times", func() {
 			_, err := taskQueuePersister.PersistTaskQueue(distroIds[0],
-				[]task.Task{tasks[0], tasks[1], tasks[2]},
-				durationMappings)
+				[]task.Task{tasks[0], tasks[1], tasks[2]})
 			So(err, ShouldBeNil)
 			_, err = taskQueuePersister.PersistTaskQueue(distroIds[1],
-				[]task.Task{tasks[3], tasks[4]},
-				durationMappings)
+				[]task.Task{tasks[3], tasks[4]})
 			So(err, ShouldBeNil)
 
 			taskQueue, err := model.LoadTaskQueue(distroIds[0])
@@ -212,7 +175,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[1].Revision, ShouldEqual, tasks[4].Revision)
 			So(taskQueue.Queue[1].Project, ShouldEqual, tasks[4].Project)
 			So(taskQueue.Queue[1].ExpectedDuration, ShouldEqual,
-				model.DefaultTaskDuration)
+				10*time.Minute)
 		})
 
 	})
