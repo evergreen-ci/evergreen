@@ -483,7 +483,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	cloudManager, err := cloud.GetCloudManager(ctx, hostObj.Provider, &as.Settings)
+	cloudManager, err := cloud.GetManager(ctx, hostObj.Provider, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",

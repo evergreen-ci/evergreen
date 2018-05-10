@@ -500,14 +500,14 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return nil
 		}
 
-		hosts, err := host.Find(host.NeedsProvisioning())
+		hosts, err := host.Find(host.Provisioning())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      setupHostJobName,
 			"impact":    "hosts cannot provision",
 		}))
 		if err != nil {
-			return errors.Wrap(err, "error fetching starting hosts")
+			return errors.Wrap(err, "error fetching provisioning hosts")
 		}
 
 		ts := util.RoundPartOfMinute(part).Format(tsFormat)
@@ -515,6 +515,8 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
 		}
+
+		catcher.Add(queue.Put(NewCloudHostReadyJob(env, ts)))
 
 		return catcher.Resolve()
 	}
