@@ -49,7 +49,7 @@ func TestCloudStatusJob(t *testing.T) {
 		require.NoError(h.Insert())
 	}
 
-	j := NewCloudHostReadyToProvisionJob(&mock.Environment{}, "id")
+	j := NewCloudHostReadyJob(&mock.Environment{}, "id")
 	j.Run(context.Background())
 	assert.NoError(j.Error())
 

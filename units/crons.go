@@ -516,7 +516,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
 		}
 
-		catcher.Add(queue.Put(NewCloudHostReadyToProvisionJob(env, ts)))
+		catcher.Add(queue.Put(NewCloudHostReadyJob(env, ts)))
 
 		return catcher.Resolve()
 	}
