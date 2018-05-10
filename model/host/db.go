@@ -270,19 +270,6 @@ var IsIdle = db.Query(
 	},
 )
 
-// IsActive is a query that returns all Evergreen hosts that are working or
-// capable of being assigned work to do.
-var IsActive = db.Query(
-	bson.M{
-		StartedByKey: evergreen.User,
-		StatusKey: bson.M{
-			"$nin": []string{
-				evergreen.HostTerminated, evergreen.HostDecommissioned,
-			},
-		},
-	},
-)
-
 // ByNotMonitoredSince produces a query that returns all hosts whose
 // last reachability check was before the specified threshold,
 // filtering out user-spawned hosts and hosts currently running tasks.

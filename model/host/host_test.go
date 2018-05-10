@@ -19,6 +19,19 @@ func init() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
+// IsActive is a query that returns all Evergreen hosts that are working or
+// capable of being assigned work to do.
+var IsActive = db.Query(
+	bson.M{
+		StartedByKey: evergreen.User,
+		StatusKey: bson.M{
+			"$nin": []string{
+				evergreen.HostTerminated, evergreen.HostDecommissioned,
+			},
+		},
+	},
+)
+
 func hostIdInSlice(hosts []Host, id string) bool {
 	for _, host := range hosts {
 		if host.Id == id {
