@@ -16,33 +16,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cloudHostReadyToProvisionJobName = "set-cloud-hosts-ready-to-provision"
+const cloudHostReadyJobName = "set-cloud-hosts-readyn"
 
 func init() {
-	registry.AddJobType(cloudHostReadyToProvisionJobName,
-		func() amboy.Job { return makeCloudHostReadyToProvisionJob() })
+	registry.AddJobType(cloudHostReadyJobName,
+		func() amboy.Job { return makeCloudHostReadyJob() })
 }
 
-type cloudHostReadyToProvisionJob struct {
+type cloudHostReadyJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 }
 
-// NewCloudHostReadyToProvisionJob gets statuses for all jobs created by Cloud providers which the Cloud providers'
+// NewCloudHostReadyJob gets statuses for all jobs created by Cloud providers which the Cloud providers'
 // APIs have not yet returned all running. It marks the hosts running in the database.
-func NewCloudHostReadyToProvisionJob(env evergreen.Environment, id string) amboy.Job {
-	j := makeCloudHostReadyToProvisionJob()
-	j.SetID(fmt.Sprintf("%s.%s", cloudHostReadyToProvisionJobName, id))
+func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
+	j := makeCloudHostReadyJob()
+	j.SetID(fmt.Sprintf("%s.%s", cloudHostReadyJobName, id))
 	j.env = env
 	j.SetPriority(1)
 	return j
 }
 
-func makeCloudHostReadyToProvisionJob() *cloudHostReadyToProvisionJob {
-	j := &cloudHostReadyToProvisionJob{
+func makeCloudHostReadyJob() *cloudHostReadyJob {
+	j := &cloudHostReadyJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    cloudHostReadyToProvisionJobName,
+				Name:    cloudHostReadyJobName,
 				Version: 1,
 			},
 		},
@@ -52,7 +52,7 @@ func makeCloudHostReadyToProvisionJob() *cloudHostReadyToProvisionJob {
 	return j
 }
 
-func (j *cloudHostReadyToProvisionJob) Run(ctx context.Context) {
+func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
