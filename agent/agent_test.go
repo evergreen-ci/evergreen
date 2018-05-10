@@ -514,7 +514,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc.taskDirectory = "task_directory"
 	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
-	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be false")
+	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be true")
 	s.Equal("foo", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 
@@ -530,6 +530,24 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
 	s.True(tc.runGroupSetup, "if the next task is in a different group from the previous task, runGroupSetup should be true")
+	s.Equal("bar", tc.taskGroup)
+	s.Empty(tc.taskDirectory)
+
+	tc.taskConfig = &model.TaskConfig{
+		Task: &task.Task{
+			Version: versionId,
+			BuildId: "build_id_1",
+		},
+	}
+	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
+	nextTask.TaskGroup = "bar"
+	nextTask.Version = versionId
+	nextTask.Build = "build_id_2"
+	tc.taskGroup = "bar"
+	tc.taskDirectory = "task_directory"
+	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	s.False(exit)
+	s.True(tc.runGroupSetup, "if the next task in the same version but a different build, runSetupGroup should be true")
 	s.Equal("bar", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 }

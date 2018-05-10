@@ -1,9 +1,10 @@
-package notification
+package trigger
 
 import (
 	"reflect"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -20,7 +21,7 @@ type notificationGenerator struct {
 	jiraIssue        *message.JiraIssue
 	jiraComment      *string
 	githubStatusAPI  *message.GithubStatus
-	slack            *string
+	slack            *notification.SlackPayload
 }
 
 func (p *notificationGenerator) get(subType string) (interface{}, error) {
@@ -60,7 +61,7 @@ func (p *notificationGenerator) isEmpty() bool {
 		p.jiraComment == nil && p.slack == nil && p.githubStatusAPI == nil
 }
 
-func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification, error) {
+func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]notification.Notification, error) {
 	if len(g.triggerName) == 0 {
 		return nil, errors.New("trigger name is empty")
 	}
@@ -68,10 +69,16 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 		return nil, errors.Errorf("trigger %s has no selectors", g.triggerName)
 	}
 	if g.isEmpty() {
+		grip.Warning(message.Fields{
+			"event_id": e.ID.Hex(),
+			"trigger":  g.triggerName,
+			"cause":    "programmer error",
+			"message":  "a trigger created an empty generator; it should've just returned nil",
+		})
 		return nil, errors.New("generator has no payloads, and cannot yield any notifications")
 	}
 
-	groupedSubs, err := event.FindSubscribers(e.ResourceType, g.triggerName, g.selectors)
+	groupedSubs, err := event.FindSubscriptions(e.ResourceType, g.triggerName, g.selectors)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscribers")
 	}
@@ -83,7 +90,7 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 	if num == 0 {
 		return nil, nil
 	}
-	n := make([]Notification, 0, num)
+	n := make([]notification.Notification, 0, num)
 
 	catcher := grip.NewSimpleCatcher()
 	for subType, subs := range groupedSubs {
@@ -94,7 +101,7 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 		}
 
 		for i := range subs {
-			notification, err := New(e, g.triggerName, &subs[i], payload)
+			notification, err := notification.New(e, g.triggerName, &subs[i].Subscriber, payload)
 			if err != nil {
 				catcher.Add(err)
 				continue

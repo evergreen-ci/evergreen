@@ -134,16 +134,21 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task with five failed tests should return a subject", func() {
+			reallyLongTestName := ""
+			for i := 0; i < 300; i++ {
+				reallyLongTestName = reallyLongTestName + "a"
+			}
 			ctx.Task.LocalTestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestFailedStatus},
+				{TestFile: reallyLongTestName, Status: evergreen.TestFailedStatus},
 			}
 			subj := getSummary(ctx)
 			So(subj, ShouldNotEqual, "")
-			Convey("denoting two test failures but hiding the rest", func() {
+			Convey("and list the tests, but not exceed 254 characters", func() {
 				So(subj, ShouldContainSubstring, "Failures")
 				So(subj, ShouldContainSubstring, TaskName)
 				So(subj, ShouldContainSubstring, BuildName)
@@ -151,8 +156,9 @@ func TestJIRASummary(t *testing.T) {
 				So(subj, ShouldContainSubstring, ProjectName)
 				So(subj, ShouldContainSubstring, "big_test.js")
 				So(subj, ShouldContainSubstring, "FunUnitTest")
-				So(subj, ShouldNotContainSubstring, "cool.exe")
-				So(subj, ShouldContainSubstring, "+3 more")
+				So(subj, ShouldContainSubstring, "cool.exe")
+				So(subj, ShouldContainSubstring, "+1 more")
+				So(len(subj), ShouldBeLessThanOrEqualTo, 255)
 			})
 		})
 		Convey("a failed task with passing tests should return a subject", func() {

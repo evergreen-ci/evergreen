@@ -48,7 +48,7 @@ func (s *githubStatusUpdateSuite) TearDownSuite() {
 func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection))
 
-	startTime := time.Now()
+	startTime := time.Now().Truncate(time.Millisecond)
 	id := bson.NewObjectId()
 	s.patchDoc = &patch.Patch{
 		Id:         id,

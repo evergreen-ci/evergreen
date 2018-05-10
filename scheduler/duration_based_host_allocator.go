@@ -193,10 +193,7 @@ func computeScheduledTasksDuration(
 
 // computeRunningTasksDuration returns the estimated time to completion of all
 // currently running tasks for a given distro given its hosts
-func computeRunningTasksDuration(existingDistroHosts []host.Host,
-	taskDurations model.ProjectTaskDurations) (runningTasksDuration float64,
-	err error) {
-
+func computeRunningTasksDuration(existingDistroHosts []host.Host) (runningTasksDuration float64, err error) {
 	runningTaskIds := []string{}
 
 	for _, existingDistroHost := range existingDistroHosts {
@@ -229,14 +226,14 @@ func computeRunningTasksDuration(existingDistroHosts []host.Host,
 			return runningTasksDuration, errors.Errorf(
 				"Unable to find running task with _id %v", runningTaskId)
 		}
-		expectedDuration := model.GetTaskExpectedDuration(runningTask, taskDurations)
+		expectedDuration := runningTask.FetchExpectedDuration()
 		elapsedTime := time.Since(runningTask.StartTime)
 		if elapsedTime > expectedDuration {
 			// probably an outlier; or an unknown data point
 			continue
 		}
-		runningTasksDuration += expectedDuration.Seconds() -
-			elapsedTime.Seconds()
+
+		runningTasksDuration += (expectedDuration - elapsedTime).Seconds()
 	}
 	return
 }
@@ -429,7 +426,6 @@ func durationNumNewHostsForDistro(ctx context.Context,
 	distroScheduleData map[string]DistroScheduleData) (numNewHosts int,
 	err error) {
 
-	projectTaskDurations := hostAllocatorData.projectTaskDurations
 	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Id]
 	taskQueueItems := hostAllocatorData.taskQueueItems[distro.Id]
 	taskRunDistros := hostAllocatorData.taskRunDistros
@@ -444,8 +440,7 @@ func durationNumNewHostsForDistro(ctx context.Context,
 
 	// determine the total remaining running time of all
 	// tasks currently running on the hosts for this distro
-	runningTasksDuration, err := computeRunningTasksDuration(
-		existingDistroHosts, projectTaskDurations)
+	runningTasksDuration, err := computeRunningTasksDuration(existingDistroHosts)
 
 	if err != nil {
 		return numNewHosts, err

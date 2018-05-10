@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	// db constants
 	AllLogCollection  = "event_log"
 	TaskLogCollection = "task_event_log"
 )

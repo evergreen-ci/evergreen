@@ -534,6 +534,11 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 	if _, err = m.client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	}); err != nil {
+		if ec2err, ok := err.(awserr.Error); ok {
+			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
+				return "", h.Terminate(evergreen.User)
+			}
+		}
 		grip.Error(message.Fields{
 			"message":       "failed to cancel spot request",
 			"host":          h.Id,

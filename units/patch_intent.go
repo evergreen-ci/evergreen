@@ -256,6 +256,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if err := patchDoc.Insert(); err != nil {
 		return err
 	}
+	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	subscriber, err := j.user.PatchFinishSubscriber()
 	if err != nil {
