@@ -110,6 +110,8 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		"message":                "distro-scheduler-report",
 		"runner":                 RunnerName,
 		"distro":                 conf.DistroID,
+		"provider":               distroSpec.Provider,
+		"max_hsots":              distroSpec.PoolSize,
 		"new_hosts":              hostList,
 		"num_hosts":              len(hostList),
 		"queue":                  res.schedulerEvent,

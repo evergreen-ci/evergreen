@@ -32,6 +32,9 @@ const (
 	// if we have no data on a given task, default to 10 minutes so we
 	// have some new hosts spawned
 	defaultTaskDuration = 10 * time.Minute
+
+	// length of time to cache the expected duration in the task document
+	predictionTTL = 15 * time.Minute
 )
 
 var (
@@ -1405,7 +1408,7 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 
 func (t *Task) FetchExpectedDuration() time.Duration {
 	if t.DurationPrediction.TTL == 0 {
-		t.DurationPrediction.TTL = util.JitterInterval(15 * time.Minute)
+		t.DurationPrediction.TTL = util.JitterInterval(predictionTTL)
 	}
 
 	if t.DurationPrediction.Value == 0 && t.ExpectedDuration != 0 {
