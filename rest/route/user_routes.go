@@ -88,7 +88,7 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 	if strings.HasPrefix(userSettings.SlackUsername, "#") {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    "expected a Slack username, not a channel",
+			Message:    "expected a Slack username, but got a channel",
 		}
 	}
 
