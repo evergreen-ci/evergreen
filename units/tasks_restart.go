@@ -10,7 +10,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -30,7 +29,6 @@ type restartTasksJob struct {
 
 func makeTaskRestartJob() *restartTasksJob {
 	j := &restartTasksJob{
-		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    restartTasksJobName,
@@ -59,7 +57,7 @@ func (j *restartTasksJob) Run(_ context.Context) {
 		return
 	}
 
-	j.logger.Info(message.Fields{
+	grip.Info(message.Fields{
 		"message":         "tasks successfully restarted",
 		"num":             len(results.TasksRestarted),
 		"tasks_restarted": results.TasksRestarted,
