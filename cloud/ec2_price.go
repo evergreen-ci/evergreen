@@ -166,7 +166,8 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 	grip.Debug(message.Fields{
 		"message":       "getting spot history",
 		"instance_type": settings.InstanceType,
-		"os_name":       osName,
+		"function":      "getLatestLowestSpotCostForInstance",
+		"start_time":    "future",
 	})
 	prices, err := client.DescribeSpotPriceHistory(ctx, &ec2.DescribeSpotPriceHistoryInput{
 		// passing a future start time gets the latest price only
@@ -455,6 +456,12 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 	// expand times to contain the full runtime of the host
 	startFilter, endFilter := input.start.Add(-time.Hour), input.end.Add(time.Hour)
 	osStr := string(input.os)
+	grip.Debug(message.Fields{
+		"instance_type": &input.iType,
+		"start_time":    &startFilter,
+		"end_time":      &endFilter,
+		"function":      "describeHourlySpotPriceHistory",
+	})
 	filter := &ec2.DescribeSpotPriceHistoryInput{
 		InstanceTypes:       []*string{&input.iType},
 		ProductDescriptions: []*string{&osStr},
