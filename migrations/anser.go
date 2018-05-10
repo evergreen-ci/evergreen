@@ -144,12 +144,6 @@ func DefaultMigrations(evgEnv evergreen.Environment) (map[string]migrationGenera
 	}, nil
 }
 
-func PerfMigrations(copyArgs PerfCopyVariantArgs) map[string]migrationGeneratorFactory {
-	return map[string]migrationGeneratorFactory{
-		perfCopyVariantMigrationName: perfCopyVariantFactoryFactory(copyArgs),
-	}
-}
-
 func (opts Options) shouldSkipMigration(id string) bool {
 	if len(opts.IDs) == 0 {
 		return false

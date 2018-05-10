@@ -35,11 +35,6 @@ const (
 	dbNameFlagName     = "db"
 	dbWriteNumFlagName = "w"
 	dbWmodeFlagName    = "wmode"
-
-	perfTagFlagName         = "tag"
-	perfProjectIdFlagName   = "project_id"
-	perfFromVariantFlagName = "from_variant"
-	perfToVariantFlagName   = "to_variant"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
@@ -199,27 +194,6 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  dbWmodeFlagName,
 			Usage: "Write mode. Only valid values are blank or 'majority'",
-		},
-	)
-}
-
-func addPerfFlags(flags ...cli.Flag) []cli.Flag {
-	return append(flags,
-		cli.StringFlag{
-			Name:  perfTagFlagName,
-			Usage: "Tag of documents to copy",
-		},
-		cli.StringFlag{
-			Name:  perfProjectIdFlagName,
-			Usage: "Project ID of documents to copy.",
-		},
-		cli.StringFlag{
-			Name:  perfFromVariantFlagName,
-			Usage: "Variant of documents to copy.",
-		},
-		cli.StringFlag{
-			Name:  perfToVariantFlagName,
-			Usage: "New variant for new documents created.",
 		},
 	)
 }

@@ -13,42 +13,37 @@ const (
 	jsonCollection               = "json"
 	tagKey                       = "tag"
 	projectIDKey                 = "project_id"
+	fromVariantKey               = "from_variant"
+	toVariantKey                 = "to_variant"
 	variantKey                   = "variant"
 	idKey                        = "_id"
 )
 
-type PerfCopyVariantArgs struct {
-	Tag         string
-	ProjectID   string
-	FromVariant string
-	ToVariant   string
-}
-
-func perfCopyVariantFactoryFactory(copyArgs PerfCopyVariantArgs) migrationGeneratorFactory {
-	return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
-		if err := env.RegisterManualMigrationOperation(perfCopyVariantMigrationName, makePerfCopyVariantMigration(args.db, copyArgs)); err != nil {
+func perfCopyVariantFactoryFactory(args map[string]string) migrationGeneratorFactory {
+	return func(env anser.Environment, generatorArgs migrationGeneratorFactoryOptions) (anser.Generator, error) {
+		if err := env.RegisterManualMigrationOperation(perfCopyVariantMigrationName, makePerfCopyVariantMigration(generatorArgs.db, args)); err != nil {
 			return nil, err
 		}
 
 		opts := model.GeneratorOptions{
 			NS: model.Namespace{
-				DB:         args.db,
+				DB:         generatorArgs.db,
 				Collection: jsonCollection,
 			},
-			Limit: args.limit,
+			Limit: generatorArgs.limit,
 			Query: bson.M{
-				tagKey:       copyArgs.Tag,
-				projectIDKey: copyArgs.ProjectID,
-				variantKey:   copyArgs.FromVariant,
+				tagKey:       args[tagKey],
+				projectIDKey: args[projectIDKey],
+				variantKey:   args[fromVariantKey],
 			},
-			JobID: args.id,
+			JobID: generatorArgs.id,
 		}
 
 		return anser.NewManualMigrationGenerator(env, opts, perfCopyVariantMigrationName), nil
 	}
 }
 
-func makePerfCopyVariantMigration(database string, copyArgs PerfCopyVariantArgs) db.MigrationOperation {
+func makePerfCopyVariantMigration(database string, args map[string]string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
 		var id bson.ObjectId
@@ -64,7 +59,7 @@ func makePerfCopyVariantMigration(database string, copyArgs PerfCopyVariantArgs)
 		if err != nil {
 			return errors.Wrapf(err, "problem finding document %s", id)
 		}
-		doc[variantKey] = copyArgs.ToVariant
+		doc[variantKey] = args[toVariantKey]
 		delete(doc, idKey)
 		err = session.DB(database).C(jsonCollection).Insert(doc)
 		if err != nil {

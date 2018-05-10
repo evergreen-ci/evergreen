@@ -6,8 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/migrations"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/anser"
-	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -65,60 +63,6 @@ func deployMigration() cli.Command {
 	}
 }
 
-func deployCopyPerfData() cli.Command {
-	return cli.Command{
-		Name:    "performance",
-		Aliases: []string{"perf"},
-		Usage:   "performance data copy",
-		Flags:   mergeFlagSlices(serviceConfigFlags(), addMigrationRuntimeFlags(), addDbSettingsFlags(), addPerfFlags()),
-		Before:  addPositionalMigrationIds,
-		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			db := parseDB(c)
-			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, c.String(confFlagName), db)
-			grip.CatchEmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
-			settings := env.Settings()
-
-			// avoid working on remote jobs during migrations
-			env.RemoteQueue().Runner().Close()
-
-			opts := migrations.Options{
-				Period:   c.Duration(anserPeriodFlagName),
-				Target:   c.Int(anserTargetFlagName),
-				Limit:    c.Int(anserLimitFlagName),
-				DryRun:   c.Bool(anserDryRunFlagName),
-				Workers:  c.Int(anserWorkersFlagName),
-				IDs:      c.StringSlice(anserMigrationIDFlagName),
-				Session:  env.Session(),
-				Database: settings.Database.DB,
-			}
-
-			anserEnv, err := opts.Setup(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem setting up migration environment")
-			}
-			defer anserEnv.Close()
-
-			copyArgs := migrations.PerfCopyVariantArgs{
-				Tag:         c.String(perfTagFlagName),
-				ProjectID:   c.String(perfProjectIdFlagName),
-				FromVariant: c.String(perfFromVariantFlagName),
-				ToVariant:   c.String(perfToVariantFlagName),
-			}
-			app, err := opts.Application(anserEnv, migrations.PerfMigrations(copyArgs))
-			if err != nil {
-				return errors.Wrap(err, "problem configuring migration application")
-			}
-
-			grip.Debug("completed migration setup running generator and then migrations")
-			return errors.Wrap(app.Run(ctx), "problem running migration operation")
-		},
-	}
-}
-
 func deployDataTransforms() cli.Command {
 	return cli.Command{
 		Name:    "transform",
@@ -141,7 +85,7 @@ func deployDataTransforms() cli.Command {
 			}
 			settings := env.Settings()
 
-			anserConf := &model.Configuration{}
+			anserConf := &migrations.CustomConfiguration{}
 			err = util.ReadFromYAMLFile(migrationConfFn, anserConf)
 			if err != nil {
 				return errors.Wrap(err, "problem parsing configuration file")
@@ -163,7 +107,7 @@ func deployDataTransforms() cli.Command {
 			}
 			defer anserEnv.Close()
 
-			app, err := anser.NewApplication(anserEnv, anserConf)
+			app, err := migrations.NewCustomApplication(anserEnv, anserConf, migrations.CustomMigrationRegistry)
 			if err != nil {
 				return errors.Wrap(err, "problem creating migration application")
 			}
