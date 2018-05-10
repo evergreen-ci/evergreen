@@ -296,7 +296,6 @@ func IsValidOwnerType(in string) bool {
 }
 
 func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
-	const ResourceTypePatch = "PATCH"
 	return Subscription{
 		Type:    ResourceTypePatch,
 		Trigger: "outcome",

@@ -275,7 +275,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		})
 		sub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
 		j.AddError(sub.Upsert())
-		// TODO builds
+		// TODO After EVG:3081 add build subscriptions
 	}
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
