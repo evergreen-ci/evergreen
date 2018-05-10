@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cloudHostReadyJobName = "set-cloud-hosts-readyn"
+const cloudHostReadyJobName = "set-cloud-hosts-ready"
 
 func init() {
 	registry.AddJobType(cloudHostReadyJobName,
