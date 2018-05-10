@@ -92,10 +92,7 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 		}
 	}
 
-	// remove leading @ symbol
-	if strings.HasPrefix(userSettings.SlackUsername, "@") {
-		userSettings.SlackUsername = userSettings.SlackUsername[1:]
-	}
+	userSettings.SlackUsername = strings.TrimPrefix(userSettings.SlackUsername, "@")
 
 	if err = sc.UpdateSettings(u.Username(), userSettings); err != nil {
 		return ResponseData{}, errors.Wrap(err, "Error saving user settings")

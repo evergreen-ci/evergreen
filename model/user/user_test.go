@@ -163,10 +163,12 @@ func (s *UserTestSuite) TestBuildSubscriber() {
 
 	u.Settings.Notifications.PatchFinish = "invalid"
 	sub, err = u.PatchFinishSubscriber()
+	s.Nil(sub)
 	s.EqualError(err, "unknown subscriber preference: invalid")
 
 	u.Settings.Notifications.BuildBreak = "invalid"
 	sub, err = u.BuildBreakSubscriber()
+	s.Nil(sub)
 	s.EqualError(err, "unknown subscriber preference: invalid")
 
 	u.Settings.Notifications.PatchFinish = ""
