@@ -16,33 +16,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-const cloudStatusJobName = "set-cloud-statuses"
+const cloudHostReadyToProvisionJobName = "set-cloud-hosts-ready-to-provision"
 
 func init() {
-	registry.AddJobType(cloudStatusJobName,
-		func() amboy.Job { return makeManagerJob() })
+	registry.AddJobType(cloudHostReadyToProvisionJobName,
+		func() amboy.Job { return makeCloudHostReadyToProvisionJob() })
 }
 
-type cloudStatusJob struct {
+type cloudHostReadyToProvisionJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 }
 
-// NewCloudJob gets statuses for all jobs created by Cloud providers which the Cloud providers'
+// NewCloudHostReadyToProvisionJob gets statuses for all jobs created by Cloud providers which the Cloud providers'
 // APIs have not yet returned all running. It marks the hosts running in the database.
-func NewCloudJob(env evergreen.Environment, id string) amboy.Job {
-	j := makeManagerJob()
-	j.SetID(fmt.Sprintf("%s.%s", cloudStatusJobName, id))
+func NewCloudHostReadyToProvisionJob(env evergreen.Environment, id string) amboy.Job {
+	j := makeCloudHostReadyToProvisionJob()
+	j.SetID(fmt.Sprintf("%s.%s", cloudHostReadyToProvisionJobName, id))
 	j.env = env
 	j.SetPriority(1)
 	return j
 }
 
-func makeManagerJob() *cloudStatusJob {
-	j := &cloudStatusJob{
+func makeCloudHostReadyToProvisionJob() *cloudHostReadyToProvisionJob {
+	j := &cloudHostReadyToProvisionJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    cloudStatusJobName,
+				Name:    cloudHostReadyToProvisionJobName,
 				Version: 1,
 			},
 		},
@@ -52,7 +52,7 @@ func makeManagerJob() *cloudStatusJob {
 	return j
 }
 
-func (j *cloudStatusJob) Run(ctx context.Context) {
+func (j *cloudHostReadyToProvisionJob) Run(ctx context.Context) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -61,7 +61,7 @@ func (j *cloudStatusJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	hostsToCheck, err := host.Find(host.NotRunning())
+	hostsToCheck, err := host.Find(host.Starting())
 	if err != nil {
 		j.AddError(errors.Wrap(err, "problem finding hosts that are not running"))
 		return
@@ -105,19 +105,18 @@ func (j *cloudStatusJob) Run(ctx context.Context) {
 
 // setCloudHostStatus sets the host's status to HostProvisioning if host is running.
 func setCloudHostStatus(ctx context.Context, m cloud.Manager, h host.Host, hostStatus cloud.CloudStatus) error {
-	if hostStatus == cloud.StatusFailed {
-		return errors.WithStack(m.TerminateInstance(ctx, &h, evergreen.User))
+	switch hostStatus {
+	case cloud.StatusFailed:
+		return errors.Wrap(m.TerminateInstance(ctx, &h, evergreen.User), "error terminating instance")
+	case cloud.StatusRunning:
+		return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")
 	}
-	if hostStatus != cloud.StatusRunning {
-		grip.Info(message.Fields{
-			"message": "host not ready for setup",
-			"hostid":  h.Id,
-			"DNS":     h.Host,
-			"distro":  h.Distro.Id,
-			"runner":  "hostinit",
-		})
-
-		return nil
-	}
-	return errors.Wrap(h.SetProvisioning(), "error setting host to provisioning")
+	grip.Info(message.Fields{
+		"message": "host not ready for setup",
+		"hostid":  h.Id,
+		"DNS":     h.Host,
+		"distro":  h.Distro.Id,
+		"runner":  "hostinit",
+	})
+	return nil
 }

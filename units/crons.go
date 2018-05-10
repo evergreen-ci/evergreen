@@ -500,7 +500,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return nil
 		}
 
-		hosts, err := host.Find(host.NeedsProvisioning())
+		hosts, err := host.Find(host.Provisioning())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      setupHostJobName,
@@ -516,29 +516,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
 		}
 
-		return catcher.Resolve()
-	}
-}
-
-func PopulateCloudJobs(env evergreen.Environment, part int) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if flags.HostinitDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "host init disabled",
-				"impact":  "new hosts are not setup or provisioned",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		ts := util.RoundPartOfMinute(part).Format(tsFormat)
-		catcher := grip.NewBasicCatcher()
-		catcher.Add(queue.Put(NewCloudJob(env, ts)))
+		catcher.Add(queue.Put(NewCloudHostReadyToProvisionJob(env, ts)))
 
 		return catcher.Resolve()
 	}

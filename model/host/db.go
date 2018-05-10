@@ -158,14 +158,14 @@ var IsUninitialized = db.Query(
 	bson.M{StatusKey: evergreen.HostUninitialized},
 )
 
-// NotRunning returns a query that finds hosts that we do not yet know to be running.
-func NotRunning() db.Q {
+// Starting returns a query that finds hosts that we do not yet know to be running.
+func Starting() db.Q {
 	return db.Query(bson.M{StatusKey: evergreen.HostStarting})
 }
 
-// NeedsProvisioning returns a query used by the hostinit process to determine hosts that are
+// Provisioning returns a query used by the hostinit process to determine hosts that are
 // started according to the cloud provider, but have not yet been provisioned by Evergreen.
-func NeedsProvisioning() db.Q {
+func Provisioning() db.Q {
 	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
 }
 
