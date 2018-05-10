@@ -476,6 +476,9 @@ tasks:
     name: test-model-testresult
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-trigger
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-user
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -587,6 +590,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-task
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-trigger
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-version

@@ -96,16 +96,16 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 	}
 
 	if err = j.checkDegradedMode(n); err != nil {
-		j.AddError(err)
 		j.AddError(n.MarkError(err))
 		return
 	}
 
 	err = j.send(n)
 	grip.Error(message.WrapError(err, message.Fields{
-		"job_id":          j.ID(),
-		"notification_id": n.ID,
-		"message":         "send failed",
+		"job_id":            j.ID(),
+		"notification_id":   n.ID,
+		"notification_type": n.Subscriber.Type,
+		"message":           "send failed",
 	}))
 	j.AddError(err)
 	j.AddError(n.MarkSent())
@@ -142,8 +142,9 @@ func (j *eventNotificationJob) send(n *notification.Notification) error {
 
 	err = sender.SetErrorHandler(getSendErrorHandler(n))
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":         "failed to set error handler",
-		"notification_id": n.ID,
+		"message":           "failed to set error handler",
+		"notification_id":   n.ID,
+		"notification_type": n.Subscriber.Type,
 	}))
 	sender.Send(c)
 
@@ -193,19 +194,21 @@ func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
 			return
 		}
 		grip.Error(message.WrapError(err, message.Fields{
-			"job":             eventNotificationJobName,
-			"notification_id": n.ID,
-			"source":          "events-processing",
-			"composer":        c.String(),
+			"job":               eventNotificationJobName,
+			"notification_id":   n.ID,
+			"notification_type": n.Subscriber.Type,
+			"source":            "events-processing",
+			"composer":          c.String(),
 		}))
 
 		err = n.MarkError(err)
 		grip.Error(message.WrapError(err, message.Fields{
-			"job":             eventNotificationJobName,
-			"notification_id": n.ID,
-			"source":          "events-processing",
-			"message":         "failed to add error to notification",
-			"composer":        c.String(),
+			"job":               eventNotificationJobName,
+			"notification_id":   n.ID,
+			"notification_type": n.Subscriber.Type,
+			"source":            "events-processing",
+			"message":           "failed to add error to notification",
+			"composer":          c.String(),
 		}))
 	}
 }

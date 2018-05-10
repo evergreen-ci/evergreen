@@ -1,4 +1,4 @@
-package notification
+package trigger
 
 import (
 	"testing"
@@ -36,5 +36,5 @@ func TestNotificationGeneratorFailureScenarios(t *testing.T) {
 	}
 	n, err = gen.generate(e)
 	assert.Empty(n)
-	assert.Error(err, "generator has no payloads, and cannot yield any notifications")
+	assert.EqualError(err, "generator has no payloads, and cannot yield any notifications")
 }

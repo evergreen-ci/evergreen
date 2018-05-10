@@ -1,4 +1,4 @@
-package notification
+package trigger
 
 import (
 	"fmt"
@@ -25,6 +25,9 @@ func TestRegistryItemsAreSane(t *testing.T) {
 			_, ok := set[f]
 			assert.False(ok, fmt.Sprintf("triggers for '%s' has a duplicate function: '%s' index: %d", k, runtime.FuncForPC(f.Pointer()).Name(), i))
 			set[f] = true
+
+			_, ok = registry.prefetch[k]
+			assert.True(ok, "missing prefetch function for resource type: '%s'", k)
 		}
 	}
 }

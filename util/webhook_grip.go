@@ -20,10 +20,11 @@ const (
 )
 
 type EvergreenWebhook struct {
-	NotificationID string `bson:"notification_id"`
-	URL            string `bson:"url"`
-	Secret         []byte `bson:"secret"`
-	Body           []byte `bson:"body"`
+	NotificationID string      `bson:"notification_id"`
+	URL            string      `bson:"url"`
+	Secret         []byte      `bson:"secret"`
+	Body           []byte      `bson:"body"`
+	Headers        http.Header `bson:"headers"`
 }
 
 type evergreenWebhookMessage struct {
@@ -38,13 +39,14 @@ func NewWebhookMessageWithStruct(raw EvergreenWebhook) message.Composer {
 	}
 }
 
-func NewWebhookMessage(id string, url string, secret []byte, body []byte) message.Composer {
+func NewWebhookMessage(id string, url string, secret []byte, body []byte, headers map[string][]string) message.Composer {
 	return &evergreenWebhookMessage{
 		raw: EvergreenWebhook{
 			NotificationID: id,
 			URL:            url,
 			Secret:         secret,
 			Body:           body,
+			Headers:        headers,
 		},
 	}
 }
@@ -61,6 +63,11 @@ func (w *evergreenWebhookMessage) Loggable() bool {
 	}
 	if len(w.raw.URL) == 0 {
 		return false
+	}
+	for k := range w.raw.Headers {
+		if len(w.raw.Headers[k]) == 0 {
+			return false
+		}
 	}
 
 	_, err := url.Parse(w.raw.URL)
@@ -116,6 +123,12 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	hash, err := CalculateHMACHash(raw.Secret, raw.Body)
 	if err != nil {
 		return errors.Wrap(err, "evergreen-webhook failed to calculate hash")
+	}
+
+	for k := range raw.Headers {
+		for i := range raw.Headers[k] {
+			req.Header.Add(k, raw.Headers[k][i])
+		}
 	}
 
 	req.Header.Del(evergreenHMACHeader)
