@@ -153,10 +153,15 @@ functions:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
         EVERGREEN_ALL: "true"
-        GOROOT: "/opt/go1.8/go"
         GOPATH: ${workdir}/gopath
         SETTINGS_OVERRIDE: creds.yml
-      command: bash -c '${build_env} make ${make_args|} ${target}'
+      command: |
+        bash -c
+        'if [ "Windows_NT" == "$OS" ]; then
+          export GOPATH=$(cygpath -m $GOPATH)
+          export SETTINGS_OVERRIDE=$(cygpath -m $SETTINGS_OVERRIDE)
+        fi
+        ${build_env} make ${make_args|} ${target}'
   get-dist-test:
     command: s3.get
     params:
@@ -168,7 +173,11 @@ functions:
   run-cross:
     command: subprocess.exec
     params:
-      command: bash scripts/run-cross.sh "${target}"
+      working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      env:
+        EVGHOME: ${workdir}/evergreen-test
+        SETTINGS_OVERRIDE: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
+      command: make crossTarget=${target} run-cross
   set-up-credentials:
     command: subprocess.exec
     type: setup
@@ -188,8 +197,11 @@ functions:
     - command: subprocess.exec
       type: setup
       params:
-        working_dir: gopath/src/github.com/evergreen-ci/evergreen
-        command: bash scripts/setup-mongodb.sh "${mongodb_url}" "${decompress}"
+        env:
+          MONGODB_URL: ${mongodb_url}
+          DECOMPRESS: ${decompress}
+        working_dir: gopath/src/github.com/evergreen-ci/evergreen/
+        command: make get-mongodb
     - command: subprocess.exec
       type: setup
       params:

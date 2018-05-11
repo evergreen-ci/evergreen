@@ -219,6 +219,9 @@ phony += lint lint-deps build build-race race test coverage coverage-html list-r
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
+run-cross:dist-test
+	tar -zxvf dist-test.tar.gz
+	$(EVGHOME)/bin/test.$(echo $(crossTarget) | sed 's/-/./') --test.v --test.timeout=10m
 # end front-ends
 
 
@@ -327,14 +330,18 @@ clean:
 phony += clean
 # end dependency targets
 
-# mongod utility targets
-start-mongod:
+# mongodb utility targets
+mongodb/.get-mongodb:
+	./scripts/setup-mongodb.sh "$(MONGODB_URL)" "$(DECOMPRESS)"
+get-mongodb: mongodb/.get-mongodb
+	touch $<
+start-mongod: mongodb/.get-mongodb
 	./mongodb/mongod --dbpath ./mongodb/db_files
 	echo "waiting for mongod to start up"
-check-mongod:
+check-mongod: mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	echo "mongod is up"
-#
+# end mongodb targets
 
 # configure special (and) phony targets
 .FORCE:
