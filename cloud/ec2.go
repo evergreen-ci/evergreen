@@ -428,6 +428,10 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+	if err := m.client.Create(m.credentials); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+
 	spotHostIDs := []*string{}
 	onDemandHostIDs := []*string{}
 	instanceIdToHostMap := map[string]string{}
