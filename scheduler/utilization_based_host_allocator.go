@@ -33,7 +33,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		}
 
 		// actual calculation logic is here
-		newHosts, err := numNewHosts(ctx, d, hostAllocatorData.taskQueueItems[name],
+		newHosts, err := evalHostUtilization(ctx, d, hostAllocatorData.taskQueueItems[name],
 			hostAllocatorData.existingDistroHosts[name], hostAllocatorData.freeHostFraction)
 
 		if err != nil {
@@ -55,7 +55,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 // Calculate the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
-func numNewHosts(ctx context.Context, d distro.Distro, taskQueue []model.TaskQueueItem,
+func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model.TaskQueueItem,
 	existingHosts []host.Host, freeHostFraction float64) (int, error) {
 
 	if !d.IsEphemeral() {

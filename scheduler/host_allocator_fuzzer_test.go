@@ -17,24 +17,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-var (
-	taskDurations = []time.Duration{
-		10 * time.Second,
-		1 * time.Minute,
-		5 * time.Minute,
-		10 * time.Minute,
-		15 * time.Minute,
-		20 * time.Minute,
-		30 * time.Minute,
-		1 * time.Hour,
-	}
-	expectedDurationMax       = 1 * time.Hour
-	maxNumTasks               = 100 // max # of tasks in the queue
-	maxRunningHosts           = 100 // max # of hosts running a task
-	maxStartTimeOffsetMinutes = 30  // max time before now that a task has been running
-	maxNumFreeHosts           = 5   // max # of hosts running no task
-	numIterations             = 100 // # of tests to run
-)
+type fuzzerSettings struct {
+	taskDurations             []time.Duration
+	expectedDurationMax       time.Duration
+	maxNumTasks               int // max # of tasks in the queue
+	maxRunningHosts           int // max # of hosts running a task
+	maxStartTimeOffsetMinutes int // max time before now that a task has been running
+	maxNumFreeHosts           int // max # of hosts running no task
+	numIterations             int // # of tests to run
+}
 
 type HostAllocatorFuzzerSuite struct {
 	ctx              context.Context
@@ -46,6 +37,7 @@ type HostAllocatorFuzzerSuite struct {
 	testData         HostAllocatorData
 	soonToBeFree     float64
 	freeHosts        int
+	settings         fuzzerSettings
 
 	suite.Suite
 }
@@ -67,6 +59,24 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 	}
 	s.projectName = "testProject"
 	s.freeHostFraction = 0.5
+	s.settings = fuzzerSettings{
+		taskDurations: []time.Duration{
+			10 * time.Second,
+			1 * time.Minute,
+			5 * time.Minute,
+			10 * time.Minute,
+			15 * time.Minute,
+			20 * time.Minute,
+			30 * time.Minute,
+			1 * time.Hour,
+		},
+		expectedDurationMax:       1 * time.Hour,
+		maxNumTasks:               100,
+		maxRunningHosts:           100,
+		maxStartTimeOffsetMinutes: 30,
+		maxNumFreeHosts:           5,
+		numIterations:             100,
+	}
 }
 
 // randomizeData sets the data that will be randomized for each test run
@@ -75,10 +85,10 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	s.soonToBeFree = 0
 
 	// generate a random number of scheduled tasks with random durations
-	numTasks := rand.Intn(maxNumTasks) + 1
+	numTasks := rand.Intn(s.settings.maxNumTasks) + 1
 	taskQueue := []model.TaskQueueItem{}
 	for i := 0; i < numTasks; i++ {
-		duration := rand.Int63n(int64(expectedDurationMax))
+		duration := rand.Int63n(int64(s.settings.expectedDurationMax))
 		queueTask := model.TaskQueueItem{
 			ExpectedDuration: time.Duration(duration),
 		}
@@ -86,11 +96,11 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	}
 
 	// generate a random number of hosts running tasks
-	numHosts := rand.Intn(maxRunningHosts) + 1
+	numHosts := rand.Intn(s.settings.maxRunningHosts) + 1
 	hosts := []host.Host{}
 	for i := 0; i < numHosts; i++ {
-		duration := taskDurations[rand.Intn(len(taskDurations))]
-		offset := rand.Intn(maxStartTimeOffsetMinutes)
+		duration := s.settings.taskDurations[rand.Intn(len(s.settings.taskDurations))]
+		offset := rand.Intn(s.settings.maxStartTimeOffsetMinutes)
 		t := task.Task{
 			Id:               fmt.Sprintf("t%d", i),
 			Project:          s.projectName,
@@ -114,7 +124,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	}
 
 	// generate some number of free hosts
-	s.freeHosts = rand.Intn(maxNumFreeHosts) + 1
+	s.freeHosts = rand.Intn(s.settings.maxNumFreeHosts) + 1
 	for i := 0; i < s.freeHosts; i++ {
 		h := host.Host{
 			Id:          fmt.Sprintf("hf%d", i),
@@ -138,7 +148,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 }
 
 func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
-	for i := 0; i < numIterations; i++ {
+	for i := 0; i < s.settings.numIterations; i++ {
 		s.randomizeData()
 		hosts, err := s.allocator(s.ctx, s.testData)
 		s.NoError(err)
