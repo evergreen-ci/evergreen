@@ -93,15 +93,6 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 	return uis.Settings
 }
 
-// withPluginUser takes a request and makes the user accessible to plugin code.
-func withPluginUser(next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		u := GetUser(r)
-		r = plugin.SetUser(u, r)
-		next.ServeHTTP(w, r)
-	}
-}
-
 // requireAdmin takes in a request handler and returns a wrapped version which verifies that requests are
 // authenticated and that the user is either a super user or is part of the project context's project's admins.
 func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {

@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
@@ -59,11 +58,8 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// grab the task and user info to fill out the ticket
-	u := plugin.GetUser(r)
-	if u == nil {
-		util.WriteJSON(w, http.StatusUnauthorized, "must be logged in to file a ticket")
-		return
-	}
+	u := MustHaveUser(r)
+
 	// Find information about the task
 	t, err := task.FindOne(task.ById(input.TaskId))
 	if err != nil {
