@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -32,9 +31,6 @@ type Plugin interface {
 
 type UIPlugin interface {
 	Plugin
-
-	// Install any server-side handlers needed by this plugin in the UI server
-	GetUIHandler() http.Handler
 
 	// GetPanelConfig returns a pointer to a plugin's UI configuration.
 	// or an error, if an error occur while trying to generate the config

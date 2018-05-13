@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -48,14 +48,17 @@ type UIServer struct {
 	RootURL string
 
 	//authManager
-	UserManager     auth.UserManager
-	Settings        evergreen.Settings
-	CookieStore     *sessions.CookieStore
-	PluginTemplates map[string]*htmlTemplate.Template
-	clientConfig    *evergreen.ClientConfig
-	plugin.PanelManager
+	UserManager        auth.UserManager
+	Settings           evergreen.Settings
+	CookieStore        *sessions.CookieStore
+	PluginTemplates    map[string]*htmlTemplate.Template
+	clientConfig       *evergreen.ClientConfig
+	jiraHandler        thirdparty.JiraHandler
+	buildBaronProjects map[string]evergreen.BuildBaronProject
 
 	queue amboy.Queue
+
+	plugin.PanelManager
 }
 
 // ViewData contains common data that is provided to all Evergreen pages
@@ -93,6 +96,12 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (
 	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
 
 	uis.PluginTemplates = map[string]*htmlTemplate.Template{}
+
+	uis.buildBaronProjects = bbGetConfig(settings)
+	uis.jiraHandler = thirdparty.NewJiraHandler(
+		settings.Jira.GetHostURL(),
+		settings.Jira.Username,
+		settings.Jira.Password)
 
 	return uis, nil
 }
@@ -261,6 +270,24 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin").Subrouter()
+	rootPluginRouter.HandleFunc("/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
+	rootPluginRouter.HandleFunc("/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
+	rootPluginRouter.HandleFunc("/buildbaron/note/{task_id}", bbGetNote).Methods("GET")
+	rootPluginRouter.HandleFunc("/buildbaron/note/{task_id}", bbSaveNote).Methods("PUT")
+	rootPluginRouter.HandleFunc("/buildbaron/file_ticket", uis.bbFileTicket).Methods("POST")
+	rootPluginRouter.HandleFunc("/manifest/get/{project_id}/{revision}", uis.GetManifest)
+	rootPluginRouter.HandleFunc("/dashboard/tasks/project/{project_id}/version/{version_id}", perfDashGetTasksForVersion)
+	rootPluginRouter.HandleFunc("/json/version", perfGetVersion)
+	rootPluginRouter.HandleFunc("/json/version/{version_id}/{name}", perfGetTasksForVersion)
+	rootPluginRouter.HandleFunc("/json/version/latest/{project_id}/{name}", perfGetTasksForLatestVersion)
+	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/", perfGetTaskById)
+	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/tags", perfGetTags).Methods("POST", "DELETE")
+	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/tag", perfHandleTaskTag)
+	rootPluginRouter.HandleFunc("/json/tags/", perfGetProjectTags)
+	rootPluginRouter.HandleFunc("/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
+	rootPluginRouter.HandleFunc("/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
+	rootPluginRouter.HandleFunc("/json/history/{task_id}/{name}", perfGetTaskHistory)
+
 	for _, pl := range plugin.UIPlugins {
 		// get the settings
 		pluginSettings := uis.Settings.Plugins[pl.Name()]
@@ -286,7 +313,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 			continue
 		}
 
-		// create a root path for the plugin based on its name
 		plRouter := rootPluginRouter.PathPrefix(fmt.Sprintf("/%v/", pl.Name())).Subrouter()
 
 		// set up a fileserver in plugin's static root, if one is provided
@@ -297,10 +323,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
 				http.FileServer(http.Dir(pluginAssetsPath))),
 		)
-
-		pluginUIhandler := pl.GetUIHandler()
-
-		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), withPluginUser(pluginUIhandler))
 	}
 
 	return nil

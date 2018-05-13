@@ -473,7 +473,6 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 func getClientConfig(baseURL string) (*ClientConfig, error) {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
-
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 
 	if _, err := os.Stat(root); os.IsNotExist(err) {
