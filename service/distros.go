@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 )
 
@@ -83,7 +84,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		for _, e := range vErrs {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(e.Error()))
 		}
-		uis.WriteJSON(w, http.StatusBadRequest, vErrs)
+		gimlet.WriteJSONError(w, vErrs)
 		return
 	}
 
@@ -111,7 +112,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		message = fmt.Sprintf("Distro %v successfully updated and running hosts decommissioned", id)
 	}
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(message))
-	uis.WriteJSON(w, http.StatusOK, "distro successfully updated")
+	gimlet.WriteJSON(w, "distro successfully updated")
 }
 
 func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +138,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 	event.LogDistroRemoved(id, u.Username(), d)
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully removed.", id)))
-	uis.WriteJSON(w, http.StatusOK, "distro successfully removed")
+	gimlet.WriteJSON(w, "distro successfully removed")
 }
 
 func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +152,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, d)
+	gimlet.WriteJSON(w, d)
 }
 
 func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
@@ -195,21 +196,21 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		for _, e := range vErrs {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(e.Error()))
 		}
-		uis.WriteJSON(w, http.StatusBadRequest, vErrs)
+		gimlet.WriteJSONError(w, vErrs)
 		return
 	}
 
 	if err = d.Insert(); err != nil {
 		message := fmt.Sprintf("error inserting distro '%v': %v", d.Id, err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-		uis.WriteJSON(w, http.StatusInternalServerError, err)
+		gimlet.WriteJSONInternalError(w, err)
 		return
 	}
 
 	event.LogDistroAdded(d.Id, u.Username(), d)
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully added.", d.Id)))
-	uis.WriteJSON(w, http.StatusOK, "distro successfully added")
+	gimlet.WriteJSON(w, "distro successfully added")
 }
 
 type sortableDistro struct {

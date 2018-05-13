@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -522,7 +523,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		uis.WriteJSON(w, http.StatusOK, loggedEvents)
+		gimlet.WriteJSON(w, loggedEvents)
 		return
 	} else {
 		taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, GetUser(r) != nil)
@@ -531,7 +532,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		wrapper.LogMessages = taskLogs
-		uis.WriteJSON(w, http.StatusOK, wrapper)
+		gimlet.WriteJSON(w, wrapper)
 	}
 }
 
@@ -634,7 +635,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "abort":
 		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
@@ -647,7 +648,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "set_active":
 		active := putParams.Active
@@ -662,7 +663,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "set_priority":
 		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
@@ -690,10 +691,10 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	default:
-		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action: "+putParams.Action)
+		gimlet.WriteJSONError(w, "Unrecognized action: "+putParams.Action)
 	}
 }
 

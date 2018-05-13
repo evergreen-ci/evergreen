@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -27,7 +28,7 @@ func (uis *UIServer) getSchedulerLogs(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	uis.WriteJSON(w, http.StatusOK, loggedEvents)
+	gimlet.WriteJSON(w, loggedEvents)
 }
 
 func (uis *UIServer) schedulerStatsPage(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +64,7 @@ func (uis *UIServer) schedulerHostUtilization(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	uis.WriteJSON(w, http.StatusOK, bucketData)
+	gimlet.WriteJSON(w, bucketData)
 }
 
 func (uis *UIServer) averageSchedulerStats(w http.ResponseWriter, r *http.Request) {
@@ -98,5 +99,5 @@ func (uis *UIServer) averageSchedulerStats(w http.ResponseWriter, r *http.Reques
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	uis.WriteJSON(w, http.StatusOK, avgBuckets)
+	gimlet.WriteJSON(w, avgBuckets)
 }

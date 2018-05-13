@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -27,7 +28,7 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
@@ -130,5 +131,5 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		PageNum     int
 	}{versionsMap, uiPatches, pageNum}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }

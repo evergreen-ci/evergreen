@@ -16,6 +16,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -66,12 +67,12 @@ func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, hosts)
+	gimlet.WriteJSON(w, hosts)
 }
 
 func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	uis.WriteJSON(w, http.StatusOK, user.PublicKeys())
+	gimlet.WriteJSON(w, user.PublicKeys())
 }
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +92,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 			})
 		}
 	}
-	uis.WriteJSON(w, http.StatusOK, distroList)
+	gimlet.WriteJSON(w, distroList)
 }
 
 func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +133,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host spawned"))
-	uis.WriteJSON(w, http.StatusOK, "Host successfully spawned")
+	gimlet.WriteJSON(w, "Host successfully spawned")
 }
 
 func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +171,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	switch *updateParams.Action {
 	case HostTerminate:
 		if h.Status == evergreen.HostTerminated {
-			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", h.Id))
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is already terminated", h.Id))
 			return
 		}
 		var cancel func()
@@ -181,7 +182,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		uis.WriteJSON(w, http.StatusOK, "host terminated")
+		gimlet.WriteJSON(w, "host terminated")
 		return
 
 	case HostPasswordUpdate:
@@ -199,7 +200,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host RDP password successfully updated."))
-		uis.WriteJSON(w, http.StatusOK, "Successfully updated host password")
+		gimlet.WriteJSON(w, "Successfully updated host password")
 		return
 
 	case HostExpirationExtension:
@@ -221,7 +222,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration "+
 			"extension successful; %v will expire on %v", hostId,
 			futureExpiration.Format(time.RFC850))))
-		uis.WriteJSON(w, http.StatusOK, "Successfully extended host expiration time")
+		gimlet.WriteJSON(w, "Successfully extended host expiration time")
 		return
 
 	default:

@@ -16,6 +16,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy/job"
@@ -156,7 +157,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, apiSubscriptions}
 
 	// the project context has all projects so make the ui list using all projects
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 // ProjectNotFound calls WriteHTML with the invalid-project page. It should be called whenever the
@@ -440,7 +441,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		AllProjects []model.ProjectRef
 	}{allProjects}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
@@ -497,7 +498,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		AllProjects []model.ProjectRef
 	}{true, id, allProjects}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 // setRevision sets the latest revision in the Repository
@@ -545,7 +546,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, nil)
+	gimlet.WriteJSON(w, nil)
 }
 
 func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) {

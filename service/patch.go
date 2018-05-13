@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -186,14 +187,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Builds and tasks successfully added to patch."))
-		uis.WriteJSON(w, http.StatusOK, struct {
+		gimlet.WriteJSON(w, struct {
 			VersionId string `json:"version"`
 		}{projCtx.Version.Id})
 
 	} else {
 		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
 		if err != nil {
-			uis.WriteJSON(w, http.StatusBadRequest, err)
+			gimlet.WriteJSONError(w, err)
 			return
 		}
 		projCtx.Patch.Activated = true
@@ -229,7 +230,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
-		uis.WriteJSON(w, http.StatusOK, struct {
+		gimlet.WriteJSON(w, struct {
 			VersionId string `json:"version"`
 		}{ver.Id})
 	}

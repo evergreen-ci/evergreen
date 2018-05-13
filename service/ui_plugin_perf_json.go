@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -20,7 +21,7 @@ func perfGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, jsonForTasks)
+	gimlet.WriteJSON(w, jsonForTasks)
 }
 
 func perfGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
@@ -46,12 +47,12 @@ func perfGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 // getVersion returns a StatusOK if the route is hit
 func perfGetVersion(w http.ResponseWriter, r *http.Request) {
-	util.WriteJSON(w, http.StatusOK, "1")
+	gimlet.WriteJSON(w, "1")
 }
 
 // FIXME Returns random object that matches conditions
@@ -72,10 +73,10 @@ func perfGetCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		util.WriteJSON(w, http.StatusOK, jsonForTask)
+		gimlet.WriteJSON(w, jsonForTask)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, jsonForTask)
+	gimlet.WriteJSON(w, jsonForTask)
 }
 
 func perfGetTaskHistory(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +95,7 @@ func perfGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, history)
+	gimlet.WriteJSON(w, history)
 }
 
 // uiGetTaskById sends back a JSONTask with the corresponding task id.
@@ -110,7 +111,7 @@ func perfGetTaskById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "{}", http.StatusNotFound)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, jsonForTask)
+	gimlet.WriteJSON(w, jsonForTask)
 }
 
 func perfGetTags(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +121,7 @@ func perfGetTags(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, tags)
+	gimlet.WriteJSON(w, tags)
 }
 
 // handleTaskTags will update the TaskJSON's tags depending on the request.
@@ -155,7 +156,7 @@ func perfHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, http.StatusOK, "")
+	gimlet.WriteJSON(w, "")
 }
 
 // Wrapper `GetDistinctTagNames` model function
@@ -175,7 +176,7 @@ func perfGetProjectTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 func perfGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
@@ -196,8 +197,8 @@ func perfGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		util.WriteJSON(w, http.StatusOK, jsonForTask)
+		gimlet.WriteJSON(w, jsonForTask)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, jsonForTask)
+	gimlet.WriteJSON(w, jsonForTask)
 }

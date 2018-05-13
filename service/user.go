@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -61,7 +62,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uis.setLoginToken(token, w)
-	uis.WriteJSON(w, http.StatusOK, map[string]string{})
+	gimlet.WriteJSON(w, map[string]string{})
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +78,7 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed saving key"))
 		return
 	}
-	uis.WriteJSON(w, http.StatusOK, struct {
+	gimlet.WriteJSON(w, struct {
 		Key string `json:"key"`
 	}{newKey})
 }

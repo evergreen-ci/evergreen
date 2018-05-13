@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -137,7 +138,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		msg = NewSuccessFlash(fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status))
 	}
 	PushFlash(uis.CookieStore, r, w, msg)
-	uis.WriteJSON(w, http.StatusOK, HostStatusWriteConfirm)
+	gimlet.WriteJSON(w, HostStatusWriteConfirm)
 }
 
 func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {

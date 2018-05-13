@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -179,7 +180,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	default:
-		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action")
+		gimlet.WriteJSONError(w, "Unrecognized action")
 		return
 	}
 
@@ -204,7 +205,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updatedBuild.Tasks = uiTasks
-	uis.WriteJSON(w, http.StatusOK, updatedBuild)
+	gimlet.WriteJSON(w, updatedBuild)
 }
 
 func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
@@ -277,5 +278,5 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteJSON(w, http.StatusOK, history)
+	gimlet.WriteJSON(w, history)
 }

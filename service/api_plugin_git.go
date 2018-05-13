@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -25,7 +26,7 @@ func (as *APIServer) gitServePatch(w http.ResponseWriter, r *http.Request) {
 			errors.Errorf("no patch found for task %s", task.Id))
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, patch)
+	gimlet.WriteJSON(w, patch)
 }
 
 func (as *APIServer) gitServePatchFile(w http.ResponseWriter, r *http.Request) {

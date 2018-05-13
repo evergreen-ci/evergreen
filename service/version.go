@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -196,7 +197,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	default:
-		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Unrecognized action: %v", jsonMap.Action))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Unrecognized action: %v", jsonMap.Action))
 		return
 	}
 
@@ -238,7 +239,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		uiBuilds = append(uiBuilds, buildAsUI)
 	}
 	versionAsUI.Builds = uiBuilds
-	uis.WriteJSON(w, http.StatusOK, versionAsUI)
+	gimlet.WriteJSON(w, versionAsUI)
 }
 
 // addFailedTests fetches the tasks that failed from the database and attaches
@@ -328,7 +329,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		versionAsUI.Builds = uiBuilds
 	}
-	uis.WriteJSON(w, http.StatusOK, versions)
+	gimlet.WriteJSON(w, versions)
 }
 
 //versionFind redirects to the correct version page based on the gitHash and versionId given.
@@ -346,11 +347,11 @@ func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(foundVersions) == 0 {
-		uis.WriteJSON(w, http.StatusNotFound, fmt.Sprintf("Version Not Found: %v - %v", id, revision))
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("Version Not Found: %v - %v", id, revision))
 		return
 	}
 	if len(foundVersions) > 1 {
-		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Multiple versions found: %v - %v", id, revision))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Multiple versions found: %v - %v", id, revision))
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/version/%v", foundVersions[0].Id), http.StatusFound)
