@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -341,7 +342,7 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		uis.WriteJSON(w, code, struct {
+		gimlet.WriteJSONResponse(w, code, struct {
 			Error string `json:"error"`
 		}{err.Error()})
 	} else {
