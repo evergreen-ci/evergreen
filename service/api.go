@@ -24,7 +24,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -40,7 +39,6 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	*render.Render
 	UserManager  auth.UserManager
 	Settings     evergreen.Settings
 	clientConfig *evergreen.ClientConfig
@@ -61,7 +59,6 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, 
 	}
 
 	as := &APIServer{
-		Render:       render.New(render.Options{}),
 		UserManager:  authManager,
 		Settings:     *settings,
 		clientConfig: clientConfig,
