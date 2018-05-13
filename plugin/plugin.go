@@ -17,10 +17,6 @@ var (
 	UIPlugins []UIPlugin
 )
 
-type pluginTaskContext int
-
-const pluginTaskContextKey pluginTaskContext = 0
-
 // Plugin defines the interface that all evergreen plugins must implement in order
 // to register themselves with Evergreen. A plugin must also implement one of the
 // PluginCommand or UIPlugin interfaces in order to do useful work.
