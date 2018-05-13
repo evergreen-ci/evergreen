@@ -80,9 +80,7 @@ func (r *localWorkers) Start(ctx context.Context) error {
 	grip.Debugf("running %d workers", r.size)
 
 	for w := 1; w <= r.size; w++ {
-		go func() {
-			worker(workerCtx, jobs, r.queue, &r.wg)
-		}()
+		go worker(workerCtx, jobs, r.queue, &r.wg)
 		grip.Debugf("started worker %d of %d waiting for jobs", w, r.size)
 	}
 

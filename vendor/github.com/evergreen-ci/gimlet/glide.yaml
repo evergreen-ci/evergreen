@@ -1,4 +1,4 @@
-package: github.com/tychoish/gimlet
+package: github.com/evergreen-ci/gimlet
 import:
 - package: github.com/codegangsta/negroni
 - package: github.com/gorilla/mux

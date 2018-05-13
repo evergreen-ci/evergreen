@@ -34,14 +34,14 @@ func WriteYAML(w http.ResponseWriter, data interface{}) {
 
 // WriteErrorYAML is a helper method to write YAML data to the body of
 // an HTTP request and return 400 (user error.)
-func WriteErrorYAML(w http.ResponseWriter, data interface{}) {
+func WriteYAMLError(w http.ResponseWriter, data interface{}) {
 	// 400
 	WriteYAMLResponse(w, http.StatusBadRequest, data)
 }
 
 // WriteInternalErrorYAML is a helper method to write YAML data to the
 // body of an HTTP request and return 500 (internal error.)
-func WriteInternalErrorYAML(w http.ResponseWriter, data interface{}) {
+func WriteYAMLInternalError(w http.ResponseWriter, data interface{}) {
 	// 500
 	WriteYAMLResponse(w, http.StatusInternalServerError, data)
 }

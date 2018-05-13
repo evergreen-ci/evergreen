@@ -17,7 +17,7 @@ func WriteBinary(w http.ResponseWriter, data interface{}) {
 
 // WriteErrorBinary write the data, converted to a byte slice as possible, to the response body with a
 // bad-request (e.g. 400) response code.
-func WriteErrorBinary(w http.ResponseWriter, data interface{}) {
+func WriteBinaryError(w http.ResponseWriter, data interface{}) {
 	// 400
 	WriteBinaryResponse(w, http.StatusBadRequest, data)
 }
@@ -25,7 +25,7 @@ func WriteErrorBinary(w http.ResponseWriter, data interface{}) {
 // WriteInternalErrorBinary write the data, converted to a byte slice
 // as possible, to the response body with an internal server error
 // (e.g. 500) response code.
-func WriteInternalErrorBinary(w http.ResponseWriter, data interface{}) {
+func WriteBinaryInternalError(w http.ResponseWriter, data interface{}) {
 	// 500
 	WriteBinaryResponse(w, http.StatusInternalServerError, data)
 }

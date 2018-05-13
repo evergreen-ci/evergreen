@@ -20,14 +20,14 @@ func WriteText(w http.ResponseWriter, data interface{}) {
 
 // WriteErrorText write the data, converted to text as possible, to the response body with a
 // bad-request (e.g. 400) response code.
-func WriteErrorText(w http.ResponseWriter, data interface{}) {
+func WriteTextError(w http.ResponseWriter, data interface{}) {
 	// 400
 	WriteTextResponse(w, http.StatusBadRequest, data)
 }
 
 // WriteInternalErrorText write the data, converted to text as possible, to the response body with an
 // internal server error (e.g. 500) response code.
-func WriteInternalErrorText(w http.ResponseWriter, data interface{}) {
+func WriteTextInternalError(w http.ResponseWriter, data interface{}) {
 	// 500
 	WriteTextResponse(w, http.StatusInternalServerError, data)
 }
