@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -73,32 +72,11 @@ type ViewData struct {
 }
 
 func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
-	uis := &UIServer{}
-	db.SetGlobalSessionProvider(settings.SessionFactory())
-
-	if err := settings.Validate(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	uis.Settings = *settings
-	uis.Home = home
-	uis.queue = queue
 
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, err
 	}
-	uis.UserManager = userManager
-
-	uis.clientConfig = evergreen.GetEnvironment().ClientConfig()
-
-	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
-
-	uis.buildBaronProjects = bbGetConfig(settings)
-	uis.jiraHandler = thirdparty.NewJiraHandler(
-		settings.Jira.GetHostURL(),
-		settings.Jira.Username,
-		settings.Jira.Password)
 
 	functions, err := MakeTemplateFuncs(fo, settings.SuperUsers)
 	if err != nil {
@@ -110,8 +88,22 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 		DisableCache: !settings.Ui.CacheTemplates,
 		Functions:    functions,
 	}
-	uis.render = gimlet.NewHTMLRenderer(ropts)
-	uis.renderText = gimlet.NewTextRenderer(ropts)
+
+	uis := &UIServer{
+		Settings:           *settings,
+		queue:              queue,
+		Home:               home,
+		UserManager:        userManager,
+		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
+		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
+		buildBaronProjects: bbGetConfig(settings),
+		render:             gimlet.NewHTMLRenderer(ropts),
+		renderText:         gimlet.NewTextRenderer(ropts),
+		jiraHandler: thirdparty.NewJiraHandler(
+			settings.Jira.GetHostURL(),
+			settings.Jira.Username,
+			settings.Jira.Password),
+	}
 
 	return uis, nil
 }
