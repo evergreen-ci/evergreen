@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -137,47 +136,4 @@ func (s *UserTestSuite) TestFindByGithubUID() {
 	u, err = FindByGithubUID(-1)
 	s.NoError(err)
 	s.Nil(u)
-}
-
-func (s *UserTestSuite) TestBuildSubscriber() {
-	u := &DBUser{
-		Id:           "Test2",
-		EmailAddress: "a@b.invalid",
-		Settings: UserSettings{
-			SlackUsername: "test2",
-			Notifications: NotificationPreferences{
-				BuildBreak:  PreferenceEmail,
-				PatchFinish: PreferenceSlack,
-			},
-		},
-	}
-	sub, err := u.BuildBreakSubscriber()
-	s.NoError(err)
-	s.Require().NotNil(sub)
-	s.Equal(event.EmailSubscriberType, sub.Type)
-
-	sub, err = u.PatchFinishSubscriber()
-	s.NoError(err)
-	s.Require().NotNil(sub)
-	s.Equal(event.SlackSubscriberType, sub.Type)
-
-	u.Settings.Notifications.PatchFinish = "invalid"
-	sub, err = u.PatchFinishSubscriber()
-	s.Nil(sub)
-	s.EqualError(err, "unknown subscriber preference: invalid")
-
-	u.Settings.Notifications.BuildBreak = "invalid"
-	sub, err = u.BuildBreakSubscriber()
-	s.Nil(sub)
-	s.EqualError(err, "unknown subscriber preference: invalid")
-
-	u.Settings.Notifications.PatchFinish = ""
-	sub, err = u.PatchFinishSubscriber()
-	s.Nil(sub)
-	s.NoError(err)
-
-	u.Settings.Notifications.BuildBreak = ""
-	sub, err = u.BuildBreakSubscriber()
-	s.Nil(sub)
-	s.NoError(err)
 }
