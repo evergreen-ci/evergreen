@@ -184,10 +184,10 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *
 			newTVPairsForNewVariants = appendTasks(newTVPairsForNewVariants, bv, p)
 		}
 	}
-	if err := AddNewTasks(true, v, p, newTVPairsForExistingVariants); err != nil {
+	if err := AddNewTasks(true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
-	if err := AddNewBuilds(true, v, p, newTVPairsForNewVariants); err != nil {
+	if err := AddNewBuilds(true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
 	return nil

@@ -129,6 +129,8 @@ type Task struct {
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
+	// GeneratedBy, if present, is the ID of the task that generated this task.
+	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning
