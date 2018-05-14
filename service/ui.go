@@ -26,13 +26,7 @@ import (
 )
 
 const (
-	ProjectKey        string = "projectKey"
 	ProjectCookieName string = "mci-project-cookie"
-
-	ProjectUnknown string = "Unknown Project"
-
-	// Format string for when a project is not found
-	ProjectNotFoundFormat string = "Project '%v' not found"
 )
 
 // UIServer provides a web interface for Evergreen.

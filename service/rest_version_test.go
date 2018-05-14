@@ -19,7 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/urfave/negroni"
@@ -40,10 +40,11 @@ func TestGetRecentVersions(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()
@@ -247,7 +248,7 @@ func TestGetVersionInfo(t *testing.T) {
 	}
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
@@ -352,10 +353,11 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()
@@ -447,10 +449,11 @@ func TestActivateVersion(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()
@@ -592,10 +595,11 @@ func TestGetVersionStatus(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()
