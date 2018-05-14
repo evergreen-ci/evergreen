@@ -494,7 +494,6 @@ mciModule.controller('PerfController', function PerfController(
         var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
           function(resp) {
             $scope.trendSamples = new TrendSamples(resp.data);
-            return 1
           })
 
         // Once trend chart data and change points get loaded
