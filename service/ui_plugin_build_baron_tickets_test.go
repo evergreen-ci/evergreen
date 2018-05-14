@@ -1,4 +1,4 @@
-package buildbaron
+package service
 
 import (
 	"testing"

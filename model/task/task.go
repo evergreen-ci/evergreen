@@ -2,7 +2,9 @@ package task
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -32,10 +34,17 @@ const (
 	// if we have no data on a given task, default to 10 minutes so we
 	// have some new hosts spawned
 	defaultTaskDuration = 10 * time.Minute
+
+	// length of time to cache the expected duration in the task document
+	predictionTTL = 15 * time.Minute
 )
 
 var (
 	AgentHeartbeat = "heartbeat"
+
+	// A regex that matches either / or \ for splitting directory paths
+	// on either windows or linux paths.
+	eitherSlash *regexp.Regexp = regexp.MustCompile(`[/\\]`)
 )
 
 type Task struct {
@@ -1405,7 +1414,7 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 
 func (t *Task) FetchExpectedDuration() time.Duration {
 	if t.DurationPrediction.TTL == 0 {
-		t.DurationPrediction.TTL = util.JitterInterval(15 * time.Minute)
+		t.DurationPrediction.TTL = util.JitterInterval(predictionTTL)
 	}
 
 	if t.DurationPrediction.Value == 0 && t.ExpectedDuration != 0 {
@@ -1496,4 +1505,29 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 	case evergreen.TaskInactive:
 		tsc.Inactive++
 	}
+}
+
+const jqlBFQuery = "(project in (%v)) and ( %v ) order by updatedDate desc"
+
+// Generates a jira JQL string from the task
+// When we search in jira for a task we search in the specified JIRA project
+// If there are any test results, then we only search by test file
+// name of all of the failed tests.
+// Otherwise we search by the task name.
+func (t *Task) GetJQL(searchProjects []string) string {
+	var jqlParts []string
+	var jqlClause string
+	for _, testResult := range t.LocalTestResults {
+		if testResult.Status == evergreen.TestFailedStatus {
+			fileParts := eitherSlash.Split(testResult.TestFile, -1)
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", fileParts[len(fileParts)-1]))
+		}
+	}
+	if jqlParts != nil {
+		jqlClause = strings.Join(jqlParts, " or ")
+	} else {
+		jqlClause = fmt.Sprintf("text~\"%v\"", t.DisplayName)
+	}
+
+	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }

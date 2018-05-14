@@ -62,7 +62,7 @@ func startHosts(ctx context.Context, settings *evergreen.Settings) error {
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
 func setupReadyHosts(ctx context.Context, settings *evergreen.Settings) error {
 	// find all hosts in the uninitialized state
-	uninitializedHosts, err := host.Find(host.NeedsProvisioning())
+	uninitializedHosts, err := host.Find(host.Starting())
 	if err != nil {
 		return errors.Wrap(err, "error fetching starting hosts")
 	}
@@ -117,21 +117,6 @@ func TestSetupReadyHosts(t *testing.T) {
 				instance.IsSSHReachable = true
 				mockCloud.Set(id, instance)
 			}
-			Convey("when running setup", func() {
-				So(setupReadyHosts(ctx, conf), ShouldBeNil)
-
-				Convey("then all of the hosts should be terminated", func() {
-					for instance := range mockCloud.IterInstances() {
-						So(instance.Status, ShouldEqual, cloud.StatusTerminated)
-					}
-					for i := range hostsForTest {
-						h := hostsForTest[i]
-						dbHost, err := host.FindOne(host.ById(h.Id))
-						So(err, ShouldBeNil)
-						So(dbHost.Status, ShouldEqual, evergreen.HostTerminated)
-					}
-				})
-			})
 		})
 
 		Convey("and all of the hosts are ready with properly set fields", func() {
@@ -164,110 +149,6 @@ func TestSetupReadyHosts(t *testing.T) {
 
 }
 
-func TestHostIsReady(t *testing.T) {
-	conf := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, conf, "TestHostIsReady")
-	mockCloud := cloud.GetMockProvider()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	Convey("When hosts are spawned", t, func() {
-		testutil.HandleTestingErr(
-			db.ClearCollections(host.Collection), t, "error clearing test collections")
-		mockCloud.Reset()
-
-		hostsForTest := make([]host.Host, 10)
-		// Spawn 10 hosts
-		for i := 0; i < 10; i++ {
-			mockHost, err := spawnMockHost(ctx)
-			So(err, ShouldBeNil)
-			hostsForTest[i] = *mockHost
-		}
-		So(mockCloud.Len(), ShouldEqual, 10)
-
-		Convey("and none of the hosts are ready", func() {
-			for id := range mockCloud.IterIDs() {
-				instance := mockCloud.Get(id)
-				instance.Status = cloud.StatusInitializing
-				instance.DNSName = "evergreen.example.net"
-				mockCloud.Set(id, instance)
-			}
-
-			Convey("then checking for readiness should return false", func() {
-				for i := range hostsForTest {
-					h := hostsForTest[i]
-					ready, err := isHostReady(ctx, &h, conf)
-					So(err, ShouldBeNil)
-					So(ready, ShouldBeFalse)
-				}
-
-			})
-		})
-		Convey("and all of the hosts are ready", func() {
-			for id := range mockCloud.IterIDs() {
-				instance := mockCloud.Get(id)
-				instance.Status = cloud.StatusRunning
-				mockCloud.Set(id, instance)
-			}
-			Convey("and all of the hosts fields are properly set", func() {
-				for id := range mockCloud.IterIDs() {
-					instance := mockCloud.Get(id)
-					instance.DNSName = "dnsName"
-					instance.IsSSHReachable = true
-					mockCloud.Set(id, instance)
-				}
-				Convey("then checking for readiness should return true", func() {
-					for i := range hostsForTest {
-						h := hostsForTest[i]
-						ready, err := isHostReady(ctx, &h, conf)
-						So(err, ShouldBeNil)
-						So(ready, ShouldBeTrue)
-					}
-
-				})
-			})
-			Convey("and dns is not set", func() {
-				for id := range mockCloud.IterIDs() {
-					instance := mockCloud.Get(id)
-					instance.IsSSHReachable = true
-					mockCloud.Set(id, instance)
-				}
-				Convey("then checking for readiness should error", func() {
-					for i := range hostsForTest {
-						h := hostsForTest[i]
-						ready, err := isHostReady(ctx, &h, conf)
-						So(err, ShouldNotBeNil)
-						So(ready, ShouldBeFalse)
-					}
-
-				})
-			})
-		})
-		Convey("and all of the hosts failed", func() {
-
-			for id := range mockCloud.IterIDs() {
-				instance := mockCloud.Get(id)
-				instance.Status = cloud.StatusFailed
-				mockCloud.Set(id, instance)
-			}
-
-			Convey("then checking for readiness should terminate", func() {
-				for i := range hostsForTest {
-					h := hostsForTest[i]
-					ready, err := isHostReady(ctx, &h, conf)
-					So(err, ShouldNotBeNil)
-					So(ready, ShouldBeFalse)
-					So(h.Status, ShouldEqual, evergreen.HostTerminated)
-				}
-				for instance := range mockCloud.IterInstances() {
-					So(instance.Status, ShouldEqual, cloud.StatusTerminated)
-				}
-			})
-		})
-	})
-
-}
-
 func spawnMockHost(ctx context.Context) (*host.Host, error) {
 	mockDistro := distro.Distro{
 		Id:       "mock_distro",
@@ -282,7 +163,7 @@ func spawnMockHost(ctx context.Context) (*host.Host, error) {
 		UserHost: false,
 	}
 
-	cloudManager, err := cloud.GetCloudManager(ctx, evergreen.ProviderNameMock, testutil.TestConfig())
+	cloudManager, err := cloud.GetManager(ctx, evergreen.ProviderNameMock, testutil.TestConfig())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// vsphereManager implements the CloudManager interface for vSphere.
+// vsphereManager implements the Manager interface for vSphere.
 type vsphereManager struct {
 	client vsphereClient
 }

@@ -31,69 +31,34 @@ const (
 	scpTimeout = time.Minute
 )
 
-// isHostReady returns whether or not the specified host is ready for its setup script
-// to be run.
-func isHostReady(ctx context.Context, host *host.Host, settings *evergreen.Settings) (bool, error) {
+func setDNSName(ctx context.Context, host *host.Host, settings *evergreen.Settings) error {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetCloudManager(ctx, host.Distro.Provider, settings)
+	cloudMgr, err := cloud.GetManager(ctx, host.Distro.Provider, settings)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to get cloud manager for provider %s",
-			host.Distro.Provider)
+		return errors.Wrapf(err, "failed to get cloud manager for provider %s", host.Distro.Provider)
 	}
 
-	// ask for the instance's status
-	hostStatus, err := cloudMgr.GetInstanceStatus(ctx, host)
+	if host.Host != "" {
+		return nil
+	}
+
+	// get the DNS name for the host
+	hostDNS, err := cloudMgr.GetDNSName(ctx, host)
 	if err != nil {
-		return false, errors.Wrapf(err, "error checking instance status of host %s", host.Id)
+		return errors.Wrapf(err, "error checking DNS name for host %s", host.Id)
 	}
 
-	grip.Debug(message.Fields{
-		"message":      "checking host readiness",
-		"runner":       RunnerName,
-		"host_id":      host.Host,
-		"distro":       host.Distro.Id,
-		"id":           host.Id,
-		"local_status": host.Status,
-		"cloud_status": hostStatus,
-	})
-
-	// if the host has failed, terminate it and return that this host is not ready
-	if hostStatus == cloud.StatusFailed {
-		err = errors.WithStack(cloudMgr.TerminateInstance(ctx, host, evergreen.User))
-		if err != nil {
-			return false, err
-		}
-		return false, errors.Errorf("host %s terminated due to failure before setup", host.Id)
+	// sanity check for the host DNS name
+	if hostDNS == "" {
+		return errors.Errorf("instance %s is running but not returning a DNS name", host.Id)
 	}
 
-	// if the host isn't up yet, we can't do anything
-	if hostStatus != cloud.StatusRunning {
-		return false, nil
+	// update the host's DNS name
+	if err = host.SetDNSName(hostDNS); err != nil {
+		return errors.Wrapf(err, "error setting DNS name for host %s", host.Id)
 	}
 
-	// set the host's dns name, if it is not set
-	if host.Host == "" {
-		var hostDNS string
-
-		// get the DNS name for the host
-		hostDNS, err = cloudMgr.GetDNSName(ctx, host)
-		if err != nil {
-			return false, errors.Wrapf(err, "error checking DNS name for host %s", host.Id)
-		}
-
-		// sanity check for the host DNS name
-		if hostDNS == "" {
-			return false, errors.Errorf("instance %s is running but not returning a DNS name",
-				host.Id)
-		}
-
-		// update the host's DNS name
-		if err = host.SetDNSName(hostDNS); err != nil {
-			return false, errors.Wrapf(err, "error setting DNS name for host %s", host.Id)
-		}
-	}
-
-	return true, nil
+	return nil
 }
 
 // setupHost runs the specified setup script for an individual host. Returns
@@ -101,22 +66,12 @@ func isHostReady(ctx context.Context, host *host.Host, settings *evergreen.Setti
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
 func setupHost(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) (string, error) {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetCloudManager(ctx, targetHost.Provider, settings)
+	cloudMgr, err := cloud.GetManager(ctx, targetHost.Provider, settings)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
 			targetHost.Id, targetHost.Provider)
 	}
-
-	// mark the host as initializing
-	grip.Notice(message.WrapError(targetHost.SetInitializing(), message.Fields{
-		"message":    "encountered issue transitioning from starting to initializing",
-		"indication": "host setup retry",
-		"action":     "none",
-		"host":       targetHost.Id,
-		"provider":   targetHost.Distro.Provider,
-		"distro":     targetHost.Distro.Id,
-	}))
 
 	// run the function scheduled for when the host is up
 	if err = cloudMgr.OnUp(ctx, targetHost); err != nil {

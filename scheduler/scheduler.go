@@ -123,7 +123,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 
 }
 
-// Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
+// Call out to the embedded Manager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
 func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {

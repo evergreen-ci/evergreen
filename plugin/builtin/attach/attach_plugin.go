@@ -1,7 +1,6 @@
 package attach
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -32,17 +31,8 @@ type AttachPlugin struct{}
 
 // Name returns the name of this plugin - it serves to satisfy
 // the 'Plugin' interface
-func (self *AttachPlugin) Name() string {
-	return AttachPluginName
-}
-
-func (self *AttachPlugin) GetUIHandler() http.Handler {
-	return nil
-}
-
-func (self *AttachPlugin) Configure(map[string]interface{}) error {
-	return nil
-}
+func (self *AttachPlugin) Name() string                           { return AttachPluginName }
+func (self *AttachPlugin) Configure(map[string]interface{}) error { return nil }
 
 // stripHiddenFiles is a helper for only showing users the files they are allowed to see.
 func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact.File {

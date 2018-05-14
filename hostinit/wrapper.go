@@ -29,23 +29,8 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 		"runner":  RunnerName,
 	})
 
-	// check whether or not the host is ready for its setup script to be run
-	// if the host isn't ready (for instance, it might not be up yet), skip it
-	if ready, err := isHostReady(ctx, h, settings); !ready {
-		m := message.Fields{
-			"message": "host not ready for setup",
-			"hostid":  h.Id,
-			"DNS":     h.Host,
-			"distro":  h.Distro.Id,
-			"runner":  RunnerName,
-		}
-
-		if err != nil {
-			grip.Error(message.WrapError(err, m))
-			return errors.Wrap(errRetryHost, err.Error())
-		}
-
-		grip.Info(m)
+	if err := setDNSName(ctx, h, settings); err != nil {
+		return errors.Wrap(err, "error settings DNS name")
 	}
 
 	if err := ctx.Err(); err != nil {
@@ -89,7 +74,7 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 	//
 	// In these cases, ProvisionHost returns a nil error but
 	// does not change the host status.
-	if h.Status == evergreen.HostStarting {
+	if h.Status == evergreen.HostProvisioning {
 		return errors.Wrapf(errRetryHost, "retrying for '%s', after %d attempts",
 			h.Id, h.ProvisionAttempts)
 	}
@@ -115,7 +100,7 @@ func CreateHost(ctx context.Context, h *host.Host, settings *evergreen.Settings)
 		"runner":  RunnerName,
 	})
 
-	cloudManager, err := cloud.GetCloudManager(ctx, h.Provider, settings)
+	cloudManager, err := cloud.GetManager(ctx, h.Provider, settings)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",

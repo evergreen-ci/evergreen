@@ -494,9 +494,6 @@ tasks:
     name: test-plugin-builtin-buildbaron
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-plugin-builtin-perfdash
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -611,9 +608,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-plugin-builtin-manifest
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-plugin-builtin-perfdash
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations

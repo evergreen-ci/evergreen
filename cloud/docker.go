@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// dockerManager implements the CloudManager interface for Docker.
+// dockerManager implements the Manager interface for Docker.
 type dockerManager struct {
 	client dockerClient
 }

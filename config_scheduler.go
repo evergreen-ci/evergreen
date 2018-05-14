@@ -9,8 +9,9 @@ import (
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	TaskFinder    string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
-	HostAllocator string `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
+	TaskFinder       string  `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+	HostAllocator    string  `bson:"host_allocator" json:"host_allocator" yaml:"host_allocator"`
+	FreeHostFraction float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 }
 
 func (c *SchedulerConfig) SectionId() string { return "scheduler" }
@@ -27,8 +28,9 @@ func (c *SchedulerConfig) Get() error {
 func (c *SchedulerConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"task_finder":    c.TaskFinder,
-			"host_allocator": c.HostAllocator,
+			"task_finder":        c.TaskFinder,
+			"host_allocator":     c.HostAllocator,
+			"free_host_fraction": c.FreeHostFraction,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
@@ -48,7 +50,7 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 			finders, c.TaskFinder)
 	}
 
-	allocators := []string{"duration", "deficit"}
+	allocators := []string{"duration", "deficit", "utilization"}
 	if c.HostAllocator == "" {
 		c.HostAllocator = allocators[0]
 		return nil
@@ -57,6 +59,10 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	if !util.StringSliceContains(allocators, c.HostAllocator) {
 		return errors.Errorf("supported allocators are %s; %s is not suported",
 			allocators, c.HostAllocator)
+	}
+
+	if c.FreeHostFraction < 0 || c.FreeHostFraction > 1 {
+		return errors.New("free host fraction must be between 0 and 1")
 	}
 
 	return nil
