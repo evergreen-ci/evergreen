@@ -40,3 +40,4 @@ api:
     - '"url": "http://localhost:9090/clients/linux_amd64/evergreen"'
   "/ref/evergreen":
     - "evergreen"
+
