@@ -171,7 +171,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		Slack: evergreen.SlackConfig{
 			Options: &send.SlackOptions{
-				Channel:   "channel",
+				Channel:   "#channel",
 				Fields:    true,
 				FieldsSet: map[string]bool{},
 			},
