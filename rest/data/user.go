@@ -2,11 +2,14 @@ package data
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/pkg/errors"
 )
 
@@ -33,6 +36,15 @@ func (u *DBUserConnector) DeletePublicKey(user *user.DBUser, keyName string) err
 }
 
 func (u *DBUserConnector) UpdateSettings(userId string, settings user.UserSettings) error {
+	if strings.HasPrefix(settings.SlackUsername, "#") {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "expected a Slack username, but got a channel",
+		}
+	}
+
+	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
+
 	return model.SaveUserSettings(userId, settings)
 }
 

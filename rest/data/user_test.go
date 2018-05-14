@@ -67,6 +67,20 @@ func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 	}
 }
 
+func (s *DBUserConnectorSuite) TestUpdateSettings() {
+	settings := user.UserSettings{
+		SlackUsername: "@test",
+		Notifications: user.NotificationPreferences{
+			BuildBreak:  user.PreferenceSlack,
+			PatchFinish: user.PreferenceEmail,
+		},
+	}
+
+	s.NoError(s.sc.UpdateSettings("user_0", settings))
+	settings.SlackUsername = "#Test"
+	s.EqualError(s.sc.UpdateSettings("user_0", settings), "expected a Slack username, but got a channel")
+}
+
 func TestDBUserConnector(t *testing.T) {
 	s := &DBUserConnectorSuite{}
 	suite.Run(t, s)

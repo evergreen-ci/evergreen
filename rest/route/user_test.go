@@ -52,7 +52,6 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := map[string]interface{}{
-		"slack_username": "@test",
 		"notifications": map[string]string{
 			"build_break":  "slack",
 			"patch_finish": "email",
@@ -74,16 +73,4 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
 	s.EqualValues("test", dbUser.Settings.SlackUsername)
-
-	body["slack_username"] = "#test"
-	jsonBody, err = json.Marshal(body)
-	s.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest(http.MethodPost, "/users/settings", buffer)
-	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
-
-	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.EqualError(err, "expected a Slack username, but got a channel")
-	s.NotNil(resp)
 }
