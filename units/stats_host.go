@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -30,7 +31,7 @@ type hostStatsCollector struct {
 // distro to the default grip logger.
 func NewHostStatsCollector(id string) amboy.Job {
 	j := makeHostStatsCollector()
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", hostStatsCollectorJobName, id))
 	j.SetPriority(-1)
 
 	return j

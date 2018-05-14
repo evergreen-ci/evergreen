@@ -65,14 +65,49 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 //
 // Common Initialization Code
 
-func startSysInfoCollectors(ctx context.Context, env evergreen.Environment, interval time.Duration, opts amboy.QueueOperationConfig) {
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), interval, time.Now(), opts, func(queue amboy.Queue) error {
+func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
+	// Add jobs to a remote queue at various intervals for
+	// repotracker operations. Generally the intervals are half the
+	// actual frequency of the job, which are controlled by the
+	// population functions.
+	opts := amboy.QueueOperationConfig{
+		ContinueOnError: true,
+		LogErrors:       false,
+		DebugLogging:    false,
+	}
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateBackgroundStatsJobs(env, 0),
+		units.PopulateHostCreationJobs(env, 0),
+		units.PopulateIdleHostJobs(env),
+		units.PopulateHostTerminationJobs(env),
+		units.PopulateHostMonitoring(env),
+		units.PopulateTaskMonitoring()))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateHostSetupJobs(env, 0),
+		units.PopulateSchedulerJobs(env),
+		units.PopulateAgentDeployJobs(env)))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateEventAlertProcessing(5),
+		units.PopulateRepotrackerPollingJobs(5)))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateCatchupJobs(30),
+		units.PopulateHostAlertJobs(20)))
+
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Local Queue Jobs
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), opts, func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
-				"message":       "problem fetching service flags",
-				"operation":     "system stats",
-				"interval_secs": interval.Seconds(),
+				"message":   "problem fetching service flags",
+				"operation": "system stats",
 			}))
 			return err
 		}
@@ -88,4 +123,27 @@ func startSysInfoCollectors(ctx context.Context, env evergreen.Environment, inte
 
 		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
+
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":   "problem fetching service flags",
+				"operation": "background stats",
+			}))
+			return err
+		}
+
+		if flags.BackgroundStatsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background stats collection disabled",
+				"impact":  "amboy stats disabled",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
+	})
+
 }
