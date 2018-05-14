@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
@@ -40,7 +40,7 @@ type QueueProcessor struct {
 	config            *evergreen.Settings
 	superUsersConfigs []model.AlertConfig
 	projectsCache     map[string]*model.ProjectRef
-	render            *render.Render
+	render            gimlet.Renderer
 }
 
 // Deliverer is an interface which handles the actual delivery of an alert.
@@ -340,11 +340,9 @@ func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) e
 	home := evergreen.FindEvergreenHome()
 	qp.config = config
 	qp.projectsCache = map[string]*model.ProjectRef{} // wipe the project cache between each run to prevent stale configs.
-	qp.render = render.New(render.Options{
+	qp.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, "alerts", "templates"),
 		DisableCache: !config.Ui.CacheTemplates,
-		TextFuncs:    nil,
-		HtmlFuncs:    nil,
 	})
 
 	if len(qp.config.SuperUsers) == 0 {

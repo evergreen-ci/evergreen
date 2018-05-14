@@ -402,7 +402,7 @@ func TestNextTask(t *testing.T) {
 			})
 			Convey("with an out of date agent revision and a task group", func() {
 				So(sampleHost.SetAgentRevision("out-of-date-string"), ShouldBeNil)
-				sentWithTaskGroup := &apimodels.GetNextTaskDetails{"task_group"}
+				sentWithTaskGroup := &apimodels.GetNextTaskDetails{TaskGroup: "task_group"}
 				resp := getNextTaskEndpoint(t, as, sampleHost.Id, sentWithTaskGroup)
 				details := &apimodels.NextTaskResponse{}
 				So(resp.Code, ShouldEqual, http.StatusOK)

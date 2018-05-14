@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 )
 
@@ -54,7 +54,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		gimlet.WriteJSONInternalError(w, err.Error())
 	}
 
 	// grab the task and user info to fill out the ticket
@@ -63,11 +63,11 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	// Find information about the task
 	t, err := task.FindOne(task.ById(input.TaskId))
 	if err != nil {
-		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		gimlet.WriteJSONInternalError(w, err.Error())
 		return
 	}
 	if t == nil {
-		util.WriteJSON(w, http.StatusNotFound, fmt.Sprintf("task not found for id %v", input.TaskId))
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("task not found for id %v", input.TaskId))
 		return
 	}
 	var h *host.Host
@@ -75,11 +75,11 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		// Find the host the task ran on
 		h, err = host.FindOne(host.ById(t.HostId))
 		if err != nil {
-			util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+			gimlet.WriteJSONInternalError(w, err.Error())
 			return
 		}
 		if h == nil {
-			util.WriteJSON(w, http.StatusInternalServerError, fmt.Sprintf("host not found for task id %v with host id: %v", input.TaskId, t.HostId))
+			gimlet.WriteJSONInternalError(w, fmt.Sprintf("host not found for task id %v with host id: %v", input.TaskId, t.HostId))
 			return
 		}
 	}
@@ -114,8 +114,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	request["description"], err = getDescription(t, h, u.Id, tests)
 
 	if err != nil {
-		util.WriteJSON(
-			w, http.StatusBadRequest, fmt.Sprintf("error creating description: %v", err))
+		gimlet.WriteJSONError(w, fmt.Sprintf("error creating description: %v", err))
 		return
 	}
 
@@ -125,12 +124,12 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("error creating JIRA ticket: %v", err)
 		grip.Error(msg)
-		util.WriteJSON(w, http.StatusBadRequest, msg)
+		gimlet.WriteJSONError(w, msg)
 		return
 	}
 	event.LogJiraIssueCreated(t.Id, result.Key)
 	grip.Infof("Ticket %s successfully created", result.Key)
-	util.WriteJSON(w, http.StatusOK, result)
+	gimlet.WriteJSON(w, result)
 }
 
 func cleanTestName(path string) string {

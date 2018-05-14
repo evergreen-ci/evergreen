@@ -74,18 +74,18 @@ func TestResponsesWritingHelpers(t *testing.T) {
 			HTML:   WriteHTML,
 		},
 		http.StatusBadRequest: {
-			JSON:   WriteErrorJSON,
-			BINARY: WriteErrorBinary,
-			YAML:   WriteErrorYAML,
-			TEXT:   WriteErrorText,
-			HTML:   WriteErrorHTML,
+			JSON:   WriteJSONError,
+			BINARY: WriteBinaryError,
+			YAML:   WriteYAMLError,
+			TEXT:   WriteTextError,
+			HTML:   WriteHTMLError,
 		},
 		http.StatusInternalServerError: {
-			JSON:   WriteInternalErrorJSON,
-			BINARY: WriteInternalErrorBinary,
-			YAML:   WriteInternalErrorYAML,
-			TEXT:   WriteInternalErrorText,
-			HTML:   WriteInternalErrorHTML,
+			JSON:   WriteJSONInternalError,
+			BINARY: WriteBinaryInternalError,
+			YAML:   WriteYAMLInternalError,
+			TEXT:   WriteTextInternalError,
+			HTML:   WriteHTMLInternalError,
 		},
 	}
 

@@ -6,8 +6,7 @@ import (
 
 // WriteHTMLResponse writes an HTML response with the specified error code.
 func WriteHTMLResponse(w http.ResponseWriter, code int, data interface{}) {
-	out := convertToBytes(data)
-	writeResponse(HTML, w, code, out)
+	writeResponse(HTML, w, code, convertToBytes(data))
 }
 
 // WriteHTML writes the data, converted to text as possible, to the
@@ -19,7 +18,7 @@ func WriteHTML(w http.ResponseWriter, data interface{}) {
 
 // WriteErrorHTML write the data, converted to text as possible, to
 // the response body as HTML with a bad-request (e.g. 400) response code.
-func WriteErrorHTML(w http.ResponseWriter, data interface{}) {
+func WriteHTMLError(w http.ResponseWriter, data interface{}) {
 	// 400
 	WriteHTMLResponse(w, http.StatusBadRequest, data)
 }
@@ -27,7 +26,7 @@ func WriteErrorHTML(w http.ResponseWriter, data interface{}) {
 // WriteErrorHTML write the data, converted to text as possible, to
 // the response body as HTML with an internal server error (e.g. 500)
 // response code.
-func WriteInternalErrorHTML(w http.ResponseWriter, data interface{}) {
+func WriteHTMLInternalError(w http.ResponseWriter, data interface{}) {
 	// 500
 	WriteHTMLResponse(w, http.StatusInternalServerError, data)
 }

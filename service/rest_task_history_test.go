@@ -17,7 +17,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -40,7 +40,7 @@ func TestGetTestHistory(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})

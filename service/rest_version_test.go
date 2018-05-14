@@ -19,7 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/urfave/negroni"
@@ -40,10 +40,11 @@ func TestGetRecentVersions(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()
@@ -247,7 +248,7 @@ func TestGetVersionInfo(t *testing.T) {
 	}
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
@@ -274,17 +275,21 @@ func TestGetVersionInfo(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		v := &version.Version{
-			Id:                  versionId,
-			CreateTime:          time.Now().Add(-20 * time.Minute),
-			StartTime:           time.Now().Add(-10 * time.Minute),
-			FinishTime:          time.Now().Add(-5 * time.Second),
-			Revision:            fmt.Sprintf("%x", rand.Int()),
-			Author:              "some-author",
-			AuthorEmail:         "some-email",
-			Message:             "some-message",
-			Status:              "success",
-			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			Id:          versionId,
+			CreateTime:  time.Now().Add(-20 * time.Minute),
+			StartTime:   time.Now().Add(-10 * time.Minute),
+			FinishTime:  time.Now().Add(-5 * time.Second),
+			Revision:    fmt.Sprintf("%x", rand.Int()),
+			Author:      "some-author",
+			AuthorEmail: "some-email",
+			Message:     "some-message",
+			Status:      "success",
+			BuildIds:    []string{"some-build-id"},
+			BuildVariants: []version.BuildStatus{{
+				BuildVariant: "some-build-variant",
+				Activated:    true,
+				ActivateAt:   time.Now().Add(-20 * time.Minute),
+				BuildId:      "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -352,10 +357,11 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()
@@ -372,17 +378,21 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		revision := fmt.Sprintf("%x", rand.Int())
 
 		v := &version.Version{
-			Id:                  versionId,
-			CreateTime:          time.Now().Add(-20 * time.Minute),
-			StartTime:           time.Now().Add(-10 * time.Minute),
-			FinishTime:          time.Now().Add(-5 * time.Second),
-			Revision:            revision,
-			Author:              "some-author",
-			AuthorEmail:         "some-email",
-			Message:             "some-message",
-			Status:              "success",
-			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			Id:          versionId,
+			CreateTime:  time.Now().Add(-20 * time.Minute),
+			StartTime:   time.Now().Add(-10 * time.Minute),
+			FinishTime:  time.Now().Add(-5 * time.Second),
+			Revision:    revision,
+			Author:      "some-author",
+			AuthorEmail: "some-email",
+			Message:     "some-message",
+			Status:      "success",
+			BuildIds:    []string{"some-build-id"},
+			BuildVariants: []version.BuildStatus{{
+				BuildVariant: "some-build-variant",
+				Activated:    true,
+				ActivateAt:   time.Now().Add(-20 * time.Minute),
+				BuildId:      "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -447,10 +457,11 @@ func TestActivateVersion(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()
@@ -592,10 +603,11 @@ func TestGetVersionStatus(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router := mux.NewRouter()

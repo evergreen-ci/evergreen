@@ -588,7 +588,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	// pass it the current time
 	finalData.CurrentTime = time.Now().UnixNano()
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data     waterfallData
 		JiraHost string
 		ViewData

@@ -23,6 +23,37 @@ func runJob(ctx context.Context, job amboy.Job) {
 	job.Run(ctx)
 }
 
+func executeJob(ctx context.Context, job amboy.Job, q amboy.Queue) {
+	ti := amboy.JobTimeInfo{
+		Start: time.Now(),
+	}
+	job.UpdateTimeInfo(ti)
+
+	runJob(ctx, job)
+
+	// we want the final end time to include
+	// marking complete, but setting it twice is
+	// necessary for some queues
+	ti.End = time.Now()
+	job.UpdateTimeInfo(ti)
+
+	q.Complete(ctx, job)
+	ti.End = time.Now()
+	job.UpdateTimeInfo(ti)
+
+	r := message.Fields{
+		"job":           job.ID(),
+		"job_type":      job.Type().Name,
+		"duration_secs": ti.Duration().Seconds(),
+		"queue_type":    fmt.Sprintf("%T", q),
+	}
+	if err := job.Error(); err != nil {
+		r["error"] = err.Error()
+	}
+	grip.Debug(r)
+
+}
+
 func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.WaitGroup) {
 	var (
 		err error
@@ -53,33 +84,7 @@ func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.
 				continue
 			}
 
-			ti := amboy.JobTimeInfo{
-				Start: time.Now(),
-			}
-			job.UpdateTimeInfo(ti)
-
-			runJob(ctx, job)
-
-			// we want the final end time to include
-			// marking complete, but setting it twice is
-			// necessary for some queues
-			ti.End = time.Now()
-			job.UpdateTimeInfo(ti)
-
-			q.Complete(ctx, job)
-			ti.End = time.Now()
-			job.UpdateTimeInfo(ti)
-
-			r := message.Fields{
-				"job":           job.ID(),
-				"job_type":      job.Type().Name,
-				"duration_secs": ti.Duration().Seconds(),
-				"queue_type":    fmt.Sprintf("%T", q),
-			}
-			if err := job.Error(); err != nil {
-				r["error"] = err.Error()
-			}
-			grip.Debug(r)
+			executeJob(ctx, job, q)
 		}
 	}
 }

@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 )
 
@@ -62,7 +62,7 @@ func perfDashGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	taskMap := getVariantsWithCommand("json.send", project)
-	util.WriteJSON(w, http.StatusOK, taskMap)
+	gimlet.WriteJSON(w, taskMap)
 }
 
 // hasCommand returns true if the command name exists in the command

@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -301,7 +302,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task          uiTaskData
 		Host          *host.Host
 		PluginContent pluginData
@@ -522,7 +523,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		uis.WriteJSON(w, http.StatusOK, loggedEvents)
+		gimlet.WriteJSON(w, loggedEvents)
 		return
 	} else {
 		taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, GetUser(r) != nil)
@@ -531,7 +532,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		wrapper.LogMessages = taskLogs
-		uis.WriteJSON(w, http.StatusOK, wrapper)
+		gimlet.WriteJSON(w, wrapper)
 	}
 }
 
@@ -579,11 +580,10 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		err = errors.WithStack(uis.StreamText(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html"))
-		grip.Error(err)
+		uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html")
 		return
 	}
-	grip.CatchError(errors.WithStack(uis.StreamHTML(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")))
+	uis.render.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")
 }
 
 // avoids type-checking json params for the below function
@@ -634,7 +634,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "abort":
 		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
@@ -647,7 +647,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "set_active":
 		active := putParams.Active
@@ -662,7 +662,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "set_priority":
 		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
@@ -687,10 +687,10 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	default:
-		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action: "+putParams.Action)
+		gimlet.WriteJSONError(w, "Unrecognized action: "+putParams.Action)
 	}
 }
 
@@ -757,10 +757,8 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
-		if err = uis.StreamText(w, http.StatusOK, data, "base", template); err != nil {
-			grip.Error(errors.Wrapf(err, "error streaming log data for log %s", logId))
-		}
+		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {
-		uis.WriteHTML(w, http.StatusOK, data, "base", template)
+		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
 	}
 }

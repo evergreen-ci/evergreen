@@ -18,7 +18,7 @@ import (
 const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Read-Evergreen"
 
 // FuncOptions are global variables injected into our templating functions.
-type FuncOptions struct {
+type TemplateFunctionOptions struct {
 	WebHome  string
 	HelpHome string
 	IsProd   bool
@@ -45,7 +45,7 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 }
 
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
-func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (map[string]interface{}, error) {
+func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) (map[string]interface{}, error) {
 	r := map[string]interface{}{
 		// IsSuperUser returns true if the given user Id has super user privileges.
 		"IsSuperUser": func(userName string) bool {

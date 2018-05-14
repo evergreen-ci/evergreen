@@ -10,13 +10,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -27,19 +26,13 @@ import (
 )
 
 const (
-	ProjectKey        string = "projectKey"
 	ProjectCookieName string = "mci-project-cookie"
-
-	ProjectUnknown string = "Unknown Project"
-
-	// Format string for when a project is not found
-	ProjectNotFoundFormat string = "Project '%v' not found"
 )
 
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
-	*render.Render
-
+	render     gimlet.Renderer
+	renderText gimlet.Renderer
 	// Home is the root path on disk from which relative urls are constructed for loading
 	// plugins or other assets.
 	Home string
@@ -51,7 +44,6 @@ type UIServer struct {
 	UserManager        auth.UserManager
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
-	PluginTemplates    map[string]*htmlTemplate.Template
 	clientConfig       *evergreen.ClientConfig
 	jiraHandler        thirdparty.JiraHandler
 	buildBaronProjects map[string]evergreen.BuildBaronProject
@@ -73,35 +65,39 @@ type ViewData struct {
 	JiraHost    string
 }
 
-func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (*UIServer, error) {
-	uis := &UIServer{}
-	db.SetGlobalSessionProvider(settings.SessionFactory())
-
-	if err := settings.Validate(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	uis.Settings = *settings
-	uis.Home = home
-	uis.queue = queue
+func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, err
 	}
-	uis.UserManager = userManager
 
-	uis.clientConfig = evergreen.GetEnvironment().ClientConfig()
+	functions, err := MakeTemplateFuncs(fo, settings.SuperUsers)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create template function map")
+	}
 
-	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
+	ropts := gimlet.RendererOptions{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: !settings.Ui.CacheTemplates,
+		Functions:    functions,
+	}
 
-	uis.PluginTemplates = map[string]*htmlTemplate.Template{}
-
-	uis.buildBaronProjects = bbGetConfig(settings)
-	uis.jiraHandler = thirdparty.NewJiraHandler(
-		settings.Jira.GetHostURL(),
-		settings.Jira.Username,
-		settings.Jira.Password)
+	uis := &UIServer{
+		Settings:           *settings,
+		queue:              queue,
+		Home:               home,
+		UserManager:        userManager,
+		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
+		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
+		buildBaronProjects: bbGetConfig(settings),
+		render:             gimlet.NewHTMLRenderer(ropts),
+		renderText:         gimlet.NewTextRenderer(ropts),
+		jiraHandler: thirdparty.NewJiraHandler(
+			settings.Jira.GetHostURL(),
+			settings.Jira.Username,
+			settings.Jira.Password),
+	}
 
 	return uis, nil
 }
@@ -120,14 +116,9 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	// User login and logout
 	r.HandleFunc("/login", uis.loginPage).Methods("GET")
 	r.HandleFunc("/login", uis.login).Methods("POST")
-
 	// User login with redirect to external site and redirect back
-	if uis.UserManager.GetLoginHandler != nil {
-		r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
-	}
-	if uis.UserManager.GetLoginCallbackHandler != nil {
-		r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
-	}
+	r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
+	r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
 	r.HandleFunc("/logout", uis.logout)
 
 	requireLogin := func(next http.HandlerFunc) http.HandlerFunc {
@@ -331,17 +322,21 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	grip.Error(message.Fields{
-		"method": r.Method,
-		"url":    r.URL,
-		"error":  err,
-		"code":   code,
-		"stack":  string(debug.Stack()),
-	})
+	if err == nil {
+		return
+	}
+
+	grip.Error(message.WrapError(err, message.Fields{
+		"method":  r.Method,
+		"url":     r.URL,
+		"code":    code,
+		"request": GetRequestID(r),
+		"stack":   string(debug.Stack()),
+	}))
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		uis.WriteJSON(w, code, struct {
+		gimlet.WriteJSONResponse(w, code, struct {
 			Error string `json:"error"`
 		}{err.Error()})
 	} else {
@@ -367,7 +362,8 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		return ViewData{}
 	}
 	if needsProject {
-		project, err := projectCtx.GetProject()
+		var project *model.Project
+		project, err = projectCtx.GetProject()
 		if err != nil || project == nil {
 			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
 			uis.ProjectNotFound(projectCtx, w, r)

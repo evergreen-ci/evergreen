@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -78,7 +79,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version  *uiVersion
 		Variants map[string]model.BuildVariant
 		Tasks    []interface{}
@@ -134,7 +135,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		for _, v := range patchUpdateReq.Variants {
 			for _, t := range patchUpdateReq.Tasks {
 				if project.FindTaskForVariant(t, v) != nil {
-					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{v, t})
+					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{Variant: v, TaskName: t})
 				}
 			}
 		}
@@ -186,14 +187,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Builds and tasks successfully added to patch."))
-		uis.WriteJSON(w, http.StatusOK, struct {
+		gimlet.WriteJSON(w, struct {
 			VersionId string `json:"version"`
 		}{projCtx.Version.Id})
 
 	} else {
 		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
 		if err != nil {
-			uis.WriteJSON(w, http.StatusBadRequest, err)
+			gimlet.WriteJSONError(w, err)
 			return
 		}
 		projCtx.Patch.Activated = true
@@ -229,7 +230,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
-		uis.WriteJSON(w, http.StatusOK, struct {
+		gimlet.WriteJSON(w, struct {
 			VersionId string `json:"version"`
 		}{ver.Id})
 	}
@@ -255,7 +256,7 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	uis.WriteHTML(w, http.StatusOK, fullPatch, "base", "diff.html")
+	uis.render.WriteResponse(w, http.StatusOK, fullPatch, "base", "diff.html")
 }
 
 func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
@@ -274,7 +275,7 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("error finding patch: %s", err.Error()),
 			http.StatusInternalServerError)
 	}
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data        patch.Patch
 		FileName    string
 		PatchNumber string

@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 )
 
@@ -36,5 +36,5 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("manifest not found for version %v", version.Id), http.StatusNotFound)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, foundManifest)
+	gimlet.WriteJSON(w, foundManifest)
 }

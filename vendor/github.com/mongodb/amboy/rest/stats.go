@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/tychoish/gimlet"
 )
 
 type status struct {
