@@ -116,14 +116,9 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	// User login and logout
 	r.HandleFunc("/login", uis.loginPage).Methods("GET")
 	r.HandleFunc("/login", uis.login).Methods("POST")
-
 	// User login with redirect to external site and redirect back
-	if uis.UserManager.GetLoginHandler != nil {
-		r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
-	}
-	if uis.UserManager.GetLoginCallbackHandler != nil {
-		r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
-	}
+	r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
+	r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
 	r.HandleFunc("/logout", uis.logout)
 
 	requireLogin := func(next http.HandlerFunc) http.HandlerFunc {
@@ -367,7 +362,8 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		return ViewData{}
 	}
 	if needsProject {
-		project, err := projectCtx.GetProject()
+		var project *model.Project
+		project, err = projectCtx.GetProject()
 		if err != nil || project == nil {
 			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
 			uis.ProjectNotFound(projectCtx, w, r)

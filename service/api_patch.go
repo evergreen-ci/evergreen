@@ -151,7 +151,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			Patch   string `json:"patch"`
 			Githash string `json:"githash"`
 		}{}
-		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
@@ -288,12 +288,14 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		patchedProject, err := validator.GetPatchedProject(ctx, p, githubOauthToken)
+		var patchedProject *model.Project
+		patchedProject, err = validator.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		projectYamlBytes, err := yaml.Marshal(patchedProject)
+		var projectYamlBytes []byte
+		projectYamlBytes, err = yaml.Marshal(patchedProject)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error marshaling patched config"))
 			return

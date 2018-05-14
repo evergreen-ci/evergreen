@@ -238,10 +238,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			errs = append(errs, fmt.Sprintf("must specify either task regex or tags on line #%d ", i+1))
 		}
 
-		if _, err := regexp.Compile(pd.Variant); err != nil {
+		if _, err = regexp.Compile(pd.Variant); err != nil {
 			errs = append(errs, fmt.Sprintf("variant regex #%d is invalid", i+1))
 		}
-		if _, err := regexp.Compile(pd.Task); err != nil {
+		if _, err = regexp.Compile(pd.Task); err != nil {
 			errs = append(errs, fmt.Sprintf("task regex #%d is invalid", i+1))
 		}
 	}
@@ -316,7 +316,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if hook == nil {
-			hookID, err := uis.setupGithubHook(projectRef)
+			var hookID int
+			hookID, err = uis.setupGithubHook(projectRef)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "project edit",

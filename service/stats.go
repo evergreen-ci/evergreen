@@ -131,7 +131,9 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	// if its all tasks find the build
 	if taskName == "" || taskName == "All Tasks" {
 		// TODO: switch this to be a query on the builds TaskCache
-		builds, err := build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
+		var builds []build.Build
+
+		builds, err = build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.RevisionOrderNumberKey}).
@@ -184,7 +186,8 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			task.DistroIdKey}
 
 		if beforeTaskId != "" {
-			t, err := task.FindOne(task.ById(beforeTaskId))
+			var t *task.Task
+			t, err = task.FindOne(task.ById(beforeTaskId))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return

@@ -145,7 +145,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	if srcTask.DisplayOnly {
 		testResults, err = srcTask.GetTestResultsForDisplayTask()
 		if err != nil {
-			err := errors.Wrapf(err, "Error finding test results for display task", srcTask.Id)
+			err = errors.Wrapf(err, "Error finding test results for display task", srcTask.Id)
 			grip.Error(err)
 			gimlet.WriteJSONInternalError(w, responseError{Message: err.Error()})
 			return

@@ -45,7 +45,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 		BuildId:             "some-build-id",
 		DistroId:            "some-distro-id",
 		BuildVariant:        "some-build-variant",
-		DependsOn:           []task.Dependency{{"some-other-task", ""}},
+		DependsOn:           []task.Dependency{{TaskId: "some-other-task", Status: ""}},
 		DisplayName:         "My task",
 		HostId:              "some-host-id",
 		Restarts:            0,

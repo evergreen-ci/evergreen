@@ -119,7 +119,9 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		// get/store setup logs
 		body := util.NewRequestReader(r)
 		defer body.Close()
-		setupLog, err := ioutil.ReadAll(body)
+
+		var setupLog []byte
+		setupLog, err = ioutil.ReadAll(body)
 		if err != nil {
 			grip.Errorln("problem reading request:", err)
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
