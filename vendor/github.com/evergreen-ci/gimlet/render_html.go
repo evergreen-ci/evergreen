@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 type htmlRenderer struct {
@@ -78,22 +81,26 @@ func (r *htmlRenderer) Render(out io.Writer, data interface{}, entryPoint string
 	return nil
 }
 
-func (r *htmlRenderer) WriteResponse(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) error {
+func (r *htmlRenderer) WriteResponse(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) {
 	out := &bytes.Buffer{}
 	err := r.Render(out, data, entryPoint, files...)
 	if err != nil {
 		WriteTextInternalError(w, err)
-		return err
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset="+r.opts.Encoding)
 	w.WriteHeader(status)
-	_, err = w.Write(out.Bytes())
-	return err
+	w.Write(out.Bytes())
 }
 
-func (r *htmlRenderer) Stream(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) error {
+func (r *htmlRenderer) Stream(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) {
 	w.Header().Set("Content-Type", "text/html; charset="+r.opts.Encoding)
 	w.WriteHeader(status)
-	return r.Render(w, data, entryPoint, files...)
+	grip.Error(message.WrapError(r.Render(w, data, entryPoint, files...), message.Fields{
+		"entry":     entryPoint,
+		"files":     files,
+		"operation": "stream rendering",
+		"mode":      "text",
+	}))
 }

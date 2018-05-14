@@ -8,6 +8,9 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 type textRenderer struct {
@@ -82,18 +85,17 @@ func (r *textRenderer) Render(out io.Writer, data interface{}, entryPoint string
 	return nil
 }
 
-func (r *textRenderer) WriteResponse(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) error {
+func (r *textRenderer) WriteResponse(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) {
 	out := &bytes.Buffer{}
 	err := r.Render(out, data, entryPoint, files...)
 	if err != nil {
 		WriteTextInternalError(w, err)
-		return err
+		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset="+r.opts.Encoding)
 	w.WriteHeader(status)
-	_, err = w.Write(out.Bytes())
-	return err
+	w.Write(out.Bytes())
 }
 
 // StreamText calls Text() on its args and writes the output directly to the response with a text/plain Content-Type.
@@ -101,8 +103,13 @@ func (r *textRenderer) WriteResponse(w http.ResponseWriter, status int, data int
 // Does not buffer the executed template before rendering, so it can be used for writing
 // really large responses without consuming memory. If executing the template fails, the status
 // code is not changed; it will remain set to the provided value.
-func (r *textRenderer) Stream(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) error {
+func (r *textRenderer) Stream(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) {
 	w.Header().Set("Content-Type", "text/plain; charset="+r.opts.Encoding)
 	w.WriteHeader(status)
-	return r.Render(w, data, entryPoint, files...)
+	grip.Error(message.WrapError(r.Render(w, data, entryPoint, files...), message.Fields{
+		"entry":     entryPoint,
+		"files":     files,
+		"operation": "stream rendering",
+		"mode":      "text",
+	}))
 }

@@ -10,8 +10,8 @@ import (
 type Renderer interface {
 	GetTemplate(...string) (RenderTemplate, error)
 	Render(io.Writer, interface{}, string, ...string) error
-	Stream(http.ResponseWriter, int, interface{}, string, ...string) error
-	WriteResponse(http.ResponseWriter, int, interface{}, string, ...string) error
+	Stream(http.ResponseWriter, int, interface{}, string, ...string)
+	WriteResponse(http.ResponseWriter, int, interface{}, string, ...string)
 }
 
 // RenderTemplate describes the common interface used by Renderer

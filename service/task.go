@@ -580,11 +580,10 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		err = errors.WithStack(uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html"))
-		grip.Error(err)
+		uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html")
 		return
 	}
-	grip.CatchError(errors.WithStack(uis.render.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")))
+	uis.render.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")
 }
 
 // avoids type-checking json params for the below function
@@ -761,9 +760,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
-		if err = uis.renderText.Stream(w, http.StatusOK, data, "base", template); err != nil {
-			grip.Error(errors.Wrapf(err, "error streaming log data for log %s", logId))
-		}
+		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {
 		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
 	}

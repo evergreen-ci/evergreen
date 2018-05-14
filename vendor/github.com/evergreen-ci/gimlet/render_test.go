@@ -14,6 +14,7 @@ type RenderSuite struct {
 	opts        RendererOptions
 	constructor func(RendererOptions) Renderer
 	testData    interface{}
+	expected    string
 	suite.Suite
 }
 
@@ -34,6 +35,7 @@ func TestTextRenderSuite(t *testing.T) {
 }
 
 func (s *RenderSuite) SetupSuite() {
+	s.expected = `<html><body><div>menu</div><p>hello Socrates setarcoS</p></body></html>`
 	s.testData = struct {
 		Name string
 	}{"Socrates"}
@@ -59,42 +61,42 @@ func (s *RenderSuite) SetupTest() {
 func (s *RenderSuite) TestBaseHTML() {
 	for i := 0; i < 10; i++ {
 		out := &bytes.Buffer{}
-		err := s.render.Render(out, testData, "base", "test1.html", "test2.html")
+		err := s.render.Render(out, s.testData, "base", "test1.html", "test2.html")
 
 		s.NoError(err)
-		s.Equal(expected, string(out.Bytes()))
+		s.Equal(s.expected, string(out.Bytes()))
 	}
 
 	if r, ok := s.render.(*htmlRenderer); ok {
 		for k, v := range r.cache {
 			out := &bytes.Buffer{}
-			err := v.ExecuteTemplate(out, "base", testData)
+			err := v.ExecuteTemplate(out, "base", s.testData)
 			s.NoError(err)
 			r.cache[k] = v
 		}
 
 		out := &bytes.Buffer{}
-		err := s.render.Render(out, testData, "base", "test1.html", "test2.html")
+		err := s.render.Render(out, s.testData, "base", "test1.html", "test2.html")
 		s.Error(err)
 	}
 }
 
 func (s *RenderSuite) TestBadTemplates() {
 	out := &bytes.Buffer{}
-	err := s.render.Render(out, testData, "base", "invalid_template.html")
+	err := s.render.Render(out, s.testData, "base", "invalid_template.html")
 	s.Error(err)
 
-	err = s.render.Render(out, testData, "base", "template_does_not_exist.html")
+	err = s.render.Render(out, s.testData, "base", "template_does_not_exist.html")
 	s.Error(err)
 
-	err = s.render.Render(out, testData, "base", "badtemplate.html")
+	err = s.render.Render(out, s.testData, "base", "badtemplate.html")
 	s.Error(err)
 
 	req, err := http.NewRequest("GET", "http://example.com/foo", nil)
 	s.Require().NoError(err)
 
 	htmlHandler := func(w http.ResponseWriter, r *http.Request) {
-		s.render.WriteResponse(w, http.StatusOK, testData, "badtemplate.html")
+		s.render.WriteResponse(w, http.StatusOK, s.testData, "badtemplate.html")
 	}
 
 	w := httptest.NewRecorder()
@@ -110,18 +112,28 @@ func (s *RenderSuite) TestWriteHTTP() {
 	/* Test a handler that writes a rendered HTML template */
 	w := httptest.NewRecorder()
 	htmlHandler := func(w http.ResponseWriter, r *http.Request) {
-		s.render.WriteResponse(w, http.StatusOK, testData, "base", "test1.html", "test2.html")
+		s.render.WriteResponse(w, http.StatusOK, s.testData, "base", "test1.html", "test2.html")
 	}
 	htmlHandler(w, req)
 
-	s.Equal(expected, string(w.Body.Bytes()))
+	s.Equal(s.expected, string(w.Body.Bytes()))
 	s.Equal(http.StatusOK, w.Code)
 
 	w = httptest.NewRecorder()
-	s.render.Stream(w, http.StatusOK, testData, "base", "test1.html", "test2.html")
+	s.render.Stream(w, http.StatusOK, s.testData, "base", "test1.html", "test2.html")
 	s.Equal(http.StatusOK, w.Code)
 
 	w = httptest.NewRecorder()
-	s.render.Stream(w, http.StatusOK, testData, "base", "test1.html", "test2.html")
+	s.render.Stream(w, http.StatusOK, s.testData, "base", "test1.html", "test2.html")
+	s.Equal(http.StatusOK, w.Code)
+}
+
+func (s *RenderSuite) TestRenderingErrorToResponse() {
+	w := httptest.NewRecorder()
+	s.render.Stream(w, http.StatusOK, s.testData, "base2", "test1.html", "test2.html2")
+	s.Equal(http.StatusOK, w.Code)
+
+	w = httptest.NewRecorder()
+	s.render.Stream(w, http.StatusOK, s.testData, "base2", "test1.html", "test2.html2")
 	s.Equal(http.StatusOK, w.Code)
 }

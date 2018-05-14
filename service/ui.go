@@ -327,13 +327,17 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	grip.Error(message.Fields{
-		"method": r.Method,
-		"url":    r.URL,
-		"error":  err,
-		"code":   code,
-		"stack":  string(debug.Stack()),
-	})
+	if err == nil {
+		return
+	}
+
+	grip.Error(message.WrapError(err, message.Fields{
+		"method":  r.Method,
+		"url":     r.URL,
+		"code":    code,
+		"request": GetRequestID(r),
+		"stack":   string(debug.Stack()),
+	}))
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
