@@ -71,7 +71,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Events      []event.EventLogEntry
 		Host        *host.Host
 		RunningTask *task.Task
@@ -88,7 +88,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Hosts               *hostsData
 		IncludeSpawnedHosts bool
 		ViewData

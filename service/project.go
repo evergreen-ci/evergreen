@@ -76,7 +76,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{allProjects, allTaskTriggers, uis.GetCommonViewData(w, r, true, true)}
 
-	uis.WriteHTML(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +163,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 // ProjectNotFound calls WriteHTML with the invalid-project page. It should be called whenever the
 // project specified by the user does not exist, or when there are no projects at all.
 func (uis *UIServer) ProjectNotFound(projCtx projectContext, w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusNotFound, uis.GetCommonViewData(w, r, false, false), "base", "invalid_project.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusNotFound, uis.GetCommonViewData(w, r, false, false), "base", "invalid_project.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {

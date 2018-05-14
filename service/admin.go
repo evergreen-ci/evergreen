@@ -19,7 +19,7 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		ViewData
 	}{uis.GetCommonViewData(w, r, true, true)}
-	uis.WriteHTML(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
@@ -37,5 +37,5 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 		Data []model.APIAdminEvent
 		ViewData
 	}{events, uis.GetCommonViewData(w, r, true, true)}
-	uis.WriteHTML(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }

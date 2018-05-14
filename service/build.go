@@ -92,7 +92,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.BuildPage, pluginContext)
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Build         *uiBuild
 		PluginContent pluginData
 		JiraHost      string

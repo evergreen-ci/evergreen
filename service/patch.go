@@ -79,7 +79,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version  *uiVersion
 		Variants map[string]model.BuildVariant
 		Tasks    []interface{}
@@ -256,7 +256,7 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	uis.WriteHTML(w, http.StatusOK, fullPatch, "base", "diff.html")
+	uis.render.WriteResponse(w, http.StatusOK, fullPatch, "base", "diff.html")
 }
 
 func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +275,7 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("error finding patch: %s", err.Error()),
 			http.StatusInternalServerError)
 	}
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data        patch.Patch
 		FileName    string
 		PatchNumber string

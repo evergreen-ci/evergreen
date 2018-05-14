@@ -49,7 +49,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distro          distro.Distro
 		Task            *task.Task
 		MaxHostsPerUser int

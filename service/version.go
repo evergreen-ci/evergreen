@@ -132,7 +132,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version       *uiVersion
 		PluginContent pluginData
 		CanEdit       bool

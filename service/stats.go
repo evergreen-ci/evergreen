@@ -89,7 +89,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{currentProject, uis.GetCommonViewData(w, r, false, true)}
 
-	uis.WriteHTML(w, http.StatusOK, data, "base", "task_timing.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", "task_timing.html", "base_angular.html", "menu.html")
 }
 
 // taskTimingJSON sends over the task data for a certain task of a certain build variant

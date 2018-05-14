@@ -32,7 +32,7 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) patchTimeline(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +50,7 @@ func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request)
 }
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Author string
 		ViewData
 	}{author, uis.GetCommonViewData(w, r, false, true)}, "base", "patches.html", "base_angular.html", "menu.html")

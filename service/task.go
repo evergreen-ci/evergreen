@@ -302,7 +302,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task          uiTaskData
 		Host          *host.Host
 		PluginContent pluginData
@@ -580,11 +580,11 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		err = errors.WithStack(uis.StreamText(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html"))
+		err = errors.WithStack(uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html"))
 		grip.Error(err)
 		return
 	}
-	grip.CatchError(errors.WithStack(uis.StreamHTML(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")))
+	grip.CatchError(errors.WithStack(uis.render.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")))
 }
 
 // avoids type-checking json params for the below function
@@ -761,10 +761,10 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
-		if err = uis.StreamText(w, http.StatusOK, data, "base", template); err != nil {
+		if err = uis.renderText.Stream(w, http.StatusOK, data, "base", template); err != nil {
 			grip.Error(errors.Wrapf(err, "error streaming log data for log %s", logId))
 		}
 	} else {
-		uis.WriteHTML(w, http.StatusOK, data, "base", template)
+		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
 	}
 }

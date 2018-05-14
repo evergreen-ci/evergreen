@@ -30,7 +30,6 @@ import:
       - cmd/cover
   - package: github.com/urfave/negroni
   - package: github.com/urfave/cli
-  - package: github.com/evergreen-ci/render
   - package: github.com/evergreen-ci/crowd
   - package: github.com/kardianos/osext
   - package: github.com/sabhiram/go-git-ignore

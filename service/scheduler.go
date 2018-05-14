@@ -14,7 +14,7 @@ import (
 func (uis *UIServer) getSchedulerPage(w http.ResponseWriter, r *http.Request) {
 	distroId := mux.Vars(r)["distro_id"]
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		DistroId string
 		ViewData
 	}{distroId, uis.GetCommonViewData(w, r, false, true)}, "base", "scheduler_events.html", "base_angular.html", "menu.html")
@@ -33,7 +33,7 @@ func (uis *UIServer) getSchedulerLogs(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) schedulerStatsPage(w http.ResponseWriter, r *http.Request) {
 
-	uis.WriteHTML(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "scheduler_stats.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "scheduler_stats.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulerHostUtilization(w http.ResponseWriter, r *http.Request) {

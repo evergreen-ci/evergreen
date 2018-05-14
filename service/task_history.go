@@ -131,7 +131,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, data)
 		return
 	default:
-		uis.WriteHTML(w, http.StatusOK, struct {
+		uis.render.WriteResponse(w, http.StatusOK, struct {
 			Data taskHistoryPageData
 			ViewData
 		}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
@@ -194,7 +194,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, data)
 		return
 	}
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data interface{}
 		ViewData
 	}{data, uis.GetCommonViewData(w, r, false, true)}, "base",

@@ -16,7 +16,7 @@ func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 	if uis.UserManager.IsRedirect() {
 		http.Redirect(w, r, "/login/redirect", http.StatusFound)
 	}
-	uis.WriteHTML(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
+	uis.render.WriteResponse(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
 }
 
 func (uis *UIServer) setLoginToken(token string, w http.ResponseWriter) {
@@ -95,7 +95,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	}
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data       user.UserSettings
 		Config     confFile
 		Binaries   []evergreen.ClientBinary

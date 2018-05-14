@@ -3,19 +3,16 @@ package operations
 import (
 	"context"
 	"fmt"
-	htmlTemplate "html/template"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	textTemplate "text/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
@@ -226,7 +223,15 @@ func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.R
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
 	}
 
-	uis, err := service.NewUIServer(settings, queue, home)
+	webHome := filepath.Join(home, "public")
+	functionOptions := service.TemplateFunctionOptions{
+		WebHome:  webHome,
+		HelpHome: settings.Ui.HelpUrl,
+		IsProd:   !settings.IsNonProd,
+		Router:   router,
+	}
+
+	uis, err := service.NewUIServer(settings, queue, home, functionOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
@@ -235,30 +240,6 @@ func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.R
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating router")
 	}
-
-	webHome := filepath.Join(home, "public")
-
-	functionOptions := service.FuncOptions{
-		WebHome:  webHome,
-		HelpHome: settings.Ui.HelpUrl,
-		IsProd:   !settings.IsNonProd,
-		Router:   router,
-	}
-
-	functions, err := service.MakeTemplateFuncs(functionOptions, settings.SuperUsers)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create template function map")
-	}
-
-	htmlFunctions := htmlTemplate.FuncMap(functions)
-	textFunctions := textTemplate.FuncMap(functions)
-
-	uis.Render = render.New(render.Options{
-		Directory:    filepath.Join(home, service.WebRootPath, service.Templates),
-		DisableCache: !settings.Ui.CacheTemplates,
-		HtmlFuncs:    htmlFunctions,
-		TextFuncs:    textFunctions,
-	})
 
 	if err = uis.InitPlugins(); err != nil {
 		return nil, errors.Wrap(err, "problem initializing plugins")

@@ -66,8 +66,6 @@ imports:
     version: 01857ac33766ce0c93856370626f9799281c14f4
 
 
-  - name: github.com/evergreen-ci/render
-    version: efb1df5f8dc1036d747e92e7b875ebb7557f0173
   - name: github.com/evergreen-ci/crowd
     version: dd8ffe015fd8950a70330076037c3d979b7ff548
   - name: github.com/kardianos/osext
@@ -121,4 +119,4 @@ imports:
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/evergreen-ci/gimlet
-    version: 03a02d0a693371c051bdc25d2e79edfd79cd5b65
+    version: eac9a376898f94f5cccc09fbd60aaa31f2272ab0

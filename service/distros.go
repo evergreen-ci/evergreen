@@ -28,7 +28,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 
 	sort.Sort(&sortableDistro{distros})
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distros []distro.Distro
 		Keys    map[string]string
 		ViewData

@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -39,8 +38,8 @@ const (
 
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
-	*render.Render
-
+	render     gimlet.Renderer
+	renderText gimlet.Renderer
 	// Home is the root path on disk from which relative urls are constructed for loading
 	// plugins or other assets.
 	Home string
@@ -52,7 +51,6 @@ type UIServer struct {
 	UserManager        auth.UserManager
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
-	PluginTemplates    map[string]*htmlTemplate.Template
 	clientConfig       *evergreen.ClientConfig
 	jiraHandler        thirdparty.JiraHandler
 	buildBaronProjects map[string]evergreen.BuildBaronProject
@@ -74,7 +72,7 @@ type ViewData struct {
 	JiraHost    string
 }
 
-func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (*UIServer, error) {
+func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	uis := &UIServer{}
 	db.SetGlobalSessionProvider(settings.SessionFactory())
 
@@ -96,13 +94,24 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (
 
 	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
 
-	uis.PluginTemplates = map[string]*htmlTemplate.Template{}
-
 	uis.buildBaronProjects = bbGetConfig(settings)
 	uis.jiraHandler = thirdparty.NewJiraHandler(
 		settings.Jira.GetHostURL(),
 		settings.Jira.Username,
 		settings.Jira.Password)
+
+	functions, err := MakeTemplateFuncs(fo, settings.SuperUsers)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create template function map")
+	}
+
+	ropts := gimlet.RendererOptions{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: !settings.Ui.CacheTemplates,
+		Functions:    functions,
+	}
+	uis.render = gimlet.NewHTMLRenderer(ropts)
+	uis.renderText = gimlet.NewTextRenderer(ropts)
 
 	return uis, nil
 }
