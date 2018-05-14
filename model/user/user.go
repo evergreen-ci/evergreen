@@ -1,7 +1,6 @@
 package user
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -173,36 +172,6 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 		return 0, err
 	}
 	return dbUser.PatchNumber, nil
-}
-
-func (u *DBUser) PatchFinishSubscriber() (*event.Subscriber, error) {
-	if !IsValidSubscriptionPreference(string(u.Settings.Notifications.PatchFinish)) {
-		return nil, errors.Errorf("unknown subscriber preference: %s", u.Settings.Notifications.PatchFinish)
-	}
-
-	return u.subscriber(u.Settings.Notifications.PatchFinish), nil
-}
-
-func (u *DBUser) BuildBreakSubscriber() (*event.Subscriber, error) {
-	if !IsValidSubscriptionPreference(string(u.Settings.Notifications.BuildBreak)) {
-		return nil, errors.Errorf("unknown subscriber preference: %s", u.Settings.Notifications.PatchFinish)
-	}
-
-	return u.subscriber(u.Settings.Notifications.BuildBreak), nil
-}
-
-func (u *DBUser) subscriber(pref UserSubscriptionPreference) *event.Subscriber {
-	switch pref {
-	case PreferenceEmail:
-		sub := event.NewEmailSubscriber(u.EmailAddress)
-		return &sub
-
-	case PreferenceSlack:
-		sub := event.NewSlackSubscriber(fmt.Sprintf("@%s", u.Settings.SlackUsername))
-		return &sub
-	}
-
-	return nil
 }
 
 func IsValidSubscriptionPreference(in string) bool {

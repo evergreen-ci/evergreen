@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/pkg/errors"
@@ -35,17 +36,47 @@ func (u *DBUserConnector) DeletePublicKey(user *user.DBUser, keyName string) err
 	return user.DeletePublicKey(keyName)
 }
 
-func (u *DBUserConnector) UpdateSettings(userId string, settings user.UserSettings) error {
+func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	if strings.HasPrefix(settings.SlackUsername, "#") {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "expected a Slack username, but got a channel",
 		}
 	}
-
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
 
-	return model.SaveUserSettings(userId, settings)
+	var sub event.Subscriber
+	switch settings.Notifications.PatchFinish {
+	case user.PreferenceSlack:
+		sub = event.NewSlackSubscriber(fmt.Sprintf("#%s", settings.SlackUsername))
+
+	case user.PreferenceEmail:
+		sub = event.NewEmailSubscriber(dbUser.Email())
+	}
+
+	s, err := event.FindSelfSubscriptionForUsersPatches(dbUser.Id)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch subscription")
+	}
+	if s == nil {
+		sub := event.NewSelfSubscriptionForUsersPatches(dbUser.Id, sub)
+		err = sub.Upsert()
+
+	} else {
+		s.Subscriber = sub
+		if err = s.Validate(); err != nil {
+			err = event.RemoveSubscription(s.ID)
+
+		} else {
+			err = s.Upsert()
+		}
+	}
+
+	if err != nil {
+		return errors.Wrap(err, "failed to update patch subscription")
+	}
+
+	return model.SaveUserSettings(dbUser.Id, settings)
 }
 
 // MockUserConnector stores a cached set of users that are queried against by the
@@ -104,6 +135,6 @@ func (muc *MockUserConnector) DeletePublicKey(u *user.DBUser, keyName string) er
 	return nil
 }
 
-func (muc *MockUserConnector) UpdateSettings(userId string, settings user.UserSettings) error {
+func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.UserSettings) error {
 	return errors.New("UpdateSettings not implemented for mock connector")
 }

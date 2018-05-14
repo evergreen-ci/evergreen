@@ -258,14 +258,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
-	subscriber, err := j.user.PatchFinishSubscriber()
-	if err != nil {
-		j.AddError(err)
-	}
-	if subscriber != nil {
-		sub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), *subscriber)
-		j.AddError(sub.Upsert())
-	}
 	if patchDoc.IsGithubPRPatch() {
 		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 			Owner:    patchDoc.GithubPatchData.BaseOwner,
