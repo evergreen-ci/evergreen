@@ -1,18 +1,16 @@
-package buildbaron
+package service
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
-	"text/template"
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
@@ -49,7 +47,7 @@ type jiraTestFailure struct {
 }
 
 // fileTicket creates a JIRA ticket for a task with the given test failures.
-func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) {
+func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		TaskId  string   `json:"task"`
 		TestIds []string `json:"tests"`
@@ -60,11 +58,8 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// grab the task and user info to fill out the ticket
-	u := plugin.GetUser(r)
-	if u == nil {
-		util.WriteJSON(w, http.StatusUnauthorized, "must be logged in to file a ticket")
-		return
-	}
+	u := MustHaveUser(r)
+
 	// Find information about the task
 	t, err := task.FindOne(task.ById(input.TaskId))
 	if err != nil {
@@ -107,7 +102,7 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 
 	//lay out the JIRA API request
 	request := map[string]interface{}{}
-	request["project"] = map[string]string{"key": bbp.opts.Projects[t.Project].TicketCreateProject}
+	request["project"] = map[string]string{"key": uis.buildBaronProjects[t.Project].TicketCreateProject}
 	request["summary"] = getSummary(t.DisplayName, tests)
 	request[FailingTasksField] = []string{t.DisplayName}
 	request[FailingVariantField] = []string{t.BuildVariant}
@@ -126,12 +121,7 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 
 	grip.Infoln("Creating JIRA ticket for user", u.Id)
 
-	jiraHandler := thirdparty.NewJiraHandler(
-		bbp.opts.Host,
-		bbp.opts.Username,
-		bbp.opts.Password,
-	)
-	result, err := jiraHandler.CreateTicket(request)
+	result, err := uis.jiraHandler.CreateTicket(request)
 	if err != nil {
 		msg := fmt.Sprintf("error creating JIRA ticket: %v", err)
 		grip.Error(msg)
