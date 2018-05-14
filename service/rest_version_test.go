@@ -288,7 +288,7 @@ func TestGetVersionInfo(t *testing.T) {
 			BuildVariants: []version.BuildStatus{{
 				BuildVariant: "some-build-variant",
 				Activated:    true,
-				ActivatedAt:  time.Now().Add(-20 * time.Minute),
+				ActivateAt:   time.Now().Add(-20 * time.Minute),
 				BuildId:      "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
@@ -391,7 +391,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			BuildVariants: []version.BuildStatus{{
 				BuildVariant: "some-build-variant",
 				Activated:    true,
-				ActivatedAt:  time.Now().Add(-20 * time.Minute),
+				ActivateAt:   time.Now().Add(-20 * time.Minute),
 				BuildId:      "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
