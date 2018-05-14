@@ -168,6 +168,17 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			grip.Debugln(message, "marking as failed")
 			if detail != nil {
 				updates := StatusChanges{}
+				if t.DisplayOnly {
+					for _, et := range t.ExecutionTasks {
+						execTask, err := task.FindOne(task.ById(et))
+						if err != nil {
+							return errors.Wrap(err, "error finding execution task")
+						}
+						if err = MarkEnd(execTask, origin, time.Now(), detail, false, &updates); err != nil {
+							return errors.Wrap(err, "error marking execution task as ended")
+						}
+					}
+				}
 				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false, &updates))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
