@@ -2,7 +2,6 @@ package manifest
 
 import (
 	"encoding/json"
-	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -65,8 +64,4 @@ func (m *ManifestPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 			},
 		},
 	}, nil
-}
-
-func (m *ManifestPlugin) GetUIHandler() http.Handler {
-	return nil
 }

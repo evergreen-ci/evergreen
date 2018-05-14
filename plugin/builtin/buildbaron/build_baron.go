@@ -3,7 +3,6 @@ package buildbaron
 import (
 	"fmt"
 	"html/template"
-	"net/http"
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
@@ -28,14 +27,7 @@ type BuildBaronPlugin struct {
 	opts *bbPluginOptions
 }
 
-func (bbp *BuildBaronPlugin) Name() string {
-	return PluginName
-}
-
-// GetUIHandler adds a path for looking up build failures in JIRA.
-func (bbp *BuildBaronPlugin) GetUIHandler() http.Handler {
-	return nil
-}
+func (bbp *BuildBaronPlugin) Name() string { return PluginName }
 
 func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	// pull out options needed from config file (JIRA authentication info, and list of projects)

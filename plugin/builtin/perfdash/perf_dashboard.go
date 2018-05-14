@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"net/http"
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -43,11 +42,7 @@ type DashboardAppData struct {
 }
 
 // Name implements Plugin Interface.
-func (pdp *PerfDashboardPlugin) Name() string {
-	return perfDashboardPluginName
-}
-
-func (pdp *PerfDashboardPlugin) GetUIHandler() http.Handler { return nil }
+func (pdp *PerfDashboardPlugin) Name() string { return perfDashboardPluginName }
 
 func (pdp *PerfDashboardPlugin) GetAppPluginInfo() *plugin.UIPage {
 	data := func(context plugin.UIContext) (interface{}, error) {

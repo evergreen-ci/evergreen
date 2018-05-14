@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"net/http"
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -27,11 +26,8 @@ type PerfPlugin struct {
 }
 
 // Name implements Plugin Interface.
-func (pp *PerfPlugin) Name() string {
-	return "perf"
-}
+func (pp *PerfPlugin) Name() string { return "perf" }
 
-func (pp *PerfPlugin) GetUIHandler() http.Handler { return nil }
 func (pp *PerfPlugin) Configure(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, pp)
 	if err != nil {
