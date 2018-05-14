@@ -121,6 +121,9 @@ type Connector interface {
 	// Interested time range is given as a start time and duration.
 	FindCostByDistroId(string, time.Time, time.Duration) (*task.DistroCost, error)
 
+	// ClearTaskQueue deletes all tasks from the task queue for a distro
+	ClearTaskQueue(string) error
+
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*version.Version, error)
 

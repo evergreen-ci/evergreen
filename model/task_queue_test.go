@@ -282,7 +282,7 @@ func TestFindNextTaskWithLastTask(t *testing.T) {
 	assert.Nil(next)
 }
 
-func TestTasQueueGenerationTimes(t *testing.T) {
+func TestTaskQueueGenerationTimes(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -304,4 +304,28 @@ func TestTasQueueGenerationTimes(t *testing.T) {
 	genTime, ok := times["foo"]
 	assert.True(ok)
 	assert.Equal(now, genTime)
+}
+
+func TestClearTaskQueue(t *testing.T) {
+	assert := assert.New(t)
+	distro := "distro"
+	tasks := []TaskQueueItem{
+		{
+			Id: "task1",
+		},
+		{
+			Id: "task2",
+		},
+		{
+			Id: "task3",
+		},
+	}
+	queue := NewTaskQueue(distro, tasks)
+	assert.Len(queue.Queue, 3)
+	assert.NoError(queue.Save())
+
+	assert.NoError(ClearTaskQueue(distro))
+	queueFromDb, err := LoadTaskQueue(distro)
+	assert.NoError(err)
+	assert.Len(queueFromDb.Queue, 0)
 }

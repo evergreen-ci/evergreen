@@ -69,6 +69,7 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 		"/tasks/{task_id}/metrics/system":                      getTaskSystemMetricsManager,
 		"/tasks/{task_id}/restart":                             getTaskRestartRouteManager,
 		"/tasks/{task_id}/tests":                               getTestRouteManager,
+		"/task_queue":                                          getClearTaskQueueRouteManager,
 		"/users/{user_id}/hosts":                               getHostsByUserManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,
 		"/user/settings":                                       getUserSettingsRouteManager,

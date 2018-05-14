@@ -188,6 +188,26 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 	return errors.WithStack(err)
 }
 
+func ClearTaskQueue(distro string) error {
+	grip.Warning(message.Fields{
+		"message": "clearing task queue",
+		"distro":  distro,
+	})
+	_, err := db.Upsert(
+		TaskQueuesCollection,
+		bson.M{
+			taskQueueDistroKey: distro,
+		},
+		bson.M{
+			"$set": bson.M{
+				taskQueueQueueKey:       []TaskQueueItem{},
+				taskQueueGeneratedAtKey: time.Now(),
+			},
+		},
+	)
+	return errors.WithStack(err)
+}
+
 func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 	taskQueue := &TaskQueue{}
 	err := db.FindOne(
@@ -213,9 +233,6 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 	}
 
 	queueItemIdKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
-
-	// NOTE: this aggregation requires 3.2+ because of its use of
-	// $unwind's 'path' and 'includeArrayIndex'
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			queueItemIdKey: taskId}},
