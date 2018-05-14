@@ -44,10 +44,6 @@ func (s *DBUserConnectorSuite) SetupTest() {
 	}
 }
 
-func (s *DBUserConnectorSuite) TearDownTest() {
-	s.NoError(db.Clear(user.Collection))
-}
-
 func (s *DBUserConnectorSuite) TestFindUserById() {
 	for i := 0; i < s.numUsers; i++ {
 		found, err := s.sc.FindUserById(fmt.Sprintf("user_%d", i))
@@ -78,8 +74,15 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 			PatchFinish: user.PreferenceSlack,
 		},
 	}
+	settings.Notifications.PatchFinish = ""
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
 	sub, err := event.FindSelfSubscriptionForUsersPatches(s.users[0].Id)
+	s.NoError(err)
+	s.Nil(sub)
+
+	settings.Notifications.PatchFinish = user.PreferenceSlack
+	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	sub, err = event.FindSelfSubscriptionForUsersPatches(s.users[0].Id)
 	s.NoError(err)
 	s.Require().NotNil(sub)
 	s.Equal(event.SlackSubscriberType, sub.Subscriber.Type)

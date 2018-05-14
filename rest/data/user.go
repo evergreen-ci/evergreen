@@ -45,30 +45,35 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	}
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
 
-	var sub event.Subscriber
+	var subscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
 	case user.PreferenceSlack:
-		sub = event.NewSlackSubscriber(fmt.Sprintf("#%s", settings.SlackUsername))
+		subscriber = event.NewSlackSubscriber(fmt.Sprintf("#%s", settings.SlackUsername))
 
 	case user.PreferenceEmail:
-		sub = event.NewEmailSubscriber(dbUser.Email())
+		subscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
 
-	s, err := event.FindSelfSubscriptionForUsersPatches(dbUser.Id)
+	subscription, err := event.FindSelfSubscriptionForUsersPatches(dbUser.Id)
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch subscription")
 	}
-	if s == nil {
-		sub := event.NewSelfSubscriptionForUsersPatches(dbUser.Id, sub)
-		err = sub.Upsert()
+	if subscription == nil {
+		temp := event.NewSelfSubscriptionForUsersPatches(dbUser.Id, subscriber)
+		subscription = &temp
+		if err = subscription.Validate(); err != nil {
+			err = nil
+		} else {
+			err = subscription.Upsert()
+		}
 
 	} else {
-		s.Subscriber = sub
-		if err = s.Validate(); err != nil {
-			err = event.RemoveSubscription(s.ID)
+		subscription.Subscriber = subscriber
+		if err = subscription.Validate(); err != nil {
+			err = event.RemoveSubscription(subscription.ID)
 
 		} else {
-			err = s.Upsert()
+			err = subscription.Upsert()
 		}
 	}
 
