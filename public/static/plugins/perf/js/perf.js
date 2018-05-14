@@ -20,7 +20,7 @@ function average (arr){
 
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, PerfChartService
+  $scope, $window, $http, $location, $q, PerfChartService
 ) {
     /* for debugging
     $sce, $compile){
@@ -469,16 +469,42 @@ mciModule.controller('PerfController', function PerfController(
         }
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
+        // This code loads change points for current task from the mdb cloud
+        var changePointsQ = $q(function(resolve, reject) {
+          stitch.StitchClientFactory.create('evergreen_perf_plugin-wwdoa')
+          .then(function(client) {
+            var db = client.service('mongodb', 'mongodb-atlas').db('perf')
+              return db
+                .collection('change_points')
+                .find({
+                  project: $scope.task.branch,
+                  task: $scope.task.display_name,
+                  variant: $scope.task.build_variant,
+                })
+                .limit(999) // TODO this should prevent some accidents
+                            // Should be replaced with more specific query
+                .execute()
+            }).then(function(docs) {
+              $scope.changePoints = _.groupBy(docs, 'test')
+              resolve($scope.changePoints)
+            }, function(err) { reject(err) })
+          })
+
         // Populate the trend data
-        $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
-          function(resp){
-            var d = resp.data;
-            $scope.trendSamples = new TrendSamples(d);
+        var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
+          function(resp) {
+            $scope.trendSamples = new TrendSamples(resp.data);
+            return 1
+          })
+
+        // Once trend chart data and change points get loaded
+        $q.all([chartDataQ, changePointsQ])
+          .then(function(ret) {
             setTimeout(function() {
               drawTrendGraph($scope, PerfChartService)
-            }, 0);
-          });
-      });
+            }, 0)
+          })
+      })
 
     $http.get("/plugin/json/task/" + $scope.task.id + "/perf/tags").then(
       function(resp){
@@ -721,6 +747,7 @@ var drawTrendGraph = function(scope, PerfChartService) {
     drawSingleTrendChart({
       PerfChartService: PerfChartService,
       series: series,
+      changePoints: scope.changePoints[key],
       key: key,
       scope: chartsScope,
       containerId: containerId,
