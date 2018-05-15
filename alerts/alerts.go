@@ -1,10 +1,8 @@
 package alerts
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -17,11 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -41,6 +36,17 @@ type QueueProcessor struct {
 	superUsersConfigs []model.AlertConfig
 	projectsCache     map[string]*model.ProjectRef
 	render            gimlet.Renderer
+}
+
+func NewQueueProcessor(config *evergreen.Settings, home string) *QueueProcessor {
+	return &QueueProcessor{
+		config:        config,
+		projectsCache: map[string]*model.ProjectRef{},
+		render: gimlet.NewHTMLRenderer(gimlet.RendererOptions{
+			Directory:    filepath.Join(home, "alerts", "templates"),
+			DisableCache: !config.Ui.CacheTemplates,
+		}),
+	}
 }
 
 // Deliverer is an interface which handles the actual delivery of an alert.
@@ -63,12 +69,20 @@ type AlertContext struct {
 	Settings     *evergreen.Settings
 }
 
-func (qp *QueueProcessor) Name() string { return RunnerName }
+func (qp *QueueProcessor) AddSuperUsers(users []user.DBUser) {
+	for _, u := range users {
+		qp.superUsersConfigs = append(qp.superUsersConfigs,
+			model.AlertConfig{
+				Provider: "email",
+				Settings: bson.M{"rcpt": u.Email()},
+			})
+	}
+}
 
-// loadAlertContext fetches details from the database for all documents that are associated with the
+// LoadAlertContext fetches details from the database for all documents that are associated with the
 // AlertRequest. For example, it populates the task/build/version/project using the
 // task/build/version/project ids in the alert requeset document.
-func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext, error) {
+func (qp *QueueProcessor) LoadAlertContext(a *alert.AlertRequest) (*AlertContext, error) {
 	aCtx := &AlertContext{AlertRequest: a}
 	aCtx.Settings = qp.config
 	taskId, projectId, buildId, versionId := a.TaskId, a.ProjectId, a.BuildId, a.VersionId
@@ -313,117 +327,5 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 			return errors.Wrap(err, "Failed to send alert")
 		}
 	}
-	return nil
-}
-
-// Run loops while there are any unprocessed alerts and attempts to deliver them.
-func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) error {
-	startTime := time.Now()
-	flags, err := evergreen.GetServiceFlags()
-	if err != nil {
-		return errors.Wrap(err, "error retrieving admin settings")
-	}
-	if flags.AlertsDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"runner":  qp.Name(),
-			"message": "alerts are disabled, exiting",
-		})
-		return nil
-	}
-	grip.Info(message.Fields{
-		"runner":  qp.Name(),
-		"status":  "starting",
-		"time":    startTime,
-		"message": "starting runner process",
-	})
-
-	home := evergreen.FindEvergreenHome()
-	qp.config = config
-	qp.projectsCache = map[string]*model.ProjectRef{} // wipe the project cache between each run to prevent stale configs.
-	qp.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
-		Directory:    filepath.Join(home, "alerts", "templates"),
-		DisableCache: !config.Ui.CacheTemplates,
-	})
-
-	if len(qp.config.SuperUsers) == 0 {
-		grip.Warning(message.Fields{
-			"message": "no superusers configured, some alerts may have no recipient",
-			"runner":  qp.Name(),
-		})
-	}
-	superUsers, err := user.Find(user.ByIds(qp.config.SuperUsers...))
-	if err != nil {
-		err = errors.Wrap(err, "problem getting superuser list")
-		grip.Error(message.Fields{
-			"runner":  qp.Name(),
-			"error":   err.Error(),
-			"status":  "failed",
-			"runtime": time.Since(startTime),
-			"span":    time.Since(startTime).String(),
-		})
-
-		return err
-	}
-	qp.superUsersConfigs = []model.AlertConfig{}
-	for _, u := range superUsers {
-		qp.superUsersConfigs = append(qp.superUsersConfigs, model.AlertConfig{"email", bson.M{"rcpt": u.Email()}})
-	}
-
-	grip.Debug(message.Fields{"message": "Running alert queue processing", "runner": qp.Name()})
-	for {
-		nextAlert, err := alert.DequeueAlertRequest()
-
-		if err != nil {
-			err = errors.Wrap(err, "Failed to dequeue alert request")
-			grip.Error(message.Fields{
-				"runner":  qp.Name(),
-				"error":   err.Error(),
-				"status":  "failed",
-				"runtime": time.Since(startTime),
-				"span":    time.Since(startTime).String(),
-			})
-
-			return err
-		}
-		if nextAlert == nil {
-			grip.Debug(message.Fields{"message": "Reached end of queue items - stopping", "runner": qp.Name()})
-			break
-		}
-
-		grip.Debugf("Processing queue item %s", nextAlert.Id.Hex())
-
-		alertContext, err := qp.loadAlertContext(nextAlert)
-		if err != nil {
-			err = errors.Wrap(err, "Failed to load alert context")
-			grip.Error(message.WrapError(err, message.Fields{
-				"runner":  qp.Name(),
-				"status":  "failed",
-				"runtime": time.Since(startTime),
-				"span":    time.Since(startTime).String(),
-			}))
-
-			return err
-		}
-
-		grip.Debug(message.Fields{"message": "Delivering queue item",
-			"item":   nextAlert.Id.Hex(),
-			"runner": qp.Name(),
-		})
-
-		grip.Warning(message.WrapError(qp.Deliver(nextAlert, alertContext),
-			message.Fields{
-				"message": "Got error delivering message",
-				"runner":  qp.Name(),
-			}))
-
-	}
-
-	grip.Info(message.Fields{
-		"runner":  qp.Name(),
-		"runtime": time.Since(startTime),
-		"span":    time.Since(startTime).String(),
-		"status":  "success",
-	})
-
 	return nil
 }

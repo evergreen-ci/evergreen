@@ -554,3 +554,25 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 		return catcher.Resolve()
 	}
 }
+
+func PopulateLegacyRunnerJobs(env evergreen.Environment, part int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+
+		if !flags.AlertsDisabled {
+			catcher.Add(queue.Put(NewLegacyAlertsRunnerJob(env, ts)))
+		}
+
+		if !flags.MonitorDisabled {
+			catcher.Add(queue.Put(NewLegacyMonitorRunnerJob(env, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
