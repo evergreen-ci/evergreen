@@ -202,18 +202,9 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskSt
 func variantHasActiveTasks(
 	b build.Build, bvDisplayName string, variantQuery string,
 ) bool {
-	if strings.Contains(
-		strings.ToUpper(bvDisplayName),
-		strings.ToUpper(variantQuery),
-	) {
-		for _, task := range b.Tasks {
-			if task.Activated {
-				return true
-			}
-		}
-	}
-
-	return false
+	return strings.Contains(
+		strings.ToUpper(bvDisplayName), strings.ToUpper(variantQuery),
+	) && b.IsActive()
 }
 
 // Fetch versions until 'numVersionElements' elements are created, including
@@ -297,8 +288,8 @@ func getVersionsAndVariants(
 						" (removed)"
 				}
 
-				// When versions is active and variane query matches
-				// variant display name, mark the version as inactive
+				// The version is marked active if there are any
+				// activated tasks for the varant
 				if variantQuery != "" {
 					if versionActive && !variantMatched {
 						variantMatched = variantHasActiveTasks(
@@ -474,11 +465,7 @@ func addFailedAndStartedTests(waterfallRows map[string]waterfallRow, failedAndSt
 // any of the builds are active.
 func anyActiveTasks(builds []build.Build) bool {
 	for _, build := range builds {
-		for _, task := range build.Tasks {
-			if task.Activated {
-				return true
-			}
-		}
+		return build.IsActive()
 	}
 	return false
 }
@@ -698,8 +685,22 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 	}
 
 	query := r.URL.Query()
-	// 0 is fail safe defailt value
-	skip, _ := strconv.Atoi(query.Get(SkipQueryParam))
+
+	skipQ := query.Get(SkipQueryParam)
+	skip := 0
+
+	if skipQ != "" {
+		skip, err = strconv.Atoi(skipQ)
+
+		if err != nil {
+			restapi.WriteJSON(
+				w, http.StatusNotFound, responseError{Message: errors.Wrapf(
+					err, "Invalid 'skip' value '%s'", skipQ).Error()},
+			)
+			return
+		}
+	}
+
 	limit, err := strconv.Atoi(query.Get("limit"))
 
 	if err != nil {
