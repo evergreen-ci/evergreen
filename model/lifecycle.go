@@ -390,7 +390,7 @@ func RefreshTasksCache(buildId string) error {
 
 //AddTasksToBuild creates the tasks for the given build of a project
 func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
-	taskNames []string, displayNames []string) (*build.Build, error) {
+	taskNames []string, displayNames []string, generatedBy string) (*build.Build, error) {
 
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
@@ -407,9 +407,10 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	}
 
 	// insert the tasks into the db
-	for _, task := range tasks {
-		if err := task.Insert(); err != nil {
-			return nil, errors.Wrapf(err, "error inserting task %s", task.Id)
+	for _, t := range tasks {
+		t.GeneratedBy = generatedBy
+		if err := t.Insert(); err != nil {
+			return nil, errors.Wrapf(err, "error inserting task %s", t.Id)
 		}
 	}
 
@@ -424,7 +425,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
 func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskIdConfig,
-	buildName string, activated bool, taskNames []string, displayNames []string) (string, error) {
+	buildName string, activated bool, taskNames []string, displayNames []string, generatedBy string) (string, error) {
 
 	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
 
@@ -476,12 +477,13 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	// insert all of the build's tasks into the db
-	for _, task := range tasksForBuild {
-		err = task.Insert()
+	for _, t := range tasksForBuild {
+		t.GeneratedBy = generatedBy
+		err = t.Insert()
 		if err == nil || db.IsDuplicateKey(err) {
 			continue
 		}
-		return "", errors.Wrapf(err, "error inserting task %s", task.Id)
+		return "", errors.Wrapf(err, "error inserting task %s", t.Id)
 	}
 
 	// create task caches for all of the tasks, and place them into the build
@@ -1017,7 +1019,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVariantPairs) error {
+func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
 	taskIds := NewPatchTaskIdTable(p, v, tasks)
 
 	newBuildIds := make([]string, 0)
@@ -1040,7 +1042,7 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
-		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames)
+		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames, generatedBy)
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			v.Id, pair.Variant, activated)
 		if err != nil {
@@ -1069,7 +1071,7 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVariantPairs) error {
+func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
 	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err
@@ -1109,7 +1111,7 @@ func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVaria
 			continue
 		}
 		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd); err != nil {
+		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd, generatedBy); err != nil {
 			return err
 		}
 	}
