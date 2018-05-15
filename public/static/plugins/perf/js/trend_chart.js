@@ -211,11 +211,14 @@ var drawSingleTrendChart = function(params) {
       return data
     })
 
-  // Array with combinations combinations of [level, change_point]
+  // Array with combinations combinations of {level, changePoint}
   var changePointForLevel = []
   _.each(levelsMeta, function(level) {
     _.each(visibleChangePoints, function(point) {
-      changePointForLevel.push([level, point])
+      changePointForLevel.push({
+        level: level,
+        changePoint: point
+      })
     })
   })
 
@@ -521,13 +524,13 @@ var drawSingleTrendChart = function(params) {
       .attr({
         class: 'point',
         transform: function(d) {
-          var idx = _.findIndex(series, function(dd) {
-            return dd && dd.revision == d[1].revision
+          var idx = _.findIndex(series, function(sample) {
+            return sample && sample.revision == d.changePoint.revision
           })
 
           return idx > -1 ? d3Translate(
             xScale(idx),
-            yScale(getValueFor(d[0])(series[idx]))
+            yScale(getValueFor(d.level)(series[idx]))
           ) : undefined
         },
       })
