@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
@@ -36,7 +37,7 @@ type amboyStatsCollector struct {
 func NewAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
 	j := makeAmboyStatsCollector()
 	j.env = env
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
 
 	return j
 }

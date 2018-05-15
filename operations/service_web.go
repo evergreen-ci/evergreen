@@ -2,24 +2,20 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/grip/sometimes"
 	nrgorilla "github.com/newrelic/go-agent/_integrations/nrgorilla/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -52,7 +48,7 @@ func startWebService() cli.Command {
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-			startWebTierBackgroundJobs(ctx, env)
+			startSystemCronJobs(ctx, env)
 
 			router := mux.NewRouter()
 
@@ -125,45 +121,6 @@ func startWebService() cli.Command {
 			return catcher.Resolve()
 		},
 	}
-}
-
-func startWebTierBackgroundJobs(ctx context.Context, env evergreen.Environment) {
-	startSysInfoCollectors(ctx, env, 15*time.Second, amboy.QueueOperationConfig{
-		ContinueOnError: true,
-		LogErrors:       false,
-		DebugLogging:    false,
-	})
-
-	opts := amboy.QueueOperationConfig{
-		ContinueOnError: false,
-		LogErrors:       true,
-		DebugLogging:    false,
-	}
-
-	const amboyStatsInterval = time.Minute
-
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), amboyStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
-				"message":       "problem fetching service flags",
-				"operation":     "background stats",
-				"interval_secs": amboyStatsInterval.Seconds(),
-			}))
-			return err
-		}
-
-		if flags.BackgroundStatsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "background stats collection disabled",
-				"impact":  "amboy stats disabled",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
-	})
 }
 
 func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher) {
