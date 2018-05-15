@@ -55,6 +55,7 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	j = makeAmboyStatsCollector()
 	s.False(j.Status().Completed)
 	j.env = s.env
+	j.TaskID = amboyStatsCollectorJobName + "-"
 	s.Equal(j, NewAmboyStatsCollector(s.env, "")) // validate the public constructor
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
