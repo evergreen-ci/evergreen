@@ -130,4 +130,5 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		BuildBreak:  user.UserSubscriptionPreference(buildbreak),
 		PatchFinish: user.UserSubscriptionPreference(patchFinish),
 	}, nil
+
 }

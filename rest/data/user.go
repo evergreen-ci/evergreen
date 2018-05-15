@@ -48,37 +48,49 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	var subscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
 	case user.PreferenceSlack:
-		subscriber = event.NewSlackSubscriber(fmt.Sprintf("#%s", settings.SlackUsername))
+		subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 
 	case user.PreferenceEmail:
 		subscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
 
-	subscription, err := event.FindSelfSubscriptionForUsersPatches(dbUser.Id)
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch subscription")
+	var subscription *event.Subscription
+	if dbUser.Settings.Notifications.PatchFinishID.Valid() {
+		var err error
+		subscription, err = event.FindSubscriptionByID(dbUser.Settings.Notifications.PatchFinishID)
+		if err != nil {
+			return err
+		}
+		if subscription != nil {
+			dbUser.Settings.Notifications.PatchFinishID = subscription.ID
+		}
+		// in the event the database has bad data, we proceed as if
+		// a new subscription is being created.
 	}
-	if subscription == nil {
-		temp := event.NewSelfSubscriptionForUsersPatches(dbUser.Id, subscriber)
-		subscription = &temp
-		if err = subscription.Validate(); err != nil {
-			err = nil
+	if subscriber.Validate() == nil {
+		if subscription == nil {
+			temp := event.NewPatchOutcomeSubscriptionByOwner(dbUser.Id, subscriber)
+			subscription = &temp
+			settings.Notifications.PatchFinishID = subscription.ID
+
 		} else {
-			err = subscription.Upsert()
+			subscription.Subscriber = subscriber
+		}
+
+		subscription.OwnerType = event.OwnerTypePerson
+		subscription.Owner = dbUser.Id
+
+		if err := subscription.Upsert(); err != nil {
+			return errors.Wrap(err, "failed to update subscription")
 		}
 
 	} else {
-		subscription.Subscriber = subscriber
-		if err = subscription.Validate(); err != nil {
-			err = event.RemoveSubscription(subscription.ID)
-
-		} else {
-			err = subscription.Upsert()
+		if dbUser.Settings.Notifications.PatchFinishID.Valid() {
+			if err := event.RemoveSubscription(dbUser.Settings.Notifications.PatchFinishID); err != nil {
+				return err
+			}
+			settings.Notifications.PatchFinishID = ""
 		}
-	}
-
-	if err != nil {
-		return errors.Wrap(err, "failed to update patch subscription")
 	}
 
 	return model.SaveUserSettings(dbUser.Id, settings)

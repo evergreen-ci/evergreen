@@ -66,6 +66,18 @@ func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 	}
 }
 
+func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.NotificationPreferences {
+	found, err := s.sc.FindUserById(s.users[index].Id)
+	s.NoError(err)
+	s.Require().NotNil(found)
+	user, ok := found.(*user.DBUser)
+	s.Require().True(ok)
+
+	s.users[index].Settings = user.Settings
+
+	return &user.Settings.Notifications
+}
+
 func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	settings := user.UserSettings{
 		SlackUsername: "@test",
@@ -75,32 +87,42 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 		},
 	}
 	settings.Notifications.PatchFinish = ""
-	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
-	sub, err := event.FindSelfSubscriptionForUsersPatches(s.users[0].Id)
-	s.NoError(err)
-	s.Nil(sub)
 
+	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	pref := s.getNotificationSettings(0)
+	s.NotNil(pref)
+	s.False(pref.PatchFinishID.Valid())
+
+	// Should create a new subscription
 	settings.Notifications.PatchFinish = user.PreferenceSlack
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
-	sub, err = event.FindSelfSubscriptionForUsersPatches(s.users[0].Id)
+	pref = s.getNotificationSettings(0)
+	s.True(pref.PatchFinishID.Valid())
+	sub, err := event.FindSubscriptionByID(pref.PatchFinishID)
 	s.NoError(err)
 	s.Require().NotNil(sub)
 	s.Equal(event.SlackSubscriberType, sub.Subscriber.Type)
+	settings.Notifications = *pref
 
 	// should modify the existing subscription
 	settings.Notifications.PatchFinish = user.PreferenceEmail
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
-	sub, err = event.FindSelfSubscriptionForUsersPatches(s.users[0].Id)
+	pref = s.getNotificationSettings(0)
+	s.NotNil(pref)
+	s.True(pref.PatchFinishID.Valid())
+	sub, err = event.FindSubscriptionByID(pref.PatchFinishID)
 	s.NoError(err)
 	s.Require().NotNil(sub)
 	s.Equal(event.EmailSubscriberType, sub.Subscriber.Type)
+	settings.Notifications = *pref
 
 	// should delete the existing subscription
 	settings.Notifications.PatchFinish = ""
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
-	sub, err = event.FindSelfSubscriptionForUsersPatches(s.users[0].Id)
-	s.NoError(err)
-	s.Nil(sub)
+	pref = s.getNotificationSettings(0)
+	s.NotNil(pref)
+	s.False(pref.PatchFinishID.Valid())
+	settings.Notifications = *pref
 
 	settings.SlackUsername = "#Test"
 	s.EqualError(s.sc.UpdateSettings(s.users[0], settings), "expected a Slack username, but got a channel")

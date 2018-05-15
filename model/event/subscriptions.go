@@ -209,6 +209,18 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
+func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
+	out := Subscription{}
+	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+		subscriptionIDKey: id,
+	}), &out)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
+	}
+
+	return &out, nil
+}
+
 func RemoveSubscription(id bson.ObjectId) error {
 	if !id.Valid() {
 		return errors.New("id is not valid, cannot remove")
@@ -284,25 +296,6 @@ func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription
 	return subscriptions, errors.Wrapf(err, "error retrieving subscriptions for owner %s", owner)
 }
 
-func findSubscriptionsByOwnerAndTypeWithSelectors(resourceType, trigger string, ownerType OwnerType, owner string, selectors []Selector) ([]Subscription, error) {
-	if len(owner) == 0 {
-		return nil, nil
-	}
-	if !IsValidOwnerType(string(ownerType)) {
-		return nil, errors.Errorf("%s is not a valid owner type", ownerType)
-	}
-	query := db.Query(bson.M{
-		subscriptionOwnerKey:     owner,
-		subscriptionOwnerTypeKey: ownerType,
-		subscriptionTypeKey:      resourceType,
-		subscriptionTriggerKey:   trigger,
-		subscriptionSelectorsKey: selectors,
-	})
-	subscriptions := []Subscription{}
-	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
-	return subscriptions, errors.Wrapf(err, "error retrieving subscriptions for owner %s", owner)
-}
-
 func IsValidOwnerType(in string) bool {
 	switch in {
 	case string(OwnerTypePerson):
@@ -328,38 +321,7 @@ func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 	}
 }
 
-// FindSelfSubscriptionForUsersPatches finds, for a user with the given id,
-// the subscription used for that user's patch subscriptions
-func FindSelfSubscriptionForUsersPatches(id string) (*Subscription, error) {
-	subs, err := findSubscriptionsByOwnerAndTypeWithSelectors(ResourceTypePatch,
-		"outcome", OwnerTypePerson, id, []Selector{
-			{
-				Type: "owner",
-				Data: id,
-			},
-			{
-				Type: "special",
-				Data: "self-patches",
-			},
-		})
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch subscriptions from database")
-	}
-	if len(subs) == 0 {
-		return nil, nil
-
-	} else if len(subs) > 1 {
-		grip.Error(message.Fields{
-			"message": "found multiple matching subscriptions",
-			"user_id": "id",
-		})
-		return nil, errors.New("found multiple matching subscriptions")
-	}
-
-	return &subs[0], nil
-}
-
-func NewSelfSubscriptionForUsersPatches(id string, sub Subscriber) Subscription {
+func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
 		ID:      bson.NewObjectId(),
 		Type:    ResourceTypePatch,
@@ -367,15 +329,9 @@ func NewSelfSubscriptionForUsersPatches(id string, sub Subscriber) Subscription 
 		Selectors: []Selector{
 			{
 				Type: "owner",
-				Data: id,
-			},
-			{
-				Type: "special",
-				Data: "self-patches",
+				Data: owner,
 			},
 		},
 		Subscriber: sub,
-		OwnerType:  OwnerTypePerson,
-		Owner:      id,
 	}
 }
