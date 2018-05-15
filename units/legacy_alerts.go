@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alert"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -31,7 +32,7 @@ type legacyAlertsJob struct {
 }
 
 func makeLegacyAlertsJob() *legacyAlertsJob {
-	return &legacyAlertsJob{
+	j := &legacyAlertsJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    legacyAlertRunnerJobName,
@@ -39,6 +40,7 @@ func makeLegacyAlertsJob() *legacyAlertsJob {
 			},
 		},
 	}
+	j.SetDependency(dependency.NewAlways())
 }
 
 func NewLegacyAlertsRunnerJob(env evergreen.Environment, id string) amboy.Job {
@@ -49,6 +51,7 @@ func NewLegacyAlertsRunnerJob(env evergreen.Environment, id string) amboy.Job {
 }
 
 func (j *legacyAlertsJob) Run(ctx context.Context) {
+	defer j.MarkComplete()
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -71,7 +74,7 @@ func (j *legacyAlertsJob) Run(ctx context.Context) {
 	}
 
 	if len(config.SuperUsers) == 0 {
-		grip.Warning(message.Fields{
+		grip.Critical(message.Fields{
 			"message": "no superusers configured, some alerts may have no recipient",
 			"runner":  "alerts",
 			"id":      j.ID(),

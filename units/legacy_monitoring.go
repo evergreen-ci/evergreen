@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -31,7 +32,7 @@ type legacyMonitorJob struct {
 }
 
 func makeLegacyMonitorRunnerJob() *legacyMonitorJob {
-	return &legacyMonitorJob{
+	j := &legacyMonitorJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    legacyMonitorRunnerJobName,
@@ -39,6 +40,8 @@ func makeLegacyMonitorRunnerJob() *legacyMonitorJob {
 			},
 		},
 	}
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func NewLegacyMonitorRunnerJob(env evergreen.Environment, id string) amboy.Job {
@@ -49,6 +52,7 @@ func NewLegacyMonitorRunnerJob(env evergreen.Environment, id string) amboy.Job {
 }
 
 func (j *legacyMonitorJob) Run(ctx context.Context) {
+	defer j.MarkComplete()
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
