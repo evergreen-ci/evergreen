@@ -169,8 +169,8 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			if detail != nil {
 				updates := StatusChanges{}
 				if t.DisplayOnly {
-					for _, et := range t.ExecutionTasks {
-						execTask, err := task.FindOne(task.ById(et))
+					for _, etId := range t.ExecutionTasks {
+						execTask, err := task.FindOne(task.ById(etId))
 						if err != nil {
 							return errors.Wrap(err, "error finding execution task")
 						}
