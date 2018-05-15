@@ -41,6 +41,7 @@ func makeLegacyAlertsJob() *legacyAlertsJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func NewLegacyAlertsRunnerJob(env evergreen.Environment, id string) amboy.Job {
