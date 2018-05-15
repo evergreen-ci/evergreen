@@ -44,6 +44,7 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		}
 	}
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
+	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
 
 	var subscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {

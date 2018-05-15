@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -63,7 +62,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -79,13 +78,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	}).Insert())
 
 	s.NoError((&user.DBUser{
-		Id:           evergreen.GithubPatchUser,
-		EmailAddress: "test@domain.invalid",
-		Settings: user.UserSettings{
-			Notifications: user.NotificationPreferences{
-				PatchFinish: user.PreferenceEmail,
-			},
-		},
+		Id: evergreen.GithubPatchUser,
 	}).Insert())
 
 	s.NoError((&model.ProjectVars{
@@ -241,11 +234,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 				UID:         1234,
 				LastKnownAs: "somebody",
 			},
-			Notifications: user.NotificationPreferences{
-				PatchFinish: user.PreferenceEmail,
-			},
 		},
-		EmailAddress: "test@domain.invalid",
 	}
 	s.NoError(dbUser.Insert())
 	s.user = dbUser.Id

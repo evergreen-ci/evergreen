@@ -45,9 +45,9 @@ type UserSettings struct {
 
 type NotificationPreferences struct {
 	BuildBreak    UserSubscriptionPreference `bson:"build_break" json:"build_break"`
-	BuildBreakID  bson.ObjectId              `bson:"build_break_id,omitempty" json:"build_break_id,omitempty"`
+	BuildBreakID  bson.ObjectId              `bson:"build_break_id,omitempty" json:"-"`
 	PatchFinish   UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
-	PatchFinishID bson.ObjectId              `bson:"patch_finish_id,omitempty" json:"patch_finish_id,omitempty"`
+	PatchFinishID bson.ObjectId              `bson:"patch_finish_id,omitempty" json:"-"`
 }
 
 type UserSubscriptionPreference string
