@@ -104,7 +104,6 @@ func (s *StatUnitsSuite) TestHostStatsCollector() {
 
 	j, ok := NewHostStatsCollector("id").(*hostStatsCollector)
 	s.True(ok)
-	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
 	j.Run(context.Background())
 	s.False(j.HasErrors())
@@ -129,7 +128,6 @@ func (s *StatUnitsSuite) TestTaskStatsCollector() {
 
 	j, ok := NewTaskStatsCollector("id").(*taskStatsCollector)
 	s.True(ok)
-	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
 	s.False(j.Status().Completed)
 	j.Run(context.Background())
