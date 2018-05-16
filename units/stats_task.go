@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/logging"
 )
 
 const (
@@ -26,7 +25,6 @@ func init() {
 
 type taskStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	logger   grip.Journaler
 }
 
 // NewTaskStatsCollector captures a single report of the status of
@@ -39,7 +37,6 @@ func NewTaskStatsCollector(id string) amboy.Job {
 
 func makeTaskStatsCollector() *taskStatsCollector {
 	j := &taskStatsCollector{
-		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    taskStatsCollectorJobName,
@@ -61,5 +58,5 @@ func (j *taskStatsCollector) Run(_ context.Context) {
 		return
 	}
 
-	j.logger.Info(task.GetResultCounts(tasks))
+	grip.Info(task.GetResultCounts(tasks))
 }
