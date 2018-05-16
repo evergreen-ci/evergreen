@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -214,7 +215,10 @@ func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
 	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
 		subscriptionIDKey: id,
 	}), &out)
-	if err != nil {
+	if err == mgo.ErrNotFound {
+		return nil, nil
+
+	} else if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
 	}
 

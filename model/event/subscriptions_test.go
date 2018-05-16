@@ -129,7 +129,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner:     "me",
 			OwnerType: OwnerTypeProject,
 		},
-		NewSelfSubscriptionForUsersPatches("user_0", Subscriber{
+		NewPatchOutcomeSubscriptionByOwner("user_0", Subscriber{
 			Type:   EmailSubscriberType,
 			Target: "a@b.com",
 		}),
@@ -266,34 +266,16 @@ func (s *subscriptionsSuite) TestFindByOwnerForProject() {
 	s.EqualValues(OwnerTypeProject, subscriptions[0].OwnerType)
 }
 
-func (s *subscriptionsSuite) TestFindSelfSubscriptionsForUsersPatches() {
-	// subscription doesn't exist, so it should return nil
-	sub, err := FindSelfSubscriptionForUsersPatches("user_nx")
-	s.NoError(err)
-	s.Nil(sub)
+func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
+	for i := range s.subscriptions {
+		sub, err := FindSubscriptionByID(s.subscriptions[i].ID)
+		s.NoError(err)
+		s.NotNil(sub)
+		s.True(sub.ID.Valid())
+	}
 
-	// subscription exists, so it should return the subscription
-	sub, err = FindSelfSubscriptionForUsersPatches("user_0")
-	s.NoError(err)
-	s.NotNil(sub)
-
-	// create another subscription that conflicts; check that error is returned
-	deleteMe := s.subscriptions[5].ID
-	s.subscriptions[5].ID = bson.NewObjectId()
-	s.NoError(s.subscriptions[5].Upsert())
-
-	sub, err = FindSelfSubscriptionForUsersPatches("user_0")
-	s.EqualError(err, "found multiple matching subscriptions")
-	s.Nil(sub)
-
-	// If we reverse the selector orders, nothing should be returned
-	s.NoError(RemoveSubscription(deleteMe))
-	temp := s.subscriptions[5].Selectors[1]
-	s.subscriptions[5].Selectors[0] = s.subscriptions[5].Selectors[1]
-	s.subscriptions[5].Selectors[1] = temp
-	s.NoError(s.subscriptions[5].Upsert())
-
-	sub, err = FindSelfSubscriptionForUsersPatches("user_0")
+	s.NoError(db.ClearCollections(SubscriptionsCollection))
+	sub, err := FindSubscriptionByID(s.subscriptions[0].ID)
 	s.NoError(err)
 	s.Nil(sub)
 }
