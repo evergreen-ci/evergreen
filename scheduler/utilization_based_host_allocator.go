@@ -72,11 +72,23 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	// determine how many free hosts we have that are already up
 	numFreeHosts, err := calcExistingFreeHosts(existingHosts, freeHostFraction, MaxDurationPerDistroHost)
 	if err != nil {
-		return numNewHosts, nil
+		return numNewHosts, err
 	}
 
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, numFreeHosts, hostsForLongTasks)
+
+	// calulate the same values for 0 and 1 values of the fraction (just for reporting purposes)
+	freeHostsIfZero, err := calcExistingFreeHosts(existingHosts, 0, MaxDurationPerDistroHost)
+	if err != nil {
+		return numNewHosts, err
+	}
+	freeHostsIfOne, err := calcExistingFreeHosts(existingHosts, 1, MaxDurationPerDistroHost)
+	if err != nil {
+		return numNewHosts, err
+	}
+	newHostsIfZero := calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, freeHostsIfZero, hostsForLongTasks)
+	newHostsIfOne := calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, freeHostsIfZero, hostsForLongTasks)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > len(taskQueue) {
@@ -122,6 +134,10 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 		"long_tasks":                   hostsForLongTasks,
 		"scheduled_tasks_runtime":      int64(scheduledTasksDuration),
 		"scheduled_tasks_runtime_span": scheduledTasksDuration.String(),
+		"free_hosts_if_zero_factor":    freeHostsIfZero,
+		"free_hosts_if_one_factor":     freeHostsIfOne,
+		"new_hosts_if_zero_factor":     newHostsIfZero,
+		"new_hosts_if_one_factor":      newHostsIfOne,
 	})
 
 	return numNewHosts, nil
