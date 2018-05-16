@@ -83,6 +83,9 @@ func (j *amboyStatsCollector) Run(_ context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
+	}
 
 	localQueue := j.env.LocalQueue()
 	if !j.ExcludeLocal && (localQueue != nil && localQueue.Started()) {
