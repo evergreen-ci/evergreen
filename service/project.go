@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -542,6 +543,15 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	projectRef.RepotrackerError.InvalidRevision = ""
 	projectRef.RepotrackerError.MergeBaseRevision = ""
 	err = projectRef.Upsert()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	// run the repotracker for the project
+	ts := util.RoundPartOfHour(5).Format("2006-01-02.15-04-05")
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+	err = evergreen.GetEnvironment().RemoteQueue().Put(j)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
