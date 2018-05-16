@@ -226,7 +226,7 @@ func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Delivere
 		return nil, errors.New("'ui.url' must be set in Evergreen settings")
 	}
 	handler := thirdparty.NewJiraHandler(
-		qp.config.Jira.Host,
+		qp.config.Jira.GetHostURL(),
 		qp.config.Jira.Username,
 		qp.config.Jira.Password,
 	)
