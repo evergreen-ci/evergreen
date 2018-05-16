@@ -78,7 +78,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, numFreeHosts, hostsForLongTasks)
 
-	// calulate the same values for 0 and 1 values of the fraction (just for reporting purposes)
+	// calculate the same values for 0 and 1 values of the fraction (just for reporting purposes)
 	freeHostsIfZero, err := calcExistingFreeHosts(existingHosts, 0, MaxDurationPerDistroHost)
 	if err != nil {
 		return numNewHosts, err
