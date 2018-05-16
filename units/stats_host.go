@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -9,7 +10,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -23,14 +23,13 @@ func init() {
 
 type hostStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	logger   grip.Journaler
 }
 
 // NewHostStatsCollector logs statistics about host utilization per
 // distro to the default grip logger.
 func NewHostStatsCollector(id string) amboy.Job {
 	j := makeHostStatsCollector()
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", hostStatsCollectorJobName, id))
 	j.SetPriority(-1)
 
 	return j
@@ -38,7 +37,6 @@ func NewHostStatsCollector(id string) amboy.Job {
 
 func makeHostStatsCollector() *hostStatsCollector {
 	j := &hostStatsCollector{
-		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    hostStatsCollectorJobName,
@@ -76,14 +74,14 @@ func (j *hostStatsCollector) statsByDistro() error {
 		}
 	}
 
-	j.logger.Info(message.Fields{
+	grip.Info(message.Fields{
 		"report":        "host stats by distro",
 		"hosts_total":   count,
 		"running_tasks": tasks,
 		"data":          hosts,
 	})
 
-	j.logger.WarningWhen(excess > 0, message.Fields{
+	grip.WarningWhen(excess > 0, message.Fields{
 		"report": "maxHosts exceeded",
 		"data":   hosts.MaxHostsExceeded(),
 		"total":  excess,
@@ -98,7 +96,7 @@ func (j *hostStatsCollector) statsByProvider() error {
 		return errors.Wrap(err, "problem getting stats by provider")
 	}
 
-	j.logger.Info(message.Fields{
+	grip.Info(message.Fields{
 		"report": "host stats by provider",
 		// or we could make providers a map of provider names
 		// (string) to counts, by calling .Map() on the providers value.

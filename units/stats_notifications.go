@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -11,7 +12,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -27,7 +27,6 @@ func init() {
 
 type notificationsStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	logger   grip.Journaler
 }
 
 func makeNotificationsStatsCollector() *notificationsStatsCollector {
@@ -38,7 +37,6 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 				Version: 0,
 			},
 		},
-		logger: logging.MakeGrip(grip.GetSender()),
 	}
 	j.SetDependency(dependency.NewAlways())
 	j.SetPriority(-1)
@@ -51,7 +49,7 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 
 func NewNotificationStatsCollector(id string) amboy.Job {
 	job := makeNotificationsStatsCollector()
-	job.SetID(id)
+	job.SetID(fmt.Sprintf("%s-%s", notificationsStatsCollectorJobName, id))
 
 	return job
 }
@@ -89,6 +87,6 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	msg["pending_notifications_by_type"] = stats
 
 	if ctx.Err() == nil {
-		j.logger.Info(msg)
+		grip.Info(msg)
 	}
 }
