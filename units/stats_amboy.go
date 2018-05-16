@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -82,8 +81,7 @@ func (j *amboyStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if j.env == nil {
-		j.AddError(errors.New("environment is not configured"))
-		return
+		j.env = evergreen.GetEnvironment()
 	}
 
 	localQueue := j.env.LocalQueue()
