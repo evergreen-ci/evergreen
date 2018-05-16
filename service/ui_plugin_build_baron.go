@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -29,21 +30,24 @@ const (
 )
 
 func bbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
-	bbproj := make(map[string]evergreen.BuildBaronProject)
 	bbconf, ok := settings.Plugins["buildbaron"]
 	if !ok {
-		return bbproj
+		return nil
 	}
 
-	for k, v := range bbconf {
-		proj, ok := v.(evergreen.BuildBaronProject)
-		if !ok {
-			continue
-		}
-		bbproj[k] = proj
+	projectConfig, ok := bbconf["projects"]
+	if !ok {
+		grip.Error("no build baron projects configured")
+		return nil
 	}
 
-	return bbproj
+	projects := map[string]evergreen.BuildBaronProject{}
+	err := mapstructure.Decode(projectConfig, &projects)
+	if err != nil {
+		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
+	}
+
+	return projects
 }
 
 // saveNote reads a request containing a note's content along with the last seen
