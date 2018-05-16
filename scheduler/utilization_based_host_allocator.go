@@ -88,7 +88,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 		return numNewHosts, err
 	}
 	newHostsIfZero := calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, freeHostsIfZero, hostsForLongTasks)
-	newHostsIfOne := calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, freeHostsIfZero, hostsForLongTasks)
+	newHostsIfOne := calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, freeHostsIfOne, hostsForLongTasks)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > len(taskQueue) {
