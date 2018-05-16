@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/service"
@@ -129,7 +128,6 @@ type processRunner interface {
 }
 
 var backgroundRunners = []processRunner{
-	&alerts.QueueProcessor{},
 	&monitor.Runner{},
 }
 

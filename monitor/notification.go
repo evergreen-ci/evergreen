@@ -30,10 +30,10 @@ const (
 )
 
 // a function that outputs any necessary notifications
-type notificationBuilder func(*evergreen.Settings) ([]notification, error)
+type NotificationBuilder func(*evergreen.Settings) ([]Notification, error)
 
 // contains info about a notification that should be sent
-type notification struct {
+type Notification struct {
 	recipient string
 	subject   string
 	message   string
@@ -47,7 +47,7 @@ type notification struct {
 
 // spawnHostExpirationWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that will be expiring soon (but haven't expired yet)
-func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification, error) {
+func SpawnHostExpirationWarnings(settings *evergreen.Settings) ([]Notification, error) {
 	// sanity check, since the thresholds are supplied in code
 	if len(spawnWarningThresholds) == 0 {
 		grip.Warning(message.Fields{
@@ -71,7 +71,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification, 
 	}
 
 	// the eventual list of warning notifications to be sent
-	warnings := []notification{}
+	warnings := []Notification{}
 
 	for _, h := range hosts {
 
@@ -116,7 +116,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification, 
 			expirationTimeFormatted = h.ExpirationTime.In(loc).Format(time.RFC1123)
 		}
 		// we need to send a notification for the threshold for this host
-		hostNotification := notification{
+		hostNotification := Notification{
 			recipient: h.StartedBy,
 			subject:   fmt.Sprintf("%v host termination reminder", h.Distro.Id),
 			message: fmt.Sprintf("Your %v host with id %v will be terminated"+
@@ -159,9 +159,9 @@ func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 
 // slowProvisioningWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that are taking a long time to provision
-func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification, error) {
+func SlowProvisioningWarnings(settings *evergreen.Settings) ([]Notification, error) {
 	if settings.Notify.SMTP == nil {
-		return []notification{}, errors.New("no notification emails configured")
+		return []Notification{}, errors.New("no notification emails configured")
 	}
 
 	// fetch all hosts that are taking too long to provision
@@ -172,7 +172,7 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification, err
 	}
 
 	// the list of warning notifications that will be returned
-	warnings := []notification{}
+	warnings := []Notification{}
 
 	for _, h := range hosts {
 
@@ -182,7 +182,7 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification, err
 		}
 
 		// build the notification
-		hostNotification := notification{
+		hostNotification := Notification{
 			recipient: settings.Notify.SMTP.AdminEmail[0],
 			subject: fmt.Sprintf("Host %v taking a long time to provision",
 				h.Id),
