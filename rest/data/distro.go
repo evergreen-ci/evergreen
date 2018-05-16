@@ -124,5 +124,5 @@ func (mdc *MockDistroConnector) FindCostByDistroId(distroId string,
 }
 
 func (mdc *MockDistroConnector) ClearTaskQueue(distroId string) error {
-	return nil
+	return errors.New("ClearTaskQueue unimplemented for mock")
 }

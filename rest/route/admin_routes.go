@@ -7,10 +7,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	dataModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
@@ -513,4 +515,41 @@ func makeNextEventsPage(events []model.APIAdminEvent, limit int) *Page {
 		}
 	}
 	return nextPage
+}
+
+func getClearTaskQueueRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route: route,
+		Methods: []MethodHandler{
+			MethodHandler{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				Authenticator:     &SuperUserAuthenticator{},
+				RequestHandler:    &clearTaskQueueHandler{},
+				MethodType:        http.MethodDelete,
+			},
+		},
+		Version: version,
+	}
+}
+
+func (h *clearTaskQueueHandler) Handler() RequestHandler {
+	return &clearTaskQueueHandler{}
+}
+
+func (h *clearTaskQueueHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	h.distro = vars["distro"]
+	_, err := distro.FindOne(distro.ById(h.distro))
+	if err != nil {
+		return &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    "unable to find distro",
+		}
+	}
+
+	return nil
+}
+
+func (h *clearTaskQueueHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	return ResponseData{}, sc.ClearTaskQueue(h.distro)
 }

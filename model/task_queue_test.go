@@ -309,6 +309,7 @@ func TestTaskQueueGenerationTimes(t *testing.T) {
 func TestClearTaskQueue(t *testing.T) {
 	assert := assert.New(t)
 	distro := "distro"
+	otherDistro := "otherDistro"
 	tasks := []TaskQueueItem{
 		{
 			Id: "task1",
@@ -323,9 +324,15 @@ func TestClearTaskQueue(t *testing.T) {
 	queue := NewTaskQueue(distro, tasks)
 	assert.Len(queue.Queue, 3)
 	assert.NoError(queue.Save())
+	otherQueue := NewTaskQueue(otherDistro, tasks)
+	assert.Len(otherQueue.Queue, 3)
+	assert.NoError(otherQueue.Save())
 
 	assert.NoError(ClearTaskQueue(distro))
 	queueFromDb, err := LoadTaskQueue(distro)
 	assert.NoError(err)
 	assert.Len(queueFromDb.Queue, 0)
+	otherQueueFromDb, err := LoadTaskQueue(otherDistro)
+	assert.NoError(err)
+	assert.Len(otherQueueFromDb.Queue, 3)
 }

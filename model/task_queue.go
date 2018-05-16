@@ -189,7 +189,7 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 }
 
 func ClearTaskQueue(distro string) error {
-	grip.Warning(message.Fields{
+	grip.Info(message.Fields{
 		"message": "clearing task queue",
 		"distro":  distro,
 	})
@@ -205,7 +205,7 @@ func ClearTaskQueue(distro string) error {
 			},
 		},
 	)
-	return errors.WithStack(err)
+	return errors.Wrap(err, "error clearing task queue")
 }
 
 func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
