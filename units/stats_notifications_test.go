@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -109,7 +110,7 @@ func (s *notificationsStatsCollectorSuite) TestStatsCollector() {
 
 	job := makeNotificationsStatsCollector()
 	job.SetID("TestStatsCollector")
-
+	job.logger = logging.MakeGrip(sender)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	job.Run(ctx)

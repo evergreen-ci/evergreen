@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -27,6 +28,7 @@ func init() {
 
 type notificationsStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	logger   grip.Journaler
 }
 
 func makeNotificationsStatsCollector() *notificationsStatsCollector {
@@ -37,6 +39,7 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 				Version: 0,
 			},
 		},
+		logger: logging.MakeGrip(grip.GetSender()),
 	}
 	j.SetDependency(dependency.NewAlways())
 	j.SetPriority(-1)
@@ -56,6 +59,10 @@ func NewNotificationStatsCollector(id string) amboy.Job {
 
 func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
+	}
 
 	msg := message.Fields{
 		"start_time": j.TimeInfo().Start,
@@ -87,6 +94,6 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	msg["pending_notifications_by_type"] = stats
 
 	if ctx.Err() == nil {
-		grip.Info(msg)
+		j.logger.Info(msg)
 	}
 }
