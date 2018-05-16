@@ -481,8 +481,6 @@ mciModule.controller('PerfController', function PerfController(
                   task: $scope.task.display_name,
                   variant: $scope.task.build_variant,
                 })
-                .limit(999) // TODO this should prevent some accidents
-                            // Should be replaced with more specific query
                 .execute()
             }).then(function(docs) {
               $scope.changePoints = _.groupBy(docs, 'test')
