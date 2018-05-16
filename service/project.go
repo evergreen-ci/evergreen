@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -548,8 +549,13 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
+	ts := util.RoundPartOfHour(0).Format("2006-01-02.15-04-05")
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-set-revision-%s", ts), projectRef.Identifier)
-	j.Run(context.Background())
+	err = evergreen.GetEnvironment().RemoteQueue().Put(j)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
 	gimlet.WriteJSON(w, nil)
 }
