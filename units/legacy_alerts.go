@@ -45,7 +45,7 @@ func makeLegacyAlertsJob() *legacyAlertsJob {
 }
 
 func NewLegacyAlertsRunnerJob(env evergreen.Environment, id string) amboy.Job {
-	j := makeLegacyMonitorRunnerJob()
+	j := makeLegacyAlertsJob()
 	j.env = env
 	j.SetID(fmt.Sprintf("%s.%s", legacyAlertRunnerJobName, id))
 	return j
