@@ -549,7 +549,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
-	ts := util.RoundPartOfHour(0).Format("2006-01-02.15-04-05")
+	ts := util.RoundPartOfHour(5).Format("2006-01-02.15-04-05")
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
 	err = evergreen.GetEnvironment().RemoteQueue().Put(j)
 	if err != nil {
