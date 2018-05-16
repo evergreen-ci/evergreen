@@ -16,6 +16,7 @@
   window.jiraHost= {{.JiraHost}}
   window.hasBanner = {{ne .Banner ""}}
 </script>
+<script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="/static/app/waterfall/tasks_grid.js?hash={{ StaticsMD5 }}"></script>
 {{if .User}}
@@ -97,6 +98,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('unschedule')">Unschedule all</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('restart')">Restart</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('priority')">Set priority</a></li>
+                 <!-- <li><a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a></li> -->
                </ul>
              </div>
              <admin-modal>
