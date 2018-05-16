@@ -40,19 +40,9 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, amboyStatsCollectorJobName)
 
-	// if the env isn't established it should run and not panic,
-	// but return an error.
-	j := makeAmboyStatsCollector()
-	j.env = nil
-	j.logger = logging.MakeGrip(s.sender)
-	s.False(j.Status().Completed)
-	s.NotPanics(func() { j.Run(context.Background()) })
-	s.True(j.Status().Completed)
-	s.True(j.HasErrors())
-
 	// if the env is set, but the queues aren't logged it should
 	// run and complete but report an error.
-	j = makeAmboyStatsCollector()
+	j := makeAmboyStatsCollector()
 	s.False(j.Status().Completed)
 	j.env = s.env
 	j.TaskID = amboyStatsCollectorJobName + "-"
