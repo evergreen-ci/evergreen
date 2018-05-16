@@ -547,6 +547,10 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// run the repotracker for the project
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-set-revision-%s", ts), projectRef.Identifier)
+	j.Run(context.Background())
+
 	gimlet.WriteJSON(w, nil)
 }
 
