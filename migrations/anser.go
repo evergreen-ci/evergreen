@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
@@ -27,7 +26,7 @@ type Options struct {
 	Session  db.Session
 }
 
-var ()
+const AllLogCollection = "event_log"
 
 // Setup configures the migration environment, configuring the backing
 // queue and a database session.
@@ -138,7 +137,7 @@ func DefaultMigrations(evgEnv evergreen.Environment) (map[string]migrationGenera
 		migrationGithubHooksToCollection:      githubHooksToCollectionGenerator,
 		migrationZeroDateFix:                  zeroDateFixGenerator(githubToken),
 		migrationAdminEventRestructure:        adminEventRestructureGenerator,
-		migrationEventRtypeRestructureAllLogs: makeEventRTypeMigration(event.AllLogCollection),
+		migrationEventRtypeRestructureAllLogs: makeEventRTypeMigration(AllLogCollection),
 		migrationSetDefaultBranch:             setDefaultBranchMigrationGenerator,
 		migrationAdminMapRestructure:          adminMapRestructureGenerator,
 	}, nil

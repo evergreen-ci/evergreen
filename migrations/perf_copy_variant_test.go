@@ -18,11 +18,7 @@ import (
 )
 
 type perfCopyVariantMigration struct {
-	env      *mock.Environment
-	session  db.Session
-	database string
-	cancel   func()
-	suite.Suite
+	migrationSuite
 }
 
 func TestPerfCopyVariantMigration(t *testing.T) {
@@ -37,10 +33,12 @@ func TestPerfCopyVariantMigration(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &perfCopyVariantMigration{
-		env:      &mock.Environment{},
-		session:  session,
-		database: database.Name,
-		cancel:   cancel,
+		migrationSuite{
+			env:      &mock.Environment{},
+			session:  session,
+			database: database.Name,
+			cancel:   cancel,
+		},
 	}
 
 	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
@@ -105,11 +103,11 @@ func (s *perfCopyVariantMigration) TestMigration() {
 	s.NoError(err)
 	s.Len(out, 4)
 
-	copyArgs := PerfCopyVariantArgs{
-		Tag:         "a_tag",
-		ProjectID:   "a_project",
-		FromVariant: "a_variant",
-		ToVariant:   "to_variant",
+	copyArgs := map[string]string{
+		tagKey:         "a_tag",
+		projectIDKey:   "a_project",
+		fromVariantKey: "a_variant",
+		toVariantKey:   "to_variant",
 	}
 	factoryFactory := perfCopyVariantFactoryFactory(copyArgs)
 	factory, err := factoryFactory(anser.GetEnvironment(), args)
