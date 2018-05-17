@@ -121,6 +121,10 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
 
 	// log scheduler stats
+	queueTasks := []string{}
+	for _, t := range taskQueue {
+		queueTasks = append(queueTasks, t.Id)
+	}
 	grip.Info(message.Fields{
 		"message":                      "queue state report",
 		"runner":                       RunnerName,
@@ -131,6 +135,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 		"num_existing_hosts":           len(existingHosts),
 		"num_free_hosts_approx":        numFreeHosts,
 		"queue_length":                 len(taskQueue),
+		"queue_tasks":                  queueTasks,
 		"long_tasks":                   hostsForLongTasks,
 		"scheduled_tasks_runtime":      int64(scheduledTasksDuration),
 		"scheduled_tasks_runtime_span": scheduledTasksDuration.String(),
