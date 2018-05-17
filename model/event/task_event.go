@@ -55,6 +55,29 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	}
 }
 
+func LogManyTaskEvents(taskIds []string, eventType string, eventData TaskEventData) {
+	if len(taskIds) == 0 {
+		grip.Error("LogManyTaskEvents called with empty taskIds")
+		return
+	}
+	events := []EventLogEntry{}
+	now := time.Now()
+	for _, id := range taskIds {
+		event := EventLogEntry{
+			Timestamp:    now,
+			ResourceId:   id,
+			EventType:    eventType,
+			Data:         eventData,
+			ResourceType: ResourceTypeTask,
+		}
+		events = append(events, event)
+	}
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogManyEvents(events); err != nil {
+		grip.Errorf("Error logging task events: %s", err)
+	}
+}
+
 func LogJiraIssueCreated(taskId, jiraIssue string) {
 	LogTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{JiraIssue: jiraIssue})
 }
@@ -98,6 +121,11 @@ func LogTaskDeactivated(taskId string, userId string) {
 
 func LogTaskAbortRequest(taskId string, userId string) {
 	LogTaskEvent(taskId, TaskAbortRequest,
+		TaskEventData{UserId: userId})
+}
+
+func LogManyTaskAbortRequests(taskIds []string, userId string) {
+	LogManyTaskEvents(taskIds, TaskAbortRequest,
 		TaskEventData{UserId: userId})
 }
 

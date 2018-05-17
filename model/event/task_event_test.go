@@ -9,6 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -101,4 +104,14 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 		})
 	})
+}
+
+func TestLogManyTestEvents(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	require.NoError(db.ClearCollections(AllLogCollection))
+	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, evergreen.GithubPRRequester)
+	events := []EventLogEntry{}
+	assert.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
+	assert.Len(events, 2)
 }

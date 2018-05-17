@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -128,7 +129,19 @@ func AbortVersion(versionId string) error {
 		},
 		bson.M{"$set": bson.M{task.AbortedKey: true}},
 	)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "error setting aborted statuses")
+	}
+	tasks, err := task.FindManyWithFields(db.Query(bson.M{task.VersionKey: versionId}), task.IdKey)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks by version id")
+	}
+	ids := []string{}
+	for _, t := range tasks {
+		ids = append(ids, t.Id)
+	}
+	event.LogManyTaskAbortRequests(ids, evergreen.GithubPatchUser)
+	return nil
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {

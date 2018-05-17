@@ -585,3 +585,27 @@ func findResourceTypeIn(data interface{}) (bool, string) {
 
 	return false, ""
 }
+
+func (s *eventSuite) TestLogManyEvents() {
+	logger := NewDBEventLogger(AllLogCollection)
+	event1 := EventLogEntry{
+		ID:           bson.NewObjectId(),
+		ResourceId:   "resource_id_1",
+		EventType:    "some_type",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeTask),
+		ResourceType: "TASK",
+	}
+	event2 := EventLogEntry{
+		ID:           bson.NewObjectId(),
+		ResourceId:   "resource_id_1",
+		EventType:    "some_type",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeTask),
+		ResourceType: "TASK",
+	}
+	s.NoError(logger.LogManyEvents([]EventLogEntry{event1, event2}))
+	events := []EventLogEntry{}
+	s.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
+	s.Len(events, 2)
+}

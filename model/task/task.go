@@ -1049,7 +1049,19 @@ func AbortBuild(buildId string) error {
 		},
 		bson.M{"$set": bson.M{AbortedKey: true}},
 	)
-	return errors.WithStack(err)
+	if err != nil {
+		return errors.Wrap(err, "error setting aborted statuses")
+	}
+	tasks, err := FindManyWithFields(db.Query(bson.M{BuildIdKey: buildId}), IdKey)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks by build id")
+	}
+	ids := []string{}
+	for _, t := range tasks {
+		ids = append(ids, t.Id)
+	}
+	event.LogManyTaskAbortRequests(ids, evergreen.GithubPatchUser)
+	return nil
 }
 
 //String represents the stringified version of a task
