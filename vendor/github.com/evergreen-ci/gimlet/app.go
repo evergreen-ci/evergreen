@@ -56,6 +56,16 @@ func NewApp() *APIApp {
 	return a
 }
 
+func (a *APIApp) NewSubApp() (*APIApp, error) {
+	if !a.isResolved {
+		return nil, errors.New("app must be resolved to get a subapp")
+	}
+	app := NewApp()
+	app.router = a.router
+	a.subApps = append(a.subApps, app)
+	return app, nil
+}
+
 // SetDefaultVersion allows you to specify a default version for the
 // application. Default versions must be 0 (no version,) or larger.
 func (a *APIApp) SetDefaultVersion(version int) {
@@ -113,9 +123,15 @@ func (a *APIApp) AddWrapper(m Middleware) {
 // all routes and creats a mux.Router object for the application
 // instance.
 func (a *APIApp) Resolve() error {
-	catcher := grip.NewCatcher()
+	fmt.Println("CALLING RESOLVE HERE")
+	if a.isResolved {
+		return nil
+	}
 
-	a.router = mux.NewRouter().StrictSlash(a.StrictSlash)
+	catcher := grip.NewCatcher()
+	if a.router == nil {
+		a.router = mux.NewRouter().StrictSlash(a.StrictSlash)
+	}
 
 	for _, route := range a.routes {
 		if !route.IsValid() {
@@ -195,17 +211,18 @@ func (a *APIApp) RestWrappers() {
 // application and returns it in the form of a http.Handler for use in
 // stitching together applicationstr
 func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
-	if err := a.Resolve(); err != nil {
-		return nil, err
-	}
-
 	catcher := grip.NewCatcher()
 	n := negroni.New()
 	for _, m := range a.middleware {
 		n.Use(m)
 	}
-	n.UseHandler(a.router)
+	fmt.Println("HAVE SUB APPS:", len(a.subApps))
+
 	for _, app := range a.subApps {
+		if app.router != a.router {
+			app.router = a.router
+		}
+
 		if !strings.HasPrefix(app.prefix, a.prefix) {
 			app.prefix = a.prefix + app.prefix
 		}
@@ -218,6 +235,7 @@ func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
 
 		n.UseHandler(subNegroni)
 	}
+	n.UseHandler(a.router)
 
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
