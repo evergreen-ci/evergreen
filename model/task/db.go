@@ -673,7 +673,7 @@ func FindManyWithFields(query db.Q, projected ...string) ([]Task, error) {
 		query = query.WithFields(projected...)
 	}
 
-	err := db.FindOneQ(Collection, query, &tasks)
+	err := db.FindAllQ(Collection, query, &tasks)
 
 	if err == mgo.ErrNotFound {
 		return nil, nil
