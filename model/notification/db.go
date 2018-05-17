@@ -113,19 +113,19 @@ func InsertMany(items ...Notification) error {
 	return db.InsertMany(Collection, interfaces...)
 }
 
-func ByID(id string) db.Q {
-	return db.Query(bson.M{
-		idKey: id,
-	})
-}
-
 func Find(id string) (*Notification, error) {
 	notification := Notification{}
-	err := db.FindOneQ(Collection, ByID(id), &notification)
+	err := db.FindOneQ(Collection, byID(id), &notification)
 
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
 
 	return &notification, err
+}
+
+func byID(id string) db.Q {
+	return db.Query(bson.M{
+		idKey: id,
+	})
 }

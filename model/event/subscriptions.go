@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -209,6 +210,21 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
+func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
+	out := Subscription{}
+	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+		subscriptionIDKey: id,
+	}), &out)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+
+	} else if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
+	}
+
+	return &out, nil
+}
+
 func RemoveSubscription(id bson.ObjectId) error {
 	if !id.Valid() {
 		return errors.New("id is not valid, cannot remove")
@@ -292,5 +308,34 @@ func IsValidOwnerType(in string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
+	return Subscription{
+		Type:    ResourceTypePatch,
+		Trigger: "outcome",
+		Selectors: []Selector{
+			{
+				Type: "id",
+				Data: id,
+			},
+		},
+		Subscriber: sub,
+	}
+}
+
+func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
+	return Subscription{
+		ID:      bson.NewObjectId(),
+		Type:    ResourceTypePatch,
+		Trigger: "outcome",
+		Selectors: []Selector{
+			{
+				Type: "owner",
+				Data: owner,
+			},
+		},
+		Subscriber: sub,
 	}
 }

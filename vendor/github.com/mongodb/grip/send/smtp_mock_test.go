@@ -56,3 +56,7 @@ func (c *smtpClientMock) Data() (io.WriteCloser, error) {
 
 	return c.message, nil
 }
+
+func (c *smtpClientMock) Close() error {
+	return nil
+}
