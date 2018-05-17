@@ -102,7 +102,7 @@ func (s *RoutingSuite) TestHandlerMethod() {
 
 	hone := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { grip.Debug("dummy route") })
 	htwo := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) { grip.Debug("dummy route two") })
-	s.NotEqual(hone, htwo)
+	s.NotEqual(fmt.Sprint(hone), fmt.Sprint(htwo))
 
 	r.Handler(hone)
 	s.Equal(fmt.Sprint(r.handler), fmt.Sprint(hone))

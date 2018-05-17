@@ -4,15 +4,12 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"net/url"
 	"regexp"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Read-Evergreen"
@@ -22,7 +19,6 @@ type TemplateFunctionOptions struct {
 	WebHome  string
 	HelpHome string
 	IsProd   bool
-	Router   *mux.Router
 }
 
 // MutableVar is a setable variable for UI templates.
@@ -115,26 +111,6 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) (map[str
 				return s
 			}
 			return s[0:n]
-		},
-
-		// UrlFor generates a URL for the given route.
-		"UrlFor": func(name string, pairs ...interface{}) (*url.URL, error) {
-			size := len(pairs)
-			strPairs := make([]string, size)
-			for i := 0; i < size; i++ {
-				if v, ok := pairs[i].(string); ok {
-					strPairs[i] = v
-				} else {
-					strPairs[i] = fmt.Sprint(pairs[i])
-				}
-			}
-
-			route := fo.Router.Get(name)
-			if route == nil {
-				return nil, errors.Errorf("UrlFor: can't find a route named %v", name)
-			}
-
-			return route.URL(strPairs...)
 		},
 
 		// HelpUrl returns the address of the Evergreen help page,

@@ -622,8 +622,6 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 
 // NewRouter returns the root router for all APIServer endpoints.
 func (as *APIServer) AttachRoutes(root *mux.Router) {
-	// attaches the /rest/v1 routes
-	AttachRESTHandler(root, as)
 	// attaches /rest/v2 routes
 	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
 	route.AttachHandler(root, as.queue, as.Settings.ApiUrl, APIV2Prefix, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))

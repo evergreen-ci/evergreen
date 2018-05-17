@@ -70,7 +70,7 @@ func logURL(url, logId, root string) string {
 // getTestHistory retrieves the test history query parameters from the request
 // and passes them to the function that gets the test results.
 func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
-	projectId := mux.Vars(r)["project_id"]
+	projectId := gimlet.GetVars(r)["project_id"]
 	if projectId == "" {
 		gimlet.WriteJSONInternalError(w, responseError{Message: "invalid project id"})
 		return

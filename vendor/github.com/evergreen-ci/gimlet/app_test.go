@@ -29,10 +29,10 @@ func (s *AppSuite) SetupTest() {
 }
 
 func (s *AppSuite) TestDefaultValuesAreSet() {
-	s.Len(s.app.middleware, 3)
+	s.Len(s.app.middleware, 2)
 	s.Len(s.app.routes, 0)
 	s.Equal(s.app.port, 3000)
-	s.True(s.app.StrictSlash)
+	s.False(s.app.StrictSlash)
 	s.False(s.app.isResolved)
 	s.Equal(s.app.defaultVersion, -1)
 }
@@ -62,15 +62,15 @@ func (s *AppSuite) TestDefaultVersionSetter() {
 }
 
 func (s *AppSuite) TestMiddleWearResetEmptiesList() {
-	s.Len(s.app.middleware, 3)
+	s.Len(s.app.middleware, 2)
 	s.app.ResetMiddleware()
 	s.Len(s.app.middleware, 0)
 }
 
 func (s *AppSuite) TestMiddleWearAdderAddsItemToList() {
-	s.Len(s.app.middleware, 3)
+	s.Len(s.app.middleware, 2)
 	s.app.AddMiddleware(NewAppLogger())
-	s.Len(s.app.middleware, 4)
+	s.Len(s.app.middleware, 3)
 }
 
 func (s *AppSuite) TestPortSetterDoesNotAllowImpermisableValues() {
@@ -214,6 +214,9 @@ func (s *AppSuite) TestSubAppResolution() {
 		handler: func(_ http.ResponseWriter, _ *http.Request) { grip.Info("hello") },
 		route:   "/foo",
 	}
+	s.app.AddMiddleware(NewRecoveryLogger())
+	s.app.AddWrapper(NewRequireAuthHandler())
+
 	s.True(route.IsValid())
 	s.app.routes = append(s.app.routes, route)
 	subApp := NewApp()
@@ -348,4 +351,12 @@ func (s *AppSuite) TestAppRun() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	s.NoError(s.app.Run(ctx))
+}
+
+func (s *AppSuite) TestWrapperAccessors() {
+	s.Len(s.app.wrappers, 0)
+	s.app.AddWrapper(NewRecoveryLogger())
+	s.Len(s.app.wrappers, 1)
+	s.app.RestWrappers()
+	s.Len(s.app.wrappers, 0)
 }
