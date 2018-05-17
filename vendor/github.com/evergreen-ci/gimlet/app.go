@@ -33,7 +33,6 @@ type APIApp struct {
 	port           int
 	router         *mux.Router
 	address        string
-	subApps        []*APIApp
 	routes         []*APIRoute
 	middleware     []Middleware
 	wrappers       []Middleware
@@ -56,16 +55,6 @@ func NewApp() *APIApp {
 	return a
 }
 
-func (a *APIApp) NewSubApp() (*APIApp, error) {
-	if !a.isResolved {
-		return nil, errors.New("app must be resolved to get a subapp")
-	}
-	app := NewApp()
-	app.router = a.router
-	a.subApps = append(a.subApps, app)
-	return app, nil
-}
-
 // SetDefaultVersion allows you to specify a default version for the
 // application. Default versions must be 0 (no version,) or larger.
 func (a *APIApp) SetDefaultVersion(version int) {
@@ -84,20 +73,6 @@ func (a *APIApp) Router() (*mux.Router, error) {
 		return a.router, nil
 	}
 	return nil, errors.New("application is not resolved")
-}
-
-// AddApp allows you to combine App instances, by taking one app and
-// add its routes to the current app. Returns a non-nill error value
-// if the current app is resolved. If the apps have different default
-// versions set, the versions on the second app are explicitly set.
-func (a *APIApp) AddApp(app *APIApp) error {
-	// if we've already resolved then it has to be an error
-	if a.isResolved {
-		return errors.New("cannot merge an app into a resolved app")
-	}
-
-	a.subApps = append(a.subApps, app)
-	return nil
 }
 
 // AddMiddleware adds a negroni handler as middleware to the end of
@@ -123,7 +98,6 @@ func (a *APIApp) AddWrapper(m Middleware) {
 // all routes and creats a mux.Router object for the application
 // instance.
 func (a *APIApp) Resolve() error {
-	fmt.Println("CALLING RESOLVE HERE")
 	if a.isResolved {
 		return nil
 	}
@@ -209,37 +183,16 @@ func (a *APIApp) RestWrappers() {
 
 // getHander internal helper resolves the negorni middleware for the
 // application and returns it in the form of a http.Handler for use in
-// stitching together applicationstr
+// stitching together applications.
 func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
-	catcher := grip.NewCatcher()
+	if !a.isResolved {
+		return nil, errors.New("must resolve the application first")
+	}
 	n := negroni.New()
 	for _, m := range a.middleware {
 		n.Use(m)
 	}
-	fmt.Println("HAVE SUB APPS:", len(a.subApps))
-
-	for _, app := range a.subApps {
-		if app.router != a.router {
-			app.router = a.router
-		}
-
-		if !strings.HasPrefix(app.prefix, a.prefix) {
-			app.prefix = a.prefix + app.prefix
-		}
-		catcher.Add(app.Resolve())
-
-		subNegroni, err := app.getNegroni()
-		if err != nil {
-			catcher.Add(err)
-		}
-
-		n.UseHandler(subNegroni)
-	}
 	n.UseHandler(a.router)
-
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
 
 	return n, nil
 }
@@ -247,6 +200,11 @@ func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
 // Handler returns a handler interface for integration with other
 // server frameworks.
 func (a *APIApp) Handler() (http.Handler, error) {
+	if !a.isResolved {
+		if err := a.Resolve(); err != nil {
+			return nil, err
+		}
+	}
 	return a.getNegroni()
 }
 

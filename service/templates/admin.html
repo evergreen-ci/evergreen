@@ -61,7 +61,6 @@ Admin Settings
             <li class="link" ng-click="scrollTo('naive')">Naive</li>
             <div>External Communication</div>
             <li class="link" ng-click="scrollTo('jira')">Jira</li>
-            <li class="link" ng-click="scrollTo('new_relic')">New Relic</li>
             <li class="link" ng-click="scrollTo('slack')">Slack</li>
             <li class="link" ng-click="scrollTo('splunk')">Splunk</li>
             <div>Background Processing</div>
@@ -589,27 +588,6 @@ Admin Settings
                 <md-input-container class="control" style="width:45%; margin-left:50px;">
                   <label>Password</label>
                   <input type="text" ng-model="Settings.jira.password">
-                </md-input-container>
-              </md-card-content>
-            </md-card>
-
-            <md-card flex=50 id="new_relic" style="height:200px">
-              <md-card-title>
-                <md-card-title-text>
-                  <span>New Relic</span>
-                </md-card-title-text>
-                <md-button ng-click="clearSection('new_relic')">
-                  <i class="fa fa-trash"></i>
-                </md-button>
-              </md-card-title>
-              <md-card-content>
-                <md-input-container class="control" style="width:45%;">
-                  <label>Application name</label>
-                  <input type="text" ng-model="Settings.new_relic.application_name">
-                </md-input-container>
-                <md-input-container class="control" style="width:45%; margin-left:50px;">
-                  <label>License key</label>
-                  <input type="text" ng-model="Settings.new_relic.license_key">
                 </md-input-container>
               </md-card-content>
             </md-card>

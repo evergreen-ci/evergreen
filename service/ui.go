@@ -66,21 +66,15 @@ type ViewData struct {
 }
 
 func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
-
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	functions, err := MakeTemplateFuncs(fo, settings.SuperUsers)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create template function map")
-	}
-
 	ropts := gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: !settings.Ui.CacheTemplates,
-		Functions:    functions,
+		Functions:    MakeTemplateFuncs(fo, settings.SuperUsers),
 	}
 
 	uis := &UIServer{

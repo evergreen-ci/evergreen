@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -41,7 +42,7 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 }
 
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
-func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) (map[string]interface{}, error) {
+func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[string]interface{} {
 	r := map[string]interface{}{
 		// IsSuperUser returns true if the given user Id has super user privileges.
 		"IsSuperUser": func(userName string) bool {
@@ -123,14 +124,9 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) (map[str
 		},
 	}
 
-	staticsMD5, err := DirectoryChecksum(fo.WebHome)
-	if err != nil {
-		return nil, err
+	r["BuildRevision"] = func() string {
+		return evergreen.BuildRevision
 	}
-
-	r["StaticsMD5"] = func() string {
-		return staticsMD5
-	}
-	return r, nil
+	return r
 
 }

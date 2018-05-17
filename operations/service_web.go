@@ -15,7 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	nrgorilla "github.com/newrelic/go-agent/_integrations/nrgorilla/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -47,30 +46,24 @@ func startWebService() cli.Command {
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 			startSystemCronJobs(ctx, env)
+
+			var (
+				apiServer *http.Server
+				uiServer  *http.Server
+			)
+
 			serviceHandler, err := getServiceRouter(settings, queue)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-
-			apiServer := service.GetServer(settings.Api.HttpListenAddr, serviceHandler)
+			apiServer = service.GetServer(settings.Api.HttpListenAddr, serviceHandler)
 
 			if settings.Ui.CsrfKey != "" {
 				errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
-				uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(serviceHandler)
-			}
-			uiServer := service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
-
-			newRelic, err := settings.NewRelic.SetUp()
-			if newRelic == nil || err != nil {
-				grip.Debug(message.WrapError(err, message.Fields{
-					"message": "skipping new relic setup",
-				}))
+				uiHandler := csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(serviceHandler)
+				uiServer = service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
 			} else {
-				grip.Info(message.Fields{
-					"message":          "successfully set up new relic",
-					"application_name": settings.NewRelic.ApplicationName,
-				})
-				nrgorilla.InstrumentRoutes(router, newRelic)
+				uiServer = service.GetServer(settings.Ui.HttpListenAddr, serviceHandler)
 			}
 
 			catcher := grip.NewBasicCatcher()

@@ -51,5 +51,4 @@ import:
   - package: github.com/google/go-github
   - package: github.com/google/go-querystring
   - package: github.com/google/shlex
-  - package: github.com/newrelic/go-agent
   - package: github.com/PuerkitoBio/rehttp

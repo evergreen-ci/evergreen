@@ -22,7 +22,6 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:         &APIJiraConfig{},
 		Keys:         map[string]string{},
 		LoggerConfig: &APILoggerConfig{},
-		NewRelic:     &APINewRelicConfig{},
 		Notify:       &APINotifyConfig{},
 		Plugins:      map[string]map[string]interface{}{},
 		Providers:    &APICloudProviders{},
@@ -55,7 +54,6 @@ type APIAdminSettings struct {
 	Keys               map[string]string                 `json:"keys,omitempty"`
 	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath            APIString                         `json:"log_path,omitempty"`
-	NewRelic           *APINewRelicConfig                `json:"new_relic,omitempty"`
 	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PprofPort          APIString                         `json:"pprof_port,omitempty"`
@@ -652,29 +650,6 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 	return evergreen.LogBuffering{
 		DurationSeconds: a.DurationSeconds,
 		Count:           a.Count,
-	}, nil
-}
-
-type APINewRelicConfig struct {
-	ApplicationName APIString `json:"application_name"`
-	LicenseKey      APIString `json:"license_key"`
-}
-
-func (a *APINewRelicConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.NewRelicConfig:
-		a.ApplicationName = ToAPIString(v.ApplicationName)
-		a.LicenseKey = ToAPIString(v.LicenseKey)
-	default:
-		return errors.Errorf("%T is not a supported type", h)
-	}
-	return nil
-}
-
-func (a *APINewRelicConfig) ToService() (interface{}, error) {
-	return evergreen.NewRelicConfig{
-		ApplicationName: FromAPIString(a.ApplicationName),
-		LicenseKey:      FromAPIString(a.LicenseKey),
 	}, nil
 }
 

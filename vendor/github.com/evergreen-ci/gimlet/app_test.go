@@ -89,75 +89,6 @@ func (s *AppSuite) TestPortSetterDoesNotAllowImpermisableValues() {
 	}
 }
 
-func (s *AppSuite) TestAddAppReturnsErrorIfOuterAppIsResolved() {
-	newApp := NewApp()
-	err := newApp.Resolve()
-	s.NoError(err)
-	s.True(newApp.isResolved)
-
-	// if you attempt use AddApp on an app that is already
-	// resolved, it returns an error.
-	s.Error(newApp.AddApp(s.app))
-}
-
-func (s *AppSuite) TestAddAppReturnsNoErrorIfInnerAppIsResolved() {
-	newApp := NewApp()
-	err := s.app.Resolve()
-	s.NoError(err)
-	s.True(s.app.isResolved)
-
-	s.NoError(newApp.AddApp(s.app))
-}
-
-func (s *AppSuite) TestRouteMergingInIfVersionsAreTheSame() {
-	subApp := NewApp()
-	s.Len(subApp.routes, 0)
-	route := subApp.AddRoute("/foo")
-	s.Len(subApp.routes, 1)
-
-	s.Len(s.app.subApps, 0)
-	err := s.app.AddApp(subApp)
-	s.NoError(err)
-	s.Len(s.app.subApps, 1)
-	s.Equal(s.app.subApps[0].routes[0], route)
-}
-
-func (s *AppSuite) TestRouteMergingInWithDifferntVersions() {
-	// If the you have two apps with different default versions,
-	// routes in the sub-app that don't have a version set, should
-	// get their version set to whatever the value of the sub
-	// app's default value at the time of merging the apps.
-	subApp := NewApp()
-	subApp.SetDefaultVersion(2)
-	s.NotEqual(s.app.defaultVersion, subApp.defaultVersion)
-
-	// add a route to the first app
-	s.Len(subApp.routes, 0)
-	route := subApp.AddRoute("/foo").Version(3)
-	s.Equal(route.version, 3)
-	s.Len(subApp.routes, 1)
-
-	// try adding to second app, to the first, with one route
-	s.Len(s.app.subApps, 0)
-	err := s.app.AddApp(subApp)
-	s.NoError(err)
-	s.Len(s.app.subApps, 1)
-	s.Equal(s.app.subApps[0].routes[0], route)
-
-	nextApp := NewApp()
-	s.Len(nextApp.routes, 0)
-	nextRoute := nextApp.AddRoute("/bar")
-	s.Len(nextApp.routes, 1)
-	s.Equal(nextRoute.version, -1)
-	nextApp.SetDefaultVersion(3)
-	s.Equal(nextRoute.version, -1)
-
-	// make sure the default value of nextApp is on the route in the subApp
-	err = s.app.AddApp(nextApp)
-	s.NoError(err)
-	s.Equal(s.app.subApps[1].routes[0], nextRoute)
-}
-
 func (s *AppSuite) TestRouterReturnsRouterInstanceWhenResolved() {
 	s.False(s.app.isResolved)
 	r, err := s.app.Router()
@@ -178,7 +109,6 @@ func (s *AppSuite) TestResolveEncountersErrorsWithAnInvalidRoot() {
 
 	s.app.AddRoute("/foo").Version(-10)
 	s.Error(s.app.Resolve())
-
 }
 
 func (s *AppSuite) TestSetPortToExistingValueIsANoOp() {
@@ -204,58 +134,6 @@ func (s *AppSuite) TestResolveValidRoute() {
 	n, err := s.app.getNegroni()
 	s.NotNil(n)
 	s.NoError(err)
-}
-
-func (s *AppSuite) TestSubAppResolution() {
-	s.False(s.app.isResolved)
-	route := &APIRoute{
-		version: 1,
-		methods: []httpMethod{get},
-		handler: func(_ http.ResponseWriter, _ *http.Request) { grip.Info("hello") },
-		route:   "/foo",
-	}
-	s.app.AddMiddleware(NewRecoveryLogger())
-	s.app.AddWrapper(NewRequireAuthHandler())
-
-	s.True(route.IsValid())
-	s.app.routes = append(s.app.routes, route)
-	subApp := NewApp()
-	s.app.AddApp(subApp)
-
-	n, err := s.app.getNegroni()
-	s.NotNil(n)
-	s.NoError(err)
-}
-
-func (s *AppSuite) TestSubAppResolutionWithErrors() {
-	s.False(s.app.isResolved)
-	route := &APIRoute{
-		version: 1,
-		methods: []httpMethod{get},
-		handler: func(_ http.ResponseWriter, _ *http.Request) { grip.Info("hello") },
-		route:   "/foo",
-	}
-	s.True(route.IsValid())
-	s.app.routes = append(s.app.routes, route)
-	s.app.SetPrefix("/rest")
-
-	badRoute := &APIRoute{
-		version: -1,
-		methods: []httpMethod{get},
-		handler: func(_ http.ResponseWriter, _ *http.Request) { grip.Info("hello") },
-		route:   "",
-	}
-	s.False(badRoute.IsValid())
-
-	subApp := NewApp()
-	subApp.routes = append(subApp.routes, badRoute)
-
-	s.app.AddApp(subApp)
-
-	n, err := s.app.getNegroni()
-	s.Nil(n)
-	s.Error(err)
-	s.Error(s.app.Run(context.Background()))
 }
 
 func (s *AppSuite) TestResolveAppWithDefaultVersion() {
@@ -335,6 +213,7 @@ func (s *AppSuite) TestGetVersionRoute() {
 }
 
 func (s *AppSuite) TestHandlerGetter() {
+	s.NoError(s.app.Resolve())
 	hone, err := s.app.getNegroni()
 	s.NoError(err)
 	s.NotNil(hone)
@@ -350,6 +229,7 @@ func (s *AppSuite) TestAppRun() {
 	s.Len(s.app.routes, 0)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	s.NoError(s.app.Resolve())
 	s.NoError(s.app.Run(ctx))
 }
 

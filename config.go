@@ -66,7 +66,6 @@ type Settings struct {
 	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic" id:"new_relic"`
 	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew         util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
