@@ -77,7 +77,7 @@ func getEndTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string, deta
 
 	handler, err := as.Handler()
 	if err != nil {
-		t.Fatalf("cyreating test API handler: %v", err)
+		t.Fatalf("creating test API handler: %v", err)
 	}
 	url := fmt.Sprintf("/api/2/task/%s/end", taskId)
 
