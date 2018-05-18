@@ -23,6 +23,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.isDirty = false;
   $scope.triggers = [
+      {
+          trigger: "outcome",
+          resource_type: "VERSION",
+          label: "any version finishes"
+      },
       // TODO uncomment as we implement these
       //{
       //    trigger: "failure",
