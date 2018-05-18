@@ -27,7 +27,6 @@ var (
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
-	subscriptionExtraDataKey      = bsonutil.MustHaveTag(Subscription{}, "ExtraData")
 
 	groupedSubscriptionsTypeKey          = bsonutil.MustHaveTag(groupedSubscriptions{}, "Type")
 	groupedSubscriptionsSubscriptionsKey = bsonutil.MustHaveTag(groupedSubscriptions{}, "Subscriptions")
@@ -49,7 +48,6 @@ type Subscription struct {
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
 	OwnerType      OwnerType     `bson:"owner_type"`
-	ExtraData      interface{}   `bson:"extra_data,omitempty"`
 }
 
 type unmarshalSubscription struct {
