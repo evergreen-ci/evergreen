@@ -1,6 +1,6 @@
 {{define "scripts"}}
-<script src="{{Static "js" "admin.js"}}?hash={{ StaticsMD5 }}"></script>
-<script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
 <style type="text/css">
 body{ background-color: rgb(250,250,250); }
 </style>
@@ -61,7 +61,6 @@ Admin Settings
             <li class="link" ng-click="scrollTo('naive')">Naive</li>
             <div>External Communication</div>
             <li class="link" ng-click="scrollTo('jira')">Jira</li>
-            <li class="link" ng-click="scrollTo('new_relic')">New Relic</li>
             <li class="link" ng-click="scrollTo('slack')">Slack</li>
             <li class="link" ng-click="scrollTo('splunk')">Splunk</li>
             <div>Background Processing</div>
@@ -363,16 +362,16 @@ Admin Settings
                 </md-card-title>
                 <md-card-content>
                   <md-input-container class="control" style="width:45%;">
-                    <label>Merge toggle</label>
-                    <input type="number" ng-model="Settings.scheduler.merge_toggle">
-                  </md-input-container>
-                  <md-input-container class="control" style="width:45%; margin-left:50px;">
                     <label>Task finder</label>
                     <input type="text" ng-model="Settings.scheduler.task_finder">
                   </md-input-container>
-                  <md-input-container class="control" style="width:45%;">
-                    <label>Host Allocator</label>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Host allocator</label>
                     <input type="text" ng-model="Settings.scheduler.host_allocator">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Free host fraction</label>
+                    <input type="number" step="0.01" min="0" max="1" ng-model="Settings.scheduler.free_host_fraction">
                   </md-input-container>
                 </md-card-content>
               </md-card>
@@ -589,27 +588,6 @@ Admin Settings
                 <md-input-container class="control" style="width:45%; margin-left:50px;">
                   <label>Password</label>
                   <input type="text" ng-model="Settings.jira.password">
-                </md-input-container>
-              </md-card-content>
-            </md-card>
-
-            <md-card flex=50 id="new_relic" style="height:200px">
-              <md-card-title>
-                <md-card-title-text>
-                  <span>New Relic</span>
-                </md-card-title-text>
-                <md-button ng-click="clearSection('new_relic')">
-                  <i class="fa fa-trash"></i>
-                </md-button>
-              </md-card-title>
-              <md-card-content>
-                <md-input-container class="control" style="width:45%;">
-                  <label>Application name</label>
-                  <input type="text" ng-model="Settings.new_relic.application_name">
-                </md-input-container>
-                <md-input-container class="control" style="width:45%; margin-left:50px;">
-                  <label>License key</label>
-                  <input type="text" ng-model="Settings.new_relic.license_key">
                 </md-input-container>
               </md-card-content>
             </md-card>

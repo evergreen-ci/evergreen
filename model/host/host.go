@@ -163,9 +163,9 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 	)
 }
 
-// SetInitializing marks the host as initializing. Only allow this
+// SetProvisioning marks the host as initializing. Only allow this
 // if the host is uninitialized.
-func (h *Host) SetInitializing() error {
+func (h *Host) SetProvisioning() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
@@ -173,21 +173,7 @@ func (h *Host) SetInitializing() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.HostInitializing,
-			},
-		},
-	)
-}
-
-func (h *Host) SetStarting() error {
-	return UpdateOne(
-		bson.M{
-			IdKey:     h.Id,
-			StatusKey: evergreen.HostUninitialized,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey: evergreen.HostStarting,
+				StatusKey: evergreen.HostProvisioning,
 			},
 		},
 	)
@@ -209,7 +195,7 @@ func (h *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
-			StatusKey: evergreen.HostInitializing,
+			StatusKey: evergreen.HostProvisioning,
 		},
 		bson.M{
 			"$set": bson.M{

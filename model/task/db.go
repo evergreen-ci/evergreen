@@ -52,6 +52,7 @@ var (
 	AbortedKey             = bsonutil.MustHaveTag(Task{}, "Aborted")
 	TimeTakenKey           = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	ExpectedDurationKey    = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
+	DurationPredictionKey  = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
 	PriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey         = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	CostKey                = bsonutil.MustHaveTag(Task{}, "Cost")
@@ -59,6 +60,7 @@ var (
 	DisplayOnlyKey         = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey           = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	GenerateTaskKey        = bsonutil.MustHaveTag(Task{}, "GenerateTask")
+	GeneratedByKey         = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")

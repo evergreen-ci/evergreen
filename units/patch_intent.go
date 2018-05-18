@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -254,6 +255,19 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if err := patchDoc.Insert(); err != nil {
 		return err
+	}
+	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
+
+	if patchDoc.IsGithubPRPatch() {
+		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+			Owner:    patchDoc.GithubPatchData.BaseOwner,
+			Repo:     patchDoc.GithubPatchData.BaseRepo,
+			PRNumber: patchDoc.GithubPatchData.PRNumber,
+			Ref:      patchDoc.GithubPatchData.HeadHash,
+		})
+		sub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		j.AddError(sub.Upsert())
+		// TODO After EVG:3081 add build subscriptions
 	}
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {

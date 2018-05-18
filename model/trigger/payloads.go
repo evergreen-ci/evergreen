@@ -3,6 +3,7 @@ package trigger
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"net/http"
 	ttemplate "text/template"
@@ -26,16 +27,20 @@ type commonTemplateData struct {
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
+
+	apiModel          restModel.Model
+	githubState       message.GithubState
+	githubDescription string
 }
 
-const emailSubjectTemplate string = `Evergreen {{ .Object }} has {{ .PastTenseStatus }}!`
+const emailSubjectTemplate string = `Evergreen: {{ .Object }} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 const emailTemplate string = `<html>
 <head>
 </head>
 <body>
 <p>Hi,</p>
 
-<p>Your Evergreen {{ .Object }} <a href="{{ .URL }}">'{{ .ID }}'</a> has {{ .PastTenseStatus }}.</p>
+<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .ID }}</a> has {{ .PastTenseStatus }}.</p>
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
@@ -69,7 +74,7 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse body template")
 	}
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	err = bodyTmpl.Execute(buf, t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute email template")
@@ -80,7 +85,7 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse subject template")
 	}
-	buf = new(bytes.Buffer)
+	buf = &bytes.Buffer{}
 	err = subjectTmpl.Execute(buf, t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute subject template")
@@ -93,6 +98,9 @@ func emailPayload(t commonTemplateData) (*message.Email, error) {
 		PlainTextContents: false,
 		Headers:           t.Headers,
 	}
+
+	// prevent Gmail from threading notifications with similar subjects
+	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s", t.Object, t.ID)}
 
 	return &m, nil
 }
@@ -115,7 +123,7 @@ func jiraComment(t commonTemplateData) (*string, error) {
 		return nil, errors.Wrap(err, "failed to parse jira comment template")
 	}
 
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	if err = commentTmpl.Execute(buf, t); err != nil {
 		return nil, errors.Wrap(err, "failed to make jira comment")
 	}
@@ -125,6 +133,8 @@ func jiraComment(t commonTemplateData) (*string, error) {
 }
 
 func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
+	const maxSummary = 254
+
 	comment, err := jiraComment(t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make jira issue")
@@ -135,15 +145,19 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 		return nil, errors.Wrap(err, "failed to parse jira issue template")
 	}
 
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	if err = issueTmpl.Execute(buf, t); err != nil {
 		return nil, errors.Wrap(err, "failed to make jira issue")
 	}
-	title := buf.String()
+	title, remainder := truncateString(buf.String(), maxSummary)
+	desc := *comment
+	if len(remainder) != 0 {
+		desc = fmt.Sprintf("...\n%s\n%s", remainder, desc)
+	}
 
 	issue := message.JiraIssue{
 		Summary:     title,
-		Description: *comment,
+		Description: desc,
 	}
 
 	return &issue, nil
@@ -155,7 +169,7 @@ func slack(t commonTemplateData) (*notification.SlackPayload, error) {
 		return nil, errors.Wrap(err, "failed to parse slack template")
 	}
 
-	buf := new(bytes.Buffer)
+	buf := &bytes.Buffer{}
 	if err = issueTmpl.Execute(buf, t); err != nil {
 		return nil, errors.Wrap(err, "failed to make slack message")
 	}
@@ -164,4 +178,75 @@ func slack(t commonTemplateData) (*notification.SlackPayload, error) {
 	return &notification.SlackPayload{
 		Body: msg,
 	}, nil
+}
+
+// truncateString splits a string into two parts, with the following behavior:
+// If the entire string is <= capacity, it's returned unchanged.
+// Otherwise, the string is split at the (capacity-3)'th byte. The first string
+// returned will be this string + '...', and the second string will be the
+// remaining characters, if any
+func truncateString(s string, capacity int) (string, string) {
+	if len(s) <= capacity {
+		return s, ""
+	}
+	if capacity <= 0 {
+		return "", s
+	}
+
+	head := s[0:capacity-3] + "..."
+	tail := s[capacity-3:]
+
+	return head, tail
+}
+
+// For patches, versions, builds, and tasks, the outcome, success and  failure
+// triggers all have the same structure. The common generator returned by this
+// function is suitable for creating payloads for all of these
+func makeCommonGenerator(triggerName string, selectors []event.Selector,
+	data commonTemplateData) (*notificationGenerator, error) {
+	gen := notificationGenerator{
+		triggerName: triggerName,
+		selectors:   selectors,
+	}
+	gen.selectors = append(gen.selectors, event.Selector{
+		Type: "trigger",
+		Data: triggerName,
+	})
+
+	data.Headers = makeHeaders(selectors)
+
+	var err error
+	gen.evergreenWebhook, err = webhookPayload(data.apiModel, data.Headers)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building webhook payload")
+	}
+
+	gen.email, err = emailPayload(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building email payload")
+	}
+
+	gen.jiraComment, err = jiraComment(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building jira comment")
+	}
+	gen.jiraIssue, err = jiraIssue(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building jira issue")
+	}
+
+	gen.githubStatusAPI = &message.GithubStatus{
+		Context:     "evergreen",
+		State:       data.githubState,
+		URL:         data.URL,
+		Description: data.githubDescription,
+	}
+
+	// TODO improve slack body with additional info, like failing variants
+	gen.slack, err = slack(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "error building slack message")
+	}
+
+	return &gen, nil
 }

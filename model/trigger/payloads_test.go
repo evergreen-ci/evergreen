@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -42,8 +43,8 @@ func (s *payloadSuite) TestEmail() {
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal(m.Subject, "Evergreen patch has failed!")
-	s.Contains(m.Body, "Your Evergreen patch <")
+	s.Equal(m.Subject, "Evergreen: patch in 'test' has failed!")
+	s.Contains(m.Body, "Your Evergreen patch in 'test' <")
 	s.Contains(m.Body, "> has failed.")
 	s.Contains(m.Body, `href="`+s.url+`"`)
 	s.Contains(m.Body, "X-Evergreen-test:something")
@@ -85,4 +86,40 @@ func (s *payloadSuite) TestSlack() {
 
 	s.Equal("Evergreen patch <https://example.com/patch/1234|1234> in 'test' has failed!", m.Body)
 	s.Empty(m.Attachments)
+}
+
+func TestTruncateString(t *testing.T) {
+	assert := assert.New(t)
+
+	const sample = "12345"
+
+	head, tail := truncateString("", 0)
+	assert.Empty(head)
+	assert.Empty(tail)
+	head, tail = truncateString("", 255)
+	assert.Empty(head)
+	assert.Empty(tail)
+
+	head, tail = truncateString(sample, 255)
+	assert.Equal("12345", head)
+	assert.Empty(tail)
+
+	head, tail = truncateString(sample, 5)
+	assert.Equal("12345", head)
+	assert.Empty(tail)
+
+	head, tail = truncateString(sample, 4)
+	assert.Equal("1...", head)
+	assert.Len(head, 4)
+	assert.Equal("2345", tail)
+
+	head, tail = truncateString(sample, 0)
+	assert.Empty(head)
+	assert.Len(head, 0)
+	assert.Equal("12345", tail)
+
+	head, tail = truncateString(sample, -1)
+	assert.Empty(head)
+	assert.Len(head, 0)
+	assert.Equal("12345", tail)
 }

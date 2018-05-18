@@ -63,7 +63,7 @@ func TestJiraUnauthorized(t *testing.T) {
 func TestJiraIntegration(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestJiraIntegration")
 	Convey("With a JIRA rest interface that makes a valid request", t, func() {
-		jira := JiraHandler{liveHttp{}, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
+		jira := JiraHandler{liveHttp{}, testConfig.Jira.GetHostURL(), testConfig.Jira.Username, testConfig.Jira.Password}
 
 		Convey("the request for a ticket should return a valid ticket response", func() {
 			ticket, err := jira.GetJIRATicket("BF-1")

@@ -14,9 +14,10 @@ import (
 )
 
 type Configuration struct {
-	DistroID      string
-	TaskFinder    string
-	HostAllocator string
+	DistroID         string
+	TaskFinder       string
+	HostAllocator    string
+	FreeHostFraction float64
 }
 
 func PlanDistro(ctx context.Context, conf Configuration) error {
@@ -35,14 +36,14 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 	}
 
 	finder := GetTaskFinder(conf.TaskFinder)
-	runnableTasks, err := finder(conf.DistroID)
+	tasks, err := finder(conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "problem calculating task finder")
 	}
 
-	projectDurations, err := GetExpectedDurations(runnableTasks)
+	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
 	if err != nil {
-		return errors.Wrap(err, "problem calculating duration")
+		return errors.Wrap(err, "error getting runnable tasks")
 	}
 
 	ds := &distroSchedueler{
@@ -50,7 +51,7 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		TaskQueuePersister: &DBTaskQueuePersister{},
 	}
 
-	res := ds.scheduleDistro(conf.DistroID, runnableTasks, projectDurations)
+	res := ds.scheduleDistro(conf.DistroID, runnableTasks, versions)
 	if res.err != nil {
 		return errors.Wrap(res.err, "problem calculating distro plan")
 	}
@@ -72,7 +73,6 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 	}
 
 	allocatorArgs := HostAllocatorData{
-		projectTaskDurations: projectDurations,
 		taskQueueItems: map[string][]model.TaskQueueItem{
 			conf.DistroID: res.taskQueueItem,
 		},
@@ -80,6 +80,7 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		distros: map[string]distro.Distro{
 			conf.DistroID: distroSpec,
 		},
+		freeHostFraction: conf.FreeHostFraction,
 	}
 
 	allocator := GetHostAllocator(conf.HostAllocator)
@@ -111,6 +112,8 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		"message":                "distro-scheduler-report",
 		"runner":                 RunnerName,
 		"distro":                 conf.DistroID,
+		"provider":               distroSpec.Provider,
+		"max_hsots":              distroSpec.PoolSize,
 		"new_hosts":              hostList,
 		"num_hosts":              len(hostList),
 		"queue":                  res.schedulerEvent,

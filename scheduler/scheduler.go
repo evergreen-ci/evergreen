@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -26,8 +27,7 @@ type Scheduler struct {
 	TaskQueuePersister
 	HostAllocator
 
-	GetExpectedDurations TaskDurationEstimator
-	FindRunnableTasks    TaskFinder
+	FindRunnableTasks TaskFinder
 }
 
 const (
@@ -48,9 +48,7 @@ type distroSchedueler struct {
 	TaskQueuePersister
 }
 
-func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
-	taskExpectedDuration model.ProjectTaskDurations) distroSchedulerResult {
-
+func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]version.Version) distroSchedulerResult {
 	res := distroSchedulerResult{
 		distroId: distroId,
 	}
@@ -60,7 +58,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 		"num_tasks": len(runnableTasksForDistro),
 	})
 
-	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro)
+	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro, versions)
 	if err != nil {
 		res.err = errors.Wrap(err, "Error prioritizing tasks")
 		return res
@@ -73,8 +71,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 		"operation": "saving task queue for distro",
 	})
 
-	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks,
-		taskExpectedDuration)
+	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks)
 	if err != nil {
 		res.err = errors.Wrapf(err, "Error processing distro %s saving task queue", distroId)
 		return res
@@ -126,7 +123,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 
 }
 
-// Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
+// Call out to the embedded Manager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
 func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {

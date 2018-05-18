@@ -159,7 +159,7 @@ func (s *githubSuite) TestGithubUserInOrganization() {
 	s.NoError(err)
 	s.True(isMember)
 
-	isMember, err = GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "ocotocat")
+	isMember, err = GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "octocat")
 	s.NoError(err)
 	s.False(isMember)
 }

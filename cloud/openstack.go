@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// openStackManager implements the CloudManager interface for OpenStack.
+// openStackManager implements the Manager interface for OpenStack.
 type openStackManager struct {
 	authOptions  *gophercloud.AuthOptions
 	endpointOpts *gophercloud.EndpointOpts

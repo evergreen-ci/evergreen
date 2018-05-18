@@ -99,7 +99,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Jira.Username, settings.Jira.Username)
 	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
-	s.EqualValues(testSettings.NewRelic.ApplicationName, settings.NewRelic.ApplicationName)
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settings.Notify.SMTP.AdminEmail))

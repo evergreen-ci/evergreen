@@ -7,9 +7,9 @@
   window.plugins = null
   window.jiraHost= {{.JiraHost}}
 </script>
-<script type="text/javascript" src="{{Static "js" "build.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "build.js"}}?hash={{ BuildRevision }}"></script>
 {{if .User }}
-<script type="text/javascript" src="{{Static "js" "build_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "build_admin.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 <script type="text/javascript">
   var userTz = {{GetTimezone $.User}}

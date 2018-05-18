@@ -64,20 +64,25 @@ func (s *SlackSuite) TestValidateAndConstructoRequiresValidate() {
 	opts.Hostname = "testsystem.com"
 	s.Error(opts.Validate())
 
+	opts.Name = "test"
 	opts.Channel = "$chat"
 	s.Error(opts.Validate())
-	opts.Name = "test"
+	opts.Channel = "@test"
+	s.NoError(opts.Validate(), "%+v", opts)
+	opts.Channel = "#test"
 	s.NoError(opts.Validate(), "%+v", opts)
 
 	defer os.Setenv(slackClientToken, os.Getenv(slackClientToken))
 	s.NoError(os.Setenv(slackClientToken, "foo"))
 }
 
-func (s *SlackSuite) TestValidateAddsOctothorpToChannelName() {
-	opts := &SlackOptions{Name: "test", Channel: "chat", Hostname: "foo"}
-	s.Equal("chat", opts.Channel)
-	s.NoError(opts.Validate())
+func (s *SlackSuite) TestValidateRequiresOctothorpOrArobase() {
+	opts := &SlackOptions{Name: "test", Channel: "#chat", Hostname: "foo"}
 	s.Equal("#chat", opts.Channel)
+	s.NoError(opts.Validate())
+	opts = &SlackOptions{Name: "test", Channel: "@chat", Hostname: "foo"}
+	s.Equal("@chat", opts.Channel)
+	s.NoError(opts.Validate())
 }
 
 func (s *SlackSuite) TestFieldSetIncludeCheck() {

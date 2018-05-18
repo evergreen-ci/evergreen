@@ -129,6 +129,10 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner:     "me",
 			OwnerType: OwnerTypeProject,
 		},
+		NewPatchOutcomeSubscriptionByOwner("user_0", Subscriber{
+			Type:   EmailSubscriberType,
+			Target: "a@b.com",
+		}),
 	}
 
 	for _, sub := range s.subscriptions {
@@ -140,7 +144,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 	out := []Subscription{}
 	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
 
-	s.Require().Len(out, 5)
+	s.Require().Len(out, 6)
 
 	for _, sub := range out {
 		if sub.ID == s.subscriptions[3].ID {
@@ -151,7 +155,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 func (s *subscriptionsSuite) TestRemove() {
 	for i := range s.subscriptions {
-		s.NoError(s.subscriptions[i].Remove())
+		s.NoError(RemoveSubscription(s.subscriptions[i].ID))
 
 		out := []Subscription{}
 		s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
@@ -244,45 +248,6 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 	s.False(regexSelectorsMatch(selectors, a.RegexSelectors))
 }
 
-func (s *subscriptionsSuite) TestExtraData() {
-	subscription := Subscription{
-		ID:      bson.NewObjectId(),
-		Type:    ResourceTypePatch,
-		Trigger: "time-exceeds-n-constant",
-		Selectors: []Selector{
-			{
-				Type: "data1",
-				Data: "something",
-			},
-		},
-		RegexSelectors: []Selector{},
-		Subscriber: Subscriber{
-			Type:   EmailSubscriberType,
-			Target: "test@domain.invalid",
-		},
-		Owner: "someoneelse",
-	}
-	s.NoError(subscription.Upsert())
-
-	out := Subscription{}
-	q := db.Query(bson.M{
-		"_id": subscription.ID,
-	})
-	s.NoError(db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
-		"_id": subscription.ID,
-	}), &out))
-	s.NotZero(out)
-
-	subscription.ExtraData = bson.M{
-		"test": "test",
-	}
-	s.NoError(subscription.Upsert())
-
-	out = Subscription{}
-	s.EqualError(db.FindOneQ(SubscriptionsCollection, q, &out), "error unmarshaling extra data: unexpected extra data in subscription")
-	s.Zero(out)
-}
-
 func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
 	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypePerson)
 	s.NoError(err)
@@ -299,4 +264,18 @@ func (s *subscriptionsSuite) TestFindByOwnerForProject() {
 	s.Require().Len(subscriptions, 1)
 	s.Equal("me", subscriptions[0].Owner)
 	s.EqualValues(OwnerTypeProject, subscriptions[0].OwnerType)
+}
+
+func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
+	for i := range s.subscriptions {
+		sub, err := FindSubscriptionByID(s.subscriptions[i].ID)
+		s.NoError(err)
+		s.NotNil(sub)
+		s.True(sub.ID.Valid())
+	}
+
+	s.NoError(db.ClearCollections(SubscriptionsCollection))
+	sub, err := FindSubscriptionByID(s.subscriptions[0].ID)
+	s.NoError(err)
+	s.Nil(sub)
 }

@@ -1,5 +1,5 @@
 {{define "scripts"}}
-<script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ BuildRevision }}"></script>
 <script>
 {{if .User}}
 var isSuperUser = {{IsSuperUser .User.Id}};

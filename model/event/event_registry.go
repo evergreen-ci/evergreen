@@ -2,35 +2,27 @@ package event
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 )
 
-type eventFactory func() interface{}
-
-type extraDataKey struct {
-	ResourceType string
-	Trigger      string
-}
+type eventDataFactory func() interface{}
 
 type eventRegistry struct {
 	lock sync.RWMutex
 
-	types          map[string]eventFactory
+	types          map[string]eventDataFactory
 	isSubscribable map[EventLogEntry]bool
-	extraData      map[extraDataKey]interface{}
 }
 
 var registry eventRegistry = eventRegistry{
-	types:          map[string]eventFactory{},
+	types:          map[string]eventDataFactory{},
 	isSubscribable: map[EventLogEntry]bool{},
-	extraData:      map[extraDataKey]interface{}{},
 }
 
 // AddType adds an event data factory to the registry with the given resource
 // type. AddType will panic if you attempt to add the same resourceType more
 // than once
-func (r *eventRegistry) AddType(resourceType string, f eventFactory) {
+func (r *eventRegistry) AddType(resourceType string, f eventDataFactory) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -79,56 +71,6 @@ func (r *eventRegistry) IsSubscribable(resourceType, eventType string) bool {
 	return r.isSubscribable[e]
 }
 
-// RegisterExtraData associates a struct with the pair (resourceType, trigger).
-// When a Subscription is deserialized that matches the pair, the extra_data
-// field will be initialized to the registered struct.
-// By registering extra data, the extra_data field becomes required in the
-// Subscription model
-func (r *eventRegistry) RegisterExtraData(resourceType, triggerName string, i interface{}) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	if i == nil {
-		panic(fmt.Sprintf("attempted to register nil extra data for event '%s', trigger: '%s' more than once", resourceType, triggerName))
-	}
-
-	e := extraDataKey{
-		ResourceType: resourceType,
-		Trigger:      triggerName,
-	}
-
-	_, ok := r.extraData[e]
-	if ok {
-		panic(fmt.Sprintf("attempted to register extra data for event '%s', trigger: '%s' more than once", resourceType, triggerName))
-	}
-
-	if reflect.TypeOf(i).Kind() != reflect.Struct {
-		panic(fmt.Sprintf("extra data must be a struct, saw type: %T", i))
-	}
-
-	r.extraData[e] = i
-}
-
-// GetExtraData initializes extra data for the given pair (resourceType, trigger)
-// The type returned is guaranteed to be not nil
-func (r *eventRegistry) GetExtraData(resourceType, triggerName string) interface{} {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
-	e := extraDataKey{
-		ResourceType: resourceType,
-		Trigger:      triggerName,
-	}
-
-	data, ok := r.extraData[e]
-	if !ok {
-		return nil
-	}
-
-	t := reflect.ValueOf(data).Type()
-	return reflect.New(t).Interface()
-}
-
 func NewEventFromType(resourceType string) interface{} {
 	registry.lock.RLock()
 	defer registry.lock.RUnlock()
@@ -141,31 +83,31 @@ func NewEventFromType(resourceType string) interface{} {
 	return f()
 }
 
-func taskEventFactory() interface{} {
+func taskEventDataFactory() interface{} {
 	return &TaskEventData{}
 }
 
-func hostEventFactory() interface{} {
+func hostEventDataFactory() interface{} {
 	return &HostEventData{}
 }
 
-func distroEventFactory() interface{} {
+func distroEventDataFactory() interface{} {
 	return &DistroEventData{}
 }
 
-func schedulerEventFactory() interface{} {
+func schedulerEventDataFactory() interface{} {
 	return &SchedulerEventData{}
 }
 
-func taskSystemResourceEventFactory() interface{} {
+func taskSystemResourceEventDataFactory() interface{} {
 	return &TaskSystemResourceData{}
 }
 
-func taskProcessResourceEventFactory() interface{} {
+func taskProcessResourceEventDataFactory() interface{} {
 	return &TaskProcessResourceData{}
 }
 
-func adminEventFactory() interface{} {
+func adminEventDataFactory() interface{} {
 	return &rawAdminEventData{}
 }
 

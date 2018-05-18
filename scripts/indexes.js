@@ -83,6 +83,7 @@ db.tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.tasks.ensureIndex({ "finish_time": 1, "_id": 1})
 db.tasks.ensureIndex({ "build_variant": 1, "branch" : 1, "order" : 1})
 db.tasks.ensureIndex({ "execution_tasks": 1})
+db.tasks.createIndex({ "distro": 1, "status": 1, "activated": 1, "priority": 1 }, { background: true })
 
 //======old_tasks======//
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})

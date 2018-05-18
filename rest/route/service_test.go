@@ -22,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestHostParseAndValidate(t *testing.T) {
@@ -615,8 +616,8 @@ func TestTestPaginator(t *testing.T) {
 					status = "fail"
 				}
 				nextTest := testresult.TestResult{
-					TestFile: fmt.Sprintf("test%d", i),
-					Status:   status,
+					ID:     bson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
+					Status: status,
 				}
 				cachedTests = append(cachedTests, nextTest)
 			}
@@ -632,7 +633,6 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.ToAPIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
@@ -641,18 +641,18 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
 						Limit:    limit,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -667,7 +667,6 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.ToAPIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
@@ -676,18 +675,18 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    50,
 						Relation: "next",
 					},
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
 						Limit:    limit,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -702,7 +701,6 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.ToAPIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
@@ -711,18 +709,18 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", 0),
+						Key:      fmt.Sprintf("object_id_%d_", 0),
 						Limit:    50,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -737,7 +735,6 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.ToAPIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
@@ -746,13 +743,13 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &PageResult{
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
 						Limit:    limit,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -767,7 +764,6 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.ToAPIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
@@ -776,13 +772,13 @@ func TestTestPaginator(t *testing.T) {
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 			})
 		})

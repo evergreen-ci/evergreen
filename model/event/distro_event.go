@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeDistro, distroEventFactory)
+	registry.AddType(ResourceTypeDistro, distroEventDataFactory)
 }
 
 const (

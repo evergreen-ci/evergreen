@@ -26,7 +26,7 @@ func TestSpawnHosts(t *testing.T) {
 
 		distroIds := []string{"d1", "d2", "d3"}
 		Convey("if there are no hosts to be spawned, the Scheduler should not"+
-			" make any calls to the CloudManager", func() {
+			" make any calls to the Manager", func() {
 			newHostsNeeded := map[string]int{
 				distroIds[0]: 0,
 				distroIds[1]: 0,
@@ -41,7 +41,7 @@ func TestSpawnHosts(t *testing.T) {
 		})
 
 		Convey("if there are hosts to be spawned, the Scheduler should make"+
-			" one call to the CloudManager for each host, and return the"+
+			" one call to the Manager for each host, and return the"+
 			" results bucketed by distro", func() {
 
 			newHostsNeeded := map[string]int{

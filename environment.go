@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"bytes"
 	"context"
 	"encoding/gob"
 	"fmt"
@@ -205,9 +204,9 @@ func (e *envState) createQueues(ctx context.Context) error {
 	e.remoteQueue = rq
 
 	// Notifications queue w/ moving weight avg pool
-	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.PoolSizeLocal)
+	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
 
-	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.LocalStorage,
+	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.PoolSizeLocal,
 		e.settings.Notify.BufferTargetPerInterval,
 		time.Duration(e.settings.Notify.BufferIntervalSeconds)*time.Second,
 		e.notificationsQueue)
@@ -291,9 +290,13 @@ func (e *envState) initSenders() error {
 
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
+		splitToken := strings.Split(githubToken, " ")
+		if len(splitToken) != 2 {
+			return errors.New("token format should be 'token ...'")
+		}
 		var sender send.Sender
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token: githubToken,
+			Token: splitToken[1],
 		}, "")
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github status logger")
@@ -378,7 +381,7 @@ func (e *envState) persistSettings() error {
 		[]interface{}{},
 		[]util.KeyValuePair{},
 	}
-	err := deepCopy(*e.settings, &copy, registeredTypes)
+	err := util.DeepCopy(*e.settings, &copy, registeredTypes)
 	if err != nil {
 		return errors.Wrap(err, "problem copying settings")
 	}
@@ -473,7 +476,6 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 func getClientConfig(baseURL string) (*ClientConfig, error) {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
-
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 
 	if _, err := os.Stat(root); os.IsNotExist(err) {
@@ -508,19 +510,4 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 	}
 
 	return c, nil
-}
-
-// copy of deepCopy in util package
-func deepCopy(src, copy interface{}, registeredTypes []interface{}) error {
-	for _, t := range registeredTypes {
-		gob.Register(t)
-	}
-	var buff bytes.Buffer
-	enc := gob.NewEncoder(&buff)
-	dec := gob.NewDecoder(&buff)
-	err := enc.Encode(src)
-	if err != nil {
-		return errors.Wrap(err, "error encoding source")
-	}
-	return errors.Wrap(dec.Decode(copy), "error decoding copy")
 }

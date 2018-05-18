@@ -204,7 +204,6 @@ functions:
 
         export EVGHOME=`pwd`/evergreen-test
         export SETTINGS_OVERRIDE=`pwd`/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
-        export EVERGREEN_ALL=true
 
         $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m
   set-up-credentials:
@@ -349,7 +348,6 @@ tasks:
         vars:
           target: "coverage-html"
           make_args: "-k"
-          build_env: "EVERGREEN_ALL=true"
   - name: dist-test
     commands:
       - func: get-project
@@ -496,9 +494,6 @@ tasks:
     name: test-plugin-builtin-buildbaron
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-plugin-builtin-perfdash
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -615,9 +610,6 @@ tasks:
     name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-plugin-builtin-perfdash
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-migrations
 
   # cross compiled test suites
@@ -646,7 +638,7 @@ buildvariants:
     run_on:
       - ubuntu1604-test
     expansions:
-      build_env: "GOROOT=/opt/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH KARMA_REPORTER=junit"
+      build_env: "GOROOT=/opt/go1.8/go DISABLE_COVERAGE=yes PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH KARMA_REPORTER=junit"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
     tasks:
       - name: "dist"
@@ -672,7 +664,7 @@ buildvariants:
     run_on:
       - archlinux-test
     expansions:
-      build_env: "EVERGREEN_ALL=true RACE_ENABLED=true RUN_COUNT=5 TEST_TIMEOUT=15m"
+      build_env: "RACE_ENABLED=true RUN_COUNT=5 TEST_TIMEOUT=15m"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     tasks:
       - name: "dist"
@@ -686,7 +678,7 @@ buildvariants:
     run_on:
       - macos-1012
     expansions:
-      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
+      build_env: "DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.4.tgz
     tasks:
       - name: "dist"
@@ -697,7 +689,7 @@ buildvariants:
     run_on:
       - windows-64-vs2015-small
     expansions:
-      build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/cygdrive/c/go1.8/go/bin:$PATH"
+      build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes PATH=/cygdrive/c/go1.8/go/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.4.zip
       extension: ".exe"
       archiveExt: ".zip"

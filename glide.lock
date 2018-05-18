@@ -66,8 +66,6 @@ imports:
     version: 01857ac33766ce0c93856370626f9799281c14f4
 
 
-  - name: github.com/evergreen-ci/render
-    version: efb1df5f8dc1036d747e92e7b875ebb7557f0173
   - name: github.com/evergreen-ci/crowd
     version: dd8ffe015fd8950a70330076037c3d979b7ff548
   - name: github.com/kardianos/osext
@@ -107,16 +105,16 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/mongodb/grip
-    version: a69a438e2ed6fe74f6a7668435d35e642958a3af
+    version: f8496c37ea87fe700d8e8bcac511547096f22afc
   - name: github.com/mongodb/anser
     version: a39cb2703e7f53a0d46f17a785d25f85fa19923a
   - name: github.com/mongodb/amboy
-    version: e1f5aa1402a356510f530fb3b8fbe14b259ee22f
+    version: d1e174d349e86cfe074824d06cc3d58018a27257
   - name: github.com/google/go-github
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring
     version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
-  - name: github.com/newrelic/go-agent
-    version: f5bce3387232559bcbe6a5f8227c4bf508dac1ba
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
+  - name: github.com/evergreen-ci/gimlet
+    version: 09d3af8aa8c67742f0857b0941cce4fee8231d8c

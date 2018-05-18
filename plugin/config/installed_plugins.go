@@ -18,7 +18,6 @@ package config
 // ===== PLUGINS INCLUDED WITH MCI =====
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/manifest"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/taskdata"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/buildbaron"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/perf"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/perfdash"

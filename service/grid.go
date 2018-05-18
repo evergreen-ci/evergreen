@@ -97,7 +97,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		failures = make(grid.Failures, 0)
 		revisionFailures = make(grid.RevisionFailures, 0)
 	}
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Versions         map[string]version.Version
 		GridCells        grid.Grid
 		Failures         grid.Failures

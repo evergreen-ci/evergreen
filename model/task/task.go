@@ -2,7 +2,9 @@ package task
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -23,10 +25,26 @@ const (
 
 	// tasks should be unscheduled after ~2 weeks
 	unschedulableThreshold = 2 * 7 * 24 * time.Hour
+
+	// indicates the window of completed tasks we want to use in computing
+	// average task duration. By default we use tasks that have
+	// completed within the last 7 days
+	taskCompletionEstimateWindow = 24 * 7 * time.Hour
+
+	// if we have no data on a given task, default to 10 minutes so we
+	// have some new hosts spawned
+	defaultTaskDuration = 10 * time.Minute
+
+	// length of time to cache the expected duration in the task document
+	predictionTTL = 15 * time.Minute
 )
 
 var (
 	AgentHeartbeat = "heartbeat"
+
+	// A regex that matches either / or \ for splitting directory paths
+	// on either windows or linux paths.
+	eitherSlash *regexp.Regexp = regexp.MustCompile(`[/\\]`)
 )
 
 type Task struct {
@@ -97,8 +115,11 @@ type Task struct {
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 
-	// how long we expect the task to take from start to finish
-	ExpectedDuration time.Duration `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
+	// how long we expect the task to take from start to
+	// finish. expected duration is the legacy value, but the UI
+	// probably depends on it, so we maintain both values.
+	ExpectedDuration   time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
+	DurationPrediction util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
@@ -114,6 +135,8 @@ type Task struct {
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
+	// GeneratedBy, if present, is the ID of the task that generated this task.
+	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -386,7 +409,21 @@ func (t *Task) SetExpectedDuration(duration time.Duration) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ExpectedDurationKey: duration,
+				ExpectedDurationKey:   duration,
+				DurationPredictionKey: t.DurationPrediction,
+			},
+		},
+	)
+}
+
+func (t *Task) cacheExpectedDuration() error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				DurationPredictionKey: t.DurationPrediction,
 			},
 		},
 	)
@@ -1027,6 +1064,8 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("TimeTaken: %v\n", t.TimeTaken)
 	taskStruct += fmt.Sprintf("Activated: %v\n", t.Activated)
 	taskStruct += fmt.Sprintf("Requester: %v\n", t.FinishTime)
+	taskStruct += fmt.Sprintf("PredictedDuration: %v\n", t.DurationPrediction)
+
 	return
 }
 
@@ -1044,6 +1083,9 @@ func (t *Task) Archive() error {
 			execTask, err := FindOne(ById(et))
 			if err != nil {
 				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if execTask == nil {
+				return errors.Errorf("unable to find execution task %s from display task %s", et, t.Id)
 			}
 			if err = execTask.Archive(); err != nil {
 				return errors.Wrap(err, "error archiving execution task")
@@ -1372,6 +1414,71 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 	return time.Duration(runtimes[0].ExpectedDuration), nil
 }
 
+func (t *Task) FetchExpectedDuration() time.Duration {
+	if t.DurationPrediction.TTL == 0 {
+		t.DurationPrediction.TTL = util.JitterInterval(predictionTTL)
+	}
+
+	if t.DurationPrediction.Value == 0 && t.ExpectedDuration != 0 {
+		// this is probably just backfill, if we have an
+		// expected duration, let's assume it was collected
+		// before now slightly.
+		t.DurationPrediction.Value = t.ExpectedDuration
+		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
+	}
+
+	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
+		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, util.ZeroTime, time.Now().Add(-taskCompletionEstimateWindow))
+		grip.Notice(message.WrapError(err, message.Fields{
+			"name":      t.DisplayName,
+			"id":        t.Id,
+			"project":   t.Project,
+			"variant":   t.BuildVariant,
+			"operation": "fetching expected duration, expect stale scheduling data",
+		}))
+		if err != nil {
+			return defaultTaskDuration, false
+		}
+
+		if len(vals) != 1 {
+			if previous == 0 {
+				return defaultTaskDuration, true
+			}
+
+			return previous, true
+		}
+
+		ret := time.Duration(vals[0].ExpectedDuration)
+		if ret == 0 {
+			return defaultTaskDuration, true
+		}
+
+		return ret, true
+	}), message.Fields{
+		"message": "problem setting cached value refresher",
+		"cause":   "programmer error",
+	}))
+
+	expectedDuration, ok := t.DurationPrediction.Get()
+	if ok {
+		if err := t.SetExpectedDuration(expectedDuration); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task":    t.Id,
+				"message": "problem updating projected task duration",
+			}))
+		}
+	} else {
+		if err := t.cacheExpectedDuration(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task":    t.Id,
+				"message": "caching expected duration",
+			}))
+		}
+	}
+
+	return expectedDuration
+}
+
 // TaskStatusCount holds counts for task statuses
 type TaskStatusCount struct {
 	Succeeded    int `json:"succeeded"`
@@ -1400,4 +1507,29 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 	case evergreen.TaskInactive:
 		tsc.Inactive++
 	}
+}
+
+const jqlBFQuery = "(project in (%v)) and ( %v ) order by updatedDate desc"
+
+// Generates a jira JQL string from the task
+// When we search in jira for a task we search in the specified JIRA project
+// If there are any test results, then we only search by test file
+// name of all of the failed tests.
+// Otherwise we search by the task name.
+func (t *Task) GetJQL(searchProjects []string) string {
+	var jqlParts []string
+	var jqlClause string
+	for _, testResult := range t.LocalTestResults {
+		if testResult.Status == evergreen.TestFailedStatus {
+			fileParts := eitherSlash.Split(testResult.TestFile, -1)
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", fileParts[len(fileParts)-1]))
+		}
+	}
+	if jqlParts != nil {
+		jqlClause = strings.Join(jqlParts, " or ")
+	} else {
+		jqlClause = fmt.Sprintf("text~\"%v\"", t.DisplayName)
+	}
+
+	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }

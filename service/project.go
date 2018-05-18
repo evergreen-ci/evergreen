@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -16,6 +17,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy/job"
@@ -75,7 +77,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{allProjects, allTaskTriggers, uis.GetCommonViewData(w, r, true, true)}
 
-	uis.WriteHTML(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
@@ -138,24 +140,31 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	apiSubscriptions := make([]restModel.APISubscription, len(subscriptions))
+	for i := range subscriptions {
+		if err = apiSubscriptions[i].BuildFromService(subscriptions[i]); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
 
 	data := struct {
 		ProjectRef      *model.ProjectRef
 		ProjectVars     *model.ProjectVars
-		ProjectAliases  []model.ProjectAlias    `json:"aliases,omitempty"`
-		ConflictingRefs []string                `json:"pr_testing_conflicting_refs,omitempty"`
-		GithubHook      restModel.APIGithubHook `json:"github_hook"`
-		Subscriptions   []event.Subscription    `json:"subscriptions"`
-	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, subscriptions}
+		ProjectAliases  []model.ProjectAlias        `json:"aliases,omitempty"`
+		ConflictingRefs []string                    `json:"pr_testing_conflicting_refs,omitempty"`
+		GithubHook      restModel.APIGithubHook     `json:"github_hook"`
+		Subscriptions   []restModel.APISubscription `json:"subscriptions"`
+	}{projRef, projVars, projectAliases, conflictingRefs, apiHook, apiSubscriptions}
 
 	// the project context has all projects so make the ui list using all projects
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 // ProjectNotFound calls WriteHTML with the invalid-project page. It should be called whenever the
 // project specified by the user does not exist, or when there are no projects at all.
 func (uis *UIServer) ProjectNotFound(projCtx projectContext, w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusNotFound, uis.GetCommonViewData(w, r, false, false), "base", "invalid_project.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusNotFound, uis.GetCommonViewData(w, r, false, false), "base", "invalid_project.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
@@ -201,10 +210,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure bool                 `json:"notify_on_failure"`
-		SetupGithubHook      bool                 `json:"setup_github_hook"`
-		ForceRepotrackerRun  bool                 `json:"force_repotracker_run"`
-		Subscriptions        []event.Subscription `json:"subscriptions"`
+		NotifyOnBuildFailure bool                        `json:"notify_on_failure"`
+		SetupGithubHook      bool                        `json:"setup_github_hook"`
+		ForceRepotrackerRun  bool                        `json:"force_repotracker_run"`
+		Subscriptions        []restModel.APISubscription `json:"subscriptions"`
+		DeleteSubscriptions  []bson.ObjectId             `json:"delete_subscriptions"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -229,10 +239,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			errs = append(errs, fmt.Sprintf("must specify either task regex or tags on line #%d ", i+1))
 		}
 
-		if _, err := regexp.Compile(pd.Variant); err != nil {
+		if _, err = regexp.Compile(pd.Variant); err != nil {
 			errs = append(errs, fmt.Sprintf("variant regex #%d is invalid", i+1))
 		}
-		if _, err := regexp.Compile(pd.Task); err != nil {
+		if _, err = regexp.Compile(pd.Task); err != nil {
 			errs = append(errs, fmt.Sprintf("task regex #%d is invalid", i+1))
 		}
 	}
@@ -307,7 +317,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if hook == nil {
-			hookID, err := uis.setupGithubHook(projectRef)
+			var hookID int
+			hookID, err = uis.setupGithubHook(projectRef)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "project edit",
@@ -360,11 +371,34 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, subscription := range responseRef.Subscriptions {
-		if err = subscription.Upsert(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+	catcher := grip.NewSimpleCatcher()
+	for _, apiSubscription := range responseRef.Subscriptions {
+		var subscriptionIface interface{}
+		subscriptionIface, err = apiSubscription.ToService()
+		if err != nil {
+			catcher.Add(err)
 		}
+		subscription := subscriptionIface.(event.Subscription)
+		subscription.Selectors = []event.Selector{
+			{
+				Type: "project",
+				Data: projectRef.Identifier,
+			},
+		}
+		subscription.OwnerType = event.OwnerTypeProject
+		subscription.Owner = projectRef.Identifier
+		if err = subscription.Upsert(); err != nil {
+			catcher.Add(err)
+		}
+	}
+
+	for _, id := range responseRef.DeleteSubscriptions {
+		catcher.Add(event.RemoveSubscription(id))
+	}
+
+	if catcher.HasErrors() {
+		uis.LoggedError(w, r, http.StatusInternalServerError, catcher.Resolve())
+		return
 	}
 
 	// If the variable is private, and if the variable in the submission is
@@ -387,7 +421,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	catcher := grip.NewSimpleCatcher()
 	for i := range responseRef.ProjectAliases {
 		responseRef.ProjectAliases[i].ProjectID = id
 		catcher.Add(responseRef.ProjectAliases[i].Upsert())
@@ -410,7 +443,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		AllProjects []model.ProjectRef
 	}{allProjects}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
@@ -467,7 +500,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		AllProjects []model.ProjectRef
 	}{true, id, allProjects}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 // setRevision sets the latest revision in the Repository
@@ -515,7 +548,16 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, nil)
+	// run the repotracker for the project
+	ts := util.RoundPartOfHour(5).Format("2006-01-02.15-04-05")
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+	err = evergreen.GetEnvironment().RemoteQueue().Put(j)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	gimlet.WriteJSON(w, nil)
 }
 
 func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) {

@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -32,7 +33,7 @@ type taskStatsCollector struct {
 // tasks that have completed in the last minute.
 func NewTaskStatsCollector(id string) amboy.Job {
 	t := makeTaskStatsCollector()
-	t.SetID(id)
+	t.SetID(fmt.Sprintf("%s-%s", taskStatsCollectorJobName, id))
 	return t
 }
 
@@ -53,6 +54,10 @@ func makeTaskStatsCollector() *taskStatsCollector {
 
 func (j *taskStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
+
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
+	}
 
 	tasks, err := task.GetRecentTasks(taskStatsCollectorInterval)
 	if err != nil {

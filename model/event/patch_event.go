@@ -3,16 +3,15 @@ package event
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 )
 
 func init() {
-	registry.AddType(ResourceTypePatch, patchEventFactory)
+	registry.AddType(ResourceTypePatch, patchEventDataFactory)
 	registry.AllowSubscription(ResourceTypePatch, PatchStateChange)
 }
 
-func patchEventFactory() interface{} {
+func patchEventDataFactory() interface{} {
 	return &PatchEventData{}
 }
 
@@ -23,23 +22,17 @@ const (
 )
 
 type PatchEventData struct {
-	Author   string        `bson:"author" json:"author"`
-	Version  string        `bson:"version" json:"version"`
-	Status   string        `bson:"status,omitempty" json:"status,omitempty"`
-	Duration time.Duration `bson:"duration" json:"duration"`
+	Status string `bson:"status,omitempty" json:"status,omitempty"`
 }
 
-func LogPatchStateChangeEvent(p *patch.Patch) {
+func LogPatchStateChangeEvent(id, newStatus string) {
 	event := EventLogEntry{
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
-		ResourceId:   p.Id.Hex(),
+		ResourceId:   id,
 		ResourceType: ResourceTypePatch,
 		EventType:    PatchStateChange,
 		Data: &PatchEventData{
-			Author:   p.Author,
-			Version:  p.Version,
-			Status:   p.Status,
-			Duration: p.FinishTime.Sub(p.StartTime),
+			Status: newStatus,
 		},
 	}
 

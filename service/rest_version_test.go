@@ -19,8 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/urfave/negroni"
 )
@@ -40,15 +39,15 @@ func TestGetRecentVersions(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router := mux.NewRouter()
-	err = uis.AttachRoutes(router)
-	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
+	app, err := GetRESTv1App(&uis, userManager)
+	testutil.HandleTestingErr(err, t, "error setting up router")
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
@@ -134,10 +133,9 @@ func TestGetRecentVersions(t *testing.T) {
 			builds = append(builds, build)
 		}
 
-		url, err := router.Get("recent_versions").URL("project_id", projectName)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/projects/" + projectName + "/versions"
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -206,10 +204,9 @@ func TestGetRecentVersions(t *testing.T) {
 	Convey("When finding recent versions for a nonexistent project", t, func() {
 		projectName := "not-present"
 
-		url, err := router.Get("recent_versions").URL("project_id", projectName)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/projects/" + projectName + "/versions"
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -247,15 +244,15 @@ func TestGetVersionInfo(t *testing.T) {
 	}
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router := mux.NewRouter()
-	err := uis.AttachRoutes(router)
-	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
+	app, err := GetRESTv1App(&uis, uis.UserManager)
+	testutil.HandleTestingErr(err, t, "error setting up router")
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
@@ -274,17 +271,21 @@ func TestGetVersionInfo(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		v := &version.Version{
-			Id:                  versionId,
-			CreateTime:          time.Now().Add(-20 * time.Minute),
-			StartTime:           time.Now().Add(-10 * time.Minute),
-			FinishTime:          time.Now().Add(-5 * time.Second),
-			Revision:            fmt.Sprintf("%x", rand.Int()),
-			Author:              "some-author",
-			AuthorEmail:         "some-email",
-			Message:             "some-message",
-			Status:              "success",
-			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			Id:          versionId,
+			CreateTime:  time.Now().Add(-20 * time.Minute),
+			StartTime:   time.Now().Add(-10 * time.Minute),
+			FinishTime:  time.Now().Add(-5 * time.Second),
+			Revision:    fmt.Sprintf("%x", rand.Int()),
+			Author:      "some-author",
+			AuthorEmail: "some-email",
+			Message:     "some-message",
+			Status:      "success",
+			BuildIds:    []string{"some-build-id"},
+			BuildVariants: []version.BuildStatus{{
+				BuildVariant: "some-build-variant",
+				Activated:    true,
+				ActivateAt:   time.Now().Add(-20 * time.Minute),
+				BuildId:      "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -297,18 +298,15 @@ func TestGetVersionInfo(t *testing.T) {
 		}
 		So(v.Insert(), ShouldBeNil)
 
-		url, err := router.Get("version_info").URL("version_id", versionId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/versions/" + versionId
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
 		// in the actual handler function
 		router.ServeHTTP(response, request)
-
-		fmt.Println(response.Body)
 
 		So(response.Code, ShouldEqual, http.StatusOK)
 		validateVersionInfo(v, response)
@@ -317,10 +315,8 @@ func TestGetVersionInfo(t *testing.T) {
 	Convey("When finding info on a nonexistent version", t, func() {
 		versionId := "not-present"
 
-		url, err := router.Get("version_info").URL("version_id", versionId)
-		So(err, ShouldBeNil)
-
-		request, err := http.NewRequest("GET", url.String(), nil)
+		url := "/rest/v1/versions/" + versionId
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -352,15 +348,15 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router := mux.NewRouter()
-	err = uis.AttachRoutes(router)
-	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
+	app, err := GetRESTv1App(&uis, userManager)
+	testutil.HandleTestingErr(err, t, "error setting up router")
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	projectName := "project_test"
 
@@ -372,17 +368,21 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		revision := fmt.Sprintf("%x", rand.Int())
 
 		v := &version.Version{
-			Id:                  versionId,
-			CreateTime:          time.Now().Add(-20 * time.Minute),
-			StartTime:           time.Now().Add(-10 * time.Minute),
-			FinishTime:          time.Now().Add(-5 * time.Second),
-			Revision:            revision,
-			Author:              "some-author",
-			AuthorEmail:         "some-email",
-			Message:             "some-message",
-			Status:              "success",
-			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			Id:          versionId,
+			CreateTime:  time.Now().Add(-20 * time.Minute),
+			StartTime:   time.Now().Add(-10 * time.Minute),
+			FinishTime:  time.Now().Add(-5 * time.Second),
+			Revision:    revision,
+			Author:      "some-author",
+			AuthorEmail: "some-email",
+			Message:     "some-message",
+			Status:      "success",
+			BuildIds:    []string{"some-build-id"},
+			BuildVariants: []version.BuildStatus{{
+				BuildVariant: "some-build-variant",
+				Activated:    true,
+				ActivateAt:   time.Now().Add(-20 * time.Minute),
+				BuildId:      "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -395,11 +395,9 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		}
 		So(v.Insert(), ShouldBeNil)
 
-		url, err := router.Get("version_info_via_revision").URL(
-			"project_id", projectName, "revision", revision)
-		So(err, ShouldBeNil)
+		url := fmt.Sprintf("/rest/v1/projects/%s/revisions/%s", projectName, revision)
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -414,11 +412,9 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	Convey("When finding info on a nonexistent version by its revision", t, func() {
 		revision := "not-present"
 
-		url, err := router.Get("version_info_via_revision").URL(
-			"project_id", projectName, "revision", revision)
-		So(err, ShouldBeNil)
+		url := fmt.Sprintf("/rest/v1/projects/%s/revisions/%s", projectName, revision)
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -447,15 +443,15 @@ func TestActivateVersion(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router := mux.NewRouter()
-	err := uis.AttachRoutes(router)
-	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
+	app, err := GetRESTv1App(&uis, uis.UserManager)
+	testutil.HandleTestingErr(err, t, "error setting up router")
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	n := negroni.New()
 	n.Use(negroni.HandlerFunc(UserMiddleware(uis.UserManager)))
@@ -498,8 +494,7 @@ func TestActivateVersion(t *testing.T) {
 		}
 		So(v.Insert(), ShouldBeNil)
 
-		url, err := router.Get("version_info").URL("version_id", versionId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/versions/" + versionId
 
 		var body = map[string]interface{}{
 			"activated": true,
@@ -508,7 +503,7 @@ func TestActivateVersion(t *testing.T) {
 		So(err, ShouldBeNil)
 		bodyReader := bytes.NewReader(jsonBytes)
 
-		request, err := http.NewRequest("PATCH", url.String(), bodyReader)
+		request, err := http.NewRequest("PATCH", url, bodyReader)
 		So(err, ShouldBeNil)
 		// add auth cookie--this can be anything if we are using a MockUserManager
 		request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
@@ -526,8 +521,7 @@ func TestActivateVersion(t *testing.T) {
 	Convey("When marking a nonexistent version as active", t, func() {
 		versionId := "not-present"
 
-		url, err := router.Get("version_info").URL("version_id", versionId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/versions/" + versionId
 
 		var body = map[string]interface{}{
 			"activated": true,
@@ -536,7 +530,7 @@ func TestActivateVersion(t *testing.T) {
 		So(err, ShouldBeNil)
 		bodyReader := bytes.NewReader(jsonBytes)
 
-		request, err := http.NewRequest("PATCH", url.String(), bodyReader)
+		request, err := http.NewRequest("PATCH", url, bodyReader)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -557,8 +551,7 @@ func TestActivateVersion(t *testing.T) {
 	Convey("When modifying a version without credentials", t, func() {
 		versionId := "not-present"
 
-		url, err := router.Get("version_info").URL("version_id", versionId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/versions/" + versionId
 
 		var body = map[string]interface{}{
 			"activated": true,
@@ -567,7 +560,7 @@ func TestActivateVersion(t *testing.T) {
 		So(err, ShouldBeNil)
 		bodyReader := bytes.NewReader(jsonBytes)
 
-		request, err := http.NewRequest("PATCH", url.String(), bodyReader)
+		request, err := http.NewRequest("PATCH", url, bodyReader)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -592,15 +585,15 @@ func TestGetVersionStatus(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router := mux.NewRouter()
-	err = uis.AttachRoutes(router)
-	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
+	app, err := GetRESTv1App(&uis, userManager)
+	testutil.HandleTestingErr(err, t, "error setting up router")
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	Convey("When finding the status of a particular version", t, func() {
 		testutil.HandleTestingErr(db.Clear(build.Collection), t,
@@ -626,14 +619,9 @@ func TestGetVersionStatus(t *testing.T) {
 		Convey("grouped by tasks", func() {
 			groupBy := "tasks"
 
-			url, err := router.Get("version_status").URL("version_id", versionId)
-			So(err, ShouldBeNil)
+			url := "/rest/v1/versions/" + versionId + "/status?groupby=" + groupBy
 
-			query := url.Query()
-			query.Set("groupby", groupBy)
-			url.RawQuery = query.Encode()
-
-			request, err := http.NewRequest("GET", url.String(), nil)
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 
 			response := httptest.NewRecorder()
@@ -672,10 +660,10 @@ func TestGetVersionStatus(t *testing.T) {
 			})
 
 			Convey("is the default option", func() {
-				url, err := router.Get("version_status").URL("version_id", versionId)
-				So(err, ShouldBeNil)
 
-				request, err := http.NewRequest("GET", url.String(), nil)
+				url := "/rest/v1/versions/" + versionId + "/status"
+
+				request, err := http.NewRequest("GET", url, nil)
 				So(err, ShouldBeNil)
 
 				_response := httptest.NewRecorder()
@@ -690,14 +678,9 @@ func TestGetVersionStatus(t *testing.T) {
 		Convey("grouped by builds", func() {
 			groupBy := "builds"
 
-			url, err := router.Get("version_status").URL("version_id", versionId)
-			So(err, ShouldBeNil)
+			url := "/rest/v1/versions/" + versionId + "/status?groupby=" + groupBy
 
-			query := url.Query()
-			query.Set("groupby", groupBy)
-			url.RawQuery = query.Encode()
-
-			request, err := http.NewRequest("GET", url.String(), nil)
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 
 			response := httptest.NewRecorder()
@@ -739,14 +722,9 @@ func TestGetVersionStatus(t *testing.T) {
 		Convey("grouped by an invalid option", func() {
 			groupBy := "invalidOption"
 
-			url, err := router.Get("version_status").URL("version_id", versionId)
-			So(err, ShouldBeNil)
+			url := "/rest/v1/versions/" + versionId + "/status?groupby=" + groupBy
 
-			query := url.Query()
-			query.Set("groupby", groupBy)
-			url.RawQuery = query.Encode()
-
-			request, err := http.NewRequest("GET", url.String(), nil)
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 
 			response := httptest.NewRecorder()
@@ -771,14 +749,9 @@ func TestGetVersionStatus(t *testing.T) {
 		Convey("grouped by tasks", func() {
 			groupBy := "tasks"
 
-			url, err := router.Get("version_status").URL("version_id", versionId)
-			So(err, ShouldBeNil)
+			url := "/rest/v1/versions/" + versionId + "/status?groupby=" + groupBy
 
-			query := url.Query()
-			query.Set("groupby", groupBy)
-			url.RawQuery = query.Encode()
-
-			request, err := http.NewRequest("GET", url.String(), nil)
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 
 			response := httptest.NewRecorder()
@@ -805,14 +778,9 @@ func TestGetVersionStatus(t *testing.T) {
 			versionId := "not-present"
 			groupBy := "builds"
 
-			url, err := router.Get("version_status").URL("version_id", versionId)
-			So(err, ShouldBeNil)
+			url := "/rest/v1/versions/" + versionId + "/status?groupby=" + groupBy
 
-			query := url.Query()
-			query.Set("groupby", groupBy)
-			url.RawQuery = query.Encode()
-
-			request, err := http.NewRequest("GET", url.String(), nil)
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 
 			response := httptest.NewRecorder()

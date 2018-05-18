@@ -64,7 +64,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
-	taskConfig, err := a.getTaskConfig(ctx, tc)
+	taskConfig, err := a.makeTaskConfig(ctx, tc)
 	if err != nil {
 		tc.logger.Execution().Errorf("Error fetching task configuration: %s", err)
 		complete <- evergreen.TaskFailed
@@ -225,8 +225,8 @@ func (tc *taskContext) hadTimedOut() bool {
 	return tc.timedOut
 }
 
-// getTaskConfig fetches task configuration data required to run the task from the API server.
-func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
+// makeTaskConfig fetches task configuration data required to run the task from the API server.
+func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
 	tc.logger.Execution().Info("Fetching distro configuration.")
 	confDistro, err := a.comm.GetDistro(ctx, tc.task)
 	if err != nil {
@@ -297,4 +297,10 @@ func (tc *taskContext) setTaskConfig(taskConfig *model.TaskConfig) {
 	tc.Lock()
 	defer tc.Unlock()
 	tc.taskConfig = taskConfig
+}
+
+func (tc *taskContext) getTaskConfig() *model.TaskConfig {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.taskConfig
 }

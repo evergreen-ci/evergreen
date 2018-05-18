@@ -46,10 +46,6 @@ const (
 	PageCenter pagePosition = "Center"
 )
 
-type pluginUser int
-
-const pluginUserKey pluginUser = 0
-
 // UIDataFunction is a function which is called to populate panels
 // which are injected into Task/Build/Version pages at runtime.
 type UIDataFunction func(context UIContext) (interface{}, error)

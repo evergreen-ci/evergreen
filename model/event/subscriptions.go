@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -60,7 +61,6 @@ type unmarshalSubscription struct {
 	Subscriber     Subscriber    `bson:"subscriber"`
 	Owner          string        `bson:"owner"`
 	OwnerType      OwnerType     `bson:"owner_type"`
-	ExtraData      bson.Raw      `bson:"extra_data,omitempty"`
 }
 
 func (s *Subscription) SetBSON(raw bson.Raw) error {
@@ -70,26 +70,6 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 		return errors.Wrap(err, "error unmarshalling subscriber")
 	}
 
-	if data := registry.GetExtraData(temp.Type, temp.Trigger); data != nil {
-		s.ExtraData = data
-	}
-
-	// if there is no extra_data field in the db
-	if temp.ExtraData.Kind == 0x00 && len(temp.ExtraData.Data) == 0 {
-		if s.ExtraData != nil {
-			s.ExtraData = nil
-			return errors.New("error unmarshaling extra data: expected extra data in subscription; found none")
-		}
-
-	} else {
-		if s.ExtraData == nil {
-			return errors.New("error unmarshaling extra data: unexpected extra data in subscription")
-		}
-		if err := temp.ExtraData.Unmarshal(s.ExtraData); err != nil {
-			return errors.Wrap(err, "error unmarshaling extra data")
-		}
-	}
-
 	s.ID = temp.ID
 	s.Type = temp.Type
 	s.Trigger = temp.Trigger
@@ -97,6 +77,7 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 	s.RegexSelectors = temp.RegexSelectors
 	s.Subscriber = temp.Subscriber
 	s.Owner = temp.Owner
+	s.OwnerType = temp.OwnerType
 
 	return nil
 }
@@ -209,25 +190,14 @@ func (s *Subscription) Upsert() error {
 		subscriptionRegexSelectorsKey: s.RegexSelectors,
 		subscriptionSubscriberKey:     s.Subscriber,
 		subscriptionOwnerKey:          s.Owner,
-	}
-	if s.ExtraData != nil {
-		update[subscriptionExtraDataKey] = s.ExtraData
+		subscriptionOwnerTypeKey:      s.OwnerType,
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
 	c, err := db.Upsert(SubscriptionsCollection, bson.M{
 		subscriptionIDKey:    s.ID,
 		subscriptionOwnerKey: s.Owner,
-	},
-		bson.M{
-			subscriptionTypeKey:           s.Type,
-			subscriptionTriggerKey:        s.Trigger,
-			subscriptionSelectorsKey:      s.Selectors,
-			subscriptionRegexSelectorsKey: s.RegexSelectors,
-			subscriptionSubscriberKey:     s.Subscriber,
-			subscriptionOwnerKey:          s.Owner,
-			subscriptionOwnerTypeKey:      s.OwnerType,
-		})
+	}, update)
 	if err != nil {
 		return err
 	}
@@ -242,13 +212,28 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
-func (s *Subscription) Remove() error {
-	if len(s.ID.Hex()) == 0 {
-		return errors.New("subscription has no ID, cannot remove")
+func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
+	out := Subscription{}
+	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+		subscriptionIDKey: id,
+	}), &out)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+
+	} else if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
+	}
+
+	return &out, nil
+}
+
+func RemoveSubscription(id bson.ObjectId) error {
+	if !id.Valid() {
+		return errors.New("id is not valid, cannot remove")
 	}
 
 	return db.Remove(SubscriptionsCollection, bson.M{
-		subscriptionIDKey: s.ID,
+		subscriptionIDKey: id,
 	})
 }
 
@@ -325,5 +310,34 @@ func IsValidOwnerType(in string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
+	return Subscription{
+		Type:    ResourceTypePatch,
+		Trigger: "outcome",
+		Selectors: []Selector{
+			{
+				Type: "id",
+				Data: id,
+			},
+		},
+		Subscriber: sub,
+	}
+}
+
+func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
+	return Subscription{
+		ID:      bson.NewObjectId(),
+		Type:    ResourceTypePatch,
+		Trigger: "outcome",
+		Selectors: []Selector{
+			{
+				Type: "owner",
+				Data: owner,
+			},
+		},
+		Subscriber: sub,
 	}
 }

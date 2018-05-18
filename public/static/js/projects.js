@@ -1,4 +1,4 @@
-mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) {
+mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, $mdDialog) {
 
   $scope.availableTriggers = $window.availableTriggers
   $scope.userId = $window.user.Id;
@@ -22,7 +22,34 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.newProjectMessage="";
 
   $scope.isDirty = false;
-
+  $scope.triggers = [
+      // TODO uncomment as we implement these
+      //{
+      //    trigger: "failure",
+      //    resource_type: "TASK",
+      //    label: "any task fails",
+      //},
+      //{
+      //    trigger: "first-failure-by-variant",
+      //    resource_type: "TASK",
+      //    label: "the first task failure occurs",
+      //},
+      //{
+      //    trigger: "first-failure-by-variant",
+      //    resource_type: "BUILD",
+      //    label: "the first failure within each variant occurs",
+      //},
+      //{
+      //    trigger: "first-failure-by-name",
+      //    resource_type: "TASK",
+      //    label: "the first failure for each task name occurs",
+      //},
+      //{
+      //    trigger: "regression",
+      //    resource_type: "TASK",
+      //    label: "a previously passing task fails",
+      //},
+  ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
   // depending on the user.
@@ -181,7 +208,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.githubHookID = data.github_hook.hook_id || 0;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
-        $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false,
+        $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
 
         $scope.aliases = data.aliases || [];
         $scope.aliases = _.sortBy($scope.aliases, function(v) {
@@ -223,8 +250,16 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           force_repotracker_run: false,
-          delete_aliases: []
+          delete_aliases: [],
+          delete_subscriptions: [],
         };
+
+        $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
+          t = lookupTrigger($scope.triggers, v.trigger, v.resource_type);
+          v.trigger_label = t.label;
+          v.subscriber.label = subscriberLabel(v.subscriber);
+          return v;
+        });
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
         $location.hash($scope.projectRef.identifier);
@@ -288,6 +323,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         alias.tags = alias.tags_temp.split(',');
       }
     }
+
+    $scope.settingsFormData.subscriptions = _.filter($scope.subscriptions, function(d) {
+        return d.changed;
+    });
+
     $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.patch_aliases);
     if ($scope.admin_name) {
       $scope.addAdmin();
@@ -443,6 +483,37 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
 
     return true;
   };
+
+  $scope.addSubscription = function() {
+      promise = addSubscriber($mdDialog, $scope.triggers);
+
+      $mdDialog.show(promise).then(function(data){
+          data.changed = true;
+          $scope.isDirty = true;
+          $scope.subscriptions.push(data);
+      });
+  };
+
+  $scope.editSubscription = function(index) {
+      promise = editSubscriber($mdDialog, $scope.triggers, $scope.subscriptions[index]);
+
+      $mdDialog.show(promise).then(function(data){
+          data.changed = true;
+          $scope.isDirty = true;
+          $scope.subscriptions[index] = data;
+      });
+  };
+
+  $scope.removeSubscription = function(index) {
+      if ($scope.subscriptions[index] && $scope.subscriptions[index].id) {
+          $scope.settingsFormData.delete_subscriptions.push($scope.subscriptions[index].id);
+      }
+      $scope.subscriptions = _.filter($scope.subscriptions, function(s, i) {
+          return index !== i;
+      });
+      $scope.isDirty = true;
+  };
+  $scope.show_build_break = true;
 
 });
 
