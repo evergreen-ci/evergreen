@@ -2,27 +2,20 @@ package operations
 
 import (
 	"context"
-	"fmt"
-	htmlTemplate "html/template"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	textTemplate "text/template"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/grip/sometimes"
 	nrgorilla "github.com/newrelic/go-agent/_integrations/nrgorilla/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -55,7 +48,7 @@ func startWebService() cli.Command {
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-			startWebTierBackgroundJobs(ctx, env)
+			startSystemCronJobs(ctx, env)
 
 			router := mux.NewRouter()
 
@@ -130,45 +123,6 @@ func startWebService() cli.Command {
 	}
 }
 
-func startWebTierBackgroundJobs(ctx context.Context, env evergreen.Environment) {
-	startSysInfoCollectors(ctx, env, 15*time.Second, amboy.QueueOperationConfig{
-		ContinueOnError: true,
-		LogErrors:       false,
-		DebugLogging:    false,
-	})
-
-	opts := amboy.QueueOperationConfig{
-		ContinueOnError: false,
-		LogErrors:       true,
-		DebugLogging:    false,
-	}
-
-	const amboyStatsInterval = time.Minute
-
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), amboyStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
-				"message":       "problem fetching service flags",
-				"operation":     "background stats",
-				"interval_secs": amboyStatsInterval.Seconds(),
-			}))
-			return err
-		}
-
-		if flags.BackgroundStatsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "background stats collection disabled",
-				"impact":  "amboy stats disabled",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
-	})
-}
-
 func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher) {
 	defer recovery.LogStackTraceAndContinue("graceful shutdown")
 	sigChan := make(chan os.Signal, len(servers))
@@ -226,7 +180,15 @@ func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.R
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
 	}
 
-	uis, err := service.NewUIServer(settings, queue, home)
+	webHome := filepath.Join(home, "public")
+	functionOptions := service.TemplateFunctionOptions{
+		WebHome:  webHome,
+		HelpHome: settings.Ui.HelpUrl,
+		IsProd:   !settings.IsNonProd,
+		Router:   router,
+	}
+
+	uis, err := service.NewUIServer(settings, queue, home, functionOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
@@ -235,30 +197,6 @@ func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.R
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating router")
 	}
-
-	webHome := filepath.Join(home, "public")
-
-	functionOptions := service.FuncOptions{
-		WebHome:  webHome,
-		HelpHome: settings.Ui.HelpUrl,
-		IsProd:   !settings.IsNonProd,
-		Router:   router,
-	}
-
-	functions, err := service.MakeTemplateFuncs(functionOptions, settings.SuperUsers)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create template function map")
-	}
-
-	htmlFunctions := htmlTemplate.FuncMap(functions)
-	textFunctions := textTemplate.FuncMap(functions)
-
-	uis.Render = render.New(render.Options{
-		Directory:    filepath.Join(home, service.WebRootPath, service.Templates),
-		DisableCache: !settings.Ui.CacheTemplates,
-		HtmlFuncs:    htmlFunctions,
-		TextFuncs:    textFunctions,
-	})
 
 	if err = uis.InitPlugins(); err != nil {
 		return nil, errors.Wrap(err, "problem initializing plugins")

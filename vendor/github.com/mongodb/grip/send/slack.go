@@ -175,8 +175,8 @@ func (o *SlackOptions) Validate() error {
 		}
 	}
 
-	if !strings.HasPrefix(o.Channel, "#") {
-		o.Channel = "#" + o.Channel
+	if !strings.HasPrefix(o.Channel, "#") && !strings.HasPrefix(o.Channel, "@") {
+		return errors.New("Recipient must begin with '#' or '@'")
 	}
 
 	if len(errs) > 0 {

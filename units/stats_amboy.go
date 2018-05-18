@@ -2,7 +2,7 @@ package units
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
@@ -36,7 +36,7 @@ type amboyStatsCollector struct {
 func NewAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
 	j := makeAmboyStatsCollector()
 	j.env = env
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
 
 	return j
 }
@@ -81,8 +81,10 @@ func (j *amboyStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if j.env == nil {
-		j.AddError(errors.New("environment is not configured"))
-		return
+		j.env = evergreen.GetEnvironment()
+	}
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
 	}
 
 	localQueue := j.env.LocalQueue()

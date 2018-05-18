@@ -11,16 +11,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/units"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -123,81 +119,6 @@ func startRunnerService() cli.Command {
 //
 // Running and executing the offline operations processing.
 
-func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
-	// Add jobs to a remote queue at various intervals for
-	// repotracker operations. Generally the intervals are half the
-	// actual frequency of the job, which are controlled by the
-	// population functions.
-	opts := amboy.QueueOperationConfig{
-		ContinueOnError: true,
-		LogErrors:       false,
-		DebugLogging:    false,
-	}
-
-	const (
-		backgroundStatsInterval = time.Minute
-		sysStatsInterval        = 15 * time.Second
-	)
-
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateHostCreationJobs(env, 0),
-		units.PopulateIdleHostJobs(env),
-		units.PopulateHostTerminationJobs(env),
-		units.PopulateHostMonitoring(env),
-		units.PopulateTaskMonitoring()))
-
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateHostSetupJobs(env, 0),
-		units.PopulateSchedulerJobs(env),
-		units.PopulateAgentDeployJobs(env)))
-
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateEventAlertProcessing(5),
-		units.PopulateRepotrackerPollingJobs(5)))
-
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
-
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		units.PopulateCatchupJobs(30),
-		units.PopulateHostAlertJobs(20)))
-
-	// add jobs to a local queue every minute for stats collection and reporting.
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
-				"message":       "problem fetching service flags",
-				"operation":     "background stats",
-				"interval_secs": backgroundStatsInterval.Seconds(),
-			}))
-			return err
-		}
-
-		if flags.BackgroundStatsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "background stats collection disabled",
-				"impact":  "host, task, latency, amboy, and notification stats disabled",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		catcher := grip.NewBasicCatcher()
-		ts := time.Now().Unix()
-
-		catcher.Add(queue.Put(units.NewAmboyStatsCollector(env, fmt.Sprintf("amboy-stats-%d", ts))))
-		catcher.Add(queue.Put(units.NewHostStatsCollector(fmt.Sprintf("host-stats-%d", ts))))
-		catcher.Add(queue.Put(units.NewTaskStatsCollector(fmt.Sprintf("task-stats-%d", ts))))
-		catcher.Add(queue.Put(units.NewLatencyStatsCollector(fmt.Sprintf("latency-stats-%d", ts), time.Minute)))
-		catcher.Add(queue.Put(units.NewNotificationStatsCollector(fmt.Sprintf("notification-stats-%d", ts))))
-
-		return catcher.Resolve()
-	})
-
-	// Add jobs to a local queue, system info stats collection and reporting.
-	startSysInfoCollectors(ctx, env, sysStatsInterval, opts)
-}
-
 type processRunner interface {
 	// Name returns the id of the process runner.
 	Name() string
@@ -207,7 +128,6 @@ type processRunner interface {
 }
 
 var backgroundRunners = []processRunner{
-	&alerts.QueueProcessor{},
 	&monitor.Runner{},
 }
 

@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/urfave/negroni"
@@ -27,7 +27,7 @@ func TestProjectRoutes(t *testing.T) {
 		UserManager: serviceutil.MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})

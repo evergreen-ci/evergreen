@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -39,7 +40,7 @@ func (as *APIServer) listDistros(w http.ResponseWriter, r *http.Request) {
 	for _, d := range distros {
 		distroList = append(distroList, d.Id)
 	}
-	as.WriteJSON(w, http.StatusOK, spawnResponse{Distros: distroList})
+	gimlet.WriteJSON(w, spawnResponse{Distros: distroList})
 }
 
 func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +75,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, "")
+	gimlet.WriteJSON(w, "")
 }
 
 func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +119,9 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		// get/store setup logs
 		body := util.NewRequestReader(r)
 		defer body.Close()
-		setupLog, err := ioutil.ReadAll(body)
+
+		var setupLog []byte
+		setupLog, err = ioutil.ReadAll(body)
 		if err != nil {
 			grip.Errorln("problem reading request:", err)
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -140,7 +143,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 	err = notify.TrySendNotificationToUser(h.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.Settings.Notify))
 	grip.ErrorWhenln(err != nil, "Error sending email", err)
 
-	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *h})
+	gimlet.WriteJSON(w, spawnResponse{HostInfo: *h})
 }
 
 // returns info on the host specified
@@ -159,7 +162,7 @@ func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *h})
+	gimlet.WriteJSON(w, spawnResponse{HostInfo: *h})
 }
 
 // returns info on all of the hosts spawned by a user
@@ -173,7 +176,7 @@ func (as *APIServer) hostsInfoForUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, spawnResponse{Hosts: hosts})
+	gimlet.WriteJSON(w, spawnResponse{Hosts: hosts})
 }
 
 func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +220,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Failed to terminate spawn host"))
 			return
 		}
-		as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *h})
+		gimlet.WriteJSON(w, spawnResponse{HostInfo: *h})
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action %v", hostAction), http.StatusBadRequest)
 	}

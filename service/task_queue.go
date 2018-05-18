@@ -213,7 +213,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		IdleStaticHosts:   idleStaticHostsCount,
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data uiResourceInfo
 		ViewData
 	}{uiResourceInfo{uiTaskQueues, hostStats, distroIds}, uis.GetCommonViewData(w, r, false, true)},

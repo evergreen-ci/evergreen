@@ -10,7 +10,7 @@ imports:
   subpackages:
   - gzip
 - name: github.com/mongodb/grip
-  version: 168c214db61f61bf79d8de25c4803e569b6c5902
+  version: e5e74ee9128f8b676043365ad14944e5b046d251
 - name: github.com/urfave/negroni
   version: 3444e69ea1ef03a77998d11fc56e7f0a34f7213c
 

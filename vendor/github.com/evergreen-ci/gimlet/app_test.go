@@ -1,11 +1,14 @@
 package gimlet
 
 import (
+	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,7 +25,7 @@ func TestAppSuite(t *testing.T) {
 
 func (s *AppSuite) SetupTest() {
 	s.app = NewApp()
-	grip.SetThreshold(level.Info)
+	grip.GetSender().SetLevel(send.LevelInfo{Threshold: level.Info})
 }
 
 func (s *AppSuite) TestDefaultValuesAreSet() {
@@ -249,7 +252,7 @@ func (s *AppSuite) TestSubAppResolutionWithErrors() {
 	n, err := s.app.getNegroni()
 	s.Nil(n)
 	s.Error(err)
-	s.Error(s.app.Run())
+	s.Error(s.app.Run(context.Background()))
 }
 
 func (s *AppSuite) TestResolveAppWithDefaultVersion() {
@@ -326,4 +329,23 @@ func (s *AppSuite) TestGetVersionRoute() {
 
 		s.Equal(output, getVersionedRoute(prefix, version, route))
 	}
+}
+
+func (s *AppSuite) TestHandlerGetter() {
+	hone, err := s.app.getNegroni()
+	s.NoError(err)
+	s.NotNil(hone)
+	htwo, err := s.app.Handler()
+	s.NoError(err)
+	s.NotNil(htwo)
+
+	// should be equivalent results but are different instances, as each app should be distinct.
+	s.NotEqual(hone, htwo)
+}
+
+func (s *AppSuite) TestAppRun() {
+	s.Len(s.app.routes, 0)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.NoError(s.app.Run(ctx))
 }

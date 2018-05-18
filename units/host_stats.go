@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -24,6 +25,7 @@ func init() {
 
 type hostStatsJob struct {
 	job.Base `bson:"base" json:"base" yaml:"base"`
+	logger   grip.Journaler
 }
 
 func makeHostStats() *hostStatsJob {
@@ -55,7 +57,11 @@ func (j *hostStatsJob) Run(_ context.Context) {
 		return
 	}
 
-	grip.Info(message.Fields{
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
+	}
+
+	j.logger.Info(message.Fields{
 		"message": "count of decommissioned/quarantined hosts",
 		"counts":  counts,
 	})

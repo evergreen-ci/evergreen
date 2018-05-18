@@ -50,7 +50,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data []event.EventLogEntry
 		ViewData
 	}{loggedEvents, uis.GetCommonViewData(w, r, false, false)}, "base", "event_log.html", "base_angular.html")

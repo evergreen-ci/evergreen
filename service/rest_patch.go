@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -26,7 +27,7 @@ type RestPatch struct {
 func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "patch not found"})
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
 
@@ -49,14 +50,14 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 		Patches:     projCtx.Patch.Patches,
 	}
 
-	restapi.WriteJSON(w, http.StatusOK, destPatch)
+	gimlet.WriteJSON(w, destPatch)
 }
 
 // getPatchConfig returns the patched config for a given patch.
 func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	if projCtx.Patch == nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "patch not found"})
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")

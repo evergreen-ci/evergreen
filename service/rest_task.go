@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -89,7 +90,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	srcTask := projCtx.Task
 	if srcTask == nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding task"})
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
 	}
 
@@ -127,7 +128,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("Error calculating task queue position for '%v'", srcTask.Id)
 		grip.Errorf("%v: %+v", msg, err)
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
 
@@ -144,9 +145,9 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	if srcTask.DisplayOnly {
 		testResults, err = srcTask.GetTestResultsForDisplayTask()
 		if err != nil {
-			err := errors.Wrapf(err, "Error finding test results for display task", srcTask.Id)
+			err = errors.Wrapf(err, "Error finding test results for display task", srcTask.Id)
 			grip.Error(err)
-			restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: err.Error()})
+			gimlet.WriteJSONInternalError(w, responseError{Message: err.Error()})
 			return
 		}
 	}
@@ -166,7 +167,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%v'", srcTask.Id)
 		grip.Errorf("%v: %+v", msg, err)
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 
 	}
@@ -185,7 +186,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		destTask.PatchId = projCtx.Patch.Id.Hex()
 	}
 
-	restapi.WriteJSON(w, http.StatusOK, destTask)
+	gimlet.WriteJSON(w, destTask)
 }
 
 // getTaskStatus returns a JSON response with the status of the specified task.
@@ -194,7 +195,7 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	task := projCtx.Task
 	if task == nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding task"})
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
 	}
 
@@ -220,5 +221,5 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 		result.Tests[_testResult.TestFile] = testResult
 	}
 
-	restapi.WriteJSON(w, http.StatusOK, result)
+	gimlet.WriteJSON(w, result)
 }

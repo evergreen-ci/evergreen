@@ -345,7 +345,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+	taskConfig := tc.getTaskConfig()
+	taskGroup, err := model.GetTaskGroup(tc.taskGroup, taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-task commands"))
 		return

@@ -178,3 +178,14 @@ type Runner interface {
 	// return.
 	Close()
 }
+
+// AbortableRunner provides a superset of the Runner interface but
+// allows callers to abort jobs by ID.
+type AbortableRunner interface {
+	Runner
+
+	IsRunning(string) bool
+	RunningJobs() []string
+	Abort(string) error
+	AbortAll()
+}

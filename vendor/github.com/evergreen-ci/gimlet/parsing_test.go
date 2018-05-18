@@ -2,8 +2,11 @@ package gimlet
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,4 +46,23 @@ func TestReadingStructuredDataFromRequestBodies(t *testing.T) {
 		assert.Zero(out2.Count)
 		assert.Zero(out2.Name)
 	}
+}
+
+func TestGetVarsInvocation(t *testing.T) {
+	assert.Panics(t, func() { GetVars(nil) })
+	assert.Nil(t, GetVars(&http.Request{}))
+	assert.Nil(t, GetVars(httptest.NewRequest("GET", "http://localhost/bar", nil)))
+}
+
+type erroringReadCloser struct{}
+
+func (_ *erroringReadCloser) Read(_ []byte) (int, error) { return 0, errors.New("test") }
+func (_ *erroringReadCloser) Close() error               { return nil }
+
+func TestRequestReadingErrorPropogating(t *testing.T) {
+	errc := &erroringReadCloser{}
+
+	assert.Error(t, GetJSON(errc, "foo"))
+	assert.Error(t, GetYAML(errc, "foo"))
+
 }

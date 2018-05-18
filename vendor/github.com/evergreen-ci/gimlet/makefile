@@ -2,7 +2,7 @@
 name := gimlet
 buildDir := build
 packages := $(name)
-orgPath := github.com/tychoish
+orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
 

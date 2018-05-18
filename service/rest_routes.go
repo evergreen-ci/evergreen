@@ -16,7 +16,6 @@ type restContextKey int
 const RestContext restContextKey = 0
 
 type restAPIService interface {
-	WriteJSON(w http.ResponseWriter, status int, data interface{})
 	GetSettings() evergreen.Settings
 	LoggedError(http.ResponseWriter, *http.Request, int, error)
 }

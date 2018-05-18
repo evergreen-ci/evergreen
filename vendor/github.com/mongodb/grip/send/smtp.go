@@ -49,10 +49,6 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 		return nil, err
 	}
 
-	if err := opts.client.Create(opts); err != nil {
-		return nil, err
-	}
-
 	s := &smtpLogger{
 		Base: NewBase(opts.Name),
 		opts: opts,
@@ -291,6 +287,11 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
+	if err := o.client.Create(o); err != nil {
+		return err
+	}
+	defer o.client.Close()
+
 	var subject, body string
 	toAddrs := o.toAddrs
 	fromAddr := o.fromAddr
@@ -328,7 +329,7 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 	}
 
 	if err := o.client.Mail(fromAddr.Address); err != nil {
-		return fmt.Errorf("Error establishing mail sender (%s): %+v", fromAddr.String(), err)
+		return fmt.Errorf("Error establishing mail sender (%s): %+v", fromAddr, err)
 	}
 
 	var err error
@@ -337,13 +338,12 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 
 	// Set the recipients
 	for _, target := range toAddrs {
-		addr := target.String()
-		if err = o.client.Rcpt(addr); err != nil {
+		if err = o.client.Rcpt(target.Address); err != nil {
 			errs = append(errs,
-				fmt.Sprintf("Error establishing mail recipient (%s): %+v", addr, err))
+				fmt.Sprintf("Error establishing mail recipient (%s): %+v", target.String(), err))
 			continue
 		}
-		recipients = append(recipients, addr)
+		recipients = append(recipients, target.String())
 	}
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "; "))
@@ -408,6 +408,7 @@ type smtpClient interface {
 	Mail(string) error
 	Rcpt(string) error
 	Data() (io.WriteCloser, error)
+	Close() error
 }
 
 type smtpClientImpl struct {
@@ -416,18 +417,24 @@ type smtpClientImpl struct {
 
 func (c *smtpClientImpl) Create(opts *SMTPOptions) error {
 	var err error
+	c.Client, err = smtp.Dial(fmt.Sprintf("%v:%v", opts.Server, opts.Port))
+	if err != nil {
+		return err
+	}
 
 	if opts.UseSSL {
-		var tlsCon *tls.Conn
-		tlsCon, err = tls.Dial("tcp", fmt.Sprintf("%v:%v", opts.Server, opts.Port), &tls.Config{})
+		config := &tls.Config{ServerName: opts.Server}
+		err = c.Client.StartTLS(config)
+
+	} else {
+		var hostname string
+		hostname, err = os.Hostname()
 		if err != nil {
 			return err
 		}
-		c.Client, err = smtp.NewClient(tlsCon, opts.Server)
-	} else {
-		c.Client, err = smtp.Dial(fmt.Sprintf("%v:%v", opts.Server, opts.Port))
-	}
 
+		err = c.Hello(hostname)
+	}
 	if err != nil {
 		return err
 	}
@@ -439,4 +446,8 @@ func (c *smtpClientImpl) Create(opts *SMTPOptions) error {
 	}
 
 	return nil
+}
+
+func (c *smtpClientImpl) Close() error {
+	return c.Client.Close()
 }

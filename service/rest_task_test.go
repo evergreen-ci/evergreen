@@ -18,7 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +45,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 		BuildId:             "some-build-id",
 		DistroId:            "some-distro-id",
 		BuildVariant:        "some-build-variant",
-		DependsOn:           []task.Dependency{{"some-other-task", ""}},
+		DependsOn:           []task.Dependency{{TaskId: "some-other-task", Status: ""}},
 		DisplayName:         "My task",
 		HostId:              "some-host-id",
 		Restarts:            0,
@@ -83,7 +83,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
@@ -284,7 +284,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
@@ -417,10 +417,11 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+
 	require.NoError(uis.InitPlugins())
 	router := mux.NewRouter()
 	err = uis.AttachRoutes(router)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/gimlet"
 )
 
 // GetDistro loads the task's distro and sends it to the requester.
@@ -26,5 +27,5 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 
 	// agent can't properly unmarshal provider settings map
 	h.Distro.ProviderSettings = nil
-	as.WriteJSON(w, http.StatusOK, h.Distro)
+	gimlet.WriteJSON(w, h.Distro)
 }

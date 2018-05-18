@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -127,10 +128,10 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 
 	switch r.FormValue("format") {
 	case "json":
-		uis.WriteJSON(w, http.StatusOK, data)
+		gimlet.WriteJSON(w, data)
 		return
 	default:
-		uis.WriteHTML(w, http.StatusOK, struct {
+		uis.render.WriteResponse(w, http.StatusOK, struct {
 			Data taskHistoryPageData
 			ViewData
 		}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
@@ -190,10 +191,10 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		Project   string
 	}{variant, tasks, suites, versions, project.Identifier}
 	if isJson {
-		uis.WriteJSON(w, http.StatusOK, data)
+		gimlet.WriteJSON(w, data)
 		return
 	}
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data interface{}
 		ViewData
 	}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
@@ -250,7 +251,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, tasks)
+	gimlet.WriteJSON(w, tasks)
 }
 
 func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request) {
@@ -276,7 +277,7 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, results)
+	gimlet.WriteJSON(w, results)
 }
 
 // drawerParams contains the parameters from a request to populate a task or version history drawer.
@@ -340,7 +341,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	uis.WriteJSON(w, http.StatusOK, struct {
+	gimlet.WriteJSON(w, struct {
 		Revisions []versionDrawerItem `json:"revisions"`
 	}{versionDrawerItems})
 }
@@ -375,7 +376,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, struct {
+	gimlet.WriteJSON(w, struct {
 		Revisions []taskDrawerItem `json:"revisions"`
 	}{taskGroups})
 }

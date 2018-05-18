@@ -7,8 +7,20 @@ import (
 
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 )
+
+func init() {
+	sender := grip.GetSender()
+	lvl := send.LevelInfo{
+		Threshold: level.Alert,
+		Default:   level.Warning,
+	}
+	grip.Warning(sender.SetLevel(lvl))
+}
 
 type RunnerSuite struct {
 	pool    amboy.Runner
@@ -38,6 +50,18 @@ func TestSimpleRateLimitedSuite(t *testing.T) {
 		return &simpleRateLimited{
 			size:     2,
 			interval: time.Second,
+		}
+	}
+
+	suite.Run(t, s)
+}
+
+func TestAbortableSuite(t *testing.T) {
+	s := new(RunnerSuite)
+	s.factory = func() amboy.Runner {
+		return &abortablePool{
+			size: 2,
+			jobs: make(map[string]context.CancelFunc),
 		}
 	}
 

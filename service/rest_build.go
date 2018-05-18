@@ -3,6 +3,8 @@ package service
 import (
 	"net/http"
 	"time"
+
+	"github.com/evergreen-ci/gimlet"
 )
 
 type buildStatusContent struct {
@@ -45,7 +47,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	b := projCtx.Build
 	if b == nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding build"})
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return
 	}
 
@@ -77,7 +79,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 		destBuild.Tasks[task.DisplayName] = status
 	}
 
-	restapi.WriteJSON(w, http.StatusOK, destBuild)
+	gimlet.WriteJSON(w, destBuild)
 }
 
 // Returns a JSON response with the status of the specified build.
@@ -86,7 +88,7 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	b := projCtx.Build
 	if b == nil {
-		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding build"})
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return
 	}
 
@@ -105,5 +107,5 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 		result.Tasks[task.DisplayName] = status
 	}
 
-	restapi.WriteJSON(w, http.StatusOK, result)
+	gimlet.WriteJSON(w, result)
 }

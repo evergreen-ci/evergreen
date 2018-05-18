@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -27,11 +28,11 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) patchTimeline(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +50,7 @@ func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request)
 }
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Author string
 		ViewData
 	}{author, uis.GetCommonViewData(w, r, false, true)}, "base", "patches.html", "base_angular.html", "menu.html")
@@ -130,5 +131,5 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		PageNum     int
 	}{versionsMap, uiPatches, pageNum}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }

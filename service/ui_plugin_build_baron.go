@@ -16,7 +16,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -28,21 +30,24 @@ const (
 )
 
 func bbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
-	bbproj := make(map[string]evergreen.BuildBaronProject)
 	bbconf, ok := settings.Plugins["buildbaron"]
 	if !ok {
-		return bbproj
+		return nil
 	}
 
-	for k, v := range bbconf {
-		proj, ok := v.(evergreen.BuildBaronProject)
-		if !ok {
-			continue
-		}
-		bbproj[k] = proj
+	projectConfig, ok := bbconf["projects"]
+	if !ok {
+		grip.Error("no build baron projects configured")
+		return nil
 	}
 
-	return bbproj
+	projects := map[string]evergreen.BuildBaronProject{}
+	err := mapstructure.Decode(projectConfig, &projects)
+	if err != nil {
+		grip.Critical(errors.Wrap(err, "unable to parse bb project config"))
+	}
+
+	return projects
 }
 
 // saveNote reads a request containing a note's content along with the last seen
@@ -51,13 +56,13 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 	n := &model.Note{}
 	if err := util.ReadJSONInto(r.Body, n); err != nil {
-		util.WriteJSON(w, http.StatusBadRequest, err.Error())
+		gimlet.WriteJSONError(w, err.Error())
 		return
 	}
 
 	// prevent incredibly large notes
 	if len(n.Content) > maxNoteSize {
-		util.WriteJSON(w, http.StatusBadRequest, "note is too large")
+		gimlet.WriteJSONError(w, "note is too large")
 		return
 	}
 
@@ -66,14 +71,14 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 	// than the most recent edit, we error with a helpful message.
 	old, err := model.NoteForTask(taskId)
 	if err != nil {
-		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		gimlet.WriteJSONInternalError(w, err.Error())
 		return
 	}
 	// we compare times by millisecond rather than nanosecond so we can
 	// work around the rounding that occurs when javascript forces these
 	// large values into in float type.
 	if old != nil && n.UnixNanoTime/msPerNS != old.UnixNanoTime/msPerNS {
-		util.WriteJSON(w, http.StatusBadRequest,
+		gimlet.WriteJSONError(w,
 			"this note has already been edited. Please refresh and try again.")
 		return
 	}
@@ -81,10 +86,10 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 	n.TaskId = taskId
 	n.UnixNanoTime = time.Now().UnixNano()
 	if err := n.Upsert(); err != nil {
-		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		gimlet.WriteJSONInternalError(w, err.Error())
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, n)
+	gimlet.WriteJSON(w, n)
 }
 
 // getNote retrieves the latest note from the database.
@@ -92,14 +97,14 @@ func bbGetNote(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 	n, err := model.NoteForTask(taskId)
 	if err != nil {
-		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		gimlet.WriteJSONInternalError(w, err.Error())
 		return
 	}
 	if n == nil {
-		util.WriteJSON(w, http.StatusOK, "")
+		gimlet.WriteJSON(w, "")
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, n)
+	gimlet.WriteJSON(w, n)
 }
 
 func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +112,7 @@ func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request)
 
 	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
 	if err != nil {
-		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		gimlet.WriteJSONInternalError(w, err.Error())
 		return
 	}
 
@@ -123,7 +128,7 @@ func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request)
 	for _, ticket := range searchTickets {
 		jiraIssue, err := uis.jiraHandler.GetJIRATicket(ticket)
 		if err != nil {
-			util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+			gimlet.WriteJSONInternalError(w, err.Error())
 			return
 		}
 		if jiraIssue == nil {
@@ -132,7 +137,7 @@ func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request)
 		results = append(results, *jiraIssue)
 	}
 
-	util.WriteJSON(w, http.StatusOK, results)
+	gimlet.WriteJSON(w, results)
 }
 
 func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
@@ -141,22 +146,21 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	oldId := fmt.Sprintf("%v_%v", taskId, exec)
 	t, err := task.FindOneOld(task.ById(oldId))
 	if err != nil {
-		util.WriteJSON(rw, http.StatusInternalServerError, err.Error())
+		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
 	// if the archived task was not found, we must be looking for the most recent exec
 	if t == nil {
 		t, err = task.FindOne(task.ById(taskId))
 		if err != nil {
-			util.WriteJSON(rw, http.StatusInternalServerError, err.Error())
+			gimlet.WriteJSONInternalError(rw, err.Error())
 			return
 		}
 	}
 
 	bbProj, ok := uis.buildBaronProjects[t.Project]
 	if !ok {
-		util.WriteJSON(rw, http.StatusInternalServerError,
-			fmt.Sprintf("Corresponding JIRA project for %v not found", t.Project))
+		gimlet.WriteJSON(rw, fmt.Sprintf("Corresponding JIRA project for %v not found", t.Project))
 		return
 	}
 
@@ -174,10 +178,10 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		message := fmt.Sprintf("Error searching jira for ticket: %v, %s", err, jql)
 		grip.Error(message)
-		util.WriteJSON(rw, http.StatusInternalServerError, message)
+		gimlet.WriteJSONInternalError(rw, message)
 		return
 	}
-	util.WriteJSON(rw, http.StatusOK, searchReturnInfo{Issues: tickets, Search: jql})
+	gimlet.WriteJSON(rw, searchReturnInfo{Issues: tickets, Search: jql})
 }
 
 // raceSuggesters returns the JIRA ticket results from the altEndpoint suggester if it returns

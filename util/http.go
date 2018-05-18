@@ -1,34 +1,13 @@
 package util
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-// WriteJSON writes a json response with the supplied code on the given writer.
-func WriteJSON(w http.ResponseWriter, status int, data interface{}) {
-	// write the response
-	w.Header().Add("Content-Type", "application/json")
-	w.Header().Add("Connection", "close")
-
-	jsonBytes, err := json.Marshal(data)
-	grip.Notice(err)
-	if err != nil {
-		w.WriteHeader(500)
-		_, _ = w.Write([]byte("{}"))
-		return
-	}
-
-	w.WriteHeader(status)
-	_, err = w.Write(jsonBytes)
-	grip.Notice(err)
-}
 
 // MountHandler routes all requests to the given mux.Router under the prefix to be handled by
 // the http.Handler, which the request's path rooted under that prefix.
