@@ -41,7 +41,6 @@ func (s *VersionSuite) SetupTest() {
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
 	}
-	s.version.Id = s.version.Id
 	s.NoError(s.version.Insert())
 
 	s.event = event.EventLogEntry{
