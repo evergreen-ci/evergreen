@@ -11,15 +11,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/gorilla/csrf"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	nrgorilla "github.com/newrelic/go-agent/_integrations/nrgorilla/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"github.com/urfave/negroni"
 )
 
 func startWebService() cli.Command {
@@ -50,35 +47,23 @@ func startWebService() cli.Command {
 
 			startSystemCronJobs(ctx, env)
 
-			router := mux.NewRouter()
+			var (
+				apiServer *http.Server
+				uiServer  *http.Server
+			)
 
-			apiHandler, err := getHandlerAPI(settings, queue, router)
+			serviceHandler, err := getServiceRouter(settings, queue)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			apiServer := service.GetServer(settings.Api.HttpListenAddr, apiHandler)
+			apiServer = service.GetServer(settings.Api.HttpListenAddr, serviceHandler)
 
-			uiHandler, err := getHandlerUI(settings, queue, router)
-			if err != nil {
-				return errors.WithStack(err)
-			}
 			if settings.Ui.CsrfKey != "" {
 				errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
-				uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
-			}
-			uiServer := service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
-
-			newRelic, err := settings.NewRelic.SetUp()
-			if newRelic == nil || err != nil {
-				grip.Debug(message.WrapError(err, message.Fields{
-					"message": "skipping new relic setup",
-				}))
+				uiHandler := csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(serviceHandler)
+				uiServer = service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
 			} else {
-				grip.Info(message.Fields{
-					"message":          "successfully set up new relic",
-					"application_name": settings.NewRelic.ApplicationName,
-				})
-				nrgorilla.InstrumentRoutes(router, newRelic)
+				uiServer = service.GetServer(settings.Ui.HttpListenAddr, serviceHandler)
 			}
 
 			catcher := grip.NewBasicCatcher()
@@ -158,34 +143,16 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getHandlerAPI(settings *evergreen.Settings, queue amboy.Queue, router *mux.Router) (http.Handler, error) {
-	as, err := service.NewAPIServer(settings, queue)
-	if err != nil {
-		err = errors.Wrap(err, "failed to create API server")
-		return nil, err
-	}
-
-	as.AttachRoutes(router)
-
-	n := negroni.New()
-	n.Use(service.NewRecoveryLogger())
-	n.Use(negroni.HandlerFunc(service.UserMiddleware(as.UserManager)))
-	n.UseHandler(router)
-	return n, nil
-}
-
-func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.Router) (http.Handler, error) {
+func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
 	}
 
-	webHome := filepath.Join(home, "public")
 	functionOptions := service.TemplateFunctionOptions{
-		WebHome:  webHome,
+		WebHome:  filepath.Join(home, "public"),
 		HelpHome: settings.Ui.HelpUrl,
 		IsProd:   !settings.IsNonProd,
-		Router:   router,
 	}
 
 	uis, err := service.NewUIServer(settings, queue, home, functionOptions)
@@ -193,20 +160,10 @@ func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.R
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
 
-	err = uis.AttachRoutes(router)
+	as, err := service.NewAPIServer(settings, queue)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem creating router")
+		return nil, errors.Wrap(err, "failed to create API server")
 	}
 
-	if err = uis.InitPlugins(); err != nil {
-		return nil, errors.Wrap(err, "problem initializing plugins")
-	}
-
-	n := negroni.New()
-	n.Use(negroni.NewStatic(http.Dir(webHome)))
-	n.Use(service.NewRecoveryLogger())
-	n.Use(negroni.HandlerFunc(service.UserMiddleware(uis.UserManager)))
-	n.UseHandler(router)
-
-	return n, nil
+	return service.GetRouter(as, uis)
 }

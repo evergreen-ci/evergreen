@@ -4,15 +4,13 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"net/url"
 	"regexp"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Read-Evergreen"
@@ -22,7 +20,6 @@ type TemplateFunctionOptions struct {
 	WebHome  string
 	HelpHome string
 	IsProd   bool
-	Router   *mux.Router
 }
 
 // MutableVar is a setable variable for UI templates.
@@ -45,7 +42,7 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 }
 
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
-func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) (map[string]interface{}, error) {
+func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[string]interface{} {
 	r := map[string]interface{}{
 		// IsSuperUser returns true if the given user Id has super user privileges.
 		"IsSuperUser": func(userName string) bool {
@@ -117,26 +114,6 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) (map[str
 			return s[0:n]
 		},
 
-		// UrlFor generates a URL for the given route.
-		"UrlFor": func(name string, pairs ...interface{}) (*url.URL, error) {
-			size := len(pairs)
-			strPairs := make([]string, size)
-			for i := 0; i < size; i++ {
-				if v, ok := pairs[i].(string); ok {
-					strPairs[i] = v
-				} else {
-					strPairs[i] = fmt.Sprint(pairs[i])
-				}
-			}
-
-			route := fo.Router.Get(name)
-			if route == nil {
-				return nil, errors.Errorf("UrlFor: can't find a route named %v", name)
-			}
-
-			return route.URL(strPairs...)
-		},
-
 		// HelpUrl returns the address of the Evergreen help page,
 		// if one is set.
 		"HelpUrl": func() string {
@@ -147,14 +124,9 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) (map[str
 		},
 	}
 
-	staticsMD5, err := DirectoryChecksum(fo.WebHome)
-	if err != nil {
-		return nil, err
+	r["BuildRevision"] = func() string {
+		return evergreen.BuildRevision
 	}
-
-	r["StaticsMD5"] = func() string {
-		return staticsMD5
-	}
-	return r, nil
+	return r
 
 }

@@ -266,7 +266,7 @@ phony += vendor-clean
 #    rerun as expected.)
 testRunDeps := $(name)
 testArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd)
+testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`)
 endif

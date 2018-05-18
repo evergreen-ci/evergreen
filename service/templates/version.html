@@ -16,10 +16,10 @@
   window.jiraHost= {{.JiraHost}}
   window.hasBanner = {{ne .Banner ""}}
 </script>
-<script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ StaticsMD5 }}"></script>
-<script type="text/javascript" src="/static/app/waterfall/tasks_grid.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/app/waterfall/tasks_grid.js?hash={{ BuildRevision }}"></script>
 {{if .User}}
-  <script type="text/javascript" src="{{Static "js" "version_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+  <script type="text/javascript" src="{{Static "js" "version_admin.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
   {{range .PluginContent.Includes}}
     {{.}}

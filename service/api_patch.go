@@ -182,6 +182,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	summaries, err := thirdparty.GetPatchSummaries(patchContent)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 	repoOwner, repo := module.GetRepoOwnerAndName()
 

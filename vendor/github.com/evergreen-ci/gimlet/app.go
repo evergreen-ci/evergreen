@@ -21,7 +21,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
-	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/urfave/negroni"
 )
 
@@ -34,9 +33,9 @@ type APIApp struct {
 	port           int
 	router         *mux.Router
 	address        string
-	subApps        []*APIApp
 	routes         []*APIRoute
 	middleware     []Middleware
+	wrappers       []Middleware
 }
 
 // NewApp returns a pointer to an application instance. These
@@ -46,14 +45,12 @@ type APIApp struct {
 // for new methods.
 func NewApp() *APIApp {
 	a := &APIApp{
-		StrictSlash:    true,
 		defaultVersion: -1, // this is the same as having no version prepended to the path.
 		port:           3000,
 	}
 
 	a.AddMiddleware(negroni.NewRecovery())
 	a.AddMiddleware(NewAppLogger())
-	a.AddMiddleware(gzip.Gzip(gzip.DefaultCompression))
 
 	return a
 }
@@ -78,33 +75,37 @@ func (a *APIApp) Router() (*mux.Router, error) {
 	return nil, errors.New("application is not resolved")
 }
 
-// AddApp allows you to combine App instances, by taking one app and
-// add its routes to the current app. Returns a non-nill error value
-// if the current app is resolved. If the apps have different default
-// versions set, the versions on the second app are explicitly set.
-func (a *APIApp) AddApp(app *APIApp) error {
-	// if we've already resolved then it has to be an error
-	if a.isResolved {
-		return errors.New("cannot merge an app into a resolved app")
-	}
-
-	a.subApps = append(a.subApps, app)
-	return nil
-}
-
 // AddMiddleware adds a negroni handler as middleware to the end of
 // the current list of middleware handlers.
+//
+// All Middleware is added before the router. If your middleware
+// depends on executing within the context of the router/muxer, add it
+// as a wrapper.
 func (a *APIApp) AddMiddleware(m Middleware) {
 	a.middleware = append(a.middleware, m)
+}
+
+// AddWrapper adds a negroni handler as a wrapper for a specific route.
+//
+// These wrappers execute in the context of the router/muxer. If your
+// middleware does not need access to the muxer's state, add it as a
+// middleware.
+func (a *APIApp) AddWrapper(m Middleware) {
+	a.wrappers = append(a.wrappers, m)
 }
 
 // Resolve processes the data in an application instance, including
 // all routes and creats a mux.Router object for the application
 // instance.
 func (a *APIApp) Resolve() error {
-	catcher := grip.NewCatcher()
+	if a.isResolved {
+		return nil
+	}
 
-	a.router = mux.NewRouter().StrictSlash(a.StrictSlash)
+	catcher := grip.NewCatcher()
+	if a.router == nil {
+		a.router = mux.NewRouter().StrictSlash(a.StrictSlash)
+	}
 
 	for _, route := range a.routes {
 		if !route.IsValid() {
@@ -118,15 +119,16 @@ func (a *APIApp) Resolve() error {
 			methods = append(methods, strings.ToLower(m.String()))
 		}
 
+		handler := getRouteHandlerWithMiddlware(a.wrappers, route.handler)
 		if route.version > 0 {
 			versionedRoute := getVersionedRoute(a.prefix, route.version, route.route)
-			a.router.HandleFunc(versionedRoute, route.handler).Methods(methods...)
+			a.router.Handle(versionedRoute, handler).Methods(methods...)
 			grip.Debugln("added route for:", versionedRoute)
 		}
 
 		if route.version == a.defaultVersion {
 			route.route = getDefaultRoute(a.prefix, route.route)
-			a.router.HandleFunc(route.route, route.handler).Methods(methods...)
+			a.router.Handle(route.route, handler).Methods(methods...)
 			grip.Debugln("added route for:", route.route)
 		}
 	}
@@ -134,6 +136,19 @@ func (a *APIApp) Resolve() error {
 	a.isResolved = true
 
 	return catcher.Resolve()
+}
+
+func getRouteHandlerWithMiddlware(mws []Middleware, route http.Handler) http.Handler {
+	if len(mws) == 0 {
+		return route
+	}
+
+	n := negroni.New()
+	for _, m := range mws {
+		n.Use(m)
+	}
+	n.UseHandler(route)
+	return n
 }
 
 func getVersionedRoute(prefix string, version int, route string) string {
@@ -160,37 +175,24 @@ func (a *APIApp) ResetMiddleware() {
 	a.middleware = []Middleware{}
 }
 
+// ResetWrappers removes all route-specific middleware from the
+// current application.
+func (a *APIApp) RestWrappers() {
+	a.wrappers = []Middleware{}
+}
+
 // getHander internal helper resolves the negorni middleware for the
 // application and returns it in the form of a http.Handler for use in
-// stitching together applicationstr
+// stitching together applications.
 func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
-	if err := a.Resolve(); err != nil {
-		return nil, err
+	if !a.isResolved {
+		return nil, errors.New("must resolve the application first")
 	}
-
-	catcher := grip.NewCatcher()
 	n := negroni.New()
 	for _, m := range a.middleware {
 		n.Use(m)
 	}
 	n.UseHandler(a.router)
-	for _, app := range a.subApps {
-		if !strings.HasPrefix(app.prefix, a.prefix) {
-			app.prefix = a.prefix + app.prefix
-		}
-		catcher.Add(app.Resolve())
-
-		subNegroni, err := app.getNegroni()
-		if err != nil {
-			catcher.Add(err)
-		}
-
-		n.UseHandler(subNegroni)
-	}
-
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
 
 	return n, nil
 }
@@ -198,6 +200,11 @@ func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
 // Handler returns a handler interface for integration with other
 // server frameworks.
 func (a *APIApp) Handler() (http.Handler, error) {
+	if !a.isResolved {
+		if err := a.Resolve(); err != nil {
+			return nil, err
+		}
+	}
 	return a.getNegroni()
 }
 

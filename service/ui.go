@@ -66,21 +66,15 @@ type ViewData struct {
 }
 
 func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
-
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	functions, err := MakeTemplateFuncs(fo, settings.SuperUsers)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create template function map")
-	}
-
 	ropts := gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: !settings.Ui.CacheTemplates,
-		Functions:    functions,
+		Functions:    MakeTemplateFuncs(fo, settings.SuperUsers),
 	}
 
 	uis := &UIServer{
@@ -99,13 +93,12 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 			settings.Jira.Password),
 	}
 
-	return uis, nil
-}
-
-// InitPlugins registers all installed plugins with the UI Server.
-func (uis *UIServer) InitPlugins() error {
 	uis.PanelManager = &plugin.SimplePanelManager{}
-	return uis.PanelManager.RegisterPlugins(plugin.UIPlugins)
+	if err := uis.PanelManager.RegisterPlugins(plugin.UIPlugins); err != nil {
+		return nil, errors.Wrap(err, "problem initializing plugins")
+	}
+
+	return uis, nil
 }
 
 // NewRouter sets up a request router for the UI, installing
@@ -249,9 +242,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	// Admin routes
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
 	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
-
-	// REST API V1
-	AttachRESTHandler(r, uis)
 
 	// attaches /rest/v2 routes
 	route.AttachHandler(r, uis.queue, uis.Settings.Ui.Url, evergreen.RestRoutePrefix, uis.Settings.SuperUsers, []byte(uis.Settings.Api.GithubWebhookSecret))
