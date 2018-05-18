@@ -295,6 +295,11 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		}
 	}
 
+	err = taskModel.GetArtifacts()
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "error retrieving artifacts")
+	}
+
 	return ResponseData{
 		Result: []model.Model{taskModel},
 	}, nil
