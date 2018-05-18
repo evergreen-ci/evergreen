@@ -111,6 +111,6 @@ func adminEventDataFactory() interface{} {
 	return &rawAdminEventData{}
 }
 
-func buildEventFactory() interface{} {
+func buildEventDataFactory() interface{} {
 	return &BuildEventData{}
 }

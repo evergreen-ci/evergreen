@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeBuild, buildEventFactory)
+	registry.AddType(ResourceTypeBuild, buildEventDataFactory)
 	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
 }
 
