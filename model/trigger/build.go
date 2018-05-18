@@ -61,36 +61,13 @@ func buildSelectors(b *build.Build) []event.Selector {
 			Type: "project",
 			Data: b.Project,
 		},
-		//{
-		//	Type: "owner",
-		//	Data: p.Author,
-		//},
 	}
 }
 
 func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenerator, error) {
-	gen := notificationGenerator{
-		triggerName: triggerName,
-		selectors:   buildSelectors(b),
-	}
-
-	gen.selectors = append(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: triggerName,
-	})
-
 	ui := evergreen.UIConfig{}
 	if err := ui.Get(); err != nil {
 		return nil, errors.Wrap(err, "Failed to fetch ui config")
-	}
-
-	data := commonTemplateData{
-		ID:              b.Id,
-		Object:          "build",
-		Project:         b.Project,
-		URL:             fmt.Sprintf("%s/build/%s", ui.Url, b.Id),
-		PastTenseStatus: b.Status,
-		Headers:         makeHeaders(gen.selectors),
 	}
 
 	api := restModel.APIBuild{}
@@ -98,45 +75,23 @@ func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenera
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
-	var err error
-	gen.evergreenWebhook, err = webhookPayload(&api, data.Headers)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building webhook payload")
+	selectors := buildSelectors(b)
+	data := commonTemplateData{
+		ID:                b.Id,
+		Object:            "build",
+		Project:           b.Project,
+		URL:               fmt.Sprintf("%s/build/%s", ui.Url, b.Id),
+		PastTenseStatus:   b.Status,
+		apiModel:          &api,
+		githubState:       message.GithubStateFailure,
+		githubDescription: TaskStatusToDesc(b),
+	}
+	if b.Status == evergreen.BuildSucceeded {
+		data.githubState = message.GithubStateSuccess
+		data.PastTenseStatus = "succeeded"
 	}
 
-	gen.email, err = emailPayload(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building email payload")
-	}
-
-	gen.jiraComment, err = jiraComment(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira comment")
-	}
-	gen.jiraIssue, err = jiraIssue(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira issue")
-	}
-
-	state := message.GithubStateSuccess
-	if b.Status == evergreen.BuildFailed {
-		state = message.GithubStateFailure
-	}
-
-	gen.githubStatusAPI = &message.GithubStatus{
-		Context:     fmt.Sprintf("evergreen/%s", b.BuildVariant),
-		State:       state,
-		URL:         data.URL,
-		Description: TaskStatusToDesc(b),
-	}
-
-	// TODO improve slack body with additional info, like failing variants
-	gen.slack, err = slack(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building slack message")
-	}
-
-	return &gen, nil
+	return makeCommonGenerator(triggerName, selectors, data)
 }
 
 func buildOutcome(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
