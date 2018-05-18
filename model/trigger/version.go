@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -60,6 +59,10 @@ func versionSelectors(v *version.Version) []event.Selector {
 			Type: "status",
 			Data: v.Status,
 		},
+		{
+			Type: "object",
+			Data: "version",
+		},
 	}
 }
 
@@ -76,18 +79,18 @@ func generatorFromVersion(triggerName string, v *version.Version) (*notification
 
 	selectors := versionSelectors(v)
 
-	data := commonTemplateData{
-		ID:                v.Id,
-		Object:            "version",
-		Project:           v.Identifier,
-		URL:               fmt.Sprintf("%s/version/%s", ui.Url, v.Id),
-		PastTenseStatus:   v.Status,
-		apiModel:          &api,
-		githubState:       message.GithubStateFailure,
-		githubDescription: fmt.Sprintf("version finished in %s", v.FinishTime.Sub(v.StartTime).String()),
-	}
+	pastTense := v.Status
 	if v.Status == evergreen.VersionSucceeded {
-		data.githubState = message.GithubStateSuccess
+		pastTense = "succeeded"
+	}
+
+	data := commonTemplateData{
+		ID:              v.Id,
+		Object:          "version",
+		Project:         v.Identifier,
+		URL:             fmt.Sprintf("%s/version/%s", ui.Url, v.Id),
+		PastTenseStatus: v.Status,
+		apiModel:        &api,
 	}
 
 	return makeCommonGenerator(triggerName, selectors, data)
