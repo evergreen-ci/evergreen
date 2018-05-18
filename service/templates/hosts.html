@@ -1,8 +1,8 @@
 {{define "scripts"}}
 <script type="text/javascript" src="{{Static "thirdparty" "tablesorter.js"}}"></script>
-<script type="text/javascript" src="{{Static "js" "hosts.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "hosts.js"}}?hash={{ BuildRevision }}"></script>
 {{if .User }}
-<script type="text/javascript" src="{{Static "js" "hosts_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "hosts_admin.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 <script type="text/javascript">
   window.hosts = {{ .Hosts }};

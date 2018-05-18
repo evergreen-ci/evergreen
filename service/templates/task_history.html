@@ -1,5 +1,5 @@
 {{define "scripts"}}
-<script src="{{Static "js" "task_history.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "js" "task_history.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
   var failedTasks = {{.Data.FailedTests}}
   var taskName = {{.Data.TaskName}}

@@ -1,6 +1,6 @@
 
 {{define "scripts"}}
-<script type="text/javascript" src="{{Static "js" "patch_new.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "patch_new.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
   var userTz = {{GetTimezone $.User}}
   var variants = {{.Variants}}
