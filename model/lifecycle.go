@@ -132,15 +132,13 @@ func AbortVersion(versionId string) error {
 	if err != nil {
 		return errors.Wrap(err, "error setting aborted statuses")
 	}
-	tasks, err := task.FindManyWithFields(db.Query(bson.M{task.VersionKey: versionId}), task.IdKey)
+	ids, err := task.FindAllTaskIDsFromVersion(versionId)
 	if err != nil {
 		return errors.Wrap(err, "error finding tasks by version id")
 	}
-	ids := []string{}
-	for _, t := range tasks {
-		ids = append(ids, t.Id)
+	if len(ids) > 0 {
+		event.LogManyTaskAbortRequests(ids, evergreen.GithubPatchUser)
 	}
-	event.LogManyTaskAbortRequests(ids, evergreen.GithubPatchUser)
 	return nil
 }
 
