@@ -15,8 +15,6 @@ import (
 func init() {
 	registry.AddTrigger(event.ResourceTypeBuild,
 		buildValidator(buildOutcome),
-		buildValidator(buildFailure),
-		buildValidator(buildSuccess),
 	)
 	registry.AddPrefetch(event.ResourceTypeBuild, buildFetch)
 }
