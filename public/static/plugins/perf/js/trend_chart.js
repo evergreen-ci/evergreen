@@ -1,6 +1,7 @@
 // Helper function
 // TODO Make it accept (d, i) and return function (FP)
 function d3Translate(x, y) {
+  if (y === undefined) y = x
   return 'translate(' + x + ',' + y + ')';
 }
 
@@ -18,6 +19,7 @@ mciModule.factory('PerfChartService', function() {
     },
     points: {
       focusedR: 4.5,
+      changePointSize: 12,
     },
     valueAttr: 'ops_per_sec',
     yAxis: {
@@ -153,6 +155,7 @@ var drawSingleTrendChart = function(params) {
   // Extract params
   var PerfChartService = params.PerfChartService,
       series = params.series,
+      changePoints = params.changePoints,
       key = params.key,
       scope = params.scope,
       containerId = params.containerId,
@@ -160,6 +163,11 @@ var drawSingleTrendChart = function(params) {
       threadMode = params.threadMode,
       linearMode = params.linearMode,
       originMode = params.originMode;
+
+  // Filter out change points which lays outside ot the chart
+  var visibleChangePoints = _.filter(changePoints, function(d) {
+    return _.findWhere(series, {revision: d.revision})
+  })
 
   var cfg = PerfChartService.cfg;
   document.getElementById(containerId).innerHTML = '';
@@ -202,6 +210,17 @@ var drawSingleTrendChart = function(params) {
       data.color = colors(match ? match.colorId : cfg.knownLevelsCount + i)
       return data
     })
+
+  // Array with combinations combinations of {level, changePoint}
+  var changePointForLevel = []
+  _.each(levelsMeta, function(level) {
+    _.each(visibleChangePoints, function(point) {
+      changePointForLevel.push({
+        level: level,
+        changePoint: point
+      })
+    })
+  })
 
   // Calculate legend x pos based on levels
   cfg.legend.xPos = (cfg.container.width - levelsMeta.length * cfg.legend.step) / 2
@@ -494,6 +513,36 @@ var drawSingleTrendChart = function(params) {
         r: cfg.points.focusedR + 0.5,
         stroke: function(d) { return d.color },
       })
+
+  // Render change points
+  var changePointsG = chartG.append('g')
+    .attr('class', 'g-change-points')
+    .selectAll('g')
+    .data(changePointForLevel)
+    .enter()
+    .append('g')
+      .attr({
+        class: 'point',
+        transform: function(d) {
+          var idx = _.findIndex(series, function(sample) {
+            return sample && sample.revision == d.changePoint.revision
+          })
+
+          return idx > -1 ? d3Translate(
+            xScale(idx),
+            yScale(getValueFor(d.level)(series[idx]))
+          ) : undefined
+        },
+      })
+
+  // Plus sign image for change points
+  changePointsG.append('image')
+    .attr({
+      width: cfg.points.changePointSize,
+      height: cfg.points.changePointSize,
+      transform: d3Translate(-cfg.points.changePointSize / 2),
+      'xlink:href': '/static/img/plus_sign.png',
+    })
 
   // Contains elements for hover behavior
   var focusG = chartG.append('svg:g')
