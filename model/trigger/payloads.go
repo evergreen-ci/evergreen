@@ -235,7 +235,7 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 		return nil, errors.Wrap(err, "error building jira issue")
 	}
 
-	if len(data.githubDescription != 0) {
+	if len(data.githubDescription) != 0 {
 		gen.githubStatusAPI = &message.GithubStatus{
 			Context:     "evergreen",
 			State:       data.githubState,

@@ -79,9 +79,9 @@ func generatorFromVersion(triggerName string, v *version.Version) (*notification
 
 	selectors := versionSelectors(v)
 
-	pastTense := v.Status
+	pastTenseStatus := v.Status
 	if v.Status == evergreen.VersionSucceeded {
-		pastTense = "succeeded"
+		pastTenseStatus = "succeeded"
 	}
 
 	data := commonTemplateData{
@@ -89,7 +89,7 @@ func generatorFromVersion(triggerName string, v *version.Version) (*notification
 		Object:          "version",
 		Project:         v.Identifier,
 		URL:             fmt.Sprintf("%s/version/%s", ui.Url, v.Id),
-		PastTenseStatus: v.Status,
+		PastTenseStatus: pastTenseStatus,
 		apiModel:        &api,
 	}
 
