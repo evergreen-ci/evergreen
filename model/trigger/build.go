@@ -106,30 +106,6 @@ func buildOutcome(e *event.EventLogEntry, b *build.Build) (*notificationGenerato
 	return gen, err
 }
 
-func buildFailure(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
-	const name = "failure"
-
-	if b.Status != evergreen.BuildFailed {
-		return nil, nil
-	}
-
-	gen, err := generatorFromBuild(name, b)
-	gen.triggerName = name
-	return gen, err
-}
-
-func buildSuccess(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
-	const name = "success"
-
-	if b.Status != evergreen.BuildSucceeded {
-		return nil, nil
-	}
-
-	gen, err := generatorFromBuild(name, b)
-	gen.triggerName = name
-	return gen, err
-}
-
 // TODO: EVG-3087 stop using this in units and make it private
 func TaskStatusToDesc(b *build.Build) string {
 	success := 0
