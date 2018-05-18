@@ -39,6 +39,11 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[stri
 			return whenTZ.Format(layout)
 		},
 
+		// Static returns a link to a static file.
+		"Static": func(filetype, filename string) string {
+			return fmt.Sprintf("/static/%s/%s", filetype, filename)
+		},
+
 		// Is Prod returns whether or not Evergreen is running in "production."
 		// Currently this is only used to toggle the use of minified css files.
 		"IsProd": func() bool {
