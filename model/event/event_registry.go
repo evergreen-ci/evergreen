@@ -110,7 +110,3 @@ func taskProcessResourceEventDataFactory() interface{} {
 func adminEventDataFactory() interface{} {
 	return &rawAdminEventData{}
 }
-
-func buildEventDataFactory() interface{} {
-	return &BuildEventData{}
-}

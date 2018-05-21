@@ -12,6 +12,10 @@ func init() {
 	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
 }
 
+func buildEventDataFactory() interface{} {
+	return &BuildEventData{}
+}
+
 const (
 	ResourceTypeBuild = "BUILD"
 
