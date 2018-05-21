@@ -48,11 +48,11 @@ func versionValidator(t func(e *event.EventLogEntry, v *version.Version) (*notif
 func versionSelectors(v *version.Version) []event.Selector {
 	return []event.Selector{
 		{
-			Type: "id",
+			Type: selectorID,
 			Data: v.Id,
 		},
 		{
-			Type: "project",
+			Type: selectorProject,
 			Data: v.Identifier,
 		},
 		{
@@ -60,7 +60,7 @@ func versionSelectors(v *version.Version) []event.Selector {
 			Data: v.Status,
 		},
 		{
-			Type: "object",
+			Type: selectorObject,
 			Data: "version",
 		},
 	}
