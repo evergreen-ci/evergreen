@@ -39,7 +39,9 @@ func LogVersionStateChangeEvent(id, newStatus string) {
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "Error logging version event",
+			"resource_type": ResourceTypeVersion,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
 		}))
 	}
 }
