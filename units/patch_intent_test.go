@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -62,7 +63,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -222,6 +223,10 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.Require().Empty(out)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
@@ -269,6 +274,36 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.Require().Len(out, 2)
+
+	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+		Owner:    patchDoc.GithubPatchData.BaseOwner,
+		Repo:     patchDoc.GithubPatchData.BaseRepo,
+		PRNumber: patchDoc.GithubPatchData.PRNumber,
+		Ref:      patchDoc.GithubPatchData.HeadHash,
+	})
+
+	foundPatch := false
+	foundBuild := false
+	for i := range out {
+		target, ok := out[i].Subscriber.Target.(*event.GithubPullRequestSubscriber)
+		s.Require().True(ok)
+
+		s.EqualValues(ghSub.Target, *target)
+		s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
+		if out[i].Type == event.ResourceTypePatch {
+			foundPatch = true
+		}
+		if out[i].Type == event.ResourceTypeBuild {
+			foundBuild = true
+		}
+	}
+
+	s.True(foundPatch)
+	s.True(foundBuild)
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {

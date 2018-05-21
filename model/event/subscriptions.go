@@ -339,3 +339,17 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 		Subscriber: sub,
 	}
 }
+
+func NewBuildOutcomeSubscription(id string, sub Subscriber) Subscription {
+	return Subscription{
+		Type:    ResourceTypeBuild,
+		Trigger: "outcome",
+		Selectors: []Selector{
+			{
+				Type: "id",
+				Data: id,
+			},
+		},
+		Subscriber: sub,
+	}
+}

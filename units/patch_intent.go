@@ -265,9 +265,10 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			PRNumber: patchDoc.GithubPatchData.PRNumber,
 			Ref:      patchDoc.GithubPatchData.HeadHash,
 		})
-		sub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-		j.AddError(sub.Upsert())
-		// TODO After EVG:3081 add build subscriptions
+		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		j.AddError(patchSub.Upsert())
+		buildSub := event.NewBuildOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		j.AddError(buildSub.Upsert())
 	}
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
