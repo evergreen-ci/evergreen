@@ -72,28 +72,10 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     promise = addSubscriber($mdDialog, $scope.triggers);
 
     $mdDialog.show(promise).then(function(data){
-      addSelectorsAndOwnerType(data);
+      addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();
     });
-  };
-
-  addSelectorsAndOwnerType = function(subscription) {
-    if (!subscription) {
-      return;
-    }
-    if (!subscription.selectors) {
-      subscription.selectors = [];
-    }
-    subscription.selectors.push({
-      Type: "object",
-      Data: "version"
-    });
-    subscription.selectors.push({
-      Type: "id",
-      Data: $scope.version.Version.id
-    });
-    subscription.owner_type = "person";
   };
 
   $scope.saveSubscriptions = function() {

@@ -101,28 +101,10 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     promise = addSubscriber($mdDialog, $scope.triggers);
 
     $mdDialog.show(promise).then(function(data){
-      addSelectorsAndOwnerType(data);
+      addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();
     });
-  };
-
-  addSelectorsAndOwnerType = function(subscription) {
-    if (!subscription) {
-      return;
-    }
-    if (!subscription.selectors) {
-      subscription.selectors = [];
-    }
-    subscription.selectors.push({
-      Type: "object",
-      Data: "build"
-    });
-    subscription.selectors.push({
-      Type: "id",
-      Data: $scope.build.Build._id
-    });
-    subscription.owner_type = "person";
   };
 
   $scope.saveSubscriptions = function() {

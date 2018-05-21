@@ -280,28 +280,10 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           promise = addSubscriber($mdDialog, $scope.triggers);
 
           $mdDialog.show(promise).then(function(data){
-            addSelectorsAndOwnerType(data);
+            addSelectorsAndOwnerType(data, "task", $scope.task.id);
             $scope.subscriptions.push(data);
             $scope.saveSubscriptions();
           });
-        };
-
-        addSelectorsAndOwnerType = function(subscription) {
-          if (!subscription) {
-            return;
-          }
-          if (!subscription.selectors) {
-            subscription.selectors = [];
-          }
-          subscription.selectors.push({
-            Type: "object",
-            Data: "task"
-          });
-          subscription.selectors.push({
-            Type: "id",
-            Data: $scope.task.id
-          });
-          subscription.owner_type = "person";
         };
 
         $scope.saveSubscriptions = function() {
