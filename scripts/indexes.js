@@ -36,6 +36,8 @@ db.hosts.ensureIndex({ "author" : 1 })
 db.hosts.ensureIndex({ "distro._id" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "status" : 1, "create_time": 1, "termination_time" : 1, "provider": 1 })
 db.hosts.ensureIndex({ "running_task": 1}, {sparse: true, unique: true})
+db.hosts.createIndex({ "last_bv": 1, "last_group": 1, "last_project": 1, "last_version": 1, "status": 1, "last_task": 1 }, {background: true})
+db.hosts.createIndex({ "running_task_bv": 1, "running_task_group": 1, "running_task_project": 1, "running_task_version": 1, "status": 1, "running_task": 1 }, {background: true})
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })

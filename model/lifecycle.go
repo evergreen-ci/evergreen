@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -162,13 +163,17 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 			status = evergreen.VersionFailed
 		}
 	}
-	return version.UpdateOne(
+	if err := version.UpdateOne(
 		bson.M{version.IdKey: versionId},
 		bson.M{"$set": bson.M{
 			version.FinishTimeKey: finishTime,
 			version.StatusKey:     status,
 		}},
-	)
+	); err != nil {
+		return errors.WithStack(err)
+	}
+	event.LogVersionStateChangeEvent(versionId, status)
+	return nil
 }
 
 // SetBuildPriority updates the priority field of all tasks associated with the given build id.
