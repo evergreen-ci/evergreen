@@ -88,7 +88,7 @@ func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenera
 		PastTenseStatus:   b.Status,
 		apiModel:          &api,
 		githubState:       message.GithubStateFailure,
-		githubDescription: TaskStatusToDesc(b),
+		githubDescription: taskStatusToDesc(b),
 	}
 	if b.Status == evergreen.BuildSucceeded {
 		data.githubState = message.GithubStateSuccess
@@ -134,8 +134,7 @@ func buildSuccess(e *event.EventLogEntry, b *build.Build) (*notificationGenerato
 	return gen, err
 }
 
-// TODO: EVG-3087 stop using this in units and make it private
-func TaskStatusToDesc(b *build.Build) string {
+func taskStatusToDesc(b *build.Build) string {
 	success := 0
 	failed := 0
 	systemError := 0

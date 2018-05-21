@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -168,4 +169,38 @@ func (s *buildSuite) TestOutcome() {
 	s.NotNil(gen)
 	s.Equal("outcome", gen.triggerName)
 	s.False(gen.isEmpty())
+}
+
+func (s *buildSuite) TestTaskStatusToDesc() {
+	b := &build.Build{
+		Id:           bson.NewObjectId().Hex(),
+		BuildVariant: "testvariant",
+		Version:      "testversion",
+		Status:       evergreen.BuildFailed,
+		StartTime:    time.Time{},
+		FinishTime:   time.Time{}.Add(10 * time.Second),
+	}
+
+	s.Equal("no tasks were run", taskStatusToDesc(b))
+
+	b.Tasks = []build.TaskCache{
+		{
+			Status: evergreen.TaskSucceeded,
+		},
+	}
+	s.Equal("1 succeeded, none failed in 10s", taskStatusToDesc(b))
+
+	b.Tasks = []build.TaskCache{
+		{
+			Status: evergreen.TaskSystemFailed,
+		},
+	}
+	s.Equal("none succeeded, none failed, 1 internal errors in 10s", taskStatusToDesc(b))
+
+	b.Tasks = []build.TaskCache{
+		{
+			Status: evergreen.TaskFailed,
+		},
+	}
+	s.Equal("none succeeded, 1 failed in 10s", taskStatusToDesc(b))
 }
