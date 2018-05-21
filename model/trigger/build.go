@@ -91,6 +91,7 @@ func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenera
 		URL:               fmt.Sprintf("%s/build/%s", ui.Url, b.Id),
 		PastTenseStatus:   b.Status,
 		apiModel:          &api,
+		githubContext:     fmt.Sprintf("evergreen/%s", b.BuildVariant),
 		githubState:       message.GithubStateFailure,
 		githubDescription: taskStatusToDesc(b),
 	}
