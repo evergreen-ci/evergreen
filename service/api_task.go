@@ -51,7 +51,9 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	if len(updates.PatchNewStatus) != 0 {
 		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
 	}
-
+	if len(updates.BuildNewStatus) != 0 {
+		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+	}
 	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
 		job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
 		if err = as.queue.Put(job); err != nil {
@@ -168,6 +170,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(updates.PatchNewStatus) != 0 {
 		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
+	}
+	if len(updates.BuildNewStatus) != 0 {
+		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 	}
 
 	if t.Requester == evergreen.GithubPRRequester {
