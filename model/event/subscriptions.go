@@ -347,7 +347,7 @@ func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subs
 		Selectors: []Selector{
 			{
 				Type: "in-version",
-				Data: id,
+				Data: versionID,
 			},
 		},
 		Subscriber: sub,

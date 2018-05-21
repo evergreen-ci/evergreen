@@ -258,19 +258,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
-	if patchDoc.IsGithubPRPatch() {
-		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-			Owner:    patchDoc.GithubPatchData.BaseOwner,
-			Repo:     patchDoc.GithubPatchData.BaseRepo,
-			PRNumber: patchDoc.GithubPatchData.PRNumber,
-			Ref:      patchDoc.GithubPatchData.HeadHash,
-		})
-		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-		j.AddError(patchSub.Upsert())
-		buildSub := event.NewBuildOutcomeSubscription(j.PatchID.Hex(), ghSub)
-		j.AddError(buildSub.Upsert())
-	}
-
 	if canFinalize && j.intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -283,6 +270,19 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}))
 			return err
 		}
+	}
+
+	if patchDoc.IsGithubPRPatch() {
+		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+			Owner:    patchDoc.GithubPatchData.BaseOwner,
+			Repo:     patchDoc.GithubPatchData.BaseRepo,
+			PRNumber: patchDoc.GithubPatchData.PRNumber,
+			Ref:      patchDoc.GithubPatchData.HeadHash,
+		})
+		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		j.AddError(patchSub.Upsert())
+		buildSub := event.NewBuildOutcomeSubscriptionByVersion(patchDoc.Version, ghSub)
+		j.AddError(buildSub.Upsert())
 	}
 
 	return nil
