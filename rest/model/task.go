@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -46,6 +47,7 @@ type APITask struct {
 	PreviousExecutions []APITask        `json:"previous_executions,omitempty"`
 	GenerateTask       bool             `json:"generate_task"`
 	GeneratedBy        string           `json:"generated_by"`
+	Artifacts          []APIFile        `json:"artifacts"`
 }
 
 type logLinks struct {
@@ -181,6 +183,25 @@ func (ad *APITask) ToService() (interface{}, error) {
 
 	st.DependsOn = dependsOn
 	return interface{}(st), nil
+}
+
+func (at *APITask) GetArtifacts() error {
+	entries, err := artifact.FindAll(artifact.ByTaskId(FromAPIString(at.Id)))
+	if err != nil {
+		return errors.Wrap(err, "error retrieving artifacts")
+	}
+	for _, entry := range entries {
+		for _, file := range entry.Files {
+			apiFile := APIFile{}
+			err := apiFile.BuildFromService(file)
+			if err != nil {
+				return err
+			}
+			at.Artifacts = append(at.Artifacts, apiFile)
+		}
+	}
+
+	return nil
 }
 
 // APITaskCost is the model to be returned by the API whenever tasks

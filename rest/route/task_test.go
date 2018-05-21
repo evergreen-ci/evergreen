@@ -5,10 +5,14 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -76,4 +80,38 @@ func (s *TaskAbortSuite) TestAbortFail() {
 	_, err := rm.Methods[0].Execute(ctx, s.sc)
 
 	s.Error(err)
+}
+
+func TestFetchArtifacts(t *testing.T) {
+	assert := assert.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert.NoError(db.ClearCollections(task.Collection, artifact.Collection))
+	task1 := task.Task{
+		Id:        "task1",
+		Execution: 0,
+	}
+	assert.NoError(task1.Insert())
+	entry := artifact.Entry{
+		TaskId:          task1.Id,
+		TaskDisplayName: "task",
+		BuildId:         "b1",
+		Execution:       0,
+		Files: []artifact.File{
+			{
+				Name: "file1",
+				Link: "l1",
+			},
+			{
+				Name: "file2",
+				Link: "l2",
+			},
+		},
+	}
+	assert.NoError(entry.Upsert())
+
+	taskGet := taskGetHandler{taskID: task1.Id}
+	resp, err := taskGet.Execute(context.Background(), &data.DBConnector{})
+	assert.NoError(err)
+	apiTask := resp.Result[0].(*model.APITask)
+	assert.Len(apiTask.Artifacts, 2)
 }

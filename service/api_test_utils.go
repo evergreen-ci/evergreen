@@ -10,9 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service/testutil"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
-	"github.com/urfave/negroni"
 )
 
 type TestServer struct {
@@ -31,8 +29,9 @@ func (s *TestServer) Close() {
 }
 
 func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*TestServer, error) {
+	home := evergreen.FindEvergreenHome()
 	port := testutil.NextPort()
-	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, evergreen.ClientDirectory), 0644); err != nil {
 		return nil, err
 	}
 
@@ -44,17 +43,21 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 	}
 	as.UserManager = testutil.MockUserManager{}
 
+	uis, err := NewUIServer(settings, env.LocalQueue(), home, TemplateFunctionOptions{})
+	if err != nil {
+		return nil, err
+	}
+	uis.UserManager = testutil.MockUserManager{}
+
 	var l net.Listener
 	protocol := "http"
 
-	router := mux.NewRouter()
-	as.AttachRoutes(router)
-	n := negroni.New()
-	n.Use(NewRecoveryLogger())
-	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
-	n.UseHandler(router)
+	handler, err := GetRouter(as, uis)
+	if err != nil {
+		return nil, err
+	}
 
-	server := httptest.NewUnstartedServer(n)
+	server := httptest.NewUnstartedServer(handler)
 	server.TLS = tlsConfig
 
 	// We're not running ssl tests with the agent in any cases,

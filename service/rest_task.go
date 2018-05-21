@@ -185,7 +185,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		destTask.PatchNumber = projCtx.Patch.PatchNumber
 		destTask.PatchId = projCtx.Patch.Id.Hex()
 	}
-
 	gimlet.WriteJSON(w, destTask)
 }
 

@@ -8,10 +8,11 @@
   window.hasBanner = {{ne .Banner ""}}
 </script>
 <script type="text/javascript" src="/static/thirdparty/stitch.min.js"></script>
-<script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ StaticsMD5 }}"></script>
-<script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
+
 {{if .User}}
-  <script type="text/javascript" src="{{Static "js" "task_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+  <script type="text/javascript" src="{{Static "js" "task_admin.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 <script type="text/javascript">
   var userTz = {{GetTimezone $.User}}

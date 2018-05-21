@@ -2,7 +2,7 @@
 <script type="text/javascript">
 	window.userTz = {{GetTimezone $.User}};
 </script>
-<script type="text/javascript" src="{{Static "js" "scheduler_stats.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "scheduler_stats.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 
 {{define "title"}}

@@ -20,7 +20,7 @@ function average (arr){
 
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $q, PerfChartService
+  $scope, $window, $http, $location, $log, $q, PerfChartService
 ) {
     /* for debugging
     $sce, $compile){
@@ -474,19 +474,26 @@ mciModule.controller('PerfController', function PerfController(
           stitch.StitchClientFactory.create('evergreen_perf_plugin-wwdoa')
           .then(function(client) {
             var db = client.service('mongodb', 'mongodb-atlas').db('perf')
-              return db
-                .collection('change_points')
-                .find({
-                  project: $scope.task.branch,
-                  task: $scope.task.display_name,
-                  variant: $scope.task.build_variant,
-                })
-                .execute()
-            }).then(function(docs) {
-              $scope.changePoints = _.groupBy(docs, 'test')
-              resolve($scope.changePoints)
-            }, function(err) { reject(err) })
+            return db
+              .collection('change_points')
+              .find({
+                project: $scope.task.branch,
+                task: $scope.task.display_name,
+                variant: $scope.task.build_variant,
+              })
+              .execute()
+          }).then(function(docs) {
+            resolve(_.groupBy(docs, 'test'))
+          }, function(err) {
+            reject(err)
           })
+        }).catch(function(err) {
+          $log.error('Cannot load change points!', err)
+          return {} // Try to recover an error
+        })
+        .then(function(data) {
+          $scope.changePoints = data
+        })
 
         // Populate the trend data
         var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
@@ -495,7 +502,7 @@ mciModule.controller('PerfController', function PerfController(
           })
 
         // Once trend chart data and change points get loaded
-        $q.all([chartDataQ, changePointsQ])
+        $q.all([chartDataQ, changePointsQ.catch()])
           .then(function(ret) {
             setTimeout(function() {
               drawTrendGraph($scope, PerfChartService)

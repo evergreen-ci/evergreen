@@ -114,9 +114,7 @@ imports:
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring
     version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
-  - name: github.com/newrelic/go-agent
-    version: f5bce3387232559bcbe6a5f8227c4bf508dac1ba
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/evergreen-ci/gimlet
-    version: edacbcbbc554019efa8cfc972e3467e85d828c57
+    version: 09d3af8aa8c67742f0857b0941cce4fee8231d8c

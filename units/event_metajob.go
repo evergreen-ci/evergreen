@@ -111,7 +111,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 			"event_type": j.events[i].ResourceType,
 		}))
 
-		for _, n := range notifications[0] {
+		for _, n := range notifications[i] {
 			catcher.Add(bulk.Append(n))
 		}
 

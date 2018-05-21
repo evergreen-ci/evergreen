@@ -63,6 +63,7 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving scheduler settings"))
+		return
 	}
 
 	conf := scheduler.Configuration{
