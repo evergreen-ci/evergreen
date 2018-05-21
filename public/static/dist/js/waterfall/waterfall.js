@@ -142,6 +142,7 @@ var Root = function (_React$Component2) {
   _createClass(Root, [{
     key: "updatePaginationContext",
     value: function updatePaginationContext(data) {
+      console.log(data);
       // Initialize newer|older buttons
       var versionsOnPage = _.reduce(data.versions, function (m, d) {
         return m + d.authors.length;
@@ -166,7 +167,7 @@ var Root = function (_React$Component2) {
       var _this3 = this;
 
       var params = filter ? { bv_filter: filter } : {};
-      http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
+      http.get("/rest/v2/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
         _this3.updatePaginationContext(data);

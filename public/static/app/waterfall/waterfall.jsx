@@ -137,7 +137,7 @@ class Root extends React.Component{
 
   loadDataPortion(filter) {
     var params = filter ? {bv_filter: filter} : {}
-    http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
+    http.get(`/rest/v2/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
         this.updatePaginationContext(data)
         this.setState({data})
