@@ -17,12 +17,12 @@ mciModule.controller('HostCtrl', function($scope, $window) {
 
   var epochTime = moment("Jan 1, 1970");
 
-  var last_reachability = moment($scope.host.last_reachability_check);
-  if (last_reachability <= epochTime) { 
-	  $scope.host.last_reachability_check = "N/A";
+  var last_communication = moment($scope.host.last_communication);
+  if (last_communication <= epochTime) {
+	  $scope.host.last_communication = "N/A";
   } else {
-	  var last_reachability_seconds = moment().diff($scope.host.last_reachability_check, 'seconds');
-      $scope.host.last_reachability_check = moment.duration(last_reachability_seconds, 'seconds').humanize() + ' ago';
+    var last_communication_seconds = moment().diff($scope.host.last_communication, 'seconds');
+    $scope.host.last_communication = moment.duration(last_communication_seconds, 'seconds').humanize() + ' ago';
   }
 
   // Determining the start and elapsed time should be done the same way as in hosts.js
