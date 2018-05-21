@@ -18,6 +18,7 @@ type StatusSuite struct {
 	suite.Suite
 	testOpts Options
 	resp     statusResponse
+	cancel   context.CancelFunc
 }
 
 func TestStatusSuite(t *testing.T) {
@@ -30,6 +31,12 @@ func (s *StatusSuite) SetupTest() {
 		StatusPort: 2286,
 	}
 	s.resp = buildResponse(s.testOpts)
+}
+
+func (s *StatusSuite) TearDownSuite() {
+	if s.cancel != nil {
+		s.cancel()
+	}
 }
 
 func (s *StatusSuite) TestBasicAssumptions() {
@@ -57,7 +64,7 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.cancel = cancel
 	go func() {
 		_ = agt.Start(ctx)
 	}()
