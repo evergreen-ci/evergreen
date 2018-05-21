@@ -65,6 +65,10 @@ func buildSelectors(b *build.Build) []event.Selector {
 			Type: selectorProject,
 			Data: b.Project,
 		},
+		{
+			Type: selectorInVersion,
+			Data: b.Version,
+		},
 	}
 }
 
