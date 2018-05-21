@@ -17,7 +17,6 @@ func init() {
 		patchValidator(patchOutcome),
 		patchValidator(patchFailure),
 		patchValidator(patchSuccess),
-		patchValidator(patchCreated),
 		patchValidator(patchStarted),
 	)
 	registry.AddPrefetch(event.ResourceTypePatch, patchFetch)
@@ -64,11 +63,11 @@ func patchSelectors(p *patch.Patch) []event.Selector {
 			Data: p.Project,
 		},
 		{
-			Type: "owner",
+			Type: selectorOwner,
 			Data: p.Author,
 		},
 		{
-			Type: "status",
+			Type: selectorStatus,
 			Data: p.Status,
 		},
 	}
@@ -135,37 +134,6 @@ func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 
 	gen, err := generatorFromPatch(name, p)
 	return gen, err
-}
-
-// patchCreated and patchStarted are for Github Status API use only
-func patchCreated(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
-	const name = "created"
-
-	if p.Status != evergreen.PatchCreated {
-		return nil, nil
-	}
-
-	ui := evergreen.UIConfig{}
-	if err := ui.Get(); err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch ui config")
-	}
-
-	gen := &notificationGenerator{
-		triggerName: name,
-		selectors:   patchSelectors(p),
-		githubStatusAPI: &message.GithubStatus{
-			Context:     "evergreen",
-			State:       message.GithubStatePending,
-			URL:         fmt.Sprintf("%s/version/%s", ui.Url, p.Id.Hex()),
-			Description: "preparing to run tasks",
-		},
-	}
-	gen.selectors = append(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: name,
-	})
-
-	return gen, nil
 }
 
 func patchStarted(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {

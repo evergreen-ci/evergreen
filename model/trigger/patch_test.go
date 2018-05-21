@@ -213,28 +213,6 @@ func (s *patchSuite) TestPatchOutcome() {
 	})
 }
 
-func (s *patchSuite) TestPatchCreated() {
-	gen, err := patchCreated(&s.event, &s.patch)
-	s.Nil(err)
-	s.Nil(gen)
-
-	s.patch.Status = evergreen.PatchCreated
-	gen, err = patchCreated(&s.event, &s.patch)
-	s.Nil(err)
-	s.Require().NotNil(gen)
-	s.Require().NotNil(gen.githubStatusAPI)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "created",
-	})
-
-	s.Equal("created", gen.triggerName)
-	s.Equal("evergreen", gen.githubStatusAPI.Context)
-	s.Equal(message.GithubStatePending, gen.githubStatusAPI.State)
-	s.Equal("preparing to run tasks", gen.githubStatusAPI.Description)
-	s.Equal("https://evergreen.mongodb.com/version/5aeb4514f27e4f9984646d97", gen.githubStatusAPI.URL)
-}
-
 func (s *patchSuite) TestPatchStarted() {
 	gen, err := patchStarted(&s.event, &s.patch)
 	s.Nil(err)

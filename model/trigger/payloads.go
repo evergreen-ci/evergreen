@@ -22,6 +22,8 @@ const (
 	selectorID      = "id"
 	selectorObject  = "object"
 	selectorProject = "project"
+	selectorOwner   = "owner"
+	selectorStatus  = "status"
 )
 
 type commonTemplateData struct {
