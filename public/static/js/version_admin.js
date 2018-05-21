@@ -68,7 +68,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
                     notifier.pushNotification( "Selected tasks are restarted.", 'notifyHeader', 'success');
                 },
                 error: function(resp) {
-                    notifier.pushNotification('Error restarting build: ' + resp.data.error,'errorModal');
+                    notifier.pushNotification('Error restarting build: ' + resp.data,'errorModal');
                 }
             }
         );
