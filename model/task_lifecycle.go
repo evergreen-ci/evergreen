@@ -192,6 +192,22 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
 				user, t.Id, t.Status)
+			if t.DisplayOnly {
+				execTasks := map[string]string{}
+				for _, et := range t.ExecutionTasks {
+					execTask, err := task.FindOne(task.ById(et))
+					if err != nil {
+						continue
+					}
+					execTasks[execTask.Id] = execTask.Status
+				}
+				grip.Error(message.Fields{
+					"message":    "attempt to restart unfinished display task",
+					"task":       t.Id,
+					"status":     t.Status,
+					"exec_tasks": execTasks,
+				})
+			}
 			return errors.Errorf("Task '%v' is currently '%v' - cannot reset task in this status",
 				t.Id, t.Status)
 		}
