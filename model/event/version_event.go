@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 func init() {
@@ -37,6 +38,8 @@ func LogVersionStateChangeEvent(id, newStatus string) {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		grip.Errorf("Error logging version event: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "Error logging version event",
+		}))
 	}
 }
