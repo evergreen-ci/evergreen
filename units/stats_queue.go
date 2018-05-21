@@ -25,7 +25,6 @@ func init() {
 
 type queueStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	logger   grip.Journaler
 }
 
 func NewQueueStatsCollector(id string) amboy.Job {
@@ -51,10 +50,6 @@ func makeQueueStatsCollector() *queueStatsCollector {
 func (j *queueStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
-	if j.logger == nil {
-		j.logger = logging.MakeGrip(grip.GetSender())
-	}
-
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	if env != nil {
@@ -68,7 +63,7 @@ func (j *queueStatsCollector) Run(_ context.Context) {
 		j.AddError(errors.Wrap(err, "error finding runnable tasks"))
 		return
 	}
-	j.logger.Info(message.Fields{
+	grip.Info(message.Fields{
 		"total_queue_length": len(tasks),
 	})
 }
