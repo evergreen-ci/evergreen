@@ -550,6 +550,7 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 		catcher.Add(queue.Put(NewTaskStatsCollector(ts)))
 		catcher.Add(queue.Put(NewLatencyStatsCollector(ts, time.Minute)))
 		catcher.Add(queue.Put(NewNotificationStatsCollector(ts)))
+		catcher.Add(queue.Put(NewQueueStatsCollector(ts)))
 
 		return catcher.Resolve()
 	}
