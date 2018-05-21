@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 func init() {
@@ -34,6 +35,10 @@ func LogBuildStateChangeEvent(id, status string) {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		grip.Errorf("Error logging host event: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": event.ResourceType,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
 	}
 }
