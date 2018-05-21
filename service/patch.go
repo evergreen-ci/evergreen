@@ -8,8 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -220,14 +220,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if projCtx.Patch.IsGithubPRPatch() {
-			job := units.NewGithubStatusUpdateJobForPatchWithVersion(projCtx.Patch.Version)
-			if err := uis.queue.Put(job); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError,
-					errors.Wrap(err, "Error adding github status update job to queue"))
-				return
-			}
-		}
+		event.LogPatchStateChangeEvent(projCtx.Patch.Id.Hex(), projCtx.Patch.Status)
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
 		gimlet.WriteJSON(w, struct {

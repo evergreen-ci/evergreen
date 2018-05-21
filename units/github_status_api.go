@@ -9,9 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -33,10 +31,9 @@ const (
 	githubStatusPending = "pending"
 	githubStatusSuccess = "success"
 
-	githubUpdateTypeBuild            = "build"
-	githubUpdateTypePatchWithVersion = "patch-with-version"
-	githubUpdateTypeRequestAuth      = "request-auth"
-	githubUpdateTypeBadConfig        = "bad-config"
+	githubUpdateTypeNewPatch    = "new-patch"
+	githubUpdateTypeRequestAuth = "request-auth"
+	githubUpdateTypeBadConfig   = "bad-config"
 
 	githubStatusAPITimeout = time.Minute
 )
@@ -94,23 +91,13 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 	return j
 }
 
-// NewGithubStatusUpdateJobForBuild creates a job to update github's API from a Build.
-// Status will be reported as 'evergreen-[build variant name]'
-func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
-	job := makeGithubStatusUpdateJob()
-	job.FetchID = buildID
-	job.UpdateType = githubUpdateTypeBuild
-
-	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, buildID, time.Now().String()))
-	return job
-}
-
-// NewGithubStatusUpdateJobForPatchWithVersion creates a job to update github's API
-// from a Patch with specified version. Status will be reported as 'evergreen'
-func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
+// NewGithubStatusUpdateJobForNewPatch creates a job to update github's API
+// for a newly created patch, reporting it as pending, with description
+// "preparing to run tasks"
+func NewGithubStatusUpdateJobForNewPatch(version string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.FetchID = version
-	job.UpdateType = githubUpdateTypePatchWithVersion
+	job.UpdateType = githubUpdateTypeNewPatch
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
 
@@ -128,6 +115,8 @@ func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
 	return job
 }
 
+// NewGithubStatusUpdateJobForBadConfig marks a ref as failed because the
+// evergreen configuration is bad
 func NewGithubStatusUpdateJobForBadConfig(intentID string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.FetchID = intentID
@@ -200,7 +189,6 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 
 func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 	var patchDoc *patch.Patch
-	patchVersion := j.FetchID
 
 	if j.UpdateType == githubUpdateTypeBadConfig {
 		var intent patch.Intent
@@ -228,35 +216,10 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 		status.State = githubStatusFailure
 		status.Description = "project config was invalid"
 
-	} else if j.UpdateType == githubUpdateTypeBuild {
-		var b *build.Build
-		b, err = build.FindOne(build.ById(j.FetchID))
-		if err != nil {
-			return err
-		}
-		if b == nil {
-			return errors.New("can't find build")
-		}
-
-		patchVersion = b.Version
-		status.Context = fmt.Sprintf("evergreen/%s", b.BuildVariant)
-		status.Description = trigger.TaskStatusToDesc(b)
-		status.URLPath = fmt.Sprintf("/build/%s", b.Id)
-
-		switch b.Status {
-		case evergreen.BuildSucceeded:
-			status.State = githubStatusSuccess
-
-		case evergreen.BuildFailed:
-			status.State = githubStatusFailure
-
-		default:
-			return errors.New("build status is pending; refusing to update status")
-		}
 	}
 
 	if patchDoc == nil {
-		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(patchVersion)))
+		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(j.FetchID)))
 		if err != nil {
 			return err
 		}
@@ -265,33 +228,14 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 		}
 	}
 
-	if j.UpdateType == githubUpdateTypePatchWithVersion {
-		status.URLPath = fmt.Sprintf("/version/%s", patchVersion)
+	if j.UpdateType == githubUpdateTypeNewPatch {
+		status.URLPath = fmt.Sprintf("/version/%s", j.FetchID)
 		status.Context = "evergreen"
-
-		switch patchDoc.Status {
-		case evergreen.PatchSucceeded:
-			status.State = githubStatusSuccess
-			status.Description = fmt.Sprintf("patch finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
-
-		case evergreen.PatchFailed:
-			status.State = githubStatusFailure
-			status.Description = fmt.Sprintf("patch finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
-
-		case evergreen.PatchCreated:
-			status.State = githubStatusPending
-			status.Description = "preparing to run tasks"
-
-		case evergreen.PatchStarted:
-			status.State = githubStatusPending
-			status.Description = "tasks are running"
-
-		default:
-			return errors.New("unknown patch status")
-		}
+		status.State = githubStatusPending
+		status.Description = "preparing to run tasks"
 
 	} else if j.UpdateType == githubUpdateTypeRequestAuth {
-		status.URLPath = fmt.Sprintf("/patch/%s", patchVersion)
+		status.URLPath = fmt.Sprintf("/patch/%s", j.FetchID)
 		status.Context = "evergreen"
 		status.Description = "patch must be manually authorized"
 		status.State = githubStatusFailure

@@ -55,7 +55,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 	}
 	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
-		job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
+		job := units.NewGithubStatusUpdateJobForNewPatch(t.Version)
 		if err = as.queue.Put(job); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
 			return
@@ -175,15 +175,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 	}
 
-	if t.Requester == evergreen.GithubPRRequester {
-		if updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded {
-			job := units.NewGithubStatusUpdateJobForBuild(t.BuildId)
-			if err = as.queue.Put(job); err != nil {
-				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
-				return
-			}
-		}
-	}
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
 	if details.Status == evergreen.TaskUndispatched {

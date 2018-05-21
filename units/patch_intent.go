@@ -122,7 +122,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			update = NewGithubStatusUpdateJobForExternalPatch(patchDoc.Id.Hex())
 
 		} else {
-			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+			update = NewGithubStatusUpdateJobForNewPatch(patchDoc.Id.Hex())
 		}
 		update.Run(ctx)
 		j.AddError(update.Error())
