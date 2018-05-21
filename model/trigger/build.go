@@ -12,9 +12,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	objectBuild = "build"
+)
+
 func init() {
 	registry.AddTrigger(event.ResourceTypeBuild,
 		buildValidator(buildOutcome),
+		buildValidator(buildFailure),
+		buildValidator(buildSuccess),
 	)
 	registry.AddPrefetch(event.ResourceTypeBuild, buildFetch)
 }
@@ -22,10 +28,10 @@ func init() {
 func buildFetch(e *event.EventLogEntry) (interface{}, error) {
 	p, err := build.FindOne(build.ById(e.ResourceId))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch patch")
+		return nil, errors.Wrap(err, "failed to fetch build")
 	}
 	if p == nil {
-		return nil, errors.New("couldn't find patch")
+		return nil, errors.New("couldn't find build")
 	}
 
 	return p, nil
@@ -48,15 +54,15 @@ func buildValidator(t func(e *event.EventLogEntry, b *build.Build) (*notificatio
 func buildSelectors(b *build.Build) []event.Selector {
 	return []event.Selector{
 		{
-			Type: "id",
+			Type: selectorID,
 			Data: b.Id,
 		},
 		{
-			Type: "object",
-			Data: "build",
+			Type: selectorObject,
+			Data: objectBuild,
 		},
 		{
-			Type: "project",
+			Type: selectorProject,
 			Data: b.Project,
 		},
 	}
@@ -76,7 +82,7 @@ func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenera
 	selectors := buildSelectors(b)
 	data := commonTemplateData{
 		ID:                b.Id,
-		Object:            "build",
+		Object:            objectBuild,
 		Project:           b.Project,
 		URL:               fmt.Sprintf("%s/build/%s", ui.Url, b.Id),
 		PastTenseStatus:   b.Status,
@@ -96,6 +102,30 @@ func buildOutcome(e *event.EventLogEntry, b *build.Build) (*notificationGenerato
 	const name = "outcome"
 
 	if b.Status != evergreen.BuildSucceeded && b.Status != evergreen.BuildFailed {
+		return nil, nil
+	}
+
+	gen, err := generatorFromBuild(name, b)
+	gen.triggerName = name
+	return gen, err
+}
+
+func buildFailure(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
+	const name = "failure"
+
+	if b.Status != evergreen.BuildFailed {
+		return nil, nil
+	}
+
+	gen, err := generatorFromBuild(name, b)
+	gen.triggerName = name
+	return gen, err
+}
+
+func buildSuccess(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
+	const name = "success"
+
+	if b.Status != evergreen.BuildSucceeded {
 		return nil, nil
 	}
 

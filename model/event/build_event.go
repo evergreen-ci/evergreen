@@ -18,7 +18,7 @@ const (
 )
 
 type BuildEventData struct {
-	Status string `bson:"status" json:"string"`
+	Status string `bson:"status" json:"status"`
 }
 
 func LogBuildStateChangeEvent(id, status string) {
