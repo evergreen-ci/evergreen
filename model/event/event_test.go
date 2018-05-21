@@ -608,4 +608,12 @@ func (s *eventSuite) TestLogManyEvents() {
 	events := []EventLogEntry{}
 	s.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)
+	s.Equal(events[0].ResourceId, "resource_id_1")
+	s.Equal(events[0].EventType, "some_type")
+	_, ok := events[0].Data.(*TaskEventData)
+	s.True(ok)
+	s.Equal(events[1].ResourceId, "resource_id_1")
+	s.Equal(events[1].EventType, "some_type")
+	_, ok = events[1].Data.(*TaskEventData)
+	s.True(ok)
 }

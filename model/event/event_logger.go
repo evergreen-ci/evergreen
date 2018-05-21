@@ -26,7 +26,7 @@ func NewDBEventLogger(collection string) *DBEventLogger {
 }
 
 func (l *DBEventLogger) LogEvent(e *EventLogEntry) error {
-	if err := l.validateEvent(e); err != nil {
+	if err := e.validateEvent(); err != nil {
 		return errors.Wrap(err, "not logging event, event is invalid")
 	}
 	return db.Insert(l.collection, e)
@@ -35,7 +35,8 @@ func (l *DBEventLogger) LogEvent(e *EventLogEntry) error {
 func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
 	for i := range events {
-		if err := l.validateEvent(&events[i]); err != nil {
+		e := &events[i]
+		if err := e.validateEvent(); err != nil {
 			catcher.Add(err)
 		}
 	}
@@ -49,7 +50,7 @@ func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 	return db.InsertMany(l.collection, interfaces...)
 }
 
-func (l *DBEventLogger) validateEvent(e *EventLogEntry) error {
+func (e *EventLogEntry) validateEvent() error {
 	if e.Data == nil {
 		return errors.New("event log entry cannot have nil Data")
 	}

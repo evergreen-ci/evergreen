@@ -1041,7 +1041,7 @@ func (t *Task) SetCost(cost float64) error {
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state
-func AbortBuild(buildId string) error {
+func AbortBuild(buildId, caller string) error {
 	_, err := UpdateAll(
 		bson.M{
 			BuildIdKey: buildId,
@@ -1057,7 +1057,7 @@ func AbortBuild(buildId string) error {
 		return errors.Wrap(err, "error finding tasks by build id")
 	}
 	if len(ids) > 0 {
-		event.LogManyTaskAbortRequests(ids, evergreen.GithubPatchUser)
+		event.LogManyTaskAbortRequests(ids, caller)
 	}
 	return nil
 }

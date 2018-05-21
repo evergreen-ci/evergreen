@@ -110,7 +110,7 @@ func TestLogManyTestEvents(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	require.NoError(db.ClearCollections(AllLogCollection))
-	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, evergreen.GithubPRRequester)
+	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, "example_user")
 	events := []EventLogEntry{}
 	assert.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
 	assert.Len(events, 2)

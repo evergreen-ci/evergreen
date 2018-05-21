@@ -60,8 +60,8 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*version.Versio
 
 // AbortVersion aborts all tasks of a version given its ID.
 // It wraps the service level AbortVersion.
-func (vc *DBVersionConnector) AbortVersion(versionId string) error {
-	return model.AbortVersion(versionId)
+func (vc *DBVersionConnector) AbortVersion(versionId, caller string) error {
+	return model.AbortVersion(versionId, caller)
 }
 
 // RestartVersion wraps the service level RestartVersion, which restarts
@@ -353,7 +353,7 @@ func (mvc *MockVersionConnector) FindVersionById(versionId string) (*version.Ver
 
 // AbortVersion aborts all tasks of a version given its ID. Specifically, it sets the
 // Aborted key of the tasks to true if they are currently in abortable statuses.
-func (mvc *MockVersionConnector) AbortVersion(versionId string) error {
+func (mvc *MockVersionConnector) AbortVersion(versionId, caller string) error {
 	for idx, t := range mvc.CachedTasks {
 		if t.Version == versionId && (t.Status == evergreen.TaskStarted || t.Status == evergreen.TaskDispatched) {
 			if !t.Aborted {
