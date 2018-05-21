@@ -27,6 +27,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           trigger: "outcome",
           resource_type: "BUILD",
           label: "any build finishes",
+      },
+      {
+          trigger: "failure",
+          resource_type: "BUILD",
+          label: "any build fails",
       }
       // TODO uncomment as we implement these
       //{
