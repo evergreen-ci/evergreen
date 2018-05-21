@@ -52,15 +52,15 @@ func patchValidator(t func(e *event.EventLogEntry, p *patch.Patch) (*notificatio
 func patchSelectors(p *patch.Patch) []event.Selector {
 	return []event.Selector{
 		{
-			Type: "id",
+			Type: selectorID,
 			Data: p.Id.Hex(),
 		},
 		{
-			Type: "object",
+			Type: selectorObject,
 			Data: "patch",
 		},
 		{
-			Type: "project",
+			Type: selectorProject,
 			Data: p.Project,
 		},
 		{

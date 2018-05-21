@@ -18,6 +18,9 @@ import (
 
 const (
 	evergreenHeaderPrefix = "X-Evergreen-"
+	selectorID            = "id"
+	selectorObject        = "object"
+	selectorProject       = "project"
 )
 
 type commonTemplateData struct {
@@ -235,11 +238,13 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 		return nil, errors.Wrap(err, "error building jira issue")
 	}
 
-	gen.githubStatusAPI = &message.GithubStatus{
-		Context:     "evergreen",
-		State:       data.githubState,
-		URL:         data.URL,
-		Description: data.githubDescription,
+	if len(data.githubDescription) != 0 {
+		gen.githubStatusAPI = &message.GithubStatus{
+			Context:     "evergreen",
+			State:       data.githubState,
+			URL:         data.URL,
+			Description: data.githubDescription,
+		}
 	}
 
 	// TODO improve slack body with additional info, like failing variants
