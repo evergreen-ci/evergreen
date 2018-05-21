@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -219,8 +218,6 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 				errors.Wrap(err, "Error finalizing patch"))
 			return
 		}
-
-		event.LogPatchStateChangeEvent(projCtx.Patch.Id.Hex(), projCtx.Patch.Status)
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
 		gimlet.WriteJSON(w, struct {

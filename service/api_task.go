@@ -54,13 +54,6 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	if len(updates.BuildNewStatus) != 0 {
 		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 	}
-	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
-		job := units.NewGithubStatusUpdateJobForNewPatch(t.Version)
-		if err = as.queue.Put(job); err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
-			return
-		}
-	}
 
 	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
 	if err != nil {
