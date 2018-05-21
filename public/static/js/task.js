@@ -261,12 +261,43 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
       });
 
-      mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash) {
+      mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash, $mdDialog, mciSubscriptionsService, notificationService, $mdToast) {
         $scope.userTz = $window.userTz;
         $scope.haveUser = $window.have_user;
         $scope.taskHost = $window.taskHost;
         $scope.jiraHost = $window.jiraHost;
+        $scope.subscriptions = [];
+        $scope.triggers = [
+            // TODO uncomment as we implement these
+            // {
+            //    trigger: "failure",
+            //    resource_type: "TASK",
+            //    label: "this task fails",
+            // }
+        ];
 
+        $scope.addSubscription = function() {
+          promise = addSubscriber($mdDialog, $scope.triggers);
+
+          $mdDialog.show(promise).then(function(data){
+            addSelectorsAndOwnerType(data, "task", $scope.task.id);
+            $scope.subscriptions.push(data);
+            $scope.saveSubscriptions();
+          });
+        };
+
+        $scope.saveSubscriptions = function() {
+          var success = function() {
+            $mdToast.show({
+              templateUrl: "/static/partials/subscription_confirmation_toast.html",
+              position: "bottom right"
+            });
+          };
+          var failure = function(resp) {
+            notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
+          };
+          mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
+        }
 
         // Returns true if 'testResult' represents a test failure, and returns false otherwise.
         $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {
