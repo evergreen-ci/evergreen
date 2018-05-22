@@ -112,6 +112,9 @@ func TestFetchArtifacts(t *testing.T) {
 		},
 	}
 	assert.NoError(entry.Upsert())
+	entry.Execution = 0
+	entry.TaskId = "task1_0"
+	assert.NoError(entry.Upsert())
 
 	task2 := task.Task{
 		Id:          "task2",
@@ -139,6 +142,7 @@ func TestFetchArtifacts(t *testing.T) {
 	apiTask = resp.Result[0].(*model.APITask)
 	require.Len(apiTask.PreviousExecutions, 1)
 	assert.NotZero(apiTask.PreviousExecutions[0])
+	assert.NotEmpty(apiTask.PreviousExecutions[0].Artifacts)
 
 	// fetchs a display task
 	taskGet.taskID = "task2"

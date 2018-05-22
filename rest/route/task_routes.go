@@ -293,6 +293,12 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
 			return ResponseData{}, errors.Wrap(err, "API model error")
 		}
+
+		for i := range taskModel.PreviousExecutions {
+			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
+				return ResponseData{}, errors.Wrap(err, "failed to fetch artifacts for previous executions")
+			}
+		}
 	}
 
 	err = taskModel.GetArtifacts()
