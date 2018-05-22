@@ -44,7 +44,12 @@ func init() {
 // implementation for use in testing.
 func GetEnvironment() Environment { return globalEnvState }
 
-func ResetEnvironment() { globalEnvState = &envState{} }
+func ResetEnvironment() {
+	globalEnvState = &envState{
+		senders: map[SenderKey]send.Sender{},
+		closers: map[string]func(context.Context) error{},
+	}
+}
 
 // Environment provides application-level services (e.g. databases,
 // configuration, queues.
@@ -291,7 +296,6 @@ func (e *envState) initClientConfig() (err error) {
 }
 
 func (e *envState) initSenders() error {
-	e.senders = map[SenderKey]send.Sender{}
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}
