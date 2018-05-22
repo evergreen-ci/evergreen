@@ -423,23 +423,21 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 	}
 
-	// no need to activate/deactivate other task if this is a patch request's task
-	if evergreen.IsPatchRequester(t.Requester) {
-		return errors.Wrap(UpdateBuildAndVersionStatusForTask(t.Id, updates),
-			"Error updating build status (1)")
-	}
-	if t.IsPartOfDisplay() {
-		err = evalStepback(t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
-	} else {
-		err = evalStepback(t, caller, status, deactivatePrevious)
-	}
-	if err != nil {
-		return err
+	// activate/deactivate other task if this is not a patch request's task
+	if !evergreen.IsPatchRequester(t.Requester) {
+		if t.IsPartOfDisplay() {
+			err = evalStepback(t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
+		} else {
+			err = evalStepback(t, caller, status, deactivatePrevious)
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	// update the build
 	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
-		return errors.Wrap(err, "Error updating build status (2)")
+		return errors.Wrap(err, "Error updating build status")
 	}
 
 	return nil
@@ -559,8 +557,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 	}
 
-	// if there are no failed tasks, mark the build as started
-	if !failedTask {
+	if b.Status == evergreen.BuildCreated {
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
 			err = errors.Wrap(err, "Error updating build status")
 			grip.Error(err)
