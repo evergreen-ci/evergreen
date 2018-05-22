@@ -49,27 +49,6 @@ func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 	return db.InsertMany(l.collection, interfaces...)
 }
 
-func (e *EventLogEntry) validateEvent() error {
-	if e.Data == nil {
-		return errors.New("event log entry cannot have nil Data")
-	}
-	if len(e.ResourceType) == 0 {
-		return errors.New("event log entry has no r_type")
-	}
-	if !e.ID.Valid() {
-		e.ID = bson.NewObjectId()
-	}
-	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
-		loc, _ := time.LoadLocation("UTC")
-		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
-		if err != nil {
-			return errors.Wrap(err, "failed to set processed time")
-		}
-		e.ProcessedAt = notSubscribableTime
-	}
-	return nil
-}
-
 func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	if !event.ID.Valid() {
 		return errors.New("event has no ID")
