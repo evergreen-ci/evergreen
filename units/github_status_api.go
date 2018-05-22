@@ -24,16 +24,9 @@ import (
 const (
 	githubStatusUpdateJobName = "github-status-update"
 
-	githubStatusError   = "error"
-	githubStatusFailure = "failure"
-	githubStatusPending = "pending"
-	githubStatusSuccess = "success"
-
 	githubUpdateTypeNewPatch    = "new-patch"
 	githubUpdateTypeRequestAuth = "request-auth"
 	githubUpdateTypeBadConfig   = "bad-config"
-
-	githubStatusAPITimeout = time.Minute
 )
 
 func init() {
@@ -164,20 +157,20 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 
 		status.URL = fmt.Sprintf("%s/waterfall/%s", j.urlBase, projectRef.Identifier)
 		status.Context = "evergreen"
-		status.State = githubStatusFailure
+		status.State = message.GithubStateFailure
 		status.Description = "project config was invalid"
 
 	} else if j.UpdateType == githubUpdateTypeNewPatch {
 		status.URL = fmt.Sprintf("%s/version/%s", j.urlBase, j.FetchID)
 		status.Context = "evergreen"
-		status.State = githubStatusPending
+		status.State = message.GithubStatePending
 		status.Description = "preparing to run tasks"
 
 	} else if j.UpdateType == githubUpdateTypeRequestAuth {
 		status.URL = fmt.Sprintf("%s/patch/%s", j.urlBase, j.FetchID)
 		status.Context = "evergreen"
 		status.Description = "patch must be manually authorized"
-		status.State = githubStatusFailure
+		status.State = message.GithubStateFailure
 	}
 
 	if patchDoc == nil {
@@ -215,11 +208,7 @@ func (j *githubStatusUpdateJob) Run(_ context.Context) {
 		j.AddError(errors.Errorf("status message is invalid: %+v", status))
 		return
 	}
-	c.SetPriority(level.Notice)
+	j.AddError(c.SetPriority(level.Notice))
 
 	j.sender.Send(c)
-}
-
-func repoReference(owner, repo string, prNumber int, ref string) string {
-	return fmt.Sprintf("%s/%s#%d@%s", owner, repo, prNumber, ref)
 }

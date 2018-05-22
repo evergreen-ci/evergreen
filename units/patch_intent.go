@@ -253,13 +253,13 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.Id = j.PatchID
 
-	if err := patchDoc.Insert(); err != nil {
+	if err = patchDoc.Insert(); err != nil {
 		return err
 	}
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
+		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
 				"job":         j.ID(),
@@ -270,19 +270,22 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}))
 			return err
 		}
-	}
-
-	if patchDoc.IsGithubPRPatch() {
-		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-			Owner:    patchDoc.GithubPatchData.BaseOwner,
-			Repo:     patchDoc.GithubPatchData.BaseRepo,
-			PRNumber: patchDoc.GithubPatchData.PRNumber,
-			Ref:      patchDoc.GithubPatchData.HeadHash,
-		})
-		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-		j.AddError(patchSub.Upsert())
-		buildSub := event.NewBuildOutcomeSubscriptionByVersion(patchDoc.Version, ghSub)
-		j.AddError(buildSub.Upsert())
+		if patchDoc.IsGithubPRPatch() {
+			ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+				Owner:    patchDoc.GithubPatchData.BaseOwner,
+				Repo:     patchDoc.GithubPatchData.BaseRepo,
+				PRNumber: patchDoc.GithubPatchData.PRNumber,
+				Ref:      patchDoc.GithubPatchData.HeadHash,
+			})
+			patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+			if err = patchSub.Upsert(); err != nil {
+				return errors.Wrap(err, "failed to insert patch subscription for Github PR")
+			}
+			buildSub := event.NewBuildOutcomeSubscriptionByVersion(patchDoc.Version, ghSub)
+			if err = buildSub.Upsert(); err != nil {
+				return errors.Wrap(err, "failed to insert build subscription for Github PR")
+			}
+		}
 	}
 
 	return nil

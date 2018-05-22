@@ -278,7 +278,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	s.Require().NotNil(lastStatus.Context)
 	s.Require().NotNil(lastStatus.TargetURL)
 
-	s.Equal(githubStatusFailure, *lastStatus.State)
+	s.Equal("failure", *lastStatus.State)
 	s.Equal("finished in 10m0s", *lastStatus.Description)
 	s.Equal("evergreen", *lastStatus.Context)
 	s.Equal(fmt.Sprintf("http://example.com/version/%s", s.patchDoc.Version), *lastStatus.TargetURL)
