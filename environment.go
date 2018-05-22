@@ -85,7 +85,9 @@ type Environment interface {
 
 	// RegisterCloser adds a function object to an internal
 	// tracker to be called by the Close method before process
-	// termination.
+	// termination. The ID is used in reporting, but must be
+	// unique or a new closer could overwrite an existing closer
+	// in some implementations.
 	RegisterCloser(string, func(context.Context) error)
 	// Close calls all registered closers in the environment.
 	Close(context.Context) error

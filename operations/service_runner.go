@@ -111,7 +111,7 @@ func startRunnerService() cli.Command {
 			<-waiter
 
 			grip.Notice("waiting for background tasks to finish")
-			catcher.Resolve(env.Close(ctx))
+			catcher.Add(env.Close(ctx))
 
 			return errors.WithStack(err)
 		},
