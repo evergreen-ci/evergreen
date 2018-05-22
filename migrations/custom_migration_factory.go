@@ -8,15 +8,14 @@ import (
 
 const perfCopyVariantMigrationFactory = "perf-copy-variant-factory"
 
-type migrationGeneratorFactoryFactory func(args map[string]string) migrationGeneratorFactory
-
-var CustomMigrationRegistry = map[string]migrationGeneratorFactoryFactory{
-	perfCopyVariantMigrationFactory: perfCopyVariantFactoryFactory,
-}
-
 // NewCustomApplication constructs and sets up an application instance from
 // a configuration structure and a migration factory.
-func NewCustomApplication(env anser.Environment, conf *CustomConfiguration, factory map[string]migrationGeneratorFactoryFactory) (*anser.Application, error) {
+func NewCustomApplication(env anser.Environment, conf *CustomConfiguration) (*anser.Application, error) {
+	type migrationGeneratorFactoryFactory func(args map[string]string) migrationGeneratorFactory
+	customMigrationRegistry := map[string]migrationGeneratorFactoryFactory{
+		perfCopyVariantMigrationFactory: perfCopyVariantFactoryFactory,
+	}
+
 	if conf == nil {
 		return nil, errors.New("cannot specify a nil configuration")
 	}
@@ -30,7 +29,7 @@ func NewCustomApplication(env anser.Environment, conf *CustomConfiguration, fact
 		return nil, errors.Errorf("custom migration generator '%s' is not valid", g.Options.JobID)
 	}
 
-	generatorFactory := factory[g.Name](g.Params)
+	generatorFactory := customMigrationRegistry[g.Name](g.Params)
 	opts := migrationGeneratorFactoryOptions{
 		id:    g.Options.JobID,
 		db:    g.Options.NS.DB,

@@ -48,11 +48,7 @@ func deployMigration() cli.Command {
 			}
 			defer anserEnv.Close()
 
-			m, err := migrations.DefaultMigrations(env)
-			if err != nil {
-				return errors.Wrap(err, "problem getting default migrations")
-			}
-			app, err := opts.Application(anserEnv, m)
+			app, err := opts.Application(anserEnv, env)
 			if err != nil {
 				return errors.Wrap(err, "problem configuring migration application")
 			}
@@ -107,7 +103,7 @@ func deployDataTransforms() cli.Command {
 			}
 			defer anserEnv.Close()
 
-			app, err := migrations.NewCustomApplication(anserEnv, anserConf, migrations.CustomMigrationRegistry)
+			app, err := migrations.NewCustomApplication(anserEnv, anserConf)
 			if err != nil {
 				return errors.Wrap(err, "problem creating migration application")
 			}
