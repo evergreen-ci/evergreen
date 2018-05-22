@@ -8,6 +8,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type DBSubscriptionConnector struct{}
@@ -45,6 +46,10 @@ func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType even
 	return apiSubs, nil
 }
 
+func (dc *DBSubscriptionConnector) DeleteSubscription(id bson.ObjectId) error {
+	return event.RemoveSubscription(id)
+}
+
 type MockSubscriptionConnector struct {
 	MockSubscriptions []event.Subscription
 }
@@ -54,5 +59,9 @@ func (mc *MockSubscriptionConnector) GetSubscriptions(user string, ownerType eve
 }
 
 func (mc *MockSubscriptionConnector) SaveSubscriptions(subscriptions []event.Subscription) error {
+	return errors.New("MockSubscriptionConnector unimplemented")
+}
+
+func (dc *MockSubscriptionConnector) DeleteSubscription(id bson.ObjectId) error {
 	return errors.New("MockSubscriptionConnector unimplemented")
 }

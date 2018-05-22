@@ -396,12 +396,19 @@ mciServices.rest.factory('mciSubscriptionsService', ['mciBaseRestService', funct
 
     var service = {};
 
-    service.get = function(callbacks) {
-      baseSvc.getResource(resource, [], {}, callbacks);
+    service.get = function(owner, type, callbacks) {
+      var queryString = "?owner="+owner+"&type="+type
+      baseSvc.getResource(resource+queryString, [], {}, callbacks);
     }
 
     service.post = function(subscriptions, callbacks) {
       baseSvc.postResource(resource, [], {data: subscriptions}, callbacks);
     }
+
+    service.delete = function(id, callbacks) {
+      var queryString = "?id="+id;
+      baseSvc.deleteResource(resource+queryString, [], {}, callbacks);
+    }
+
     return service;
 }]);

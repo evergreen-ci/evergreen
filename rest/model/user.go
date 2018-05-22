@@ -28,10 +28,10 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 }
 
 type APIUserSettings struct {
-	Timezone      APIString                  `json:"timezone"`
-	GithubUser    APIGithubUser              `json:"github_user"`
-	SlackUsername APIString                  `json:"slack_username"`
-	Notifications APINotificationPreferences `json:"notifications"`
+	Timezone      APIString                   `json:"timezone"`
+	GithubUser    *APIGithubUser              `json:"github_user"`
+	SlackUsername APIString                   `json:"slack_username"`
+	Notifications *APINotificationPreferences `json:"notifications"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
@@ -39,10 +39,12 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	case user.UserSettings:
 		s.Timezone = ToAPIString(v.Timezone)
 		s.SlackUsername = ToAPIString(v.SlackUsername)
+		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
 		if err != nil {
 			return err
 		}
+		s.Notifications = &APINotificationPreferences{}
 		err = s.Notifications.BuildFromService(v.Notifications)
 		if err != nil {
 			return err
@@ -84,6 +86,9 @@ type APIGithubUser struct {
 }
 
 func (g *APIGithubUser) BuildFromService(h interface{}) error {
+	if g == nil {
+		return nil
+	}
 	switch v := h.(type) {
 	case user.GithubUser:
 		g.UID = v.UID
@@ -95,6 +100,9 @@ func (g *APIGithubUser) BuildFromService(h interface{}) error {
 }
 
 func (g *APIGithubUser) ToService() (interface{}, error) {
+	if g == nil {
+		return user.GithubUser{}, nil
+	}
 	return user.GithubUser{
 		UID:         g.UID,
 		LastKnownAs: FromAPIString(g.LastKnownAs),
@@ -107,6 +115,9 @@ type APINotificationPreferences struct {
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
+	if n == nil {
+		return nil
+	}
 	switch v := h.(type) {
 	case user.NotificationPreferences:
 		n.BuildBreak = ToAPIString(string(v.BuildBreak))
@@ -118,6 +129,9 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 }
 
 func (n *APINotificationPreferences) ToService() (interface{}, error) {
+	if n == nil {
+		return user.NotificationPreferences{}, nil
+	}
 	buildbreak := FromAPIString(n.BuildBreak)
 	patchFinish := FromAPIString(n.PatchFinish)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
