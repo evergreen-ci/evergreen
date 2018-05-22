@@ -19,6 +19,7 @@ func TestBuildTriggers(t *testing.T) {
 
 type buildSuite struct {
 	event event.EventLogEntry
+	data  *event.BuildEventData
 	build build.Build
 	subs  []event.Subscription
 
@@ -39,9 +40,11 @@ func (s *buildSuite) SetupTest() {
 	}
 	s.NoError(s.build.Insert())
 
+	s.data = &event.BuildEventData{}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeBuild,
 		ResourceId:   "test",
+		Data:         s.data,
 	}
 
 	s.subs = []event.Subscription{
@@ -115,6 +118,7 @@ func (s *buildSuite) TestAllTriggers() {
 	s.Len(n, 0)
 
 	s.build.Status = evergreen.BuildSucceeded
+	s.data.Status = evergreen.BuildSucceeded
 	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
 	n, err = NotificationsFromEvent(&s.event)
@@ -122,50 +126,59 @@ func (s *buildSuite) TestAllTriggers() {
 	s.Len(n, 2)
 
 	s.build.Status = evergreen.BuildFailed
+	s.data.Status = evergreen.BuildFailed
 	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.Len(n, 2)
+
+	s.build.Status = evergreen.BuildFailed
+	s.data.Status = evergreen.BuildCreated
+	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+
+	n, err = NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 0)
 }
 
 func (s *buildSuite) TestSuccess() {
-	gen, err := buildSuccess(&s.event, &s.build)
+	gen, err := buildSuccess(s.data, &s.build)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.build.Status = evergreen.BuildSucceeded
-	gen, err = buildSuccess(&s.event, &s.build)
+	s.data.Status = evergreen.BuildSucceeded
+	gen, err = buildSuccess(s.data, &s.build)
 	s.NoError(err)
-	s.NotNil(gen)
+	s.Require().NotNil(gen)
 	s.Equal("success", gen.triggerName)
 	s.False(gen.isEmpty())
 }
 
 func (s *buildSuite) TestFailure() {
-	s.build.Status = evergreen.BuildSucceeded
-	gen, err := buildFailure(&s.event, &s.build)
+	s.data.Status = evergreen.BuildSucceeded
+	gen, err := buildFailure(s.data, &s.build)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.build.Status = evergreen.BuildFailed
-	gen, err = buildFailure(&s.event, &s.build)
+	s.data.Status = evergreen.BuildFailed
+	gen, err = buildFailure(s.data, &s.build)
 	s.NoError(err)
-	s.NotNil(gen)
+	s.Require().NotNil(gen)
 	s.Equal("failure", gen.triggerName)
 	s.False(gen.isEmpty())
 }
 
 func (s *buildSuite) TestOutcome() {
-	s.build.Status = evergreen.BuildCreated
-	gen, err := buildOutcome(&s.event, &s.build)
+	s.data.Status = evergreen.BuildCreated
+	gen, err := buildOutcome(s.data, &s.build)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.build.Status = evergreen.BuildFailed
-	gen, err = buildOutcome(&s.event, &s.build)
+	s.data.Status = evergreen.BuildFailed
+	gen, err = buildOutcome(s.data, &s.build)
 	s.NoError(err)
-	s.NotNil(gen)
+	s.Require().NotNil(gen)
 	s.Equal("outcome", gen.triggerName)
 	s.False(gen.isEmpty())
 }

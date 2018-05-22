@@ -22,6 +22,7 @@ const (
 	selectorID      = "id"
 	selectorObject  = "object"
 	selectorProject = "project"
+	selectorStatus  = "status"
 )
 
 type commonTemplateData struct {
@@ -215,6 +216,9 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 	gen.selectors = append(gen.selectors, event.Selector{
 		Type: "trigger",
 		Data: triggerName,
+	}, event.Selector{
+		Type: selectorStatus,
+		Data: data.PastTenseStatus,
 	})
 
 	data.Headers = makeHeaders(selectors)

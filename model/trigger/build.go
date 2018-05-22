@@ -37,7 +37,7 @@ func buildFetch(e *event.EventLogEntry) (interface{}, error) {
 	return p, nil
 }
 
-func buildValidator(t func(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error)) trigger {
+func buildValidator(t func(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error)) trigger {
 	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
 		b, ok := object.(*build.Build)
 		if !ok {
@@ -47,7 +47,12 @@ func buildValidator(t func(e *event.EventLogEntry, b *build.Build) (*notificatio
 			return nil, errors.New("expected a build, received nil data")
 		}
 
-		return t(e, b)
+		data, ok := e.Data.(*event.BuildEventData)
+		if !ok {
+			return nil, errors.New("expected build event data")
+		}
+
+		return t(data, b)
 	}
 }
 
@@ -68,7 +73,7 @@ func buildSelectors(b *build.Build) []event.Selector {
 	}
 }
 
-func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenerator, error) {
+func generatorFromBuild(triggerName string, b *build.Build, status string) (*notificationGenerator, error) {
 	ui := evergreen.UIConfig{}
 	if err := ui.Get(); err != nil {
 		return nil, errors.Wrap(err, "Failed to fetch ui config")
@@ -81,56 +86,55 @@ func generatorFromBuild(triggerName string, b *build.Build) (*notificationGenera
 
 	selectors := buildSelectors(b)
 	data := commonTemplateData{
-		ID:                b.Id,
-		Object:            objectBuild,
-		Project:           b.Project,
-		URL:               fmt.Sprintf("%s/build/%s", ui.Url, b.Id),
-		PastTenseStatus:   b.Status,
-		apiModel:          &api,
-		githubState:       message.GithubStateFailure,
-		githubDescription: TaskStatusToDesc(b),
+		ID:              b.Id,
+		Object:          objectBuild,
+		Project:         b.Project,
+		URL:             fmt.Sprintf("%s/build/%s", ui.Url, b.Id),
+		PastTenseStatus: status,
+		apiModel:        &api,
 	}
-	if b.Status == evergreen.BuildSucceeded {
+	if status == evergreen.BuildSucceeded {
 		data.githubState = message.GithubStateSuccess
 		data.PastTenseStatus = "succeeded"
+	}
+	if b.Status == status {
+		data.githubState = message.GithubStateFailure
+		data.githubDescription = TaskStatusToDesc(b)
 	}
 
 	return makeCommonGenerator(triggerName, selectors, data)
 }
 
-func buildOutcome(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
+func buildOutcome(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error) {
 	const name = "outcome"
 
-	if b.Status != evergreen.BuildSucceeded && b.Status != evergreen.BuildFailed {
+	if e.Status != evergreen.BuildSucceeded && e.Status != evergreen.BuildFailed {
 		return nil, nil
 	}
 
-	gen, err := generatorFromBuild(name, b)
-	gen.triggerName = name
+	gen, err := generatorFromBuild(name, b, e.Status)
 	return gen, err
 }
 
-func buildFailure(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
+func buildFailure(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error) {
 	const name = "failure"
 
-	if b.Status != evergreen.BuildFailed {
+	if e.Status != evergreen.BuildFailed {
 		return nil, nil
 	}
 
-	gen, err := generatorFromBuild(name, b)
-	gen.triggerName = name
+	gen, err := generatorFromBuild(name, b, e.Status)
 	return gen, err
 }
 
-func buildSuccess(e *event.EventLogEntry, b *build.Build) (*notificationGenerator, error) {
+func buildSuccess(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error) {
 	const name = "success"
 
-	if b.Status != evergreen.BuildSucceeded {
+	if e.Status != evergreen.BuildSucceeded {
 		return nil, nil
 	}
 
-	gen, err := generatorFromBuild(name, b)
-	gen.triggerName = name
+	gen, err := generatorFromBuild(name, b, e.Status)
 	return gen, err
 }
 
