@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -217,6 +218,15 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error finalizing patch"))
 			return
+		}
+
+		if projCtx.Patch.IsGithubPRPatch() {
+			job := units.NewGithubStatusUpdateJobForNewPatch(projCtx.Patch.Id.Hex())
+			if err := uis.queue.Put(job); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError,
+					errors.Wrap(err, "Error adding github status update job to queue"))
+				return
+			}
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
