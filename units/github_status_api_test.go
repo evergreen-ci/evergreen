@@ -10,22 +10,27 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/oauth2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type githubStatusUpdateSuite struct {
-	suite.Suite
+	env        *mock.Environment
 	patchDoc   *patch.Patch
 	buildDoc   *build.Build
 	cancel     context.CancelFunc
 	testConfig *evergreen.Settings
+
+	suite.Suite
 }
 
 func TestGithubStatusUpdate(t *testing.T) {
@@ -33,20 +38,22 @@ func TestGithubStatusUpdate(t *testing.T) {
 }
 
 func (s *githubStatusUpdateSuite) SetupSuite() {
-	evergreen.ResetEnvironment()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
-	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-}
-
-func (s *githubStatusUpdateSuite) TearDownSuite() {
-	s.cancel()
-	evergreen.ResetEnvironment()
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection, evergreen.ConfigCollection))
+
+	uiConfig := evergreen.UIConfig{}
+	uiConfig.Url = "https://example.com"
+	s.Require().NoError(uiConfig.Set())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	s.env = &mock.Environment{}
+	s.Require().NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	startTime := time.Now().Truncate(time.Millisecond)
 	id := bson.NewObjectId()
@@ -77,18 +84,25 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(s.buildDoc.Insert())
 }
 
+func (s *githubStatusUpdateSuite) TearDownTest() {
+	s.cancel()
+	evergreen.ResetEnvironment()
+}
+
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
 	}
 	s.Require().NoError(evergreen.SetServiceFlags(flags))
 
-	job := NewGithubStatusUpdateJobForNewPatch(s.patchDoc.Version)
+	job, ok := NewGithubStatusUpdateJobForNewPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	job.env = s.env
 	job.Run(context.Background())
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "github status updates are disabled, not updating status")
-	s.NoError(db.Clear(evergreen.ConfigCollection))
 }
 
 func (s *githubStatusUpdateSuite) TestForPatchCreated() {
@@ -100,19 +114,20 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeNewPatch, job.UpdateType)
+	job.env = s.env
+	job.Run(context.Background())
+	s.False(job.HasErrors())
 
-	status := githubStatus{}
-	s.NoError(job.fetch(&status))
+	status := s.msgToStatus(s.env.InternalSender)
 
 	s.Equal("evergreen-ci", status.Owner)
 	s.Equal("evergreen", status.Repo)
-	s.Equal(448, status.PRNumber)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.URLPath)
+	s.Equal(fmt.Sprintf("https://example.com/version/%s", s.patchDoc.Version), status.URL)
 	s.Equal("preparing to run tasks", status.Description)
 	s.Equal("evergreen", status.Context)
-	s.Equal("pending", status.State)
+	s.Equal(message.GithubStatePending, status.State)
 }
 
 func (s *githubStatusUpdateSuite) TestForBadConfig() {
@@ -136,19 +151,20 @@ func (s *githubStatusUpdateSuite) TestForBadConfig() {
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeBadConfig, job.UpdateType)
+	job.env = s.env
+	job.Run(context.Background())
+	s.False(job.HasErrors())
 
-	status := githubStatus{}
-	s.NoError(job.fetch(&status))
+	status := s.msgToStatus(s.env.InternalSender)
 
 	s.Equal("evergreen-ci", status.Owner)
 	s.Equal("evergreen", status.Repo)
-	s.Equal(448, status.PRNumber)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal("/waterfall/mci", status.URLPath)
+	s.Equal("https://example.com/waterfall/mci", status.URL)
 	s.Equal("project config was invalid", status.Description)
 	s.Equal("evergreen", status.Context)
-	s.Equal("failure", status.State)
+	s.Equal(message.GithubStateFailure, status.State)
 }
 
 func (s *githubStatusUpdateSuite) TestRequestForAuth() {
@@ -160,19 +176,42 @@ func (s *githubStatusUpdateSuite) TestRequestForAuth() {
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeRequestAuth, job.UpdateType)
+	job.env = s.env
+	job.Run(context.Background())
+	s.False(job.HasErrors())
 
-	status := githubStatus{}
-	s.NoError(job.fetch(&status))
+	status := s.msgToStatus(s.env.InternalSender)
 
 	s.Equal("evergreen-ci", status.Owner)
 	s.Equal("evergreen", status.Repo)
-	s.Equal(448, status.PRNumber)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal(fmt.Sprintf("/patch/%s", s.patchDoc.Version), status.URLPath)
+	s.Equal(fmt.Sprintf("https://example.com/patch/%s", s.patchDoc.Version), status.URL)
 	s.Equal("patch must be manually authorized", status.Description)
 	s.Equal("evergreen", status.Context)
-	s.Equal("failure", status.State)
+	s.Equal(message.GithubStateFailure, status.State)
+}
+
+func (s *githubStatusUpdateSuite) msgToStatus(sender *send.InternalSender) *message.GithubStatus {
+	msg, ok := sender.GetMessageSafe()
+	s.Require().True(ok)
+	raw := msg.Message
+	s.Require().NotNil(raw)
+	status, ok := raw.Raw().(*message.GithubStatus)
+	s.Require().True(ok)
+
+	return status
+}
+
+func (s *githubStatusUpdateSuite) TestPreamble() {
+	j := makeGithubStatusUpdateJob()
+	j.env = s.env
+	s.Require().NotNil(j)
+	s.NoError(j.preamble())
+	s.NotNil(j.env)
+	s.NotEmpty(j.urlBase)
+	s.NotNil(j.sender)
+	s.Equal(s.env, j.env)
 }
 
 func (s *githubStatusUpdateSuite) TestWithGithub() {
@@ -181,6 +220,14 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	// this test in the suite will fail after the 1000th time).
 	// It's still useful for manual testing
 	s.T().Skip("Github Status API is limited")
+	evergreen.ResetEnvironment()
+	s.cancel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
 	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "TestWithGithub")
 	evergreen.GetEnvironment().Settings().Credentials = s.testConfig.Credentials
 	evergreen.GetEnvironment().Settings().Ui.Url = "http://example.com"
@@ -210,7 +257,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token[1]},
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)

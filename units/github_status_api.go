@@ -3,21 +3,19 @@ package units
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -42,36 +40,11 @@ func init() {
 	registry.AddJobType(githubStatusUpdateJobName, func() amboy.Job { return makeGithubStatusUpdateJob() })
 }
 
-type githubStatus struct {
-	Owner    string `json:"owner"`
-	Repo     string `json:"repo"`
-	PRNumber int    `json:"pr_number"`
-	Ref      string `json:"ref"`
-	URLPath  string `json:"url_path"`
-
-	Description string `json:"description"`
-	Context     string `json:"context"`
-	State       string `json:"state"`
-}
-
-func (status *githubStatus) Valid() bool {
-	if status.Owner == "" || status.Repo == "" || status.PRNumber == 0 ||
-		status.Ref == "" || status.URLPath == "" || status.Context == "" ||
-		!strings.HasPrefix(status.URLPath, "/") {
-		return false
-	}
-
-	switch status.State {
-	case githubStatusError, githubStatusFailure, githubStatusPending, githubStatusSuccess:
-		return true
-	}
-
-	return false
-}
-
 type githubStatusUpdateJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
+	urlBase  string
+	sender   send.Sender
 
 	FetchID    string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
 	UpdateType string `bson:"update_type" json:"update_type" yaml:"update_type"`
@@ -127,164 +100,121 @@ func NewGithubStatusUpdateJobForBadConfig(intentID string) amboy.Job {
 	return job
 }
 
-func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *githubStatus) error {
-	catcher := grip.NewBasicCatcher()
-
-	if !status.Valid() {
-		catcher.Add(errors.New("status is invalid"))
-	}
-
+func (j *githubStatusUpdateJob) preamble() error {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-
-	if j.env.Settings() == nil || j.env.Settings().Ui.Url == "" {
-		catcher.Add(errors.New("ui not configured"))
-	}
-	evergreenBaseURL := j.env.Settings().Ui.Url
-
-	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
-	if err != nil {
-		catcher.Add(err)
-	}
-
-	err = catcher.Resolve()
-	if err != nil {
+	uiConfig := evergreen.UIConfig{}
+	if err := uiConfig.Get(); err != nil {
 		return err
 	}
+	j.urlBase = uiConfig.Url
 
-	httpClient, err := util.GetOAuth2HTTPClient(githubOauthToken)
-	if err != nil {
-		return err
-	}
-	defer util.PutHTTPClient(httpClient)
-	client := github.NewClient(httpClient)
-
-	newStatus := github.RepoStatus{
-		TargetURL:   github.String(fmt.Sprintf("%s%s", evergreenBaseURL, status.URLPath)),
-		Context:     github.String(status.Context),
-		Description: github.String(status.Description),
-		State:       github.String(status.State),
-	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, githubStatusAPITimeout)
-	defer cancel()
-
-	respStatus, resp, err := client.Repositories.CreateStatus(ctx, status.Owner, status.Repo, status.Ref, &newStatus)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		repo := repoReference(status.Owner, status.Repo, status.PRNumber, status.Ref)
-		return errors.Errorf("Github status creation for %s: expected http Status code: 201 Created, got %s", repo, http.StatusText(http.StatusCreated))
-	}
-	if respStatus == nil {
-		return errors.New("nil response from github")
-	}
-
-	return nil
-}
-
-func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
-	var patchDoc *patch.Patch
-
-	if j.UpdateType == githubUpdateTypeBadConfig {
-		var intent patch.Intent
-		intent, err = patch.FindIntent(j.FetchID, patch.GithubIntentType)
-		if err != nil {
-			return errors.Wrap(err, "can't fetch patch intent")
-		}
-		patchDoc = intent.NewPatch()
-		if patchDoc == nil {
-			return errors.New("patch is missing")
-		}
-
-		var projectRef *model.ProjectRef
-		projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
-			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
-		if err != nil {
-			return errors.Wrap(err, "can't fetch project ref")
-		}
-		if projectRef == nil {
-			return errors.New("can't find project ref")
-		}
-
-		status.URLPath = fmt.Sprintf("/waterfall/%s", projectRef.Identifier)
-		status.Context = "evergreen"
-		status.State = githubStatusFailure
-		status.Description = "project config was invalid"
-
-	}
-
-	if patchDoc == nil {
-		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(j.FetchID)))
+	if j.sender == nil {
+		var err error
+		j.sender, err = j.env.GetSender(evergreen.SenderGithubStatus)
 		if err != nil {
 			return err
 		}
-		if patchDoc == nil {
-			return errors.New("can't find patch")
-		}
 	}
-
-	if j.UpdateType == githubUpdateTypeNewPatch {
-		status.URLPath = fmt.Sprintf("/version/%s", j.FetchID)
-		status.Context = "evergreen"
-		status.State = githubStatusPending
-		status.Description = "preparing to run tasks"
-
-	} else if j.UpdateType == githubUpdateTypeRequestAuth {
-		status.URLPath = fmt.Sprintf("/patch/%s", j.FetchID)
-		status.Context = "evergreen"
-		status.Description = "patch must be manually authorized"
-		status.State = githubStatusFailure
-	}
-
-	status.Owner = patchDoc.GithubPatchData.BaseOwner
-	status.Repo = patchDoc.GithubPatchData.BaseRepo
-	status.PRNumber = patchDoc.GithubPatchData.PRNumber
-	status.Ref = patchDoc.GithubPatchData.HeadHash
-	return nil
-}
-
-func (j *githubStatusUpdateJob) Run(ctx context.Context) {
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
-	defer j.MarkComplete()
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
-		return
+		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     githubStatusUpdateJobName,
 			"message": "github status updates are disabled, not updating status",
 		})
-		j.AddError(errors.New("github status updates are disabled, not updating status"))
+		return errors.New("github status updates are disabled, not updating status")
+	}
+
+	return nil
+}
+
+func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
+	var patchDoc *patch.Patch
+	var err error
+	status := message.GithubStatus{}
+
+	if j.UpdateType == githubUpdateTypeBadConfig {
+		var intent patch.Intent
+		intent, err = patch.FindIntent(j.FetchID, patch.GithubIntentType)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't fetch patch intent")
+		}
+		patchDoc = intent.NewPatch()
+		if patchDoc == nil {
+			return nil, errors.New("patch is missing")
+		}
+
+		var projectRef *model.ProjectRef
+		projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
+		if err != nil {
+			return nil, errors.Wrap(err, "can't fetch project ref")
+		}
+		if projectRef == nil {
+			return nil, errors.New("can't find project ref")
+		}
+
+		status.URL = fmt.Sprintf("%s/waterfall/%s", j.urlBase, projectRef.Identifier)
+		status.Context = "evergreen"
+		status.State = githubStatusFailure
+		status.Description = "project config was invalid"
+
+	} else if j.UpdateType == githubUpdateTypeNewPatch {
+		status.URL = fmt.Sprintf("%s/version/%s", j.urlBase, j.FetchID)
+		status.Context = "evergreen"
+		status.State = githubStatusPending
+		status.Description = "preparing to run tasks"
+
+	} else if j.UpdateType == githubUpdateTypeRequestAuth {
+		status.URL = fmt.Sprintf("%s/patch/%s", j.urlBase, j.FetchID)
+		status.Context = "evergreen"
+		status.Description = "patch must be manually authorized"
+		status.State = githubStatusFailure
+	}
+
+	if patchDoc == nil {
+		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(j.FetchID)))
+		if err != nil {
+			return nil, err
+		}
+		if patchDoc == nil {
+			return nil, errors.New("can't find patch")
+		}
+	}
+
+	status.Owner = patchDoc.GithubPatchData.BaseOwner
+	status.Repo = patchDoc.GithubPatchData.BaseRepo
+	status.Ref = patchDoc.GithubPatchData.HeadHash
+	return &status, nil
+}
+
+func (j *githubStatusUpdateJob) Run(_ context.Context) {
+	defer j.MarkComplete()
+
+	j.AddError(j.preamble())
+	if j.HasErrors() {
 		return
 	}
 
-	status := githubStatus{}
-	if err := j.fetch(&status); err != nil {
+	status, err := j.fetch()
+	if err != nil {
 		j.AddError(err)
 		return
 	}
 
-	if err := j.sendStatusUpdate(ctx, &status); err != nil {
-		grip.Alert(message.WrapError(err, message.Fields{
-			"message":     "github API failure",
-			"source":      "status updates",
-			"job":         j.ID(),
-			"status":      status,
-			"fetch_id":    j.FetchID,
-			"update_type": j.UpdateType,
-		}))
-		j.AddError(err)
+	c := message.MakeGithubStatusMessageWithRepo(*status)
+	if !c.Loggable() {
+		j.AddError(errors.Errorf("status message is invalid: %+v", status))
+		return
 	}
+	c.SetPriority(level.Notice)
+
+	j.sender.Send(c)
 }
 
 func repoReference(owner, repo string, prNumber int, ref string) string {
