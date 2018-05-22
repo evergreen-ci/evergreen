@@ -34,18 +34,17 @@ func (l *DBEventLogger) LogEvent(e *EventLogEntry) error {
 
 func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
+	interfaces := make([]interface{}, len(events))
 	for i := range events {
 		e := &events[i]
 		if err := e.validateEvent(); err != nil {
 			catcher.Add(err)
+			continue
 		}
+		interfaces[i] = &events[i]
 	}
 	if catcher.HasErrors() {
 		return errors.Errorf("not logging events, some events are invalid: %s", catcher.String())
-	}
-	interfaces := make([]interface{}, len(events))
-	for i := range events {
-		interfaces[i] = &events[i]
 	}
 	return db.InsertMany(l.collection, interfaces...)
 }
