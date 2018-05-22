@@ -321,7 +321,7 @@ func CancelPatch(p *patch.Patch, caller string) error {
 		if err := SetVersionActivation(p.Version, false, caller); err != nil {
 			return errors.WithStack(err)
 		}
-		return errors.WithStack(AbortVersion(p.Version))
+		return errors.WithStack(AbortVersion(p.Version, caller))
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))

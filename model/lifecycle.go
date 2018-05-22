@@ -112,7 +112,7 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state, and marks the build as deactivated.
 func AbortBuild(buildId string, caller string) error {
-	err := task.AbortBuild(buildId)
+	err := task.AbortBuild(buildId, caller)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func AbortBuild(buildId string, caller string) error {
 
 // AbortVersion sets the abort flag on all tasks associated with the version which are in an
 // abortable state
-func AbortVersion(versionId string) error {
+func AbortVersion(versionId, caller string) error {
 	_, err := task.UpdateAll(
 		bson.M{
 			task.VersionKey: versionId,
@@ -129,7 +129,17 @@ func AbortVersion(versionId string) error {
 		},
 		bson.M{"$set": bson.M{task.AbortedKey: true}},
 	)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "error setting aborted statuses")
+	}
+	ids, err := task.FindAllTaskIDsFromVersion(versionId)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks by version id")
+	}
+	if len(ids) > 0 {
+		event.LogManyTaskAbortRequests(ids, caller)
+	}
+	return nil
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {

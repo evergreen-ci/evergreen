@@ -666,6 +666,34 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 	return task, nil
 }
 
+func findAllTaskIDs(q db.Q) ([]string, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, q, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task ids for versions")
+	}
+
+	ids := []string{}
+	for _, t := range tasks {
+		ids = append(ids, t.Id)
+	}
+
+	return ids, nil
+}
+
+func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
+	q := db.Query(bson.M{VersionKey: versionId}).WithFields(IdKey)
+	return findAllTaskIDs(q)
+}
+
+func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
+	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
+	return findAllTaskIDs(q)
+}
+
 // FindOneOld returns one task from the old tasks collection that satisfies the query.
 func FindOneOld(query db.Q) (*Task, error) {
 	task, err := FindOneOldNoMerge(query)

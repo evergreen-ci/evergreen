@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -24,26 +25,28 @@ func NewDBEventLogger(collection string) *DBEventLogger {
 	}
 }
 
-func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
-	if event.Data == nil {
-		return errors.New("event log entry cannot have nil Data")
+func (l *DBEventLogger) LogEvent(e *EventLogEntry) error {
+	if err := e.validateEvent(); err != nil {
+		return errors.Wrap(err, "not logging event, event is invalid")
 	}
-	if len(event.ResourceType) == 0 {
-		return errors.New("event log entry has no r_type")
-	}
-	if !event.ID.Valid() {
-		event.ID = bson.NewObjectId()
-	}
-	if !registry.IsSubscribable(event.ResourceType, event.EventType) {
-		loc, _ := time.LoadLocation("UTC")
-		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
-		if err != nil {
-			return errors.Wrap(err, "failed to set processed time")
-		}
-		event.ProcessedAt = notSubscribableTime
-	}
+	return db.Insert(l.collection, e)
+}
 
-	return db.Insert(l.collection, event)
+func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
+	catcher := grip.NewBasicCatcher()
+	interfaces := make([]interface{}, len(events))
+	for i := range events {
+		e := &events[i]
+		if err := e.validateEvent(); err != nil {
+			catcher.Add(err)
+			continue
+		}
+		interfaces[i] = &events[i]
+	}
+	if catcher.HasErrors() {
+		return errors.Errorf("not logging events, some events are invalid: %s", catcher.String())
+	}
+	return db.InsertMany(l.collection, interfaces...)
 }
 
 func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {

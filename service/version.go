@@ -166,6 +166,9 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authUser := GetUser(r)
+	authName := authUser.DisplayName()
+
 	// determine what action needs to be taken
 	switch jsonMap.Action {
 	case "restart":
@@ -175,7 +178,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		}
 	case "set_active":
 		if jsonMap.Abort {
-			if err = model.AbortVersion(projCtx.Version.Id); err != nil {
+			if err = model.AbortVersion(projCtx.Version.Id, authName); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

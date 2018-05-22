@@ -167,7 +167,7 @@ func (s *VersionConnectorSuite) TestFindVersionByIdFail() {
 
 func (s *VersionConnectorSuite) TestAbortVersion() {
 	versionId := "version1"
-	err := s.ctx.AbortVersion(versionId)
+	err := s.ctx.AbortVersion(versionId, "")
 	s.NoError(err)
 
 	// NOTE: TestAbort() has been written in this following way because FindTaskbyVersionId()
