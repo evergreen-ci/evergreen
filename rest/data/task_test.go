@@ -100,6 +100,18 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 	tasks, err := s.ctx.FindOldTasksByID("task_1")
 	s.NoError(err)
 	s.Len(tasks, 10)
+	for i := range tasks {
+		s.Require().NotEmpty(tasks[i].PreviousExecutions)
+		s.Require().NotZero(tasks[i].PreviousExecutions[i])
+	}
+
+	tasks, err = s.ctx.FindOldTasksByID("task_2")
+	s.NoError(err)
+	s.Len(tasks, 10)
+	for i := range tasks {
+		s.Require().NotEmpty(tasks[i].PreviousExecutions)
+		s.Require().NotZero(tasks[i].PreviousExecutions[i])
+	}
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
