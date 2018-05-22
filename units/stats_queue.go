@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -35,7 +34,6 @@ func NewQueueStatsCollector(id string) amboy.Job {
 
 func makeQueueStatsCollector() *queueStatsCollector {
 	j := &queueStatsCollector{
-		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    queueStatsCollectorJobName,
