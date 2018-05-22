@@ -73,7 +73,7 @@ func (s *perfCopyVariantMigration) TestMigration() {
 	s.Len(out, 4)
 
 	copyArgs := map[string]string{
-		tagKey:             "a_tag",
+		perfTagKey:         "a_tag",
 		perfProjectIDKey:   "a_project",
 		perfFromVariantKey: "a_variant",
 		perfToVariantKey:   "to_variant",

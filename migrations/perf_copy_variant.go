@@ -11,8 +11,8 @@ import (
 const (
 	perfCopyVariantMigrationName = "perf-copy-variant"
 	jsonCollection               = "json"
-	tagKey                       = "tag"
 	idKey                        = "_id"
+	perfTagKey                   = "tag"
 	perfProjectIDKey             = "project_id"
 	perfFromVariantKey           = "from_variant"
 	perfToVariantKey             = "to_variant"
@@ -32,7 +32,7 @@ func perfCopyVariantFactoryFactory(args map[string]string) migrationGeneratorFac
 			},
 			Limit: generatorArgs.limit,
 			Query: bson.M{
-				tagKey:           args[tagKey],
+				perfTagKey:       args[perfTagKey],
 				perfProjectIDKey: args[perfProjectIDKey],
 				perfVariantKey:   args[perfFromVariantKey],
 			},
