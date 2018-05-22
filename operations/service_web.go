@@ -104,7 +104,7 @@ func startWebService() cli.Command {
 			<-gracefulWait
 
 			grip.Notice("waiting for background tasks to finish")
-			catcher.Resolve(env.Close(ctx))
+			catcher.Add(env.Close(ctx))
 
 			return catcher.Resolve()
 		},
