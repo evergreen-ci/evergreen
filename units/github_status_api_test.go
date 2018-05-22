@@ -212,6 +212,11 @@ func (s *githubStatusUpdateSuite) TestPreamble() {
 	s.NotEmpty(j.urlBase)
 	s.NotNil(j.sender)
 	s.Equal(s.env, j.env)
+
+	uiConfig := evergreen.UIConfig{}
+	s.NoError(uiConfig.Set())
+
+	s.EqualError(j.preamble(), "UI URL is empty")
 }
 
 func (s *githubStatusUpdateSuite) TestWithGithub() {

@@ -109,6 +109,9 @@ func (j *githubStatusUpdateJob) preamble() error {
 		return err
 	}
 	j.urlBase = uiConfig.Url
+	if len(j.urlBase) == 0 {
+		return errors.New("UI URL is empty")
+	}
 
 	if j.sender == nil {
 		var err error
