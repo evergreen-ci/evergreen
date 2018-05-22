@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -81,6 +82,13 @@ type Environment interface {
 	// settings. These Grip senders must be used with Composers that specify
 	// all message details.
 	GetSender(SenderKey) (send.Sender, error)
+
+	// RegisterCloser adds a function object to an internal
+	// tracker to be called by the Close method before process
+	// termination.
+	RegisterCloser(string, func(context.Context) error)
+	// Close calls all registered closers in the environment.
+	Close(context.Context) error
 }
 
 type envState struct {
@@ -91,6 +99,7 @@ type envState struct {
 	session            *mgo.Session
 	mu                 sync.RWMutex
 	clientConfig       *ClientConfig
+	closers            map[string]func(context.Context) error
 	senders            map[SenderKey]send.Sender
 }
 
@@ -216,6 +225,40 @@ func (e *envState) createQueues(ctx context.Context) error {
 	if err = e.notificationsQueue.SetRunner(runner); err != nil {
 		return errors.Wrap(err, "failed to set notifications queue runner")
 	}
+	rootSenders := []send.Sender{}
+	for _, s := range e.senders {
+		rootSenders = append(rootSenders, s)
+	}
+
+	e.RegisterCloser("background-local-queue", func(ctx context.Context) error {
+		if !amboy.WaitCtxInterval(ctx, e.localQueue, 10*time.Millisecond) {
+			grip.Critical(message.Fields{
+				"message": "pending jobs failed to finish",
+				"queue":   "system",
+				"status":  e.notificationsQueue.Stats(),
+			})
+			return errors.New("failed to stop with running jobs")
+		}
+		e.localQueue.Runner().Close()
+		return nil
+	})
+	e.RegisterCloser("notification-queue", func(ctx context.Context) error {
+		catcher := grip.NewBasicCatcher()
+		for _, s := range rootSenders {
+			catcher.Add(s.Close())
+		}
+
+		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, 10*time.Millisecond) {
+			grip.Critical(message.Fields{
+				"message": "pending jobs failed to finish",
+				"queue":   "notifications",
+				"status":  e.notificationsQueue.Stats(),
+			})
+			catcher.Add(errors.New("failed to stop with running jobs"))
+		}
+		e.notificationsQueue.Runner().Close()
+		return catcher.Resolve()
+	})
 
 	for k := range e.senders {
 		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
@@ -288,13 +331,14 @@ func (e *envState) initSenders() error {
 		e.senders[SenderEmail] = sender
 	}
 
+	var sender send.Sender
+
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
 		splitToken := strings.Split(githubToken, " ")
 		if len(splitToken) != 2 {
 			return errors.New("token format should be 'token ...'")
 		}
-		var sender send.Sender
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 			Token: splitToken[1],
 		}, "")
@@ -305,7 +349,6 @@ func (e *envState) initSenders() error {
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
-		var sender send.Sender
 		sender, err = send.NewJiraLogger(&send.JiraOptions{
 			Name:     "evergreen",
 			BaseURL:  jira.GetHostURL(),
@@ -330,7 +373,6 @@ func (e *envState) initSenders() error {
 	}
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
-		var sender send.Sender
 		sender, err = send.NewSlackLogger(&send.SlackOptions{
 			Channel: "#",
 			Name:    "evergreen",
@@ -341,7 +383,6 @@ func (e *envState) initSenders() error {
 		e.senders[SenderSlack] = sender
 	}
 
-	var sender send.Sender
 	sender, err = util.NewEvergreenWebhookLogger()
 	if err != nil {
 		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
@@ -465,6 +506,39 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 	}
 
 	return sender, nil
+}
+
+func (e *envState) RegisterCloser(name string, closer func(context.Context) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.closers[name] = closer
+}
+
+func (e *envState) Close(ctx context.Context) error {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	// TODO we could, in the future call all closers in but that
+	// would require more complex waiting and timeout logic
+
+	deadline, _ := ctx.Deadline()
+	catcher := grip.NewBasicCatcher()
+	for name, closer := range e.closers {
+		if closer == nil {
+			continue
+		}
+
+		grip.Info(message.Fields{
+			"message":      "calling closer",
+			"closer":       name,
+			"timeout_secs": time.Since(deadline),
+			"deadline":     deadline,
+		})
+		catcher.Add(closer(ctx))
+	}
+
+	return catcher.Resolve()
 }
 
 // getClientConfig should be called once at startup and looks at the

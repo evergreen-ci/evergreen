@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/mongodb/grip"
@@ -108,7 +107,11 @@ func startRunnerService() cli.Command {
 			go listenForSIGTERM(cancel)
 			waiter := make(chan struct{})
 			startRunners(ctx, settings, waiter)
+			grip.Notice("waiting for background runners to finish")
 			<-waiter
+
+			grip.Notice("waiting for background tasks to finish")
+			catcher.Resolve(env.Close(ctx))
 
 			return errors.WithStack(err)
 		},
@@ -127,9 +130,7 @@ type processRunner interface {
 	Run(context.Context, *evergreen.Settings) error
 }
 
-var backgroundRunners = []processRunner{
-	&monitor.Runner{},
-}
+var backgroundRunners = []processRunner{}
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
 // returns a channel on which all runners listen on, for when to terminate.
