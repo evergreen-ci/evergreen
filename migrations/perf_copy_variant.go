@@ -12,11 +12,11 @@ const (
 	perfCopyVariantMigrationName = "perf-copy-variant"
 	jsonCollection               = "json"
 	tagKey                       = "tag"
-	projectIDKey                 = "project_id"
-	fromVariantKey               = "from_variant"
-	toVariantKey                 = "to_variant"
-	variantKey                   = "variant"
 	idKey                        = "_id"
+	perfProjectIDKey             = "project_id"
+	perfFromVariantKey           = "from_variant"
+	perfToVariantKey             = "to_variant"
+	perfVariantKey               = "variant"
 )
 
 func perfCopyVariantFactoryFactory(args map[string]string) migrationGeneratorFactory {
@@ -32,9 +32,9 @@ func perfCopyVariantFactoryFactory(args map[string]string) migrationGeneratorFac
 			},
 			Limit: generatorArgs.limit,
 			Query: bson.M{
-				tagKey:       args[tagKey],
-				projectIDKey: args[projectIDKey],
-				variantKey:   args[fromVariantKey],
+				tagKey:           args[tagKey],
+				perfProjectIDKey: args[perfProjectIDKey],
+				perfVariantKey:   args[perfFromVariantKey],
 			},
 			JobID: generatorArgs.id,
 		}
@@ -54,12 +54,15 @@ func makePerfCopyVariantMigration(database string, args map[string]string) db.Mi
 				}
 			}
 		}
+		if !id.Valid() {
+			return errors.Errorf("id %s is not valid", id)
+		}
 		doc := db.Document{}
 		err := session.DB(database).C(jsonCollection).FindId(id).One(&doc)
 		if err != nil {
 			return errors.Wrapf(err, "problem finding document %s", id)
 		}
-		doc[variantKey] = args[toVariantKey]
+		doc[perfVariantKey] = args[perfToVariantKey]
 		delete(doc, idKey)
 		err = session.DB(database).C(jsonCollection).Insert(doc)
 		if err != nil {

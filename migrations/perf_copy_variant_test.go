@@ -2,17 +2,11 @@ package migrations
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	evgdb "github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
-	"github.com/mongodb/anser/db"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -22,32 +16,7 @@ type perfCopyVariantMigration struct {
 }
 
 func TestPerfCopyVariantMigration(t *testing.T) {
-	require := require.New(t)
-
-	mgoSession, database, err := evgdb.GetGlobalSessionFactory().GetSession()
-	require.NoError(err)
-	defer mgoSession.Close()
-
-	session := db.WrapSession(mgoSession.Copy())
-	defer session.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s := &perfCopyVariantMigration{
-		migrationSuite{
-			env:      &mock.Environment{},
-			session:  session,
-			database: database.Name,
-			cancel:   cancel,
-		},
-	}
-
-	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	require.NoError(s.env.LocalQueue().Start(ctx))
-
-	anser.ResetEnvironment()
-	require.NoError(anser.GetEnvironment().Setup(s.env.LocalQueue(), s.session))
-	anser.GetEnvironment().RegisterCloser(func() error { cancel(); return nil })
-
+	s := &perfCopyVariantMigration{}
 	suite.Run(t, s)
 }
 
@@ -104,17 +73,17 @@ func (s *perfCopyVariantMigration) TestMigration() {
 	s.Len(out, 4)
 
 	copyArgs := map[string]string{
-		tagKey:         "a_tag",
-		projectIDKey:   "a_project",
-		fromVariantKey: "a_variant",
-		toVariantKey:   "to_variant",
+		tagKey:             "a_tag",
+		perfProjectIDKey:   "a_project",
+		perfFromVariantKey: "a_variant",
+		perfToVariantKey:   "to_variant",
 	}
-	factoryFactory := perfCopyVariantFactoryFactory(copyArgs)
-	factory, err := factoryFactory(anser.GetEnvironment(), args)
+	factory := perfCopyVariantFactoryFactory(copyArgs)
+	generator, err := factory(anser.GetEnvironment(), args)
 	s.NoError(err)
-	factory.Run(ctx)
-	s.NoError(factory.Error())
-	for j := range factory.Jobs() {
+	generator.Run(ctx)
+	s.NoError(generator.Error())
+	for j := range generator.Jobs() {
 		j.Run(ctx)
 		s.NoError(j.Error())
 	}
@@ -178,8 +147,4 @@ func (s *perfCopyVariantMigration) TestMigration() {
 		}
 	}
 	s.Equal(found, 6)
-}
-
-func (s *perfCopyVariantMigration) TearDownSuite() {
-	s.cancel()
 }
