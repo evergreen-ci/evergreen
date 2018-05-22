@@ -298,7 +298,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 			foundPatch = true
 		}
 		if out[i].Type == event.ResourceTypeBuild {
-			s.NotEqual(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
+			s.Equal(patchDoc.Version, out[i].Selectors[0].Data)
 			foundBuild = true
 		}
 	}
