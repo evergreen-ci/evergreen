@@ -31,7 +31,7 @@ func versionFetch(e *event.EventLogEntry) (interface{}, error) {
 	return v, nil
 }
 
-func versionValidator(t func(e *event.EventLogEntry, v *version.Version) (*notificationGenerator, error)) trigger {
+func versionValidator(t func(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error)) trigger {
 	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
 		v, ok := object.(*version.Version)
 		if !ok {
@@ -41,7 +41,12 @@ func versionValidator(t func(e *event.EventLogEntry, v *version.Version) (*notif
 			return nil, errors.New("expected a version, received nil data")
 		}
 
-		return t(e, v)
+		data, ok := e.Data.(*event.VersionEventData)
+		if !ok {
+			return nil, errors.New("expected version event data")
+		}
+
+		return t(data, v)
 	}
 }
 
@@ -56,17 +61,13 @@ func versionSelectors(v *version.Version) []event.Selector {
 			Data: v.Identifier,
 		},
 		{
-			Type: "status",
-			Data: v.Status,
-		},
-		{
 			Type: selectorObject,
 			Data: "version",
 		},
 	}
 }
 
-func generatorFromVersion(triggerName string, v *version.Version) (*notificationGenerator, error) {
+func generatorFromVersion(triggerName string, v *version.Version, status string) (*notificationGenerator, error) {
 	ui := evergreen.UIConfig{}
 	if err := ui.Get(); err != nil {
 		return nil, errors.Wrap(err, "Failed to fetch ui config")
@@ -79,8 +80,8 @@ func generatorFromVersion(triggerName string, v *version.Version) (*notification
 
 	selectors := versionSelectors(v)
 
-	pastTenseStatus := v.Status
-	if v.Status == evergreen.VersionSucceeded {
+	pastTenseStatus := status
+	if status == evergreen.VersionSucceeded {
 		pastTenseStatus = "succeeded"
 	}
 
@@ -96,35 +97,35 @@ func generatorFromVersion(triggerName string, v *version.Version) (*notification
 	return makeCommonGenerator(triggerName, selectors, data)
 }
 
-func versionOutcome(e *event.EventLogEntry, v *version.Version) (*notificationGenerator, error) {
+func versionOutcome(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error) {
 	const name = "outcome"
 
-	if v.Status != evergreen.VersionSucceeded && v.Status != evergreen.VersionFailed {
+	if e.Status != evergreen.VersionSucceeded && e.Status != evergreen.VersionFailed {
 		return nil, nil
 	}
 
-	gen, err := generatorFromVersion(name, v)
+	gen, err := generatorFromVersion(name, v, e.Status)
 	return gen, err
 }
 
-func versionFailure(e *event.EventLogEntry, v *version.Version) (*notificationGenerator, error) {
+func versionFailure(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error) {
 	const name = "failure"
 
-	if v.Status != evergreen.VersionFailed {
+	if e.Status != evergreen.VersionFailed {
 		return nil, nil
 	}
 
-	gen, err := generatorFromVersion(name, v)
+	gen, err := generatorFromVersion(name, v, e.Status)
 	return gen, err
 }
 
-func versionSuccess(e *event.EventLogEntry, v *version.Version) (*notificationGenerator, error) {
+func versionSuccess(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error) {
 	const name = "success"
 
-	if v.Status != evergreen.VersionSucceeded {
+	if e.Status != evergreen.VersionSucceeded {
 		return nil, nil
 	}
 
-	gen, err := generatorFromVersion(name, v)
+	gen, err := generatorFromVersion(name, v, e.Status)
 	return gen, err
 }
