@@ -49,11 +49,11 @@ func (j *queueStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	env := evergreen.GetEnvironment()
-	settings := env.Settings()
-	if env != nil {
-		j.AddError(errors.New("settings is nil"))
+	if env == nil {
+		j.AddError(errors.New("env is nil"))
 		return
 	}
+	settings := env.Settings()
 
 	finder := scheduler.GetTaskFinder(settings.Scheduler.TaskFinder)
 	tasks, err := finder("")
