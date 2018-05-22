@@ -77,6 +77,31 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByID() {
 	s.Len(tasks, 10)
 }
 
+func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
+	s.Require().NoError(db.Clear(task.Collection))
+	testTask1 := &task.Task{
+		Id:        "task_1",
+		Execution: 0,
+		BuildId:   "build_1",
+	}
+	s.NoError(testTask1.Insert())
+	testTask2 := &task.Task{
+		Id:          "task_2",
+		Execution:   0,
+		BuildId:     "build_1",
+		DisplayTask: true,
+	}
+	s.NoError(testTask1.Insert())
+	for i := 0; i < 10; i++ {
+		s.NoError(testTask.Archive())
+		testTask.Execution += 1
+	}
+
+	tasks, err := s.ctx.FindOldTasksByID("task_1")
+	s.NoError(err)
+	s.Len(tasks, 10)
+}
+
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
 	found, err := s.ctx.FindTaskById("fake_task")
 	s.NotNil(err)
