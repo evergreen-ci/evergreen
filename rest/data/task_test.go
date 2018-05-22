@@ -59,26 +59,8 @@ func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 	}
 }
 
-func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByID() {
-	s.Require().NoError(db.Clear(task.Collection))
-	testTask := &task.Task{
-		Id:        "task_1",
-		Execution: 0,
-		BuildId:   "build_1",
-	}
-	s.NoError(testTask.Insert())
-	for i := 0; i < 10; i++ {
-		s.NoError(testTask.Archive())
-		testTask.Execution += 1
-	}
-
-	tasks, err := s.ctx.FindOldTasksByID("task_1")
-	s.NoError(err)
-	s.Len(tasks, 10)
-}
-
 func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
-	s.Require().NoError(db.Clear(task.Collection))
+	s.Require().NoError(db.ClearCollections(task.Collection, task.OldCollection))
 	testTask1 := &task.Task{
 		Id:        "task_1",
 		Execution: 0,
@@ -89,28 +71,28 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Id:          "task_2",
 		Execution:   0,
 		BuildId:     "build_1",
-		DisplayTask: true,
+		DisplayOnly: true,
 	}
-	s.NoError(testTask1.Insert())
+	s.NoError(testTask2.Insert())
 	for i := 0; i < 10; i++ {
-		s.NoError(testTask.Archive())
-		testTask.Execution += 1
+		s.NoError(testTask1.Archive())
+		testTask1.Execution += 1
+		s.NoError(testTask2.Archive())
+		testTask2.Execution += 1
 	}
 
-	tasks, err := s.ctx.FindOldTasksByID("task_1")
+	tasks, err := s.ctx.FindOldTasksByIDWithDisplayTasks("task_1")
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {
-		s.Require().NotEmpty(tasks[i].PreviousExecutions)
-		s.Require().NotZero(tasks[i].PreviousExecutions[i])
+		s.Equal(i, tasks[i].Execution)
 	}
 
-	tasks, err = s.ctx.FindOldTasksByID("task_2")
+	tasks, err = s.ctx.FindOldTasksByIDWithDisplayTasks("task_2")
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {
-		s.Require().NotEmpty(tasks[i].PreviousExecutions)
-		s.Require().NotZero(tasks[i].PreviousExecutions[i])
+		s.Equal(i, tasks[i].Execution)
 	}
 }
 
