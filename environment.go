@@ -514,6 +514,13 @@ func (e *envState) RegisterCloser(name string, closer func(context.Context) erro
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	if _, ok := e.closers[name]; ok {
+		grip.Critical(message.Fields{
+			"closer":  name,
+			"message": "duplicate closer registered",
+			"cause":   "programmer error",
+		})
+	}
 	e.closers[name] = closer
 }
 
@@ -534,7 +541,7 @@ func (e *envState) Close(ctx context.Context) error {
 		grip.Info(message.Fields{
 			"message":      "calling closer",
 			"closer":       name,
-			"timeout_secs": time.Since(deadline),
+			"timeout_secs": time.Until(deadline),
 			"deadline":     deadline,
 		})
 		catcher.Add(closer(ctx))
