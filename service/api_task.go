@@ -197,7 +197,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: EVG-3408 delete this block
 	if !evergreen.IsPatchRequester(t.Requester) {
 		if t.IsPartOfDisplay() {
 			parent := t.DisplayTask

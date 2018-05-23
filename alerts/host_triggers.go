@@ -1,4 +1,3 @@
-// TODO EVG-3408: delete this file
 package alerts
 
 import (

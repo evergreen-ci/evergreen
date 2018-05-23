@@ -1,4 +1,3 @@
-// TODO: EVG-3408 delete whole file
 package units
 
 import (
