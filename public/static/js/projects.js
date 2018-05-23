@@ -23,56 +23,56 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.isDirty = false;
   $scope.triggers = [
-      {
-          trigger: "outcome",
-          resource_type: "VERSION",
-          label: "any version finishes"
-      },
-      {
-          trigger: "failure",
-          resource_type: "VERSION",
-          label: "any version fails"
-      },
-      {
-          trigger: "outcome",
-          resource_type: "BUILD",
-          label: "any build finishes",
-      },
-      {
-          trigger: "failure",
-          resource_type: "BUILD",
-          label: "any build fails",
-      },
-      {
-         trigger: "outcome",
-         resource_type: "TASK",
-         label: "any task finishes",
-      },
-      {
-         trigger: "failure",
-         resource_type: "TASK",
-         label: "any task fails",
-      },
-      {
-         trigger: "first-failure-in-version",
-         resource_type: "TASK",
-         label: "the first task failure occurs",
-      },
-      {
-         trigger: "first-failure-in-build",
-         resource_type: "TASK",
-         label: "the first failure in each build occurs",
-      },
-      {
-         trigger: "first-failure-in-version-with-name",
-         resource_type: "TASK",
-         label: "the first failure in each version for each task name occurs",
-      },
-      {
-         trigger: "regression",
-         resource_type: "TASK",
-         label: "a previously passing task fails",
-      },
+    {
+      trigger: "outcome",
+      resource_type: "VERSION",
+      label: "any version finishes"
+    },
+    {
+      trigger: "failure",
+      resource_type: "VERSION",
+      label: "any version fails"
+    },
+    {
+      trigger: "outcome",
+      resource_type: "BUILD",
+      label: "any build finishes",
+    },
+    {
+      trigger: "failure",
+      resource_type: "BUILD",
+      label: "any build fails",
+    },
+    {
+      trigger: "outcome",
+      resource_type: "TASK",
+      label: "any task finishes",
+    },
+    {
+      trigger: "failure",
+      resource_type: "TASK",
+      label: "any task fails",
+    },
+    {
+      trigger: "first-failure-in-version",
+      resource_type: "TASK",
+      label: "the first task failure occurs",
+    },
+    {
+      trigger: "first-failure-in-build",
+      resource_type: "TASK",
+      label: "the first failure in each build occurs",
+    },
+    {
+      trigger: "first-failure-in-version-with-name",
+      resource_type: "TASK",
+      label: "the first failure in each version for each task name occurs",
+    },
+    {
+      trigger: "regression",
+      resource_type: "TASK",
+      label: "a previously passing task fails",
+    },
   ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
@@ -97,6 +97,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     return !isNaN(Number(t)) && Number(t) >= 0
   }
 
+  // TODO: EVG-3408
   $scope.isValidAlertDefinition = function(spec) {
     if (!spec) { return false; }
     if (spec.startsWith("JIRA:") && spec.split(":").length < 3) {
@@ -108,6 +109,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     return true
   }
 
+  // TODO: EVG-3408
   $scope.addAlert = function(obj, trigger){
     if(!$scope.settingsFormData.alert_config) {
       $scope.settingsFormData.alert_config = {}
@@ -119,6 +121,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     obj.editing = false
   }
 
+  // TODO: EVG-3408
   $scope.getProjectAlertConfig = function(t){
     if(!$scope.settingsFormData.alert_config || !$scope.settingsFormData.alert_config[t]){
       return []
@@ -559,6 +562,7 @@ mciModule.directive('adminNewProject', function() {
   };
 });
 
+// TODO: EVG-3408
 mciModule.directive('adminNewAlert', function() {
     return {
       restrict: 'E',

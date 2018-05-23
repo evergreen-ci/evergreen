@@ -274,7 +274,7 @@ func taskRegression(e *event.TaskEventData, t *task.Task) (*notificationGenerato
 				return nil, errors.Wrap(err, "failed to process regression trigger")
 			}
 
-			// TODO: how is this even possible?
+			// TODO: EVG-3407 how is this even possible?
 			if lastAlerted.TaskId == "" {
 				shouldSend := sometimes.Quarter()
 				errMessage := getShouldExecuteError(t, previousTask)
