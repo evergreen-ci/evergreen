@@ -77,22 +77,26 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
   $scope.subscriptions = [];
   $scope.hide_add_subscription = true;
   $scope.triggers = [
-      // TODO uncomment as we implement these
-      // {
-      //    trigger: "failure",
-      //    resource_type: "BUILD",
-      //    label: "any task in this build fails",
-      // },
-      // {
-      //    trigger: "first-failure-by-variant",
-      //    resource_type: "BUILD",
-      //    label: "the first task in this build fails",
-      // },
-      // {
-      //    trigger: "regression",
-      //    resource_type: "BUILD",
-      //    label: "a previously passing task fails",
-      // },
+    {
+      trigger: "outcome",
+      resource_type: "BUILD",
+      label: "any build finishes",
+    },
+    {
+      trigger: "failure",
+      resource_type: "BUILD",
+      label: "this build fails"
+    },
+    {
+      trigger: "outcome",
+      resource_type: "TASK",
+      label: "each task in this build finishes",
+    },
+    {
+      trigger: "failure",
+      resource_type: "TASK",
+      label: "each task in this build fails",
+    },
   ];
 
   var dateSorter = function(a, b){ return (+a) - (+b) }
