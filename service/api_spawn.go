@@ -101,6 +101,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 				instanceId, evergreen.HostStatusSuccess, err)
 		}
 	} else {
+		// TODO: EVG-3408 delete this block
 		grip.Warning(errors.WithStack(alerts.RunHostProvisionFailTriggers(h)))
 		if err = h.SetDecommissioned(evergreen.User, ""); err != nil {
 			grip.Errorf("Error marking host %s for user %s as decommissioned: %+v",

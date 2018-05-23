@@ -251,6 +251,7 @@ func provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 			return nil
 		}
 
+		// TODO: EVG-3408 delete this block
 		grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
 			"operation": "running host provisioning alert trigger",
 			"runner":    RunnerName,

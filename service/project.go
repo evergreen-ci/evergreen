@@ -62,6 +62,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: EVG-3408 delete this block
 	// construct a json-marshaling friendly representation of our supported triggers
 	allTaskTriggers := []interface{}{}
 	for _, taskTrigger := range alerts.AvailableTaskFailTriggers {
