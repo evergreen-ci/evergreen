@@ -333,11 +333,10 @@ func getShouldExecuteError(t, previousTask *task.Task) message.Fields {
 			"variant": t.BuildVariant,
 			"project": t.Project,
 		},
+		"previous": nil,
 	}
 
-	if previousTask == nil {
-		m["previous"] = nil
-	} else {
+	if previousTask != nil {
 		m["previous"] = map[string]interface{}{
 			"id":          previousTask.Id,
 			"variant":     previousTask.BuildVariant,
