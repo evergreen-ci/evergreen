@@ -237,7 +237,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 		rootSenders = append(rootSenders, s)
 	}
 
-	// duration of time inbetween calls to queue.Status() within
+	// duration of time in between calls to queue.Status() within
 	// the amboy.Wait* function.
 	const queueWaitInterval = 10 * time.Millisecond
 
