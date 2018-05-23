@@ -471,9 +471,12 @@ mciModule.controller('PerfController', function PerfController(
 
         // This code loads change points for current task from the mdb cloud
         var changePointsQ = $q(function(resolve, reject) {
+          var db;
           stitch.StitchClientFactory.create('evergreen_perf_plugin-wwdoa')
           .then(function(client) {
-            var db = client.service('mongodb', 'mongodb-atlas').db('perf')
+            db = client.service('mongodb', 'mongodb-atlas').db('perf')
+            return client.login()
+          }).then(function() {
             return db
               .collection('change_points')
               .find({
