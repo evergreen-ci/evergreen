@@ -342,7 +342,7 @@ func (s *AgentSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err := s.a.runTask(ctx, s.tc)
+	err := s.a.runTask(ctx, cancel, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{

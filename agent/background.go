@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- string) {
+func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, tc *taskContext, heartbeat chan<- string) {
 	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
@@ -31,6 +31,9 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 		select {
 		case <-ticker.C:
 			failed, signalBeat = a.doHeartbeat(ctx, tc, failed)
+			if signalBeat == evergreen.TaskConflict {
+				cancel()
+			}
 			if signalBeat != "" {
 				heartbeat <- signalBeat
 				return
