@@ -237,7 +237,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 		rootSenders = append(rootSenders, s)
 	}
 
-	e.RegisterCloser("background-local-queue", func(ctx context.Context) error {
+	e.closers["background-local-queue"] = func(ctx context.Context) error {
 		if !amboy.WaitCtxInterval(ctx, e.localQueue, 10*time.Millisecond) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
@@ -248,8 +248,9 @@ func (e *envState) createQueues(ctx context.Context) error {
 		}
 		e.localQueue.Runner().Close()
 		return nil
-	})
-	e.RegisterCloser("notification-queue", func(ctx context.Context) error {
+	}
+
+	e.closers["notification-queue"] = func(ctx context.Context) error {
 		catcher := grip.NewBasicCatcher()
 		for _, s := range rootSenders {
 			catcher.Add(s.Close())
@@ -265,7 +266,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 		}
 		e.notificationsQueue.Runner().Close()
 		return catcher.Resolve()
-	})
+	}
 
 	for k := range e.senders {
 		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
