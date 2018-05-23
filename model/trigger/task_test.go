@@ -36,15 +36,16 @@ func (s *taskSuite) SetupTest() {
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	s.task = task.Task{
-		Id:           "test",
-		Version:      "test",
-		BuildId:      "test",
-		BuildVariant: "test",
-		DistroId:     "test",
-		Project:      "test",
-		DisplayName:  "Test",
-		StartTime:    startTime,
-		FinishTime:   startTime.Add(10 * time.Minute),
+		Id:                  "test",
+		Version:             "test",
+		BuildId:             "test",
+		BuildVariant:        "test",
+		DistroId:            "test",
+		Project:             "test",
+		DisplayName:         "Test",
+		StartTime:           startTime,
+		FinishTime:          startTime.Add(10 * time.Minute),
+		RevisionOrderNumber: 1,
 	}
 	s.NoError(s.task.Insert())
 
@@ -320,4 +321,105 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
 	s.NoError(err)
 	s.NotNil(gen)
+}
+
+func (s *taskSuite) TestRegression() {
+	s.data.Status = evergreen.TaskFailed
+	s.task.Status = evergreen.TaskFailed
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+
+	// brand new task fails should generate
+	gen, err := taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// next fail shouldn't generate
+	s.task.RevisionOrderNumber = 2
+	s.task.Id = "test2"
+	s.NoError(s.task.Insert())
+
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// successful task shouldn't generate
+	s.task.Id = "test3"
+	s.task.Version = "test3"
+	s.task.BuildId = "test3"
+	s.task.RevisionOrderNumber = 3
+	s.task.Status = evergreen.TaskSucceeded
+	s.data.Status = evergreen.TaskSucceeded
+	s.NoError(s.task.Insert())
+
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// formerly succeeding task should generate
+	s.task.Id = "test4"
+	s.task.Version = "test4"
+	s.task.BuildId = "test4"
+	s.task.RevisionOrderNumber = 4
+	s.task.Status = evergreen.TaskFailed
+	s.data.Status = evergreen.TaskFailed
+	s.NoError(s.task.Insert())
+
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// Don't renotify if it's recent
+	s.task.Id = "test5"
+	s.task.Version = "test5"
+	s.task.BuildId = "test5"
+	s.task.RevisionOrderNumber = 5
+	s.NoError(s.task.Insert())
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// already failing task should renotify if the task failed more than
+	// 2 days ago
+	oldTime := s.task.FinishTime
+	s.task.FinishTime = oldTime.Add(-3 * 24 * time.Hour)
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	s.task.Id = "test6"
+	s.task.Version = "test6"
+	s.task.BuildId = "test6"
+	s.task.RevisionOrderNumber = 6
+	s.NoError(s.task.Insert())
+
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+	s.task.FinishTime = oldTime
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+
+	// if regression was trigged after an older success, we should generate
+	s.task.Id = "test7"
+	s.task.Version = "test7"
+	s.task.BuildId = "test7"
+	s.task.RevisionOrderNumber = 7
+	s.task.Status = evergreen.TaskSucceeded
+	s.NoError(s.task.Insert())
+	s.task.Id = "test8"
+	s.task.Version = "test8"
+	s.task.BuildId = "test8"
+	s.task.RevisionOrderNumber = 8
+	s.task.Status = evergreen.TaskFailed
+	s.NoError(s.task.Insert())
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// suppose we reran task test4, it shouldn't generate because we already
+	// alerted on it
+	task4 := &task.Task{}
+	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{"_id": "test4"}), task4))
+	s.NotZero(*task4)
+	task4.Execution = 1
+	gen, err = taskFirstFailureInVersionWithName(s.data, task4)
+	s.NoError(err)
+	s.Nil(gen)
+
 }

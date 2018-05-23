@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
@@ -10,6 +11,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -22,6 +24,7 @@ func init() {
 		taskValidator(taskFirstFailureInBuild),
 		taskValidator(taskFirstFailureInVersion),
 		taskValidator(taskFirstFailureInVersionWithName),
+		taskValidator(taskRegression),
 	)
 	registry.AddPrefetch(event.ResourceTypeTask, taskFetch)
 }
@@ -114,6 +117,38 @@ func generatorFromTask(triggerName string, t *task.Task, status string) (*notifi
 	return makeCommonGenerator(triggerName, selectors, data)
 }
 
+func generatorFromTaskWithAlertRecord(triggerName string, t *task.Task, status, alertType string) (*notificationGenerator, error) {
+	gen, err := generatorFromTask(triggerName, t, status)
+	if err != nil {
+		return nil, err
+	}
+
+	rec := newAlertRecord(t, alertType)
+	grip.Error(message.WrapError(rec.Insert(), message.Fields{
+		"source":  "alert-record",
+		"type":    alertType,
+		"task_id": t.Id,
+	}))
+
+	return gen, nil
+}
+
+// newAlertRecord creates an instance of an alert record for the given alert type, populating it
+// with as much data from the triggerContext as possible
+func newAlertRecord(t *task.Task, alertType string) *alertrecord.AlertRecord {
+	return &alertrecord.AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                alertType,
+		ProjectId:           t.Project,
+		VersionId:           t.Version,
+		RevisionOrderNumber: t.RevisionOrderNumber,
+		TaskName:            t.DisplayName,
+		Variant:             t.BuildVariant,
+		TaskId:              t.Id,
+		HostId:              t.HostId,
+	}
+}
+
 func taskOutcome(e *event.TaskEventData, t *task.Task) (*notificationGenerator, error) {
 	const name = "outcome"
 
@@ -195,36 +230,122 @@ func taskFirstFailureInVersionWithName(e *event.TaskEventData, t *task.Task) (*n
 	return generatorFromTaskWithAlertRecord(name, t, e.Status, alertrecord.FirstTaskTypeFailureId)
 }
 
-func generatorFromTaskWithAlertRecord(triggerName string, t *task.Task, status, alertType string) (*notificationGenerator, error) {
-	gen, err := generatorFromTask(triggerName, t, status)
-	if err != nil {
-		return nil, err
+func taskRegression(e *event.TaskEventData, t *task.Task) (*notificationGenerator, error) {
+	const name = "regression"
+
+	if e.Status != evergreen.TaskFailed {
+		return nil, nil
 	}
 
-	rec := newAlertRecord(t, alertType)
-	grip.Error(message.WrapError(rec.Insert(), message.Fields{
-		"source":  "alert-record",
-		"type":    alertType,
-		"task_id": t.Id,
-	}))
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.RevisionOrderNumber,
+		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project))
+	if err != nil {
+		return nil, errors.Wrap(err, "error fetching previous task")
 
-	return gen, nil
+	}
+	if previousTask != nil {
+		q := alertrecord.ByLastFailureTransition(t.DisplayName, t.BuildVariant, t.Project)
+		lastAlerted, err := alertrecord.FindOne(q)
+		if err != nil {
+			errMessage := getShouldExecuteError(t, previousTask)
+			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
+			errMessage["error"] = err.Error()
+			grip.Error(errMessage)
+			return nil, errors.Wrap(err, "failed to process regression trigger")
+		}
+
+		if previousTask.Status == evergreen.TaskSucceeded {
+			// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
+			// a sent alert for a transition after the same previously passing task.
+			if lastAlerted != nil && (lastAlerted.RevisionOrderNumber >= previousTask.RevisionOrderNumber) {
+				return nil, nil
+			}
+
+		} else if previousTask.Status == evergreen.TaskFailed {
+			if lastAlerted == nil {
+				errMessage := getShouldExecuteError(t, previousTask)
+				errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
+				if err != nil {
+					errMessage["error"] = err.Error()
+				}
+				errMessage["lastAlert"] = lastAlerted
+				errMessage["outcome"] = "not sending alert"
+				grip.Error(errMessage)
+				return nil, errors.Wrap(err, "failed to process regression trigger")
+			}
+
+			// TODO: how is this even possible?
+			if lastAlerted.TaskId == "" {
+				shouldSend := sometimes.Quarter()
+				errMessage := getShouldExecuteError(t, previousTask)
+				errMessage[message.FieldsMsgName] = "empty last alert task_id"
+				errMessage["lastAlert"] = lastAlerted
+				if shouldSend {
+					errMessage["outcome"] = "sending alert (25%)"
+				} else {
+					errMessage["outcome"] = "not sending alert (75%)"
+				}
+				grip.Warning(errMessage)
+				if !shouldSend {
+					return nil, nil
+				}
+
+			} else if old, err := taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId); !old {
+				return nil, errors.Wrap(err, "failed to process regression trigger")
+			}
+		}
+	}
+
+	gen, err := generatorFromTask(name, t, e.Status)
+	if err != nil {
+		return gen, err
+	}
+
+	rec := newAlertRecord(t, alertrecord.TaskFailTransitionId)
+	rec.RevisionOrderNumber = -1
+	if previousTask != nil {
+		rec.RevisionOrderNumber = previousTask.RevisionOrderNumber
+	}
+
+	return gen, errors.Wrap(rec.Insert(), "failed to process regression trigger")
 }
 
-// newAlertRecord creates an instance of an alert record for the given alert type, populating it
-// with as much data from the triggerContext as possible
-func newAlertRecord(t *task.Task, alertType string) *alertrecord.AlertRecord {
-	record := &alertrecord.AlertRecord{
-		Id:   bson.NewObjectId(),
-		Type: alertType,
+func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
+	t, err := task.FindOne(task.ById(taskID))
+	if err != nil {
+		return false, err
 	}
-	record.ProjectId = t.Project
-	record.VersionId = t.Version
-	record.RevisionOrderNumber = t.RevisionOrderNumber
-	record.TaskName = t.DisplayName
-	record.Variant = t.BuildVariant
-	record.TaskId = t.Id
-	record.HostId = t.HostId
+	if t == nil {
+		return false, errors.Errorf("task %s not found", taskID)
+	}
 
-	return record
+	return time.Since(t.FinishTime) >= 48*time.Hour, nil
+}
+
+func getShouldExecuteError(t, previousTask *task.Task) message.Fields {
+	m := message.Fields{
+		"source":  "notifications",
+		"alert":   "transition to failure",
+		"outcome": "no alert",
+		"task_id": t.Id,
+		"query": map[string]string{
+			"display": t.DisplayName,
+			"variant": t.BuildVariant,
+			"project": t.Project,
+		},
+	}
+
+	if previousTask == nil {
+		m["previous"] = nil
+	} else {
+		m["previous"] = map[string]interface{}{
+			"id":          previousTask.Id,
+			"variant":     previousTask.BuildVariant,
+			"project":     previousTask.Project,
+			"finish_time": previousTask.FinishTime,
+			"status":      previousTask.Status,
+		}
+	}
+
+	return m
 }
