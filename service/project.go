@@ -384,6 +384,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				Type: "project",
 				Data: projectRef.Identifier,
 			},
+			{
+				Type: "requester",
+				Data: evergreen.RepotrackerVersionRequester,
+			},
 		}
 		subscription.OwnerType = event.OwnerTypeProject
 		subscription.Owner = projectRef.Identifier
