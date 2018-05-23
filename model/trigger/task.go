@@ -114,7 +114,7 @@ func generatorFromTask(triggerName string, t *task.Task, status string) (*notifi
 func taskOutcome(e *event.TaskEventData, t *task.Task) (*notificationGenerator, error) {
 	const name = "outcome"
 
-	if e.Status != evergreen.PatchSucceeded && e.Status != evergreen.PatchFailed {
+	if e.Status != evergreen.TaskSucceeded && e.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
 
@@ -183,7 +183,7 @@ func taskFirstFailureWithName(e *event.TaskEventData, t *task.Task) (*notificati
 	}
 	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInTaskType(t.Version, t.DisplayName))
 	if err != nil {
-		return false, nil
+		return nil, errors.Wrap(err, fmt.Sprintf("failed to fetch alertrecord (%s)", name))
 	}
 	if rec != nil {
 		return nil, nil
@@ -193,7 +193,7 @@ func taskFirstFailureWithName(e *event.TaskEventData, t *task.Task) (*notificati
 }
 
 func generatorFromTaskWithAlertRecord(triggerName string, t *task.Task, status, alertType string) (*notificationGenerator, error) {
-	gen, err := generatorFromTask(name, t, e.Status)
+	gen, err := generatorFromTask(triggerName, t, status)
 	if err != nil {
 		return nil, err
 	}
