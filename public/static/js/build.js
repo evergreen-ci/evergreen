@@ -80,7 +80,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     {
       trigger: "outcome",
       resource_type: "BUILD",
-      label: "any build finishes",
+      label: "this build finishes",
     },
     {
       trigger: "failure",
@@ -105,7 +105,12 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     promise = addSubscriber($mdDialog, $scope.triggers);
 
     $mdDialog.show(promise).then(function(data){
-      addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
+      if (data.resource_type === "BUILD") {
+        addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
+
+      }else {
+        addInSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
+      }
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();
     });
