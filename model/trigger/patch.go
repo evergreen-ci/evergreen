@@ -35,7 +35,7 @@ func patchFetch(e *event.EventLogEntry) (interface{}, error) {
 	return p, nil
 }
 
-func patchValidator(t func(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error)) trigger {
+func patchValidator(t func(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error)) trigger {
 	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
 		p, ok := object.(*patch.Patch)
 		if !ok {
@@ -45,7 +45,12 @@ func patchValidator(t func(e *event.EventLogEntry, p *patch.Patch) (*notificatio
 			return nil, errors.New("expected a patch, received nil data")
 		}
 
-		return t(e, p)
+		data, ok := e.Data.(*event.PatchEventData)
+		if !ok {
+			return nil, errors.New("expected patch event data")
+		}
+
+		return t(data, p)
 	}
 }
 
@@ -67,14 +72,10 @@ func patchSelectors(p *patch.Patch) []event.Selector {
 			Type: "owner",
 			Data: p.Author,
 		},
-		{
-			Type: "status",
-			Data: p.Status,
-		},
 	}
 }
 
-func generatorFromPatch(triggerName string, p *patch.Patch) (*notificationGenerator, error) {
+func generatorFromPatch(triggerName string, p *patch.Patch, status string) (*notificationGenerator, error) {
 	ui := evergreen.UIConfig{}
 	if err := ui.Get(); err != nil {
 		return nil, errors.Wrap(err, "Failed to fetch ui config")
@@ -88,60 +89,60 @@ func generatorFromPatch(triggerName string, p *patch.Patch) (*notificationGenera
 	selectors := patchSelectors(p)
 
 	data := commonTemplateData{
-		ID:                p.Id.Hex(),
-		Object:            "patch",
-		Project:           p.Project,
-		URL:               fmt.Sprintf("%s/version/%s", ui.Url, p.Version),
-		PastTenseStatus:   p.Status,
-		apiModel:          &api,
-		githubState:       message.GithubStateFailure,
-		githubDescription: fmt.Sprintf("patch finished in %s", p.FinishTime.Sub(p.StartTime).String()),
+		ID:              p.Id.Hex(),
+		Object:          "patch",
+		Project:         p.Project,
+		URL:             fmt.Sprintf("%s/version/%s", ui.Url, p.Version),
+		PastTenseStatus: status,
+		apiModel:        &api,
 	}
-	if p.Status == evergreen.PatchSucceeded {
-		data.githubState = message.GithubStateSuccess
+	if status == p.Status {
+		data.githubState = message.GithubStateFailure
+		data.githubDescription = fmt.Sprintf("patch finished in %s", p.FinishTime.Sub(p.StartTime).String())
+
+		if p.Status == evergreen.PatchSucceeded {
+			data.githubState = message.GithubStateSuccess
+		}
 	}
 
 	return makeCommonGenerator(triggerName, selectors, data)
 }
 
-func patchOutcome(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+func patchOutcome(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "outcome"
 
-	if p.Status != evergreen.PatchSucceeded && p.Status != evergreen.PatchFailed {
+	if e.Status != evergreen.PatchSucceeded && e.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
 
-	gen, err := generatorFromPatch(name, p)
-	return gen, err
+	return generatorFromPatch(name, p, e.Status)
 }
 
-func patchFailure(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+func patchFailure(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "failure"
 
-	if p.Status != evergreen.PatchFailed {
+	if e.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
 
-	gen, err := generatorFromPatch(name, p)
-	return gen, err
+	return generatorFromPatch(name, p, e.Status)
 }
 
-func patchSuccess(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+func patchSuccess(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "success"
 
-	if p.Status != evergreen.PatchSucceeded {
+	if e.Status != evergreen.PatchSucceeded {
 		return nil, nil
 	}
 
-	gen, err := generatorFromPatch(name, p)
-	return gen, err
+	return generatorFromPatch(name, p, e.Status)
 }
 
 // patchCreated and patchStarted are for Github Status API use only
-func patchCreated(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+func patchCreated(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "created"
 
-	if p.Status != evergreen.PatchCreated {
+	if e.Status != evergreen.PatchCreated {
 		return nil, nil
 	}
 
@@ -160,18 +161,14 @@ func patchCreated(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 			Description: "preparing to run tasks",
 		},
 	}
-	gen.selectors = append(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: name,
-	})
 
 	return gen, nil
 }
 
-func patchStarted(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+func patchStarted(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "started"
 
-	if p.Status != evergreen.PatchStarted {
+	if e.Status != evergreen.PatchStarted {
 		return nil, nil
 	}
 
@@ -190,10 +187,6 @@ func patchStarted(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerato
 			Description: "tasks are running",
 		},
 	}
-	gen.selectors = append(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: name,
-	})
 
 	return gen, nil
 }

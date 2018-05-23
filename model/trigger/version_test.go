@@ -19,6 +19,7 @@ func TestVersionTriggers(t *testing.T) {
 
 type VersionSuite struct {
 	event   event.EventLogEntry
+	data    *event.VersionEventData
 	version version.Version
 	subs    []event.Subscription
 
@@ -43,9 +44,11 @@ func (s *VersionSuite) SetupTest() {
 	}
 	s.NoError(s.version.Insert())
 
+	s.data = &event.VersionEventData{}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeVersion,
 		ResourceId:   versionID,
+		Data:         s.data,
 	}
 
 	s.subs = []event.Subscription{
@@ -124,6 +127,7 @@ func (s *VersionSuite) TestAllTriggers() {
 	s.Len(n, 0)
 
 	s.version.Status = evergreen.VersionSucceeded
+	s.data.Status = evergreen.VersionSucceeded
 	s.NoError(db.Update(version.Collection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(&s.event)
@@ -131,25 +135,34 @@ func (s *VersionSuite) TestAllTriggers() {
 	s.Len(n, 2)
 
 	s.version.Status = evergreen.VersionFailed
+	s.data.Status = evergreen.VersionFailed
 	s.NoError(db.Update(version.Collection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.Len(n, 2)
+
+	s.version.Status = evergreen.VersionFailed
+	s.data.Status = evergreen.VersionCreated
+	s.NoError(db.Update(version.Collection, bson.M{"_id": s.version.Id}, &s.version))
+
+	n, err = NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 0)
 }
 
 func (s *VersionSuite) TestVersionSuccess() {
-	gen, err := versionSuccess(&s.event, &s.version)
+	gen, err := versionSuccess(s.data, &s.version)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.version.Status = evergreen.VersionFailed
-	gen, err = versionSuccess(&s.event, &s.version)
+	s.data.Status = evergreen.VersionFailed
+	gen, err = versionSuccess(s.data, &s.version)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.version.Status = evergreen.VersionSucceeded
-	gen, err = versionSuccess(&s.event, &s.version)
+	s.data.Status = evergreen.VersionSucceeded
+	gen, err = versionSuccess(s.data, &s.version)
 	s.NoError(err)
 	s.NotNil(gen)
 	s.False(gen.isEmpty())
@@ -161,13 +174,13 @@ func (s *VersionSuite) TestVersionSuccess() {
 }
 
 func (s *VersionSuite) TestVersionFailure() {
-	s.version.Status = evergreen.VersionSucceeded
-	gen, err := versionFailure(&s.event, &s.version)
+	s.data.Status = evergreen.VersionSucceeded
+	gen, err := versionFailure(s.data, &s.version)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.version.Status = evergreen.VersionFailed
-	gen, err = versionFailure(&s.event, &s.version)
+	s.data.Status = evergreen.VersionFailed
+	gen, err = versionFailure(s.data, &s.version)
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
@@ -179,19 +192,19 @@ func (s *VersionSuite) TestVersionFailure() {
 }
 
 func (s *VersionSuite) TestVersionOutcome() {
-	s.version.Status = evergreen.VersionCreated
-	gen, err := versionOutcome(&s.event, &s.version)
+	s.data.Status = evergreen.VersionCreated
+	gen, err := versionOutcome(s.data, &s.version)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.version.Status = evergreen.VersionSucceeded
-	gen, err = versionOutcome(&s.event, &s.version)
+	s.data.Status = evergreen.VersionSucceeded
+	gen, err = versionOutcome(s.data, &s.version)
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
 
-	s.version.Status = evergreen.VersionFailed
-	gen, err = versionOutcome(&s.event, &s.version)
+	s.data.Status = evergreen.VersionFailed
+	gen, err = versionOutcome(s.data, &s.version)
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
