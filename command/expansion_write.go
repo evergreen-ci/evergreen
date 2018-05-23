@@ -12,7 +12,8 @@ import (
 )
 
 type expansionsWriter struct {
-	File string `mapstructure:"file" plugin:"expand"`
+	File     string `mapstructure:"file" plugin:"expand"`
+	Redacted bool   `mapstructure:"redacted"`
 
 	base
 }
@@ -32,7 +33,15 @@ func (c *expansionsWriter) ParseParams(params map[string]interface{}) error {
 func (c *expansionsWriter) Execute(ctx context.Context,
 	_ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
-	out, err := yaml.Marshal(conf.Expansions)
+	expansions := map[string]string{}
+	for k, v := range conf.Expansions.Map() {
+		_, ok := conf.Redacted[k]
+		if ok && !c.Redacted {
+			continue
+		}
+		expansions[k] = v
+	}
+	out, err := yaml.Marshal(expansions)
 	if err != nil {
 		return errors.Wrap(err, "error marshaling expansions")
 	}

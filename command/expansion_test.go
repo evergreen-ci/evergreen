@@ -81,8 +81,12 @@ func TestExpansionWriter(t *testing.T) {
 	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: "id", Secret: "secret"})
 	tc := &model.TaskConfig{
 		Expansions: &util.Expansions{
-			"foo": "bar",
-			"baz": "qux",
+			"foo":      "bar",
+			"baz":      "qux",
+			"password": "hunter2",
+		},
+		Redacted: map[string]bool{
+			"password": true,
 		},
 	}
 	f, err := ioutil.TempFile("", "TestExpansionWriter")
@@ -95,4 +99,11 @@ func TestExpansionWriter(t *testing.T) {
 	out, err := ioutil.ReadFile(f.Name())
 	assert.NoError(err)
 	assert.Equal("baz: qux\nfoo: bar\n", string(out))
+
+	writer = &expansionsWriter{File: f.Name(), Redacted: true}
+	err = writer.Execute(ctx, comm, logger, tc)
+	assert.NoError(err)
+	out, err = ioutil.ReadFile(f.Name())
+	assert.NoError(err)
+	assert.Equal("baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
 }

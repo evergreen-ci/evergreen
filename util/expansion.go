@@ -106,3 +106,7 @@ func (self *Expansions) ExpandString(toExpand string) (string, error) {
 
 	return expanded, nil
 }
+
+func (self *Expansions) Map() map[string]string {
+	return *self
+}
