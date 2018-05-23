@@ -85,7 +85,6 @@ func (a *Agent) loop(ctx context.Context) error {
 	// can log its clean up.
 	var (
 		lgrCtx        context.Context
-		tskCtx        context.Context
 		cancel        context.CancelFunc
 		jitteredSleep time.Duration
 
@@ -93,8 +92,6 @@ func (a *Agent) loop(ctx context.Context) error {
 		tc   *taskContext
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
-	defer cancel()
-	tskCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
 	timer := time.NewTimer(0)
@@ -133,7 +130,9 @@ LOOP:
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
-				if err := a.runTask(tskCtx, tc); err != nil {
+				tskCtx, tskCancel := context.WithCancel(ctx)
+				defer tskCancel()
+				if err := a.runTask(tskCtx, tskCancel, tc); err != nil {
 					return errors.WithStack(err)
 				}
 				needPostGroup = true
@@ -200,10 +199,9 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
+func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *taskContext) (err error) {
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "running task") }()
 
-	ctx, cancel := context.WithCancel(ctx)
 	grip.Info(message.Fields{
 		"message":     "running task",
 		"task_id":     tc.task.ID,
@@ -232,12 +230,11 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
 	tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(ctx, tc, heartbeat)
+	go a.startHeartbeat(ctx, cancel, tc, heartbeat)
 
-	var innerCtx context.Context
-	innerCtx, cancel = context.WithCancel(ctx)
+	innerCtx, innerCancel := context.WithCancel(ctx)
 
-	go a.startIdleTimeoutWatch(ctx, tc, cancel)
+	go a.startIdleTimeoutWatch(ctx, tc, innerCancel)
 
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
@@ -269,7 +266,7 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
 	}
 
-	if tc.hadTimedOut() {
+	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
 	}

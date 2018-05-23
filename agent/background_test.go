@@ -62,7 +62,7 @@ func (s *BackgroundSuite) TestStartHeartbeat() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 	heartbeat := make(chan string)
-	go s.a.startHeartbeat(ctx, s.tc, heartbeat)
+	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	s.Equal(evergreen.TaskFailed, <-heartbeat)
 }
 
@@ -72,7 +72,7 @@ func (s *BackgroundSuite) TestTaskAbort() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	heartbeat := make(chan string)
-	go s.a.startHeartbeat(ctx, s.tc, heartbeat)
+	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	beat := <-heartbeat
 	s.Equal(evergreen.TaskFailed, beat)
 }
@@ -83,7 +83,7 @@ func (s *BackgroundSuite) TestMaxHeartbeats() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	heartbeat := make(chan string)
-	go s.a.startHeartbeat(ctx, s.tc, heartbeat)
+	go s.a.startHeartbeat(ctx, cancel, s.tc, heartbeat)
 	beat := <-heartbeat
 	s.Equal(evergreen.TaskFailed, beat)
 }
