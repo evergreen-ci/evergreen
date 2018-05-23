@@ -85,9 +85,7 @@ func (a *Agent) loop(ctx context.Context) error {
 	// can log its clean up.
 	var (
 		lgrCtx        context.Context
-		tskCtx        context.Context
 		cancel        context.CancelFunc
-		tskCancel     context.CancelFunc
 		jitteredSleep time.Duration
 
 		exit bool
@@ -95,8 +93,6 @@ func (a *Agent) loop(ctx context.Context) error {
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
-	tskCtx, tskCancel = context.WithCancel(ctx)
-	defer tskCancel()
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -134,6 +130,8 @@ LOOP:
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
+				tskCtx, tskCancel := context.WithCancel(ctx)
+				defer tskCancel()
 				if err := a.runTask(tskCtx, tskCancel, tc); err != nil {
 					return errors.WithStack(err)
 				}
