@@ -23,7 +23,6 @@ const (
 	selectorObject    = "object"
 	selectorProject   = "project"
 	selectorOwner     = "owner"
-	selectorStatus    = "status"
 	selectorRequester = "requester"
 	selectorStatus    = "status"
 	selectorInVersion = "in-version"

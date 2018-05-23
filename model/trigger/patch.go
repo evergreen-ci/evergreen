@@ -145,7 +145,7 @@ func patchSuccess(e *event.PatchEventData, p *patch.Patch) (*notificationGenerat
 	return generatorFromPatch(name, p, e.Status)
 }
 
-func patchStarted(e *event.EventLogEntry, p *patch.Patch) (*notificationGenerator, error) {
+func patchStarted(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error) {
 	const name = "started"
 
 	if e.Status != evergreen.PatchStarted {
