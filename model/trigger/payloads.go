@@ -25,6 +25,7 @@ const (
 	selectorOwner     = "owner"
 	selectorStatus    = "status"
 	selectorRequester = "requester"
+	selectorStatus    = "status"
 	selectorInVersion = "in-version"
 )
 
@@ -220,6 +221,9 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 	gen.selectors = append(gen.selectors, event.Selector{
 		Type: "trigger",
 		Data: triggerName,
+	}, event.Selector{
+		Type: selectorStatus,
+		Data: data.PastTenseStatus,
 	})
 
 	data.Headers = makeHeaders(selectors)
