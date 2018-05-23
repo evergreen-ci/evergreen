@@ -31,6 +31,7 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 `
 const (
 	jiraFailingTasksField     = "customfield_12950"
+	jiraFailingTestsField     = "customfield_15756"
 	jiraFailingVariantField   = "customfield_14277"
 	jiraEvergreenProjectField = "customfield_14278"
 	jiraFailingRevisionField  = "customfield_14851"
@@ -86,7 +87,12 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	request["description"], err = getDescription(ctx, jd.uiRoot)
 
 	if isXgenProjBF(jd.handler.JiraHost(), jd.project) {
+		failedTests := []string{}
+		for _, t := range ctx.FailedTests {
+			failedTests = append(failedTests, t.TestFile)
+		}
 		request[jiraFailingTasksField] = []string{ctx.Task.DisplayName}
+		request[jiraFailingTestsField] = failedTests
 		request[jiraFailingVariantField] = []string{ctx.Task.BuildVariant}
 		request[jiraEvergreenProjectField] = []string{ctx.ProjectRef.Identifier}
 		request[jiraFailingRevisionField] = []string{ctx.Task.Revision}
