@@ -32,6 +32,7 @@ const (
 
 // implements Data
 type TaskEventData struct {
+	Execution int    `bson:"execution" json:"execution"`
 	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
 	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    string `bson:"s,omitempty" json:"status,omitempty"`
@@ -41,7 +42,7 @@ type TaskEventData struct {
 	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
-func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
+func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	event := EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   taskId,
@@ -56,9 +57,9 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	}
 }
 
-func LogManyTaskEvents(taskIds []string, eventType string, eventData TaskEventData) {
+func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventData) {
 	if len(taskIds) == 0 {
-		grip.Error("LogManyTaskEvents called with empty taskIds")
+		grip.Error("logManyTaskEvents called with empty taskIds")
 		return
 	}
 	events := []EventLogEntry{}
@@ -79,58 +80,58 @@ func LogManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 	}
 }
 
-func LogJiraIssueCreated(taskId, jiraIssue string) {
-	LogTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{JiraIssue: jiraIssue})
+func LogJiraIssueCreated(taskId string, execution int, jiraIssue string) {
+	logTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{Execution: execution, JiraIssue: jiraIssue})
 }
 
-func LogTaskPriority(taskId, user string, priority int64) {
-	LogTaskEvent(taskId, TaskPriorityChanged, TaskEventData{UserId: user, Priority: priority})
+func LogTaskPriority(taskId string, execution int, user string, priority int64) {
+	logTaskEvent(taskId, TaskPriorityChanged, TaskEventData{Execution: execution, UserId: user, Priority: priority})
 }
 
-func LogTaskCreated(taskId string) {
-	LogTaskEvent(taskId, TaskCreated, TaskEventData{})
+func LogTaskCreated(taskId string, execution int) {
+	logTaskEvent(taskId, TaskCreated, TaskEventData{Execution: execution})
 }
 
-func LogTaskDispatched(taskId, hostId string) {
-	LogTaskEvent(taskId, TaskDispatched, TaskEventData{HostId: hostId})
+func LogTaskDispatched(taskId string, execution int, hostId string) {
+	logTaskEvent(taskId, TaskDispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-func LogTaskUndispatched(taskId, hostId string) {
-	LogTaskEvent(taskId, TaskUndispatched, TaskEventData{HostId: hostId})
+func LogTaskUndispatched(taskId string, execution int, hostId string) {
+	logTaskEvent(taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-func LogTaskStarted(taskId string) {
-	LogTaskEvent(taskId, TaskStarted, TaskEventData{})
+func LogTaskStarted(taskId string, execution int) {
+	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution})
 }
 
-func LogTaskFinished(taskId string, hostId, status string) {
-	LogTaskEvent(taskId, TaskFinished, TaskEventData{Status: status})
-	LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskStatus: status, TaskId: taskId})
+func LogTaskFinished(taskId string, execution int, hostId, status string) {
+	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
+	LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
 }
 
-func LogTaskRestarted(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskRestarted, TaskEventData{UserId: userId})
+func LogTaskRestarted(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
-func LogTaskActivated(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskActivated, TaskEventData{UserId: userId})
+func LogTaskActivated(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
-func LogTaskDeactivated(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskDeactivated, TaskEventData{UserId: userId})
+func LogTaskDeactivated(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
-func LogTaskAbortRequest(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskAbortRequest,
-		TaskEventData{UserId: userId})
+func LogTaskAbortRequest(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskAbortRequest,
+		TaskEventData{Execution: execution, UserId: userId})
 }
 
 func LogManyTaskAbortRequests(taskIds []string, userId string) {
-	LogManyTaskEvents(taskIds, TaskAbortRequest,
+	logManyTaskEvents(taskIds, TaskAbortRequest,
 		TaskEventData{UserId: userId})
 }
 
-func LogTaskScheduled(taskId string, scheduledTime time.Time) {
-	LogTaskEvent(taskId, TaskScheduled,
-		TaskEventData{Timestamp: scheduledTime})
+func LogTaskScheduled(taskId string, execution int, scheduledTime time.Time) {
+	logTaskEvent(taskId, TaskScheduled,
+		TaskEventData{Execution: execution, Timestamp: scheduledTime})
 }

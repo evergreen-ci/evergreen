@@ -109,7 +109,7 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 		return errors.Wrap(err, "error creating JIRA ticket")
 	}
 
-	event.LogJiraIssueCreated(ctx.Task.Id, result.Key)
+	event.LogJiraIssueCreated(ctx.Task.Id, ctx.Task.Execution, result.Key)
 
 	grip.Info(message.Fields{
 		"message": "creating jira ticket for failure",
