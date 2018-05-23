@@ -43,7 +43,7 @@ type Connector interface {
 
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
-	FindOldTasksByID(string) ([]task.Task, error)
+	FindOldTasksByIDWithDisplayTasks(string) ([]task.Task, error)
 	FindTasksByIds([]string) ([]task.Task, error)
 	SetTaskPriority(*task.Task, string, int64) error
 	SetTaskActivated(string, string, bool) error
@@ -121,6 +121,9 @@ type Connector interface {
 	// Interested time range is given as a start time and duration.
 	FindCostByDistroId(string, time.Time, time.Duration) (*task.DistroCost, error)
 
+	// ClearTaskQueue deletes all tasks from the task queue for a distro
+	ClearTaskQueue(string) error
+
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*version.Version, error)
 
@@ -134,7 +137,7 @@ type Connector interface {
 	FindPatchById(string) (*patch.Patch, error)
 
 	// AbortVersion aborts all tasks of a version given its ID.
-	AbortVersion(string) error
+	AbortVersion(string, string) error
 
 	// AbortPatch aborts the patch corresponding to the input patch ID and deletes if not finalized.
 	AbortPatch(string, string) error

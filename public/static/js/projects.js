@@ -39,31 +39,31 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           label: "any build fails",
       },
       // TODO uncomment as we implement these
-      //{
+      // {
       //    trigger: "failure",
       //    resource_type: "TASK",
       //    label: "any task fails",
-      //},
-      //{
+      // },
+      // {
       //    trigger: "first-failure-by-variant",
       //    resource_type: "TASK",
       //    label: "the first task failure occurs",
-      //},
-      //{
+      // },
+      // {
       //    trigger: "first-failure-by-variant",
       //    resource_type: "BUILD",
       //    label: "the first failure within each variant occurs",
-      //},
-      //{
+      // },
+      // {
       //    trigger: "first-failure-by-name",
       //    resource_type: "TASK",
       //    label: "the first failure for each task name occurs",
-      //},
-      //{
+      // },
+      // {
       //    trigger: "regression",
       //    resource_type: "TASK",
       //    label: "a previously passing task fails",
-      //},
+      // },
   ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed

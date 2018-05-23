@@ -7,6 +7,7 @@
   window.plugins = null
   window.jiraHost= {{.JiraHost}}
 </script>
+<script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "build.js"}}?hash={{ BuildRevision }}"></script>
 {{if .User }}
 <script type="text/javascript" src="{{Static "js" "build_admin.js"}}?hash={{ BuildRevision }}"></script>
@@ -77,6 +78,7 @@ Evergreen - Build {{Trunc .Build.Build.Revision 10}} on {{.Build.Build.DisplayNa
                 <li><a tabindex="-1" href="#" ng-click="openAdminModal('abort')">Abort Build</a></li>
                 <li><a tabindex="-1" href="#" ng-click="openAdminModal('priority')">Set Priority</a></li>
                 <li><a tabindex="-1" href="#" ng-click="openAdminModal('restart')">Restart Build</a></li>
+                <!-- <li><a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a></li> -->
               </ul>
             </div>
             <admin-modal>

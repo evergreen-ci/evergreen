@@ -1,4 +1,4 @@
-mciModule.controller('VersionController', function($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService) {
+mciModule.controller('VersionController', function($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService, $mdDialog, mciSubscriptionsService, $mdToast) {
   var nsPerMs = 1000000
   $scope.canEdit = $window.canEdit
   $scope.jiraHost = $window.jiraHost;
@@ -7,6 +7,35 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   $scope.tab = 0
   $scope.version = {};
   $scope.taskStatuses = {};
+  $scope.subscriptions = [];
+  $scope.triggers = [
+      // TODO uncomment as we implement these
+      // {
+      //    trigger: "failure",
+      //    resource_type: "TASK",
+      //    label: "any task in this version fails",
+      // },
+      // {
+      //    trigger: "first-failure-by-variant",
+      //    resource_type: "TASK",
+      //    label: "the first task failure occurs",
+      // },
+      // {
+      //    trigger: "first-failure-by-variant",
+      //    resource_type: "BUILD",
+      //    label: "the first failure within each variant occurs",
+      // },
+      // {
+      //    trigger: "first-failure-by-name",
+      //    resource_type: "TASK",
+      //    label: "the first failure for each task name occurs",
+      // },
+      // {
+      //    trigger: "regression",
+      //    resource_type: "TASK",
+      //    label: "a previously passing task fails",
+      // },
+  ];
   hash = $location.hash();
   path = $location.path();
   $scope.collapsed = localStorage.getItem("collapsed") == "true";
@@ -37,6 +66,29 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       $location.hash('' + $scope.tab);
       $scope.$apply();
     }, 0)
+  }
+
+  $scope.addSubscription = function() {
+    promise = addSubscriber($mdDialog, $scope.triggers);
+
+    $mdDialog.show(promise).then(function(data){
+      addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
+      $scope.subscriptions.push(data);
+      $scope.saveSubscriptions();
+    });
+  };
+
+  $scope.saveSubscriptions = function() {
+    var success = function() {
+      $mdToast.show({
+        templateUrl: "/static/partials/subscription_confirmation_toast.html",
+        position: "bottom right"
+      });
+    };
+    var failure = function(resp) {
+      notifier.pushNotification('Error saving subscriptions: ' + resp.data.error, 'notifyHeader');
+    };
+    mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
   }
 
   $rootScope.$on("version_updated", function(e, newVersion){

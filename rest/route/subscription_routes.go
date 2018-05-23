@@ -69,6 +69,10 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 			}
 		}
 
+		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner == "" {
+			dbSubscription.Owner = u.Username() // default the current user
+		}
+
 		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner != u.Username() {
 			return &rest.APIError{
 				StatusCode: http.StatusUnauthorized,

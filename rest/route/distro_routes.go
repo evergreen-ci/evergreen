@@ -55,3 +55,7 @@ func (dgh *distroGetHandler) Execute(ctx context.Context, sc data.Connector) (Re
 		Result: models,
 	}, nil
 }
+
+type clearTaskQueueHandler struct {
+	distro string
+}

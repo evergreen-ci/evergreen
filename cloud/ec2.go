@@ -682,7 +682,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 				"distro":        h.Distro.Id,
 			}))
 		}
-		if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+		if resp == nil || len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
 			grip.Error(message.Fields{
 				"message":       "error finding instance",
 				"host":          h.Id,

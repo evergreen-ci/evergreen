@@ -46,7 +46,7 @@ function editSubscriber($mdDialog, triggers, subscription) {
 function subscriberPromise($mdDialog, verb, triggers, subscription) {
     return $mdDialog.confirm({
         title:"test",
-        templateUrl: "static/partials/subscription_modal.html",
+        templateUrl: "/static/partials/subscription_modal.html",
         controllerAs: "c",
         controller: subCtrl,
         bindToController: true,
@@ -178,3 +178,21 @@ function lookupTrigger(triggers, trigger, resource_type) {
 
     return null;
 }
+
+function addSelectorsAndOwnerType(subscription, type, id) {
+  if (!subscription) {
+    return;
+  }
+  if (!subscription.selectors) {
+    subscription.selectors = [];
+  }
+  subscription.selectors.push({
+    type: "object",
+    data: type
+  });
+  subscription.selectors.push({
+    type: "id",
+    data: id
+  });
+  subscription.owner_type = "person";
+};

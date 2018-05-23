@@ -24,6 +24,7 @@ const (
 	selectorProject   = "project"
 	selectorOwner     = "owner"
 	selectorStatus    = "status"
+	selectorRequester = "requester"
 	selectorInVersion = "in-version"
 )
 

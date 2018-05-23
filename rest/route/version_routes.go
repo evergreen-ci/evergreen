@@ -186,7 +186,11 @@ func (h *versionAbortHandler) ParseAndValidate(ctx context.Context, r *http.Requ
 
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.AbortVersion(h.versionId)
+	var userId string
+	if u := GetUser(ctx); u != nil {
+		userId = u.Id
+	}
+	err := sc.AbortVersion(h.versionId, userId)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error in aborting version:")
