@@ -64,6 +64,10 @@ func versionSelectors(v *version.Version) []event.Selector {
 			Type: selectorObject,
 			Data: "version",
 		},
+		{
+			Type: selectorRequester,
+			Data: v.Requester,
+		},
 	}
 }
 

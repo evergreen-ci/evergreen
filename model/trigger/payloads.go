@@ -19,10 +19,11 @@ import (
 const (
 	evergreenHeaderPrefix = "X-Evergreen-"
 
-	selectorID      = "id"
-	selectorObject  = "object"
-	selectorProject = "project"
-	selectorStatus  = "status"
+	selectorID        = "id"
+	selectorObject    = "object"
+	selectorProject   = "project"
+	selectorRequester = "requester"
+	selectorStatus    = "status"
 )
 
 type commonTemplateData struct {
