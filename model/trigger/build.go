@@ -74,6 +74,10 @@ func buildSelectors(b *build.Build) []event.Selector {
 			Type: selectorRequester,
 			Data: b.Requester,
 		},
+		{
+			Type: selectorInVersion,
+			Data: b.Version,
+		},
 	}
 }
 
@@ -97,13 +101,14 @@ func generatorFromBuild(triggerName string, b *build.Build, status string) (*not
 		PastTenseStatus: status,
 		apiModel:        &api,
 	}
+	if b.Status == status {
+		data.githubContext = fmt.Sprintf("evergreen/%s", b.BuildVariant)
+		data.githubState = message.GithubStateFailure
+		data.githubDescription = taskStatusToDesc(b)
+	}
 	if status == evergreen.BuildSucceeded {
 		data.githubState = message.GithubStateSuccess
 		data.PastTenseStatus = "succeeded"
-	}
-	if b.Status == status {
-		data.githubState = message.GithubStateFailure
-		data.githubDescription = TaskStatusToDesc(b)
 	}
 
 	return makeCommonGenerator(triggerName, selectors, data)
@@ -142,8 +147,7 @@ func buildSuccess(e *event.BuildEventData, b *build.Build) (*notificationGenerat
 	return gen, err
 }
 
-// TODO: EVG-3087 stop using this in units and make it private
-func TaskStatusToDesc(b *build.Build) string {
+func taskStatusToDesc(b *build.Build) string {
 	success := 0
 	failed := 0
 	systemError := 0

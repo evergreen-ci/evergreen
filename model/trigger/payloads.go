@@ -22,10 +22,11 @@ const (
 	selectorID        = "id"
 	selectorObject    = "object"
 	selectorProject   = "project"
+	selectorOwner     = "owner"
 	selectorRequester = "requester"
 	selectorStatus    = "status"
 	selectorInVersion = "in-version"
-	selectorInBuild   = "in-version"
+	selectorInBuild   = "in-build"
 )
 
 type commonTemplateData struct {
@@ -37,6 +38,7 @@ type commonTemplateData struct {
 	Headers         http.Header
 
 	apiModel          restModel.Model
+	githubContext     string
 	githubState       message.GithubState
 	githubDescription string
 }
@@ -252,6 +254,9 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 			State:       data.githubState,
 			URL:         data.URL,
 			Description: data.githubDescription,
+		}
+		if len(data.githubContext) != 0 {
+			gen.githubStatusAPI.Context = data.githubContext
 		}
 	}
 
