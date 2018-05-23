@@ -12,7 +12,7 @@ import (
 )
 
 type expansionsWriter struct {
-	File string `mapstructure:"file"`
+	File string `mapstructure:"file" plugin:"expand"`
 
 	base
 }
@@ -30,7 +30,7 @@ func (c *expansionsWriter) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *expansionsWriter) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	_ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	out, err := yaml.Marshal(conf.Expansions)
 	if err != nil {
@@ -39,6 +39,7 @@ func (c *expansionsWriter) Execute(ctx context.Context,
 	if err := ioutil.WriteFile(c.File, out, 0600); err != nil {
 		return errors.Wrapf(err, "error writing expansions to file (%s)", c.File)
 	}
+	logger.Task().Infof("expansions written to file (%s)", c.File)
 	return nil
 
 }
