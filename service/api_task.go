@@ -211,6 +211,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 				"processing alert triggers for task %s", t.Id))
 		}
 	}
+	// TODO(EVG-223) process patch-specific triggers
 
 	// update the bookkeeping entry for the task
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)
