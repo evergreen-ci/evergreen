@@ -233,7 +233,7 @@ func taskFirstFailureInVersionWithName(e *event.TaskEventData, t *task.Task) (*n
 func taskRegression(e *event.TaskEventData, t *task.Task) (*notificationGenerator, error) {
 	const name = "regression"
 
-	if e.Status != evergreen.TaskFailed {
+	if e.Status != evergreen.TaskFailed || t.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
 
