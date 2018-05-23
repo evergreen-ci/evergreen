@@ -40,6 +40,7 @@ type EC2ProviderSettings struct {
 
 	// MountPoints are the disk mount points for EBS volumes.
 	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
+
 	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
 	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
 
