@@ -30,7 +30,12 @@ func init() {
 }
 
 func taskFetch(e *event.EventLogEntry) (interface{}, error) {
-	p, err := task.FindOne(task.ById(e.ResourceId))
+	data, ok := e.Data.(*event.TaskEventData)
+	if !ok {
+		return nil, errors.New("expected task event data")
+	}
+
+	p, err := task.FindOneIdOldOrNew(e.ResourceId, data.Execution)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch task")
 	}
