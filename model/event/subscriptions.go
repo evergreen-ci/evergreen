@@ -311,10 +311,14 @@ func IsValidOwnerType(in string) bool {
 	}
 }
 
+const (
+	triggerOutcome = "outcome"
+)
+
 func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 	return Subscription{
 		Type:    ResourceTypePatch,
-		Trigger: "outcome",
+		Trigger: triggerOutcome,
 		Selectors: []Selector{
 			{
 				Type: "id",
@@ -329,7 +333,7 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 	return Subscription{
 		ID:      bson.NewObjectId(),
 		Type:    ResourceTypePatch,
-		Trigger: "outcome",
+		Trigger: triggerOutcome,
 		Selectors: []Selector{
 			{
 				Type: "owner",
@@ -343,7 +347,7 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subscription {
 	return Subscription{
 		Type:    ResourceTypeBuild,
-		Trigger: "outcome",
+		Trigger: triggerOutcome,
 		Selectors: []Selector{
 			{
 				Type: "in-version",
