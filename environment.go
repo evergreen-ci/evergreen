@@ -237,8 +237,12 @@ func (e *envState) createQueues(ctx context.Context) error {
 		rootSenders = append(rootSenders, s)
 	}
 
+	// duration of time inbetween calls to queue.Status() within
+	// the amboy.Wait* function.
+	const queueWaitInterval = 10 * time.Millisecond
+
 	e.closers["background-local-queue"] = func(ctx context.Context) error {
-		if !amboy.WaitCtxInterval(ctx, e.localQueue, 10*time.Millisecond) {
+		if !amboy.WaitCtxInterval(ctx, e.localQueue, queueWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
 				"queue":   "system",
@@ -256,7 +260,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 			catcher.Add(s.Close())
 		}
 
-		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, 10*time.Millisecond) {
+		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
 				"queue":   "notifications",
