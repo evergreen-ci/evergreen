@@ -285,13 +285,19 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	}
 
 	if tgh.fetchAllExecutions {
-		tasks, err := sc.FindOldTasksByID(tgh.taskID)
+		tasks, err := sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "API model error")
 		}
 
 		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
 			return ResponseData{}, errors.Wrap(err, "API model error")
+		}
+
+		for i := range taskModel.PreviousExecutions {
+			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
+				return ResponseData{}, errors.Wrap(err, "failed to fetch artifacts for previous executions")
+			}
 		}
 	}
 
@@ -390,7 +396,7 @@ func tasksByBuildPaginator(key string, limit int, args interface{}, sc data.Conn
 		}
 
 		if btArgs.fetchAllExecutions {
-			oldTasks, err := sc.FindOldTasksByID(st.Id)
+			oldTasks, err := sc.FindOldTasksByIDWithDisplayTasks(st.Id)
 			if err != nil {
 				return []model.Model{}, nil, errors.Wrap(err, "error fetching old tasks")
 			}
