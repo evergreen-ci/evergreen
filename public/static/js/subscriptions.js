@@ -197,7 +197,7 @@ function addSelectorsAndOwnerType(subscription, type, id) {
   subscription.owner_type = "person";
 };
 
-function addInSelectorsAndOwnerType(subscription, type, id) {
+function addInSelectorsAndOwnerType(subscription, type, inType, id) {
   if (!subscription) {
     return;
   }
@@ -209,7 +209,7 @@ function addInSelectorsAndOwnerType(subscription, type, id) {
     data: type
   });
   subscription.selectors.push({
-    type: "in-" + type,
+    type: "in-" + inType,
     data: id
   });
   subscription.owner_type = "person";
