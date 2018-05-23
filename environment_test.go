@@ -1,14 +1,15 @@
 package evergreen
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type EnvironmentSuite struct {
@@ -34,7 +35,10 @@ func (s *EnvironmentSuite) shouldSkip() {
 }
 
 func (s *EnvironmentSuite) SetupTest() {
-	s.env = &envState{}
+	s.env = &envState{
+		senders: map[SenderKey]send.Sender{},
+		closers: map[string]func(context.Context) error{},
+	}
 }
 
 func (s *EnvironmentSuite) TestLoadingConfig() {

@@ -29,7 +29,6 @@ func setupSmokeTest(err error) cli.BeforeFunc {
 func smokeStartEvergreen() cli.Command {
 	const (
 		binaryFlagName = "binary"
-		runnerFlagName = "runner"
 		agentFlagName  = "agent"
 		webFlagName    = "web"
 
@@ -49,7 +48,7 @@ func smokeStartEvergreen() cli.Command {
 	return cli.Command{
 		Name:    "start-evergreen",
 		Aliases: []string{},
-		Usage:   "start evergreen web service and runner (for smoke tests)",
+		Usage:   "start evergreen web service for smoke tests",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  confFlagName,
@@ -62,10 +61,6 @@ func smokeStartEvergreen() cli.Command {
 				Value: binary,
 			},
 			cli.BoolFlag{
-				Name:  runnerFlagName,
-				Usage: "run the evergreen runner",
-			},
-			cli.BoolFlag{
 				Name:  webFlagName,
 				Usage: "run the evergreen web service",
 			},
@@ -74,11 +69,10 @@ func smokeStartEvergreen() cli.Command {
 				Usage: "start an evergreen agent",
 			},
 		},
-		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(runnerFlagName, webFlagName, agentFlagName)),
+		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(webFlagName, agentFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			binary := c.String(binaryFlagName)
-			startRunner := c.Bool(runnerFlagName)
 			startWeb := c.Bool(webFlagName)
 			startAgent := c.Bool(agentFlagName)
 
@@ -86,12 +80,6 @@ func smokeStartEvergreen() cli.Command {
 
 			if startWeb {
 				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath); err != nil {
-					return errors.Wrap(err, "error running web service")
-				}
-			}
-
-			if startRunner {
-				if err := smokeRunBinary(exit, "runner", wd, binary, "service", "runner", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "error running web service")
 				}
 			}

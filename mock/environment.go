@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	edb "github.com/evergreen-ci/evergreen/db"
@@ -12,6 +13,8 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	anserMock "github.com/mongodb/anser/mock"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 )
 
@@ -23,6 +26,7 @@ type Environment struct {
 	Remote            amboy.Queue
 	Driver            queue.Driver
 	Local             amboy.Queue
+	Closers           map[string]func(context.Context) error
 	DBSession         *anserMock.Session
 	EvergreenSettings *evergreen.Settings
 	mu                sync.RWMutex
@@ -100,4 +104,37 @@ func (e *Environment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.InternalSender, nil
+}
+
+func (e *Environment) RegisterCloser(name string, closer func(context.Context) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.Closers[name] = closer
+}
+
+func (e *Environment) Close(ctx context.Context) error {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	// TODO we could, in the future call all closers in but that
+	// would require more complex waiting and timeout logic
+
+	deadline, _ := ctx.Deadline()
+	catcher := grip.NewBasicCatcher()
+	for name, closer := range e.Closers {
+		if closer == nil {
+			continue
+		}
+
+		grip.Info(message.Fields{
+			"message":      "calling closer",
+			"closer":       name,
+			"timeout_secs": time.Since(deadline),
+			"deadline":     deadline,
+		})
+		catcher.Add(closer(ctx))
+	}
+
+	return catcher.Resolve()
 }

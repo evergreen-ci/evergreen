@@ -38,9 +38,9 @@ func startWebService() cli.Command {
 			grip.CatchEmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
 
+			defer cancel()
 			defer sender.Close()
 			defer recovery.LogStackTraceAndExit("evergreen service")
-			defer cancel()
 
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
@@ -102,6 +102,9 @@ func startWebService() cli.Command {
 
 			grip.Notice("waiting for web services to terminate gracefully")
 			<-gracefulWait
+
+			grip.Notice("waiting for background tasks to finish")
+			catcher.Add(env.Close(ctx))
 
 			return catcher.Resolve()
 		},

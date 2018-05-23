@@ -564,7 +564,7 @@ func PopulateLegacyRunnerJobs(env evergreen.Environment, part int) amboy.QueueOp
 		}
 
 		catcher := grip.NewBasicCatcher()
-		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
 
 		if !flags.AlertsDisabled {
 			catcher.Add(queue.Put(NewLegacyAlertsRunnerJob(env, ts)))
