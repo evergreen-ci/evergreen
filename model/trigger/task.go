@@ -19,6 +19,9 @@ func init() {
 		taskValidator(taskOutcome),
 		taskValidator(taskFailure),
 		taskValidator(taskSuccess),
+		taskValidator(taskFirstFailureInBuild),
+		taskValidator(taskFirstFailureInVersion),
+		taskValidator(taskFirstFailureInVersionWithName),
 	)
 	registry.AddPrefetch(event.ResourceTypeTask, taskFetch)
 }
@@ -175,8 +178,8 @@ func taskFirstFailureInVersion(e *event.TaskEventData, t *task.Task) (*notificat
 	return generatorFromTaskWithAlertRecord(name, t, e.Status, alertrecord.FirstVersionFailureId)
 }
 
-func taskFirstFailureWithName(e *event.TaskEventData, t *task.Task) (*notificationGenerator, error) {
-	const name = "first-failure-with-name"
+func taskFirstFailureInVersionWithName(e *event.TaskEventData, t *task.Task) (*notificationGenerator, error) {
+	const name = "first-failure-in-version-with-name"
 
 	if e.Status != evergreen.TaskFailed {
 		return nil, nil

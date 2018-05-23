@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -31,16 +32,19 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, event.SubscriptionsCollection, alertrecord.Collection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	s.task = task.Task{
-		Id:         "test",
-		Version:    "test",
-		BuildId:    "test",
-		Project:    "test",
-		StartTime:  startTime,
-		FinishTime: startTime.Add(10 * time.Minute),
+		Id:           "test",
+		Version:      "test",
+		BuildId:      "test",
+		BuildVariant: "test",
+		DistroId:     "test",
+		Project:      "test",
+		DisplayName:  "Test",
+		StartTime:    startTime,
+		FinishTime:   startTime.Add(10 * time.Minute),
 	}
 	s.NoError(s.task.Insert())
 
@@ -143,7 +147,7 @@ func (s *taskSuite) TestAllTriggers() {
 	s.Len(n, 2)
 }
 
-func (s *taskSuite) TestTaskSuccess() {
+func (s *taskSuite) TestSuccess() {
 	gen, err := taskSuccess(s.data, &s.task)
 	s.NoError(err)
 	s.Nil(gen)
@@ -165,7 +169,7 @@ func (s *taskSuite) TestTaskSuccess() {
 	})
 }
 
-func (s *taskSuite) TestTaskFailure() {
+func (s *taskSuite) TestFailure() {
 	s.data.Status = evergreen.TaskSucceeded
 	gen, err := taskFailure(s.data, &s.task)
 	s.NoError(err)
@@ -183,7 +187,7 @@ func (s *taskSuite) TestTaskFailure() {
 	})
 }
 
-func (s *taskSuite) TestTaskOutcome() {
+func (s *taskSuite) TestOutcome() {
 	s.data.Status = evergreen.TaskStarted
 	gen, err := taskOutcome(s.data, &s.task)
 	s.NoError(err)
@@ -205,4 +209,115 @@ func (s *taskSuite) TestTaskOutcome() {
 		Type: "trigger",
 		Data: "outcome",
 	})
+}
+
+func (s *taskSuite) TestFirstFailureInVersion() {
+	s.data.Status = evergreen.TaskFailed
+	s.task.Status = evergreen.TaskFailed
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+
+	gen, err := taskFirstFailureInVersion(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// rerun that fails should not do anything
+	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs with other tasks should not do anything
+	s.task.Id = "task2"
+	s.NoError(s.task.Insert())
+	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs with other tasks in other builds should not do anything
+	s.task.BuildId = "test2"
+	s.task.BuildVariant = "test2"
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs with other tasks in other versions should still generate
+	s.task.Version = "test2"
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+}
+
+func (s *taskSuite) TestFirstFailureInBuild() {
+	s.data.Status = evergreen.TaskFailed
+	s.task.Status = evergreen.TaskFailed
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+
+	gen, err := taskFirstFailureInBuild(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// rerun that fails should not do anything
+	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs with other tasks should not do anything
+	s.task.Id = "task2"
+	s.NoError(s.task.Insert())
+	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs with other tasks in other builds should generate
+	s.task.BuildId = "test2"
+	s.task.BuildVariant = "test2"
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// subsequent runs with other tasks in other versions should generate
+	s.task.Version = "test2"
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+}
+
+func (s *taskSuite) TestFirstFailureInVersionWithName() {
+	s.data.Status = evergreen.TaskFailed
+	s.task.Status = evergreen.TaskFailed
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+
+	gen, err := taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
+
+	// rerun that fails should not do anything
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs with other tasks should not do anything
+	s.task.Id = "task2"
+	s.NoError(s.task.Insert())
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs with other tasks in other builds should not generate
+	s.task.BuildId = "test2"
+	s.task.BuildVariant = "test2"
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.Nil(gen)
+
+	// subsequent runs in other versions should generate
+	s.task.Version = "test2"
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	s.NoError(err)
+	s.NotNil(gen)
 }
