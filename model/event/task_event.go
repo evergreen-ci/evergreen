@@ -8,6 +8,7 @@ import (
 
 func init() {
 	registry.AddType(ResourceTypeTask, taskEventDataFactory)
+	registry.AllowSubscription(ResourceTypeTask, TaskFinished)
 }
 
 const (

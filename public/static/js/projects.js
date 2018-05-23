@@ -29,6 +29,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           label: "any version finishes"
       },
       {
+          trigger: "failure",
+          resource_type: "VERSION",
+          label: "any version fails"
+      },
+      {
           trigger: "outcome",
           resource_type: "BUILD",
           label: "any build finishes",
@@ -38,12 +43,17 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           resource_type: "BUILD",
           label: "any build fails",
       },
+      {
+         trigger: "outcome",
+         resource_type: "TASK",
+         label: "any task finishes",
+      },
+      {
+         trigger: "failure",
+         resource_type: "TASK",
+         label: "any task fails",
+      },
       // TODO uncomment as we implement these
-      // {
-      //    trigger: "failure",
-      //    resource_type: "TASK",
-      //    label: "any task fails",
-      // },
       // {
       //    trigger: "first-failure-by-variant",
       //    resource_type: "TASK",
