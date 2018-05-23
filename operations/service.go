@@ -21,9 +21,7 @@ func Service() cli.Command {
 		Usage: "run evergreen services",
 		Subcommands: []cli.Command{
 			deploy(),
-			startRunnerService(),
 			startWebService(),
-			handcrankRunner(),
 		},
 	}
 }
