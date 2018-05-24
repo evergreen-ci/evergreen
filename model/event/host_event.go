@@ -13,6 +13,7 @@ import (
 
 func init() {
 	registry.AddType(ResourceTypeHost, hostEventDataFactory)
+	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
 }
 
 const (
