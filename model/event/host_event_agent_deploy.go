@@ -11,18 +11,19 @@ import (
 
 // RecentHostAgentDeploys is a type used to capture the results of an
 type RecentHostAgentDeploys struct {
-	HostID       string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	Last         string `bson:"last" json:"last" yaml:"last"`
-	Count        int    `bson:"count" json:"count" yaml:"count"`
-	Failed       int    `bson:"failed" json:"failed" yaml:"failed"`
-	Success      int    `bson:"success" json:"success" yaml:"success"`
-	Total        int    `bson:"total" json:"total" yaml:"total"`
-	message.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	HostID            string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	Count             int    `bson:"count" json:"count" yaml:"count"`
+	Failed            int    `bson:"failed" json:"failed" yaml:"failed"`
+	Success           int    `bson:"success" json:"success" yaml:"success"`
+	HostStatusChanged int    `bson:"host_status_changed" json:"host_status_changed" yaml:"host_status_changed"`
+	Last              string `bson:"last" json:"last" yaml:"last"`
+	Total             int    `bson:"total" json:"total" yaml:"total"`
+	message.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
 func GetRecentAgentDeployStatuses(hostId string, n int) (*RecentHostAgentDeploys, error) {
 	query := resourceTypeKeyIs(ResourceTypeHost)
-	query[TypeKey] = bson.M{"$in": []string{EventHostAgentDeployed, EventHostAgentDeployFailed}}
+	query[TypeKey] = bson.M{"$in": []string{EventHostAgentDeployed, EventHostAgentDeployFailed, EventHostStatusChanged}}
 	query[ResourceIdKey] = hostId
 
 	pipeline := []bson.M{
@@ -48,13 +49,20 @@ func GetRecentAgentDeployStatuses(hostId string, n int) (*RecentHostAgentDeploys
 					"cond":  bson.M{"$eq": []string{"$$this", EventHostAgentDeployed}},
 				},
 			}},
+			"host_status_changed": bson.M{"$size": bson.M{
+				"$filter": bson.M{
+					"input": "$states",
+					"cond":  bson.M{"$eq": []string{"$$this", EventHostStatusChanged}},
+				},
+			}},
 		}},
 		{"$project": bson.M{
-			"_id":     false,
-			"last":    true,
-			"count":   true,
-			"success": true,
-			"failed":  true,
+			"_id":                 false,
+			"count":               true,
+			"success":             true,
+			"failed":              true,
+			"host_status_changed": true,
+			"last":                true,
 		}},
 	}
 
@@ -90,6 +98,7 @@ func (m *RecentHostAgentDeploys) String() string {
 ////////////////////////////////////////////////////////////////////////
 //
 // Predicates to support error checking during the agent deploy process
-
 func (m *RecentHostAgentDeploys) LastAttemptFailed() bool { return m.Last == EventHostAgentDeployFailed }
-func (m *RecentHostAgentDeploys) AllAttemptsFailed() bool { return m.Count > 0 && m.Success == 0 }
+func (m *RecentHostAgentDeploys) AllAttemptsFailed() bool {
+	return m.Count > 0 && m.Success == 0 && m.HostStatusChanged == 0
+}
