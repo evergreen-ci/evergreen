@@ -24,7 +24,7 @@ const (
 	taskKey  = "task"
 
 	// tasks should be unscheduled after ~2 weeks
-	unschedulableThreshold = 2 * 7 * 24 * time.Hour
+	unschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
