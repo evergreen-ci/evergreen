@@ -96,7 +96,9 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 			job := NewDecoHostNotifyJob(j.env, j.host, nil, msg)
 			grip.Critical(message.WrapError(j.env.RemoteQueue().Put(job),
 				message.Fields{
+					"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
 					"host_id": j.host.Id,
+					"distro":  j.host.Distro,
 				}))
 		}
 
