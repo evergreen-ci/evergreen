@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -157,4 +158,20 @@ func TestAgentDeployStatusFinder(t *testing.T) {
 	assert.Equal(10, stat.Failed)
 	assert.True(stat.LastAttemptFailed())
 	assert.True(stat.AllAttemptsFailed())
+
+	for i := 0; i < 5; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+	LogHostStatusChanged(hostID, evergreen.HostQuarantined, evergreen.HostRunning, "user", "logs")
+	for i := 0; i < 5; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(0, stat.Success)
+	assert.Equal(9, stat.Failed)
+	assert.Equal(1, stat.HostStatusChanged)
+	assert.False(stat.AllAttemptsFailed())
 }
