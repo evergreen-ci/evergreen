@@ -17,6 +17,7 @@ import (
 
 const (
 	FailingTasksField     = "customfield_12950"
+	FailingTestsField     = "customfield_15756"
 	FailingVariantField   = "customfield_14277"
 	EvergreenProjectField = "customfield_14278"
 	FailingRevisionField  = "customfield_14851"
@@ -89,8 +90,10 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	for _, testId := range input.TestIds {
 		testIds[testId] = true
 	}
+	failedTests := []string{}
 	tests := []jiraTestFailure{}
 	for _, test := range t.LocalTestResults {
+		failedTests = append(failedTests, test.TestFile)
 		if testIds[test.TestFile] {
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.TestFile),
@@ -105,6 +108,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	request["project"] = map[string]string{"key": uis.buildBaronProjects[t.Project].TicketCreateProject}
 	request["summary"] = getSummary(t.DisplayName, tests)
 	request[FailingTasksField] = []string{t.DisplayName}
+	request[FailingTestsField] = failedTests
 	request[FailingVariantField] = []string{t.BuildVariant}
 	request[EvergreenProjectField] = []string{t.Project}
 	request[FailingRevisionField] = []string{t.Revision}
