@@ -47,8 +47,8 @@ type Subscription struct {
 	Selectors      []Selector        `bson:"selectors,omitempty"`
 	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
 	Subscriber     Subscriber        `bson:"subscriber"`
-	Owner          string            `bson:"owner"`
 	OwnerType      OwnerType         `bson:"owner_type"`
+	Owner          string            `bson:"owner"`
 	TriggerData    map[string]string `bson:"trigger_data,omitempty"`
 }
 

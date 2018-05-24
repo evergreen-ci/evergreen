@@ -19,12 +19,12 @@ func TestNotificationGeneratorFailureScenarios(t *testing.T) {
 
 	gen := notificationGenerator{}
 
-	n, err := gen.generate(e)
+	n, err := gen.generate(e, "foo", event.Subscription{})
 	assert.Empty(n)
 	assert.EqualError(err, "trigger name is empty")
 
 	gen.triggerName = "test"
-	n, err = gen.generate(e)
+	n, err = gen.generate(e, "foo", event.Subscription{})
 	assert.Empty(n)
 	assert.EqualError(err, "trigger test has no selectors")
 
@@ -34,7 +34,7 @@ func TestNotificationGeneratorFailureScenarios(t *testing.T) {
 			Data: "special",
 		},
 	}
-	n, err = gen.generate(e)
+	n, err = gen.generate(e, "foo", event.Subscription{})
 	assert.Empty(n)
 	assert.EqualError(err, "generator has no payloads, and cannot yield any notifications")
 }

@@ -37,13 +37,30 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 			continue
 		}
 
-		notes, err := gen.generate(e)
+		groupedSubs, err := event.FindSubscriptions(e.ResourceType, gen.triggerName, gen.selectors)
 		if err != nil {
-			catcher.Add(err)
+			catcher.Add(errors.Wrap(err, "failed to fetch subscribers"))
 			continue
 		}
-		if len(notes) > 0 {
-			notifications = append(notifications, notes...)
+		num := 0
+		for _, v := range groupedSubs {
+			num += len(v)
+		}
+		if num == 0 {
+			return nil, nil
+		}
+
+		for subType, subs := range groupedSubs {
+			for _, sub := range subs {
+				notification, err := gen.generate(e, subType, sub)
+				if err != nil {
+					catcher.Add(errors.Wrap(err, "failed to generate a notification"))
+					continue
+				}
+				if notification != nil {
+					notifications = append(notifications, *notification)
+				}
+			}
 		}
 	}
 

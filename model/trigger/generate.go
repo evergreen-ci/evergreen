@@ -22,9 +22,6 @@ type notificationGenerator struct {
 	jiraComment      *string
 	githubStatusAPI  *message.GithubStatus
 	slack            *notification.SlackPayload
-	// filterFunc takes an event and extra subscriber data and returns
-	// true if the notification should still be sent, false if not
-	filterFunc func(*event.EventLogEntry, map[string]string) bool
 }
 
 func (g *notificationGenerator) get(subType string) (interface{}, error) {
@@ -64,7 +61,7 @@ func (g *notificationGenerator) isEmpty() bool {
 		g.jiraComment == nil && g.slack == nil && g.githubStatusAPI == nil
 }
 
-func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]notification.Notification, error) {
+func (g *notificationGenerator) generate(e *event.EventLogEntry, subType string, sub event.Subscription) (*notification.Notification, error) {
 	if len(g.triggerName) == 0 {
 		return nil, errors.New("trigger name is empty")
 	}
@@ -81,39 +78,19 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]notification
 		return nil, errors.New("generator has no payloads, and cannot yield any notifications")
 	}
 
-	groupedSubs, err := event.FindSubscriptions(e.ResourceType, g.triggerName, g.selectors)
+	payload, err := g.get(subType)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch subscribers")
+		return nil, err
+	}
+	if payload == nil {
+		return nil, errors.New("unable to determine payload")
 	}
 
-	num := 0
-	for _, v := range groupedSubs {
-		num += len(v)
-	}
-	if num == 0 {
-		return nil, nil
-	}
-	n := make([]notification.Notification, 0, num)
-
-	catcher := grip.NewSimpleCatcher()
-	for subType, subs := range groupedSubs {
-		payload, err := g.get(subType)
-		catcher.Add(err)
-		if err != nil || payload == nil {
-			continue
-		}
-
-		for _, sub := range subs {
-			if g.filterFunc == nil || g.filterFunc(e, sub.TriggerData) {
-				notification, err := notification.New(e, g.triggerName, &sub.Subscriber, payload)
-				if err != nil {
-					catcher.Add(err)
-					continue
-				}
-				n = append(n, *notification)
-			}
-		}
+	// trigger data logic here
+	notification, err := notification.New(e, g.triggerName, &sub.Subscriber, payload)
+	if err != nil {
+		return nil, err
 	}
 
-	return n, catcher.Resolve()
+	return notification, nil
 }

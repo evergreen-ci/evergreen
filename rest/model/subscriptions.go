@@ -19,8 +19,8 @@ type APISubscription struct {
 	Selectors      []APISelector     `json:"selectors"`
 	RegexSelectors []APISelector     `json:"regex_selectors"`
 	Subscriber     APISubscriber     `json:"subscriber"`
-	Owner          APIString         `json:"owner"`
 	OwnerType      APIString         `json:"owner_type"`
+	Owner          APIString         `json:"owner"`
 	TriggerData    map[string]string `json:"trigger_data,omitempty"`
 }
 
