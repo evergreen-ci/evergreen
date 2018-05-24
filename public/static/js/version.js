@@ -9,32 +9,26 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   $scope.taskStatuses = {};
   $scope.subscriptions = [];
   $scope.triggers = [
-      // TODO uncomment as we implement these
-      // {
-      //    trigger: "failure",
-      //    resource_type: "TASK",
-      //    label: "any task in this version fails",
-      // },
-      // {
-      //    trigger: "first-failure-by-variant",
-      //    resource_type: "TASK",
-      //    label: "the first task failure occurs",
-      // },
-      // {
-      //    trigger: "first-failure-by-variant",
-      //    resource_type: "BUILD",
-      //    label: "the first failure within each variant occurs",
-      // },
-      // {
-      //    trigger: "first-failure-by-name",
-      //    resource_type: "TASK",
-      //    label: "the first failure for each task name occurs",
-      // },
-      // {
-      //    trigger: "regression",
-      //    resource_type: "TASK",
-      //    label: "a previously passing task fails",
-      // },
+    {
+       trigger: "outcome",
+       resource_type: "VERSION",
+       label: "this version finishes",
+    },
+    {
+       trigger: "failure",
+       resource_type: "VERSION",
+       label: "this version fails",
+    },
+    {
+      trigger: "outcome",
+      resource_type: "BUILD",
+      label: "each build finishes",
+    },
+    {
+      trigger: "failure",
+      resource_type: "BUILD",
+      label: "any build fails"
+    },
   ];
   hash = $location.hash();
   path = $location.path();
@@ -73,6 +67,12 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
 
     $mdDialog.show(promise).then(function(data){
       addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
+      if (data.resource_type === "VERSION") {
+        addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
+
+      }else {
+        addInSelectorsAndOwnerType(data, "version", data.resource_type.toLowerCase(), $scope.version.Version.id);
+      }
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();
     });
