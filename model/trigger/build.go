@@ -101,7 +101,7 @@ func generatorFromBuild(triggerName string, b *build.Build, status string) (*not
 		PastTenseStatus: status,
 		apiModel:        &api,
 	}
-	if b.Status == status {
+	if b.Requester == evergreen.GithubPRRequester && b.Status == status {
 		data.githubContext = fmt.Sprintf("evergreen/%s", b.BuildVariant)
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = taskStatusToDesc(b)
