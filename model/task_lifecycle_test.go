@@ -522,6 +522,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			BuildId:     b.Id,
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
+			StartTime:   time.Now().Add(-time.Hour),
 		}
 		anotherTask := task.Task{
 			Id:          "two",
@@ -530,6 +531,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			BuildId:     b.Id,
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
+			StartTime:   time.Now().Add(-time.Hour),
 		}
 
 		b.Tasks = []build.TaskCache{
@@ -558,6 +560,55 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			v, err = version.FindOne(version.ById(v.Id))
 			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionFailed)
+		})
+		Convey("all tasks must be finished for BuildNewStatus to be set", func() {
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t, "")
+			testTask.Status = evergreen.TaskStarted
+			b.Tasks[0].Status = evergreen.TaskStarted
+			So(testTask.Insert(), ShouldBeNil)
+			anotherTask.Status = evergreen.TaskStarted
+			b.Tasks[1].Status = evergreen.TaskStarted
+			So(anotherTask.Insert(), ShouldBeNil)
+
+			So(b.Insert(), ShouldBeNil)
+			So(v.Insert(), ShouldBeNil)
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   "system",
+			}
+			updates := StatusChanges{}
+			So(MarkEnd(&testTask, "", time.Now(), details, false, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldBeEmpty)
+			So(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+		})
+		Convey("failing compile finishes build", func() {
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t, "")
+			testTask.Status = evergreen.TaskStarted
+			testTask.DisplayName = evergreen.CompileStage
+			b.Tasks[0].Status = evergreen.TaskStarted
+			So(testTask.Insert(), ShouldBeNil)
+			anotherTask.Status = evergreen.TaskUndispatched
+			anotherTask.DependsOn = []task.Dependency{
+				{
+					TaskId: testTask.Id,
+					Status: evergreen.TaskSucceeded,
+				},
+			}
+			b.Tasks[1].Status = evergreen.TaskUndispatched
+			So(anotherTask.Insert(), ShouldBeNil)
+
+			So(b.Insert(), ShouldBeNil)
+			So(v.Insert(), ShouldBeNil)
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   "test",
+			}
+			updates := StatusChanges{}
+			So(MarkEnd(&testTask, "", time.Now(), details, false, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 		})
 	})
 }
