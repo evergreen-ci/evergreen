@@ -101,7 +101,7 @@ func generatorFromBuild(triggerName string, b *build.Build, status string) (*not
 		PastTenseStatus: status,
 		apiModel:        &api,
 	}
-	if b.Status == status {
+	if b.Requester == evergreen.GithubPRRequester && b.Status == status {
 		data.githubContext = fmt.Sprintf("evergreen/%s", b.BuildVariant)
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = taskStatusToDesc(b)
@@ -179,11 +179,6 @@ func taskStatusToDesc(b *build.Build) string {
 	grip.ErrorWhen(other > 0, message.Fields{
 		"source":   "status updates",
 		"message":  "unknown task status",
-		"build_id": b.Id,
-	})
-	grip.ErrorWhen(noReport > 0, message.Fields{
-		"source":   "status updates",
-		"message":  "updating status for incomplete build",
 		"build_id": b.Id,
 	})
 
