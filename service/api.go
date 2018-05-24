@@ -277,7 +277,7 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(w, projectVars.Vars)
+	gimlet.WriteJSON(w, projectVars)
 }
 
 // AttachFiles updates file mappings for a task or build
