@@ -13,6 +13,7 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 const (
@@ -91,7 +92,12 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 
 		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count == agentPutRetries {
-			grip.Critical(stat)
+			msg := "error putting agent on host"
+			job := NewDecoHostNotifyJob(j.env, j.host, nil, msg)
+			grip.Critical(message.WrapError(j.env.RemoteQueue().Put(job),
+				message.Fields{
+					"host_id": j.host.Id,
+				}))
 		}
 
 	}
