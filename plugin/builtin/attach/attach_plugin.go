@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/pkg/errors"
@@ -50,6 +51,23 @@ func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact
 	return publicFiles
 }
 
+func getAllArtifacts(id string, execution int) ([]artifact.File, error) {
+	artifactEntry, err := artifact.FindOne(artifact.ByTaskIdAndExecution(id, execution))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding artifact files for task")
+	}
+	if artifactEntry == nil {
+		artifactEntry, err = artifact.FindOne(artifact.ByTaskIdWithoutExecution(id))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
+		}
+		if artifactEntry == nil {
+			return nil, nil
+		}
+	}
+	return artifactEntry.Files, nil
+}
+
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
 // that will be added to the Task and Build pages.
 func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
@@ -64,26 +82,30 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					if context.Task == nil {
 						return nil, nil
 					}
+					var err error
 					taskId := context.Task.Id
+					t := context.Task
 					if context.Task.OldTaskId != "" {
 						taskId = context.Task.OldTaskId
-					}
-
-					artifactEntry, err := artifact.FindOne(artifact.ByTaskIdAndExecution(taskId, context.Task.Execution))
-					if err != nil {
-						return nil, errors.Wrap(err, "error finding artifact files for task")
-					}
-					if artifactEntry == nil {
-
-						artifactEntry, err = artifact.FindOne(artifact.ByTaskIdWithoutExecution(taskId))
+						t, err = task.FindOneId(taskId)
 						if err != nil {
-							return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
-						}
-						if artifactEntry == nil {
-							return nil, nil
+							return nil, errors.Wrap(err, "error retrieving task")
 						}
 					}
-					return stripHiddenFiles(artifactEntry.Files, context.User), nil
+
+					files, err := getAllArtifacts(taskId, context.Task.Execution)
+					if err != nil {
+						return nil, err
+					}
+
+					for _, execTask := range t.ExecutionTasks {
+						execTaskFiles, err := getAllArtifacts(execTask, context.Task.Execution)
+						if err != nil {
+							return nil, err
+						}
+						files = append(files, execTaskFiles...)
+					}
+					return stripHiddenFiles(files, context.User), nil
 				},
 			},
 			{
