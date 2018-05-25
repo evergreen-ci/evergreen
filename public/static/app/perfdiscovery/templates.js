@@ -32,6 +32,15 @@ mciModule.run(function($templateCache) {
     '</div>'
   )
 
+  $templateCache.put('perf-discovery-bfs',
+    '<div class="ui-grid-cell-contents">' +
+      '<span ng-repeat="item in COL_FIELD">' +
+        '<a href="{{item.link}}">{{item.key}}</a>' +
+        '{{$last ? "" : ", "}}' + 
+      '</span>' +
+    '</div>'
+  )
+
   $templateCache.put('evg-grid/multiselect-filter',
     '<ui-select ' +
         'multiple ' +

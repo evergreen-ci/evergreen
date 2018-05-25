@@ -1,5 +1,5 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2,
+  $q, $scope, $timeout, $window, ApiBuildBaron, ApiTaskdata, ApiV1, ApiV2,
   EVG, EvgUiGridUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
   PerfDiscoveryStateService, uiGridConstants 
 ) {
@@ -106,9 +106,22 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
           ['build', 'storageEngine', 'task', 'threads'],
           vm.gridOptions
         )
+        return res
       })
       // Stop spinner
       .finally(function() { vm.isLoading = false })
+      // Fetch BF tickets
+      .then(function() {
+        return dataUtil.getBFTicketsForRows(vm.gridOptions.data)
+      })
+      // Apply BF tickets to rows data
+      .then(function(ticketsForTasks) {
+        _.each(ticketsForTasks, function(v, k) {
+          _.each(_.where(vm.gridOptions.data, {taskId: k}), function(task) {
+            task.buildFailures = v
+          })
+        })
+      })
   }
 
   vm.updateData = function() {
@@ -194,6 +207,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       )
     },
     columnDefs: [
+      {
+        name: 'Tickets',
+        field: 'buildFailures',
+        cellTemplate: 'perf-discovery-bfs',
+        width: 100,
+      },
       gridUtil.multiselectColDefMixin({
         name: 'Build',
         field: 'build',

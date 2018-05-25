@@ -3,10 +3,11 @@ mciModule.factory('ApiUtil', function($http) {
   // TODO Use $httpProvider (tech-debt ticket required)
   return {
     httpGetter: function(base) {
-      return function(endpointTpl, endpointTplParams, httpParams) {
+      console.assert(base[0] == '/', 'An API BASE should starts with /')
+      return function(apiEndpoint, endpointTplParams, httpParams) {
         return $http.get(
           // Interpolate endpoint template with params
-          endpointTpl(_.extend({base: base}, endpointTplParams)),
+          base + '/' + _.template(apiEndpoint)(endpointTplParams),
           {params: httpParams}
         )
       }
