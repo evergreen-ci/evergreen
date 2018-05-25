@@ -53,4 +53,3 @@ keys:
 repotracker:
     numnewreporevisionstofetch: 10
     maxreporevisionstosearch: 10
-log_path: "STDOUT"

@@ -1,5 +1,5 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $timeout, $window, ApiBuildBaron, ApiTaskdata, ApiV1, ApiV2,
+  $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2,
   EVG, EvgUiGridUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
   PerfDiscoveryStateService, uiGridConstants 
 ) {

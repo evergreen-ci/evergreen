@@ -1,6 +1,6 @@
 mciModule.factory('PerfDiscoveryDataService', function(
-  $q, $window, ApiV1, ApiV2, ApiBuildBaron, ApiTaskdata,
-  EVG, MPA_UI, PERF_DISCOVERY
+  $q, $window, ApiV1, ApiV2, ApiBuildBaron, ApiTaskdata, EVG,
+  MPA_UI, PERF_DISCOVERY
 ) {
   var PD = PERF_DISCOVERY
 
@@ -127,7 +127,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
   function jiraLink(key) {
     return 'https://' + $window.JiraHost + '/browse/' + key
   }
-
 
   /******************
    * DATA PROCESING *
@@ -325,8 +324,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
       }, {})
     )
     .then(function(res) { // Then refine the results
-      var id = _.keys(res)[0]
-      res[id] = {data: [{key: 'BF-1234'}, {key: 'BF-2345'}]}
       return _.mapObject(res, function(d) {
         if (d.data) {
           return _.map(_.pluck(d.data, 'key'), function(key) {
