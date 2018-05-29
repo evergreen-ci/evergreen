@@ -51,21 +51,29 @@ func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact
 	return publicFiles
 }
 
-func getAllArtifacts(id string, execution int) ([]artifact.File, error) {
-	artifactEntry, err := artifact.FindOne(artifact.ByTaskIdAndExecution(id, execution))
+func getAllArtifacts(tasks []artifact.TaskIdAnExecution) ([]artifact.File, error) {
+	artifacts, err := artifact.FindAll(artifact.ByTaskIdsAndExecutions(tasks))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding artifact files for task")
 	}
-	if artifactEntry == nil {
-		artifactEntry, err = artifact.FindOne(artifact.ByTaskIdWithoutExecution(id))
+	if artifacts == nil {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.TaskID)
+		}
+		artifacts, err = artifact.FindAll(artifact.ByTaskIds(taskIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
 		}
-		if artifactEntry == nil {
-			return nil, nil
+		if artifacts == nil {
+			return []artifact.File{}, nil
 		}
 	}
-	return artifactEntry.Files, nil
+	files := []artifact.File{}
+	for _, artifact := range artifacts {
+		files = append(files, artifact.Files...)
+	}
+	return files, nil
 }
 
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
@@ -93,13 +101,17 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 						}
 					}
 
-					files, err := getAllArtifacts(taskId, context.Task.Execution)
+					files, err := getAllArtifacts([]artifact.TaskIdAnExecution{{TaskID: taskId, Execution: context.Task.Execution}})
 					if err != nil {
 						return nil, err
 					}
 
-					for _, execTask := range t.ExecutionTasks {
-						execTaskFiles, err := getAllArtifacts(execTask, context.Task.Execution)
+					if t.DisplayOnly {
+						execTasks := []artifact.TaskIdAnExecution{}
+						for _, execTask := range t.ExecutionTasks {
+							execTasks = append(execTasks, artifact.TaskIdAnExecution{TaskID: execTask, Execution: context.Task.Execution})
+						}
+						execTaskFiles, err := getAllArtifacts(execTasks)
 						if err != nil {
 							return nil, err
 						}
