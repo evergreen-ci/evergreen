@@ -256,6 +256,33 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if err = patchDoc.Insert(); err != nil {
 		return err
 	}
+	if patchDoc.IsGithubPRPatch() {
+		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+			Owner:    patchDoc.GithubPatchData.BaseOwner,
+			Repo:     patchDoc.GithubPatchData.BaseRepo,
+			PRNumber: patchDoc.GithubPatchData.PRNumber,
+			Ref:      patchDoc.GithubPatchData.HeadHash,
+		})
+		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		if err = patchSub.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
+		}
+		buildSub := event.NewBuildOutcomeSubscriptionByVersion(patchDoc.Version, ghSub)
+		if err = buildSub.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
+		}
+	}
+	if catcher.HasErrors() {
+		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			"message":     "failed to save subscription, patch will not notify",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+
+	}
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
@@ -269,22 +296,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 				"source":      "patch intents",
 			}))
 			return err
-		}
-		if patchDoc.IsGithubPRPatch() {
-			ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
-				Owner:    patchDoc.GithubPatchData.BaseOwner,
-				Repo:     patchDoc.GithubPatchData.BaseRepo,
-				PRNumber: patchDoc.GithubPatchData.PRNumber,
-				Ref:      patchDoc.GithubPatchData.HeadHash,
-			})
-			patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-			if err = patchSub.Upsert(); err != nil {
-				return errors.Wrap(err, "failed to insert patch subscription for Github PR")
-			}
-			buildSub := event.NewBuildOutcomeSubscriptionByVersion(patchDoc.Version, ghSub)
-			if err = buildSub.Upsert(); err != nil {
-				return errors.Wrap(err, "failed to insert build subscription for Github PR")
-			}
 		}
 	}
 
