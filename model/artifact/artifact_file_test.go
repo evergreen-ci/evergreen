@@ -152,7 +152,7 @@ func (s *TestArtifactFileSuite) TestFindByTaskIdWithoutExecution() {
 }
 
 func (s *TestArtifactFileSuite) TestFindByIdsAndExecutions() {
-	tasks := []TaskIdAnExecution{
+	tasks := []TaskIDAndExecution{
 		{TaskID: "task1", Execution: 1},
 		{TaskID: "task2", Execution: 5},
 	}

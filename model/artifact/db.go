@@ -18,7 +18,7 @@ var (
 	LinkKey      = bsonutil.MustHaveTag(File{}, "Link")
 )
 
-type TaskIdAnExecution struct {
+type TaskIDAndExecution struct {
 	TaskID    string
 	Execution int
 }
@@ -50,7 +50,7 @@ func ByTaskIdWithoutExecution(id string) db.Q {
 	})
 }
 
-func ByTaskIdsAndExecutions(tasks []TaskIdAnExecution) db.Q {
+func ByTaskIdsAndExecutions(tasks []TaskIDAndExecution) db.Q {
 	orClause := []bson.M{}
 	for _, t := range tasks {
 		orClause = append(orClause, bson.M{

@@ -51,7 +51,7 @@ func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact
 	return publicFiles
 }
 
-func getAllArtifacts(tasks []artifact.TaskIdAnExecution) ([]artifact.File, error) {
+func getAllArtifacts(tasks []artifact.TaskIDAndExecution) ([]artifact.File, error) {
 	artifacts, err := artifact.FindAll(artifact.ByTaskIdsAndExecutions(tasks))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding artifact files for task")
@@ -101,15 +101,15 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 						}
 					}
 
-					files, err := getAllArtifacts([]artifact.TaskIdAnExecution{{TaskID: taskId, Execution: context.Task.Execution}})
+					files, err := getAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: context.Task.Execution}})
 					if err != nil {
 						return nil, err
 					}
 
 					if t.DisplayOnly {
-						execTasks := []artifact.TaskIdAnExecution{}
+						execTasks := []artifact.TaskIDAndExecution{}
 						for _, execTask := range t.ExecutionTasks {
-							execTasks = append(execTasks, artifact.TaskIdAnExecution{TaskID: execTask, Execution: context.Task.Execution})
+							execTasks = append(execTasks, artifact.TaskIDAndExecution{TaskID: execTask, Execution: context.Task.Execution})
 						}
 						execTaskFiles, err := getAllArtifacts(execTasks)
 						if err != nil {
