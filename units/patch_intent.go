@@ -267,7 +267,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		if err = patchSub.Upsert(); err != nil {
 			catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
 		}
-		buildSub := event.NewBuildOutcomeSubscriptionByVersion(patchDoc.Version, ghSub)
+		buildSub := event.NewBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
 		if err = buildSub.Upsert(); err != nil {
 			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
 		}
