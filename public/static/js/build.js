@@ -80,7 +80,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     {
       trigger: "outcome",
       resource_type: "BUILD",
-      label: "this build finishes",
+      label: "this build finishes"
     },
     {
       trigger: "failure",
@@ -88,14 +88,24 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       label: "this build fails"
     },
     {
+      trigger: "success",
+      resource_type: "BUILD",
+      label: "this build succeeds"
+    },
+    {
       trigger: "outcome",
       resource_type: "TASK",
-      label: "each task in this build finishes",
+      label: "a task in this build finishes"
     },
     {
       trigger: "failure",
       resource_type: "TASK",
-      label: "each task in this build fails",
+      label: "a task in this build fails"
+    },
+    {
+      trigger: "succeeds",
+      resource_type: "TASK",
+      label: "a task in this build succeeds"
     },
   ];
 

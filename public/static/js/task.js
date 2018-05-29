@@ -278,6 +278,11 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             resource_type: "TASK",
             label: "this task fails",
           },
+          {
+            trigger: "success",
+            resource_type: "TASK",
+            label: "this task succeeds",
+          },
         ];
 
         $scope.addSubscription = function() {

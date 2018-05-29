@@ -10,24 +10,34 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   $scope.subscriptions = [];
   $scope.triggers = [
     {
-       trigger: "outcome",
-       resource_type: "VERSION",
-       label: "this version finishes",
+      trigger: "outcome",
+      resource_type: "VERSION",
+      label: "this version finishes",
     },
     {
-       trigger: "failure",
-       resource_type: "VERSION",
-       label: "this version fails",
+      trigger: "failure",
+      resource_type: "VERSION",
+      label: "this version fails",
+    },
+    {
+      trigger: "success",
+      resource_type: "VERSION",
+      label: "this version succeeds",
     },
     {
       trigger: "outcome",
       resource_type: "BUILD",
-      label: "each build finishes",
+      label: "a build-variant in this version finishes"
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
-      label: "any build fails"
+      label: "a build-variant in this version fails"
+    },
+    {
+      trigger: "success",
+      resource_type: "BUILD",
+      label: "a build-variant in this version succeeds"
     },
   ];
   hash = $location.hash();
