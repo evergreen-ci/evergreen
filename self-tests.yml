@@ -538,9 +538,6 @@ tasks:
     name: race-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-repotracker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-scheduler
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
@@ -557,9 +554,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-alerts
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-util
