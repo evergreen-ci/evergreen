@@ -98,12 +98,8 @@ $(buildDir)/set-var:scripts/set-var.go
 	go build -o $@ $<
 $(buildDir)/set-project-var:scripts/set-project-var.go
 	go build -o $@ $<
-$(buildDir)/setup-smoke-config:scripts/setup-smoke-config.go
-	go build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
-setup-smoke-config:$(buildDir)/setup-smoke-config
-	@touch $@
 set-smoke-vars:$(buildDir)/.load-smoke-data
 	@./bin/set-project-var -dbName mci_smoke -key aws_key -value $(AWS_KEY)
 	@./bin/set-project-var -dbName mci_smoke -key aws_secret -value $(AWS_SECRET)
@@ -332,7 +328,10 @@ phony += clean
 
 # mongodb utility targets
 mongodb/.get-mongodb:
-	./scripts/setup-mongodb.sh "$(MONGODB_URL)" "$(DECOMPRESS)"
+	rm -rf mongodb
+	mkdir -p mongodb
+	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
+	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
 get-mongodb: mongodb/.get-mongodb
 	touch $<
 start-mongod: mongodb/.get-mongodb

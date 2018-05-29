@@ -100,12 +100,12 @@ variables:
       - func: get-project
       - func: set-up-mongodb
       - func: run-make
-        vars: { target: "set-var set-project-var load-smoke-data setup-smoke-config" }
+        vars: { target: "set-var set-project-var load-smoke-data" }
       - command: subprocess.exec
         params:
           silent: true
           working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          command: bin/setup-smoke-config -githubToken ${github_token}
+          command: bash scripts/setup-smoke-config.sh ${github_token}
       - func: run-make
         vars:
           target: set-smoke-vars
