@@ -87,7 +87,7 @@ type APIGithubUser struct {
 
 func (g *APIGithubUser) BuildFromService(h interface{}) error {
 	if g == nil {
-		return nil
+		return errors.New("APIGithubUser has not been instantiated")
 	}
 	switch v := h.(type) {
 	case user.GithubUser:
@@ -116,7 +116,7 @@ type APINotificationPreferences struct {
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	if n == nil {
-		return nil
+		return errors.New("APINotificationPreferences has not been instantiated")
 	}
 	switch v := h.(type) {
 	case user.NotificationPreferences:
