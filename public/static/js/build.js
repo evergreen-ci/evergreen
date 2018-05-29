@@ -77,22 +77,36 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
   $scope.subscriptions = [];
   $scope.hide_add_subscription = true;
   $scope.triggers = [
-      // TODO uncomment as we implement these
-      // {
-      //    trigger: "failure",
-      //    resource_type: "BUILD",
-      //    label: "any task in this build fails",
-      // },
-      // {
-      //    trigger: "first-failure-by-variant",
-      //    resource_type: "BUILD",
-      //    label: "the first task in this build fails",
-      // },
-      // {
-      //    trigger: "regression",
-      //    resource_type: "BUILD",
-      //    label: "a previously passing task fails",
-      // },
+    {
+      trigger: "outcome",
+      resource_type: "BUILD",
+      label: "this build finishes"
+    },
+    {
+      trigger: "failure",
+      resource_type: "BUILD",
+      label: "this build fails"
+    },
+    {
+      trigger: "success",
+      resource_type: "BUILD",
+      label: "this build succeeds"
+    },
+    {
+      trigger: "outcome",
+      resource_type: "TASK",
+      label: "a task in this build finishes"
+    },
+    {
+      trigger: "failure",
+      resource_type: "TASK",
+      label: "a task in this build fails"
+    },
+    {
+      trigger: "succeeds",
+      resource_type: "TASK",
+      label: "a task in this build succeeds"
+    },
   ];
 
   var dateSorter = function(a, b){ return (+a) - (+b) }
@@ -101,7 +115,12 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     promise = addSubscriber($mdDialog, $scope.triggers);
 
     $mdDialog.show(promise).then(function(data){
-      addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
+      if (data.resource_type === "BUILD") {
+        addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
+
+      }else {
+        addInSelectorsAndOwnerType(data, "build", data.resource_type.toLowerCase(), $scope.build.Build._id);
+      }
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();
     });

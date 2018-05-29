@@ -26,6 +26,7 @@ const (
 	selectorRequester = "requester"
 	selectorStatus    = "status"
 	selectorInVersion = "in-version"
+	selectorInBuild   = "in-build"
 )
 
 type commonTemplateData struct {

@@ -128,11 +128,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <li ng-class="{'admin-disabled': !canSetPriority}">
                         <a tabindex="-1" href="#" ng-click="!canSetPriority || openAdminModal('setPriority')">Set Priority</a>
                       </li>
-                      <!--
                       <li>
                         <a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a>
                       </li>
-                      -->
                     </ul>
                 </div>
                 <admin-modal>

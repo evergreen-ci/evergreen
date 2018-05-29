@@ -538,7 +538,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 	if info.Updated > 0 {
 		for _, t := range tasks {
-			event.LogTaskScheduled(t.Id, scheduledTime)
+			event.LogTaskScheduled(t.Id, t.Execution, scheduledTime)
 		}
 	}
 	return nil
@@ -916,7 +916,7 @@ func (t *Task) SetPriority(priority int64, user string) error {
 		bson.M{"$set": modifier},
 	)
 
-	event.LogTaskPriority(t.Id, user, priority)
+	event.LogTaskPriority(t.Id, t.Execution, user, priority)
 
 	return errors.WithStack(err)
 

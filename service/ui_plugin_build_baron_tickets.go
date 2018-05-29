@@ -131,7 +131,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONError(w, msg)
 		return
 	}
-	event.LogJiraIssueCreated(t.Id, result.Key)
+	event.LogJiraIssueCreated(t.Id, t.Execution, result.Key)
 	grip.Infof("Ticket %s successfully created", result.Key)
 	gimlet.WriteJSON(w, result)
 }
