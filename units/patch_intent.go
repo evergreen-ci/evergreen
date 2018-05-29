@@ -281,7 +281,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			"intent_id":   j.IntentID,
 			"source":      "patch intents",
 		}))
-
 	}
 	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
@@ -299,7 +298,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 // buildPatchURL creates a URL to enable downloading patch files through the
