@@ -93,8 +93,8 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	failedTests := []string{}
 	tests := []jiraTestFailure{}
 	for _, test := range t.LocalTestResults {
-		failedTests = append(failedTests, test.TestFile)
 		if testIds[test.TestFile] {
+			failedTests = append(failedTests, test.TestFile)
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.TestFile),
 				URL:        test.URL,
