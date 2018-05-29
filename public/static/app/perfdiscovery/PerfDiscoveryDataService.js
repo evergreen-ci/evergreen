@@ -122,12 +122,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     }
   }
 
-  // :param key: String (e.g. 'BF-123')
-  // :returns: String (e.g. 'https://jirahost/browse/BF-123')
-  function jiraLink(key) {
-    return 'https://' + $window.JiraHost + '/browse/' + key
-  }
-
   /******************
    * DATA PROCESING *
    ******************/
@@ -327,7 +321,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
       return _.mapObject(res, function(d) {
         if (d.data) {
           return _.map(_.pluck(d.data, 'key'), function(key) {
-            return {key: key, link: jiraLink(key)}
+            return {key: key}
           })
         } else {
           return []

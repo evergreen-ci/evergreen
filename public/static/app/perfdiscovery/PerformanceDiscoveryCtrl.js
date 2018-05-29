@@ -10,6 +10,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   var PD = PERF_DISCOVERY
   var grid
   vm.refCtx = [0, 0]
+  vm.jiraHost = $window.JiraHost
 
   // Load state from the URL
   var state = stateUtil.readState({

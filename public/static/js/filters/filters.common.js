@@ -17,15 +17,6 @@ var LINK_REGEXP =
 
 var JIRA_REGEXP = /[A-Z]{1,10}-\d{1,6}/ig;
 
-var jiraLinkify = function(input, jiraHost) {
-  if (!input) {
-    return input;
-  }
-  return input.replace(JIRA_REGEXP, function(match) {
-    return '<a href="https://'+jiraHost +'/browse/' + match + '">' + match + '</a>';
-  });
-};
-
 var escapeHtml = function(str) {
   var div = document.createElement('div');
   div.appendChild(document.createTextNode(str));
@@ -169,8 +160,17 @@ filters.common.filter('conditional', function() {
       return '<a href="' + match + '">' + match + '</a>';
     });
   };
-}).filter('jiraLinkify', function() {
-  return jiraLinkify;
+}).filter('jiraLinkify', function($sce) {
+  return function(input, jiraHost) {
+    if (!input) {
+      return input
+    }
+    return input.replace(JIRA_REGEXP, function(match) {
+      return $sce.trustAsHtml(
+        '<a href="https://'+jiraHost +'/browse/' + match + '">' + match + '</a>'
+      )
+    })
+  }
 }).filter('convertDateToUserTimezone', function() {
   return function(input, timezone, format) {
     return moment(input).tz(timezone).format(format);

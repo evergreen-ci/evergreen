@@ -35,7 +35,7 @@ mciModule.run(function($templateCache) {
   $templateCache.put('perf-discovery-bfs',
     '<div class="ui-grid-cell-contents">' +
       '<span ng-repeat="item in COL_FIELD">' +
-        '<a href="{{item.link}}">{{item.key}}</a>' +
+        '<span ng-bind-html="item.key | jiraLinkify : grid.appScope.$ctrl.jiraHost"></span>' +
         '{{$last ? "" : ", "}}' + 
       '</span>' +
     '</div>'
