@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type APIPubKey struct {
@@ -110,8 +111,10 @@ func (g *APIGithubUser) ToService() (interface{}, error) {
 }
 
 type APINotificationPreferences struct {
-	BuildBreak  APIString `json:"build_break"`
-	PatchFinish APIString `json:"patch_finish"`
+	BuildBreak    APIString `json:"build_break"`
+	BuildBreakID  APIString `json:"build_break_id,omitempty"`
+	PatchFinish   APIString `json:"patch_finish"`
+	PatchFinishID APIString `json:"patch_finish_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
@@ -122,6 +125,12 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	case user.NotificationPreferences:
 		n.BuildBreak = ToAPIString(string(v.BuildBreak))
 		n.PatchFinish = ToAPIString(string(v.PatchFinish))
+		if v.BuildBreakID != "" {
+			n.BuildBreakID = ToAPIString(v.BuildBreakID.Hex())
+		}
+		if v.PatchFinishID != "" {
+			n.PatchFinishID = ToAPIString(v.PatchFinishID.Hex())
+		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
 	}
@@ -140,8 +149,15 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	if !user.IsValidSubscriptionPreference(patchFinish) {
 		return nil, errors.New("Patch finish preference is not a valid type")
 	}
-	return user.NotificationPreferences{
+	preferences := user.NotificationPreferences{
 		BuildBreak:  user.UserSubscriptionPreference(buildbreak),
 		PatchFinish: user.UserSubscriptionPreference(patchFinish),
-	}, nil
+	}
+	if n.BuildBreakID != nil {
+		preferences.BuildBreakID = bson.ObjectIdHex(FromAPIString(n.BuildBreakID))
+	}
+	if n.PatchFinishID != nil {
+		preferences.PatchFinishID = bson.ObjectIdHex(FromAPIString(n.PatchFinishID))
+	}
+	return preferences, nil
 }

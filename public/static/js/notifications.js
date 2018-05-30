@@ -1,12 +1,12 @@
 mciModule.controller('NotificationsController', function($scope, $window, mciUserSettingsService, mciSubscriptionsService, notificationService) {
   $scope.load = function() {
-    $scope.getUserSettings();
-    $scope.getSubscriptions();
+    $scope.getData();
   };
 
-  $scope.getUserSettings = function() {
+  $scope.getData = function() {
     var success = function(resp) {
       $scope.settings = resp.data;
+      $scope.getSubscriptions();
     };
     var failure = function(resp) {
       notificationService.pushNotification("Failed to get settings: " + resp.data,'errorHeader');
@@ -16,7 +16,14 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
 
   $scope.getSubscriptions = function() {
     var success = function(resp) {
-      $scope.subscriptions = resp.data;
+      var patchFinishId = $scope.settings.notifications.patch_finish_id;
+      var buildBreakId = $scope.settings.notifications.build_break_id;
+      $scope.subscriptions = _.filter(resp.data, function(subscription){
+        if (subscription.id === patchFinishId || subscription.id === buildBreakId) {
+          return false;
+        }
+        return true;
+      });
     };
     var failure = function(resp) {
       notificationService.pushNotification("Failed to get subscriptions: " + resp.data,'errorHeader');
