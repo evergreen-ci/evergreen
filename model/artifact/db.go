@@ -54,10 +54,8 @@ func ByTaskIdsAndExecutions(tasks []TaskIDAndExecution) db.Q {
 	orClause := []bson.M{}
 	for _, t := range tasks {
 		orClause = append(orClause, bson.M{
-			"$and": []bson.M{
-				{TaskIdKey: t.TaskID},
-				{ExecutionKey: t.Execution},
-			},
+			TaskIdKey:    t.TaskID,
+			ExecutionKey: t.Execution,
 		})
 	}
 	return db.Query(bson.M{
