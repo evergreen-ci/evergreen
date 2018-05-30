@@ -1,6 +1,7 @@
 package send
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/mongodb/grip/level"
@@ -162,4 +163,26 @@ func (j *JiraSuite) TestGetFieldsWithFields() {
 	fields := getFields(m)
 	j.Equal(fields.Summary, msg)
 	j.NotNil(fields.Description)
+}
+
+func (j *JiraSuite) TestTruncate() {
+	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	j.NotNil(sender)
+	j.NoError(err)
+
+	mock, ok := j.opts.client.(*jiraClientMock)
+	j.True(ok)
+	j.Equal(mock.numSent, 0)
+
+	m := message.NewDefaultMessage(level.Info, "aaa")
+	sender.Send(m)
+	j.Len(mock.lastSummary, 3)
+
+	var longString bytes.Buffer
+	for i := 0; i < 1000; i++ {
+		longString.WriteString("a")
+	}
+	m = message.NewDefaultMessage(level.Info, longString.String())
+	sender.Send(m)
+	j.Len(mock.lastSummary, 254)
 }
