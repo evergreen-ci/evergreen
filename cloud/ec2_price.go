@@ -210,7 +210,11 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		return onDemandProvider, nil
 	}
 	if m.provider == autoProvider {
-		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, defaultRegion)
+		r, err := getRegion(h)
+		if err != nil {
+			return 0, errors.Wrap(err, "problem getting region for host")
+		}
+		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, r)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}

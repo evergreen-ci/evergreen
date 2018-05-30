@@ -58,6 +58,10 @@ type EC2ProviderSettings struct {
 
 	// UserData are commands to run after the instance starts.
 	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
+
+	// Region is the EC2 region in which the instance will start. If empty,
+	// the ec2Manager will spawn in "us-east-1".
+	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -314,7 +318,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	ec2Settings := &EC2ProviderSettings{}
 	if h.Distro.ProviderSettings != nil {
 		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
+			return nil, errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
 		}
 	}
 	grip.Debug(message.Fields{
@@ -334,7 +338,11 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 	h.InstanceType = ec2Settings.InstanceType
 
-	if err = m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting region for host")
+	}
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -429,7 +437,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
-	if err := m.client.Create(m.credentials); err != nil {
+	if err := m.client.Create(m.credentials, defaultRegion); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 
@@ -491,9 +499,27 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	return statuses, nil
 }
 
+func getRegion(h *host.Host) (string, error) {
+	ec2Settings := &EC2ProviderSettings{}
+	if h.Distro.ProviderSettings != nil {
+		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
+			return "", errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
+		}
+	}
+	r := defaultRegion
+	if ec2Settings.Region != "" {
+		r = ec2Settings.Region
+	}
+	return r, nil
+}
+
 // GetInstanceStatus returns the current status of an EC2 instance.
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	if err := m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return StatusUnknown, errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -523,14 +549,16 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 			"terminated!", h.Id)
 		return err
 	}
-
-	if err := m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
 	instanceId := h.Id
-	var err error
 	if isHostSpot(h) {
 		instanceId, err = m.cancelSpotRequest(ctx, h)
 		if err != nil {
@@ -643,7 +671,11 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-		if err := m.client.Create(m.credentials); err != nil {
+		r, err := getRegion(h)
+		if err != nil {
+			return errors.Wrap(err, "problem getting region from host")
+		}
+		if err := m.client.Create(m.credentials, r); err != nil {
 			return errors.Wrap(err, "error creating client")
 		}
 		defer m.client.Close()
@@ -722,7 +754,11 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	var instance *ec2.Instance
 	var err error
 
-	if err = m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting region from host")
+	}
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return "", errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -837,7 +873,11 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
-	if err := m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()

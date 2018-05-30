@@ -718,3 +718,36 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		StatusTerminated,
 	})
 }
+
+func (s *EC2Suite) TestGetRegion() {
+	h := &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{},
+		},
+	}
+	r, err := getRegion(h)
+	s.NoError(err)
+	s.Equal(defaultRegion, r)
+
+	h = &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{
+				"region": defaultRegion,
+			},
+		},
+	}
+	r, err = getRegion(h)
+	s.NoError(err)
+	s.Equal(defaultRegion, r)
+
+	h = &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{
+				"region": "us-west-2",
+			},
+		},
+	}
+	r, err = getRegion(h)
+	s.NoError(err)
+	s.Equal("us-west-2", r)
+}
