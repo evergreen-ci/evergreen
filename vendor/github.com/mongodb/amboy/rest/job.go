@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/tychoish/gimlet"
 )
 
 type jobStatusResponse struct {
@@ -62,7 +62,7 @@ func (s *Service) JobStatus(w http.ResponseWriter, r *http.Request) {
 	response, err := s.getJobStatusResponse(name)
 	if err != nil {
 		grip.Error(err)
-		gimlet.WriteErrorJSON(w, response)
+		gimlet.WriteJSONError(w, response)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (s *Service) WaitJob(w http.ResponseWriter, r *http.Request) {
 	response, err := s.getJobStatusResponse(name)
 	if err != nil {
 		grip.Error(err)
-		gimlet.WriteErrorJSON(w, response)
+		gimlet.WriteJSONError(w, response)
 	}
 
 	timeout, err := parseTimeout(r)

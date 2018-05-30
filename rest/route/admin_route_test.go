@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -99,7 +100,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Jira.Username, settings.Jira.Username)
 	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
-	s.EqualValues(testSettings.NewRelic.ApplicationName, settings.NewRelic.ApplicationName)
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settings.Notify.SMTP.AdminEmail))
@@ -373,4 +373,33 @@ func TestAdminEventRoute(t *testing.T) {
 	ts, err := time.Parse(time.RFC3339, pagination.Pages.Next.Key)
 	assert.NoError(err)
 	assert.InDelta(now.Unix(), ts.Unix(), float64(time.Millisecond.Nanoseconds()))
+}
+
+func TestClearTaskQueueRoute(t *testing.T) {
+	assert := assert.New(t)
+	route := clearTaskQueueHandler{}
+	distro := "d1"
+	tasks := []model.TaskQueueItem{
+		{
+			Id: "task1",
+		},
+		{
+			Id: "task2",
+		},
+		{
+			Id: "task3",
+		},
+	}
+	queue := model.NewTaskQueue(distro, tasks)
+	assert.Len(queue.Queue, 3)
+	assert.NoError(queue.Save())
+
+	route.distro = distro
+	sc := &data.DBConnector{}
+	_, err := route.Execute(context.Background(), sc)
+	assert.NoError(err)
+
+	queueFromDb, err := model.LoadTaskQueue(distro)
+	assert.NoError(err)
+	assert.Len(queueFromDb.Queue, 0)
 }

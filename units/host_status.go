@@ -66,6 +66,9 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "problem finding hosts that are not running"))
 		return
 	}
+	if len(hostsToCheck) == 0 {
+		return
+	}
 	providers := map[string][]host.Host{}
 	for _, h := range hostsToCheck {
 		providers[h.Provider] = append(providers[h.Provider], h)

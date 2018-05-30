@@ -97,10 +97,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		Keys:    map[string]string{"k3": "v3"},
 		LogPath: "logpath",
-		NewRelic: evergreen.NewRelicConfig{
-			ApplicationName: "new_relic",
-			LicenseKey:      "key",
-		},
 		Notify: evergreen.NotifyConfig{
 			SMTP: &evergreen.SMTPConfig{
 				Server:     "server",
@@ -171,7 +167,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		Slack: evergreen.SlackConfig{
 			Options: &send.SlackOptions{
-				Channel:   "channel",
+				Channel:   "#channel",
 				Fields:    true,
 				FieldsSet: map[string]bool{},
 			},

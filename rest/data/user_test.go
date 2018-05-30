@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/stretchr/testify/suite"
 )
@@ -21,14 +22,16 @@ type DBUserConnectorSuite struct {
 }
 
 func (s *DBUserConnectorSuite) SetupTest() {
-	s.NoError(db.Clear(user.Collection))
+	s.NoError(db.ClearCollections(user.Collection, event.SubscriptionsCollection))
 	s.sc = &DBConnector{}
 	s.numUsers = 10
 
 	for i := 0; i < s.numUsers; i++ {
+		uid := fmt.Sprintf("user_%d", i)
 		testUser := &user.DBUser{
-			Id:     fmt.Sprintf("user_%d", i),
-			APIKey: fmt.Sprintf("apikey_%d", i),
+			Id:           uid,
+			APIKey:       fmt.Sprintf("apikey_%d", i),
+			EmailAddress: fmt.Sprintf("%s@domain.invalid", uid),
 			PubKeys: []user.PubKey{
 				{
 					Name: fmt.Sprintf("user_%d_0", i),
@@ -39,10 +42,6 @@ func (s *DBUserConnectorSuite) SetupTest() {
 		s.NoError(testUser.Insert())
 		s.users = append(s.users, testUser)
 	}
-}
-
-func (s *DBUserConnectorSuite) TearDownTest() {
-	s.NoError(db.Clear(user.Collection))
 }
 
 func (s *DBUserConnectorSuite) TestFindUserById() {
@@ -65,6 +64,68 @@ func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 		s.NoError(err)
 		s.Len(dbUser.PubKeys, 0)
 	}
+}
+
+func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.NotificationPreferences {
+	found, err := s.sc.FindUserById(s.users[index].Id)
+	s.NoError(err)
+	s.Require().NotNil(found)
+	user, ok := found.(*user.DBUser)
+	s.Require().True(ok)
+
+	s.users[index].Settings = user.Settings
+
+	return &user.Settings.Notifications
+}
+
+func (s *DBUserConnectorSuite) TestUpdateSettings() {
+	settings := user.UserSettings{
+		SlackUsername: "@test",
+		Notifications: user.NotificationPreferences{
+			BuildBreak:  user.PreferenceEmail,
+			PatchFinish: user.PreferenceSlack,
+		},
+	}
+	settings.Notifications.PatchFinish = ""
+
+	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	pref := s.getNotificationSettings(0)
+	s.NotNil(pref)
+	s.False(pref.PatchFinishID.Valid())
+
+	// Should create a new subscription
+	settings.Notifications.PatchFinish = user.PreferenceSlack
+	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	pref = s.getNotificationSettings(0)
+	s.True(pref.PatchFinishID.Valid())
+	sub, err := event.FindSubscriptionByID(pref.PatchFinishID)
+	s.NoError(err)
+	s.Require().NotNil(sub)
+	s.Equal(event.SlackSubscriberType, sub.Subscriber.Type)
+	settings.Notifications = *pref
+
+	// should modify the existing subscription
+	settings.Notifications.PatchFinish = user.PreferenceEmail
+	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	pref = s.getNotificationSettings(0)
+	s.NotNil(pref)
+	s.True(pref.PatchFinishID.Valid())
+	sub, err = event.FindSubscriptionByID(pref.PatchFinishID)
+	s.NoError(err)
+	s.Require().NotNil(sub)
+	s.Equal(event.EmailSubscriberType, sub.Subscriber.Type)
+	settings.Notifications = *pref
+
+	// should delete the existing subscription
+	settings.Notifications.PatchFinish = ""
+	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
+	pref = s.getNotificationSettings(0)
+	s.NotNil(pref)
+	s.False(pref.PatchFinishID.Valid())
+	settings.Notifications = *pref
+
+	settings.SlackUsername = "#Test"
+	s.EqualError(s.sc.UpdateSettings(s.users[0], settings), "expected a Slack username, but got a channel")
 }
 
 func TestDBUserConnector(t *testing.T) {

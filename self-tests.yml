@@ -386,9 +386,6 @@ tasks:
     name: test-plugin-builtin-buildbaron
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-plugin-builtin-perfdash
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -505,9 +502,6 @@ tasks:
     name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-plugin-builtin-perfdash
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-migrations
 
   # cross compiled test suites
@@ -562,11 +556,20 @@ buildvariants:
     run_on:
       - archlinux-test
     expansions:
-      build_env: "RACE_ENABLED=true RUN_COUNT=5 TEST_TIMEOUT=15m"
+      build_env: "RACE_ENABLED=true TEST_TIMEOUT=15m"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     tasks:
       - name: "dist"
       - name: ".race"
+
+  - name: coverage
+    display_name: Coverage
+    run_on:
+      - archlinux-test
+    expansions:
+      build_env: "TEST_TIMEOUT=15m"
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+    tasks:
       - name: ".report"
         stepback: false
 

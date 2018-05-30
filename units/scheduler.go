@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/pkg/errors"
 )
 
 const schedulerJobName = "distro-scheduler"
@@ -59,15 +60,18 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
-
-	conf := scheduler.Configuration{
-		DistroID:      j.DistroID,
-		TaskFinder:    settings.Scheduler.TaskFinder,
-		HostAllocator: settings.Scheduler.HostAllocator,
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error retrieving scheduler settings"))
+		return
 	}
 
-	err := scheduler.PlanDistro(ctx, conf)
+	conf := scheduler.Configuration{
+		DistroID:         j.DistroID,
+		TaskFinder:       settings.Scheduler.TaskFinder,
+		HostAllocator:    settings.Scheduler.HostAllocator,
+		FreeHostFraction: settings.Scheduler.FreeHostFraction,
+	}
 
-	j.AddError(err)
+	j.AddError(scheduler.PlanDistro(ctx, conf))
 }

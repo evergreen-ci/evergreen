@@ -324,6 +324,9 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
+					if ec2err.Code() == EC2ErrorSpotRequestNotFound {
+						return false, err
+					}
 				}
 				return true, err
 			}

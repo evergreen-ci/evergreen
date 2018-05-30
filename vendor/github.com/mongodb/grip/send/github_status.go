@@ -129,7 +129,7 @@ func (s *githubStatusMessageLogger) githubMessageFieldsToStatus(m *message.Field
 	status := &github.RepoStatus{
 		State:       state,
 		Context:     context,
-		URL:         URL,
+		TargetURL:   URL,
 		Description: description,
 	}
 
@@ -152,9 +152,9 @@ func githubStatusMessagePayloadToRepoStatus(c *message.GithubStatus) *github.Rep
 	}
 
 	s := &github.RepoStatus{
-		Context: github.String(c.Context),
-		State:   github.String(string(c.State)),
-		URL:     github.String(c.URL),
+		Context:   github.String(c.Context),
+		State:     github.String(string(c.State)),
+		TargetURL: github.String(c.URL),
 	}
 	if len(c.Description) > 0 {
 		s.Description = github.String(c.Description)

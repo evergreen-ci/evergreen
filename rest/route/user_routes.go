@@ -83,7 +83,7 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 		userSettings.GithubUser.UID = u.Settings.GithubUser.UID
 	}
 
-	if err = sc.UpdateSettings(u.Username(), userSettings); err != nil {
+	if err = sc.UpdateSettings(u, userSettings); err != nil {
 		return ResponseData{}, errors.Wrap(err, "Error saving user settings")
 	}
 

@@ -39,7 +39,6 @@ func resetRegistry() error {
 		&HostInitConfig{},
 		&JiraConfig{},
 		&LoggerConfig{},
-		&NewRelicConfig{},
 		&NotifyConfig{},
 		&RepoTrackerConfig{},
 		&SchedulerConfig{},

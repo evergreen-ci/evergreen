@@ -40,6 +40,7 @@ type EC2ProviderSettings struct {
 
 	// MountPoints are the disk mount points for EBS volumes.
 	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
+
 	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
 	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
 
@@ -428,10 +429,15 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+	if err := m.client.Create(m.credentials); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+
 	spotHostIDs := []*string{}
 	onDemandHostIDs := []*string{}
 	instanceIdToHostMap := map[string]string{}
 	hostToStatusMap := map[string]CloudStatus{}
+	hostsToCheck := []*string{}
 
 	// Populate spot and on-demand slices
 	for i := range hosts {
@@ -445,23 +451,24 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	}
 
 	// Get instance IDs for spot instances
-	spotOut, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: spotHostIDs,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "error describing spot instances")
-	}
-	if len(spotOut.SpotInstanceRequests) != len(spotHostIDs) {
-		return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
-	}
-	hostsToCheck := []*string{}
-	for i := range spotHostIDs {
-		if spotOut.SpotInstanceRequests[i].InstanceId == nil || *spotOut.SpotInstanceRequests[i].InstanceId == "" {
-			hostToStatusMap[*spotHostIDs[i]] = cloudStatusFromSpotStatus(*spotOut.SpotInstanceRequests[i].State)
-			continue
+	if len(spotHostIDs) > 0 {
+		spotOut, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: spotHostIDs,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "error describing spot instances")
 		}
-		hostsToCheck = append(hostsToCheck, spotOut.SpotInstanceRequests[i].InstanceId)
-		instanceIdToHostMap[*spotOut.SpotInstanceRequests[i].InstanceId] = *spotHostIDs[i]
+		if len(spotOut.SpotInstanceRequests) != len(spotHostIDs) {
+			return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
+		}
+		for i := range spotHostIDs {
+			if spotOut.SpotInstanceRequests[i].InstanceId == nil || *spotOut.SpotInstanceRequests[i].InstanceId == "" {
+				hostToStatusMap[*spotHostIDs[i]] = cloudStatusFromSpotStatus(*spotOut.SpotInstanceRequests[i].State)
+				continue
+			}
+			hostsToCheck = append(hostsToCheck, spotOut.SpotInstanceRequests[i].InstanceId)
+			instanceIdToHostMap[*spotOut.SpotInstanceRequests[i].InstanceId] = *spotHostIDs[i]
+		}
 	}
 
 	// Get host statuses
@@ -676,7 +683,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 				"distro":        h.Distro.Id,
 			}))
 		}
-		if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+		if resp == nil || len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
 			grip.Error(message.Fields{
 				"message":       "error finding instance",
 				"host":          h.Id,

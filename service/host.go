@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -70,7 +71,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Events      []event.EventLogEntry
 		Host        *host.Host
 		RunningTask *task.Task
@@ -87,7 +88,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Hosts               *hostsData
 		IncludeSpawnedHosts bool
 		ViewData
@@ -137,7 +138,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		msg = NewSuccessFlash(fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status))
 	}
 	PushFlash(uis.CookieStore, r, w, msg)
-	uis.WriteJSON(w, http.StatusOK, HostStatusWriteConfirm)
+	gimlet.WriteJSON(w, HostStatusWriteConfirm)
 }
 
 func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {

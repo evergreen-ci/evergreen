@@ -297,20 +297,6 @@ func (s *AdminSuite) TestJiraConfig() {
 	s.Equal(config, settings.Jira)
 }
 
-func (s *AdminSuite) TestNewRelicConfig() {
-	config := NewRelicConfig{
-		ApplicationName: "new_relic",
-		LicenseKey:      "key",
-	}
-
-	err := config.Set()
-	s.NoError(err)
-	settings, err := GetConfig()
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.NewRelic)
-}
-
 func (s *AdminSuite) TestProvidersConfig() {
 	config := CloudProviders{
 		AWS: AWSConfig{

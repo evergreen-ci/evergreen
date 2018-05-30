@@ -2,9 +2,9 @@
 <style type="text/css">
   body{ background: #f5f6f7; }
 </style>
-<script type="text/javascript" src="{{Static "js" "host.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "host.js"}}?hash={{ BuildRevision }}"></script>
 {{if .User }}
-<script type="text/javascript" src="{{Static "js" "host_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "host_admin.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 <script type="text/javascript">
   var host = {{.Host}}
@@ -74,9 +74,9 @@ Evergreen - Host {{.Host.Id}}
             <pre readonly>ssh [[host.user]]@[[host.host]]</pre>
           </div>
         </div>
-        <div class="row" ng-show="host.last_reachability_check != 'N/A'">
-          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>Last Reachability Check</b> </div>
-          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.last_reachability_check]]</div>
+        <div class="row" ng-show="host.last_communication != 'N/A'">
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>Last Communication</b> </div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.last_communication]]</div>
         </div>
       </div>
     </div>

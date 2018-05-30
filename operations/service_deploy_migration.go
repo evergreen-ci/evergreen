@@ -6,8 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/migrations"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/anser"
-	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -83,7 +81,7 @@ func deployDataTransforms() cli.Command {
 			}
 			settings := env.Settings()
 
-			anserConf := &model.Configuration{}
+			anserConf := &migrations.CustomConfiguration{}
 			err = util.ReadFromYAMLFile(migrationConfFn, anserConf)
 			if err != nil {
 				return errors.Wrap(err, "problem parsing configuration file")
@@ -105,7 +103,7 @@ func deployDataTransforms() cli.Command {
 			}
 			defer anserEnv.Close()
 
-			app, err := anser.NewApplication(anserEnv, anserConf)
+			app, err := migrations.NewCustomApplication(anserEnv, anserConf)
 			if err != nil {
 				return errors.Wrap(err, "problem creating migration application")
 			}

@@ -35,7 +35,11 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			grip.Error(err)
+			if err.Error() == "http: Server closed" {
+				grip.Info(err)
+				return
+			}
+			grip.CatchEmergencyFatal(err)
 		}
 	}()
 

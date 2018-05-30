@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -67,7 +68,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
-				as.WriteJSON(w, http.StatusOK, nil)
+				gimlet.WriteJSON(w, nil)
 			}),
 		)))
 
@@ -188,7 +189,7 @@ func TestCheckHostWrapper(t *testing.T) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
 
-				as.WriteJSON(w, http.StatusOK, nil)
+				gimlet.WriteJSON(w, nil)
 			}),
 		)))
 

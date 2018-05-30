@@ -133,3 +133,24 @@ type GithubPullRequestSubscriber struct {
 func (s *GithubPullRequestSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%d-%s", s.Owner, s.Repo, s.PRNumber, s.Ref)
 }
+
+func NewGithubStatusAPISubscriber(s GithubPullRequestSubscriber) Subscriber {
+	return Subscriber{
+		Type:   GithubPullRequestSubscriberType,
+		Target: s,
+	}
+}
+
+func NewEmailSubscriber(t string) Subscriber {
+	return Subscriber{
+		Type:   EmailSubscriberType,
+		Target: t,
+	}
+}
+
+func NewSlackSubscriber(t string) Subscriber {
+	return Subscriber{
+		Type:   SlackSubscriberType,
+		Target: t,
+	}
+}

@@ -2,31 +2,21 @@ package operations
 
 import (
 	"context"
-	"fmt"
-	htmlTemplate "html/template"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	textTemplate "text/template"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/units"
-	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"github.com/mongodb/grip/sometimes"
-	nrgorilla "github.com/newrelic/go-agent/_integrations/nrgorilla/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"github.com/urfave/negroni"
 )
 
 func startWebService() cli.Command {
@@ -48,44 +38,32 @@ func startWebService() cli.Command {
 			grip.CatchEmergencyFatal(grip.SetSender(sender))
 			queue := env.RemoteQueue()
 
+			defer cancel()
 			defer sender.Close()
 			defer recovery.LogStackTraceAndExit("evergreen service")
-			defer cancel()
 
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-			startWebTierBackgroundJobs(ctx, env)
+			startSystemCronJobs(ctx, env)
 
-			router := mux.NewRouter()
+			var (
+				apiServer *http.Server
+				uiServer  *http.Server
+			)
 
-			apiHandler, err := getHandlerAPI(settings, queue, router)
+			serviceHandler, err := getServiceRouter(settings, queue)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			apiServer := service.GetServer(settings.Api.HttpListenAddr, apiHandler)
+			apiServer = service.GetServer(settings.Api.HttpListenAddr, serviceHandler)
 
-			uiHandler, err := getHandlerUI(settings, queue, router)
-			if err != nil {
-				return errors.WithStack(err)
-			}
 			if settings.Ui.CsrfKey != "" {
 				errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
-				uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
-			}
-			uiServer := service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
-
-			newRelic, err := settings.NewRelic.SetUp()
-			if newRelic == nil || err != nil {
-				grip.Debug(message.WrapError(err, message.Fields{
-					"message": "skipping new relic setup",
-				}))
+				uiHandler := csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(serviceHandler)
+				uiServer = service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
 			} else {
-				grip.Info(message.Fields{
-					"message":          "successfully set up new relic",
-					"application_name": settings.NewRelic.ApplicationName,
-				})
-				nrgorilla.InstrumentRoutes(router, newRelic)
+				uiServer = service.GetServer(settings.Ui.HttpListenAddr, serviceHandler)
 			}
 
 			catcher := grip.NewBasicCatcher()
@@ -125,48 +103,12 @@ func startWebService() cli.Command {
 			grip.Notice("waiting for web services to terminate gracefully")
 			<-gracefulWait
 
+			grip.Notice("waiting for background tasks to finish")
+			catcher.Add(env.Close(ctx))
+
 			return catcher.Resolve()
 		},
 	}
-}
-
-func startWebTierBackgroundJobs(ctx context.Context, env evergreen.Environment) {
-	startSysInfoCollectors(ctx, env, 15*time.Second, amboy.QueueOperationConfig{
-		ContinueOnError: true,
-		LogErrors:       false,
-		DebugLogging:    false,
-	})
-
-	opts := amboy.QueueOperationConfig{
-		ContinueOnError: false,
-		LogErrors:       true,
-		DebugLogging:    false,
-	}
-
-	const amboyStatsInterval = time.Minute
-
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), amboyStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			grip.Alert(message.WrapError(err, message.Fields{
-				"message":       "problem fetching service flags",
-				"operation":     "background stats",
-				"interval_secs": amboyStatsInterval.Seconds(),
-			}))
-			return err
-		}
-
-		if flags.BackgroundStatsDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "background stats collection disabled",
-				"impact":  "amboy stats disabled",
-				"mode":    "degraded",
-			})
-			return nil
-		}
-
-		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
-	})
 }
 
 func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher) {
@@ -204,71 +146,27 @@ func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wai
 	close(wait)
 }
 
-func getHandlerAPI(settings *evergreen.Settings, queue amboy.Queue, router *mux.Router) (http.Handler, error) {
-	as, err := service.NewAPIServer(settings, queue)
-	if err != nil {
-		err = errors.Wrap(err, "failed to create API server")
-		return nil, err
-	}
-
-	as.AttachRoutes(router)
-
-	n := negroni.New()
-	n.Use(service.NewRecoveryLogger())
-	n.Use(negroni.HandlerFunc(service.UserMiddleware(as.UserManager)))
-	n.UseHandler(router)
-	return n, nil
-}
-
-func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.Router) (http.Handler, error) {
+func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
 	}
 
-	uis, err := service.NewUIServer(settings, queue, home)
+	functionOptions := service.TemplateFunctionOptions{
+		WebHome:  filepath.Join(home, "public"),
+		HelpHome: settings.Ui.HelpUrl,
+		IsProd:   !settings.IsNonProd,
+	}
+
+	uis, err := service.NewUIServer(settings, queue, home, functionOptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
 
-	err = uis.AttachRoutes(router)
+	as, err := service.NewAPIServer(settings, queue)
 	if err != nil {
-		return nil, errors.Wrap(err, "problem creating router")
+		return nil, errors.Wrap(err, "failed to create API server")
 	}
 
-	webHome := filepath.Join(home, "public")
-
-	functionOptions := service.FuncOptions{
-		WebHome:  webHome,
-		HelpHome: settings.Ui.HelpUrl,
-		IsProd:   !settings.IsNonProd,
-		Router:   router,
-	}
-
-	functions, err := service.MakeTemplateFuncs(functionOptions, settings.SuperUsers)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create template function map")
-	}
-
-	htmlFunctions := htmlTemplate.FuncMap(functions)
-	textFunctions := textTemplate.FuncMap(functions)
-
-	uis.Render = render.New(render.Options{
-		Directory:    filepath.Join(home, service.WebRootPath, service.Templates),
-		DisableCache: !settings.Ui.CacheTemplates,
-		HtmlFuncs:    htmlFunctions,
-		TextFuncs:    textFunctions,
-	})
-
-	if err = uis.InitPlugins(); err != nil {
-		return nil, errors.Wrap(err, "problem initializing plugins")
-	}
-
-	n := negroni.New()
-	n.Use(negroni.NewStatic(http.Dir(webHome)))
-	n.Use(service.NewRecoveryLogger())
-	n.Use(negroni.HandlerFunc(service.UserMiddleware(uis.UserManager)))
-	n.UseHandler(router)
-
-	return n, nil
+	return service.GetRouter(as, uis)
 }

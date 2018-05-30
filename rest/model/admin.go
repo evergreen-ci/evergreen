@@ -22,7 +22,6 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:         &APIJiraConfig{},
 		Keys:         map[string]string{},
 		LoggerConfig: &APILoggerConfig{},
-		NewRelic:     &APINewRelicConfig{},
 		Notify:       &APINotifyConfig{},
 		Plugins:      map[string]map[string]interface{}{},
 		Providers:    &APICloudProviders{},
@@ -55,7 +54,6 @@ type APIAdminSettings struct {
 	Keys               map[string]string                 `json:"keys,omitempty"`
 	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath            APIString                         `json:"log_path,omitempty"`
-	NewRelic           *APINewRelicConfig                `json:"new_relic,omitempty"`
 	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
 	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PprofPort          APIString                         `json:"pprof_port,omitempty"`
@@ -655,29 +653,6 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 	}, nil
 }
 
-type APINewRelicConfig struct {
-	ApplicationName APIString `json:"application_name"`
-	LicenseKey      APIString `json:"license_key"`
-}
-
-func (a *APINewRelicConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case evergreen.NewRelicConfig:
-		a.ApplicationName = ToAPIString(v.ApplicationName)
-		a.LicenseKey = ToAPIString(v.LicenseKey)
-	default:
-		return errors.Errorf("%T is not a supported type", h)
-	}
-	return nil
-}
-
-func (a *APINewRelicConfig) ToService() (interface{}, error) {
-	return evergreen.NewRelicConfig{
-		ApplicationName: FromAPIString(a.ApplicationName),
-		LicenseKey:      FromAPIString(a.LicenseKey),
-	}, nil
-}
-
 type APINotifyConfig struct {
 	BufferTargetPerInterval int            `json:"buffer_target_per_interval"`
 	BufferIntervalSeconds   int            `json:"buffer_interval_seconds"`
@@ -950,8 +925,9 @@ func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
 }
 
 type APISchedulerConfig struct {
-	TaskFinder    APIString `json:"task_finder"`
-	HostAllocator APIString `json:"host_allocator"`
+	TaskFinder       APIString `json:"task_finder"`
+	HostAllocator    APIString `json:"host_allocator"`
+	FreeHostFraction float64   `json:"free_host_fraction"`
 }
 
 func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
@@ -959,6 +935,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 	case evergreen.SchedulerConfig:
 		a.TaskFinder = ToAPIString(v.TaskFinder)
 		a.HostAllocator = ToAPIString(v.HostAllocator)
+		a.FreeHostFraction = v.FreeHostFraction
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -967,8 +944,9 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 
 func (a *APISchedulerConfig) ToService() (interface{}, error) {
 	return evergreen.SchedulerConfig{
-		TaskFinder:    FromAPIString(a.TaskFinder),
-		HostAllocator: FromAPIString(a.HostAllocator),
+		TaskFinder:       FromAPIString(a.TaskFinder),
+		HostAllocator:    FromAPIString(a.HostAllocator),
+		FreeHostFraction: a.FreeHostFraction,
 	}, nil
 }
 

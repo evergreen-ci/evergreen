@@ -40,21 +40,12 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, amboyStatsCollectorJobName)
 
-	// if the env isn't established it should run and not panic,
-	// but return an error.
-	j := makeAmboyStatsCollector()
-	j.env = nil
-	j.logger = logging.MakeGrip(s.sender)
-	s.False(j.Status().Completed)
-	s.NotPanics(func() { j.Run(context.Background()) })
-	s.True(j.Status().Completed)
-	s.True(j.HasErrors())
-
 	// if the env is set, but the queues aren't logged it should
 	// run and complete but report an error.
-	j = makeAmboyStatsCollector()
+	j := makeAmboyStatsCollector()
 	s.False(j.Status().Completed)
 	j.env = s.env
+	j.TaskID = amboyStatsCollectorJobName + "-"
 	s.Equal(j, NewAmboyStatsCollector(s.env, "")) // validate the public constructor
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
@@ -102,8 +93,8 @@ func (s *StatUnitsSuite) TestHostStatsCollector() {
 	s.Equal(factory().Type().Name, hostStatsCollectorJobName)
 
 	j, ok := NewHostStatsCollector("id").(*hostStatsCollector)
-	s.True(ok)
 	j.logger = logging.MakeGrip(s.sender)
+	s.True(ok)
 	s.False(s.sender.HasMessage())
 	j.Run(context.Background())
 	s.False(j.HasErrors())
@@ -127,8 +118,8 @@ func (s *StatUnitsSuite) TestTaskStatsCollector() {
 	s.Equal(factory().Type().Name, taskStatsCollectorJobName)
 
 	j, ok := NewTaskStatsCollector("id").(*taskStatsCollector)
-	s.True(ok)
 	j.logger = logging.MakeGrip(s.sender)
+	s.True(ok)
 	s.False(s.sender.HasMessage())
 	s.False(j.Status().Completed)
 	j.Run(context.Background())

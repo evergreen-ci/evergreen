@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -104,12 +104,12 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 				handleAPIError(err, w, r)
 				return
 			}
-			util.WriteJSON(w, http.StatusOK, result.Result)
+			gimlet.WriteJSON(w, result.Result)
 		default:
 			if len(result.Result) == 1 {
-				util.WriteJSON(w, http.StatusOK, result.Result[0])
+				gimlet.WriteJSON(w, result.Result[0])
 			} else {
-				util.WriteJSON(w, http.StatusOK, result.Result)
+				gimlet.WriteJSON(w, result.Result)
 			}
 		}
 	}
@@ -140,5 +140,5 @@ func handleAPIError(e error, w http.ResponseWriter, r *http.Request) {
 		"error":  e.Error(),
 	})
 
-	util.WriteJSON(w, apiErr.StatusCode, apiErr)
+	gimlet.WriteJSONResponse(w, apiErr.StatusCode, apiErr)
 }

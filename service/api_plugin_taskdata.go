@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 )
 
@@ -22,7 +23,7 @@ func (as *APIServer) getTaskJSONTagsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, tagged)
+	gimlet.WriteJSON(w, tagged)
 }
 
 func (as *APIServer) getTaskJSONTaskHistory(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +35,7 @@ func (as *APIServer) getTaskJSONTaskHistory(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, history)
+	gimlet.WriteJSON(w, history)
 }
 
 func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +54,7 @@ func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, "ok")
+	gimlet.WriteJSON(w, "ok")
 }
 
 func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +66,7 @@ func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
 	jsonForTask, err := model.GetTaskJSONByName(t.Version, t.BuildId, taskName, name)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			as.WriteJSON(w, http.StatusNotFound, nil)
+			gimlet.WriteJSONResponse(w, http.StatusNotFound, nil)
 			return
 		}
 
@@ -73,11 +74,11 @@ func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		as.WriteJSON(w, http.StatusOK, jsonForTask)
+		gimlet.WriteJSON(w, jsonForTask)
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, jsonForTask.Data)
+	gimlet.WriteJSON(w, jsonForTask.Data)
 }
 
 // apiGetTaskForVariant finds a task by name and variant and finds
@@ -98,15 +99,15 @@ func (as *APIServer) getTaskJSONForVariant(w http.ResponseWriter, r *http.Reques
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			as.WriteJSON(w, http.StatusNotFound, nil)
+			gimlet.WriteJSONResponse(w, http.StatusNotFound, nil)
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		as.WriteJSON(w, http.StatusOK, jsonForTask)
+		gimlet.WriteJSON(w, jsonForTask)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, jsonForTask.Data)
+	gimlet.WriteJSON(w, jsonForTask.Data)
 }

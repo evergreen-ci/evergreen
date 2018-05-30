@@ -23,7 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -39,7 +39,6 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	*render.Render
 	UserManager  auth.UserManager
 	Settings     evergreen.Settings
 	clientConfig *evergreen.ClientConfig
@@ -60,7 +59,6 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, 
 	}
 
 	as := &APIServer{
-		Render:       render.New(render.Options{}),
 		UserManager:  authManager,
 		Settings:     *settings,
 		clientConfig: clientConfig,
@@ -202,7 +200,7 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, v)
+	gimlet.WriteJSON(w, v)
 }
 
 func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
@@ -220,7 +218,7 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, p)
+	gimlet.WriteJSON(w, p)
 }
 
 // AttachTestLog is the API Server hook for getting
@@ -245,7 +243,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	logReply := struct {
 		Id string `json:"_id"`
 	}{log.Id}
-	as.WriteJSON(w, http.StatusOK, logReply)
+	gimlet.WriteJSON(w, logReply)
 }
 
 // AttachResults attaches the received results to the task in the database.
@@ -262,7 +260,7 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, "test results successfully attached")
+	gimlet.WriteJSON(w, "test results successfully attached")
 }
 
 // FetchProjectVars is an API hook for returning the project variables
@@ -275,11 +273,11 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if projectVars == nil {
-		as.WriteJSON(w, http.StatusOK, apimodels.ExpansionVars{})
+		gimlet.WriteJSON(w, apimodels.ExpansionVars{})
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, projectVars.Vars)
+	gimlet.WriteJSON(w, projectVars)
 }
 
 // AttachFiles updates file mappings for a task or build
@@ -298,17 +296,17 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		grip.Error(message)
-		as.WriteJSON(w, http.StatusBadRequest, message)
+		gimlet.WriteJSONError(w, message)
 		return
 	}
 
 	if err := entry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", t.Id, err)
 		grip.Error(message)
-		as.WriteJSON(w, http.StatusInternalServerError, message)
+		gimlet.WriteJSONInternalError(w, message)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
+	gimlet.WriteJSON(w, fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
 }
 
 // AppendTaskLog appends the received logs to the task's internal logs.
@@ -328,13 +326,13 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, "Logs added")
+	gimlet.WriteJSON(w, "Logs added")
 }
 
 // FetchTask loads the task from the database and sends it to the requester.
 func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	as.WriteJSON(w, http.StatusOK, t)
+	gimlet.WriteJSON(w, t)
 }
 
 // Heartbeat handles heartbeat pings from Evergreen agents. If the heartbeating
@@ -351,7 +349,7 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 	if err := t.UpdateHeartbeat(); err != nil {
 		grip.Warningf("Error updating heartbeat for task %s: %+v", t.Id, err)
 	}
-	as.WriteJSON(w, http.StatusOK, heartbeatResponse)
+	gimlet.WriteJSON(w, heartbeatResponse)
 }
 
 // TaskSystemInfo is the handler for the system info collector, which
@@ -367,7 +365,7 @@ func (as *APIServer) TaskSystemInfo(w http.ResponseWriter, r *http.Request) {
 
 	event.LogTaskSystemData(t.Id, info)
 
-	as.WriteJSON(w, http.StatusOK, struct{}{})
+	gimlet.WriteJSON(w, struct{}{})
 }
 
 // TaskProcessInfo is the handler for the process info collector, which
@@ -382,7 +380,7 @@ func (as *APIServer) TaskProcessInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event.LogTaskProcessData(t.Id, procs)
-	as.WriteJSON(w, http.StatusOK, struct{}{})
+	gimlet.WriteJSON(w, struct{}{})
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -401,7 +399,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	}
 	userToken, err := as.UserManager.CreateUserToken(userCredentials.Username, userCredentials.Password)
 	if err != nil {
-		as.WriteJSON(w, http.StatusUnauthorized, err.Error())
+		gimlet.WriteJSONResponse(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -413,7 +411,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	}{}
 	dataOut.User.Name = userCredentials.Username
 	dataOut.Token = userToken
-	as.WriteJSON(w, http.StatusOK, dataOut)
+	gimlet.WriteJSON(w, dataOut)
 
 }
 
@@ -477,7 +475,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Initializing host %v failed", hostObj.Id))
+		gimlet.WriteJSON(w, fmt.Sprintf("Initializing host %v failed", hostObj.Id))
 		return
 	}
 	ctx, cancel := context.WithCancel(r.Context())
@@ -524,7 +522,7 @@ func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, projectRef)
+	gimlet.WriteJSON(w, projectRef)
 }
 
 func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
@@ -533,7 +531,7 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, allProjs)
+	gimlet.WriteJSON(w, allProjs)
 }
 
 func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
@@ -546,12 +544,12 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 		project.Tasks[i].Commands = []model.PluginCommandConf{}
 
 	}
-	as.WriteJSON(w, http.StatusOK, project.Tasks)
+	gimlet.WriteJSON(w, project.Tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 	_, project := MustHaveProject(r)
 
-	as.WriteJSON(w, http.StatusOK, project.BuildVariants)
+	gimlet.WriteJSON(w, project.BuildVariants)
 }
 
 // validateProjectConfig returns a slice containing a list of any errors
@@ -561,7 +559,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	defer body.Close()
 	yamlBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		as.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Error reading request body: %v", err))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
 		return
 	}
 
@@ -569,7 +567,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	validationErr := validator.ValidationError{}
 	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
-		as.WriteJSON(w, http.StatusBadRequest, []validator.ValidationError{validationErr})
+		gimlet.WriteJSONError(w, []validator.ValidationError{validationErr})
 		return
 	}
 	syntaxErrs, err := validator.CheckProjectSyntax(project)
@@ -579,15 +577,19 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 	semanticErrs := validator.CheckProjectSemantics(project)
 	if len(syntaxErrs)+len(semanticErrs) != 0 {
-		as.WriteJSON(w, http.StatusBadRequest, append(syntaxErrs, semanticErrs...))
+		gimlet.WriteJSONError(w, append(syntaxErrs, semanticErrs...))
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, []validator.ValidationError{})
+	gimlet.WriteJSON(w, []validator.ValidationError{})
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
+	if err == nil {
+		return
+	}
+
 	grip.Error(message.WrapError(err, message.Fields{
 		"method":  r.Method,
 		"url":     r.URL.String(),
@@ -598,7 +600,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		as.WriteJSON(w, code, struct {
+		gimlet.WriteJSONResponse(w, code, struct {
 			Error string `json:"error"`
 		}{err.Error()})
 	} else {
@@ -610,7 +612,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // Returns information about available updates for client binaries.
 // Replies 404 if this data is not configured.
 func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
-	as.WriteJSON(w, http.StatusOK, as.clientConfig)
+	gimlet.WriteJSON(w, as.clientConfig)
 }
 
 // GetSettings returns the global evergreen settings.
@@ -620,8 +622,6 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 
 // NewRouter returns the root router for all APIServer endpoints.
 func (as *APIServer) AttachRoutes(root *mux.Router) {
-	// attaches the /rest/v1 routes
-	AttachRESTHandler(root, as)
 	// attaches /rest/v2 routes
 	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
 	route.AttachHandler(root, as.queue, as.Settings.ApiUrl, APIV2Prefix, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))

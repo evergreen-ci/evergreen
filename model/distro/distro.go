@@ -26,7 +26,6 @@ type Distro struct {
 	User        string   `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
 	SSHKey      string   `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions  []string `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	UserData    string   `bson:"user_data,omitempty" json:"user_data,omitempty" mapstructure:"user_data,omitempty"`
 
 	SpawnAllowed bool        `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
 	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`

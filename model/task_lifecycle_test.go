@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -522,6 +523,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			BuildId:     b.Id,
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
+			StartTime:   time.Now().Add(-time.Hour),
 		}
 		anotherTask := task.Task{
 			Id:          "two",
@@ -530,6 +532,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			BuildId:     b.Id,
 			Project:     "sample",
 			Status:      evergreen.TaskFailed,
+			StartTime:   time.Now().Add(-time.Hour),
 		}
 
 		b.Tasks = []build.TaskCache{
@@ -1620,4 +1623,91 @@ func TestStepback(t *testing.T) {
 	dbTask, err = task.FindOne(task.ById(dt2.Id))
 	assert.NoError(err)
 	assert.True(dbTask.Activated)
+}
+
+func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
+	buildID := "buildtest"
+
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: "test 1",
+		Activated:   false,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	assert.NoError(testTask.Insert())
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: "test 2",
+		Activated:   true,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	assert.NoError(anotherTask.Insert())
+
+	b := &build.Build{
+		Id:      buildID,
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+		Tasks: []build.TaskCache{
+			{
+				Id:     testTask.Id,
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     anotherTask.Id,
+				Status: evergreen.TaskStarted,
+			},
+		},
+	}
+	require.NoError(b.Insert())
+	v := &version.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	require.NoError(v.Insert())
+
+	details := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   "system",
+	}
+	updates := StatusChanges{}
+	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
+	assert.Empty(updates.BuildNewStatus)
+	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
+	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+
+	// test with compile task
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
+	testTask.Status = evergreen.TaskStarted
+	testTask.DisplayName = evergreen.CompileStage
+	b.Tasks[0].Status = evergreen.TaskStarted
+	require.NoError(testTask.Insert())
+	anotherTask.Status = evergreen.TaskUndispatched
+	anotherTask.DependsOn = []task.Dependency{
+		{
+			TaskId: testTask.Id,
+			Status: evergreen.TaskSucceeded,
+		},
+	}
+	b.Tasks[1].Status = evergreen.TaskUndispatched
+	require.NoError(anotherTask.Insert())
+	require.NoError(b.Insert())
+	require.NoError(v.Insert())
+
+	details = &apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   "test",
+	}
+	updates = StatusChanges{}
+	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
+	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 }

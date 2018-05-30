@@ -1,5 +1,5 @@
 {{define "scripts"}}
-<script src="{{Static "js" "grid.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "js" "grid.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
   var baseVersion = {{.ProjectData.Version}};
   var baseRef = {{.ProjectData.ProjectRef}};

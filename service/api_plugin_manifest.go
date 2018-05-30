@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
@@ -46,7 +47,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if currentManifest != nil {
-		as.WriteJSON(w, http.StatusOK, currentManifest)
+		gimlet.WriteJSON(w, currentManifest)
 		return
 	}
 
@@ -104,12 +105,12 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		if m != nil {
-			as.WriteJSON(w, http.StatusOK, m)
+			gimlet.WriteJSON(w, m)
 			return
 		}
 	}
 
 	// no duplicate key error, use the manifest just created.
 
-	as.WriteJSON(w, http.StatusOK, newManifest)
+	gimlet.WriteJSON(w, newManifest)
 }

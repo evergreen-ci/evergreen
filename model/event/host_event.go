@@ -46,6 +46,7 @@ type HostEventData struct {
 	Logs          string        `bson:"log,omitempty" json:"logs,omitempty"`
 	Hostname      string        `bson:"hn,omitempty" json:"hostname,omitempty"`
 	TaskId        string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
+	TaskExecution int           `bson:"t_execution,omitempty" json:"task_execution,omitempty"`
 	TaskPid       string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
 	TaskStatus    string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
 	Execution     string        `bson:"execution,omitempty" json:"execution,omitempty"`

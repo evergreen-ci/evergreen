@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -51,13 +52,17 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 
 func NewNotificationStatsCollector(id string) amboy.Job {
 	job := makeNotificationsStatsCollector()
-	job.SetID(id)
+	job.SetID(fmt.Sprintf("%s-%s", notificationsStatsCollectorJobName, id))
 
 	return job
 }
 
 func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
+	}
 
 	msg := message.Fields{
 		"start_time": j.TimeInfo().Start,

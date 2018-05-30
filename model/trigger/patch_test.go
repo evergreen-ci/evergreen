@@ -20,6 +20,7 @@ func TestPatchTriggers(t *testing.T) {
 
 type patchSuite struct {
 	event event.EventLogEntry
+	data  *event.PatchEventData
 	patch patch.Patch
 	subs  []event.Subscription
 
@@ -54,9 +55,11 @@ func (s *patchSuite) SetupTest() {
 	s.patch.Version = s.patch.Id.Hex()
 	s.NoError(s.patch.Insert())
 
+	s.data = &event.PatchEventData{}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
 		ResourceId:   patchID.Hex(),
+		Data:         s.data,
 	}
 
 	s.subs = []event.Subscription{
@@ -135,6 +138,7 @@ func (s *patchSuite) TestAllTriggers() {
 	s.Len(n, 0)
 
 	s.patch.Status = evergreen.PatchSucceeded
+	s.data.Status = evergreen.PatchSucceeded
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
 	n, err = NotificationsFromEvent(&s.event)
@@ -142,6 +146,7 @@ func (s *patchSuite) TestAllTriggers() {
 	s.Len(n, 2)
 
 	s.patch.Status = evergreen.PatchFailed
+	s.data.Status = evergreen.PatchFailed
 	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
 	n, err = NotificationsFromEvent(&s.event)
@@ -150,17 +155,17 @@ func (s *patchSuite) TestAllTriggers() {
 }
 
 func (s *patchSuite) TestPatchSuccess() {
-	gen, err := patchSuccess(&s.event, &s.patch)
+	gen, err := patchSuccess(s.data, &s.patch)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.patch.Status = evergreen.PatchFailed
-	gen, err = patchSuccess(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchFailed
+	gen, err = patchSuccess(s.data, &s.patch)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.patch.Status = evergreen.PatchSucceeded
-	gen, err = patchSuccess(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchSucceeded
+	gen, err = patchSuccess(s.data, &s.patch)
 	s.NoError(err)
 	s.NotNil(gen)
 	s.False(gen.isEmpty())
@@ -172,13 +177,13 @@ func (s *patchSuite) TestPatchSuccess() {
 }
 
 func (s *patchSuite) TestPatchFailure() {
-	s.patch.Status = evergreen.PatchSucceeded
-	gen, err := patchFailure(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchSucceeded
+	gen, err := patchFailure(s.data, &s.patch)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.patch.Status = evergreen.PatchFailed
-	gen, err = patchFailure(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchFailed
+	gen, err = patchFailure(s.data, &s.patch)
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
@@ -190,19 +195,19 @@ func (s *patchSuite) TestPatchFailure() {
 }
 
 func (s *patchSuite) TestPatchOutcome() {
-	s.patch.Status = evergreen.PatchCreated
-	gen, err := patchOutcome(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchCreated
+	gen, err := patchOutcome(s.data, &s.patch)
 	s.NoError(err)
 	s.Nil(gen)
 
-	s.patch.Status = evergreen.PatchSucceeded
-	gen, err = patchOutcome(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchSucceeded
+	gen, err = patchOutcome(s.data, &s.patch)
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
 
-	s.patch.Status = evergreen.PatchFailed
-	gen, err = patchOutcome(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchFailed
+	gen, err = patchOutcome(s.data, &s.patch)
 	s.NoError(err)
 	s.Require().NotNil(gen)
 	s.False(gen.isEmpty())
@@ -213,42 +218,16 @@ func (s *patchSuite) TestPatchOutcome() {
 	})
 }
 
-func (s *patchSuite) TestPatchCreated() {
-	gen, err := patchCreated(&s.event, &s.patch)
-	s.Nil(err)
-	s.Nil(gen)
-
-	s.patch.Status = evergreen.PatchCreated
-	gen, err = patchCreated(&s.event, &s.patch)
-	s.Nil(err)
-	s.Require().NotNil(gen)
-	s.Require().NotNil(gen.githubStatusAPI)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "created",
-	})
-
-	s.Equal("created", gen.triggerName)
-	s.Equal("evergreen", gen.githubStatusAPI.Context)
-	s.Equal(message.GithubStatePending, gen.githubStatusAPI.State)
-	s.Equal("preparing to run tasks", gen.githubStatusAPI.Description)
-	s.Equal("https://evergreen.mongodb.com/version/5aeb4514f27e4f9984646d97", gen.githubStatusAPI.URL)
-}
-
 func (s *patchSuite) TestPatchStarted() {
-	gen, err := patchStarted(&s.event, &s.patch)
+	gen, err := patchStarted(s.data, &s.patch)
 	s.Nil(err)
 	s.Nil(gen)
 
-	s.patch.Status = evergreen.PatchStarted
-	gen, err = patchStarted(&s.event, &s.patch)
+	s.data.Status = evergreen.PatchStarted
+	gen, err = patchStarted(s.data, &s.patch)
 	s.Nil(err)
 	s.Require().NotNil(gen)
 	s.Require().NotNil(gen.githubStatusAPI)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "started",
-	})
 
 	s.Equal("started", gen.triggerName)
 	s.Equal("evergreen", gen.githubStatusAPI.Context)

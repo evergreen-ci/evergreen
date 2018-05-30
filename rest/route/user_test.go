@@ -52,6 +52,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := map[string]interface{}{
+		"slack_username": "@test",
 		"notifications": map[string]string{
 			"build_break":  "slack",
 			"patch_finish": "email",
@@ -72,4 +73,5 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
+	s.EqualValues("test", dbUser.Settings.SlackUsername)
 }

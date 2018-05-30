@@ -1,6 +1,4 @@
 # Evergreen
-Version 0.9.0 Alpha
-
 Evergreen is a distributed continuous integration system built by MongoDB.
 It dynamically allocates hosts (via AWS, GCP, etc) to run tasks in parallel across many machines at once to decrease the total amount of time needed to complete a test workload.
 

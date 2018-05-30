@@ -2,7 +2,9 @@ package task
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,7 +24,7 @@ const (
 	taskKey  = "task"
 
 	// tasks should be unscheduled after ~2 weeks
-	unschedulableThreshold = 2 * 7 * 24 * time.Hour
+	unschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
@@ -39,6 +41,10 @@ const (
 
 var (
 	AgentHeartbeat = "heartbeat"
+
+	// A regex that matches either / or \ for splitting directory paths
+	// on either windows or linux paths.
+	eitherSlash *regexp.Regexp = regexp.MustCompile(`[/\\]`)
 )
 
 type Task struct {
@@ -129,6 +135,8 @@ type Task struct {
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
+	// GeneratedBy, if present, is the ID of the task that generated this task.
+	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -530,7 +538,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 	if info.Updated > 0 {
 		for _, t := range tasks {
-			event.LogTaskScheduled(t.Id, scheduledTime)
+			event.LogTaskScheduled(t.Id, t.Execution, scheduledTime)
 		}
 	}
 	return nil
@@ -908,7 +916,7 @@ func (t *Task) SetPriority(priority int64, user string) error {
 		bson.M{"$set": modifier},
 	)
 
-	event.LogTaskPriority(t.Id, user, priority)
+	event.LogTaskPriority(t.Id, t.Execution, user, priority)
 
 	return errors.WithStack(err)
 
@@ -1033,7 +1041,7 @@ func (t *Task) SetCost(cost float64) error {
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state
-func AbortBuild(buildId string) error {
+func AbortBuild(buildId, caller string) error {
 	_, err := UpdateAll(
 		bson.M{
 			BuildIdKey: buildId,
@@ -1041,7 +1049,17 @@ func AbortBuild(buildId string) error {
 		},
 		bson.M{"$set": bson.M{AbortedKey: true}},
 	)
-	return errors.WithStack(err)
+	if err != nil {
+		return errors.Wrap(err, "error setting aborted statuses")
+	}
+	ids, err := FindAllTaskIDsFromBuild(buildId)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks by build id")
+	}
+	if len(ids) > 0 {
+		event.LogManyTaskAbortRequests(ids, caller)
+	}
+	return nil
 }
 
 //String represents the stringified version of a task
@@ -1499,4 +1517,29 @@ func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimode
 	case evergreen.TaskInactive:
 		tsc.Inactive++
 	}
+}
+
+const jqlBFQuery = "(project in (%v)) and ( %v ) order by updatedDate desc"
+
+// Generates a jira JQL string from the task
+// When we search in jira for a task we search in the specified JIRA project
+// If there are any test results, then we only search by test file
+// name of all of the failed tests.
+// Otherwise we search by the task name.
+func (t *Task) GetJQL(searchProjects []string) string {
+	var jqlParts []string
+	var jqlClause string
+	for _, testResult := range t.LocalTestResults {
+		if testResult.Status == evergreen.TestFailedStatus {
+			fileParts := eitherSlash.Split(testResult.TestFile, -1)
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", fileParts[len(fileParts)-1]))
+		}
+	}
+	if jqlParts != nil {
+		jqlClause = strings.Join(jqlParts, " or ")
+	} else {
+		jqlClause = fmt.Sprintf("text~\"%v\"", t.DisplayName)
+	}
+
+	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }

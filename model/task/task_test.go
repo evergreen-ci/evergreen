@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -1007,4 +1008,29 @@ func TestTaskStatusCount(t *testing.T) {
 	assert.Equal(1, counts.Failed)
 	assert.Equal(1, counts.Started)
 	assert.Equal(1, counts.Inactive)
+}
+
+func TestFindOneIdOldOrNew(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(Collection, OldCollection))
+
+	taskDoc := Task{
+		Id: "task",
+	}
+	require.NoError(taskDoc.Insert())
+	require.NoError(taskDoc.Archive())
+
+	task00, err := FindOneIdOldOrNew("task", 0)
+	assert.NoError(err)
+	require.NotNil(task00)
+	assert.Equal("task_0", task00.Id)
+	assert.Equal(0, task00.Execution)
+
+	task01, err := FindOneIdOldOrNew("task", 1)
+	assert.NoError(err)
+	require.NotNil(task01)
+	assert.Equal("task", task01.Id)
+	assert.Equal(1, task01.Execution)
 }
