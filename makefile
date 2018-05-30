@@ -11,14 +11,18 @@ orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
 
+ifneq (,$(GO_BIN_PATH))
+gobin := $(GO_BIN_PATH)
+else
+gobin := go
+endif
 
 # start evergreen specific configuration
 unixPlatforms := linux_amd64 darwin_amd64 $(if $(STAGING_ONLY),,linux_386 linux_s390x linux_arm64 linux_ppc64le)
 windowsPlatforms := windows_amd64 $(if $(STAGING_ONLY),,windows_386)
 
-goos := $(shell go env GOOS)
-goarch := $(shell go env GOARCH)
-gobin := $(shell which go)
+goos := $(shell $(gobin) env GOOS)
+goarch := $(shell $(gobin) env GOARCH)
 
 clientBuildDir := clients
 
@@ -38,7 +42,7 @@ ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.B
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
 
-gopath := $(shell go env GOPATH)
+gopath := $(shell $(gobin) env GOPATH)
 ifeq ($(OS),Windows_NT)
 gopath := $(shell cygpath -m $(gopath))
 endif
@@ -93,11 +97,11 @@ phony += cli clis
 
 # start smoke test specific rules
 $(buildDir)/load-smoke-data:scripts/load-smoke-data.go
-	go build -o $@ $<
+	$(gobin) build -o $@ $<
 $(buildDir)/set-var:scripts/set-var.go
-	go build -o $@ $<
+	$(gobin) build -o $@ $<
 $(buildDir)/set-project-var:scripts/set-project-var.go
-	go build -o $@ $<
+	$(gobin) build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
 set-smoke-vars:$(buildDir)/.load-smoke-data
@@ -144,7 +148,7 @@ coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).cove
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
-	go get $(subst $(gopath)/src/,,$@)
+	$(gobin) get $(subst $(gopath)/src/,,$@)
 # end dependency installation tools
 
 
@@ -154,7 +158,7 @@ $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
 	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
-	go build -o $@ $<
+	$(gobin) build -o $@ $<
 # end lint setup targets
 
 # generate lint JSON document for evergreen
@@ -162,7 +166,7 @@ generate-lint:$(buildDir)/generate-lint.json
 $(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
 	./$(buildDir)/generate-lint
 $(buildDir)/generate-lint:scripts/generate-lint.go
-	go build -o $@ $<
+	$(gobin) build -o $@ $<
 # end generate lint
 
 # npm setup
@@ -176,12 +180,12 @@ $(buildDir)/.npmSetup:
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
 	@mkdir -p $(buildDir)
-	@GOOS="" GOARCH="" go build -o $@ $<
-	@echo go build -o $@ $<
+	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
+	@echo $(gobin) build -o $@ $<
 $(buildDir)/make-tarball:scripts/make-tarball.go
 	@mkdir -p $(buildDir)
-	@GOOS="" GOARCH="" go build -o $@ $<
-	@echo go build -o $@ $<
+	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
+	@echo $(gobin) build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
@@ -296,14 +300,14 @@ testArgs += -test.timeout=10m
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
-	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
+	$(gobin) test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
-	go test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
+	$(gobin) test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
 $(buildDir)/test.$(name):$(testSrcFiles)
-	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
+	$(gobin) test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
 $(buildDir)/race.$(name):$(testSrcFiles)
-	go test -ldflags=$(ldFlags) -race -c -o $@ ./
+	$(gobin) test -ldflags=$(ldFlags) -race -c -o $@ ./
 #  targets to run the tests and report the output
 $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
@@ -317,9 +321,9 @@ $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=./$@ 2>&1 | tee $(subst coverage,test,$@)
-	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
+	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	go tool cover -html=$< -o $@
+	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
 # clean and other utility targets
