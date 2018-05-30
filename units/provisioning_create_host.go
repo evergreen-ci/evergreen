@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -75,6 +74,6 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 
-	err = hostinit.CreateHost(ctx, j.host, settings)
+	err = CreateHost(ctx, j.host, settings)
 	j.AddError(err)
 }
