@@ -18,6 +18,11 @@ var (
 	LinkKey      = bsonutil.MustHaveTag(File{}, "Link")
 )
 
+type TaskIDAndExecution struct {
+	TaskID    string
+	Execution int
+}
+
 // === Queries ===
 
 // ByTaskId returns a query for entries with the given Task Id
@@ -41,6 +46,27 @@ func ByTaskIdWithoutExecution(id string) db.Q {
 		TaskIdKey: id,
 		ExecutionKey: bson.M{
 			"$exists": false,
+		},
+	})
+}
+
+func ByTaskIdsAndExecutions(tasks []TaskIDAndExecution) db.Q {
+	orClause := []bson.M{}
+	for _, t := range tasks {
+		orClause = append(orClause, bson.M{
+			TaskIdKey:    t.TaskID,
+			ExecutionKey: t.Execution,
+		})
+	}
+	return db.Query(bson.M{
+		"$or": orClause,
+	})
+}
+
+func ByTaskIds(taskIds []string) db.Q {
+	return db.Query(bson.M{
+		TaskIdKey: bson.M{
+			"$in": taskIds,
 		},
 	})
 }
