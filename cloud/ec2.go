@@ -318,7 +318,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	ec2Settings := &EC2ProviderSettings{}
 	if h.Distro.ProviderSettings != nil {
 		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
+			return nil, errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
 		}
 	}
 	grip.Debug(message.Fields{
@@ -503,7 +503,7 @@ func getRegion(h *host.Host) (string, error) {
 	ec2Settings := &EC2ProviderSettings{}
 	if h.Distro.ProviderSettings != nil {
 		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
-			return "", errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
+			return "", errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
 		}
 	}
 	r := defaultRegion
