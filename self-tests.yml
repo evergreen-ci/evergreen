@@ -166,10 +166,7 @@ functions:
         TEST_TIMEOUT: ${test_timeout}
       command: |
         bash -c
-        'if [ "Windows_NT" == "$OS" ]; then
-          export GOPATH=$(cygpath -m $GOPATH)
-        fi
-        make ${make_args|} ${target}'
+        'make ${make_args|} ${target}'
   get-dist-test:
     command: s3.get
     params:

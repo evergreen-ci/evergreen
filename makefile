@@ -11,6 +11,7 @@ orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
 
+# override the go binary path if set
 ifneq (,$(GO_BIN_PATH))
 gobin := $(GO_BIN_PATH)
 else
@@ -42,7 +43,7 @@ ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.B
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
 
-gopath := $(shell $(gobin) env GOPATH)
+gopath := $(GOPATH)
 ifeq ($(OS),Windows_NT)
 gopath := $(shell cygpath -m $(gopath))
 endif
@@ -300,7 +301,7 @@ testArgs += -test.timeout=10m
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
-	$(gobin) test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
+	GOPATH=$(gopath) $(gobin) test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
 	$(gobin) test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
