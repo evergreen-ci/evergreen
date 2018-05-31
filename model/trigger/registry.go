@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // prefetch is a function that take an event, and fetches the data needed to
@@ -24,12 +26,14 @@ type trigger func(*event.EventLogEntry, interface{}) (*notificationGenerator, er
 var registry = triggerRegistry{
 	prefetch: map[string]prefetch{},
 	triggers: map[string][]trigger{},
+	handlers: map[string]eventHandlerFactory{},
 	lock:     sync.RWMutex{},
 }
 
 type triggerRegistry struct {
 	prefetch map[string]prefetch
 	triggers map[string][]trigger
+	handlers map[string]eventHandlerFactory
 	lock     sync.RWMutex
 }
 
@@ -66,4 +70,32 @@ func (r *triggerRegistry) Triggers(resourceType string) (prefetch, []trigger) {
 	}
 
 	return prefetch, triggers
+}
+
+func (r *triggerRegistry) eventHandler(e *event.EventLogEntry) eventHandler {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	f, ok := r.handlers[e.ResourceType]
+	if !ok {
+		grip.Error(message.Fields{
+			"message": "unknown event handler",
+			"r_type":  e.ResourceType,
+			"cause":   "programmer error",
+		})
+		return nil
+	}
+
+	return f()
+}
+
+func (r *triggerRegistry) registerEventHandler(resourceType, eventData string, h eventHandlerFactory) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if _, ok := r.handlers[resourceType]; ok {
+		panic(fmt.Sprintf("tried to register an eventHandler with duplicate key '%s'", resourceType))
+	}
+
+	r.handlers[resourceType] = h
 }

@@ -146,6 +146,39 @@ func FindSubscriptions(subscriptionType, triggerType string, selectors []Selecto
 	return out, nil
 }
 
+func FindSubscriptions2(resourceType string, selectors []Selector) ([]Subscription, error) {
+	if len(selectors) == 0 {
+		return nil, nil
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				subscriptionTypeKey: resourceType,
+			},
+		},
+		{
+			"$addFields": bson.M{
+				"keep": bson.M{
+					"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
+				},
+			},
+		},
+		{
+			"$match": bson.M{
+				"keep": true,
+			},
+		},
+	}
+
+	out := []Subscription{}
+	if err := db.Aggregate(SubscriptionsCollection, pipeline, &out); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch subscriptions")
+	}
+
+	return out, nil
+}
+
 func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
 	for i := range regexSelectors {
 		selector := findSelector(selectors, regexSelectors[i].Type)

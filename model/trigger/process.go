@@ -15,6 +15,36 @@ import (
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification, error) {
+	h := registry.eventHandler(e)
+	if h != nil {
+		if err := h.Fetch(e); err != nil {
+			return nil, errors.Wrapf(err, "error fetching data for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+		}
+
+		subscriptions, err := event.FindSubscriptions2(e.ResourceType, h.Selectors())
+		if err != nil {
+			return nil, errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+		}
+		if len(subscriptions) == 0 {
+			return nil, nil
+		}
+
+		notifications := make([]notification.Notification, 0, len(subscriptions))
+
+		catcher := grip.NewSimpleCatcher()
+		for i := range subscriptions {
+			n, err := h.Process(&subscriptions[i])
+			catcher.Add(err)
+			if err != nil {
+				continue
+			}
+
+			notifications = append(notifications, *n)
+		}
+
+		return notifications, catcher.Resolve()
+	}
+
 	prefetch, triggers := registry.Triggers(e.ResourceType)
 	if len(triggers) == 0 {
 		return nil, errors.Errorf("no triggers for event type: '%s'", e.ResourceType)
@@ -45,6 +75,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 		if len(notes) > 0 {
 			notifications = append(notifications, notes...)
 		}
+
 	}
 
 	return notifications, catcher.Resolve()

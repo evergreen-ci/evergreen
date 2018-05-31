@@ -32,6 +32,7 @@ func (s *patchSuite) SetupSuite() {
 }
 
 func (s *patchSuite) SetupTest() {
+	s.Require().Implements((eventHandler)(nil), &patchTriggers{})
 	s.NoError(db.ClearCollections(event.AllLogCollection, patch.Collection, event.SubscriptionsCollection))
 	startTime := time.Now().Truncate(time.Millisecond)
 

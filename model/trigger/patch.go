@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip/message"
@@ -21,6 +22,13 @@ func init() {
 	)
 	registry.AddPrefetch(event.ResourceTypePatch, patchFetch)
 }
+
+const (
+	triggerPatchOutcome = "outcome"
+	triggerPatchFailure = "failure"
+	triggerPatchSuccess = "success"
+	triggerPatchStarted = "started"
+)
 
 func patchFetch(e *event.EventLogEntry) (interface{}, error) {
 	p, err := patch.FindOne(patch.ById(bson.ObjectIdHex(e.ResourceId)))
@@ -70,10 +78,6 @@ func patchSelectors(p *patch.Patch) []event.Selector {
 		{
 			Type: selectorOwner,
 			Data: p.Author,
-		},
-		{
-			Type: "status",
-			Data: p.Status,
 		},
 		{
 			Type: selectorStatus,
@@ -169,4 +173,84 @@ func patchStarted(e *event.PatchEventData, p *patch.Patch) (*notificationGenerat
 	}
 
 	return gen, nil
+}
+
+type oldPatchTrigger func(e *event.PatchEventData, p *patch.Patch) (*notificationGenerator, error)
+
+type patchTriggers struct {
+	event *event.EventLogEntry
+	data  *event.PatchEventData
+	patch *patch.Patch
+
+	triggers map[string]oldPatchTrigger
+}
+
+func makePatchTriggers() eventHandler {
+	return &patchTriggers{
+		triggers: map[string]oldPatchTrigger{
+			triggerPatchOutcome: patchOutcome,
+			triggerPatchFailure: patchFailure,
+			triggerPatchSuccess: patchSuccess,
+			triggerPatchStarted: patchStarted,
+		},
+	}
+}
+
+func (t *patchTriggers) Fetch(e *event.EventLogEntry) error {
+	var err error
+	t.patch, err = patch.FindOne(patch.ById(bson.ObjectIdHex(e.ResourceId)))
+	if err != nil {
+		return errors.Wrapf(err, "failed to fetch patch '%s'", e.ResourceId)
+	}
+	if t.patch == nil {
+		return errors.Wrapf(err, "can't find patch '%s'", e.ResourceId)
+	}
+	var ok bool
+	t.data, ok = e.Data.(*event.PatchEventData)
+	if !ok {
+		return errors.Wrapf(err, "patch '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+	}
+
+	t.event = e
+
+	return nil
+}
+
+func (t *patchTriggers) Selectors() []event.Selector {
+	return patchSelectors(t.patch)
+}
+
+func (t *patchTriggers) Validate(trigger string) bool {
+	_, ok := t.triggers[trigger]
+	return ok
+}
+
+func (t *patchTriggers) Process(subscription *event.Subscription) (*notification.Notification, error) {
+	f, ok := t.triggers[subscription.Trigger]
+	if !ok {
+		return nil, errors.Errorf("unknown trigger: '%s'", subscription.Trigger)
+	}
+
+	gen, err := f(t.data, t.patch)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to process trigger '%s'", subscription.Trigger)
+	}
+	if gen == nil {
+		return nil, nil
+	}
+
+	payload, err := gen.get(subscription.Subscriber.Type)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to process trigger '%s'", subscription.Trigger)
+	}
+	if payload == nil {
+		return nil, nil
+	}
+
+	n, err := notification.New(t.event, subscription.Trigger, &subscription.Subscriber, payload)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create notification fir trigger '%s'", subscription.Trigger)
+	}
+
+	return n, nil
 }
