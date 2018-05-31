@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -86,6 +85,14 @@ func (j *setupHostJob) Run(ctx context.Context) {
 			return
 		}
 	}
+	if j.host.Status == evergreen.HostRunning {
+		grip.Info(message.Fields{
+			"runner":  HostInit,
+			"host":    j.host.Id,
+			"message": "skipping setup because host is already set up",
+		})
+		return
+	}
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
@@ -93,7 +100,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 
-	j.AddError(SetupHost(ctx, j.host, settings))
+	j.AddError(j.setupHost(ctx, j.host, settings))
 }
 
 var (
@@ -101,7 +108,7 @@ var (
 	errIgnorableCreateHost = errors.New("create host encountered internal error")
 )
 
-func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
+func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"message": "attempting to setup host",
 		"distro":  h.Distro.Id,
@@ -110,7 +117,7 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 		"runner":  HostInit,
 	})
 
-	if err := setDNSName(ctx, h, settings); err != nil {
+	if err := j.setDNSName(ctx, h, settings); err != nil {
 		return errors.Wrap(err, "error settings DNS name")
 	}
 
@@ -127,7 +134,7 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 		"DNS":     h.Host,
 	})
 
-	if err := provisionHost(ctx, h, settings); err != nil {
+	if err := j.provisionHost(ctx, h, settings); err != nil {
 		event.LogHostProvisionError(h.Id)
 
 		grip.Error(message.WrapError(err, message.Fields{
@@ -173,72 +180,12 @@ func SetupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) 
 	return nil
 }
 
-func CreateHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
-	hostStartTime := time.Now()
-	grip.Info(message.Fields{
-		"message": "attempting to start host",
-		"hostid":  h.Id,
-		"runner":  HostInit,
-	})
-
-	cloudManager, err := cloud.GetManager(ctx, h.Provider, settings)
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "problem getting cloud provider for host",
-			"runner":  HostInit,
-			"host":    h.Id,
-		}))
-		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
-	}
-
-	if err = h.Remove(); err != nil {
-		grip.Notice(message.WrapError(err, message.Fields{
-			"message": "problem removing intent host",
-			"runner":  HostInit,
-			"host":    h.Id,
-		}))
-		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
-	}
-
-	_, err = cloudManager.SpawnHost(ctx, h)
-	if err != nil {
-		// we should maybe try and continue-on-error
-		// here, if we get many errors, but the chance
-		// is that if one fails, the chances of others
-		// failing is quite high (at least while all
-		// cloud providers are typically the same
-		// service provider.)
-		return errors.Wrapf(err, "error spawning host %s", h.Id)
-	}
-
-	h.Status = evergreen.HostStarting
-
-	// Provisionally set h.StartTime to now. Cloud providers may override
-	// this value with the time the host was created.
-	h.StartTime = time.Now()
-
-	_, err = h.Upsert()
-	if err != nil {
-		return errors.Wrapf(err, "error updating host %v", h.Id)
-	}
-
-	grip.Info(message.Fields{
-		"runner":  HostInit,
-		"message": "successfully started host",
-		"hostid":  h.Id,
-		"DNS":     h.Host,
-		"runtime": time.Since(hostStartTime),
-	})
-
-	return nil
-}
-
 const (
 	HostInit   = "hostinit"
 	scpTimeout = time.Minute
 )
 
-func setDNSName(ctx context.Context, host *host.Host, settings *evergreen.Settings) error {
+func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, settings *evergreen.Settings) error {
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := cloud.GetManager(ctx, host.Distro.Provider, settings)
 	if err != nil {
@@ -268,10 +215,10 @@ func setDNSName(ctx context.Context, host *host.Host, settings *evergreen.Settin
 	return nil
 }
 
-// setupHost runs the specified setup script for an individual host. Returns
+// runHostSetup runs the specified setup script for an individual host. Returns
 // the output from running the script remotely, as well as any error that
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
-func setupHost(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) (string, error) {
+func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) (string, error) {
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := cloud.GetManager(ctx, targetHost.Provider, settings)
 	if err != nil {
@@ -296,7 +243,7 @@ func setupHost(ctx context.Context, targetHost *host.Host, settings *evergreen.S
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
+		err = j.copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
 			return "", errors.Wrapf(err, "error copying setup script %v to host %v",
 				evergreen.SetupScriptName, targetHost.Id)
@@ -304,7 +251,7 @@ func setupHost(ctx context.Context, targetHost *host.Host, settings *evergreen.S
 	}
 
 	if targetHost.Distro.Teardown != "" {
-		err = copyScript(ctx, settings, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
+		err = j.copyScript(ctx, settings, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {
 			return "", errors.Wrapf(err, "error copying teardown script %v to host %v",
 				evergreen.TeardownScriptName, targetHost.Id)
@@ -317,7 +264,7 @@ func setupHost(ctx context.Context, targetHost *host.Host, settings *evergreen.S
 // copyScript writes a given script as file "name" to the target host. This works
 // by creating a local copy of the script on the runner's machine, scping it over
 // then removing the local copy.
-func copyScript(ctx context.Context, settings *evergreen.Settings, target *host.Host, name, script string) error {
+func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Settings, target *host.Host, name, script string) error {
 	// parse the hostname into the user, host and port
 	startAt := time.Now()
 	hostInfo, err := util.ParseSSHInfo(target.Host)
@@ -359,7 +306,7 @@ func copyScript(ctx context.Context, settings *evergreen.Settings, target *host.
 		})
 	}()
 
-	expanded, err := expandScript(script, settings)
+	expanded, err := j.expandScript(script, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error expanding script for host %s", target.Id)
 	}
@@ -419,7 +366,7 @@ func copyScript(ctx context.Context, settings *evergreen.Settings, target *host.
 }
 
 // Build the setup script that will need to be run on the specified host.
-func expandScript(s string, settings *evergreen.Settings) (string, error) {
+func (j *setupHostJob) expandScript(s string, settings *evergreen.Settings) (string, error) {
 	// replace expansions in the script
 	exp := util.NewExpansions(settings.Expansions)
 	script, err := exp.ExpandString(s)
@@ -430,22 +377,14 @@ func expandScript(s string, settings *evergreen.Settings) (string, error) {
 }
 
 // Provision the host, and update the database accordingly.
-func provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
-	if h.Status == evergreen.HostRunning {
-		grip.Info(message.Fields{
-			"runner":  HostInit,
-			"host":    h.Id,
-			"message": "skipping setup because host is already set up",
-		})
-		return nil
-	}
+func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
 	grip.Infoln(message.Fields{
 		"runner":  HostInit,
 		"host":    h.Id,
 		"message": "setting up host",
 	})
 
-	output, err := setupHost(ctx, h, settings)
+	output, err := j.runHostSetup(ctx, h, settings)
 	if err != nil {
 		incErr := h.IncProvisionAttempts()
 		grip.Critical(message.WrapError(incErr, message.Fields{
@@ -488,7 +427,7 @@ func provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 	// If this is a spawn host
 	if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
 		grip.Infof("Uploading client binary to host %s", h.Id)
-		lcr, err := LoadClient(ctx, h, settings)
+		lcr, err := j.loadClient(ctx, h, settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "failed to load client binary onto host",
@@ -555,7 +494,7 @@ func provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 				"runner":  HostInit,
 			})
 
-			grip.Error(message.WrapError(fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h, settings),
+			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h, settings),
 				message.Fields{
 					"message": "failed to fetch data onto host",
 					"task":    h.ProvisionOptions.TaskId,
@@ -585,45 +524,18 @@ func provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 	return nil
 }
 
-// LocateCLIBinary returns the (absolute) path to the CLI binary for the given architecture, based
-// on the system settings. Returns an error if the file does not exist.
-func LocateCLIBinary(settings *evergreen.Settings, architecture string) (string, error) {
-	clientsSubDir := "clients"
-	if settings.ClientBinariesDir != "" {
-		clientsSubDir = settings.ClientBinariesDir
-	}
-
-	binaryName := "evergreen"
-	if strings.HasPrefix(architecture, "windows") {
-		binaryName += ".exe"
-	}
-
-	path := filepath.Join(clientsSubDir, architecture, binaryName)
-	if !filepath.IsAbs(clientsSubDir) {
-		path = filepath.Join(evergreen.FindEvergreenHome(), path)
-	}
-
-	_, err := os.Stat(path)
-	if err != nil {
-		return path, errors.WithStack(err)
-	}
-
-	path, err = filepath.Abs(path)
-	return path, errors.WithStack(err)
-}
-
-// LoadClientResult indicates the locations on a target host where the CLI binary and it's config
+// loadClientResult indicates the locations on a target host where the CLI binary and it's config
 // file have been written to.
-type LoadClientResult struct {
+type loadClientResult struct {
 	BinaryPath string
 	ConfigPath string
 }
 
-// LoadClient places the evergreen command line client on the host, places a copy of the user's
+// loadClient places the evergreen command line client on the host, places a copy of the user's
 // settings onto the host, and makes the binary appear in the $PATH when the user logs in.
-// If successful, returns an instance of LoadClientResult which contains the paths where the
+// If successful, returns an instance of loadClientResult which contains the paths where the
 // binary and config file were written to.
-func LoadClient(ctx context.Context, target *host.Host, settings *evergreen.Settings) (*LoadClientResult, error) {
+func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settings *evergreen.Settings) (*loadClientResult, error) {
 	if target.ProvisionOptions == nil {
 		return nil, errors.New("ProvisionOptions is nil")
 	}
@@ -773,13 +685,13 @@ func LoadClient(ctx context.Context, target *host.Host, settings *evergreen.Sett
 		return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.Buffer.String())
 	}
 
-	return &LoadClientResult{
+	return &loadClientResult{
 		BinaryPath: filepath.Join("~", "evergreen"),
 		ConfigPath: fmt.Sprintf("%s/.evergreen.yml", targetDir),
 	}, nil
 }
 
-func fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, target *host.Host, settings *evergreen.Settings) error {
+func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, confPath string, target *host.Host, settings *evergreen.Settings) error {
 	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)

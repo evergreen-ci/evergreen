@@ -90,7 +90,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 
-	err = StartAgentOnHost(ctx, settings, *j.host)
+	err = j.startAgentOnHost(ctx, settings, *j.host)
 	j.AddError(err)
 	if err != nil {
 		stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
@@ -116,7 +116,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 // SSHTimeout defines the timeout for the SSH commands in this package.
 const sshTimeout = 25 * time.Second
 
-func getHostMessage(h host.Host) message.Fields {
+func (j *agentDeployJob) getHostMessage(h host.Host) message.Fields {
 	m := message.Fields{
 		"message":  "starting agent on host",
 		"runner":   "taskrunner",
@@ -148,7 +148,7 @@ func getHostMessage(h host.Host) message.Fields {
 // Start an agent on the host specified.  First runs any necessary
 // preparation on the remote machine, then kicks off the agent process on the
 // machine. Returns an error if any step along the way fails.
-func StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
+func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
 	cloudHost, err := cloud.GetCloudHost(ctx, &hostObj, settings)
@@ -171,7 +171,7 @@ func StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj
 		"runner":  "taskrunner",
 		"message": "prepping host for agent",
 		"host":    hostObj.Id})
-	if err = prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
+	if err = j.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 
@@ -185,8 +185,8 @@ func StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj
 	}
 
 	// Start agent to listen for tasks
-	grip.Info(getHostMessage(hostObj))
-	if err = startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
+	grip.Info(j.getHostMessage(hostObj))
+	if err = j.startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
 		// mark the host's provisioning as failed
 		if err = hostObj.SetUnprovisioned(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -215,7 +215,7 @@ func StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj
 }
 
 // Prepare the remote machine to run a task.
-func prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
+func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
 		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
@@ -248,7 +248,7 @@ func prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string,
 }
 
 // Start the agent process on the specified remote host.
-func startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
+func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join("~", "evergreen")
 	if hostObj.Distro.IsWindows() {
