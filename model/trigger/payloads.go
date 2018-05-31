@@ -268,3 +268,51 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 
 	return &gen, nil
 }
+
+func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
+	data commonTemplateData) (interface{}, error) {
+
+	selectors = append(selectors, event.Selector{
+		Type: "trigger",
+		Data: sub.Trigger,
+	}, event.Selector{
+		Type: selectorStatus,
+		Data: data.PastTenseStatus,
+	})
+
+	data.Headers = makeHeaders(selectors)
+
+	switch sub.Subscriber.Type {
+	case event.GithubPullRequestSubscriberType:
+		if len(data.githubDescription) == 0 {
+			return nil, errors.Errorf("Github subscriber not supported for trigger: '%s'", sub.Trigger)
+		}
+		msg := &message.GithubStatus{
+			Context:     data.githubContext,
+			State:       data.githubState,
+			URL:         data.URL,
+			Description: data.githubDescription,
+		}
+		if len(data.githubContext) != 0 {
+			msg.Context = data.githubContext
+		}
+		return msg, nil
+
+	case event.JIRAIssueSubscriberType:
+		return jiraIssue(data)
+
+	case event.JIRACommentSubscriberType:
+		return jiraComment(data)
+
+	case event.EvergreenWebhookSubscriberType:
+		return webhookPayload(data.apiModel, data.Headers)
+
+	case event.EmailSubscriberType:
+		return emailPayload(data)
+
+	case event.SlackSubscriberType:
+		return slack(data)
+	}
+
+	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
+}
