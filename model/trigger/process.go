@@ -35,7 +35,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 		for i := range subscriptions {
 			n, err := h.Process(&subscriptions[i])
 			catcher.Add(err)
-			if err != nil {
+			if err != nil || n == nil {
 				continue
 			}
 
@@ -44,6 +44,8 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 
 		return notifications, catcher.Resolve()
 	}
+
+	// TODO delete me
 
 	prefetch, triggers := registry.Triggers(e.ResourceType)
 	if len(triggers) == 0 {
