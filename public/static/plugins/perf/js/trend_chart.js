@@ -198,11 +198,12 @@ var drawSingleTrendChart = function(params) {
   var allLevels = _.pluck(series[0].threadResults, 'threadLevel')
 
   var levelsMeta = threadMode == MAXONLY
-    ? [{name: 'MAX', idx: cfg.valueAttr, color: '#484848'}]
+    ? [{name: 'MAX', idx: cfg.valueAttr, color: '#484848', isActive: true}]
     : _.map(allLevels, function(d, i) {
       var data = {
         name: d,
         idx: _.indexOf(allLevels, d),
+        isActive: true,
       };
 
       var match = cfg.knownLevels[d];
@@ -210,6 +211,17 @@ var drawSingleTrendChart = function(params) {
       data.color = colors(match ? match.colorId : cfg.knownLevelsCount + i)
       return data
     })
+
+  var activeLevels
+  var activeLevelNames
+  function updateActiveLevels() {
+    activeLevels = _.where(levelsMeta, {isActive: true})
+    activeLevelNames = _.map(activeLevels, function(d) {
+      return '' + d.name
+    })
+  }
+
+  updateActiveLevels()
 
   // Array with combinations combinations of {level, changePoint}
   var changePointForLevel = []
@@ -236,24 +248,6 @@ var drawSingleTrendChart = function(params) {
     return d && d.length > 1
   })
 
-  var flatOpsValues = _.flatten(
-    _.map(series, function(d) {
-      if (threadMode == MAXONLY) {
-        // In maxonly mode levels contain single (max) item
-        // Extract just one ops item
-        return d[cfg.valueAttr]
-      } else {
-        return _.map(d.threadResults, function(d) {
-          return d[cfg.valueAttr]
-        })
-      }
-    })
-  )
-
-  var multiSeriesAvg = d3.mean(flatOpsValues)
-  var multiSeriesMin = d3.min(flatOpsValues)
-  var multiSeriesMax = d3.max(flatOpsValues)
-
   var compareMax = 0
   if (compareSamples && compareSamples.length) {
     compareMax = _.chain(compareSamples)
@@ -268,45 +262,80 @@ var drawSingleTrendChart = function(params) {
     return i % idxStep == 0
   })
 
-
   var xScale = d3.scale.linear()
     .domain([0, ops.length - 1])
-    .range([0, cfg.effectiveWidth]);
+    .range([0, cfg.effectiveWidth])
 
+  var yScale = linearMode ? d3.scale.linear() : d3.scale.log()
 
-  // Zoomed mode / linear scale is default.
-  // If the upper and lower y-axis values are very close to the average (within 10%)
-  // add extra padding to the upper and lower bounds of the graph for display.
-  var yAxisUpperBound = d3.max([compareMax, multiSeriesMax, multiSeriesAvg * 1.1]);
-  var yAxisLowerBound = originMode ? 0 : d3.min([multiSeriesMin, multiSeriesAvg * .9]);
-  var yScale = d3.scale.linear();
-  // Create a log based scale, remove any 0 values (log(0) is infinity).
-  if (!linearMode) {
-    yScale = d3.scale.log()
-    if (yAxisUpperBound == 0) {
-      yAxisUpperBound = 1e-1;
-    }
-    if (yAxisLowerBound == 0 ) {
-      yAxisLowerBound = multiSeriesMin;
-      if (yAxisLowerBound == 0) {
-        yAxisLowerBound = 1e-1;
-      }
-    }
+  function getOpsValues(sample) {
+    return _.chain(sample.threadResults)
+      .filter(function(d) { // Filter out inactive thread levels
+        return _.contains(activeLevelNames, d.threadLevel)
+      })
+      .pluck(cfg.valueAttr) // Extract thread level values
+      .value()
   }
 
-  // We assume values are either all negative or all positive (around 0).
-  // If the average is less than 0 then swap values and negate the
-  // upper bound.
-  if (multiSeriesAvg < 0) {
+  function calculateYScaleDomain() {
+    var flatOpsValues = _.flatten(
+      _.map(series, function(d) {
+        if (threadMode == MAXONLY) {
+          // In maxonly mode levels contain single (max) item
+          // Extract just one ops item
+          return d[cfg.valueAttr]
+        } else {
+          return getOpsValues(d)
+        }
+      })
+    )
+
+    var multiSeriesAvg = d3.mean(flatOpsValues)
+    var multiSeriesMin = d3.min(flatOpsValues)
+    var multiSeriesMax = d3.max(flatOpsValues)
+
+    // Zoomed mode / linear scale is default.
+    // If the upper and lower y-axis values are very close to the average (within 10%)
+    // add extra padding to the upper and lower bounds of the graph for display.
+    var yAxisUpperBound = d3.max([multiSeriesMax, multiSeriesAvg * 1.1]);
+    var yAxisLowerBound = originMode ? 0 : d3.min([multiSeriesMin, multiSeriesAvg * .9]);
+
+    // Create a log based scale, remove any 0 values (log(0) is infinity).
     if (!linearMode) {
-      yAxisUpperBound = -yAxisUpperBound;
+      if (yAxisUpperBound == 0) {
+        yAxisUpperBound = 1e-1;
+      }
+      if (yAxisLowerBound == 0 ) {
+        yAxisLowerBound = multiSeriesMin;
+        if (yAxisLowerBound == 0) {
+          yAxisLowerBound = 1e-1;
+        }
+      }
     }
-    yAxisLowerBound = d3.min([multiSeriesMin, multiSeriesAvg * 1.1]);
+
+    // We assume values are either all negative or all positive (around 0).
+    // If the average is less than 0 then swap values and negate the
+    // upper bound.
+    if (multiSeriesAvg < 0) {
+      if (!linearMode) {
+        yAxisUpperBound = -yAxisUpperBound;
+      }
+      yAxisLowerBound = d3.min([multiSeriesMin, multiSeriesAvg * 1.1]);
+    }
+
+    return [yAxisLowerBound, yAxisUpperBound]
   }
 
   yScale = yScale.clamp(true)
-    .domain([yAxisLowerBound, yAxisUpperBound])
-    .range([cfg.effectiveHeight, 0]).nice(5);
+    .range([cfg.effectiveHeight, 0])
+    .nice(5)
+
+  function updateYScaleDomain() {
+    yScale.domain(calculateYScaleDomain())
+  }
+
+  updateYScaleDomain()
+
   var yAxis = d3.svg.axis()
       .scale(yScale)
       .orient('left')
@@ -325,6 +354,7 @@ var drawSingleTrendChart = function(params) {
           return cfg.formatters.si(value);
         }
       })
+
   // ## CHART STRUCTURE ##
 
   // multi line
@@ -347,13 +377,19 @@ var drawSingleTrendChart = function(params) {
   }
 
   // Y Axis
-  svg.append('svg:g')
+  svg.append('g')
     .attr({
-      class: 'axis',
+      class: 'y-axis',
       transform: d3Translate(cfg.margin.left - cfg.yAxis.gap, cfg.margin.top)
     })
-    .transition()
-    .call(yAxis);
+
+  function updateYAxis() {
+    svg.select('g.y-axis')
+      .transition()
+      .call(yAxis)
+  }
+
+  updateYAxis()
 
   var getIdx = function(d) { return _.findIndex(series, d) }
 
@@ -407,40 +443,104 @@ var drawSingleTrendChart = function(params) {
           return d3Translate(i * cfg.legend.step, 0)
         }
       })
-
-    legendIter.append('svg:rect')
-      .attr({
-        y: cfg.legend.textOverRectOffset,
-        width: cfg.legend.itemWidth,
-        height: cfg.legend.itemHeight,
-        fill: function(d) { return d.color }
+      .style('cursor', 'pointer')
+      .on('click', function(d) {
+        d.isActive = !d.isActive
+        updateActiveLevels()
+        updateYScaleDomain()
+        updateYAxis()
+        redrawLegend()
+        redrawLines()
+        redrawRefLines()
+        redrawTooltip()
       })
 
-    legendIter.append('svg:text')
-      .text(function(d) { return d.name })
-      .attr({
-        x: cfg.legend.itemWidth / 2,
-        fill: 'white',
-        'text-anchor': 'middle',
-      })
+    redrawLegend()
+
+    function redrawLegend() {
+      legendIter.append('svg:rect')
+        .attr({
+          y: cfg.legend.textOverRectOffset,
+          width: cfg.legend.itemWidth,
+          height: cfg.legend.itemHeight,
+          fill: function(d) {
+            return d.isActive ? d.color : '#666'
+          }
+        })
+
+      legendIter.append('svg:text')
+        .text(function(d) { return d.name })
+        .attr({
+          x: cfg.legend.itemWidth / 2,
+          fill: function(d) { return d.isActive ? 'white' : '#DDD' },
+          'text-anchor': 'middle',
+        })
     }
+  }
 
   // Chart draw area group
   var chartG = svg.append('svg:g')
     .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top))
 
-  var lines = chartG.selectAll('path')
-    .data(levelsMeta)
-    .enter()
-    .append('path')
-    .attr({
-      d: function(level) {
-        return mline(_.map(series, getValueFor(level)))
-      },
-    })
-    .style({
-      stroke: function(d) { return d.color },
-    })
+  function redrawLines() {
+    var lines = chartG.selectAll('path')
+      .data(activeLevels)
+
+    lines
+      .transition()
+      .attr({
+        d: function(level) {
+          return mline(_.map(series, getValueFor(level)))
+        }
+      })
+      .style({
+        stroke: function(d) { return d.color },
+      })
+
+    lines
+      .enter()
+      .append('path')
+      .attr({
+        d: function(level) {
+          return mline(_.map(series, getValueFor(level)))
+        },
+      })
+      .style({
+        stroke: function(d) { return d.color },
+      })
+
+    lines.exit().remove()
+
+    // Current revision marker
+    var commitCircle = chartG
+      .selectAll('circle.current')
+      .data(activeLevels)
+
+    commitCircle
+      .enter()
+      .append('circle')
+        .attr({
+          class: 'point current',
+          cx: xScale(currentItemIdx),
+          cy: function(level) {
+            return yScale(getValueFor(level)(series[currentItemIdx]))
+          },
+          r: cfg.points.focusedR + 0.5,
+          stroke: function(d) { return d.color },
+        })
+
+    commitCircle
+      .transition()
+      .attr({
+        cy: function(level) {
+          return yScale(getValueFor(level)(series[currentItemIdx]))
+        }
+      })
+
+    commitCircle.exit().remove()
+  }
+
+  redrawLines()
 
   if (hasValues) {
     chartG.append('path')
@@ -458,61 +558,56 @@ var drawSingleTrendChart = function(params) {
       })
   }
 
-  if (compareSamples) {
-    for(var j=0; j < compareSamples.length; j++) {
-      var g = chartG.append('g')
-      var compareSample = compareSamples[j]
-      var compareMax = compareSample.maxThroughputForTest(key)
+  // TODO This lines should be rewritten from scratch
+  function redrawRefLines() {
+    if (compareSamples) {
+      // Remove group if exists
+      chartG.select('g.cmp-lines').remove()
+      // Recreate group
+      var cmpLinesG = chartG.append('g')
+        .attr({class: 'cmp-lines'})
 
-      var values;
-      if (threadMode == MAXONLY) {
-        var values = [yScale(compareSample.maxThroughputForTest(key))]
-      } else {
-        var testResult = compareSample.resultForTest(key)
-        if (testResult) {
-          var values = _.map(testResult.results, function(d) {
-            return yScale(d[cfg.valueAttr])
-          })
+      for(var j=0; j < compareSamples.length; j++) {
+        var g = cmpLinesG.append('g')
+          .attr('class', 'cmp-' + j)
+        var compareSample = compareSamples[j]
+        var compareMax = compareSample.maxThroughputForTest(key)
+
+        var values;
+        if (threadMode == MAXONLY) {
+          var values = [yScale(compareSample.maxThroughputForTest(key))]
+        } else {
+          var testResult = compareSample.resultForTest(key)
+          if (testResult) {
+            var values = _.map(activeLevelNames, function(lvl) {
+              return yScale(testResult.results[lvl][cfg.valueAttr])
+            })
+          }
         }
-      }
 
-      values = _.filter(values)
+        values = _.filter(values)
 
-      if (values && values.length) {
-        g.selectAll('.mean-line')
-          .data(values)
-          .enter()
-          .append('svg:line')
-          .attr({
-            class: 'mean-line',
-            x1: 0,
-            x2: cfg.effectiveWidth,
-            y1: _.identity,
-            y2: _.identity,
-            stroke: function() { return d3.rgb(colors(j + 1)).brighter() },
-            'stroke-width': '2',
-            'stroke-dasharray': '5,5'
-          })
+        if (values && values.length) {
+          g.selectAll('.mean-line')
+            .data(values)
+            .enter()
+            .append('svg:line')
+            .attr({
+              class: 'mean-line',
+              x1: 0,
+              x2: cfg.effectiveWidth,
+              y1: _.identity,
+              y2: _.identity,
+              stroke: function() { return d3.rgb(colors(j + 1)).brighter() },
+              'stroke-width': '2',
+              'stroke-dasharray': '5,5'
+            })
+        }
       }
     }
   }
 
-  // Current revision marker
-  chartG.append('g')
-    .attr('class', 'g-current-commit')
-    .selectAll('circle')
-    .data(levelsMeta)
-    .enter()
-    .append('circle')
-      .attr({
-        class: 'point current',
-        cx: xScale(currentItemIdx),
-        cy: function(level) {
-          return yScale(getValueFor(level)(series[currentItemIdx]))
-        },
-        r: cfg.points.focusedR + 0.5,
-        stroke: function(d) { return d.color },
-      })
+  redrawRefLines()
 
   // Render change points
   var changePointsG = chartG.append('g')
@@ -556,32 +651,60 @@ var drawSingleTrendChart = function(params) {
       y1: cfg.effectiveHeight,
     })
 
-  var focusedPoints = focusG.selectAll('circle')
-    .data(levelsMeta)
-    .enter()
-    .append('svg:circle')
-    .attr({
-      class: 'focus-point',
-      r: cfg.points.focusedR,
-      fill: function(d) { return d3.rgb(d.color).darker() },
-    })
+  var enableFocusGroup
+  var focusedPointsRef
+  var focusedTextRef
 
-  var focusedText = focusG.selectAll('text')
-    .data(levelsMeta)
-    .enter()
-    .append('svg:text')
-    .attr({
-      class: 'focus-text',
-      x: cfg.focus.labelOffset.x,
-      fill: function(d) { return d3.rgb(d.color).darker(2) },
-    })
+  function redrawTooltip() {
+    focusG.style('display', 'none')
 
-  // This function could be called just once
-  var enableFocusGroup = _.once(
-    function() {
-      focusG.style('display', null)
-    }
-  )
+    var focusedPoints = focusG.selectAll('circle')
+      .data(activeLevels)
+
+    focusedPointsRef = focusedPoints
+      .attr({
+        fill: function(d) { return d3.rgb(d.color).darker() },
+      })
+
+    focusedPoints
+      .enter()
+      .append('svg:circle')
+      .attr({
+        class: 'focus-point',
+        r: cfg.points.focusedR,
+        fill: function(d) { return d3.rgb(d.color).darker() },
+      })
+
+    focusedPoints.exit().remove()
+
+    var focusedText = focusG.selectAll('text')
+      .data(activeLevels)
+
+    focusedTextRef = focusedText
+      .attr({
+        fill: function(d) { return d3.rgb(d.color).darker(2) },
+      })
+
+    focusedText
+      .enter()
+      .append('svg:text')
+      .attr({
+        class: 'focus-text',
+        x: cfg.focus.labelOffset.x,
+        fill: function(d) { return d3.rgb(d.color).darker(2) },
+      })
+
+    focusedText.exit().remove()
+
+    // This function could be called just once
+    enableFocusGroup = _.once(
+      function() {
+        focusG.style('display', null)
+      }
+    )
+  }
+
+  redrawTooltip()
 
   // Overlay to handle hover action
   chartG.append('svg:rect')
@@ -627,7 +750,7 @@ var drawSingleTrendChart = function(params) {
     // List of per thread level values for selected item
     var values = threadMode == MAXONLY
       ? [item[cfg.valueAttr]]
-      : _.pluck(item.threadResults, cfg.valueAttr);
+      : getOpsValues(item)
 
     var maxOps = _.max(values);
     // List of dot Y positions
@@ -636,11 +759,11 @@ var drawSingleTrendChart = function(params) {
 
     focusG.attr('transform', d3Translate(x, 0))
 
-    focusedPoints.attr({
+    focusedPointsRef.attr({
       cy: function(d, i) { return yScaledValues[i] },
     })
 
-    focusedText
+    focusedTextRef
       .attr({
         y: function(d, i) { return opsLabelsY[i] },
         transform: function(d, i) {
