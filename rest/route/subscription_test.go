@@ -193,7 +193,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	s.Equal("new type", model.FromAPIString(sub.ResourceType))
 
 	// delete the subscription
-	d := &subscriptionDeleteHandler{id: id}
+	d := &subscriptionDeleteHandler{id: id.Hex()}
 	_, err = d.Execute(ctx, s.sc)
 	s.NoError(err)
 	subscription, err := event.FindSubscriptionByID(id)
@@ -258,9 +258,9 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=soul", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "Invalid ID format")
+	s.EqualError(d.ParseAndValidate(ctx, r), "soul is not a valid ObjectID")
 
-	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9604fdd202da", nil)
+	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9704fdd202da", nil)
 	s.NoError(err)
 	s.EqualError(d.ParseAndValidate(ctx, r), "Subscription not found")
 

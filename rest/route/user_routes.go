@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -59,7 +58,7 @@ func (h *userSettingsPostHandler) Execute(ctx context.Context, sc data.Connector
 	if err != nil {
 		return ResponseData{}, errors.Wrap(err, "Error retrieving Evergreen settings")
 	}
-	changedSettings, err := applyChanges(u.Settings, h.settings)
+	changedSettings, err := model.ApplyUserChanges(u.Settings, h.settings)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -103,27 +102,6 @@ func (h *userSettingsPostHandler) Execute(ctx context.Context, sc data.Connector
 	return ResponseData{
 		Result: []model.Model{},
 	}, nil
-}
-
-func applyChanges(current user.UserSettings, changes model.APIUserSettings) (model.APIUserSettings, error) {
-	oldSettings := model.APIUserSettings{}
-	err := oldSettings.BuildFromService(current)
-	if err != nil {
-		return oldSettings, err
-	}
-
-	reflectOldSettings := reflect.ValueOf(&oldSettings)
-	reflectNewSettings := reflect.ValueOf(changes)
-	for i := 0; i < reflectNewSettings.NumField(); i++ {
-		propName := reflectNewSettings.Type().Field(i).Name
-		changedVal := reflectNewSettings.FieldByName(propName)
-		if changedVal.IsNil() {
-			continue
-		}
-		reflectOldSettings.Elem().FieldByName(propName).Set(changedVal)
-	}
-
-	return oldSettings, nil
 }
 
 type userSettingsGetHandler struct{}

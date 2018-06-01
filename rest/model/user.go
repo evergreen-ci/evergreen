@@ -1,6 +1,8 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -160,4 +162,25 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		preferences.PatchFinishID = bson.ObjectIdHex(FromAPIString(n.PatchFinishID))
 	}
 	return preferences, nil
+}
+
+func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUserSettings, error) {
+	oldSettings := APIUserSettings{}
+	err := oldSettings.BuildFromService(current)
+	if err != nil {
+		return oldSettings, err
+	}
+
+	reflectOldSettings := reflect.ValueOf(&oldSettings)
+	reflectNewSettings := reflect.ValueOf(changes)
+	for i := 0; i < reflectNewSettings.NumField(); i++ {
+		propName := reflectNewSettings.Type().Field(i).Name
+		changedVal := reflectNewSettings.FieldByName(propName)
+		if changedVal.IsNil() {
+			continue
+		}
+		reflectOldSettings.Elem().FieldByName(propName).Set(changedVal)
+	}
+
+	return oldSettings, nil
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func getSubscriptionRouteManager(route string, version int) *RouteManager {
@@ -161,7 +160,7 @@ func (s *subscriptionGetHandler) Execute(_ context.Context, sc data.Connector) (
 }
 
 type subscriptionDeleteHandler struct {
-	id bson.ObjectId
+	id string
 }
 
 func (s *subscriptionDeleteHandler) Handler() RequestHandler {
@@ -177,18 +176,12 @@ func (s *subscriptionDeleteHandler) ParseAndValidate(ctx context.Context, r *htt
 			Message:    "Must specify an ID to delete",
 		}
 	}
-	if !bson.IsObjectIdHex(idString) {
-		return rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid ID format",
-		}
-	}
-	s.id = bson.ObjectIdHex(idString)
-	subscription, err := event.FindSubscriptionByID(s.id)
+	s.id = idString
+	subscription, err := event.FindSubscriptionByIDString(s.id)
 	if err != nil {
 		return rest.APIError{
 			StatusCode: http.StatusInternalServerError,
-			Message:    "Problem finding subscription",
+			Message:    err.Error(),
 		}
 	}
 	if subscription == nil {

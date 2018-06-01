@@ -21,7 +21,6 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Connector is an interface that contains all of the methods which
@@ -202,7 +201,7 @@ type Connector interface {
 	SaveSubscriptions([]event.Subscription) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
-	DeleteSubscription(id bson.ObjectId) error
+	DeleteSubscription(id string) error
 
 	// Notifications
 	GetNotificationsStats() (*restModel.APIEventStats, error)
