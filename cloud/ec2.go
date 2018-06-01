@@ -112,11 +112,12 @@ type EC2ManagerOptions struct {
 type ec2Manager struct {
 	*EC2ManagerOptions
 	credentials *credentials.Credentials
+	settings    *evergreen.Settings
 }
 
 // NewEC2Manager creates a new manager of EC2 spot and on-demand instances.
 func NewEC2Manager(opts *EC2ManagerOptions) Manager {
-	return &ec2Manager{opts, nil}
+	return &ec2Manager{EC2ManagerOptions: opts}
 }
 
 // GetSettings returns a pointer to the manager's configuration settings struct.
@@ -126,6 +127,8 @@ func (m *ec2Manager) GetSettings() ProviderSettings {
 
 // Configure loads credentials or other settings from the config file.
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
+	m.settings = settings
+
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
 		return errors.New("AWS ID and Secret must not be blank")
 	}
@@ -162,7 +165,11 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	if ec2Settings.UserData != "" {
-		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
+		expanded, err := m.expandUserData(ec2Settings.UserData)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem expanding user data")
+		}
+		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		input.UserData = &userData
 	}
 
@@ -277,7 +284,11 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	}
 
 	if ec2Settings.UserData != "" {
-		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
+		expanded, err := m.expandUserData(ec2Settings.UserData)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem expanding user data")
+		}
+		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		spotRequest.LaunchSpecification.UserData = &userData
 	}
 
@@ -898,4 +909,13 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	}
 
 	return total, nil
+}
+
+func (m *ec2Manager) expandUserData(userData string) (string, error) {
+	exp := util.NewExpansions(m.settings.Expansions)
+	expanded, err := exp.ExpandString(userData)
+	if err != nil {
+		return "", errors.Wrap(err, "error expanding userdata script")
+	}
+	return expanded, nil
 }
