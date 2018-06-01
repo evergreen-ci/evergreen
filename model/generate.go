@@ -133,11 +133,11 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 
 	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrap(err, "error creating config from generated config").Error()}
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	v.Config = config
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrap(err, "error reading project yaml").Error()}
+		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
 	return p, v, t, &cachedProject, nil
 }
