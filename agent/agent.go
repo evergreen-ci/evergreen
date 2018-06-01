@@ -89,7 +89,6 @@ func (a *Agent) loop(ctx context.Context) error {
 		jitteredSleep time.Duration
 
 		exit bool
-		tc   *taskContext
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -97,7 +96,7 @@ func (a *Agent) loop(ctx context.Context) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	tc = &taskContext{}
+	tc := &taskContext{}
 	needPostGroup := false
 
 LOOP:
@@ -141,6 +140,9 @@ LOOP:
 			} else if needPostGroup {
 				a.runPostGroupCommands(ctx, tc)
 				needPostGroup = false
+				// Running the post group commands implies exiting the group, so
+				// destroy prior task information.
+				tc = &taskContext{}
 			}
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)

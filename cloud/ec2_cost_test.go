@@ -183,7 +183,7 @@ func (s *CostIntegrationSuite) SetupSuite() {
 	m := NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}})
 	s.m = m.(*ec2Manager)
 	s.NoError(s.m.Configure(context.TODO(), settings))
-	s.NoError(s.m.client.Create(s.m.credentials))
+	s.NoError(s.m.client.Create(s.m.credentials, defaultRegion))
 	s.client = s.m.client
 }
 

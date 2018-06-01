@@ -24,7 +24,7 @@ const defaultRegion = "us-east-1"
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(*credentials.Credentials) error
+	Create(*credentials.Credentials, string) error
 
 	// Close an aws-sdk-client or mock.
 	Close()
@@ -84,15 +84,18 @@ const (
 )
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
+func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) error {
 	if creds == nil {
 		return errors.New("creds must not be nil")
+	}
+	if region == "" {
+		return errors.New("region must not be empty")
 	}
 	if c.session == nil {
 		c.httpClient = util.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
-			Region:      makeStringPtr(defaultRegion),
+			Region:      makeStringPtr(region),
 			Credentials: creds,
 		})
 		if err != nil {
@@ -477,7 +480,7 @@ type awsClientMock struct { //nolint
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(creds *credentials.Credentials) error {
+func (c *awsClientMock) Create(creds *credentials.Credentials, region string) error {
 	c.Credentials = creds
 	return nil
 }

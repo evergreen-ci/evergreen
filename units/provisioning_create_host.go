@@ -3,14 +3,18 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/hostinit"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const createHostJobName = "provisioning-create-host"
@@ -75,6 +79,66 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 
-	err = hostinit.CreateHost(ctx, j.host, settings)
+	err = j.createHost(ctx, j.host, settings)
 	j.AddError(err)
+}
+
+func (j *createHostJob) createHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
+	hostStartTime := time.Now()
+	grip.Info(message.Fields{
+		"message": "attempting to start host",
+		"hostid":  h.Id,
+		"runner":  HostInit,
+	})
+
+	cloudManager, err := cloud.GetManager(ctx, h.Provider, settings)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "problem getting cloud provider for host",
+			"runner":  HostInit,
+			"host":    h.Id,
+		}))
+		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+	}
+
+	if err = h.Remove(); err != nil {
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "problem removing intent host",
+			"runner":  HostInit,
+			"host":    h.Id,
+		}))
+		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+	}
+
+	_, err = cloudManager.SpawnHost(ctx, h)
+	if err != nil {
+		// we should maybe try and continue-on-error
+		// here, if we get many errors, but the chance
+		// is that if one fails, the chances of others
+		// failing is quite high (at least while all
+		// cloud providers are typically the same
+		// service provider.)
+		return errors.Wrapf(err, "error spawning host %s", h.Id)
+	}
+
+	h.Status = evergreen.HostStarting
+
+	// Provisionally set h.StartTime to now. Cloud providers may override
+	// this value with the time the host was created.
+	h.StartTime = time.Now()
+
+	_, err = h.Upsert()
+	if err != nil {
+		return errors.Wrapf(err, "error updating host %v", h.Id)
+	}
+
+	grip.Info(message.Fields{
+		"runner":  HostInit,
+		"message": "successfully started host",
+		"hostid":  h.Id,
+		"DNS":     h.Host,
+		"runtime": time.Since(hostStartTime),
+	})
+
+	return nil
 }
