@@ -1,6 +1,7 @@
 function setBanner() {
   var theme = window.BannerTheme;
   var text = bannerText();
+  var jiraLinkify = angular.element(document).injector().get('$filter')('jiraLinkify')
   if (isDismissed(text)) {
     $("#banner-container").addClass("nodisp");
     return;
