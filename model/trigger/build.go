@@ -14,11 +14,7 @@ import (
 )
 
 const (
-	objectBuild         = "build"
-	triggerBuildOutcome = "outcome"
-	triggerBuildFailure = "failure"
-	triggerBuildSuccess = "success"
-	triggerBuildStarted = "started"
+	objectBuild = "build"
 )
 
 func init() {
@@ -99,9 +95,9 @@ type buildTriggers struct {
 func makeBuildTriggers() eventHandler {
 	t := &buildTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerBuildOutcome: t.buildOutcome,
-		triggerBuildFailure: t.buildFailure,
-		triggerBuildSuccess: t.buildSuccess,
+		triggerOutcome: t.buildOutcome,
+		triggerFailure: t.buildFailure,
+		triggerSuccess: t.buildSuccess,
 	}
 	return t
 }
@@ -123,7 +119,7 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	var ok bool
 	t.data, ok = e.Data.(*event.BuildEventData)
 	if !ok {
-		return errors.Wrapf(err, "patch '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+		return errors.Wrapf(err, "build '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
 	}
 	t.event = e
 
@@ -208,7 +204,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 func (t *buildTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	data, err := t.makeData(sub)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect patch data")
+		return nil, errors.Wrap(err, "failed to collect build data")
 	}
 
 	payload, err := makeCommonPayload(sub, t.Selectors(), *data)

@@ -18,9 +18,7 @@ func init() {
 }
 
 const (
-	triggerPatchOutcome = "outcome"
-	triggerPatchFailure = "failure"
-	triggerPatchSuccess = "success"
+	objectPatch         = "patch"
 	triggerPatchStarted = "started"
 )
 
@@ -36,9 +34,9 @@ type patchTriggers struct {
 func makePatchTriggers() eventHandler {
 	t := &patchTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerPatchOutcome: t.patchOutcome,
-		triggerPatchFailure: t.patchFailure,
-		triggerPatchSuccess: t.patchSuccess,
+		triggerOutcome:      t.patchOutcome,
+		triggerFailure:      t.patchFailure,
+		triggerSuccess:      t.patchSuccess,
 		triggerPatchStarted: t.patchStarted,
 	}
 	return t
@@ -75,7 +73,7 @@ func (t *patchTriggers) Selectors() []event.Selector {
 		},
 		{
 			Type: selectorObject,
-			Data: "patch",
+			Data: objectPatch,
 		},
 		{
 			Type: selectorProject,
@@ -132,7 +130,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
-		Object:            "patch",
+		Object:            objectPatch,
 		Project:           t.patch.Project,
 		URL:               fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version),
 		PastTenseStatus:   t.data.Status,

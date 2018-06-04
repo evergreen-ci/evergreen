@@ -22,9 +22,7 @@ func init() {
 }
 
 const (
-	triggerTaskOutcome                       = "outcome"
-	triggerTaskFailure                       = "failure"
-	triggerTaskSuccess                       = "success"
+	objectTask                               = "task"
 	triggerTaskFirstFailureInBuild           = "first-failure-in-build"
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
@@ -34,9 +32,9 @@ const (
 func makeTaskTriggers() eventHandler {
 	t := &taskTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerTaskOutcome:                       t.taskOutcome,
-		triggerTaskFailure:                       t.taskFailure,
-		triggerTaskSuccess:                       t.taskSuccess,
+		triggerOutcome:                           t.taskOutcome,
+		triggerFailure:                           t.taskFailure,
+		triggerSuccess:                           t.taskSuccess,
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
 		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
@@ -143,7 +141,7 @@ func (t *taskTriggers) Selectors() []event.Selector {
 		},
 		{
 			Type: selectorObject,
-			Data: "task",
+			Data: objectTask,
 		},
 		{
 			Type: selectorProject,
@@ -188,7 +186,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription) (*commonTemplateData, e
 func (t *taskTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	data, err := t.makeData(sub)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect patch data")
+		return nil, errors.Wrap(err, "failed to collect task data")
 	}
 
 	payload, err := makeCommonPayload(sub, t.Selectors(), *data)

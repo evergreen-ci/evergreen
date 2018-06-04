@@ -11,6 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	objectVersion = "version"
+)
+
 func init() {
 	registry.registerEventHandler(event.ResourceTypeVersion, event.VersionStateChange, makeVersionTriggers)
 }
@@ -27,9 +31,9 @@ type versionTriggers struct {
 func makeVersionTriggers() eventHandler {
 	t := &versionTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerBuildOutcome: t.versionOutcome,
-		triggerBuildFailure: t.versionFailure,
-		triggerBuildSuccess: t.versionSuccess,
+		triggerOutcome: t.versionOutcome,
+		triggerFailure: t.versionFailure,
+		triggerSuccess: t.versionSuccess,
 	}
 	return t
 }
@@ -70,7 +74,7 @@ func (t *versionTriggers) Selectors() []event.Selector {
 		},
 		{
 			Type: selectorObject,
-			Data: "version",
+			Data: objectVersion,
 		},
 		{
 			Type: selectorRequester,
@@ -115,7 +119,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 
 	data := commonTemplateData{
 		ID:              t.version.Id,
-		Object:          "version",
+		Object:          objectVersion,
 		Project:         t.version.Identifier,
 		URL:             fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.version.Id),
 		PastTenseStatus: t.data.Status,

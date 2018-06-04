@@ -27,6 +27,10 @@ const (
 	selectorStatus    = "status"
 	selectorInVersion = "in-version"
 	selectorInBuild   = "in-build"
+
+	triggerOutcome = "outcome"
+	triggerFailure = "failure"
+	triggerSuccess = "success"
 )
 
 type commonTemplateData struct {
