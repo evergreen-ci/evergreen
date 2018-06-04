@@ -24,20 +24,18 @@ const (
 	triggerPatchStarted = "started"
 )
 
-type patchTrigger func(*event.Subscription) (*notification.Notification, error)
-
 type patchTriggers struct {
 	event    *event.EventLogEntry
+	uiConfig evergreen.UIConfig
 	data     *event.PatchEventData
 	patch    *patch.Patch
-	uiConfig evergreen.UIConfig
 
-	triggers map[string]patchTrigger
+	base
 }
 
 func makePatchTriggers() eventHandler {
 	t := &patchTriggers{}
-	t.triggers = map[string]patchTrigger{
+	t.base.triggers = map[string]trigger{
 		triggerPatchOutcome: t.patchOutcome,
 		triggerPatchFailure: t.patchFailure,
 		triggerPatchSuccess: t.patchSuccess,
@@ -92,20 +90,6 @@ func (t *patchTriggers) Selectors() []event.Selector {
 			Data: t.patch.Status,
 		},
 	}
-}
-
-func (t *patchTriggers) ValidateTrigger(trigger string) bool {
-	_, ok := t.triggers[trigger]
-	return ok
-}
-
-func (t *patchTriggers) Process(sub *event.Subscription) (*notification.Notification, error) {
-	f, ok := t.triggers[sub.Trigger]
-	if !ok {
-		return nil, errors.Errorf("unknown trigger: '%s'", sub.Trigger)
-	}
-
-	return f(sub)
 }
 
 func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Notification, error) {

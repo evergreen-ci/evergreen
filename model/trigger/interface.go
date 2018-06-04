@@ -3,6 +3,7 @@ package trigger
 import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/pkg/errors"
 )
 
 // `eventHandlerFactory`s create `eventHandler`s capable of validating triggers
@@ -25,4 +26,24 @@ type eventHandler interface {
 
 	// Validate returns true if the string refers to a valid trigger
 	ValidateTrigger(string) bool
+}
+
+type trigger func(*event.Subscription) (*notification.Notification, error)
+
+type base struct {
+	triggers map[string]trigger
+}
+
+func (b *base) Process(sub *event.Subscription) (*notification.Notification, error) {
+	f, ok := b.triggers[sub.Trigger]
+	if !ok {
+		return nil, errors.Errorf("unknown trigger: '%s'", sub.Trigger)
+	}
+
+	return f(sub)
+}
+
+func (b *base) ValidateTrigger(t string) bool {
+	_, ok := b.triggers[t]
+	return ok
 }

@@ -37,7 +37,7 @@ func buildFetch(e *event.EventLogEntry) (interface{}, error) {
 	return p, nil
 }
 
-func buildValidator(t func(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error)) trigger {
+func buildValidator(t func(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error)) oldTrigger {
 	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
 		b, ok := object.(*build.Build)
 		if !ok {

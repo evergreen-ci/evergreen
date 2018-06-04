@@ -14,25 +14,25 @@ import (
 // per EventLogEntry ResourceType.
 type prefetch func(*event.EventLogEntry) (interface{}, error)
 
-// trigger is a function that given an event, and the data fetched by
+// oldTrigger is a function that given an event, and the data fetched by
 // the prefetch function, produces an initialized notificationGenerator
 // (which) can simply have the generate method called to create notifications
 //
 // In the event of an error, the notificationGenerator should be ignored.
 // It is valid for both the generator and error to be nil, in which case the
 // trigger does not apply to the given event.
-type trigger func(*event.EventLogEntry, interface{}) (*notificationGenerator, error)
+type oldTrigger func(*event.EventLogEntry, interface{}) (*notificationGenerator, error)
 
 var registry = triggerRegistry{
 	prefetch: map[string]prefetch{},
-	triggers: map[string][]trigger{},
+	triggers: map[string][]oldTrigger{},
 	handlers: map[string]eventHandlerFactory{},
 	lock:     sync.RWMutex{},
 }
 
 type triggerRegistry struct {
 	prefetch map[string]prefetch
-	triggers map[string][]trigger
+	triggers map[string][]oldTrigger
 	handlers map[string]eventHandlerFactory
 	lock     sync.RWMutex
 }
@@ -48,14 +48,14 @@ func (r *triggerRegistry) AddPrefetch(resourceType string, f prefetch) {
 	r.prefetch[resourceType] = f
 }
 
-func (r *triggerRegistry) AddTrigger(resourceType string, t ...trigger) {
+func (r *triggerRegistry) AddTrigger(resourceType string, t ...oldTrigger) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	r.triggers[resourceType] = append(r.triggers[resourceType], t...)
 }
 
-func (r *triggerRegistry) Triggers(resourceType string) (prefetch, []trigger) {
+func (r *triggerRegistry) Triggers(resourceType string) (prefetch, []oldTrigger) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 

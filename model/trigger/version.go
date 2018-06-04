@@ -31,7 +31,7 @@ func versionFetch(e *event.EventLogEntry) (interface{}, error) {
 	return v, nil
 }
 
-func versionValidator(t func(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error)) trigger {
+func versionValidator(t func(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error)) oldTrigger {
 	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
 		v, ok := object.(*version.Version)
 		if !ok {
