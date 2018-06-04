@@ -19,6 +19,7 @@ type ServiceFlags struct {
 	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled" json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
 	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
+	TaskLoggingDisabled          bool `bson:"task_logging_disabled" json:"task_logging_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -60,6 +61,7 @@ func (c *ServiceFlags) Set() error {
 			emailNotificationsDisabledKey:   c.EmailNotificationsDisabled,
 			webhookNotificationsDisabledKey: c.WebhookNotificationsDisabled,
 			githubStatusAPIDisabledKey:      c.GithubStatusAPIDisabled,
+			taskLoggingDisabledKey:          c.TaskLoggingDisabled,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())

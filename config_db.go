@@ -66,6 +66,7 @@ var (
 	emailNotificationsDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "EmailNotificationsDisabled")
 	webhookNotificationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookNotificationsDisabled")
 	githubStatusAPIDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
+	taskLoggingDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
 )
 
 func byId(id string) bson.M {
