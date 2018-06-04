@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"bytes"
 	"context"
 	"encoding/gob"
 	"fmt"
@@ -21,6 +20,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -44,7 +44,12 @@ func init() {
 // implementation for use in testing.
 func GetEnvironment() Environment { return globalEnvState }
 
-func ResetEnvironment() { globalEnvState = &envState{} }
+func ResetEnvironment() {
+	globalEnvState = &envState{
+		senders: map[SenderKey]send.Sender{},
+		closers: map[string]func(context.Context) error{},
+	}
+}
 
 // Environment provides application-level services (e.g. databases,
 // configuration, queues.
@@ -82,6 +87,15 @@ type Environment interface {
 	// settings. These Grip senders must be used with Composers that specify
 	// all message details.
 	GetSender(SenderKey) (send.Sender, error)
+
+	// RegisterCloser adds a function object to an internal
+	// tracker to be called by the Close method before process
+	// termination. The ID is used in reporting, but must be
+	// unique or a new closer could overwrite an existing closer
+	// in some implementations.
+	RegisterCloser(string, func(context.Context) error)
+	// Close calls all registered closers in the environment.
+	Close(context.Context) error
 }
 
 type envState struct {
@@ -92,6 +106,7 @@ type envState struct {
 	session            *mgo.Session
 	mu                 sync.RWMutex
 	clientConfig       *ClientConfig
+	closers            map[string]func(context.Context) error
 	senders            map[SenderKey]send.Sender
 }
 
@@ -217,6 +232,45 @@ func (e *envState) createQueues(ctx context.Context) error {
 	if err = e.notificationsQueue.SetRunner(runner); err != nil {
 		return errors.Wrap(err, "failed to set notifications queue runner")
 	}
+	rootSenders := []send.Sender{}
+	for _, s := range e.senders {
+		rootSenders = append(rootSenders, s)
+	}
+
+	// duration of time in between calls to queue.Status() within
+	// the amboy.Wait* function.
+	const queueWaitInterval = 10 * time.Millisecond
+
+	e.closers["background-local-queue"] = func(ctx context.Context) error {
+		if !amboy.WaitCtxInterval(ctx, e.localQueue, queueWaitInterval) {
+			grip.Critical(message.Fields{
+				"message": "pending jobs failed to finish",
+				"queue":   "system",
+				"status":  e.notificationsQueue.Stats(),
+			})
+			return errors.New("failed to stop with running jobs")
+		}
+		e.localQueue.Runner().Close()
+		return nil
+	}
+
+	e.closers["notification-queue"] = func(ctx context.Context) error {
+		catcher := grip.NewBasicCatcher()
+		for _, s := range rootSenders {
+			catcher.Add(s.Close())
+		}
+
+		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueWaitInterval) {
+			grip.Critical(message.Fields{
+				"message": "pending jobs failed to finish",
+				"queue":   "notifications",
+				"status":  e.notificationsQueue.Stats(),
+			})
+			catcher.Add(errors.New("failed to stop with running jobs"))
+		}
+		e.notificationsQueue.Runner().Close()
+		return catcher.Resolve()
+	}
 
 	for k := range e.senders {
 		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
@@ -247,7 +301,6 @@ func (e *envState) initClientConfig() (err error) {
 }
 
 func (e *envState) initSenders() error {
-	e.senders = map[SenderKey]send.Sender{}
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}
@@ -289,11 +342,16 @@ func (e *envState) initSenders() error {
 		e.senders[SenderEmail] = sender
 	}
 
+	var sender send.Sender
+
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
-		var sender send.Sender
+		splitToken := strings.Split(githubToken, " ")
+		if len(splitToken) != 2 {
+			return errors.New("token format should be 'token ...'")
+		}
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token: githubToken,
+			Token: splitToken[1],
 		}, "")
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github status logger")
@@ -302,7 +360,6 @@ func (e *envState) initSenders() error {
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
-		var sender send.Sender
 		sender, err = send.NewJiraLogger(&send.JiraOptions{
 			Name:     "evergreen",
 			BaseURL:  jira.GetHostURL(),
@@ -327,7 +384,6 @@ func (e *envState) initSenders() error {
 	}
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
-		var sender send.Sender
 		sender, err = send.NewSlackLogger(&send.SlackOptions{
 			Channel: "#",
 			Name:    "evergreen",
@@ -338,7 +394,6 @@ func (e *envState) initSenders() error {
 		e.senders[SenderSlack] = sender
 	}
 
-	var sender send.Sender
 	sender, err = util.NewEvergreenWebhookLogger()
 	if err != nil {
 		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
@@ -378,7 +433,7 @@ func (e *envState) persistSettings() error {
 		[]interface{}{},
 		[]util.KeyValuePair{},
 	}
-	err := deepCopy(*e.settings, &copy, registeredTypes)
+	err := util.DeepCopy(*e.settings, &copy, registeredTypes)
 	if err != nil {
 		return errors.Wrap(err, "problem copying settings")
 	}
@@ -464,6 +519,46 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 	return sender, nil
 }
 
+func (e *envState) RegisterCloser(name string, closer func(context.Context) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, ok := e.closers[name]; ok {
+		grip.Critical(message.Fields{
+			"closer":  name,
+			"message": "duplicate closer registered",
+			"cause":   "programmer error",
+		})
+	}
+	e.closers[name] = closer
+}
+
+func (e *envState) Close(ctx context.Context) error {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	// TODO we could, in the future call all closers in but that
+	// would require more complex waiting and timeout logic
+
+	deadline, _ := ctx.Deadline()
+	catcher := grip.NewBasicCatcher()
+	for name, closer := range e.closers {
+		if closer == nil {
+			continue
+		}
+
+		grip.Info(message.Fields{
+			"message":      "calling closer",
+			"closer":       name,
+			"timeout_secs": time.Until(deadline),
+			"deadline":     deadline,
+		})
+		catcher.Add(closer(ctx))
+	}
+
+	return catcher.Resolve()
+}
+
 // getClientConfig should be called once at startup and looks at the
 // current environment and loads all currently available client
 // binaries for use by the API server in presenting the settings page.
@@ -473,7 +568,6 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 func getClientConfig(baseURL string) (*ClientConfig, error) {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
-
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 
 	if _, err := os.Stat(root); os.IsNotExist(err) {
@@ -508,19 +602,4 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 	}
 
 	return c, nil
-}
-
-// copy of deepCopy in util package
-func deepCopy(src, copy interface{}, registeredTypes []interface{}) error {
-	for _, t := range registeredTypes {
-		gob.Register(t)
-	}
-	var buff bytes.Buffer
-	enc := gob.NewEncoder(&buff)
-	dec := gob.NewDecoder(&buff)
-	err := enc.Encode(src)
-	if err != nil {
-		return errors.Wrap(err, "error encoding source")
-	}
-	return errors.Wrap(dec.Decode(copy), "error decoding copy")
 }

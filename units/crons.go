@@ -500,20 +500,78 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return nil
 		}
 
-		hosts, err := host.Find(host.NeedsProvisioning())
+		hosts, err := host.Find(host.Provisioning())
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      setupHostJobName,
 			"impact":    "hosts cannot provision",
 		}))
 		if err != nil {
-			return errors.Wrap(err, "error fetching starting hosts")
+			return errors.Wrap(err, "error fetching provisioning hosts")
 		}
 
 		ts := util.RoundPartOfMinute(part).Format(tsFormat)
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewHostSetupJob(env, h, ts)))
+		}
+
+		catcher.Add(queue.Put(NewCloudHostReadyJob(env, ts)))
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":   "problem fetching service flags",
+				"operation": "background stats",
+			}))
+			return err
+		}
+
+		if flags.BackgroundStatsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background stats collection disabled",
+				"impact":  "host, task, latency, amboy, and notification stats disabled",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+
+		catcher.Add(queue.Put(NewAmboyStatsCollector(env, ts)))
+		catcher.Add(queue.Put(NewHostStatsCollector(ts)))
+		catcher.Add(queue.Put(NewTaskStatsCollector(ts)))
+		catcher.Add(queue.Put(NewLatencyStatsCollector(ts, time.Minute)))
+		catcher.Add(queue.Put(NewNotificationStatsCollector(ts)))
+		catcher.Add(queue.Put(NewQueueStatsCollector(ts)))
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateLegacyRunnerJobs(env evergreen.Environment, part int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
+
+		if !flags.AlertsDisabled {
+			catcher.Add(queue.Put(NewLegacyAlertsRunnerJob(env, ts)))
+		}
+
+		if !flags.MonitorDisabled {
+			catcher.Add(queue.Put(NewLegacyMonitorRunnerJob(env, ts)))
 		}
 
 		return catcher.Resolve()

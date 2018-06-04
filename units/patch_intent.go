@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -121,7 +122,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			update = NewGithubStatusUpdateJobForExternalPatch(patchDoc.Id.Hex())
 
 		} else {
-			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+			update = NewGithubStatusUpdateJobForNewPatch(patchDoc.Id.Hex())
 		}
 		update.Run(ctx)
 		j.AddError(update.Error())
@@ -252,12 +253,39 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.Id = j.PatchID
 
-	if err := patchDoc.Insert(); err != nil {
+	if err = patchDoc.Insert(); err != nil {
 		return err
 	}
+	if patchDoc.IsGithubPRPatch() {
+		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+			Owner:    patchDoc.GithubPatchData.BaseOwner,
+			Repo:     patchDoc.GithubPatchData.BaseRepo,
+			PRNumber: patchDoc.GithubPatchData.PRNumber,
+			Ref:      patchDoc.GithubPatchData.HeadHash,
+		})
+		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		if err = patchSub.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
+		}
+		buildSub := event.NewBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
+		if err = buildSub.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
+		}
+	}
+	if catcher.HasErrors() {
+		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			"message":     "failed to save subscription, patch will not notify",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+	}
+	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
+		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
 				"job":         j.ID(),
@@ -270,7 +298,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 // buildPatchURL creates a URL to enable downloading patch files through the

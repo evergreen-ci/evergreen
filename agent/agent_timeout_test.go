@@ -76,7 +76,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, tc)
+	err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -140,7 +140,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, tc)
+	err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -203,7 +203,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, tc)
+	err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -266,7 +266,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, tc)
+	err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -329,7 +329,7 @@ func (s *TimeoutSuite) TestDynamicIdleTimeout() {
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, tc)
+	err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -392,7 +392,7 @@ func (s *TimeoutSuite) TestDynamicExecTimeoutTask() {
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, tc)
+	err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()

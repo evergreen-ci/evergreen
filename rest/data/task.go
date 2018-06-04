@@ -90,8 +90,8 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 	return ts, nil
 }
 
-func (tc *DBTaskConnector) FindOldTasksByID(id string) ([]task.Task, error) {
-	ts, err := task.FindOld(task.ByIDPrefix(id))
+func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
+	ts, err := task.FindOldWithDisplayTasks(task.ByIDPrefix(id))
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 	return nil, nil
 }
 
-func (mtc *MockTaskConnector) FindOldTasksByID(id string) ([]task.Task, error) {
+func (mtc *MockTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
 	return mtc.CachedOldTasks, mtc.StoredError
 }
 

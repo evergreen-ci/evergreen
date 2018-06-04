@@ -9,14 +9,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ProviderSettings exposes provider-specific configuration settings for a CloudManager.
+// ProviderSettings exposes provider-specific configuration settings for a Manager.
 type ProviderSettings interface {
 	Validate() error
 }
 
-//CloudManager is an interface which handles creating new hosts or modifying
+//Manager is an interface which handles creating new hosts or modifying
 //them via some third-party API.
-type CloudManager interface {
+type Manager interface {
 	// Returns a pointer to the manager's configuration settings struct
 	GetSettings() ProviderSettings
 
@@ -54,16 +54,22 @@ type CloudManager interface {
 	TimeTilNextPayment(*host.Host) time.Duration
 }
 
-// CloudCostCalculator is an interface for cloud managers that can estimate an
-// what a span of time on a given host costs.
-type CloudCostCalculator interface {
+// CostCalculator is an interface for cloud providers that can estimate what a span of time on a
+// given host costs.
+type CostCalculator interface {
 	CostForDuration(context.Context, *host.Host, time.Time, time.Time) (float64, error)
 }
 
-// GetCloudManager returns an implementation of CloudManager for the given provider name.
+// BatchManager is an interface for cloud providers that support batch operations.
+type BatchManager interface {
+	// GetInstanceStatuses gets the status of a slice of instances.
+	GetInstanceStatuses(context.Context, []host.Host) ([]CloudStatus, error)
+}
+
+// GetManager returns an implementation of Manager for the given provider name.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetCloudManager(ctx context.Context, providerName string, settings *evergreen.Settings) (CloudManager, error) {
-	var provider CloudManager
+func GetManager(ctx context.Context, providerName string, settings *evergreen.Settings) (Manager, error) {
+	var provider Manager
 
 	switch providerName {
 	case evergreen.ProviderNameStatic:

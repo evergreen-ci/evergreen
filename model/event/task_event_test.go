@@ -9,6 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -27,15 +30,15 @@ func TestLoggingTaskEvents(t *testing.T) {
 			taskId := "task_id"
 			hostId := "host_id"
 
-			LogTaskCreated(taskId)
+			LogTaskCreated(taskId, 1)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskDispatched(taskId, hostId)
+			LogTaskDispatched(taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskUndispatched(taskId, hostId)
+			LogTaskUndispatched(taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskStarted(taskId)
+			LogTaskStarted(taskId, 1)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskFinished(taskId, hostId, evergreen.TaskSucceeded)
+			LogTaskFinished(taskId, 1, hostId, evergreen.TaskSucceeded)
 
 			eventsForTask, err := Find(AllLogCollection, TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)
@@ -47,6 +50,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			eventData, ok := event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(eventData.Execution, ShouldEqual, 1)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -59,6 +63,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(eventData.Execution, ShouldEqual, 1)
 			So(eventData.HostId, ShouldEqual, hostId)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -71,6 +76,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(eventData.Execution, ShouldEqual, 1)
 			So(eventData.HostId, ShouldEqual, hostId)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -83,6 +89,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(eventData.Execution, ShouldEqual, 1)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -95,10 +102,21 @@ func TestLoggingTaskEvents(t *testing.T) {
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(eventData.Execution, ShouldEqual, 1)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldEqual, evergreen.TaskSucceeded)
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 		})
 	})
+}
+
+func TestLogManyTestEvents(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	require.NoError(db.ClearCollections(AllLogCollection))
+	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, "example_user")
+	events := []EventLogEntry{}
+	assert.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
+	assert.Len(events, 2)
 }

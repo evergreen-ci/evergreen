@@ -129,6 +129,10 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner:     "me",
 			OwnerType: OwnerTypeProject,
 		},
+		NewPatchOutcomeSubscriptionByOwner("user_0", Subscriber{
+			Type:   EmailSubscriberType,
+			Target: "a@b.com",
+		}),
 	}
 
 	for _, sub := range s.subscriptions {
@@ -140,7 +144,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 	out := []Subscription{}
 	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
 
-	s.Require().Len(out, 5)
+	s.Require().Len(out, 6)
 
 	for _, sub := range out {
 		if sub.ID == s.subscriptions[3].ID {
@@ -151,7 +155,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 func (s *subscriptionsSuite) TestRemove() {
 	for i := range s.subscriptions {
-		s.NoError(s.subscriptions[i].Remove())
+		s.NoError(RemoveSubscription(s.subscriptions[i].ID))
 
 		out := []Subscription{}
 		s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
@@ -161,11 +165,11 @@ func (s *subscriptionsSuite) TestRemove() {
 
 func (s *subscriptionsSuite) TestFind() {
 	// Empty selectors should select nothing (because technically, they match everything)
-	subs, err := FindSubscribers("type2", "trigger2", nil)
+	subs, err := FindSubscriptions("type2", "trigger2", nil)
 	s.NoError(err)
 	s.Nil(subs)
 
-	subs, err = FindSubscribers("type2", "trigger2", []Selector{
+	subs, err = FindSubscriptions("type2", "trigger2", []Selector{
 		{
 			Type: "data",
 			Data: "somethingspecial",
@@ -175,12 +179,12 @@ func (s *subscriptionsSuite) TestFind() {
 	s.Len(subs, 2)
 	s.NotPanics(func() {
 		s.Len(subs[EmailSubscriberType], 1)
-		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Type)
-		s.Equal("someone4@example.com", *subs[EmailSubscriberType][0].Target.(*string))
+		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Subscriber.Type)
+		s.Equal("someone4@example.com", *subs[EmailSubscriberType][0].Subscriber.Target.(*string))
 	})
 
 	// this query hits a subscriber with a regex selector
-	subs, err = FindSubscribers("type1", "trigger1", []Selector{
+	subs, err = FindSubscriptions("type1", "trigger1", []Selector{
 		{
 			Type: "data1",
 			Data: "something",
@@ -225,7 +229,7 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 		},
 	}
 
-	a := subscriberWithRegex{
+	a := Subscription{
 		RegexSelectors: []Selector{
 			{
 				Type: "type",
@@ -238,10 +242,10 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 		},
 	}
 
-	s.True(regexSelectorsMatch(selectors, &a))
+	s.True(regexSelectorsMatch(selectors, a.RegexSelectors))
 
 	a.RegexSelectors[0].Data = "^S"
-	s.False(regexSelectorsMatch(selectors, &a))
+	s.False(regexSelectorsMatch(selectors, a.RegexSelectors))
 }
 
 func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
@@ -260,4 +264,18 @@ func (s *subscriptionsSuite) TestFindByOwnerForProject() {
 	s.Require().Len(subscriptions, 1)
 	s.Equal("me", subscriptions[0].Owner)
 	s.EqualValues(OwnerTypeProject, subscriptions[0].OwnerType)
+}
+
+func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
+	for i := range s.subscriptions {
+		sub, err := FindSubscriptionByID(s.subscriptions[i].ID)
+		s.NoError(err)
+		s.NotNil(sub)
+		s.True(sub.ID.Valid())
+	}
+
+	s.NoError(db.ClearCollections(SubscriptionsCollection))
+	sub, err := FindSubscriptionByID(s.subscriptions[0].ID)
+	s.NoError(err)
+	s.Nil(sub)
 }

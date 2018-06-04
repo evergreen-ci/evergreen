@@ -11,8 +11,9 @@
   {{end}}
 </script>
 <script type="text/javascript" src="{{Static "thirdparty" "tablesorter.js"}}"></script>
-<script type="text/javascript" src="{{Static "js" "alerts.js"}}?hash={{ StaticsMD5 }}"></script>
-<script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "alerts.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 {{define "title"}}
 Evergreen Projects
@@ -244,6 +245,7 @@ Evergreen Projects
           </div>
         </div>
 
+        <!-- TODO: EVG-3408 -->
         <div class="form-group">
           <div class="col-lg-6">
             <h3>Alerts</h3>
@@ -271,9 +273,12 @@ Evergreen Projects
           </div>
         </div>
 
+        <div ng-include="'static/partials/subscription_list.html'">
+        </div>
+
         <div class="variables" ng-show="isAdmin">
           <div class="form-group">
-            <div class="col-header col-lg-6 form-control-static"> <h3>Patch Settings</h3> </div>
+            <div class="col-header col-lg-8 form-control-static"> <h3>Patch Settings</h3> </div>
           </div>
 
           <div id="patching-disabled" class="form-group">

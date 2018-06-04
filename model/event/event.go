@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	// db constants
 	AllLogCollection  = "event_log"
 	TaskLogCollection = "task_event_log"
 )
@@ -113,5 +112,26 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	e.ProcessedAt = temp.ProcessedAt
 	e.ResourceType = temp.ResourceType
 
+	return nil
+}
+
+func (e *EventLogEntry) validateEvent() error {
+	if e.Data == nil {
+		return errors.New("event log entry cannot have nil Data")
+	}
+	if len(e.ResourceType) == 0 {
+		return errors.New("event log entry has no r_type")
+	}
+	if !e.ID.Valid() {
+		e.ID = bson.NewObjectId()
+	}
+	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
+		loc, _ := time.LoadLocation("UTC")
+		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
+		if err != nil {
+			return errors.Wrap(err, "failed to set processed time")
+		}
+		e.ProcessedAt = notSubscribableTime
+	}
 	return nil
 }

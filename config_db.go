@@ -47,7 +47,6 @@ var (
 	logPathKey            = bsonutil.MustHaveTag(Settings{}, "LogPath")
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
-	newRelicKey           = bsonutil.MustHaveTag(Settings{}, "NewRelic")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")

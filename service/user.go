@@ -8,6 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +18,7 @@ func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 	if uis.UserManager.IsRedirect() {
 		http.Redirect(w, r, "/login/redirect", http.StatusFound)
 	}
-	uis.WriteHTML(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
+	uis.render.WriteResponse(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
 }
 
 func (uis *UIServer) setLoginToken(token string, w http.ResponseWriter) {
@@ -57,11 +60,14 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := uis.UserManager.CreateUserToken(creds.Username, creds.Password)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error creating user token",
+		}))
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
 		return
 	}
 	uis.setLoginToken(token, w)
-	uis.WriteJSON(w, http.StatusOK, map[string]string{})
+	gimlet.WriteJSON(w, map[string]string{})
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +83,7 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed saving key"))
 		return
 	}
-	uis.WriteJSON(w, http.StatusOK, struct {
+	gimlet.WriteJSON(w, struct {
 		Key string `json:"key"`
 	}{newKey})
 }
@@ -94,7 +100,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	}
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data       user.UserSettings
 		Config     confFile
 		Binaries   []evergreen.ClientBinary

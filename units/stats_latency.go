@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -32,7 +33,7 @@ type latencyStatsCollector struct {
 // tasks that have started in the last minute.
 func NewLatencyStatsCollector(id string, duration time.Duration) amboy.Job {
 	t := makeLatencyStatsCollector()
-	t.SetID(id)
+	t.SetID(fmt.Sprintf("%s-%s", latencyStatsCollectorJobName, id))
 	t.Duration = duration
 	return t
 }

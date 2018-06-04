@@ -3,10 +3,18 @@ mciModule.factory('ApiUtil', function($http) {
   // TODO Use $httpProvider (tech-debt ticket required)
   return {
     httpGetter: function(base) {
-      return function(endpointTpl, endpointTplParams, httpParams) {
+      var realBase = (function() {
+        switch(base) {
+          case undefined: return '';
+          case '/': return '/';
+          default: return base + '/';
+        }
+      })()
+
+      return function(apiEndpoint, endpointTplParams, httpParams) {
         return $http.get(
           // Interpolate endpoint template with params
-          endpointTpl(_.extend({base: base}, endpointTplParams)),
+          realBase + _.template(apiEndpoint)(endpointTplParams),
           {params: httpParams}
         )
       }

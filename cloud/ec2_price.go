@@ -166,7 +166,8 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 	grip.Debug(message.Fields{
 		"message":       "getting spot history",
 		"instance_type": settings.InstanceType,
-		"os_name":       osName,
+		"function":      "getLatestLowestSpotCostForInstance",
+		"start_time":    "future",
 	})
 	prices, err := client.DescribeSpotPriceHistory(ctx, &ec2.DescribeSpotPriceHistoryInput{
 		// passing a future start time gets the latest price only
@@ -209,7 +210,11 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		return onDemandProvider, nil
 	}
 	if m.provider == autoProvider {
-		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, defaultRegion)
+		r, err := getRegion(h)
+		if err != nil {
+			return 0, errors.Wrap(err, "problem getting region for host")
+		}
+		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, r)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}
@@ -455,6 +460,12 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 	// expand times to contain the full runtime of the host
 	startFilter, endFilter := input.start.Add(-time.Hour), input.end.Add(time.Hour)
 	osStr := string(input.os)
+	grip.Debug(message.Fields{
+		"instance_type": &input.iType,
+		"start_time":    &startFilter,
+		"end_time":      &endFilter,
+		"function":      "describeHourlySpotPriceHistory",
+	})
 	filter := &ec2.DescribeSpotPriceHistoryInput{
 		InstanceTypes:       []*string{&input.iType},
 		ProductDescriptions: []*string{&osStr},

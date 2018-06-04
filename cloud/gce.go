@@ -20,7 +20,7 @@ const (
 	ProviderName = "gce"
 )
 
-// gceManager implements the CloudManager interface for Google Compute Engine.
+// gceManager implements the Manager interface for Google Compute Engine.
 type gceManager struct {
 	client gceClient
 }

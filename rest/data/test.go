@@ -15,10 +15,8 @@ type DBTestConnector struct{}
 func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, status string, limit,
 	sort, execution int) ([]testresult.TestResult, error) {
 
-	pipeline := testresult.TestResultsPipeline(taskId, testId, status, limit, sort, execution)
-	res := []testresult.TestResult{}
-
-	err := testresult.Aggregate(pipeline, &res)
+	q := testresult.TestResultsQuery(taskId, testId, status, limit, sort, execution)
+	res, err := testresult.Find(q)
 	if err != nil {
 		return []testresult.TestResult{}, err
 	}

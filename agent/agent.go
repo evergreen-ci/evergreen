@@ -85,22 +85,18 @@ func (a *Agent) loop(ctx context.Context) error {
 	// can log its clean up.
 	var (
 		lgrCtx        context.Context
-		tskCtx        context.Context
 		cancel        context.CancelFunc
 		jitteredSleep time.Duration
 
 		exit bool
-		tc   *taskContext
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
-	defer cancel()
-	tskCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	tc = &taskContext{}
+	tc := &taskContext{}
 	needPostGroup := false
 
 LOOP:
@@ -133,7 +129,9 @@ LOOP:
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
-				if err := a.runTask(tskCtx, tc); err != nil {
+				tskCtx, tskCancel := context.WithCancel(ctx)
+				defer tskCancel()
+				if err := a.runTask(tskCtx, tskCancel, tc); err != nil {
 					return errors.WithStack(err)
 				}
 				needPostGroup = true
@@ -142,6 +140,9 @@ LOOP:
 			} else if needPostGroup {
 				a.runPostGroupCommands(ctx, tc)
 				needPostGroup = false
+				// Running the post group commands implies exiting the group, so
+				// destroy prior task information.
+				tc = &taskContext{}
 			}
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
@@ -200,10 +201,9 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
+func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *taskContext) (err error) {
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "running task") }()
 
-	ctx, cancel := context.WithCancel(ctx)
 	grip.Info(message.Fields{
 		"message":     "running task",
 		"task_id":     tc.task.ID,
@@ -232,12 +232,11 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
 	tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(ctx, tc, heartbeat)
+	go a.startHeartbeat(ctx, cancel, tc, heartbeat)
 
-	var innerCtx context.Context
-	innerCtx, cancel = context.WithCancel(ctx)
+	innerCtx, innerCancel := context.WithCancel(ctx)
 
-	go a.startIdleTimeoutWatch(ctx, tc, cancel)
+	go a.startIdleTimeoutWatch(ctx, tc, innerCancel)
 
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
@@ -269,7 +268,7 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
 	}
 
-	if tc.hadTimedOut() {
+	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
@@ -345,7 +344,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+	taskConfig := tc.getTaskConfig()
+	taskGroup, err := model.GetTaskGroup(tc.taskGroup, taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-task commands"))
 		return

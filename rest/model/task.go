@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -44,6 +45,9 @@ type APITask struct {
 	ExpectedDuration   APIDuration      `json:"expected_duration_ms"`
 	EstimatedCost      float64          `json:"estimated_cost"`
 	PreviousExecutions []APITask        `json:"previous_executions,omitempty"`
+	GenerateTask       bool             `json:"generate_task"`
+	GeneratedBy        string           `json:"generated_by"`
+	Artifacts          []APIFile        `json:"artifacts"`
 }
 
 type logLinks struct {
@@ -108,6 +112,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			TimeTaken:        NewAPIDuration(v.TimeTaken),
 			ExpectedDuration: NewAPIDuration(v.ExpectedDuration),
 			EstimatedCost:    v.Cost,
+			GenerateTask:     v.GenerateTask,
+			GeneratedBy:      v.GeneratedBy,
 		}
 
 		if len(v.DependsOn) > 0 {
@@ -166,6 +172,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 		TimeTaken:        ad.TimeTaken.ToDuration(),
 		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
 		Cost:             ad.EstimatedCost,
+		GenerateTask:     ad.GenerateTask,
+		GeneratedBy:      ad.GeneratedBy,
 	}
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 
@@ -175,6 +183,25 @@ func (ad *APITask) ToService() (interface{}, error) {
 
 	st.DependsOn = dependsOn
 	return interface{}(st), nil
+}
+
+func (at *APITask) GetArtifacts() error {
+	entries, err := artifact.FindAll(artifact.ByTaskId(FromAPIString(at.Id)))
+	if err != nil {
+		return errors.Wrap(err, "error retrieving artifacts")
+	}
+	for _, entry := range entries {
+		for _, file := range entry.Files {
+			apiFile := APIFile{}
+			err := apiFile.BuildFromService(file)
+			if err != nil {
+				return err
+			}
+			at.Artifacts = append(at.Artifacts, apiFile)
+		}
+	}
+
+	return nil
 }
 
 // APITaskCost is the model to be returned by the API whenever tasks

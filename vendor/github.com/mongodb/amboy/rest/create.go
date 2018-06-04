@@ -3,10 +3,10 @@ package rest
 import (
 	"net/http"
 
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/tychoish/gimlet"
 )
 
 type createResponse struct {
@@ -55,7 +55,7 @@ func (s *Service) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Error = err.Error()
 		grip.Error(err)
-		gimlet.WriteErrorJSON(w, resp)
+		gimlet.WriteJSONError(w, resp)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (s *Service) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp.Error = err.Error()
 		grip.Error(err)
-		gimlet.WriteErrorJSON(w, resp)
+		gimlet.WriteJSONError(w, resp)
 		return
 	}
 

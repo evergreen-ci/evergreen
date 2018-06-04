@@ -29,9 +29,9 @@ api:
   "/rest/v2/status/cli_version":
     - "latest_revision"
     - "client_binaries"
-    - '"arch":"amd64",'
-    - '"os":"linux",'
-    - '"url":"http://localhost:9090/clients/linux_amd64/evergreen"'
+    - '"arch": "amd64",'
+    - '"os": "linux",'
+    - '"url": "http://localhost:9090/clients/linux_amd64/evergreen"'
   "/update":
     - "LatestRevision"
     - "ClientBinaries"
@@ -40,3 +40,4 @@ api:
     - '"url": "http://localhost:9090/clients/linux_amd64/evergreen"'
   "/ref/evergreen":
     - "evergreen"
+

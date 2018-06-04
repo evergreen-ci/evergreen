@@ -1,13 +1,11 @@
 package plugin
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -438,19 +436,6 @@ func TestUIDataInjection(t *testing.T) {
 			}
 			err := ppm.RegisterPlugins(funcPlugins)
 			So(err, ShouldBeNil)
-		})
-	})
-}
-
-func TestUserInjection(t *testing.T) {
-	Convey("With a dbUser and a request", t, func() {
-		u := &user.DBUser{Id: "name1"}
-		r, err := http.NewRequest("GET", "/", bytes.NewBufferString("{}"))
-		So(err, ShouldBeNil)
-
-		Convey("the user should possible to set and retrieve", func() {
-			r = SetUser(u, r)
-			So(GetUser(r), ShouldResemble, u)
 		})
 	})
 }

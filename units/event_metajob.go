@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -98,7 +99,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	notifications := make([][]notification.Notification, len(j.events))
 
 	for i := range j.events {
-		notifications[i], err = notification.NotificationsFromEvent(&j.events[i])
+		notifications[i], err = trigger.NotificationsFromEvent(&j.events[i])
 		catcher.Add(err)
 
 		grip.Error(message.WrapError(err, message.Fields{
@@ -110,7 +111,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 			"event_type": j.events[i].ResourceType,
 		}))
 
-		for _, n := range notifications[0] {
+		for _, n := range notifications[i] {
 			catcher.Add(bulk.Append(n))
 		}
 

@@ -172,7 +172,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 		job.env = s.env
 
 		job.Run(s.ctx)
-		s.EqualError(job.Error(), "sender is disabled, not sending notification")
+		s.NoError(job.Error())
 
 		s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
 	}

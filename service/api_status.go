@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip/message"
 )
@@ -78,7 +79,7 @@ func (as *APIServer) consistentTaskAssignment(w http.ResponseWriter, r *http.Req
 		resp.HostRunningTasks = util.UniqueStrings(resp.HostRunningTasks)
 		resp.TaskHostIds = util.UniqueStrings(resp.TaskHostIds)
 	}
-	as.WriteJSON(w, http.StatusOK, resp)
+	gimlet.WriteJSON(w, resp)
 }
 
 // Returns a list of all processes with runtime entries, i.e. all processes being tracked.
@@ -88,7 +89,7 @@ func (as *APIServer) listRuntimes(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, runtimes)
+	gimlet.WriteJSON(w, runtimes)
 }
 
 // Given a timeout cutoff in seconds, returns a JSON response with a SUCCESS flag
@@ -121,7 +122,7 @@ func (as *APIServer) lateRuntimes(w http.ResponseWriter, r *http.Request) {
 	} else {
 		timeoutResponse.Status = apiStatusSuccess
 	}
-	as.WriteJSON(w, http.StatusOK, timeoutResponse)
+	gimlet.WriteJSON(w, timeoutResponse)
 }
 
 func (as *APIServer) getTaskQueueSizes(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +140,7 @@ func (as *APIServer) getTaskQueueSizes(w http.ResponseWriter, r *http.Request) {
 		Distros map[string]int
 	}{distroNames}
 
-	as.WriteJSON(w, http.StatusOK, taskQueueResponse)
+	gimlet.WriteJSON(w, taskQueueResponse)
 }
 
 // getTaskQueueSize returns a JSON response with a SUCCESS flag if all task queues have a size
@@ -186,7 +187,7 @@ func (as *APIServer) checkTaskQueueSize(w http.ResponseWriter, r *http.Request) 
 		Distros map[string]int
 	}{status, distroNames}
 
-	as.WriteJSON(w, http.StatusOK, growthResponse)
+	gimlet.WriteJSON(w, growthResponse)
 }
 
 // getStuckHosts returns hosts that have tasks running that are completed
@@ -209,7 +210,7 @@ func (as *APIServer) getStuckHosts(w http.ResponseWriter, r *http.Request) {
 		status = apiStatusError
 	}
 
-	as.WriteJSON(w, http.StatusOK, stuckHostResp{
+	gimlet.WriteJSON(w, stuckHostResp{
 		Status:  status,
 		Errors:  errors,
 		HostIds: hosts,
@@ -228,7 +229,7 @@ func (as *APIServer) serviceStatusWithAuth(w http.ResponseWriter, r *http.Reques
 		Pid:        os.Getpid(),
 	}
 
-	as.WriteJSON(w, http.StatusOK, &out)
+	gimlet.WriteJSON(w, &out)
 }
 
 func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request) {
@@ -238,5 +239,5 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 		BuildId: evergreen.BuildRevision,
 	}
 
-	as.WriteJSON(w, http.StatusOK, &out)
+	gimlet.WriteJSON(w, &out)
 }

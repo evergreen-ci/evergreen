@@ -1,5 +1,6 @@
 mciModule.factory('PerfDiscoveryDataService', function(
-  $q, $window, ApiV1, ApiV2, ApiTaskdata, EVG, MPA_UI, PERF_DISCOVERY
+  $q, $window, ApiV1, ApiV2, ApiBuildBaron, ApiTaskdata, EVG,
+  MPA_UI, PERF_DISCOVERY
 ) {
   var PD = PERF_DISCOVERY
 
@@ -146,6 +147,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
           task: extracted.task,
           taskURL: MPA_UI.TASK_BY_ID({task_id: ctx.taskId}),
           buildURL: MPA_UI.BUILD_BY_ID({build_id: ctx.buildId}),
+          taskId: ctx.taskId,
           test: item.name,
           threads: +threads,
           speed: speed.ops_per_sec,
@@ -298,6 +300,36 @@ mciModule.factory('PerfDiscoveryDataService', function(
    * PROMISE CHAINS *
    ******************/
 
+  // :param rows: list of grid rows
+  // :rtype: $q.promise({taskId: {key, link}, ...})
+  function getBFTicketsForRows(rows) {
+    var uniqueTaskIds = _.chain(rows)
+      .uniq(false, function(d) {
+        return d.taskId
+      })
+      .pluck('taskId')
+      .value()
+
+    // Execute all as {task_id: promise, ...}
+    return $q.all(
+      _.reduce(uniqueTaskIds, function(m, d) {
+        m[d] = ApiBuildBaron.getTicketsByTaskId(d)
+        return m
+      }, {})
+    )
+    .then(function(res) { // Then refine the results
+      return _.mapObject(res, function(d) {
+        if (d.data) {
+          return _.map(_.pluck(d.data, 'key'), function(key) {
+            return {key: key}
+          })
+        } else {
+          return []
+        }
+      })
+    })
+  }
+
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
   function queryData(tasksPromise, baselineTasks) {
@@ -417,6 +449,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
     getVersionOptions: getVersionOptions,
     getCompItemVersion: getCompItemVersion,
     getQueryBasedItem: getQueryBasedItem,
+    getBFTicketsForRows: getBFTicketsForRows,
 
     // For teting
     _extractTasks: extractTasks,

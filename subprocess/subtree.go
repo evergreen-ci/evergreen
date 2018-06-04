@@ -15,7 +15,7 @@ const (
 
 func envHasMarkers(key string, env []string) bool {
 	// If this agent was started by an integration test, only kill a proc if it was started by this agent
-	if os.Getenv(testutil.EnvAll) != "" {
+	if os.Getenv(testutil.EnvOverride) != "" {
 		for _, envVar := range env {
 			if strings.HasPrefix(envVar, MarkerTaskID) {
 				split := strings.Split(envVar, "=")

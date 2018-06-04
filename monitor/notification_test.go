@@ -35,7 +35,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			warnings, err := spawnHostExpirationWarnings(testConfig)
+			warnings, err := SpawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 0)
 
@@ -54,7 +54,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			warnings, err := spawnHostExpirationWarnings(testConfig)
+			warnings, err := SpawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 0)
 
@@ -70,7 +70,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			warnings, err := spawnHostExpirationWarnings(testConfig)
+			warnings, err := SpawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 1)
 
@@ -110,7 +110,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
-			warnings, err := spawnHostExpirationWarnings(testConfig)
+			warnings, err := SpawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 0)
 
@@ -143,7 +143,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			warnings, err := slowProvisioningWarnings(testConfig)
+			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 0)
 
@@ -162,7 +162,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			warnings, err := slowProvisioningWarnings(testConfig)
+			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 0)
 
@@ -178,7 +178,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			warnings, err := slowProvisioningWarnings(testConfig)
+			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 0)
 
@@ -194,7 +194,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			warnings, err := slowProvisioningWarnings(testConfig)
+			warnings, err := SlowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
 			So(len(warnings), ShouldEqual, 1)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -131,7 +132,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Version       *uiVersion
 		PluginContent pluginData
 		CanEdit       bool
@@ -165,6 +166,9 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authUser := GetUser(r)
+	authName := authUser.DisplayName()
+
 	// determine what action needs to be taken
 	switch jsonMap.Action {
 	case "restart":
@@ -174,7 +178,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		}
 	case "set_active":
 		if jsonMap.Abort {
-			if err = model.AbortVersion(projCtx.Version.Id); err != nil {
+			if err = model.AbortVersion(projCtx.Version.Id, authName); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -196,7 +200,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	default:
-		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Unrecognized action: %v", jsonMap.Action))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Unrecognized action: %v", jsonMap.Action))
 		return
 	}
 
@@ -238,7 +242,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		uiBuilds = append(uiBuilds, buildAsUI)
 	}
 	versionAsUI.Builds = uiBuilds
-	uis.WriteJSON(w, http.StatusOK, versionAsUI)
+	gimlet.WriteJSON(w, versionAsUI)
 }
 
 // addFailedTests fetches the tasks that failed from the database and attaches
@@ -328,7 +332,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		versionAsUI.Builds = uiBuilds
 	}
-	uis.WriteJSON(w, http.StatusOK, versions)
+	gimlet.WriteJSON(w, versions)
 }
 
 //versionFind redirects to the correct version page based on the gitHash and versionId given.
@@ -346,11 +350,11 @@ func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(foundVersions) == 0 {
-		uis.WriteJSON(w, http.StatusNotFound, fmt.Sprintf("Version Not Found: %v - %v", id, revision))
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("Version Not Found: %v - %v", id, revision))
 		return
 	}
 	if len(foundVersions) > 1 {
-		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Multiple versions found: %v - %v", id, revision))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Multiple versions found: %v - %v", id, revision))
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/version/%v", foundVersions[0].Id), http.StatusFound)

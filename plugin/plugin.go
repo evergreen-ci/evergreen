@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"net/http"
 )
 
 var (
@@ -18,10 +17,6 @@ var (
 	UIPlugins []UIPlugin
 )
 
-type pluginTaskContext int
-
-const pluginTaskContextKey pluginTaskContext = 0
-
 // Plugin defines the interface that all evergreen plugins must implement in order
 // to register themselves with Evergreen. A plugin must also implement one of the
 // PluginCommand or UIPlugin interfaces in order to do useful work.
@@ -32,9 +27,6 @@ type Plugin interface {
 
 type UIPlugin interface {
 	Plugin
-
-	// Install any server-side handlers needed by this plugin in the UI server
-	GetUIHandler() http.Handler
 
 	// GetPanelConfig returns a pointer to a plugin's UI configuration.
 	// or an error, if an error occur while trying to generate the config

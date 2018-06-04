@@ -402,7 +402,7 @@ func TestNextTask(t *testing.T) {
 			})
 			Convey("with an out of date agent revision and a task group", func() {
 				So(sampleHost.SetAgentRevision("out-of-date-string"), ShouldBeNil)
-				sentWithTaskGroup := &apimodels.GetNextTaskDetails{"task_group"}
+				sentWithTaskGroup := &apimodels.GetNextTaskDetails{TaskGroup: "task_group"}
 				resp := getNextTaskEndpoint(t, as, sampleHost.Id, sentWithTaskGroup)
 				details := &apimodels.NextTaskResponse{}
 				So(resp.Code, ShouldEqual, http.StatusOK)
@@ -658,19 +658,10 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				case "collect-host-idle-data":
 					counter++
 
-					// this is gross, but lets us introspect the private job
-					jobData := struct {
-						StartAt  time.Time `json:"start_time"`
-						FinishAt time.Time `json:"finish_time"`
-					}{}
-
-					raw, err := json.Marshal(job)
-					So(err, ShouldBeNil)
-					So(json.Unmarshal(raw, &jobData), ShouldBeNil)
-
-					So(jobData.StartAt.Before(jobData.FinishAt), ShouldBeTrue)
-					So(jobData.StartAt.IsZero(), ShouldBeFalse)
-					So(jobData.FinishAt.IsZero(), ShouldBeFalse)
+					t := job.TimeInfo()
+					So(t.Start.Before(t.End), ShouldBeTrue)
+					So(t.Start.IsZero(), ShouldBeFalse)
+					So(t.End.IsZero(), ShouldBeFalse)
 
 				case "collect-task-start-data":
 					counter++

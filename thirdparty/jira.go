@@ -105,7 +105,7 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*Ji
 	postArgs := struct {
 		Fields map[string]interface{} `json:"fields"`
 	}{fields}
-	apiEndpoint := fmt.Sprintf("https://%v/rest/api/2/issue", jiraHandler.JiraServer)
+	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue", jiraHandler.JiraServer)
 	res, err := jiraHandler.MyHttp.doPost(apiEndpoint, jiraHandler.UserName, jiraHandler.Password, postArgs)
 	if res != nil {
 		defer res.Body.Close()
@@ -127,7 +127,7 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*Ji
 
 // UpdateTicket sets the given fields of the ticket with the given key. Returns any errors JIRA returns.
 func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]interface{}) error {
-	apiEndpoint := fmt.Sprintf("https://%v/rest/api/2/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
+	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
 	putArgs := struct {
 		Fields map[string]interface{} `json:"fields"`
 	}{fields}
@@ -148,7 +148,7 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]inter
 
 // GetJIRATicket returns the ticket with the given key.
 func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
-	apiEndpoint := fmt.Sprintf("https://%v/rest/api/latest/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
+	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
 
 	res, err := jiraHandler.MyHttp.doGet(apiEndpoint, jiraHandler.UserName, jiraHandler.Password)
 	if res != nil {
@@ -183,7 +183,7 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 // JQLSearch runs the given JQL query against the given jira instance and returns
 // the results in a JiraSearchResults
 func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int) (*JiraSearchResults, error) {
-	apiEndpoint := fmt.Sprintf("https://%v/rest/api/latest/search?jql=%v&startAt=%d&maxResults=%d", jiraHandler.JiraServer, url.QueryEscape(query), startAt, maxResults)
+	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/search?jql=%v&startAt=%d&maxResults=%d", jiraHandler.JiraServer, url.QueryEscape(query), startAt, maxResults)
 
 	res, err := jiraHandler.MyHttp.doGet(apiEndpoint, jiraHandler.UserName, jiraHandler.Password)
 	if err != nil {

@@ -24,7 +24,7 @@ const defaultRegion = "us-east-1"
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(*credentials.Credentials) error
+	Create(*credentials.Credentials, string) error
 
 	// Close an aws-sdk-client or mock.
 	Close()
@@ -44,10 +44,13 @@ type AWSClient interface {
 	// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
 	RequestSpotInstances(context.Context, *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error)
 
-	// DescribeSpotRequestsAndSave is a wrapper for DescribeSpotInstanceRequests that also saves instance IDs to the db
+	// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
+	DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error)
+
+	// DescribeSpotRequestsAndSave is a wrapper for DescribeSpotInstanceRequests that also saves instance IDs to the db.
 	DescribeSpotRequestsAndSave(context.Context, []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error)
 
-	// GetSpotInstanceId returns the instance ID if already saved, otherwise looks it up
+	// GetSpotInstanceId returns the instance ID if already saved, otherwise looks it up.
 	GetSpotInstanceId(context.Context, *host.Host) (string, error)
 
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
@@ -81,15 +84,18 @@ const (
 )
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
+func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) error {
 	if creds == nil {
 		return errors.New("creds must not be nil")
+	}
+	if region == "" {
+		return errors.New("region must not be empty")
 	}
 	if c.session == nil {
 		c.httpClient = util.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
-			Region:      makeStringPtr(defaultRegion),
+			Region:      makeStringPtr(region),
 			Credentials: creds,
 		})
 		if err != nil {
@@ -234,8 +240,8 @@ func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	return output, nil
 }
 
-// describeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientImpl) describeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
+func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	var output *ec2.DescribeSpotInstanceRequestsOutput
 	var err error
 	msg := makeAWSLogMessage("DescribeSpotInstanceRequests", fmt.Sprintf("%T", c), input)
@@ -270,7 +276,7 @@ func (c *awsClientImpl) DescribeSpotRequestsAndSave(ctx context.Context, hosts [
 		SpotInstanceRequestIds: spotRequestIds,
 	}
 
-	instances, err := c.describeSpotInstanceRequests(ctx, apiInput)
+	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
 	if err != nil {
 		return nil, errors.Wrap(err, "error describing spot requests")
 	}
@@ -321,6 +327,9 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, msg))
+					if ec2err.Code() == EC2ErrorSpotRequestNotFound {
+						return false, err
+					}
 				}
 				return true, err
 			}
@@ -465,10 +474,13 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeSpotPriceHistoryInput
 	*ec2.DescribeSubnetsInput
 	*ec2.DescribeVpcsInput
+
+	*ec2.DescribeSpotInstanceRequestsOutput
+	*ec2.DescribeInstancesOutput
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(creds *credentials.Credentials) error {
+func (c *awsClientMock) Create(creds *credentials.Credentials, region string) error {
 	c.Credentials = creds
 	return nil
 }
@@ -491,6 +503,9 @@ func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstance
 // DescribeInstances is a mock for ec2.DescribeInstances
 func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	c.DescribeInstancesInput = input
+	if c.DescribeInstancesOutput != nil {
+		return c.DescribeInstancesOutput, nil
+	}
 	return &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			&ec2.Reservation{
@@ -535,9 +550,12 @@ func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	}, nil
 }
 
-// describeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientMock) describeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+// DescribeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
+func (c *awsClientMock) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	c.DescribeSpotInstanceRequestsInput = input
+	if c.DescribeSpotInstanceRequestsOutput != nil {
+		return c.DescribeSpotInstanceRequestsOutput, nil
+	}
 	return &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
@@ -559,7 +577,7 @@ func (c *awsClientMock) DescribeSpotRequestsAndSave(ctx context.Context, hosts [
 		SpotInstanceRequestIds: spotRequestIds,
 	}
 
-	instances, err := c.describeSpotInstanceRequests(ctx, apiInput)
+	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
 	if err != nil {
 		return nil, err
 	}

@@ -86,13 +86,13 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, tasks TaskVariantPairs) error {
-	return AddNewBuilds(p.Activated, patchVersion, project, tasks)
+	return AddNewBuilds(p.Activated, patchVersion, project, tasks, "")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TaskVariantPairs) error {
-	return AddNewTasks(p.Activated, patchVersion, project, pairs)
+	return AddNewTasks(p.Activated, patchVersion, project, pairs, "")
 }
 
 // IncludePatchDependencies takes a project and a slice of variant/task pairs names
@@ -293,7 +293,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
-		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, taskNames, displayNames)
+		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, taskNames, displayNames, "")
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -321,7 +321,7 @@ func CancelPatch(p *patch.Patch, caller string) error {
 		if err := SetVersionActivation(p.Version, false, caller); err != nil {
 			return errors.WithStack(err)
 		}
-		return errors.WithStack(AbortVersion(p.Version))
+		return errors.WithStack(AbortVersion(p.Version, caller))
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))

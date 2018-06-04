@@ -2,11 +2,11 @@
 name := evergreen
 buildDir := bin
 nodeDir := public
-packages := $(name) agent operations cloud command db subprocess util plugin hostinit units
-packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
+packages := $(name) agent operations cloud command db subprocess util plugin units
+packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron
 packages += thirdparty alerts auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
-packages += model-grid rest-client rest-data rest-route rest-model migrations spawn
+packages += model-grid rest-client rest-data rest-route rest-model migrations spawn model-trigger
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -105,7 +105,7 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
 	@touch $@
 smoke-test-task:$(localClientBinary) load-smoke-data
-	./$< service deploy start-evergreen --web --runner --binary ./$< &
+	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
 	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (killall $<; exit 1)
 	killall $<
@@ -231,6 +231,10 @@ lint-%:$(buildDir)/output.%.lint
 
 # start vendoring configuration
 vendor-clean:
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/urfave/negroni/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/gorilla/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
@@ -240,8 +244,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/gorilla/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/urfave/negroni/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/evergreen-ci/gimlet/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
@@ -263,7 +266,7 @@ phony += vendor-clean
 #    rerun as expected.)
 testRunDeps := $(name)
 testArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd)
+testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`)
 endif

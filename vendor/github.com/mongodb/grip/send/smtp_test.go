@@ -160,14 +160,6 @@ func (s *SMTPSuite) TestMakeConstructorFailureCases() {
 	sender, err = MakeSMTPLogger(&SMTPOptions{})
 	s.Nil(sender)
 	s.Error(err)
-
-	s.opts.client = &smtpClientMock{
-		failCreate: true,
-	}
-
-	sender, err = MakeSMTPLogger(s.opts)
-	s.Nil(sender)
-	s.Error(err)
 }
 
 func (s *SMTPSuite) TestSendMailErrorsIfNoAddresses() {
@@ -199,6 +191,15 @@ func (s *SMTPSuite) TestSendMailErrorsIfRecptFails() {
 func (s *SMTPSuite) TestSendMailErrorsIfDataFails() {
 	s.opts.client = &smtpClientMock{
 		failData: true,
+	}
+
+	m := message.NewString("hello world!")
+	s.Error(s.opts.sendMail(m))
+}
+
+func (s *SMTPSuite) TestSendMailErrorsIfCreateFails() {
+	s.opts.client = &smtpClientMock{
+		failCreate: true,
 	}
 
 	m := message.NewString("hello world!")
