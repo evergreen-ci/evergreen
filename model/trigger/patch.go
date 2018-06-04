@@ -109,9 +109,6 @@ func (t *patchTriggers) Process(sub *event.Subscription) (*notification.Notifica
 }
 
 func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.PatchStarted {
-		return nil, nil
-	}
 	if t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
