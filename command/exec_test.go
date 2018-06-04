@@ -283,3 +283,24 @@ func (s *execCmdSuite) TestExecuteErrorsIfCommandAborts() {
 		s.Contains(err.Error(), "aborted")
 	}
 }
+
+func (s *execCmdSuite) TestStripBlanks() {
+	// by default blank args should be stripped
+	cmd := &subprocessExec{
+		Command:    "echo ${foo|} bar",
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Args, 1)
+
+	// blank args should not be stripped if set
+	cmd = &subprocessExec{
+		Command:          "echo ${foo|} bar",
+		WorkingDir:       testutil.GetDirectoryOfFile(),
+		NoStripBlankArgs: true,
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(cmd.Args, 2)
+}
