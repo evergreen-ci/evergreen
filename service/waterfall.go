@@ -9,13 +9,16 @@ import (
 )
 
 const (
-	InactiveStatus = "inactive"
+	InactiveStatus         = "inactive"
+	WaterfallPerPageLimit  = 5
+	WaterfallBVFilterParam = "bv_filter"
+	WaterfallSkipParam     = "skip"
 )
 
 // Pull the skip value out of the http request
 func skipValue(r *http.Request) (int, error) {
 	// determine how many versions to skip
-	toSkipStr := r.FormValue(model.WaterfallSkipParam)
+	toSkipStr := r.FormValue(WaterfallSkipParam)
 	if toSkipStr == "" {
 		toSkipStr = "0"
 	}
@@ -37,11 +40,11 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		skip = 0
 	}
 
-	variantQuery := strings.TrimSpace(r.URL.Query().Get(model.WaterfallBVFilterParam))
+	variantQuery := strings.TrimSpace(r.URL.Query().Get(WaterfallBVFilterParam))
 
 	// first, get all of the versions and variants we will need
 	vvData, err := model.GetWaterfallVersionsAndVariants(
-		skip, model.WaterfallPerPageLimit, project, variantQuery,
+		skip, WaterfallPerPageLimit, project, variantQuery,
 	)
 
 	if err != nil {
@@ -50,14 +53,14 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	finalData, err := model.WaterfallDataAdaptor(
-		vvData, project, skip, model.WaterfallPerPageLimit, variantQuery,
+		vvData, project, skip, WaterfallPerPageLimit, variantQuery,
 	)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data     model.WaterfallData
 		JiraHost string
 		ViewData

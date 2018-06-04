@@ -142,7 +142,6 @@ var Root = function (_React$Component2) {
   _createClass(Root, [{
     key: "updatePaginationContext",
     value: function updatePaginationContext(data) {
-      console.log(data);
       // Initialize newer|older buttons
       var versionsOnPage = _.reduce(data.versions, function (m, d) {
         return m + d.authors.length;

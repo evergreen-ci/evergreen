@@ -13,6 +13,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	WaterfallPerPageLimit  = 5
+	WaterfallBVFilterParam = "bv_filter"
+	WaterfallLimitParam    = "limit"
+	WaterfallSkipParam     = "skip"
+)
+
 type waterfallDataGetHandler struct {
 	project string
 	limit   int
@@ -44,7 +51,7 @@ func (h *waterfallDataGetHandler) ParseAndValidate(ctx context.Context, r *http.
 	h.project = vars["project_id"]
 	query := r.URL.Query()
 
-	limit := query.Get(dbModel.WaterfallLimitParam)
+	limit := query.Get(WaterfallLimitParam)
 	if limit != "" {
 		h.limit, err = strconv.Atoi(limit)
 		if err != nil {
@@ -54,10 +61,10 @@ func (h *waterfallDataGetHandler) ParseAndValidate(ctx context.Context, r *http.
 			}
 		}
 	} else {
-		h.limit = dbModel.WaterfallPerPageLimit
+		h.limit = WaterfallPerPageLimit
 	}
 
-	skip := query.Get(dbModel.WaterfallSkipParam)
+	skip := query.Get(WaterfallSkipParam)
 	if skip != "" {
 		h.skip, err = strconv.Atoi(skip)
 		if err != nil {
@@ -70,7 +77,7 @@ func (h *waterfallDataGetHandler) ParseAndValidate(ctx context.Context, r *http.
 		h.skip = 0
 	}
 
-	h.variant = query.Get(dbModel.WaterfallBVFilterParam)
+	h.variant = query.Get(WaterfallBVFilterParam)
 
 	return nil
 }

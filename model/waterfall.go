@@ -13,14 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	WaterfallPerPageLimit  = 5
-	WaterfallBVFilterParam = "bv_filter"
-	WaterfallLimitParam    = "limit"
-	WaterfallSkipParam     = "skip"
-)
-
-type versionVariantData struct {
+type VersionVariantData struct {
 	Rows          map[string]WaterfallRow `json:"rows"`
 	Versions      []WaterfallVersion      `json:"versions"`
 	BuildVariants waterfallBuildVariants  `json:"build_variants"`
@@ -70,9 +63,6 @@ type waterfallTask struct {
 	ExpectedDuration time.Duration           `json:"expected_duration,omitempty"`
 	StartTime        int64                   `json:"start_time"`
 }
-
-// failedTest holds all the information for displaying context about tests that failed in a
-// waterfall page tooltip.
 
 // WaterfallVersion holds the waterfall UI representation of a single version (column)
 // If the RolledUp field is false, then it contains information about
@@ -137,9 +127,7 @@ func (wfbv waterfallBuildVariants) Swap(i, j int) {
 
 // For given build variant, variant display name and variant search query
 // checks if matched variant has active tasks
-func variantHasActiveTasks(
-	b build.Build, bvDisplayName string, variantQuery string,
-) bool {
+func variantHasActiveTasks(b build.Build, bvDisplayName string, variantQuery string) bool {
 	return strings.Contains(
 		strings.ToUpper(bvDisplayName), strings.ToUpper(variantQuery),
 	) && b.IsActive()
@@ -242,7 +230,7 @@ func GetWaterfallVersionsAndVariants(
 	numVersionElements int,
 	project *Project,
 	variantQuery string,
-) (versionVariantData, error) {
+) (VersionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []WaterfallVersion{}
 
@@ -267,7 +255,7 @@ func GetWaterfallVersionsAndVariants(
 			FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements)
 
 		if err != nil {
-			return versionVariantData{}, errors.Wrap(err,
+			return VersionVariantData{}, errors.Wrap(err,
 				"error fetching versions and builds:")
 		}
 
@@ -415,13 +403,13 @@ func GetWaterfallVersionsAndVariants(
 
 		failedAndStartedTasks, err := task.Find(task.ByIds(failedAndStartedTaskIds))
 		if err != nil {
-			return versionVariantData{}, errors.Wrap(err, "error fetching failed tasks")
+			return VersionVariantData{}, errors.Wrap(err, "error fetching failed tasks")
 
 		}
 
 		for i := range failedAndStartedTasks {
 			if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
-				return versionVariantData{}, errors.Wrap(err, "error merging test results")
+				return VersionVariantData{}, errors.Wrap(err, "error merging test results")
 			}
 		}
 
@@ -443,7 +431,7 @@ func GetWaterfallVersionsAndVariants(
 		buildVariants = append(buildVariants, waterfallBuildVariant{Id: name, DisplayName: displayName})
 	}
 
-	return versionVariantData{
+	return VersionVariantData{
 		Rows:          waterfallRows,
 		Versions:      finalVersions,
 		BuildVariants: buildVariants,
@@ -451,7 +439,7 @@ func GetWaterfallVersionsAndVariants(
 }
 
 func WaterfallDataAdaptor(
-	vvData versionVariantData,
+	vvData VersionVariantData,
 	project *Project,
 	skip int,
 	limit int,
