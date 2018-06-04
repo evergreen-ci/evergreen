@@ -57,7 +57,9 @@ func (s *patchSuite) SetupTest() {
 	s.patch.Version = s.patch.Id.Hex()
 	s.NoError(s.patch.Insert())
 
-	s.data = &event.PatchEventData{}
+	s.data = &event.PatchEventData{
+		Status: evergreen.PatchCreated,
+	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
 		ResourceId:   patchID.Hex(),

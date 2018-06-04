@@ -30,7 +30,7 @@ type taskSuite struct {
 }
 
 func (s *taskSuite) SetupSuite() {
-	s.Require().Implements((*eventHandler)(nil), &patchTriggers{})
+	s.Require().Implements((*eventHandler)(nil), &taskTriggers{})
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
