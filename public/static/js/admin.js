@@ -113,6 +113,7 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     repotracker_push_event_disabled: "repotracker_push_event",
     cli_updates_disabled: "cli_updates",
     background_stats_disabled: "background stats",
+    "task_logging_disabled": "task logging",
     event_processing_disabled: "event_processing",
     jira_notifications_disabled: "jira_notifications",
     slack_notifications_disabled: "slack_notifications",
