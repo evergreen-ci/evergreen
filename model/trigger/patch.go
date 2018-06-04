@@ -73,7 +73,7 @@ func (t *patchTriggers) Selectors() []event.Selector {
 	return []event.Selector{
 		{
 			Type: selectorID,
-			Data: p.Id.Hex(),
+			Data: t.patch.Id.Hex(),
 		},
 		{
 			Type: selectorObject,
@@ -81,20 +81,20 @@ func (t *patchTriggers) Selectors() []event.Selector {
 		},
 		{
 			Type: selectorProject,
-			Data: p.Project,
+			Data: t.patch.Project,
 		},
 		{
 			Type: selectorOwner,
-			Data: p.Author,
+			Data: t.patch.Author,
 		},
 		{
 			Type: selectorStatus,
-			Data: p.Status,
+			Data: t.patch.Status,
 		},
 	}
 }
 
-func (t *patchTriggers) Validate(trigger string) bool {
+func (t *patchTriggers) ValidateTrigger(trigger string) bool {
 	_, ok := t.triggers[trigger]
 	return ok
 }

@@ -24,5 +24,5 @@ type eventHandler interface {
 	Process(*event.Subscription) (*notification.Notification, error)
 
 	// Validate returns true if the string refers to a valid trigger
-	Validate(string) bool
+	ValidateTrigger(string) bool
 }
