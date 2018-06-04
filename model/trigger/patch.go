@@ -26,9 +26,9 @@ const (
 
 type patchTriggers struct {
 	event    *event.EventLogEntry
-	uiConfig evergreen.UIConfig
 	data     *event.PatchEventData
 	patch    *patch.Patch
+	uiConfig evergreen.UIConfig
 
 	base
 }
