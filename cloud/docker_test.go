@@ -112,6 +112,14 @@ func (s *DockerSuite) TestValidateSettings() {
 		},
 	}
 	s.Error(settingsInvalidPorts.Validate())
+
+	// error when missing port PortRange
+	settingsNoPortRange := &dockerSettings{
+		HostIP:     "127.0.0.1",
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+	}
+	s.Error(settingsNoPortRange.Validate())
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
