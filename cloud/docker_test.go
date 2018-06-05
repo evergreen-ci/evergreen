@@ -112,6 +112,26 @@ func (s *DockerSuite) TestValidateSettings() {
 		},
 	}
 	s.Error(settingsInvalidPorts.Validate())
+
+	// error when missing port PortRange
+	settingsNoPortRange := &dockerSettings{
+		HostIP:     "127.0.0.1",
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+	}
+	s.Error(settingsNoPortRange.Validate())
+
+	// error when ports are 0
+	settingsInvalidPortsZero := &dockerSettings{
+		HostIP:     "127.0.0.1",
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+		PortRange: &portRange{
+			MinPort: 0,
+			MaxPort: 0,
+		},
+	}
+	s.Error(settingsInvalidPortsZero.Validate())
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -458,4 +478,23 @@ func (s *DockerSuite) TestUtilRetrieveOpenPortBinding() {
 	port, err = retrieveOpenPortBinding(containerOpenPortBinding)
 	s.Equal(hostPort, port)
 	s.NoError(err)
+}
+
+func (s *DockerSuite) TestSpawnDoesNotPanic() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failCreate)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	delete(*s.distro.ProviderSettings, "port_range")
+
+	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+
+	s.NotPanics(func() {
+		_, err := s.manager.SpawnHost(ctx, host)
+		s.Error(err)
+	})
+
 }

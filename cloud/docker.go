@@ -68,13 +68,19 @@ func (settings *dockerSettings) Validate() error {
 		return errors.New("Port must not be blank")
 	}
 
-	if settings.PortRange != nil {
-		min := settings.PortRange.MinPort
-		max := settings.PortRange.MaxPort
+	if settings.PortRange == nil {
+		return errors.New("Container port range must not be blank. Include min and max values.")
+	}
 
-		if max < min {
-			return errors.New("Container port range must be valid")
-		}
+	min := settings.PortRange.MinPort
+	max := settings.PortRange.MaxPort
+
+	if min == 0 && max == 0 {
+		return errors.New("Container port range must be valid")
+	}
+
+	if max < min {
+		return errors.New("Container port range must be valid")
 	}
 
 	return nil
