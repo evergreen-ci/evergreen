@@ -555,7 +555,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 
 func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscription, error) {
 	info := requestInfo{
-		path:    "/subscriptions",
+		path:    fmt.Sprintf("/subscriptions?owner=%s&type=person", c.apiUser),
 		method:  get,
 		version: apiVersion2,
 	}
