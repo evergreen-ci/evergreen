@@ -31,7 +31,10 @@ type GetNextTaskDetails struct {
 }
 
 // ExpansionVars is a map of expansion variables for a project.
-type ExpansionVars map[string]string
+type ExpansionVars struct {
+	Vars        map[string]string `json:"vars"`
+	PrivateVars map[string]bool   `json:"private_vars"`
+}
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {

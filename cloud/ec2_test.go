@@ -47,16 +47,25 @@ func (s *EC2Suite) SetupTest() {
 		provider: onDemandProvider,
 	}
 	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
+	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+	})
 	s.spotOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: spotProvider,
 	}
 	s.spotManager = NewEC2Manager(s.spotOpts)
+	_ = s.spotManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+	})
 	s.autoOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: autoProvider,
 	}
 	s.autoManager = NewEC2Manager(s.autoOpts)
+	_ = s.autoManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+	})
 	var ok bool
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
@@ -717,4 +726,43 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		StatusTerminated,
 		StatusTerminated,
 	})
+}
+
+func (s *EC2Suite) TestGetRegion() {
+	h := &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{},
+		},
+	}
+	r, err := getRegion(h)
+	s.NoError(err)
+	s.Equal(defaultRegion, r)
+
+	h = &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{
+				"region": defaultRegion,
+			},
+		},
+	}
+	r, err = getRegion(h)
+	s.NoError(err)
+	s.Equal(defaultRegion, r)
+
+	h = &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{
+				"region": "us-west-2",
+			},
+		},
+	}
+	r, err = getRegion(h)
+	s.NoError(err)
+	s.Equal("us-west-2", r)
+}
+
+func (s *EC2Suite) TestUserDataExpand() {
+	expanded, err := s.autoManager.(*ec2Manager).expandUserData("${test} a thing")
+	s.NoError(err)
+	s.Equal("expand a thing", expanded)
 }

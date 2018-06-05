@@ -752,8 +752,8 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 
 // FindOneIdOldOrNew attempts to find a given task ID by first looking in the
 // old collection, then the tasks collection
-func FindOneIdOldOrNew(id string, execution string) (*Task, error) {
-	task, err := FindOneOld(ById(fmt.Sprintf("%s_%s", id, execution)))
+func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
+	task, err := FindOneOld(ById(fmt.Sprintf("%s_%d", id, execution)))
 	if task == nil || err != nil {
 		return FindOne(ById(id))
 	}

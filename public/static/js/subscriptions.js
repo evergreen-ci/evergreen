@@ -196,3 +196,21 @@ function addSelectorsAndOwnerType(subscription, type, id) {
   });
   subscription.owner_type = "person";
 };
+
+function addInSelectorsAndOwnerType(subscription, type, inType, id) {
+  if (!subscription) {
+    return;
+  }
+  if (!subscription.selectors) {
+    subscription.selectors = [];
+  }
+  subscription.selectors.push({
+    type: "object",
+    data: type
+  });
+  subscription.selectors.push({
+    type: "in-" + inType,
+    data: id
+  });
+  subscription.owner_type = "person";
+}

@@ -32,6 +32,15 @@ mciModule.run(function($templateCache) {
     '</div>'
   )
 
+  $templateCache.put('perf-discovery-bfs',
+    '<div class="ui-grid-cell-contents">' +
+      '<span ng-repeat="item in COL_FIELD">' +
+        '<span ng-bind-html="item.key | jiraLinkify : grid.appScope.$ctrl.jiraHost"></span>' +
+        '{{$last ? "" : ", "}}' + 
+      '</span>' +
+    '</div>'
+  )
+
   $templateCache.put('evg-grid/multiselect-filter',
     '<ui-select ' +
         'multiple ' +

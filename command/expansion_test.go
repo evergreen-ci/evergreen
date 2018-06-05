@@ -2,6 +2,8 @@ package command
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -9,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpansionsPlugin(t *testing.T) {
@@ -66,4 +70,40 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 			So(cmd.YamlFile, ShouldEqual, "bar")
 		})
 	})
+}
+
+func TestExpansionWriter(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
+	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: "id", Secret: "secret"})
+	tc := &model.TaskConfig{
+		Expansions: &util.Expansions{
+			"foo":      "bar",
+			"baz":      "qux",
+			"password": "hunter2",
+		},
+		Redacted: map[string]bool{
+			"password": true,
+		},
+	}
+	f, err := ioutil.TempFile("", "TestExpansionWriter")
+	require.NoError(err)
+	defer os.Remove(f.Name())
+
+	writer := &expansionsWriter{File: f.Name()}
+	err = writer.Execute(ctx, comm, logger, tc)
+	assert.NoError(err)
+	out, err := ioutil.ReadFile(f.Name())
+	assert.NoError(err)
+	assert.Equal("baz: qux\nfoo: bar\n", string(out))
+
+	writer = &expansionsWriter{File: f.Name(), Redacted: true}
+	err = writer.Execute(ctx, comm, logger, tc)
+	assert.NoError(err)
+	out, err = ioutil.ReadFile(f.Name())
+	assert.NoError(err)
+	assert.Equal("baz: qux\nfoo: bar\npassword: hunter2\n", string(out))
 }

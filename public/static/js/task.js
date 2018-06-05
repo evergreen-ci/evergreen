@@ -268,12 +268,21 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         $scope.jiraHost = $window.jiraHost;
         $scope.subscriptions = [];
         $scope.triggers = [
-            // TODO uncomment as we implement these
-            // {
-            //    trigger: "failure",
-            //    resource_type: "TASK",
-            //    label: "this task fails",
-            // }
+          {
+            trigger: "outcome",
+            resource_type: "TASK",
+            label: "this task finishes",
+          },
+          {
+            trigger: "failure",
+            resource_type: "TASK",
+            label: "this task fails",
+          },
+          {
+            trigger: "success",
+            resource_type: "TASK",
+            label: "this task succeeds",
+          },
         ];
 
         $scope.addSubscription = function() {

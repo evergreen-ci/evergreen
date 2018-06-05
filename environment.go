@@ -240,8 +240,12 @@ func (e *envState) createQueues(ctx context.Context) error {
 	// duration of time in between calls to queue.Status() within
 	// the amboy.Wait* function.
 	const queueWaitInterval = 10 * time.Millisecond
+	const queueWaitTimeout = 10 * time.Second
 
 	e.closers["background-local-queue"] = func(ctx context.Context) error {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		defer cancel()
 		if !amboy.WaitCtxInterval(ctx, e.localQueue, queueWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
@@ -255,11 +259,10 @@ func (e *envState) createQueues(ctx context.Context) error {
 	}
 
 	e.closers["notification-queue"] = func(ctx context.Context) error {
+		var cancel context.CancelFunc
 		catcher := grip.NewBasicCatcher()
-		for _, s := range rootSenders {
-			catcher.Add(s.Close())
-		}
-
+		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		defer cancel()
 		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
@@ -268,7 +271,24 @@ func (e *envState) createQueues(ctx context.Context) error {
 			})
 			catcher.Add(errors.New("failed to stop with running jobs"))
 		}
+
 		e.notificationsQueue.Runner().Close()
+
+		grip.Debug(message.Fields{
+			"message":     "closed notification queue",
+			"num_senders": len(rootSenders),
+			"errors":      catcher.HasErrors(),
+		})
+
+		for _, s := range rootSenders {
+			catcher.Add(s.Close())
+		}
+		grip.Debug(message.Fields{
+			"message":     "closed all root senders",
+			"num_senders": len(rootSenders),
+			"errors":      catcher.HasErrors(),
+		})
+
 		return catcher.Resolve()
 	}
 

@@ -90,7 +90,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		complete <- evergreen.TaskFailed
 		return
 	}
-	taskConfig.Expansions.Update(*expVars)
+	taskConfig.Expansions.Update(expVars.Vars)
+	taskConfig.Redacted = expVars.PrivateVars
 	tc.setTaskConfig(taskConfig)
 
 	// set up the system stats collector

@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/Microsoft/hcsshim"
+	"github.com/docker/docker/pkg/system"
 	"github.com/docker/libnetwork/datastore"
 	"github.com/docker/libnetwork/discoverapi"
 	"github.com/docker/libnetwork/driverapi"
@@ -30,20 +31,23 @@ import (
 
 // networkConfiguration for network specific configuration
 type networkConfiguration struct {
-	ID                 string
-	Type               string
-	Name               string
-	HnsID              string
-	RDID               string
-	VLAN               uint
-	VSID               uint
-	DNSServers         string
-	MacPools           []hcsshim.MacPool
-	DNSSuffix          string
-	SourceMac          string
-	NetworkAdapterName string
-	dbIndex            uint64
-	dbExists           bool
+	ID                    string
+	Type                  string
+	Name                  string
+	HnsID                 string
+	RDID                  string
+	VLAN                  uint
+	VSID                  uint
+	DNSServers            string
+	MacPools              []hcsshim.MacPool
+	DNSSuffix             string
+	SourceMac             string
+	NetworkAdapterName    string
+	dbIndex               uint64
+	dbExists              bool
+	DisableGatewayDNS     bool
+	EnableOutboundNat     bool
+	OutboundNatExceptions []string
 }
 
 // endpointConfiguration represents the user specified configuration for the sandbox endpoint
@@ -55,19 +59,27 @@ type endpointOption struct {
 	DisableICC  bool
 }
 
-type endpointConnectivity struct {
+// EndpointConnectivity stores the port bindings and exposed ports that the user has specified in epOptions.
+type EndpointConnectivity struct {
 	PortBindings []types.PortBinding
 	ExposedPorts []types.TransportPort
 }
 
 type hnsEndpoint struct {
-	id             string
-	nid            string
-	profileID      string
-	Type           string
+	id        string
+	nid       string
+	profileID string
+	Type      string
+	//Note: Currently, the sandboxID is the same as the containerID since windows does
+	//not expose the sandboxID.
+	//In the future, windows will support a proper sandboxID that is different
+	//than the containerID.
+	//Therefore, we are using sandboxID now, so that we won't have to change this code
+	//when windows properly supports a sandboxID.
+	sandboxID      string
 	macAddress     net.HardwareAddr
 	epOption       *endpointOption       // User specified parameters
-	epConnectivity *endpointConnectivity // User specified parameters
+	epConnectivity *EndpointConnectivity // User specified parameters
 	portMapping    []types.PortBinding   // Operation port bindings
 	addr           *net.IPNet
 	gateway        net.IP
@@ -95,7 +107,7 @@ const (
 	errNotFound = "HNS failed with error : The object identifier does not represent a valid object. "
 )
 
-// IsBuiltinWindowsDriver vaidates if network-type is a builtin local-scoped driver
+// IsBuiltinLocalDriver validates if network-type is a builtin local-scoped driver
 func IsBuiltinLocalDriver(networkType string) bool {
 	if "l2bridge" == networkType || "l2tunnel" == networkType || "nat" == networkType || "ics" == networkType || "transparent" == networkType {
 		return true
@@ -169,6 +181,12 @@ func (d *driver) parseNetworkOptions(id string, genericOptions map[string]string
 			config.DNSSuffix = value
 		case DNSServers:
 			config.DNSServers = value
+		case DisableGatewayDNS:
+			b, err := strconv.ParseBool(value)
+			if err != nil {
+				return nil, err
+			}
+			config.DisableGatewayDNS = b
 		case MacPool:
 			config.MacPools = make([]hcsshim.MacPool, 0)
 			s := strings.Split(value, ",")
@@ -193,6 +211,18 @@ func (d *driver) parseNetworkOptions(id string, genericOptions map[string]string
 				return nil, err
 			}
 			config.VSID = uint(vsid)
+		case EnableOutboundNat:
+			if system.GetOSVersion().Build <= 16236 {
+				return nil, fmt.Errorf("Invalid network option. OutboundNat is not supported on this OS version")
+			}
+			b, err := strconv.ParseBool(value)
+			if err != nil {
+				return nil, err
+			}
+			config.EnableOutboundNat = b
+		case OutboundNatExceptions:
+			s := strings.Split(value, ",")
+			config.OutboundNatExceptions = s
 		}
 	}
 
@@ -335,6 +365,22 @@ func (d *driver) CreateNetwork(id string, option map[string]interface{}, nInfo d
 
 		config.HnsID = hnsresponse.Id
 		genData[HNSID] = config.HnsID
+
+	} else {
+		// Delete any stale HNS endpoints for this network.
+		if endpoints, err := hcsshim.HNSListEndpointRequest(); err == nil {
+			for _, ep := range endpoints {
+				if ep.VirtualNetwork == config.HnsID {
+					logrus.Infof("Removing stale HNS endpoint %s", ep.Id)
+					_, err = hcsshim.HNSEndpointRequest("DELETE", ep.Id, "")
+					if err != nil {
+						logrus.Warnf("Error removing HNS endpoint %s", ep.Id)
+					}
+				}
+			}
+		} else {
+			logrus.Warnf("Error listing HNS endpoints for network %s", config.HnsID)
+		}
 	}
 
 	n, err := d.getNetwork(id)
@@ -396,7 +442,8 @@ func convertQosPolicies(qosPolicies []types.QosPolicy) ([]json.RawMessage, error
 	return qps, nil
 }
 
-func convertPortBindings(portBindings []types.PortBinding) ([]json.RawMessage, error) {
+// ConvertPortBindings converts PortBindings to JSON for HNS request
+func ConvertPortBindings(portBindings []types.PortBinding) ([]json.RawMessage, error) {
 	var pbs []json.RawMessage
 
 	// Enumerate through the port bindings specified by the user and convert
@@ -431,7 +478,8 @@ func convertPortBindings(portBindings []types.PortBinding) ([]json.RawMessage, e
 	return pbs, nil
 }
 
-func parsePortBindingPolicies(policies []json.RawMessage) ([]types.PortBinding, error) {
+// ParsePortBindingPolicies parses HNS endpoint response message to PortBindings
+func ParsePortBindingPolicies(policies []json.RawMessage) ([]types.PortBinding, error) {
 	var bindings []types.PortBinding
 	hcsPolicy := &hcsshim.NatPolicy{}
 
@@ -505,12 +553,13 @@ func parseEndpointOptions(epOptions map[string]interface{}) (*endpointOption, er
 	return ec, nil
 }
 
-func parseEndpointConnectivity(epOptions map[string]interface{}) (*endpointConnectivity, error) {
+// ParseEndpointConnectivity parses options passed to CreateEndpoint, specifically port bindings, and store in a endpointConnectivity object.
+func ParseEndpointConnectivity(epOptions map[string]interface{}) (*EndpointConnectivity, error) {
 	if epOptions == nil {
 		return nil, nil
 	}
 
-	ec := &endpointConnectivity{}
+	ec := &EndpointConnectivity{}
 
 	if opt, ok := epOptions[netlabel.PortMap]; ok {
 		if bs, ok := opt.([]types.PortBinding); ok {
@@ -550,7 +599,7 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 	if err != nil {
 		return err
 	}
-	epConnectivity, err := parseEndpointConnectivity(epOptions)
+	epConnectivity, err := ParseEndpointConnectivity(epOptions)
 	if err != nil {
 		return err
 	}
@@ -561,7 +610,7 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 		endpointStruct.MacAddress = strings.Replace(macAddress.String(), ":", "-", -1)
 	}
 
-	endpointStruct.Policies, err = convertPortBindings(epConnectivity.PortBindings)
+	endpointStruct.Policies, err = ConvertPortBindings(epConnectivity.PortBindings)
 	if err != nil {
 		return err
 	}
@@ -578,11 +627,31 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 
 	endpointStruct.DNSServerList = strings.Join(epOption.DNSServers, ",")
 
+	// overwrite the ep DisableDNS option if DisableGatewayDNS was set to true during the network creation option
+	if n.config.DisableGatewayDNS {
+		logrus.Debugf("n.config.DisableGatewayDNS[%v] overwrites epOption.DisableDNS[%v]", n.config.DisableGatewayDNS, epOption.DisableDNS)
+		epOption.DisableDNS = n.config.DisableGatewayDNS
+	}
+
 	if n.driver.name == "nat" && !epOption.DisableDNS {
+		logrus.Debugf("endpointStruct.EnableInternalDNS =[%v]", endpointStruct.EnableInternalDNS)
 		endpointStruct.EnableInternalDNS = true
 	}
 
 	endpointStruct.DisableICC = epOption.DisableICC
+
+	// Inherit OutboundNat policy from the network
+	if n.config.EnableOutboundNat {
+		outboundNatPolicy, err := json.Marshal(hcsshim.OutboundNatPolicy{
+			Policy:     hcsshim.Policy{Type: hcsshim.OutboundNat},
+			Exceptions: n.config.OutboundNatExceptions,
+		})
+
+		if err != nil {
+			return err
+		}
+		endpointStruct.Policies = append(endpointStruct.Policies, outboundNatPolicy)
+	}
 
 	configurationb, err := json.Marshal(endpointStruct)
 	if err != nil {
@@ -615,7 +684,7 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 	endpoint.profileID = hnsresponse.Id
 	endpoint.epConnectivity = epConnectivity
 	endpoint.epOption = epOption
-	endpoint.portMapping, err = parsePortBindingPolicies(hnsresponse.Policies)
+	endpoint.portMapping, err = ParsePortBindingPolicies(hnsresponse.Policies)
 
 	if err != nil {
 		hcsshim.HNSEndpointRequest("DELETE", hnsresponse.Id, "")
@@ -635,7 +704,7 @@ func (d *driver) CreateEndpoint(nid, eid string, ifInfo driverapi.InterfaceInfo,
 	}
 
 	if err = d.storeUpdate(endpoint); err != nil {
-		return fmt.Errorf("failed to save endpoint %s to store: %v", endpoint.id[0:7], err)
+		logrus.Errorf("Failed to save endpoint %s to store: %v", endpoint.id[0:7], err)
 	}
 
 	return nil
@@ -726,7 +795,15 @@ func (d *driver) Join(nid, eid string, sboxKey string, jinfo driverapi.JoinInfo,
 		return err
 	}
 
-	// This is just a stub for now
+	endpoint.sandboxID = sboxKey
+
+	err = hcsshim.HotAttachEndpoint(endpoint.sandboxID, endpoint.profileID)
+	if err != nil {
+		// If container doesn't exists in hcs, do not throw error for hot add/remove
+		if err != hcsshim.ErrComputeSystemDoesNotExist {
+			return err
+		}
+	}
 
 	jinfo.DisableGatewayService()
 	return nil
@@ -740,13 +817,18 @@ func (d *driver) Leave(nid, eid string) error {
 	}
 
 	// Ensure that the endpoint exists
-	_, err = network.getEndpoint(eid)
+	endpoint, err := network.getEndpoint(eid)
 	if err != nil {
 		return err
 	}
 
-	// This is just a stub for now
-
+	err = hcsshim.HotDetachEndpoint(endpoint.sandboxID, endpoint.profileID)
+	if err != nil {
+		// If container doesn't exists in hcs, do not throw error for hot add/remove
+		if err != hcsshim.ErrComputeSystemDoesNotExist {
+			return err
+		}
+	}
 	return nil
 }
 

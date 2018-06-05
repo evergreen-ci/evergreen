@@ -79,6 +79,9 @@ func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
 func (j *jiraJournal) Send(m message.Composer) {
 	if j.Level().ShouldLog(m) {
 		issueFields := getFields(m)
+		if len(issueFields.Summary) > 254 {
+			issueFields.Summary = issueFields.Summary[:254]
+		}
 		if err := j.opts.client.PostIssue(issueFields); err != nil {
 			j.errHandler(err, message.NewFormattedMessage(m.Priority(), m.String()))
 		}

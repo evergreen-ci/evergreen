@@ -94,6 +94,7 @@ type uiTaskData struct {
 	DisplayOnly    bool         `json:"display_only"`
 	ExecutionTasks []uiExecTask `json:"execution_tasks"`
 	PartOfDisplay  bool         `json:"in_display"`
+	DisplayTaskID  string       `json:"display_task,omitempty"`
 }
 
 type uiDep struct {
@@ -283,7 +284,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
 		for _, t := range projCtx.Task.ExecutionTasks {
-			et, err := task.FindOneIdOldOrNew(t, executionStr)
+			et, err := task.FindOneIdOldOrNew(t, totalExecutions)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -296,6 +297,9 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for _, tr := range projCtx.Context.Task.LocalTestResults {
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
+		}
+		if uiTask.PartOfDisplay {
+			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
 		}
 	}
 

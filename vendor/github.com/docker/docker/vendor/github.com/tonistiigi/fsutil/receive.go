@@ -1,5 +1,3 @@
-// +build linux windows
-
 package fsutil
 
 import (
@@ -12,54 +10,78 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Receive(ctx context.Context, conn Stream, dest string, notifyHashed ChangeFunc) error {
+type ReceiveOpt struct {
+	NotifyHashed  ChangeFunc
+	ContentHasher ContentHasher
+	ProgressCb    func(int, bool)
+	Merge         bool
+	Filter        FilterFunc
+}
+
+func Receive(ctx context.Context, conn Stream, dest string, opt ReceiveOpt) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	r := &receiver{
-		conn:         &syncStream{Stream: conn},
-		dest:         dest,
-		files:        make(map[string]uint32),
-		pipes:        make(map[uint32]io.WriteCloser),
-		notifyHashed: notifyHashed,
+		conn:          &syncStream{Stream: conn},
+		dest:          dest,
+		files:         make(map[string]uint32),
+		pipes:         make(map[uint32]io.WriteCloser),
+		notifyHashed:  opt.NotifyHashed,
+		contentHasher: opt.ContentHasher,
+		progressCb:    opt.ProgressCb,
+		merge:         opt.Merge,
+		filter:        opt.Filter,
 	}
 	return r.run(ctx)
 }
 
 type receiver struct {
-	dest    string
-	conn    Stream
-	files   map[string]uint32
-	pipes   map[uint32]io.WriteCloser
-	mu      sync.RWMutex
-	muPipes sync.RWMutex
+	dest       string
+	conn       Stream
+	files      map[string]uint32
+	pipes      map[uint32]io.WriteCloser
+	mu         sync.RWMutex
+	muPipes    sync.RWMutex
+	progressCb func(int, bool)
+	merge      bool
+	filter     FilterFunc
 
 	notifyHashed   ChangeFunc
+	contentHasher  ContentHasher
 	orderValidator Validator
 	hlValidator    Hardlinks
 }
 
 type dynamicWalker struct {
 	walkChan chan *currentPath
-	closed   bool
+	err      error
+	closeCh  chan struct{}
 }
 
 func newDynamicWalker() *dynamicWalker {
 	return &dynamicWalker{
 		walkChan: make(chan *currentPath, 128),
+		closeCh:  make(chan struct{}),
 	}
 }
 
 func (w *dynamicWalker) update(p *currentPath) error {
-	if w.closed {
-		return errors.New("walker is closed")
+	select {
+	case <-w.closeCh:
+		return errors.Wrap(w.err, "walker is closed")
+	default:
 	}
 	if p == nil {
 		close(w.walkChan)
 		return nil
 	}
-	w.walkChan <- p
-	return nil
+	select {
+	case w.walkChan <- p:
+		return nil
+	case <-w.closeCh:
+		return errors.Wrap(w.err, "walker is closed")
+	}
 }
 
 func (w *dynamicWalker) fill(ctx context.Context, pathC chan<- *currentPath) error {
@@ -71,6 +93,8 @@ func (w *dynamicWalker) fill(ctx context.Context, pathC chan<- *currentPath) err
 			}
 			pathC <- p
 		case <-ctx.Done():
+			w.err = ctx.Err()
+			close(w.closeCh)
 			return ctx.Err()
 		}
 	}
@@ -81,8 +105,10 @@ func (r *receiver) run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	dw, err := NewDiskWriter(ctx, r.dest, DiskWriterOpt{
-		AsyncDataCb: r.asyncDataFunc,
-		NotifyCb:    r.notifyHashed,
+		AsyncDataCb:   r.asyncDataFunc,
+		NotifyCb:      r.notifyHashed,
+		ContentHasher: r.contentHasher,
+		Filter:        r.filter,
 	})
 	if err != nil {
 		return err
@@ -90,8 +116,17 @@ func (r *receiver) run(ctx context.Context) error {
 
 	w := newDynamicWalker()
 
-	g.Go(func() error {
-		err := doubleWalkDiff(ctx, dw.HandleChange, GetWalkerFn(r.dest), w.fill)
+	g.Go(func() (retErr error) {
+		defer func() {
+			if retErr != nil {
+				r.conn.SendMsg(&Packet{Type: PACKET_ERR, Data: []byte(retErr.Error())})
+			}
+		}()
+		destWalker := emptyWalker
+		if !r.merge {
+			destWalker = GetWalkerFn(r.dest)
+		}
+		err := doubleWalkDiff(ctx, dw.HandleChange, destWalker, w.fill)
 		if err != nil {
 			return err
 		}
@@ -105,13 +140,26 @@ func (r *receiver) run(ctx context.Context) error {
 	g.Go(func() error {
 		var i uint32 = 0
 
+		size := 0
+		if r.progressCb != nil {
+			defer func() {
+				r.progressCb(size, true)
+			}()
+		}
 		var p Packet
 		for {
 			p = Packet{Data: p.Data[:0]}
 			if err := r.conn.RecvMsg(&p); err != nil {
 				return err
 			}
+			if r.progressCb != nil {
+				size += p.Size()
+				r.progressCb(size, false)
+			}
+
 			switch p.Type {
+			case PACKET_ERR:
+				return errors.Errorf("error from sender: %s", p.Data)
 			case PACKET_STAT:
 				if p.Stat == nil {
 					if err := w.update(nil); err != nil {
@@ -152,7 +200,15 @@ func (r *receiver) run(ctx context.Context) error {
 					}
 				}
 			case PACKET_FIN:
-				return nil
+				for {
+					var p Packet
+					if err := r.conn.RecvMsg(&p); err != nil {
+						if err == io.EOF {
+							return nil
+						}
+						return err
+					}
+				}
 			}
 		}
 	})
@@ -177,10 +233,13 @@ func (r *receiver) asyncDataFunc(ctx context.Context, p string, wc io.WriteClose
 		return err
 	}
 	err := wwc.Wait(ctx)
+	if err != nil {
+		return err
+	}
 	r.muPipes.Lock()
 	delete(r.pipes, id)
 	r.muPipes.Unlock()
-	return err
+	return nil
 }
 
 type wrappedWriteCloser struct {

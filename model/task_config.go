@@ -21,6 +21,7 @@ type TaskConfig struct {
 	Task            *task.Task
 	BuildVariant    *BuildVariant
 	Expansions      *util.Expansions
+	Redacted        map[string]bool
 	WorkDir         string
 	GithubPatchData patch.GithubPatch
 	Timeout         *Timeout

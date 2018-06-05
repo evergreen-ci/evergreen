@@ -86,7 +86,11 @@ func (self *Client) GetUser(username string) (*User, error) {
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, ErrUnauthorized
 	} else if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Received unexpected status code from crowd: %v", resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("Received unexpected status code from crowd: %d (couldn't parse body)", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("Received unexpected status code from crowd: %d (%s)", resp.StatusCode, body)
 	}
 	result := User{}
 
@@ -181,8 +185,11 @@ func (self *Client) CreateSession(username, password string) (*Session, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("(%v) received unexpected status code from crowd",
-			resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("CreateSession received unexpected status code from crowd: %d (couldn't parse body)", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("CreateSession received unexpected status code from crowd: %d (%s)", resp.StatusCode, body)
 	}
 	session := &Session{}
 	body, err := ioutil.ReadAll(resp.Body)

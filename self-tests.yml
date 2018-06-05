@@ -416,9 +416,6 @@ tasks:
     name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-hostinit
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-repotracker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -521,9 +518,6 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race", "agent"]
     name: race-rest-client
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-hostinit
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "cli"]
     name: race-operations
@@ -664,7 +658,7 @@ buildvariants:
     run_on:
       - archlinux-test
     expansions:
-      build_env: "RACE_ENABLED=true RUN_COUNT=5 TEST_TIMEOUT=15m"
+      build_env: "RACE_ENABLED=true TEST_TIMEOUT=15m"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
     tasks:
       - name: "dist"

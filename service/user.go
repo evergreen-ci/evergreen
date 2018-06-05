@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -58,6 +60,9 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := uis.UserManager.CreateUserToken(creds.Username, creds.Password)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "error creating user token",
+		}))
 		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
 		return
 	}

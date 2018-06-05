@@ -83,9 +83,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	}
 
 	if active {
-		event.LogTaskActivated(taskId, caller)
+		event.LogTaskActivated(taskId, t.Execution, caller)
 	} else {
-		event.LogTaskDeactivated(taskId, caller)
+		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	}
 
 	if t.IsPartOfDisplay() {
@@ -223,9 +223,9 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		return err
 	}
 	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
-		event.LogTaskRestarted(t.Id, user)
+		event.LogTaskRestarted(t.Id, t.Execution, user)
 	} else {
-		event.LogTaskRestarted(t.Id, origin)
+		event.LogTaskRestarted(t.Id, t.Execution, origin)
 	}
 
 	if t.DisplayOnly {
@@ -250,7 +250,7 @@ func AbortTask(taskId, caller string) error {
 	if err = SetActiveState(t.Id, caller, false); err != nil {
 		return err
 	}
-	event.LogTaskAbortRequest(t.Id, caller)
+	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
 	return t.SetAborted()
 }
 
@@ -309,7 +309,7 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		if err != nil {
 			return err
 		}
-		event.LogTaskDeactivated(t.Id, caller)
+		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 		// update the cached version of the task, in its build document to be deactivated
 		if !t.IsPartOfDisplay() {
 			if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
@@ -407,7 +407,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return err
 	}
 	status := t.ResultStatus()
-	event.LogTaskFinished(t.Id, t.HostId, status)
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
 	if t.IsPartOfDisplay() {
 		if err = t.DisplayTask.UpdateDisplayTask(); err != nil {
@@ -639,7 +639,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	if err = t.MarkStart(startTime); err != nil {
 		return errors.WithStack(err)
 	}
-	event.LogTaskStarted(t.Id)
+	event.LogTaskStarted(t.Id, t.Execution)
 
 	// ensure the appropriate build is marked as started if necessary
 	if err = build.TryMarkStarted(t.BuildId, startTime); err != nil {
@@ -676,7 +676,7 @@ func MarkTaskUndispatched(t *task.Task) error {
 		return errors.WithStack(err)
 	}
 	// the task was successfully dispatched, log the event
-	event.LogTaskUndispatched(t.Id, t.HostId)
+	event.LogTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
 		return updateDisplayTask(t)
@@ -696,7 +696,7 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 			"on host %s", t.Id, hostId)
 	}
 	// the task was successfully dispatched, log the event
-	event.LogTaskDispatched(t.Id, hostId)
+	event.LogTaskDispatched(t.Id, t.Execution, hostId)
 
 	if t.IsPartOfDisplay() {
 		return updateDisplayTask(t)

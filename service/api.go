@@ -224,6 +224,10 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 // AttachTestLog is the API Server hook for getting
 // the test logs and storing them in the test_logs collection.
 func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
+	if as.GetSettings().ServiceFlags.TaskLoggingDisabled {
+		http.Error(w, "task logging is disabled", http.StatusConflict)
+		return
+	}
 	t := MustHaveTask(r)
 	log := &model.TestLog{}
 	err := util.ReadJSONInto(util.NewRequestReader(r), log)
@@ -277,7 +281,7 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gimlet.WriteJSON(w, projectVars.Vars)
+	gimlet.WriteJSON(w, projectVars)
 }
 
 // AttachFiles updates file mappings for a task or build
@@ -311,6 +315,10 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 
 // AppendTaskLog appends the received logs to the task's internal logs.
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
+	if as.GetSettings().ServiceFlags.TaskLoggingDisabled {
+		http.Error(w, "task logging is disabled", http.StatusConflict)
+		return
+	}
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
 	if err := util.ReadJSONInto(util.NewRequestReader(r), taskLog); err != nil {

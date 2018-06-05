@@ -13,12 +13,13 @@ const (
 
 // Task triggers
 var (
-	TaskFailedId           = "task_failed"
 	FirstVersionFailureId  = "first_version_failure"
 	FirstVariantFailureId  = "first_variant_failure"
 	FirstTaskTypeFailureId = "first_tasktype_failure"
 	TaskFailTransitionId   = "task_transition_failure"
-	LastRevisionNotFound   = "last_revision_not_found"
+	// TODO: EVG-3408
+	TaskFailedId         = "task_failed"
+	LastRevisionNotFound = "last_revision_not_found"
 )
 
 // Host triggers
