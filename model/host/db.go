@@ -63,9 +63,9 @@ var (
 	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
 	TotalCostKey               = bsonutil.MustHaveTag(Host{}, "TotalCost")
 	TotalIdleTimeKey           = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
-	Container                  = bsonutil.MustHaveTag(Host{}, "Container")
+	ContainerID                = bsonutil.MustHaveTag(Host{}, "ContainerID")
 	IsParent                   = bsonutil.MustHaveTag(Host{}, "IsParent")
-	ParentId                   = bsonutil.MustHaveTag(Host{}, "ParentId")
+	ParentID                   = bsonutil.MustHaveTag(Host{}, "ParentID")
 )
 
 // === Queries ===

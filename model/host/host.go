@@ -94,9 +94,9 @@ type Host struct {
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
 
 	// managed containers require different information based on host type
-	Container string `bson:"container,omitempty" json:"container,omitempty"`
-	IsParent  bool   `bson:"is_parent,omitempty" json:"is_parent,omitempty"`
-	ParentId  string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
+	ContainerID string `bson:"container_id,omitempty" json:"container_id,omitempty"`
+	IsParent    bool   `bson:"is_parent,omitempty" json:"is_parent,omitempty"`
+	ParentID    string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -748,7 +748,7 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 // find all containers
 func (h *Host) FindAllContainers() ([]Host, error) {
 	query := db.Query(bson.M{
-		Container: bson.M{"$exists": true},
+		ContainerID: bson.M{"$exists": true},
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -758,13 +758,13 @@ func (h *Host) FindAllContainers() ([]Host, error) {
 	return hosts, nil
 }
 
-// find all containers belonging to parent
-func (h *Host) FindContainers() ([]Host, error) {
+// find all containers belonging to parent of current host
+func (h *Host) FindHostContainers() ([]Host, error) {
 	if !h.IsParent {
 		return nil, errors.New("Host is not a parent of any containers")
 	}
 	query := db.Query(bson.M{
-		ParentId: h.ParentId,
+		ParentID: h.ParentID,
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -776,13 +776,13 @@ func (h *Host) FindContainers() ([]Host, error) {
 
 // find parent of container
 func (h *Host) FindParentOfContainer() (*Host, error) {
-	if h.ParentId == "" {
+	if h.ParentID == "" {
 		return nil, errors.New("Host does not have a parent")
 	}
 
 	query := db.Query(bson.M{
 		IsParent: true,
-		ParentId: h.ParentId,
+		ParentID: h.ParentID,
 	})
 	host, err := FindOne(query)
 	if err != nil {
