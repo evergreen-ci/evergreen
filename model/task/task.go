@@ -1532,13 +1532,13 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	for _, testResult := range t.LocalTestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
 			fileParts := eitherSlash.Split(testResult.TestFile, -1)
-			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", fileParts[len(fileParts)-1]))
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
 	if jqlParts != nil {
 		jqlClause = strings.Join(jqlParts, " or ")
 	} else {
-		jqlClause = fmt.Sprintf("text~\"%v\"", t.DisplayName)
+		jqlClause = fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(t.DisplayName))
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
