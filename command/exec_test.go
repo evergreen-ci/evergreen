@@ -298,7 +298,7 @@ func (s *execCmdSuite) TestStripBlanks() {
 	cmd = &subprocessExec{
 		Command:          "echo ${foo|} bar",
 		WorkingDir:       testutil.GetDirectoryOfFile(),
-		NoStripBlankArgs: true,
+		NoStripEmptyArgs: true,
 	}
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
