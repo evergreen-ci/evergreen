@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"math"
 	"net/url"
-	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -245,26 +244,4 @@ func NewJiraHandler(server string, user string, password string) JiraHandler {
 		user,
 		password,
 	}
-}
-
-// see https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html
-func EscapeJiraReservedChars(in string) string {
-	in = strings.Replace(in, `\`, `\\`, -1)
-	in = strings.Replace(in, `+`, `\+`, -1)
-	in = strings.Replace(in, `-`, `\-`, -1)
-	in = strings.Replace(in, `&`, `\&`, -1)
-	in = strings.Replace(in, `|`, `\|`, -1)
-	in = strings.Replace(in, `!`, `\!`, -1)
-	in = strings.Replace(in, `(`, `\(`, -1)
-	in = strings.Replace(in, `)`, `\)`, -1)
-	in = strings.Replace(in, `{`, `\{`, -1)
-	in = strings.Replace(in, `}`, `\}`, -1)
-	in = strings.Replace(in, `[`, `\[`, -1)
-	in = strings.Replace(in, `]`, `\]`, -1)
-	in = strings.Replace(in, `^`, `\^`, -1)
-	in = strings.Replace(in, `~`, `\~`, -1)
-	in = strings.Replace(in, `*`, `\*`, -1)
-	in = strings.Replace(in, `?`, `\?`, -1)
-	in = strings.Replace(in, `:`, `\:`, -1)
-	return in
 }

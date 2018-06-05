@@ -37,3 +37,25 @@ func IndexWhiteSpace(s string) int {
 	}
 	return -1
 }
+
+// see https://confluence.atlassian.com/jiracoreserver073/search-syntax-for-text-fields-861257223.html
+func EscapeJiraReservedChars(in string) string {
+	in = strings.Replace(in, `\`, `\\`, -1)
+	in = strings.Replace(in, `+`, `\+`, -1)
+	in = strings.Replace(in, `-`, `\-`, -1)
+	in = strings.Replace(in, `&`, `\&`, -1)
+	in = strings.Replace(in, `|`, `\|`, -1)
+	in = strings.Replace(in, `!`, `\!`, -1)
+	in = strings.Replace(in, `(`, `\(`, -1)
+	in = strings.Replace(in, `)`, `\)`, -1)
+	in = strings.Replace(in, `{`, `\{`, -1)
+	in = strings.Replace(in, `}`, `\}`, -1)
+	in = strings.Replace(in, `[`, `\[`, -1)
+	in = strings.Replace(in, `]`, `\]`, -1)
+	in = strings.Replace(in, `^`, `\^`, -1)
+	in = strings.Replace(in, `~`, `\~`, -1)
+	in = strings.Replace(in, `*`, `\*`, -1)
+	in = strings.Replace(in, `?`, `\?`, -1)
+	in = strings.Replace(in, `:`, `\:`, -1)
+	return in
+}

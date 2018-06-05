@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -1533,13 +1532,13 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	for _, testResult := range t.LocalTestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
 			fileParts := eitherSlash.Split(testResult.TestFile, -1)
-			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", thirdparty.EscapeJiraReservedChars(fileParts[len(fileParts)-1])))
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJiraReservedChars(fileParts[len(fileParts)-1])))
 		}
 	}
 	if jqlParts != nil {
 		jqlClause = strings.Join(jqlParts, " or ")
 	} else {
-		jqlClause = fmt.Sprintf("text~\"%v\"", thirdparty.EscapeJiraReservedChars(t.DisplayName))
+		jqlClause = fmt.Sprintf("text~\"%v\"", util.EscapeJiraReservedChars(t.DisplayName))
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
