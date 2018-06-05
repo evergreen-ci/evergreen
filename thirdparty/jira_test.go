@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 type stubHttp struct {
@@ -72,4 +73,13 @@ func TestJiraIntegration(t *testing.T) {
 			So(ticket.Fields.Project.Name, ShouldEqual, "Build Failures")
 		})
 	})
+}
+
+func TestEscapeReservedChars(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal("asdf1234", EscapeJiraReservedChars("asdf1234"))
+	assert.Equal(`q\+h\^`, EscapeJiraReservedChars("q+h^"))
+	assert.Equal(`\{\}\[\]\(\)`, EscapeJiraReservedChars("{}[]()"))
+	assert.Equal("", EscapeJiraReservedChars(""))
+	assert.Equal(`\+\+\+\+`, EscapeJiraReservedChars("++++"))
 }
