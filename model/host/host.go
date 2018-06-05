@@ -92,6 +92,11 @@ type Host struct {
 
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
+
+	// managed containers require different information based on host type
+	Container string `bson:"container,omitempty" json:"container,omitempty"`
+	IsParent  bool   `bson:"is_parent,omitempty" json:"is_parent,omitempty"`
+	ParentId  string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -738,4 +743,54 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 		return nil, errors.Wrap(err, "error aggregating inactive hosts")
 	}
 	return counts, nil
+}
+
+// find all containers
+func (h *Host) FindAllContainers() ([]Host, error) {
+	query := db.Query(bson.M{
+		Container: bson.M{"$exists": true},
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding containers")
+	}
+
+	return hosts, nil
+}
+
+// find all containers belonging to parent
+func (h *Host) FindContainers() ([]Host, error) {
+	if !h.IsParent {
+		return nil, errors.New("Host is not a parent of any containers")
+	}
+	query := db.Query(bson.M{
+		ParentId: h.ParentId,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding containers")
+	}
+
+	return hosts, nil
+}
+
+// find parent of container
+func (h *Host) FindParentOfContainer() (*Host, error) {
+	if h.ParentId == "" {
+		return nil, errors.New("Host does not have a parent")
+	}
+
+	query := db.Query(bson.M{
+		IsParent: true,
+		ParentId: h.ParentId,
+	})
+	host, err := FindOne(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding parent")
+	}
+	if host == nil {
+		return nil, errors.New("Error finding parent")
+	}
+
+	return host, nil
 }
