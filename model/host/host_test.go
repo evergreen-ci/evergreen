@@ -1370,7 +1370,7 @@ func TestFindParentOfContainer(t *testing.T) {
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
 
-	parent, err := host1.FindParentOfContainer()
+	parent, err := host1.GetParent()
 	assert.NoError(err)
 	assert.NotEmpty(parent)
 }
@@ -1389,7 +1389,7 @@ func TestFindParentOfContainerNoParent(t *testing.T) {
 
 	assert.NoError(host.Insert())
 
-	parent, err := host.FindParentOfContainer()
+	parent, err := host.GetParent()
 	assert.Error(err)
 	assert.Nil(parent)
 }
@@ -1410,7 +1410,7 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 
 	assert.NoError(host.Insert())
 
-	parent, err := host.FindParentOfContainer()
+	parent, err := host.GetParent()
 	assert.Error(err)
 	assert.Nil(parent)
 }
@@ -1438,7 +1438,7 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
 
-	parent, err := host1.FindParentOfContainer()
+	parent, err := host1.GetParent()
 	assert.Error(err)
 	assert.Nil(parent)
 }
