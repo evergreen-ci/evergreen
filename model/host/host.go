@@ -775,7 +775,7 @@ func (h *Host) GetContainers() ([]Host, error) {
 }
 
 // find parent of container
-func (h *Host) FindParentOfContainer() (*Host, error) {
+func (h *Host) GetParent() (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("Host does not have a parent")
 	}
@@ -788,7 +788,7 @@ func (h *Host) FindParentOfContainer() (*Host, error) {
 		return nil, errors.New("Error finding parent")
 	}
 	if !host.IsParent {
-		return nil, errors.New("Error finding parent")
+		return nil, errors.New("Host found is not a parent")
 	}
 
 	return host, nil
