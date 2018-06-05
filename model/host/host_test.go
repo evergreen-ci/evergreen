@@ -1120,7 +1120,7 @@ func TestFindAllContainers(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := host1.FindAllContainers()
+	containers, err := FindAllContainers()
 	assert.NoError(err)
 	assert.Equal(5, len(containers))
 }
@@ -1184,12 +1184,12 @@ func TestFindAllContainersEmpty(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := host1.FindAllContainers()
+	containers, err := FindAllContainers()
 	assert.NoError(err)
 	assert.Equal(0, len(containers))
 }
 
-func TestFindContainers(t *testing.T) {
+func TestGetContainers(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -1264,12 +1264,12 @@ func TestFindContainers(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := host1.FindHostContainers()
+	containers, err := host1.GetContainers()
 	assert.NoError(err)
 	assert.Equal(6, len(containers))
 }
 
-func TestFindContainersNotParent(t *testing.T) {
+func TestGetContainersNotParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -1342,7 +1342,7 @@ func TestFindContainersNotParent(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := host1.FindHostContainers()
+	containers, err := host1.GetContainers()
 	assert.Error(err)
 	assert.Nil(containers)
 }
@@ -1361,11 +1361,10 @@ func TestFindParentOfContainer(t *testing.T) {
 		ParentID:    "parentId",
 	}
 	host2 := &Host{
-		Id:       "host2",
+		Id:       "parentId",
 		Distro:   distro.Distro{Id: "distro"},
 		Status:   evergreen.HostRunning,
 		IsParent: true,
-		ParentID: "parentId",
 	}
 
 	assert.NoError(host1.Insert())
@@ -1412,6 +1411,34 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.FindParentOfContainer()
+	assert.Error(err)
+	assert.Nil(parent)
+}
+
+func TestFindParentOfContainerNotParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	host1 := &Host{
+		Id:          "hostOne",
+		Host:        "host",
+		User:        "user",
+		Distro:      distro.Distro{Id: "distro"},
+		Status:      evergreen.HostRunning,
+		ContainerID: "containerID",
+		ParentID:    "parentId",
+	}
+
+	host2 := &Host{
+		Id:     "parentId",
+		Distro: distro.Distro{Id: "distro"},
+		Status: evergreen.HostRunning,
+	}
+
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+
+	parent, err := host1.FindParentOfContainer()
 	assert.Error(err)
 	assert.Nil(parent)
 }

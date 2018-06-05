@@ -746,9 +746,9 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 }
 
 // find all containers
-func (h *Host) FindAllContainers() ([]Host, error) {
+func FindAllContainers() ([]Host, error) {
 	query := db.Query(bson.M{
-		ContainerID: bson.M{"$exists": true},
+		ContainerIDKey: bson.M{"$exists": true},
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -758,13 +758,13 @@ func (h *Host) FindAllContainers() ([]Host, error) {
 	return hosts, nil
 }
 
-// find all containers belonging to parent of current host
-func (h *Host) FindHostContainers() ([]Host, error) {
+// find all containers belonging to parent
+func (h *Host) GetContainers() ([]Host, error) {
 	if !h.IsParent {
 		return nil, errors.New("Host is not a parent of any containers")
 	}
 	query := db.Query(bson.M{
-		ParentID: h.ParentID,
+		ParentIDKey: h.ParentID,
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -780,15 +780,14 @@ func (h *Host) FindParentOfContainer() (*Host, error) {
 		return nil, errors.New("Host does not have a parent")
 	}
 
-	query := db.Query(bson.M{
-		IsParent: true,
-		ParentID: h.ParentID,
-	})
-	host, err := FindOne(query)
+	host, err := FindOneId(h.ParentID)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
+		return nil, errors.New("Error finding parent")
+	}
+	if !host.IsParent {
 		return nil, errors.New("Error finding parent")
 	}
 
