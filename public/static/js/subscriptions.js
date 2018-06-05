@@ -58,7 +58,7 @@ function subscriberPromise($mdDialog, verb, triggers, subscription) {
     });
 }
 
-function subCtrl($scope, $mdDialog) {
+function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     // labels should complete the following sentence fragments:
     // 'then notify by ...'
     // 'when ...'
@@ -163,6 +163,15 @@ function subCtrl($scope, $mdDialog) {
         }
         $scope.trigger = lookupTrigger($scope.c.triggers, $scope.c.subscription.trigger, $scope.c.subscription.resource_type);
     }
+
+    mciUserSettingsService.getUserSettings({success: function(resp) {
+        if (!$scope.targets[SUBSCRIPTION_SLACK]) {
+            console.log(resp);
+            $scope.targets[SUBSCRIPTION_SLACK] = resp;
+        }
+    }, error: function(resp) {
+        console.log("failed to fetch user settings: ", resp);
+    }});
 }
 
 // Lookup a trigger with given (name, resource_type) pair in triggers, an
