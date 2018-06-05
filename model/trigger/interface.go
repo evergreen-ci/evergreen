@@ -7,7 +7,7 @@ import (
 )
 
 // `eventHandlerFactory`s create `eventHandler`s capable of validating triggers
-type eventHandlerFactory = func() eventHandler
+type eventHandlerFactory func() eventHandler
 
 // EventHandler
 type eventHandler interface {

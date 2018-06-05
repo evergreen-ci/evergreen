@@ -295,7 +295,8 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 	}
 	if previousTask != nil {
 		q := alertrecord.ByLastFailureTransition(t.task.DisplayName, t.task.BuildVariant, t.task.Project)
-		lastAlerted, err := alertrecord.FindOne(q)
+		var lastAlerted *alertrecord.AlertRecord
+		lastAlerted, err = alertrecord.FindOne(q)
 		if err != nil {
 			errMessage := getShouldExecuteError(t.task, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
@@ -340,8 +341,11 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 					return nil, nil
 				}
 
-			} else if old, err := taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId); !old {
-				return nil, errors.Wrap(err, "failed to process regression trigger")
+			} else {
+				var old bool
+				if old, err = taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId); !old {
+					return nil, errors.Wrap(err, "failed to process regression trigger")
+				}
 			}
 		}
 	}

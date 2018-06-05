@@ -213,66 +213,6 @@ func truncateString(s string, capacity int) (string, string) {
 	return head, tail
 }
 
-// For patches, versions, builds, and tasks, the outcome, success and  failure
-// triggers all have the same structure. The common generator returned by this
-// function is suitable for creating payloads for all of these
-func makeCommonGenerator(triggerName string, selectors []event.Selector,
-	data commonTemplateData) (*notificationGenerator, error) {
-	gen := notificationGenerator{
-		triggerName: triggerName,
-		selectors:   selectors,
-	}
-	gen.selectors = append(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: triggerName,
-	}, event.Selector{
-		Type: selectorStatus,
-		Data: data.PastTenseStatus,
-	})
-
-	data.Headers = makeHeaders(selectors)
-
-	var err error
-	gen.evergreenWebhook, err = webhookPayload(data.apiModel, data.Headers)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building webhook payload")
-	}
-
-	gen.email, err = emailPayload(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building email payload")
-	}
-
-	gen.jiraComment, err = jiraComment(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira comment")
-	}
-	gen.jiraIssue, err = jiraIssue(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira issue")
-	}
-
-	if len(data.githubDescription) != 0 {
-		gen.githubStatusAPI = &message.GithubStatus{
-			Context:     "evergreen",
-			State:       data.githubState,
-			URL:         data.URL,
-			Description: data.githubDescription,
-		}
-		if len(data.githubContext) != 0 {
-			gen.githubStatusAPI.Context = data.githubContext
-		}
-	}
-
-	// TODO improve slack body with additional info, like failing variants
-	gen.slack, err = slack(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building slack message")
-	}
-
-	return &gen, nil
-}
-
 func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	data commonTemplateData) (interface{}, error) {
 
