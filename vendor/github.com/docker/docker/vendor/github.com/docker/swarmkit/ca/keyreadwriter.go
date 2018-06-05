@@ -1,7 +1,6 @@
 package ca
 
 import (
-	cryptorand "crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
@@ -13,6 +12,8 @@ import (
 
 	"crypto/tls"
 
+	"github.com/docker/swarmkit/ca/keyutils"
+	"github.com/docker/swarmkit/ca/pkcs8"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/pkg/errors"
 )
@@ -72,19 +73,28 @@ func (e ErrInvalidKEK) Error() string {
 // KeyReadWriter is an object that knows how to read and write TLS keys and certs to disk,
 // optionally encrypted and optionally updating PEM headers.
 type KeyReadWriter struct {
-	mu         sync.Mutex
-	kekData    KEKData
-	paths      CertPaths
-	headersObj PEMKeyHeaders
+	mu           sync.Mutex
+	kekData      KEKData
+	paths        CertPaths
+	headersObj   PEMKeyHeaders
+	keyFormatter keyutils.Formatter
 }
 
 // NewKeyReadWriter creates a new KeyReadWriter
 func NewKeyReadWriter(paths CertPaths, kek []byte, headersObj PEMKeyHeaders) *KeyReadWriter {
 	return &KeyReadWriter{
-		kekData:    KEKData{KEK: kek},
-		paths:      paths,
-		headersObj: headersObj,
+		kekData:      KEKData{KEK: kek},
+		paths:        paths,
+		headersObj:   headersObj,
+		keyFormatter: keyutils.Default,
 	}
+}
+
+// SetKeyFormatter sets the keyformatter with which to encrypt and decrypt keys
+func (k *KeyReadWriter) SetKeyFormatter(kf keyutils.Formatter) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.keyFormatter = kf
 }
 
 // Migrate checks to see if a temporary key file exists.  Older versions of
@@ -187,10 +197,7 @@ func (k *KeyReadWriter) ViewAndRotateKEK(cb func(KEKData, PEMKeyHeaders) (KEKDat
 		return err
 	}
 
-	if err := k.writeKey(keyBlock, updatedKEK, updatedHeaderObj); err != nil {
-		return err
-	}
-	return nil
+	return k.writeKey(keyBlock, updatedKEK, updatedHeaderObj)
 }
 
 // ViewAndUpdateHeaders updates the header manager, and updates any headers on the existing key
@@ -316,7 +323,7 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 		return nil, err
 	}
 
-	if !x509.IsEncryptedPEMBlock(keyBlock) {
+	if !keyutils.IsEncryptedPEMBlock(keyBlock) {
 		return keyBlock, nil
 	}
 
@@ -326,10 +333,18 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 		return nil, ErrInvalidKEK{Wrapped: x509.IncorrectPasswordError}
 	}
 
-	derBytes, err := x509.DecryptPEMBlock(keyBlock, k.kekData.KEK)
-	if err != nil {
+	derBytes, err := k.keyFormatter.DecryptPEMBlock(keyBlock, k.kekData.KEK)
+	if err == keyutils.ErrFIPSUnsupportedKeyFormat {
+		return nil, err
+	} else if err != nil {
 		return nil, ErrInvalidKEK{Wrapped: err}
 	}
+
+	// change header only if its pkcs8
+	if keyBlock.Type == "ENCRYPTED PRIVATE KEY" {
+		keyBlock.Type = "PRIVATE KEY"
+	}
+
 	// remove encryption PEM headers
 	headers := make(map[string]string)
 	mergePEMHeaders(headers, keyBlock.Headers)
@@ -345,15 +360,11 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 // writing it to disk.  If the kek is nil, writes it to disk unencrypted.
 func (k *KeyReadWriter) writeKey(keyBlock *pem.Block, kekData KEKData, pkh PEMKeyHeaders) error {
 	if kekData.KEK != nil {
-		encryptedPEMBlock, err := x509.EncryptPEMBlock(cryptorand.Reader,
-			keyBlock.Type,
-			keyBlock.Bytes,
-			kekData.KEK,
-			x509.PEMCipherAES256)
+		encryptedPEMBlock, err := k.keyFormatter.EncryptPEMBlock(keyBlock.Bytes, kekData.KEK)
 		if err != nil {
 			return err
 		}
-		if encryptedPEMBlock.Headers == nil {
+		if !keyutils.IsEncryptedPEMBlock(encryptedPEMBlock) {
 			return errors.New("unable to encrypt key - invalid PEM file produced")
 		}
 		keyBlock = encryptedPEMBlock
@@ -374,6 +385,48 @@ func (k *KeyReadWriter) writeKey(keyBlock *pem.Block, kekData KEKData, pkh PEMKe
 	k.kekData = kekData
 	k.headersObj = pkh
 	return nil
+}
+
+// DowngradeKey converts the PKCS#8 key to PKCS#1 format and save it
+func (k *KeyReadWriter) DowngradeKey() error {
+	_, key, err := k.Read()
+	if err != nil {
+		return err
+	}
+
+	oldBlock, _ := pem.Decode(key)
+	if oldBlock == nil {
+		return errors.New("invalid PEM-encoded private key")
+	}
+
+	// stop if the key is already downgraded to pkcs1
+	if !keyutils.IsPKCS8(oldBlock.Bytes) {
+		return errors.New("key is already downgraded to PKCS#1")
+	}
+
+	eckey, err := pkcs8.ConvertToECPrivateKeyPEM(key)
+	if err != nil {
+		return err
+	}
+
+	newBlock, _ := pem.Decode(eckey)
+	if newBlock == nil {
+		return errors.New("invalid PEM-encoded private key")
+	}
+
+	if k.kekData.KEK != nil {
+		newBlock, err = k.keyFormatter.EncryptPEMBlock(newBlock.Bytes, k.kekData.KEK)
+		if err != nil {
+			return err
+		}
+	}
+
+	// add kek-version header back to the new key
+	newBlock.Headers[versionHeader] = strconv.FormatUint(k.kekData.Version, 10)
+	mergePEMHeaders(newBlock.Headers, oldBlock.Headers)
+
+	// do not use krw.Write as it will convert the key to pkcs8
+	return ioutils.AtomicWriteFile(k.paths.Key, pem.EncodeToMemory(newBlock), keyPerms)
 }
 
 // merges one set of PEM headers onto another, excepting for key encryption value

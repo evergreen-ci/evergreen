@@ -74,6 +74,12 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 			continue
 		}
 
+		// Also ignore tasks that have not yet been assigned but desired state is beyond TaskStateRunning
+		// This can happen if you update, delete or scale down a service before its tasks were assigned.
+		if t.Status.State == api.TaskStatePending && t.DesiredState > api.TaskStateRunning {
+			continue
+		}
+
 		s.allTasks[t.ID] = t
 		if t.NodeID == "" {
 			s.enqueue(t)
@@ -92,11 +98,7 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 		tasksByNode[t.NodeID][t.ID] = t
 	}
 
-	if err := s.buildNodeSet(tx, tasksByNode); err != nil {
-		return err
-	}
-
-	return nil
+	return s.buildNodeSet(tx, tasksByNode)
 }
 
 // Run is the scheduler event loop.
@@ -450,7 +452,9 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 						continue
 					}
 
-					if t.Status.State == decision.new.Status.State && t.Status.Message == decision.new.Status.Message {
+					if t.Status.State == decision.new.Status.State &&
+						t.Status.Message == decision.new.Status.Message &&
+						t.Status.Err == decision.new.Status.Err {
 						// No changes, ignore
 						continue
 					}
@@ -506,7 +510,7 @@ func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string)
 	if !s.pipeline.Process(&nodeInfo) {
 		// this node cannot accommodate this task
 		newT.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
-		newT.Status.Message = s.pipeline.Explain()
+		newT.Status.Err = s.pipeline.Explain()
 		s.allTasks[t.ID] = &newT
 
 		return &newT
@@ -706,9 +710,9 @@ func (s *Scheduler) noSuitableNode(ctx context.Context, taskGroup map[string]*ap
 		newT := *t
 		newT.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 		if explanation != "" {
-			newT.Status.Message = "no suitable node (" + explanation + ")"
+			newT.Status.Err = "no suitable node (" + explanation + ")"
 		} else {
-			newT.Status.Message = "no suitable node"
+			newT.Status.Err = "no suitable node"
 		}
 		s.allTasks[t.ID] = &newT
 		schedulingDecisions[t.ID] = schedulingDecision{old: t, new: &newT}

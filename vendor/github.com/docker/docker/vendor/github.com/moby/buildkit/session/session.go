@@ -1,18 +1,21 @@
 package session
 
 import (
+	"context"
 	"net"
+	"strings"
 
-	"github.com/docker/docker/pkg/stringid"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/moby/buildkit/identity"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
-	headerSessionUUID      = "X-Docker-Expose-Session-Uuid"
+	headerSessionID        = "X-Docker-Expose-Session-Uuid"
 	headerSessionName      = "X-Docker-Expose-Session-Name"
 	headerSessionSharedKey = "X-Docker-Expose-Session-Sharedkey"
 	headerSessionMethod    = "X-Docker-Expose-Session-Grpc-Method"
@@ -28,23 +31,34 @@ type Attachable interface {
 
 // Session is a long running connection between client and a daemon
 type Session struct {
-	uuid       string
+	id         string
 	name       string
 	sharedKey  string
 	ctx        context.Context
 	cancelCtx  func()
 	done       chan struct{}
 	grpcServer *grpc.Server
+	conn       net.Conn
 }
 
 // NewSession returns a new long running session
-func NewSession(name, sharedKey string) (*Session, error) {
-	uuid := stringid.GenerateRandomID()
+func NewSession(ctx context.Context, name, sharedKey string) (*Session, error) {
+	id := identity.NewID()
+
+	serverOpts := []grpc.ServerOption{}
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		tracer := span.Tracer()
+		serverOpts = []grpc.ServerOption{
+			grpc.StreamInterceptor(otgrpc.OpenTracingStreamServerInterceptor(span.Tracer(), traceFilter())),
+			grpc.UnaryInterceptor(otgrpc.OpenTracingServerInterceptor(tracer, traceFilter())),
+		}
+	}
+
 	s := &Session{
-		uuid:       uuid,
+		id:         id,
 		name:       name,
 		sharedKey:  sharedKey,
-		grpcServer: grpc.NewServer(),
+		grpcServer: grpc.NewServer(serverOpts...),
 	}
 
 	grpc_health_v1.RegisterHealthServer(s.grpcServer, health.NewServer())
@@ -57,9 +71,9 @@ func (s *Session) Allow(a Attachable) {
 	a.Register(s.grpcServer)
 }
 
-// UUID returns unique identifier for the session
-func (s *Session) UUID() string {
-	return s.uuid
+// ID returns unique identifier for the session
+func (s *Session) ID() string {
+	return s.id
 }
 
 // Run activates the session
@@ -72,7 +86,7 @@ func (s *Session) Run(ctx context.Context, dialer Dialer) error {
 	defer close(s.done)
 
 	meta := make(map[string][]string)
-	meta[headerSessionUUID] = []string{s.uuid}
+	meta[headerSessionID] = []string{s.id}
 	meta[headerSessionName] = []string{s.name}
 	meta[headerSessionSharedKey] = []string{s.sharedKey}
 
@@ -85,6 +99,7 @@ func (s *Session) Run(ctx context.Context, dialer Dialer) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to dial gRPC")
 	}
+	s.conn = conn
 	serve(ctx, s.grpcServer, conn)
 	return nil
 }
@@ -92,7 +107,10 @@ func (s *Session) Run(ctx context.Context, dialer Dialer) error {
 // Close closes the session
 func (s *Session) Close() error {
 	if s.cancelCtx != nil && s.done != nil {
-		s.cancelCtx()
+		if s.conn != nil {
+			s.conn.Close()
+		}
+		s.grpcServer.Stop()
 		<-s.done
 	}
 	return nil
@@ -114,4 +132,12 @@ func (s *Session) closed() bool {
 // MethodURL returns a gRPC method URL for service and method name
 func MethodURL(s, m string) string {
 	return "/" + s + "/" + m
+}
+
+func traceFilter() otgrpc.Option {
+	return otgrpc.IncludingSpans(func(parentSpanCtx opentracing.SpanContext,
+		method string,
+		req, resp interface{}) bool {
+		return !strings.HasSuffix(method, "Health/Check")
+	})
 }

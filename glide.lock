@@ -20,9 +20,9 @@ imports:
   - name: github.com/codegangsta/inject
     version: 37d7f8432a3e684eef9b2edece76bdfa6ac85b39
   - name: github.com/docker/docker
-    version: f7d09a0a9bd626782e63e7295ca87690f26a1fb4
+    version: ca25df3b54300e897d96029dcc4f86b8c4215a27
   - name: github.com/docker/go-connections
-    version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
+    version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
   - name: github.com/Microsoft/go-winio
     version: 7ff89941bcb93df2e962467fb073c6e997b13cf0
   - name: github.com/gorilla/context

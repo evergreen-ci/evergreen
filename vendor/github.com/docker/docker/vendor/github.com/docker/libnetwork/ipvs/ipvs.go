@@ -5,10 +5,17 @@ package ipvs
 import (
 	"net"
 	"syscall"
+	"time"
 
 	"fmt"
+
 	"github.com/vishvananda/netlink/nl"
 	"github.com/vishvananda/netns"
+)
+
+const (
+	netlinkRecvSocketsTimeout = 3 * time.Second
+	netlinkSendSocketTimeout  = 30 * time.Second
 )
 
 // Service defines an IPVS service in its entirety.
@@ -82,6 +89,15 @@ func New(path string) (*Handle, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Add operation timeout to avoid deadlocks
+	tv := syscall.NsecToTimeval(netlinkSendSocketTimeout.Nanoseconds())
+	if err := sock.SetSendTimeout(&tv); err != nil {
+		return nil, err
+	}
+	tv = syscall.NsecToTimeval(netlinkRecvSocketsTimeout.Nanoseconds())
+	if err := sock.SetReceiveTimeout(&tv); err != nil {
+		return nil, err
+	}
 
 	return &Handle{sock: sock}, nil
 }
@@ -114,6 +130,13 @@ func (i *Handle) UpdateService(s *Service) error {
 // handle.
 func (i *Handle) DelService(s *Service) error {
 	return i.doCmd(s, nil, ipvsCmdDelService)
+}
+
+// Flush deletes all existing services in the passed
+// handle.
+func (i *Handle) Flush() error {
+	_, err := i.doCmdWithoutAttr(ipvsCmdFlush)
+	return err
 }
 
 // NewDestination creates a new real server in the passed ipvs
