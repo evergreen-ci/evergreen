@@ -341,13 +341,13 @@ mongodb/.get-mongodb:
 	cd mongodb && curl "$(MONGODB_URL)" -o mongodb.tgz && $(DECOMPRESS) mongodb.tgz && chmod +x ./mongodb-*/bin/*
 	cd mongodb && mv ./mongodb-*/bin/* . && rm -rf db_files && rm -rf db_logs && mkdir -p db_files && mkdir -p db_logs
 get-mongodb: mongodb/.get-mongodb
-	touch $<
+	@touch $<
 start-mongod: mongodb/.get-mongodb
 	./mongodb/mongod --dbpath ./mongodb/db_files
-	echo "waiting for mongod to start up"
+	@echo "waiting for mongod to start up"
 check-mongod: mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
-	echo "mongod is up"
+	@echo "mongod is up"
 # end mongodb targets
 
 # configure special (and) phony targets

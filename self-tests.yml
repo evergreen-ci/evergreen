@@ -100,7 +100,11 @@ variables:
       - func: get-project
       - func: set-up-mongodb
       - func: run-make
-        vars: { target: "set-var set-project-var load-smoke-data" }
+        vars: { target: "set-var" }
+      - func: run-make
+        vars: { target: "set-project-var" }
+      - func: run-make
+        vars: { target: "load-smoke-data" }
       - command: subprocess.exec
         params:
           silent: true
@@ -149,6 +153,8 @@ functions:
     command: subprocess.exec
     params:
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      binary: make
+      args: ["${make_args|}", "${target}"]
       env:
         AWS_KEY: ${aws_key}
         AWS_SECRET: ${aws_secret}
@@ -164,9 +170,6 @@ functions:
         RACE_ENABLED: ${race_enabed}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
-      command: |
-        bash -c
-        'make ${make_args|} ${target}'
   get-dist-test:
     command: s3.get
     params:
@@ -190,13 +193,13 @@ functions:
       silent: true
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
       env:
-        GITHUBTOKEN: ${github_token}
-        JIRASERVER: ${jiraserver}
-        CROWDSERVER: ${crowdserver}
-        CROWDUSER: ${crowduser}
-        CROWDPW: ${crowdpw}
-        AWSKEY: ${aws_key}
-        AWSSECRET: ${aws_secret}
+        GITHUB_TOKEN: ${github_token}
+        JIRA_SERVER: ${jiraserver}
+        CROWD_SERVER: ${crowdserver}
+        CROWD_USER: ${crowduser}
+        CROWD_PW: ${crowdpw}
+        AWS_KEY: ${aws_key}
+        AWS_SECRET: ${aws_secret}
       command: bash scripts/setup-credentials.sh
   set-up-mongodb:
     - command: subprocess.exec
