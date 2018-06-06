@@ -92,61 +92,7 @@ type groupedSubscriptions struct {
 
 // FindSubscriptions finds all subscriptions that match the given information,
 // returning them in a map by subscriber type
-func FindSubscriptions(subscriptionType, triggerType string, selectors []Selector) (map[string][]Subscription, error) {
-	if len(selectors) == 0 {
-		return nil, nil
-	}
-
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				subscriptionTypeKey:    subscriptionType,
-				subscriptionTriggerKey: triggerType,
-			},
-		},
-		{
-			"$addFields": bson.M{
-				"keep": bson.M{
-					"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
-				},
-			},
-		},
-		{
-			"$match": bson.M{
-				"keep": true,
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id": "$" + bsonutil.GetDottedKeyName(subscriptionSubscriberKey, subscriberTypeKey),
-				"subscriptions": bson.M{
-					"$push": "$$ROOT",
-				},
-			},
-		},
-	}
-
-	gs := []groupedSubscriptions{}
-	if err := db.Aggregate(SubscriptionsCollection, pipeline, &gs); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch subscriptions")
-	}
-
-	out := map[string][]Subscription{}
-	for i := range gs {
-		for j := range gs[i].Subscriptions {
-			sub := &gs[i].Subscriptions[j]
-			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub.RegexSelectors) {
-				continue
-			}
-
-			out[gs[i].Type] = append(out[gs[i].Type], *sub)
-		}
-	}
-
-	return out, nil
-}
-
-func FindSubscriptions2(resourceType string, selectors []Selector) ([]Subscription, error) {
+func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
 	if len(selectors) == 0 {
 		return nil, nil
 	}
@@ -171,9 +117,18 @@ func FindSubscriptions2(resourceType string, selectors []Selector) ([]Subscripti
 		},
 	}
 
-	out := []Subscription{}
-	if err := db.Aggregate(SubscriptionsCollection, pipeline, &out); err != nil {
+	rawSubs := []Subscription{}
+	if err := db.Aggregate(SubscriptionsCollection, pipeline, &rawSubs); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
+	}
+
+	out := []Subscription{}
+	for i := range rawSubs {
+		if len(rawSubs[i].RegexSelectors) > 0 && !regexSelectorsMatch(selectors, rawSubs[i].RegexSelectors) {
+			continue
+		}
+
+		out = append(out, rawSubs[i])
 	}
 
 	return out, nil
