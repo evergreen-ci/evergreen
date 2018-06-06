@@ -1186,7 +1186,7 @@ func TestFindAllContainersEmpty(t *testing.T) {
 
 	containers, err := FindAllContainers()
 	assert.NoError(err)
-	assert.Equal(0, len(containers))
+	assert.Empty(containers)
 }
 
 func TestGetContainers(t *testing.T) {
@@ -1342,8 +1342,8 @@ func TestGetContainersNotParent(t *testing.T) {
 	assert.NoError(host8.Insert())
 
 	containers, err := host1.GetContainers()
-	assert.Error(err)
-	assert.Nil(containers)
+	assert.EqualError(err, "Host does not host containers")
+	assert.Empty(containers)
 }
 
 func TestFindParentOfContainer(t *testing.T) {
@@ -1371,7 +1371,7 @@ func TestFindParentOfContainer(t *testing.T) {
 
 	parent, err := host1.GetParent()
 	assert.NoError(err)
-	assert.NotEmpty(parent)
+	assert.NotNil(parent)
 }
 
 func TestFindParentOfContainerNoParent(t *testing.T) {
@@ -1389,7 +1389,7 @@ func TestFindParentOfContainerNoParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.GetParent()
-	assert.Error(err)
+	assert.EqualError(err, "Host does not have a parent")
 	assert.Nil(parent)
 }
 
@@ -1410,7 +1410,7 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 	assert.NoError(host.Insert())
 
 	parent, err := host.GetParent()
-	assert.Error(err)
+	assert.EqualError(err, "Parent not found")
 	assert.Nil(parent)
 }
 
@@ -1438,6 +1438,6 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 	assert.NoError(host2.Insert())
 
 	parent, err := host1.GetParent()
-	assert.Error(err)
+	assert.EqualError(err, "Host found is not a parent")
 	assert.Nil(parent)
 }

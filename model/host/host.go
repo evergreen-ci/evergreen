@@ -764,7 +764,7 @@ func FindAllContainers() ([]Host, error) {
 // errors if this host is not a parent
 func (h *Host) GetContainers() ([]Host, error) {
 	if !h.HasContainers {
-		return nil, errors.New("Host is not a parent")
+		return nil, errors.New("Host does not host containers")
 	}
 	query := db.Query(bson.M{
 		ParentIDKey: h.Id,
