@@ -387,7 +387,7 @@ func getApplyCommand(patchFile string) (string, error) {
 		return fmt.Sprintf(`git -c "user.name=Evergreen Agent" -c "user.email=no-reply@evergreen.mongodb.com" am < '%s'`, patchFile), nil
 	}
 
-	return fmt.Sprintf("git apply --binary --whitespace=fix --index < '%s'", patchFile), nil
+	return fmt.Sprintf("git apply --binary --index < '%s'", patchFile), nil
 }
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
