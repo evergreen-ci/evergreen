@@ -1197,11 +1197,11 @@ func TestGetContainers(t *testing.T) {
 	const d2 = "distro2"
 
 	host1 := &Host{
-		Id:          "host1",
-		Distro:      distro.Distro{Id: d1},
-		Status:      evergreen.HostRunning,
-		RunningTask: "task",
-		IsParent:    true,
+		Id:            "host1",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		RunningTask:   "task",
+		HasContainers: true,
 	}
 	host2 := &Host{
 		Id:          "host2",
@@ -1360,10 +1360,10 @@ func TestFindParentOfContainer(t *testing.T) {
 		ParentID:    "parentId",
 	}
 	host2 := &Host{
-		Id:       "parentId",
-		Distro:   distro.Distro{Id: "distro"},
-		Status:   evergreen.HostRunning,
-		IsParent: true,
+		Id:            "parentId",
+		Distro:        distro.Distro{Id: "distro"},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
 	}
 
 	assert.NoError(host1.Insert())

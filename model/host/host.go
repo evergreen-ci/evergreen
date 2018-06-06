@@ -95,8 +95,10 @@ type Host struct {
 
 	// managed containers require different information based on host type
 	ContainerID string `bson:"container_id,omitempty" json:"container_id,omitempty"`
-	IsParent    bool   `bson:"is_parent,omitempty" json:"is_parent,omitempty"`
-	ParentID    string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
+	// True if this host is a parent of containers
+	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
+	// stores the ID of the host a container is on
+	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -745,7 +747,7 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 	return counts, nil
 }
 
-// find all containers
+// FindAllContainers finds all the containers
 func FindAllContainers() ([]Host, error) {
 	query := db.Query(bson.M{
 		ContainerIDKey: bson.M{"$exists": true},
@@ -758,9 +760,10 @@ func FindAllContainers() ([]Host, error) {
 	return hosts, nil
 }
 
-// find all containers belonging to parent
+// GetContainers finds all the containers belonging to this host
+// errors if this host is not a parent
 func (h *Host) GetContainers() ([]Host, error) {
-	if !h.IsParent {
+	if !h.HasContainers {
 		return nil, errors.New("Host is not a parent")
 	}
 	query := db.Query(bson.M{
@@ -774,7 +777,8 @@ func (h *Host) GetContainers() ([]Host, error) {
 	return hosts, nil
 }
 
-// find parent of container
+// GetParent finds the parent of this container
+// errors if host is not a container or if parent cannot be found
 func (h *Host) GetParent() (*Host, error) {
 	if h.ParentID == "" {
 		return nil, errors.New("Host does not have a parent")
@@ -787,7 +791,7 @@ func (h *Host) GetParent() (*Host, error) {
 	if host == nil {
 		return nil, errors.New("Parent not found")
 	}
-	if !host.IsParent {
+	if !host.HasContainers {
 		return nil, errors.New("Host found is not a parent")
 	}
 
