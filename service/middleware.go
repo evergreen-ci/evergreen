@@ -452,6 +452,7 @@ func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 				"request":  reqID,
 				"duration": time.Since(start),
 				"path":     r.URL.Path,
+				"length":   r.ContentLength,
 				"span":     time.Since(start).String(),
 			}))
 		}
@@ -459,17 +460,35 @@ func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 
 	next(rw, r)
 
+	t := GetTask(r)
+
 	res := rw.(negroni.ResponseWriter)
 
-	grip.Info(message.Fields{
+	m := message.Fields{
 		"method":   r.Method,
 		"remote":   remote,
 		"request":  reqID,
 		"path":     r.URL.Path,
 		"duration": time.Since(start),
 		"action":   "completed",
+		"length":   r.ContentLength,
 		"status":   res.Status(),
 		"outcome":  http.StatusText(res.Status()),
 		"span":     time.Since(start).String(),
-	})
+	}
+
+	if t != nil {
+		m["task_info"] = message.Fields{
+			"project":     t.Project,
+			"name":        t.DisplayName,
+			"id":          t.Id,
+			"variant":     t.BuildVariant,
+			"version":     t.Version,
+			"build":       t.BuildId,
+			"requester":   t.Requester,
+			"injest_time": t.IngestTime,
+		}
+	}
+
+	grip.Info(m)
 }
