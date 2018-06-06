@@ -56,9 +56,9 @@ type subprocessExec struct {
 	// allows following commands to execute even if this shell command fails.
 	ContinueOnError bool `mapstructure:"continue_on_err"`
 
-	// NoStripEmptyArgs will allow empty arguments in commands if set to true
+	// KeepEmptyArgs will allow empty arguments in commands if set to true
 	// note that non-blank whitespace arguments are never stripped
-	NoStripEmptyArgs bool `mapstructure:"no_strip_blank_args"`
+	KeepEmptyArgs bool `mapstructure:"keep_empty_args"`
 
 	base
 }
@@ -191,7 +191,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		return errors.WithStack(err)
 	}
 
-	if !c.NoStripEmptyArgs {
+	if !c.KeepEmptyArgs {
 		for i, arg := range c.Args {
 			if arg == "" {
 				c.Args = append(c.Args[:i], c.Args[i+1:]...)
