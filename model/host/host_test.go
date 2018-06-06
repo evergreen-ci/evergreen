@@ -1202,7 +1202,6 @@ func TestGetContainers(t *testing.T) {
 		Status:      evergreen.HostRunning,
 		RunningTask: "task",
 		IsParent:    true,
-		ParentID:    "parentId",
 	}
 	host2 := &Host{
 		Id:          "host2",
@@ -1216,7 +1215,7 @@ func TestGetContainers(t *testing.T) {
 		Distro:      distro.Distro{Id: d1},
 		Status:      evergreen.HostTerminated,
 		ContainerID: "containerId3",
-		ParentID:    "parentId",
+		ParentID:    "host1",
 	}
 	host4 := &Host{
 		Id:          "host4",
@@ -1231,14 +1230,14 @@ func TestGetContainers(t *testing.T) {
 		Distro:      distro.Distro{Id: d2},
 		Status:      evergreen.HostProvisioning,
 		ContainerID: "containerId5",
-		ParentID:    "parentId",
+		ParentID:    "host1",
 	}
 	host6 := &Host{
 		Id:          "host6",
 		Distro:      distro.Distro{Id: d2},
 		Status:      evergreen.HostProvisioning,
 		ContainerID: "containerId6",
-		ParentID:    "parentId",
+		ParentID:    "host1",
 	}
 	host7 := &Host{
 		Id:          "host7",
@@ -1246,14 +1245,14 @@ func TestGetContainers(t *testing.T) {
 		Status:      evergreen.HostRunning,
 		RunningTask: "task3",
 		ContainerID: "containerId7",
-		ParentID:    "parentId",
+		ParentID:    "host1",
 	}
 	host8 := &Host{
 		Id:          "host8",
 		Distro:      distro.Distro{Id: d2},
 		Status:      evergreen.HostRunning,
 		ContainerID: "containerId8",
-		ParentID:    "parentId",
+		ParentID:    "host1",
 	}
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
@@ -1266,7 +1265,7 @@ func TestGetContainers(t *testing.T) {
 
 	containers, err := host1.GetContainers()
 	assert.NoError(err)
-	assert.Equal(6, len(containers))
+	assert.Equal(5, len(containers))
 }
 
 func TestGetContainersNotParent(t *testing.T) {

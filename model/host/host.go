@@ -761,10 +761,10 @@ func FindAllContainers() ([]Host, error) {
 // find all containers belonging to parent
 func (h *Host) GetContainers() ([]Host, error) {
 	if !h.IsParent {
-		return nil, errors.New("Host is not a parent of any containers")
+		return nil, errors.New("Host is not a parent")
 	}
 	query := db.Query(bson.M{
-		ParentIDKey: h.ParentID,
+		ParentIDKey: h.Id,
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -785,7 +785,7 @@ func (h *Host) GetParent() (*Host, error) {
 		return nil, errors.Wrap(err, "Error finding parent")
 	}
 	if host == nil {
-		return nil, errors.New("Error finding parent")
+		return nil, errors.New("Parent not found")
 	}
 	if !host.IsParent {
 		return nil, errors.New("Host found is not a parent")
