@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type APIPubKey struct {
@@ -155,11 +154,18 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		BuildBreak:  user.UserSubscriptionPreference(buildbreak),
 		PatchFinish: user.UserSubscriptionPreference(patchFinish),
 	}
+	var err error
 	if n.BuildBreakID != nil {
-		preferences.BuildBreakID = bson.ObjectIdHex(FromAPIString(n.BuildBreakID))
+		preferences.BuildBreakID, err = user.FormatObjectID(FromAPIString(n.BuildBreakID))
+		if err != nil {
+			return nil, err
+		}
 	}
 	if n.PatchFinishID != nil {
-		preferences.PatchFinishID = bson.ObjectIdHex(FromAPIString(n.PatchFinishID))
+		preferences.PatchFinishID, err = user.FormatObjectID(FromAPIString(n.PatchFinishID))
+		if err != nil {
+			return nil, err
+		}
 	}
 	return preferences, nil
 }
