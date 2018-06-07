@@ -1063,37 +1063,32 @@ func TestFindAllContainers(t *testing.T) {
 		Distro:      distro.Distro{Id: d1},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task",
-		ContainerID: "containerId1",
 		ParentID:    "parentId",
 	}
 	host2 := &Host{
-		Id:          "host2",
-		Distro:      distro.Distro{Id: d1},
-		Status:      evergreen.HostStarting,
-		ContainerID: "containerId2",
-		ParentID:    "parentId",
+		Id:       "host2",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostStarting,
+		ParentID: "parentId",
 	}
 	host3 := &Host{
-		Id:          "host3",
-		Distro:      distro.Distro{Id: d1},
-		Status:      evergreen.HostTerminated,
-		ContainerID: "containerId3",
-		ParentID:    "parentId",
+		Id:       "host3",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostTerminated,
+		ParentID: "parentId",
 	}
 	host4 := &Host{
 		Id:          "host4",
 		Distro:      distro.Distro{Id: d1},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task2",
-		ContainerID: "containerId4",
 		ParentID:    "parentId",
 	}
 	host5 := &Host{
-		Id:          "host5",
-		Distro:      distro.Distro{Id: d2},
-		Status:      evergreen.HostProvisioning,
-		ContainerID: "containerId5",
-		ParentID:    "parentId",
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
 	}
 	host6 := &Host{
 		Id:     "host6",
@@ -1204,55 +1199,48 @@ func TestGetContainers(t *testing.T) {
 		HasContainers: true,
 	}
 	host2 := &Host{
-		Id:          "host2",
-		Distro:      distro.Distro{Id: d1},
-		Status:      evergreen.HostStarting,
-		ContainerID: "containerId2",
-		ParentID:    "parentId1",
+		Id:       "host2",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostStarting,
+		ParentID: "parentId1",
 	}
 	host3 := &Host{
-		Id:          "host3",
-		Distro:      distro.Distro{Id: d1},
-		Status:      evergreen.HostTerminated,
-		ContainerID: "containerId3",
-		ParentID:    "host1",
+		Id:       "host3",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostTerminated,
+		ParentID: "host1",
 	}
 	host4 := &Host{
 		Id:          "host4",
 		Distro:      distro.Distro{Id: d1},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task2",
-		ContainerID: "containerId4",
 		ParentID:    "parentId1",
 	}
 	host5 := &Host{
-		Id:          "host5",
-		Distro:      distro.Distro{Id: d2},
-		Status:      evergreen.HostProvisioning,
-		ContainerID: "containerId5",
-		ParentID:    "host1",
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "host1",
 	}
 	host6 := &Host{
-		Id:          "host6",
-		Distro:      distro.Distro{Id: d2},
-		Status:      evergreen.HostProvisioning,
-		ContainerID: "containerId6",
-		ParentID:    "host1",
+		Id:       "host6",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "host1",
 	}
 	host7 := &Host{
 		Id:          "host7",
 		Distro:      distro.Distro{Id: d2},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task3",
-		ContainerID: "containerId7",
 		ParentID:    "host1",
 	}
 	host8 := &Host{
-		Id:          "host8",
-		Distro:      distro.Distro{Id: d2},
-		Status:      evergreen.HostRunning,
-		ContainerID: "containerId8",
-		ParentID:    "host1",
+		Id:       "host8",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostRunning,
+		ParentID: "host1",
 	}
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
@@ -1282,55 +1270,48 @@ func TestGetContainersNotParent(t *testing.T) {
 		RunningTask: "task",
 	}
 	host2 := &Host{
-		Id:          "host2",
-		Distro:      distro.Distro{Id: d1},
-		Status:      evergreen.HostStarting,
-		ContainerID: "containerId2",
-		ParentID:    "parentId1",
+		Id:       "host2",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostStarting,
+		ParentID: "parentId1",
 	}
 	host3 := &Host{
-		Id:          "host3",
-		Distro:      distro.Distro{Id: d1},
-		Status:      evergreen.HostTerminated,
-		ContainerID: "containerId3",
-		ParentID:    "parentId",
+		Id:       "host3",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostTerminated,
+		ParentID: "parentId",
 	}
 	host4 := &Host{
 		Id:          "host4",
 		Distro:      distro.Distro{Id: d1},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task2",
-		ContainerID: "containerId4",
 		ParentID:    "parentId1",
 	}
 	host5 := &Host{
-		Id:          "host5",
-		Distro:      distro.Distro{Id: d2},
-		Status:      evergreen.HostProvisioning,
-		ContainerID: "containerId5",
-		ParentID:    "parentId",
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
 	}
 	host6 := &Host{
-		Id:          "host6",
-		Distro:      distro.Distro{Id: d2},
-		Status:      evergreen.HostProvisioning,
-		ContainerID: "containerId6",
-		ParentID:    "parentId",
+		Id:       "host6",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
 	}
 	host7 := &Host{
 		Id:          "host7",
 		Distro:      distro.Distro{Id: d2},
 		Status:      evergreen.HostRunning,
 		RunningTask: "task3",
-		ContainerID: "containerId7",
 		ParentID:    "parentId",
 	}
 	host8 := &Host{
-		Id:          "host8",
-		Distro:      distro.Distro{Id: d2},
-		Status:      evergreen.HostRunning,
-		ContainerID: "containerId8",
-		ParentID:    "parentId",
+		Id:       "host8",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
 	}
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
@@ -1351,13 +1332,12 @@ func TestFindParentOfContainer(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	host1 := &Host{
-		Id:          "host1",
-		Host:        "host",
-		User:        "user",
-		Distro:      distro.Distro{Id: "distro"},
-		Status:      evergreen.HostRunning,
-		ContainerID: "containerID",
-		ParentID:    "parentId",
+		Id:       "host1",
+		Host:     "host",
+		User:     "user",
+		Distro:   distro.Distro{Id: "distro"},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
 	}
 	host2 := &Host{
 		Id:            "parentId",
@@ -1398,13 +1378,12 @@ func TestFindParentOfContainerCannotFindParent(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	host := &Host{
-		Id:          "hostOne",
-		Host:        "host",
-		User:        "user",
-		Distro:      distro.Distro{Id: "distro"},
-		Status:      evergreen.HostRunning,
-		ContainerID: "containerID",
-		ParentID:    "parentId",
+		Id:       "hostOne",
+		Host:     "host",
+		User:     "user",
+		Distro:   distro.Distro{Id: "distro"},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
 	}
 
 	assert.NoError(host.Insert())
@@ -1419,13 +1398,12 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 	assert.NoError(db.ClearCollections(Collection))
 
 	host1 := &Host{
-		Id:          "hostOne",
-		Host:        "host",
-		User:        "user",
-		Distro:      distro.Distro{Id: "distro"},
-		Status:      evergreen.HostRunning,
-		ContainerID: "containerID",
-		ParentID:    "parentId",
+		Id:       "hostOne",
+		Host:     "host",
+		User:     "user",
+		Distro:   distro.Distro{Id: "distro"},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
 	}
 
 	host2 := &Host{
