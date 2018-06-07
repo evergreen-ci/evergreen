@@ -244,3 +244,28 @@ func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
 		_ = h.ParseAndValidate(ctx, nil)
 	})
 }
+
+func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	body := []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "object",
+			"data": "version",
+		}},
+		"subscriber": map[string]string{
+			"type":   "jira-issue",
+			"target": "ABC",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot notify by jira-issue for version")
+}

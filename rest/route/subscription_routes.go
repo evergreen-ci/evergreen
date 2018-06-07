@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -80,6 +81,13 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 			}
 		}
 
+		if ok, msg := isSubscriptionAllowed(dbSubscription); !ok {
+			return &rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    msg,
+			}
+		}
+
 		err = dbSubscription.Validate()
 		if err != nil {
 			return &rest.APIError{
@@ -92,6 +100,22 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 	}
 
 	return nil
+}
+
+func isSubscriptionAllowed(sub event.Subscription) (bool, string) {
+	for _, selector := range sub.Selectors {
+
+		if selector.Type == "object" {
+			if selector.Data == "build" || selector.Data == "version" || selector.Data == "task" {
+				if sub.Subscriber.Type == "jira-issue" || sub.Subscriber.Type == "evergreen-webhook" {
+					return false, fmt.Sprintf("Cannot notify by %s for %s", sub.Subscriber.Type, selector.Data)
+				}
+			}
+		}
+
+	}
+
+	return true, ""
 }
 
 func (s *subscriptionPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {

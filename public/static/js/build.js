@@ -112,7 +112,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
   var dateSorter = function(a, b){ return (+a) - (+b) }
 
   $scope.addSubscription = function() {
-    promise = addSubscriber($mdDialog, $scope.triggers);
+    promise = addSubscriber($mdDialog, $scope.triggers, {"jira-issue": true, "evergreen-webhook": true});
 
     $mdDialog.show(promise).then(function(data){
       if (data.resource_type === "BUILD") {

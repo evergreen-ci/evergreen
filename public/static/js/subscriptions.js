@@ -3,6 +3,29 @@ const SUBSCRIPTION_JIRA_ISSUE = 'jira-issue';
 const SUBSCRIPTION_SLACK = 'slack';
 const SUBSCRIPTION_EMAIL = 'email';
 const SUBSCRIPTION_EVERGREEN_WEBHOOK = 'evergreen-webhook';
+const DEFAULT_SUBSCRIPTION_METHODS = [
+    {
+        value: SUBSCRIPTION_EMAIL,
+        label: "sending an email",
+    },
+    {
+        value: SUBSCRIPTION_SLACK,
+        label: "sending a slack message",
+    },
+    {
+        value: SUBSCRIPTION_JIRA_COMMENT,
+        label: "making a comment on a JIRA issue",
+    },
+    {
+        value: SUBSCRIPTION_JIRA_ISSUE,
+        label: "making a JIRA issue",
+    },
+    {
+        value: SUBSCRIPTION_EVERGREEN_WEBHOOK,
+        label: "posting to an external server",
+    },
+    // Github status api is deliberately omitted here
+];
 
 // Return a human readable label for a given subscriber object
 function subscriberLabel(subscriber) {
@@ -33,17 +56,17 @@ function subscriberLabel(subscriber) {
 // }
 
 // Return a promise for the add subscription modal, with the list of triggers
-function addSubscriber($mdDialog, triggers) {
-    return subscriberPromise($mdDialog, "Add", triggers)
+function addSubscriber($mdDialog, triggers, omitMethods) {
+    return subscriberPromise($mdDialog, "Add", triggers, undefined, omitMethods)
 }
 
 // Return a promise for the edit subscription modal, with the list of triggers.
 // trigger and subscriber are the selected trigger and subscriber
-function editSubscriber($mdDialog, triggers, subscription) {
-    return subscriberPromise($mdDialog, "Edit", triggers, subscription)
+function editSubscriber($mdDialog, triggers, subscription, omitMethods) {
+    return subscriberPromise($mdDialog, "Edit", triggers, subscription, omitMethods)
 }
 
-function subscriberPromise($mdDialog, verb, triggers, subscription) {
+function subscriberPromise($mdDialog, verb, triggers, subscription, omitMethods) {
     return $mdDialog.confirm({
         title:"test",
         templateUrl: "/static/partials/subscription_modal.html",
@@ -53,7 +76,8 @@ function subscriberPromise($mdDialog, verb, triggers, subscription) {
         locals: {
             triggers: triggers,
             verb: verb,
-            subscription: subscription
+            subscription: subscription,
+            omit: omitMethods
         },
     });
 }
@@ -62,29 +86,13 @@ function subCtrl($scope, $mdDialog) {
     // labels should complete the following sentence fragments:
     // 'then notify by ...'
     // 'when ...'
-    $scope.subscription_methods = [
-        {
-            value: SUBSCRIPTION_EMAIL,
-            label: "sending an email",
-        },
-        {
-            value: SUBSCRIPTION_SLACK,
-            label: "sending a slack message",
-        },
-        {
-            value: SUBSCRIPTION_JIRA_COMMENT,
-            label: "making a comment on a JIRA issue",
-        },
-        {
-            value: SUBSCRIPTION_JIRA_ISSUE,
-            label: "making a JIRA issue",
-        },
-        {
-            value: SUBSCRIPTION_EVERGREEN_WEBHOOK,
-            label: "posting to an external server",
-        },
-        // Github status api is deliberately omitted here
-    ];
+
+    $scope.subscription_methods = DEFAULT_SUBSCRIPTION_METHODS;
+    if ($scope.c.omit) {
+      $scope.subscription_methods = _($scope.subscription_methods).filter(function(method){
+        return !$scope.c.omit[method.value];
+      });
+    }
 
     $scope.closeDialog = function(save) {
         if(save === true) {
