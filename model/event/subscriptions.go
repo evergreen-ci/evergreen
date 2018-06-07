@@ -85,13 +85,8 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-type groupedSubscriptions struct {
-	Type          string         `bson:"_id"`
-	Subscriptions []Subscription `bson:"subscriptions"`
-}
-
-// FindSubscriptions finds all subscriptions that match the given information,
-// returning them in a map by subscriber type
+// FindSubscriptions finds all subscriptions of matching resourceType, and whose
+// selectors match the selectors slice
 func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
 	if len(selectors) == 0 {
 		return nil, nil
