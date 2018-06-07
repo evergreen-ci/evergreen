@@ -210,6 +210,13 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
+func FindSubscriptionByIDString(id string) (*Subscription, error) {
+	if !bson.IsObjectIdHex(id) {
+		return nil, errors.Errorf("%s is not a valid ObjectID", id)
+	}
+	return FindSubscriptionByID(bson.ObjectIdHex(id))
+}
+
 func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
 	out := Subscription{}
 	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
@@ -223,6 +230,13 @@ func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
 	}
 
 	return &out, nil
+}
+
+func RemoveSubscriptionID(id string) error {
+	if !bson.IsObjectIdHex(id) {
+		return errors.Errorf("%s is not a valid ObjectID", id)
+	}
+	return RemoveSubscription(bson.ObjectIdHex(id))
 }
 
 func RemoveSubscription(id bson.ObjectId) error {

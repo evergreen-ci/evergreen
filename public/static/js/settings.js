@@ -70,11 +70,9 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     data = {
         timezone: new_tz,
         new_waterfall: new_waterfall,
-        slack_username: $scope.slack_username,
         github_user: {
             last_known_as: $scope.github_user,
-        },
-        notifications: $scope.notifications
+        }
     };
     var success = function() {
       window.location.reload();

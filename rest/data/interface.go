@@ -201,6 +201,7 @@ type Connector interface {
 	SaveSubscriptions([]event.Subscription) error
 	// GetSubscriptions returns the subscriptions that belong to a user
 	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
+	DeleteSubscription(id string) error
 
 	// Notifications
 	GetNotificationsStats() (*restModel.APIEventStats, error)

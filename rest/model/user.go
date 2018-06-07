@@ -1,6 +1,8 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
@@ -28,10 +30,10 @@ func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 }
 
 type APIUserSettings struct {
-	Timezone      APIString                  `json:"timezone"`
-	GithubUser    APIGithubUser              `json:"github_user"`
-	SlackUsername APIString                  `json:"slack_username"`
-	Notifications APINotificationPreferences `json:"notifications"`
+	Timezone      APIString                   `json:"timezone"`
+	GithubUser    *APIGithubUser              `json:"github_user"`
+	SlackUsername APIString                   `json:"slack_username"`
+	Notifications *APINotificationPreferences `json:"notifications"`
 }
 
 func (s *APIUserSettings) BuildFromService(h interface{}) error {
@@ -39,10 +41,12 @@ func (s *APIUserSettings) BuildFromService(h interface{}) error {
 	case user.UserSettings:
 		s.Timezone = ToAPIString(v.Timezone)
 		s.SlackUsername = ToAPIString(v.SlackUsername)
+		s.GithubUser = &APIGithubUser{}
 		err := s.GithubUser.BuildFromService(v.GithubUser)
 		if err != nil {
 			return err
 		}
+		s.Notifications = &APINotificationPreferences{}
 		err = s.Notifications.BuildFromService(v.Notifications)
 		if err != nil {
 			return err
@@ -84,6 +88,9 @@ type APIGithubUser struct {
 }
 
 func (g *APIGithubUser) BuildFromService(h interface{}) error {
+	if g == nil {
+		return errors.New("APIGithubUser has not been instantiated")
+	}
 	switch v := h.(type) {
 	case user.GithubUser:
 		g.UID = v.UID
@@ -95,6 +102,9 @@ func (g *APIGithubUser) BuildFromService(h interface{}) error {
 }
 
 func (g *APIGithubUser) ToService() (interface{}, error) {
+	if g == nil {
+		return user.GithubUser{}, nil
+	}
 	return user.GithubUser{
 		UID:         g.UID,
 		LastKnownAs: FromAPIString(g.LastKnownAs),
@@ -102,15 +112,26 @@ func (g *APIGithubUser) ToService() (interface{}, error) {
 }
 
 type APINotificationPreferences struct {
-	BuildBreak  APIString `json:"build_break"`
-	PatchFinish APIString `json:"patch_finish"`
+	BuildBreak    APIString `json:"build_break"`
+	BuildBreakID  APIString `json:"build_break_id,omitempty"`
+	PatchFinish   APIString `json:"patch_finish"`
+	PatchFinishID APIString `json:"patch_finish_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
+	if n == nil {
+		return errors.New("APINotificationPreferences has not been instantiated")
+	}
 	switch v := h.(type) {
 	case user.NotificationPreferences:
 		n.BuildBreak = ToAPIString(string(v.BuildBreak))
 		n.PatchFinish = ToAPIString(string(v.PatchFinish))
+		if v.BuildBreakID != "" {
+			n.BuildBreakID = ToAPIString(v.BuildBreakID.Hex())
+		}
+		if v.PatchFinishID != "" {
+			n.PatchFinishID = ToAPIString(v.PatchFinishID.Hex())
+		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
 	}
@@ -118,6 +139,9 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 }
 
 func (n *APINotificationPreferences) ToService() (interface{}, error) {
+	if n == nil {
+		return user.NotificationPreferences{}, nil
+	}
 	buildbreak := FromAPIString(n.BuildBreak)
 	patchFinish := FromAPIString(n.PatchFinish)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
@@ -126,8 +150,43 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	if !user.IsValidSubscriptionPreference(patchFinish) {
 		return nil, errors.New("Patch finish preference is not a valid type")
 	}
-	return user.NotificationPreferences{
+	preferences := user.NotificationPreferences{
 		BuildBreak:  user.UserSubscriptionPreference(buildbreak),
 		PatchFinish: user.UserSubscriptionPreference(patchFinish),
-	}, nil
+	}
+	var err error
+	if n.BuildBreakID != nil {
+		preferences.BuildBreakID, err = user.FormatObjectID(FromAPIString(n.BuildBreakID))
+		if err != nil {
+			return nil, err
+		}
+	}
+	if n.PatchFinishID != nil {
+		preferences.PatchFinishID, err = user.FormatObjectID(FromAPIString(n.PatchFinishID))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return preferences, nil
+}
+
+func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUserSettings, error) {
+	oldSettings := APIUserSettings{}
+	err := oldSettings.BuildFromService(current)
+	if err != nil {
+		return oldSettings, err
+	}
+
+	reflectOldSettings := reflect.ValueOf(&oldSettings)
+	reflectNewSettings := reflect.ValueOf(changes)
+	for i := 0; i < reflectNewSettings.NumField(); i++ {
+		propName := reflectNewSettings.Type().Field(i).Name
+		changedVal := reflectNewSettings.FieldByName(propName)
+		if changedVal.IsNil() {
+			continue
+		}
+		reflectOldSettings.Elem().FieldByName(propName).Set(changedVal)
+	}
+
+	return oldSettings, nil
 }
