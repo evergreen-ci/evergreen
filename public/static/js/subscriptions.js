@@ -57,16 +57,16 @@ function subscriberLabel(subscriber) {
 
 // Return a promise for the add subscription modal, with the list of triggers
 function addSubscriber($mdDialog, triggers, omitMethods) {
-    return subscriberPromise($mdDialog, "Add", triggers, undefined, omitMethods)
+    return subscriberPromise($mdDialog, "Add", triggers, omitMethods)
 }
 
 // Return a promise for the edit subscription modal, with the list of triggers.
 // trigger and subscriber are the selected trigger and subscriber
 function editSubscriber($mdDialog, triggers, subscription, omitMethods) {
-    return subscriberPromise($mdDialog, "Edit", triggers, subscription, omitMethods)
+    return subscriberPromise($mdDialog, "Edit", triggers, omitMethods, subscription)
 }
 
-function subscriberPromise($mdDialog, verb, triggers, subscription, omitMethods) {
+function subscriberPromise($mdDialog, verb, triggers, omitMethods, subscription) {
     return $mdDialog.confirm({
         title:"test",
         templateUrl: "/static/partials/subscription_modal.html",

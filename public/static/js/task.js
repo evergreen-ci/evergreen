@@ -286,7 +286,10 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         ];
 
         $scope.addSubscription = function() {
-          promise = addSubscriber($mdDialog, $scope.triggers, {"jira-issue": true, "evergreen-webhook": true});
+          omitMethods = {};
+          omitMethods[SUBSCRIPTION_JIRA_ISSUE] = true;
+          omitMethods[SUBSCRIPTION_EVERGREEN_WEBHOOK] = true;
+          promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
 
           $mdDialog.show(promise).then(function(data){
             addSelectorsAndOwnerType(data, "task", $scope.task.id);

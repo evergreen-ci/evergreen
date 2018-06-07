@@ -268,4 +268,26 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
 	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot notify by jira-issue for version")
+
+	//test that project-level subscriptions are allowed
+	body = []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "project",
+			"data": "mci",
+		}},
+		"subscriber": map[string]string{
+			"type":   "jira-issue",
+			"target": "ABC",
+		},
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 }
