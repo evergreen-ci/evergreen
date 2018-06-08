@@ -20,7 +20,8 @@ function average (arr){
 
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $log, $q, PerfChartService, Stitch
+  $scope, $window, $http, $location, $log, $q, PerfChartService,
+  Stitch, STITCH_CONFIG
 ) {
     /* for debugging
     $sce, $compile){
@@ -470,9 +471,10 @@ mciModule.controller('PerfController', function PerfController(
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
         // This code loads change points for current task from the mdb cloud
-        var changePointsQ = Stitch.query(function(db) {
+        var changePointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
           return db
-            .collection('change_points')
+            .db(STITCH_CONFIG.PERF.DB_PERF)
+            .collection(STITCH_CONFIG.PERF.COLL_CHANGE_POINTS)
             .find({
               project: $scope.task.branch,
               task: $scope.task.display_name,
