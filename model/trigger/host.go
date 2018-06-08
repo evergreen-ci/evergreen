@@ -12,43 +12,52 @@ import (
 )
 
 func init() {
-	registry.AddTrigger(event.ResourceTypeHost,
-		hostValidator(hostSpawnOutcome),
-	)
-	registry.AddPrefetch(event.ResourceTypeHost, hostFetch)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeHostTriggers)
 }
 
-func hostFetch(e *event.EventLogEntry) (interface{}, error) {
-	p, err := host.FindOneId(e.ResourceId)
+type hostTriggers struct {
+	event    *event.EventLogEntry
+	data     *event.HostEventData
+	host     *host.Host
+	uiConfig evergreen.UIConfig
+
+	base
+}
+
+func makeHostTriggers() eventHandler {
+	t := &hostTriggers{}
+	t.base.triggers = map[string]trigger{
+		triggerOutcome: t.hostSpawnOutcome,
+	}
+	return t
+}
+
+func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
+	var err error
+	t.host, err = host.FindOneId(e.ResourceId)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch host")
+		return errors.Wrapf(err, "failed to fetch host '%s'", e.ResourceId)
 	}
-	if p == nil {
-		return nil, errors.New("couldn't find host")
+	if t.host == nil {
+		return errors.Wrapf(err, "can't find host'%s'", e.ResourceId)
 	}
 
-	return p, nil
+	data, ok := e.Data.(*event.HostEventData)
+	if !ok {
+		return errors.Wrapf(err, "patch '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+	}
+
+	t.data = data
+	t.event = e
+
+	return nil
 }
 
-func hostValidator(t func(e *event.HostEventData, h *host.Host) (*notificationGenerator, error)) trigger {
-	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
-		h, ok := object.(*host.Host)
-		if !ok {
-			return nil, errors.New("expected a host, received unknown type")
-		}
-		if h == nil {
-			return nil, errors.New("expected a host, received nil data")
-		}
-
-		return t(e, h)
-	}
-}
-
-func hostSelectors(h *host.Host) []event.Selector {
+func (t *hostTriggers) Selectors() []event.Selector {
 	return []event.Selector{
 		{
 			Type: selectorID,
-			Data: h.Id,
+			Data: t.host.Id,
 		},
 		{
 			Type: selectorObject,
@@ -57,63 +66,46 @@ func hostSelectors(h *host.Host) []event.Selector {
 	}
 }
 
-func hostSpawnOutcome(e *event.EventLogEntry, h *host.Host) (*notificationGenerator, error) {
-	const name = "spawn-outcome"
-
-	if !h.UserHost || e.EventType == event.EventHostProvisioned || e.EventType == event.EventHostProvisionError {
+func (t *hostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	if !t.host.UserHost || t.event.EventType == event.EventHostProvisioned || t.event.EventType == event.EventHostProvisionError {
 		return nil, nil
 	}
 
-	uiConfig := evergreen.UIConfig{}
-	if err := uiConfig.Get(); err != nil {
-		return nil, errors.Wrap(err, "failed to process spawn-outcome trigger")
-	}
-
-	text := fmt.Sprintf("Host with distro '%s' has spawned", h.Distro)
+	text := fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro)
 
 	var attachment message.SlackAttachment
-	if e.EventType == event.EventHostProvisioned {
+	if t.event.EventType == event.EventHostProvisioned {
 		attachment = message.SlackAttachment{
 			Title:     "Requested host has succesfully spawned",
-			TitleLink: fmt.Sprintf("%s/host/%s", uiConfig.Url, h.Id),
+			TitleLink: fmt.Sprintf("%s/host/%s", t.uiConfig.Url, t.host.Id),
 			Color:     "good",
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
 					Title: "distro",
-					Value: h.Distro,
+					Value: t.host.Distro.Id,
 					Short: true,
 				},
 				&message.SlackAttachmentField{
 					Title: "ssh command",
-					Value: fmt.Sprintf("ssh %s@%s", h.User, h.Host),
+					Value: fmt.Sprintf("ssh %s@%s", t.host.User, t.host.Host),
 				},
 			},
 		}
 
-	} else if e.EventType == event.EventHostProvisionError {
+	} else if t.event.EventType == event.EventHostProvisionError {
 		attachment = message.SlackAttachment{
 			Title:     "Requested host has failed to provision",
-			TitleLink: fmt.Sprintf("%s/spawn", uiConfig.Url),
+			TitleLink: fmt.Sprintf("%s/spawn", t.uiConfig.Url),
 			Color:     "danger",
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
 					Title: "distro",
-					Value: h.Distro,
+					Value: t.host.Distro.Id,
 					Short: true,
 				},
 			},
 		}
 	}
 
-	gen := &notificationGenerator{
-		triggerName: name,
-		selectors:   hostSelectors(h),
-		slack: &notification.SlackPayload{
-			Attachments: []message.SlackAttachment{
-				attachment,
-			},
-		},
-	}
-
-	return gen, nil
+	return nil, nil
 }
