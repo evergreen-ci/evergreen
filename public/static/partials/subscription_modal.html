@@ -6,9 +6,14 @@
             </div>
             <div class="modal-body" style="padding-left:10px; padding-right:10px;">
                 <p>when
-                <select ng-model="trigger" ng-options="t as t.label for t in c.triggers"></select>
+                <select ng-model="trigger" ng-change="bindTrigger()" ng-options="t as t.label for t in c.triggers"></select>
                 </p>
-
+                <p ng-show="extraFields">
+                  <div ng-repeat="field in extraFields">
+                    <span>[[field.text]]</span>
+                    <input type="text" ng-model="extraData[field.key]"/>
+                  </div>
+                </p>
                 <p>
                 then notify by:
                 <select ng-model="method" ng-options="t as t.label for t in subscription_methods track by t.value"></select>

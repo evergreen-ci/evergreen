@@ -92,7 +92,8 @@ function subCtrl($scope, $mdDialog) {
       $scope.subscription_methods = _($scope.subscription_methods).filter(function(method){
         return !$scope.c.omit[method.value];
       });
-    }
+    };
+    $scope.extraData = {};
 
     $scope.closeDialog = function(save) {
         if(save === true) {
@@ -107,6 +108,7 @@ function subCtrl($scope, $mdDialog) {
             d.resource_type = $scope.trigger.resource_type;
             d.trigger = $scope.trigger.trigger;
             d.trigger_label = $scope.trigger.label;
+            d.trigger_data = $scope.extraData;
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -157,6 +159,15 @@ function subCtrl($scope, $mdDialog) {
 
         return false;
     };
+
+
+    $scope.bindTrigger = function() {
+      _.each($scope.c.triggers, function(trigger){
+        if (trigger.trigger === $scope.trigger.trigger) {
+          $scope.extraFields = trigger.extraFields;
+          return;
+        }
+      });
 
     $scope.method = {};
     $scope.targets = {};
@@ -221,4 +232,5 @@ function addInSelectorsAndOwnerType(subscription, type, inType, id) {
     data: id
   });
   subscription.owner_type = "person";
+}
 }
