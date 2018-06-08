@@ -13,7 +13,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -755,6 +754,19 @@ func FindAllContainers() ([]Host, error) {
 	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding containers")
+	}
+
+	return hosts, nil
+}
+
+// FindAllParents finds all the parents
+func FindAllParents() ([]Host, error) {
+	query := db.Query(bson.M{
+		HasContainersKey: true,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding parents")
 	}
 
 	return hosts, nil

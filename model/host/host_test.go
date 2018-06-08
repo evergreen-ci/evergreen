@@ -1189,6 +1189,98 @@ func TestFindAllContainersEmpty(t *testing.T) {
 	assert.Empty(containers)
 }
 
+func TestFindAllParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:            "host1",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
+	}
+	host3 := &Host{
+		Id:     "host3",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostTerminated,
+	}
+	host4 := &Host{
+		Id:            "host4",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
+	}
+	host6 := &Host{
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
+	}
+	host7 := &Host{
+		Id:            "host7",
+		Distro:        distro.Distro{Id: d2},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host8 := &Host{
+		Id:            "host8",
+		Distro:        distro.Distro{Id: d2},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	containers, err := FindAllParents()
+	assert.NoError(err)
+	assert.Equal(4, len(containers))
+
+}
+
+func TestFindAllParentsEmpty(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:     "host1",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostRunning,
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+
+	containers, err := FindAllParents()
+	assert.NoError(err)
+	assert.Empty(containers)
+}
+
 func TestGetContainers(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
