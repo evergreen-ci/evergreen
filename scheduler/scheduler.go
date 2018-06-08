@@ -216,8 +216,12 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 			}
 
 			// if there are containers to spawn, do not spawn parents in the same run
+			// instead spawn as many containers as possible now
 			if numHostsToSpawn > 0 {
-				numNewParents = 0
+				numAvailableContainers := len(CurrentParents)*d.MaxContainers - len(ExistingContainers)
+				if numHostsToSpawn > numAvailableContainers {
+					numHostsToSpawn = numAvailableContainers
+				}
 			}
 
 		}
@@ -345,7 +349,7 @@ func GenerateParentHostOptions() cloud.HostOptions {
 	}
 }
 
-// FindAvailableParent finds a parent host that can accomodate container
+// FindAvailableParent finds a parent host that can accommodate container
 // based on oldest parent
 func FindAvailableParent(d distro.Distro) (host.Host, error) {
 	AllParents, err := host.FindAllRunningParents()
@@ -368,7 +372,7 @@ func FindAvailableParent(d distro.Distro) (host.Host, error) {
 }
 
 // CalcNewParentsNeeded returns the number of additional parents needed to
-// accomodate new containers
+// accommodate new containers
 func CalcNewParentsNeeded(numCurrentParents, numExistingContainers, numContainersNeeded int, d distro.Distro) int {
 	if numCurrentParents*d.MaxContainers <= numExistingContainers+numContainersNeeded {
 		return int(math.Ceil(float64(numContainersNeeded) / float64(d.MaxContainers)))
