@@ -25,7 +25,7 @@
  *   will be stored in the service context
 */
 mciModule.factory('Stitch', function(
-  $q, STITCH_CONFIG
+  $q
 ) {
   var dbCache = {}
 
