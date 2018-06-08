@@ -27,9 +27,6 @@ var (
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
-
-	groupedSubscriptionsTypeKey          = bsonutil.MustHaveTag(groupedSubscriptions{}, "Type")
-	groupedSubscriptionsSubscriptionsKey = bsonutil.MustHaveTag(groupedSubscriptions{}, "Subscriptions")
 )
 
 type OwnerType string
@@ -85,14 +82,9 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-type groupedSubscriptions struct {
-	Type          string         `bson:"_id"`
-	Subscriptions []Subscription `bson:"subscriptions"`
-}
-
-// FindSubscriptions finds all subscriptions that match the given information,
-// returning them in a map by subscriber type
-func FindSubscriptions(subscriptionType, triggerType string, selectors []Selector) (map[string][]Subscription, error) {
+// FindSubscriptions finds all subscriptions of matching resourceType, and whose
+// selectors match the selectors slice
+func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
 	if len(selectors) == 0 {
 		return nil, nil
 	}
@@ -100,8 +92,7 @@ func FindSubscriptions(subscriptionType, triggerType string, selectors []Selecto
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				subscriptionTypeKey:    subscriptionType,
-				subscriptionTriggerKey: triggerType,
+				subscriptionTypeKey: resourceType,
 			},
 		},
 		{
@@ -116,31 +107,20 @@ func FindSubscriptions(subscriptionType, triggerType string, selectors []Selecto
 				"keep": true,
 			},
 		},
-		{
-			"$group": bson.M{
-				"_id": "$" + bsonutil.GetDottedKeyName(subscriptionSubscriberKey, subscriberTypeKey),
-				"subscriptions": bson.M{
-					"$push": "$$ROOT",
-				},
-			},
-		},
 	}
 
-	gs := []groupedSubscriptions{}
-	if err := db.Aggregate(SubscriptionsCollection, pipeline, &gs); err != nil {
+	rawSubs := []Subscription{}
+	if err := db.Aggregate(SubscriptionsCollection, pipeline, &rawSubs); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 
-	out := map[string][]Subscription{}
-	for i := range gs {
-		for j := range gs[i].Subscriptions {
-			sub := &gs[i].Subscriptions[j]
-			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub.RegexSelectors) {
-				continue
-			}
-
-			out[gs[i].Type] = append(out[gs[i].Type], *sub)
+	out := []Subscription{}
+	for i := range rawSubs {
+		if len(rawSubs[i].RegexSelectors) > 0 && !regexSelectorsMatch(selectors, rawSubs[i].RegexSelectors) {
+			continue
 		}
+
+		out = append(out, rawSubs[i])
 	}
 
 	return out, nil
@@ -210,6 +190,13 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
+func FindSubscriptionByIDString(id string) (*Subscription, error) {
+	if !bson.IsObjectIdHex(id) {
+		return nil, errors.Errorf("%s is not a valid ObjectID", id)
+	}
+	return FindSubscriptionByID(bson.ObjectIdHex(id))
+}
+
 func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
 	out := Subscription{}
 	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
@@ -223,6 +210,13 @@ func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
 	}
 
 	return &out, nil
+}
+
+func RemoveSubscriptionID(id string) error {
+	if !bson.IsObjectIdHex(id) {
+		return errors.Errorf("%s is not a valid ObjectID", id)
+	}
+	return RemoveSubscription(bson.ObjectIdHex(id))
 }
 
 func RemoveSubscription(id bson.ObjectId) error {

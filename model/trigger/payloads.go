@@ -27,6 +27,10 @@ const (
 	selectorStatus    = "status"
 	selectorInVersion = "in-version"
 	selectorInBuild   = "in-build"
+
+	triggerOutcome = "outcome"
+	triggerFailure = "failure"
+	triggerSuccess = "success"
 )
 
 type commonTemplateData struct {
@@ -79,7 +83,7 @@ func makeHeaders(selectors []event.Selector) http.Header {
 	return headers
 }
 
-func emailPayload(t commonTemplateData) (*message.Email, error) {
+func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	bodyTmpl, err := template.New("emailBody").Parse(emailTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse body template")
@@ -127,7 +131,7 @@ func webhookPayload(api restModel.Model, headers http.Header) (*util.EvergreenWe
 	}, nil
 }
 
-func jiraComment(t commonTemplateData) (*string, error) {
+func jiraComment(t *commonTemplateData) (*string, error) {
 	commentTmpl, err := ttemplate.New("jira-comment").Parse(jiraCommentTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse jira comment template")
@@ -142,7 +146,7 @@ func jiraComment(t commonTemplateData) (*string, error) {
 	return &comment, nil
 }
 
-func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
+func jiraIssue(t *commonTemplateData) (*message.JiraIssue, error) {
 	const maxSummary = 254
 
 	comment, err := jiraComment(t)
@@ -173,7 +177,7 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 	return &issue, nil
 }
 
-func slack(t commonTemplateData) (*notification.SlackPayload, error) {
+func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")
@@ -209,18 +213,12 @@ func truncateString(s string, capacity int) (string, string) {
 	return head, tail
 }
 
-// For patches, versions, builds, and tasks, the outcome, success and  failure
-// triggers all have the same structure. The common generator returned by this
-// function is suitable for creating payloads for all of these
-func makeCommonGenerator(triggerName string, selectors []event.Selector,
-	data commonTemplateData) (*notificationGenerator, error) {
-	gen := notificationGenerator{
-		triggerName: triggerName,
-		selectors:   selectors,
-	}
-	gen.selectors = append(gen.selectors, event.Selector{
+func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
+	data *commonTemplateData) (interface{}, error) {
+
+	selectors = append(selectors, event.Selector{
 		Type: "trigger",
-		Data: triggerName,
+		Data: sub.Trigger,
 	}, event.Selector{
 		Type: selectorStatus,
 		Data: data.PastTenseStatus,
@@ -228,43 +226,37 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 
 	data.Headers = makeHeaders(selectors)
 
-	var err error
-	gen.evergreenWebhook, err = webhookPayload(data.apiModel, data.Headers)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building webhook payload")
-	}
-
-	gen.email, err = emailPayload(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building email payload")
-	}
-
-	gen.jiraComment, err = jiraComment(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira comment")
-	}
-	gen.jiraIssue, err = jiraIssue(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira issue")
-	}
-
-	if len(data.githubDescription) != 0 {
-		gen.githubStatusAPI = &message.GithubStatus{
-			Context:     "evergreen",
+	switch sub.Subscriber.Type {
+	case event.GithubPullRequestSubscriberType:
+		if len(data.githubDescription) == 0 {
+			return nil, errors.Errorf("Github subscriber not supported for trigger: '%s'", sub.Trigger)
+		}
+		msg := &message.GithubStatus{
+			Context:     data.githubContext,
 			State:       data.githubState,
 			URL:         data.URL,
 			Description: data.githubDescription,
 		}
 		if len(data.githubContext) != 0 {
-			gen.githubStatusAPI.Context = data.githubContext
+			msg.Context = data.githubContext
 		}
+		return msg, nil
+
+	case event.JIRAIssueSubscriberType:
+		return jiraIssue(data)
+
+	case event.JIRACommentSubscriberType:
+		return jiraComment(data)
+
+	case event.EvergreenWebhookSubscriberType:
+		return webhookPayload(data.apiModel, data.Headers)
+
+	case event.EmailSubscriberType:
+		return emailPayload(data)
+
+	case event.SlackSubscriberType:
+		return slack(data)
 	}
 
-	// TODO improve slack body with additional info, like failing variants
-	gen.slack, err = slack(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building slack message")
-	}
-
-	return &gen, nil
+	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
 }

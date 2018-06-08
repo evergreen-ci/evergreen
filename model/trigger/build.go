@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -17,134 +18,7 @@ const (
 )
 
 func init() {
-	registry.AddTrigger(event.ResourceTypeBuild,
-		buildValidator(buildOutcome),
-		buildValidator(buildFailure),
-		buildValidator(buildSuccess),
-	)
-	registry.AddPrefetch(event.ResourceTypeBuild, buildFetch)
-}
-
-func buildFetch(e *event.EventLogEntry) (interface{}, error) {
-	p, err := build.FindOne(build.ById(e.ResourceId))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch build")
-	}
-	if p == nil {
-		return nil, errors.New("couldn't find build")
-	}
-
-	return p, nil
-}
-
-func buildValidator(t func(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error)) trigger {
-	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
-		b, ok := object.(*build.Build)
-		if !ok {
-			return nil, errors.New("expected a build, received unknown type")
-		}
-		if b == nil {
-			return nil, errors.New("expected a build, received nil data")
-		}
-
-		data, ok := e.Data.(*event.BuildEventData)
-		if !ok {
-			return nil, errors.New("expected build event data")
-		}
-
-		return t(data, b)
-	}
-}
-
-func buildSelectors(b *build.Build) []event.Selector {
-	return []event.Selector{
-		{
-			Type: selectorID,
-			Data: b.Id,
-		},
-		{
-			Type: selectorObject,
-			Data: objectBuild,
-		},
-		{
-			Type: selectorProject,
-			Data: b.Project,
-		},
-		{
-			Type: selectorRequester,
-			Data: b.Requester,
-		},
-		{
-			Type: selectorInVersion,
-			Data: b.Version,
-		},
-	}
-}
-
-func generatorFromBuild(triggerName string, b *build.Build, status string) (*notificationGenerator, error) {
-	ui := evergreen.UIConfig{}
-	if err := ui.Get(); err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch ui config")
-	}
-
-	api := restModel.APIBuild{}
-	if err := api.BuildFromService(*b); err != nil {
-		return nil, errors.Wrap(err, "error building json model")
-	}
-
-	selectors := buildSelectors(b)
-	data := commonTemplateData{
-		ID:              b.Id,
-		Object:          objectBuild,
-		Project:         b.Project,
-		URL:             fmt.Sprintf("%s/build/%s", ui.Url, b.Id),
-		PastTenseStatus: status,
-		apiModel:        &api,
-	}
-	if b.Requester == evergreen.GithubPRRequester && b.Status == status {
-		data.githubContext = fmt.Sprintf("evergreen/%s", b.BuildVariant)
-		data.githubState = message.GithubStateFailure
-		data.githubDescription = taskStatusToDesc(b)
-	}
-	if status == evergreen.BuildSucceeded {
-		data.githubState = message.GithubStateSuccess
-		data.PastTenseStatus = "succeeded"
-	}
-
-	return makeCommonGenerator(triggerName, selectors, data)
-}
-
-func buildOutcome(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error) {
-	const name = "outcome"
-
-	if e.Status != evergreen.BuildSucceeded && e.Status != evergreen.BuildFailed {
-		return nil, nil
-	}
-
-	gen, err := generatorFromBuild(name, b, e.Status)
-	return gen, err
-}
-
-func buildFailure(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error) {
-	const name = "failure"
-
-	if e.Status != evergreen.BuildFailed {
-		return nil, nil
-	}
-
-	gen, err := generatorFromBuild(name, b, e.Status)
-	return gen, err
-}
-
-func buildSuccess(e *event.BuildEventData, b *build.Build) (*notificationGenerator, error) {
-	const name = "success"
-
-	if e.Status != evergreen.BuildSucceeded {
-		return nil, nil
-	}
-
-	gen, err := generatorFromBuild(name, b, e.Status)
-	return gen, err
+	registry.registerEventHandler(event.ResourceTypeBuild, event.BuildStateChange, makeBuildTriggers)
 }
 
 func taskStatusToDesc(b *build.Build) string {
@@ -207,4 +81,136 @@ func taskStatusSubformat(n int, verb string) string {
 
 func appendTime(b *build.Build, txt string) string {
 	return fmt.Sprintf("%s in %s", txt, b.FinishTime.Sub(b.StartTime).String())
+}
+
+type buildTriggers struct {
+	event    *event.EventLogEntry
+	data     *event.BuildEventData
+	build    *build.Build
+	uiConfig evergreen.UIConfig
+
+	base
+}
+
+func makeBuildTriggers() eventHandler {
+	t := &buildTriggers{}
+	t.base.triggers = map[string]trigger{
+		triggerOutcome: t.buildOutcome,
+		triggerFailure: t.buildFailure,
+		triggerSuccess: t.buildSuccess,
+	}
+	return t
+}
+
+func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
+	var err error
+	if err = t.uiConfig.Get(); err != nil {
+		return errors.Wrap(err, "Failed to fetch ui config")
+	}
+
+	t.build, err = build.FindOne(build.ById(e.ResourceId))
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch build")
+	}
+	if t.build == nil {
+		return errors.New("couldn't find build")
+	}
+
+	var ok bool
+	t.data, ok = e.Data.(*event.BuildEventData)
+	if !ok {
+		return errors.Wrapf(err, "build '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+	}
+	t.event = e
+
+	return nil
+}
+
+func (t *buildTriggers) Selectors() []event.Selector {
+	return []event.Selector{
+		{
+			Type: selectorID,
+			Data: t.build.Id,
+		},
+		{
+			Type: selectorObject,
+			Data: objectBuild,
+		},
+		{
+			Type: selectorProject,
+			Data: t.build.Project,
+		},
+		{
+			Type: selectorRequester,
+			Data: t.build.Requester,
+		},
+		{
+			Type: selectorInVersion,
+			Data: t.build.Version,
+		},
+	}
+}
+
+func (t *buildTriggers) buildOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.BuildSucceeded && t.data.Status != evergreen.BuildFailed {
+		return nil, nil
+	}
+
+	return t.generate(sub)
+}
+
+func (t *buildTriggers) buildFailure(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.BuildFailed {
+		return nil, nil
+	}
+
+	return t.generate(sub)
+}
+
+func (t *buildTriggers) buildSuccess(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.BuildSucceeded {
+		return nil, nil
+	}
+
+	return t.generate(sub)
+}
+
+func (t *buildTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
+	api := restModel.APIBuild{}
+	if err := api.BuildFromService(*t.build); err != nil {
+		return nil, errors.Wrap(err, "error building json model")
+	}
+
+	data := commonTemplateData{
+		ID:              t.build.Id,
+		Object:          objectBuild,
+		Project:         t.build.Project,
+		URL:             fmt.Sprintf("%s/build/%s", t.uiConfig.Url, t.build.Id),
+		PastTenseStatus: t.data.Status,
+		apiModel:        &api,
+	}
+	if t.build.Requester == evergreen.GithubPRRequester && t.build.Status == t.data.Status {
+		data.githubContext = fmt.Sprintf("evergreen/%s", t.build.BuildVariant)
+		data.githubState = message.GithubStateFailure
+		data.githubDescription = taskStatusToDesc(t.build)
+	}
+	if t.data.Status == evergreen.BuildSucceeded {
+		data.githubState = message.GithubStateSuccess
+		data.PastTenseStatus = "succeeded"
+	}
+	return &data, nil
+}
+
+func (t *buildTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
+	data, err := t.makeData(sub)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to collect build data")
+	}
+
+	payload, err := makeCommonPayload(sub, t.Selectors(), data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build notification")
+	}
+
+	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
 }

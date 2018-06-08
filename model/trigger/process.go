@@ -15,36 +15,34 @@ import (
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification, error) {
-	prefetch, triggers := registry.Triggers(e.ResourceType)
-	if len(triggers) == 0 {
-		return nil, errors.Errorf("no triggers for event type: '%s'", e.ResourceType)
+	h := registry.eventHandler(e.ResourceType)
+	if h == nil {
+		return nil, errors.Errorf("unknown event ResourceType: '%s'", e.ResourceType)
 	}
 
-	data, err := prefetch(e)
+	if err := h.Fetch(e); err != nil {
+		return nil, errors.Wrapf(err, "error fetching data for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+	}
+
+	subscriptions, err := event.FindSubscriptions(e.ResourceType, h.Selectors())
 	if err != nil {
-		return nil, errors.Wrapf(err, "prefetch function for '%s' failed", e.ResourceType)
+		return nil, errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+	}
+	if len(subscriptions) == 0 {
+		return nil, nil
 	}
 
-	notifications := []notification.Notification{}
+	notifications := make([]notification.Notification, 0, len(subscriptions))
+
 	catcher := grip.NewSimpleCatcher()
-	for _, f := range triggers {
-		gen, err := f(e, data)
-		if err != nil {
-			catcher.Add(err)
-			continue
-		}
-		if gen == nil {
+	for i := range subscriptions {
+		n, err := h.Process(&subscriptions[i])
+		catcher.Add(err)
+		if err != nil || n == nil {
 			continue
 		}
 
-		notes, err := gen.generate(e)
-		if err != nil {
-			catcher.Add(err)
-			continue
-		}
-		if len(notes) > 0 {
-			notifications = append(notifications, notes...)
-		}
+		notifications = append(notifications, *n)
 	}
 
 	return notifications, catcher.Resolve()
