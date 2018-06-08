@@ -23,11 +23,7 @@ func (t *Task) ResultStatus() string {
 	} else if t.Status == evergreen.TaskStarted {
 		status = evergreen.TaskStarted
 	} else if t.Status == evergreen.TaskSucceeded {
-		if t.HasFailedTests() {
-			status = evergreen.TaskFailed
-		} else {
-			status = evergreen.TaskSucceeded
-		}
+		status = evergreen.TaskSucceeded
 	} else if t.Status == evergreen.TaskFailed {
 		status = evergreen.TaskFailed
 		if t.Details.Type == "system" {
