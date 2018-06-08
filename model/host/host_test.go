@@ -1115,7 +1115,7 @@ func TestFindAllContainers(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := FindAllContainers()
+	containers, err := FindAllRunningContainers()
 	assert.NoError(err)
 	assert.Equal(2, len(containers))
 }
@@ -1179,7 +1179,7 @@ func TestFindAllContainersEmpty(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := FindAllContainers()
+	containers, err := FindAllRunningContainers()
 	assert.NoError(err)
 	assert.Empty(containers)
 }
