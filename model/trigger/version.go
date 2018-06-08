@@ -138,7 +138,7 @@ func (t *versionTriggers) generate(sub *event.Subscription) (*notification.Notif
 		return nil, errors.Wrap(err, "failed to collect version data")
 	}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), *data)
+	payload, err := makeCommonPayload(sub, t.Selectors(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

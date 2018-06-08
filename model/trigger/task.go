@@ -189,7 +189,7 @@ func (t *taskTriggers) generate(sub *event.Subscription) (*notification.Notifica
 		return nil, errors.Wrap(err, "failed to collect task data")
 	}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), *data)
+	payload, err := makeCommonPayload(sub, t.Selectors(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

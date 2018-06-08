@@ -207,7 +207,7 @@ func (t *buildTriggers) generate(sub *event.Subscription) (*notification.Notific
 		return nil, errors.Wrap(err, "failed to collect build data")
 	}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), *data)
+	payload, err := makeCommonPayload(sub, t.Selectors(), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build notification")
 	}

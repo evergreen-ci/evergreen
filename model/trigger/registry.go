@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
@@ -19,15 +18,15 @@ type triggerRegistry struct {
 	lock     sync.RWMutex
 }
 
-func (r *triggerRegistry) eventHandler(e *event.EventLogEntry) eventHandler {
+func (r *triggerRegistry) eventHandler(resourceType string) eventHandler {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	f, ok := r.handlers[e.ResourceType]
+	f, ok := r.handlers[resourceType]
 	if !ok {
 		grip.Error(message.Fields{
 			"message": "unknown event handler",
-			"r_type":  e.ResourceType,
+			"r_type":  resourceType,
 			"cause":   "programmer error",
 		})
 		return nil
@@ -45,4 +44,13 @@ func (r *triggerRegistry) registerEventHandler(resourceType, eventData string, h
 	}
 
 	r.handlers[resourceType] = h
+}
+
+func ValidateTrigger(resourceType, triggerName string) bool {
+	h := registry.eventHandler(resourceType)
+	if h == nil {
+		return false
+	}
+
+	return h.ValidateTrigger(triggerName)
 }

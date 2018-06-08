@@ -83,7 +83,7 @@ func makeHeaders(selectors []event.Selector) http.Header {
 	return headers
 }
 
-func emailPayload(t commonTemplateData) (*message.Email, error) {
+func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	bodyTmpl, err := template.New("emailBody").Parse(emailTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse body template")
@@ -131,7 +131,7 @@ func webhookPayload(api restModel.Model, headers http.Header) (*util.EvergreenWe
 	}, nil
 }
 
-func jiraComment(t commonTemplateData) (*string, error) {
+func jiraComment(t *commonTemplateData) (*string, error) {
 	commentTmpl, err := ttemplate.New("jira-comment").Parse(jiraCommentTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse jira comment template")
@@ -146,7 +146,7 @@ func jiraComment(t commonTemplateData) (*string, error) {
 	return &comment, nil
 }
 
-func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
+func jiraIssue(t *commonTemplateData) (*message.JiraIssue, error) {
 	const maxSummary = 254
 
 	comment, err := jiraComment(t)
@@ -177,7 +177,7 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 	return &issue, nil
 }
 
-func slack(t commonTemplateData) (*notification.SlackPayload, error) {
+func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")
@@ -214,7 +214,7 @@ func truncateString(s string, capacity int) (string, string) {
 }
 
 func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
-	data commonTemplateData) (interface{}, error) {
+	data *commonTemplateData) (interface{}, error) {
 
 	selectors = append(selectors, event.Selector{
 		Type: "trigger",

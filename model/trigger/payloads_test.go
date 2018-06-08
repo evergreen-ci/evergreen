@@ -39,7 +39,7 @@ func (s *payloadSuite) SetupTest() {
 }
 
 func (s *payloadSuite) TestEmail() {
-	m, err := emailPayload(s.t)
+	m, err := emailPayload(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
@@ -63,7 +63,7 @@ func (s *payloadSuite) TestEvergreenWebhook() {
 }
 
 func (s *payloadSuite) TestJIRAComment() {
-	m, err := jiraComment(s.t)
+	m, err := jiraComment(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
@@ -71,7 +71,7 @@ func (s *payloadSuite) TestJIRAComment() {
 }
 
 func (s *payloadSuite) TestJIRAIssue() {
-	m, err := jiraIssue(s.t)
+	m, err := jiraIssue(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
@@ -80,7 +80,7 @@ func (s *payloadSuite) TestJIRAIssue() {
 }
 
 func (s *payloadSuite) TestSlack() {
-	m, err := slack(s.t)
+	m, err := slack(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
