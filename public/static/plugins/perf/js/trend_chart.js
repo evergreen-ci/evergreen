@@ -449,10 +449,11 @@ var drawSingleTrendChart = function(params) {
         updateActiveLevels()
         updateYScaleDomain()
         updateYAxis()
-        redrawLegend()
         redrawLines()
+        redrawLegend()
         redrawRefLines()
         redrawTooltip()
+        redrawChangePoints()
       })
 
     redrawLegend()
@@ -482,8 +483,10 @@ var drawSingleTrendChart = function(params) {
   var chartG = svg.append('svg:g')
     .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top))
 
+  var linesG = chartG.append('g').attr({class: 'lines-g'})
+
   function redrawLines() {
-    var lines = chartG.selectAll('path')
+    var lines = linesG.selectAll('path')
       .data(activeLevels)
 
     lines
@@ -609,15 +612,32 @@ var drawSingleTrendChart = function(params) {
 
   redrawRefLines()
 
-  // Render change points
   var changePointsG = chartG.append('g')
     .attr('class', 'g-change-points')
-    .selectAll('g')
-    .data(changePointForLevel)
-    .enter()
-    .append('g')
+
+  function redrawChangePoints() {
+    // Render change points
+    var changePoints = changePointsG.selectAll('g.change-point')
+      .data(_.filter(changePointForLevel, function(d) {
+        return d.level.isActive
+      }))
+
+    changePoints
+      .enter()
+      .append('g')
+        .attr({
+          class: 'point change-point',
+        })
+      .append('image') // Plus sign image for change points
+        .attr({
+          width: cfg.points.changePointSize,
+          height: cfg.points.changePointSize,
+          transform: d3Translate(-cfg.points.changePointSize / 2),
+          'xlink:href': '/static/img/plus_sign.png',
+        })
+
+    changePoints
       .attr({
-        class: 'point',
         transform: function(d) {
           var idx = _.findIndex(series, function(sample) {
             return sample && sample.revision == d.changePoint.revision
@@ -630,14 +650,10 @@ var drawSingleTrendChart = function(params) {
         },
       })
 
-  // Plus sign image for change points
-  changePointsG.append('image')
-    .attr({
-      width: cfg.points.changePointSize,
-      height: cfg.points.changePointSize,
-      transform: d3Translate(-cfg.points.changePointSize / 2),
-      'xlink:href': '/static/img/plus_sign.png',
-    })
+    changePoints.exit().remove()
+  }
+
+  redrawChangePoints()
 
   // Contains elements for hover behavior
   var focusG = chartG.append('svg:g')
