@@ -1,3 +1,29 @@
+/* 
+ * Wraps stitch.js with more convenient interface
+ * Usage:
+ * 
+ * Stitch.use(config).query(
+ *   (db) -> db./your query/.execute()
+ * ).then((docs) -> ...)
+ *
+ * API:
+ * * use(config) - sets config for stitch client.
+ *     returns self (this service)
+ *     `config` is object (constant) with following required fields:
+ *       - appId (e.g. 'evergreen_perf_plugin-wwdoa')
+ *       - serviceType (Looks like it always should be 'mongodb')
+ *       - serviceName (e.g. 'mongodb-atlas')
+ * * query((db) ->) - executes stitch query (db) -> { }
+ *     returns promise with list of docs
+ * * getDB() - returns stitch db object for given contextual `config`
+ *     Kinda internal function and shouldb't be used normally
+ *     Caches db objects internally.
+ *     TODO might require to have some TTL
+ *
+ * NOTES:
+ * * .use(config) could be called just once - the most recent config
+ *   will be stored in the service context
+*/
 mciModule.factory('Stitch', function(
   $q, STITCH_CONFIG
 ) {
