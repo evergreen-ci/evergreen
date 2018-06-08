@@ -113,6 +113,7 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 		for _, p := range split {
 			if !strings.Contains(p, "vendor") && strings.Contains(p, "evergreen") {
 				if p == packagePrefix {
+					targets = append(targets, "evergreen")
 					continue
 				}
 				p = strings.TrimPrefix(p, packagePrefix)

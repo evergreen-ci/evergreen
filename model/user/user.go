@@ -184,3 +184,10 @@ func IsValidSubscriptionPreference(in string) bool {
 		return false
 	}
 }
+
+func FormatObjectID(id string) (bson.ObjectId, error) {
+	if !bson.IsObjectIdHex(id) {
+		return "", errors.Errorf("%s is not a valid ObjectId", id)
+	}
+	return bson.ObjectIdHex(id), nil
+}

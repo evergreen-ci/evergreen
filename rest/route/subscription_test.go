@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type SubscriptionRouteSuite struct {
@@ -190,6 +191,14 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	s.Require().Len(subs.Result, 1)
 	sub := subs.Result[0].(*model.APISubscription)
 	s.Equal("new type", model.FromAPIString(sub.ResourceType))
+
+	// delete the subscription
+	d := &subscriptionDeleteHandler{id: id.Hex()}
+	_, err = d.Execute(ctx, s.sc)
+	s.NoError(err)
+	subscription, err := event.FindSubscriptionByID(id)
+	s.NoError(err)
+	s.Nil(subscription)
 }
 
 func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
@@ -237,10 +246,88 @@ func (s *SubscriptionRouteSuite) TestGet() {
 	s.Len(subs.Result, 1)
 }
 
+func (s *SubscriptionRouteSuite) TestDeleteValidation() {
+	s.NoError(db.Clear(event.SubscriptionsCollection))
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "thanos"})
+	d := &subscriptionDeleteHandler{}
+
+	r, err := http.NewRequest(http.MethodDelete, "/subscriptions", nil)
+	s.NoError(err)
+	s.EqualError(d.ParseAndValidate(ctx, r), "Must specify an ID to delete")
+
+	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=soul", nil)
+	s.NoError(err)
+	s.EqualError(d.ParseAndValidate(ctx, r), "soul is not a valid ObjectID")
+
+	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9704fdd202da", nil)
+	s.NoError(err)
+	s.EqualError(d.ParseAndValidate(ctx, r), "Subscription not found")
+
+	subscription := event.Subscription{
+		ID:    bson.ObjectIdHex("5949645c9acd9604fdd202da"),
+		Owner: "vision",
+		Subscriber: event.Subscriber{
+			Type: "email",
+		},
+	}
+	s.NoError(subscription.Upsert())
+	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9604fdd202da", nil)
+	s.NoError(err)
+	s.EqualError(d.ParseAndValidate(ctx, r), "Cannot delete subscriptions for someone other than yourself")
+}
+
 func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
 	s.PanicsWithValue("no user attached to request", func() {
 		ctx := context.Background()
 		h := &subscriptionGetHandler{}
 		_ = h.ParseAndValidate(ctx, nil)
 	})
+}
+
+func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	body := []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "object",
+			"data": "version",
+		}},
+		"subscriber": map[string]string{
+			"type":   "jira-issue",
+			"target": "ABC",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot notify by jira-issue for version")
+
+	//test that project-level subscriptions are allowed
+	body = []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "project",
+			"data": "mci",
+		}},
+		"subscriber": map[string]string{
+			"type":   "jira-issue",
+			"target": "ABC",
+		},
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 }
