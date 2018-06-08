@@ -36,7 +36,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 
 	catcher := grip.NewSimpleCatcher()
 	for i := range subscriptions {
-		n, err := h.Process(&subscriptions[i])
+		n, err := h.Process(e, &subscriptions[i])
 		catcher.Add(err)
 		if err != nil || n == nil {
 			continue

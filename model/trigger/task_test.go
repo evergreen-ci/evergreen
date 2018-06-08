@@ -160,50 +160,50 @@ func (s *taskSuite) TestAllTriggers() {
 }
 
 func (s *taskSuite) TestSuccess() {
-	n, err := s.t.taskSuccess(&s.subs[1])
+	n, err := s.t.taskSuccess(nil, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskFailed
-	n, err = s.t.taskSuccess(&s.subs[1])
+	n, err = s.t.taskSuccess(nil, &s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	n, err = s.t.taskSuccess(&s.subs[1])
+	n, err = s.t.taskSuccess(nil, &s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *taskSuite) TestFailure() {
-	n, err := s.t.taskFailure(&s.subs[2])
+	n, err := s.t.taskFailure(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	n, err = s.t.taskFailure(&s.subs[2])
+	n, err = s.t.taskFailure(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskFailed
-	n, err = s.t.taskFailure(&s.subs[2])
+	n, err = s.t.taskFailure(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *taskSuite) TestOutcome() {
 	s.data.Status = evergreen.TaskStarted
-	n, err := s.t.taskOutcome(&s.subs[0])
+	n, err := s.t.taskOutcome(nil, &s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	n, err = s.t.taskOutcome(&s.subs[0])
+	n, err = s.t.taskOutcome(nil, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.TaskFailed
-	n, err = s.t.taskOutcome(&s.subs[0])
+	n, err = s.t.taskOutcome(nil, &s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -213,19 +213,19 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err := s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err := s.t.taskFirstFailureInVersion(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -233,14 +233,14 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other versions should still generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersion(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -250,19 +250,19 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err := s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err := s.t.taskFirstFailureInBuild(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -270,14 +270,14 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// subsequent runs with other tasks in other versions should generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
+	n, err = s.t.taskFirstFailureInBuild(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -287,19 +287,19 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	n, err := s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err := s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -307,14 +307,14 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs in other versions should generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
@@ -325,7 +325,7 @@ func (s *taskSuite) TestRegression() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// brand new task fails should generate
-	n, err := s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err := s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -334,7 +334,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.Id = "test2"
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -347,7 +347,7 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskSucceeded
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -360,7 +360,7 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -370,7 +370,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.BuildId = "test5"
 	s.task.RevisionOrderNumber = 5
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -385,7 +385,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.RevisionOrderNumber = 6
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 	s.task.FinishTime = oldTime
@@ -404,7 +404,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.RevisionOrderNumber = 8
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -414,7 +414,7 @@ func (s *taskSuite) TestRegression() {
 	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{"_id": "test4"}), task4))
 	s.NotZero(*task4)
 	task4.Execution = 1
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskFirstFailureInVersionWithName(nil, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 }
