@@ -94,7 +94,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
 			Type:    "type2",
 			Trigger: "trigger2",
 			Selectors: []Selector{
@@ -110,6 +110,10 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 			Owner:     "me",
 			OwnerType: OwnerTypePerson,
+			TriggerData: map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+			},
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -148,7 +152,14 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 	for _, sub := range out {
 		if sub.ID == s.subscriptions[3].ID {
-			s.Equal(sub, s.subscriptions[3])
+			s.Equal(sub.Owner, s.subscriptions[3].Owner)
+			s.Equal(sub.OwnerType, s.subscriptions[3].OwnerType)
+			s.Equal(sub.Selectors, s.subscriptions[3].Selectors)
+			s.Equal(s.subscriptions[3].RegexSelectors, sub.RegexSelectors)
+			s.Equal(s.subscriptions[3].Subscriber, sub.Subscriber)
+		}
+		if sub.ID == bson.ObjectIdHex("5949645c9acd9604fdd202d8") {
+			s.Equal(s.subscriptions[3].TriggerData, sub.TriggerData)
 		}
 	}
 }

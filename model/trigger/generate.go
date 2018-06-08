@@ -22,28 +22,31 @@ type notificationGenerator struct {
 	jiraComment      *string
 	githubStatusAPI  *message.GithubStatus
 	slack            *notification.SlackPayload
+	// filterFunc takes an event and extra subscriber data and returns
+	// true if the notification should still be sent, false if not
+	filterFunc func(*event.EventLogEntry, map[string]string) bool
 }
 
-func (p *notificationGenerator) get(subType string) (interface{}, error) {
+func (g *notificationGenerator) get(subType string) (interface{}, error) {
 	var val interface{}
 	switch subType {
 	case event.EvergreenWebhookSubscriberType:
-		val = p.evergreenWebhook
+		val = g.evergreenWebhook
 
 	case event.EmailSubscriberType:
-		val = p.email
+		val = g.email
 
 	case event.JIRAIssueSubscriberType:
-		val = p.jiraIssue
+		val = g.jiraIssue
 
 	case event.JIRACommentSubscriberType:
-		val = p.jiraComment
+		val = g.jiraComment
 
 	case event.SlackSubscriberType:
-		val = p.slack
+		val = g.slack
 
 	case event.GithubPullRequestSubscriberType:
-		val = p.githubStatusAPI
+		val = g.githubStatusAPI
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", subType)
@@ -56,9 +59,9 @@ func (p *notificationGenerator) get(subType string) (interface{}, error) {
 	return val, nil
 }
 
-func (p *notificationGenerator) isEmpty() bool {
-	return p.evergreenWebhook == nil && p.email == nil && p.jiraIssue == nil &&
-		p.jiraComment == nil && p.slack == nil && p.githubStatusAPI == nil
+func (g *notificationGenerator) isEmpty() bool {
+	return g.evergreenWebhook == nil && g.email == nil && g.jiraIssue == nil &&
+		g.jiraComment == nil && g.slack == nil && g.githubStatusAPI == nil
 }
 
 func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]notification.Notification, error) {
@@ -100,13 +103,15 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]notification
 			continue
 		}
 
-		for i := range subs {
-			notification, err := notification.New(e, g.triggerName, &subs[i].Subscriber, payload)
-			if err != nil {
-				catcher.Add(err)
-				continue
+		for _, sub := range subs {
+			if g.filterFunc == nil || g.filterFunc(e, sub.TriggerData) {
+				notification, err := notification.New(e, g.triggerName, &sub.Subscriber, payload)
+				if err != nil {
+					catcher.Add(err)
+					continue
+				}
+				n = append(n, *notification)
 			}
-			n = append(n, *notification)
 		}
 	}
 

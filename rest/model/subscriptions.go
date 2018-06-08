@@ -13,14 +13,15 @@ type APISelector struct {
 }
 
 type APISubscription struct {
-	ID             APIString     `json:"id"`
-	ResourceType   APIString     `json:"resource_type"`
-	Trigger        APIString     `json:"trigger"`
-	Selectors      []APISelector `json:"selectors"`
-	RegexSelectors []APISelector `json:"regex_selectors"`
-	Subscriber     APISubscriber `json:"subscriber"`
-	Owner          APIString     `json:"owner"`
-	OwnerType      APIString     `json:"owner_type"`
+	ID             APIString         `json:"id"`
+	ResourceType   APIString         `json:"resource_type"`
+	Trigger        APIString         `json:"trigger"`
+	Selectors      []APISelector     `json:"selectors"`
+	RegexSelectors []APISelector     `json:"regex_selectors"`
+	Subscriber     APISubscriber     `json:"subscriber"`
+	Owner          APIString         `json:"owner"`
+	OwnerType      APIString         `json:"owner_type"`
+	TriggerData    map[string]string `json:"trigger_data,omitempty"`
 }
 
 func (s *APISelector) BuildFromService(h interface{}) error {
@@ -50,6 +51,7 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 		s.Trigger = ToAPIString(v.Trigger)
 		s.Owner = ToAPIString(v.Owner)
 		s.OwnerType = ToAPIString(string(v.OwnerType))
+		s.TriggerData = v.TriggerData
 		err := s.Subscriber.BuildFromService(v.Subscriber)
 		if err != nil {
 			return err
@@ -96,6 +98,7 @@ func (s *APISubscription) ToService() (interface{}, error) {
 		OwnerType:      event.OwnerType(FromAPIString(s.OwnerType)),
 		Selectors:      []event.Selector{},
 		RegexSelectors: []event.Selector{},
+		TriggerData:    s.TriggerData,
 	}
 	subscriberInterface, err := s.Subscriber.ToService()
 	if err != nil {

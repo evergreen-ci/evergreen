@@ -27,6 +27,7 @@ var (
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
+	subscriptionTriggerDataKey    = bsonutil.MustHaveTag(Subscription{}, "TriggerData")
 
 	groupedSubscriptionsTypeKey          = bsonutil.MustHaveTag(groupedSubscriptions{}, "Type")
 	groupedSubscriptionsSubscriptionsKey = bsonutil.MustHaveTag(groupedSubscriptions{}, "Subscriptions")
@@ -40,25 +41,27 @@ const (
 )
 
 type Subscription struct {
-	ID             bson.ObjectId `bson:"_id"`
-	Type           string        `bson:"type"`
-	Trigger        string        `bson:"trigger"`
-	Selectors      []Selector    `bson:"selectors,omitempty"`
-	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
-	Subscriber     Subscriber    `bson:"subscriber"`
-	Owner          string        `bson:"owner"`
-	OwnerType      OwnerType     `bson:"owner_type"`
+	ID             bson.ObjectId     `bson:"_id"`
+	Type           string            `bson:"type"`
+	Trigger        string            `bson:"trigger"`
+	Selectors      []Selector        `bson:"selectors,omitempty"`
+	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
+	Subscriber     Subscriber        `bson:"subscriber"`
+	Owner          string            `bson:"owner"`
+	OwnerType      OwnerType         `bson:"owner_type"`
+	TriggerData    map[string]string `bson:"trigger_data,omitempty"`
 }
 
 type unmarshalSubscription struct {
-	ID             bson.ObjectId `bson:"_id"`
-	Type           string        `bson:"type"`
-	Trigger        string        `bson:"trigger"`
-	Selectors      []Selector    `bson:"selectors,omitempty"`
-	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
-	Subscriber     Subscriber    `bson:"subscriber"`
-	Owner          string        `bson:"owner"`
-	OwnerType      OwnerType     `bson:"owner_type"`
+	ID             bson.ObjectId     `bson:"_id"`
+	Type           string            `bson:"type"`
+	Trigger        string            `bson:"trigger"`
+	Selectors      []Selector        `bson:"selectors,omitempty"`
+	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
+	Subscriber     Subscriber        `bson:"subscriber"`
+	Owner          string            `bson:"owner"`
+	OwnerType      OwnerType         `bson:"owner_type"`
+	TriggerData    map[string]string `bson:"trigger_data,omitempty"`
 }
 
 func (s *Subscription) SetBSON(raw bson.Raw) error {
@@ -76,6 +79,7 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 	s.Subscriber = temp.Subscriber
 	s.Owner = temp.Owner
 	s.OwnerType = temp.OwnerType
+	s.TriggerData = temp.TriggerData
 
 	return nil
 }
@@ -189,6 +193,7 @@ func (s *Subscription) Upsert() error {
 		subscriptionSubscriberKey:     s.Subscriber,
 		subscriptionOwnerKey:          s.Owner,
 		subscriptionOwnerTypeKey:      s.OwnerType,
+		subscriptionTriggerDataKey:    s.TriggerData,
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
