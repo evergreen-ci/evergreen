@@ -192,6 +192,8 @@ func taskFailureSubject(ctx AlertContext) string {
 		subj.WriteString("Task System Failure: ")
 	case ctx.Task.Details.Type == model.SystemCommandType:
 		subj.WriteString("Task System Failure: ")
+	case ctx.Task.Details.Type == model.SetupCommandType:
+		subj.WriteString("Task Setup Failure: ")
 	default:
 		subj.WriteString("Task Failed: ")
 	}
