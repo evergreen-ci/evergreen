@@ -23,6 +23,8 @@ type VersionSuite struct {
 	version version.Version
 	subs    []event.Subscription
 
+	t *versionTriggers
+
 	suite.Suite
 }
 
@@ -44,7 +46,9 @@ func (s *VersionSuite) SetupTest() {
 	}
 	s.NoError(s.version.Insert())
 
-	s.data = &event.VersionEventData{}
+	s.data = &event.VersionEventData{
+		Status: evergreen.VersionStarted,
+	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeVersion,
 		ResourceId:   versionID,
@@ -119,6 +123,12 @@ func (s *VersionSuite) SetupTest() {
 		Url: "https://evergreen.mongodb.com",
 	}
 	s.NoError(ui.Set())
+
+	s.t = makeVersionTriggers().(*versionTriggers)
+	s.t.event = &s.event
+	s.t.data = s.data
+	s.t.version = &s.version
+	s.t.uiConfig = *ui
 }
 
 func (s *VersionSuite) TestAllTriggers() {
@@ -152,65 +162,51 @@ func (s *VersionSuite) TestAllTriggers() {
 }
 
 func (s *VersionSuite) TestVersionSuccess() {
-	gen, err := versionSuccess(s.data, &s.version)
+	n, err := s.t.versionSuccess(&s.subs[1])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	gen, err = versionSuccess(s.data, &s.version)
+	n, err = s.t.versionSuccess(&s.subs[1])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	gen, err = versionSuccess(s.data, &s.version)
+	n, err = s.t.versionSuccess(&s.subs[1])
 	s.NoError(err)
-	s.NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("success", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "success",
-	})
+	s.NotNil(n)
 }
 
 func (s *VersionSuite) TestVersionFailure() {
-	s.data.Status = evergreen.VersionSucceeded
-	gen, err := versionFailure(s.data, &s.version)
+	s.data.Status = evergreen.VersionCreated
+	n, err := s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
+
+	s.data.Status = evergreen.VersionSucceeded
+	n, err = s.t.versionFailure(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	gen, err = versionFailure(s.data, &s.version)
+	n, err = s.t.versionFailure(&s.subs[2])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("failure", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "failure",
-	})
+	s.NotNil(n)
 }
 
 func (s *VersionSuite) TestVersionOutcome() {
 	s.data.Status = evergreen.VersionCreated
-	gen, err := versionOutcome(s.data, &s.version)
+	n, err := s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	gen, err = versionOutcome(s.data, &s.version)
+	n, err = s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
+	s.NotNil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	gen, err = versionOutcome(s.data, &s.version)
+	n, err = s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("outcome", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "outcome",
-	})
+	s.NotNil(n)
 }
