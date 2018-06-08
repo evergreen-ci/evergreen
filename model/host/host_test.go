@@ -1117,7 +1117,7 @@ func TestFindAllContainers(t *testing.T) {
 
 	containers, err := FindAllContainers()
 	assert.NoError(err)
-	assert.Equal(5, len(containers))
+	assert.Equal(2, len(containers))
 }
 
 func TestFindAllContainersEmpty(t *testing.T) {

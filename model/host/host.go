@@ -746,10 +746,11 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 	return counts, nil
 }
 
-// FindAllContainers finds all the containers
+// FindAllContainers finds all the containers that are currently running
 func FindAllContainers() ([]Host, error) {
 	query := db.Query(bson.M{
 		ParentIDKey: bson.M{"$exists": true},
+		StatusKey:   "running",
 	})
 	hosts, err := Find(query)
 	if err != nil {
