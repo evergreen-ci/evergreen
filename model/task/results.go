@@ -23,7 +23,11 @@ func (t *Task) ResultStatus() string {
 	} else if t.Status == evergreen.TaskStarted {
 		status = evergreen.TaskStarted
 	} else if t.Status == evergreen.TaskSucceeded {
-		status = evergreen.TaskSucceeded
+		if t.HasFailedTests() {
+			status = evergreen.TaskFailed
+		} else {
+			status = evergreen.TaskSucceeded
+		}
 	} else if t.Status == evergreen.TaskFailed {
 		status = evergreen.TaskFailed
 		if t.Details.Type == "system" {
@@ -31,16 +35,12 @@ func (t *Task) ResultStatus() string {
 			if t.Details.TimedOut {
 				if t.Details.Description == "heartbeat" {
 					status = evergreen.TaskSystemUnresponse
-				} else if t.HasFailedTests() {
-					status = evergreen.TaskFailed
 				} else {
 					status = evergreen.TaskSystemTimedOut
 				}
 			}
-
 		} else if t.Details.Type == "setup" {
 			status = evergreen.TaskSetupFailed
-
 		} else if t.Details.TimedOut {
 			status = evergreen.TaskTestTimedOut
 		}
