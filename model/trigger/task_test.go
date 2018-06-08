@@ -24,10 +24,13 @@ type taskSuite struct {
 	task  task.Task
 	subs  []event.Subscription
 
+	t *taskTriggers
+
 	suite.Suite
 }
 
 func (s *taskSuite) SetupSuite() {
+	s.Require().Implements((*eventHandler)(nil), &taskTriggers{})
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
@@ -49,7 +52,9 @@ func (s *taskSuite) SetupTest() {
 	}
 	s.NoError(s.task.Insert())
 
-	s.data = &event.TaskEventData{}
+	s.data = &event.TaskEventData{
+		Status: evergreen.TaskStarted,
+	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   "test",
@@ -124,6 +129,12 @@ func (s *taskSuite) SetupTest() {
 		Url: "https://evergreen.mongodb.com",
 	}
 	s.NoError(ui.Set())
+
+	s.t = makeTaskTriggers().(*taskTriggers)
+	s.t.event = &s.event
+	s.t.data = s.data
+	s.t.task = &s.task
+	s.t.uiConfig = *ui
 }
 
 func (s *taskSuite) TestAllTriggers() {
@@ -149,67 +160,52 @@ func (s *taskSuite) TestAllTriggers() {
 }
 
 func (s *taskSuite) TestSuccess() {
-	gen, err := taskSuccess(s.data, &s.task)
+	n, err := s.t.taskSuccess(&s.subs[1])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.TaskFailed
-	gen, err = taskSuccess(s.data, &s.task)
+	n, err = s.t.taskSuccess(&s.subs[1])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	gen, err = taskSuccess(s.data, &s.task)
+	n, err = s.t.taskSuccess(&s.subs[1])
 	s.NoError(err)
-	s.NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("success", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "success",
-	})
+	s.NotNil(n)
 }
 
 func (s *taskSuite) TestFailure() {
-	s.data.Status = evergreen.TaskSucceeded
-	gen, err := taskFailure(s.data, &s.task)
+	n, err := s.t.taskFailure(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
+
+	s.data.Status = evergreen.TaskSucceeded
+	n, err = s.t.taskFailure(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
 
 	s.data.Status = evergreen.TaskFailed
-	gen, err = taskFailure(s.data, &s.task)
+	n, err = s.t.taskFailure(&s.subs[2])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("failure", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "failure",
-	})
+	s.NotNil(n)
 }
 
 func (s *taskSuite) TestOutcome() {
 	s.data.Status = evergreen.TaskStarted
-	gen, err := taskOutcome(s.data, &s.task)
+	n, err := s.t.taskOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.TaskSucceeded
-	gen, err = taskOutcome(s.data, &s.task)
+	n, err = s.t.taskOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
+	s.NotNil(n)
 
 	s.data.Status = evergreen.TaskFailed
-	gen, err = taskOutcome(s.data, &s.task)
+	n, err = s.t.taskOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("outcome", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "outcome",
-	})
+	s.NotNil(n)
 }
 
 func (s *taskSuite) TestFirstFailureInVersion() {
@@ -217,36 +213,36 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	gen, err := taskFirstFailureInVersion(s.data, &s.task)
+	n, err := s.t.taskFirstFailureInVersion(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should not do anything
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs with other tasks in other versions should still generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	gen, err = taskFirstFailureInVersion(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersion(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 }
 
 func (s *taskSuite) TestFirstFailureInBuild() {
@@ -254,36 +250,36 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	gen, err := taskFirstFailureInBuild(s.data, &s.task)
+	n, err := s.t.taskFirstFailureInBuild(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should generate
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// subsequent runs with other tasks in other versions should generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	gen, err = taskFirstFailureInBuild(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInBuild(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 }
 
 func (s *taskSuite) TestFirstFailureInVersionWithName() {
@@ -291,36 +287,36 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	gen, err := taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err := s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// rerun that fails should not do anything
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
 	s.NoError(s.task.Insert())
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should not generate
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// subsequent runs in other versions should generate
 	s.task.Version = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 }
 
 func (s *taskSuite) TestRegression() {
@@ -329,18 +325,18 @@ func (s *taskSuite) TestRegression() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// brand new task fails should generate
-	gen, err := taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err := s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// next fail shouldn't generate
 	s.task.RevisionOrderNumber = 2
 	s.task.Id = "test2"
 	s.NoError(s.task.Insert())
 
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// successful task shouldn't generate
 	s.task.Id = "test3"
@@ -351,9 +347,9 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskSucceeded
 	s.NoError(s.task.Insert())
 
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	// formerly succeeding task should generate
 	s.task.Id = "test4"
@@ -364,9 +360,9 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
 
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// Don't renotify if it's recent
 	s.task.Id = "test5"
@@ -374,9 +370,9 @@ func (s *taskSuite) TestRegression() {
 	s.task.BuildId = "test5"
 	s.task.RevisionOrderNumber = 5
 	s.NoError(s.task.Insert())
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// already failing task should renotify if the task failed more than
 	// 2 days ago
@@ -389,9 +385,9 @@ func (s *taskSuite) TestRegression() {
 	s.task.RevisionOrderNumber = 6
 	s.NoError(s.task.Insert())
 
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 	s.task.FinishTime = oldTime
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
@@ -408,9 +404,9 @@ func (s *taskSuite) TestRegression() {
 	s.task.RevisionOrderNumber = 8
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
-	gen, err = taskFirstFailureInVersionWithName(s.data, &s.task)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(gen)
+	s.NotNil(n)
 
 	// suppose we reran task test4, it shouldn't generate because we already
 	// alerted on it
@@ -418,8 +414,7 @@ func (s *taskSuite) TestRegression() {
 	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{"_id": "test4"}), task4))
 	s.NotZero(*task4)
 	task4.Execution = 1
-	gen, err = taskFirstFailureInVersionWithName(s.data, task4)
+	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
-
+	s.Nil(n)
 }

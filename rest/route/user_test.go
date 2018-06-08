@@ -38,8 +38,8 @@ func (s *UserRouteSuite) SetupSuite() {
 	s.NotNil(routeManager)
 	s.Equal(route, routeManager.Route)
 	s.Equal(version, routeManager.Version)
-	s.postHandler = routeManager.Methods[0]
-	s.IsType(&userSettingsHandler{}, s.postHandler.RequestHandler)
+	s.postHandler = routeManager.Methods[1]
+	s.IsType(&userSettingsPostHandler{}, s.postHandler.RequestHandler)
 }
 
 func (s *UserRouteSuite) SetupTest() {
@@ -74,4 +74,38 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
 	s.EqualValues("test", dbUser.Settings.SlackUsername)
+}
+
+func (s *UserRouteSuite) TestUndefinedInput() {
+	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com")
+	s.NoError(err)
+	settings := user.UserSettings{
+		SlackUsername: "something",
+		GithubUser: user.GithubUser{
+			LastKnownAs: "you",
+		},
+	}
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me", Settings: settings})
+	body := map[string]interface{}{
+		"notifications": map[string]string{
+			"build_break": "slack",
+		},
+	}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/users/settings", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+
+	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+
+	dbUser, err := user.FindOne(user.ById("me"))
+	s.NoError(err)
+	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
+	s.EqualValues("something", dbUser.Settings.SlackUsername)
+	s.EqualValues("you", dbUser.Settings.GithubUser.LastKnownAs)
 }

@@ -73,7 +73,10 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   }
 
   $scope.addSubscription = function() {
-    promise = addSubscriber($mdDialog, $scope.triggers);
+    omitMethods = {};
+    omitMethods[SUBSCRIPTION_JIRA_ISSUE] = true;
+    omitMethods[SUBSCRIPTION_EVERGREEN_WEBHOOK] = true;
+    promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
 
     $mdDialog.show(promise).then(function(data){
       addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);

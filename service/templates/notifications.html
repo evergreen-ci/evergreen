@@ -1,0 +1,111 @@
+{{define "scripts"}}
+<script src="{{Static "js" "notifications.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript">
+  var user = {{.User.Id}};
+</script>
+<style type="text/css">
+  body, html { background: rgb(250,250,250); }
+</style>
+{{end}}
+
+{{define "title"}}
+Notifications Preferences
+{{end}}
+
+{{define "content"}}
+<notify-box ng-init="destination='errorHeader'"></notify-box>
+
+<div ng-controller="NotificationsController" layout="column" ng-cloak>
+  <section layout="row" flex>
+
+    <md-card flex="40" style="max-height:350px;">
+      <md-card-title>
+        <md-card-title-text>
+          Notification Preferences
+        </md-card-title-text>
+      </md-card-title>
+
+      <md-card-content>
+        <md-input-container style="width:50%;">
+          <label>Slack Username</label>
+          <input type="text" ng-model="settings.slack_username">
+        </md-input-container>
+        <table class="notificationTable">
+          <thead>
+            <tr><th/><th>Email</th><th>Slack</th><th>None</th></tr>
+          </thead>
+          <tbody>
+            <!--
+            <tr>
+              <td>Build Break</td>
+              <td colspan="3">
+                <md-radio-group layout="row" style="width:100%" ng-model="notifications.build_break" md-no-ink="true">
+                  <md-radio-button value="email"></md-radio-button>
+                  <md-radio-button value="slack" ng-disabled='!slack_username || slack_username == ""'></md-radio-button>
+                  <md-radio-button value=""></md-radio-button>
+                </md-radio-group>
+              </td>
+            </tr>
+          -->
+            <tr>
+              <td>Patch Finish</td>
+              <td colspan="3">
+                <md-radio-group layout="row" style="width:100%" ng-model="settings.notifications.patch_finish" md-no-ink="true">
+                  <md-radio-button value="email"></md-radio-button>
+                  <md-radio-button value="slack" ng-disabled='!settings.slack_username || settings.slack_username == ""'></md-radio-button>
+                  <md-radio-button value=""></md-radio-button>
+                </md-radio-group>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </md-card-content>
+
+      <md-card-footer>
+        <md-button class="md-raised" ng-click="updateUserSettings()">Save</md-button>
+      </md-card-footer>
+    </md-card>
+
+    <md-card flex="60">
+      <md-card-title>
+        <md-card-title-text>
+          Existing Subscriptions
+        </md-card-title-text>
+      </md-card-title>
+      <md-card-content>
+
+        <table class="table table-new">
+          <thead>
+            <tr>
+              <th class="col-lg-3">Selectors</th>
+              <th class="col-lg-3">Trigger</th>
+              <th class="col-lg-3">Action</th>
+              <th class="col-lg-1"> </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="subscription in subscriptions"
+                class="test-result-row">
+              <td class="col-lg-3">
+                <a href="javascript:void(0);" ng-click="selectorClick([[subscription.selectors]])"
+                 ng-bind="selectorText([[subscription.selectors]])"> </a>
+              </td>
+              <td class="col-lg-3">
+                [[subscription.trigger]]
+              </td>
+              <td class="col-lg-3">
+                <div ng-bind="subscriberText([[subscription.subscriber]])" />
+              </td>
+              <td class="col-lg-1">
+                <i class="fa fa-trash" style="cursor:pointer" ng-click="deleteSubscription([[subscription.id]])")></i>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+      </md-card-content>
+    </md-card>
+
+  </section>
+</div>
+{{end}}
