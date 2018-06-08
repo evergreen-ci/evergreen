@@ -763,7 +763,7 @@ func FindAllContainers() ([]Host, error) {
 // FindAllRunningParents finds all running hosts that have child containers
 func FindAllRunningParents() ([]Host, error) {
 	query := db.Query(bson.M{
-		StatusKey: evergreen.HostRunning,
+		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
 	})
 	hosts, err := Find(query)
