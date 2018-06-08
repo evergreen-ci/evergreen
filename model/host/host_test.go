@@ -1189,7 +1189,7 @@ func TestFindAllContainersEmpty(t *testing.T) {
 	assert.Empty(containers)
 }
 
-func TestFindAllParents(t *testing.T) {
+func TestFindAllRunningParents(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -1238,7 +1238,7 @@ func TestFindAllParents(t *testing.T) {
 	host8 := &Host{
 		Id:            "host8",
 		Distro:        distro.Distro{Id: d2},
-		Status:        evergreen.HostRunning,
+		Status:        evergreen.HostTerminated,
 		HasContainers: true,
 	}
 	assert.NoError(host1.Insert())
@@ -1250,13 +1250,13 @@ func TestFindAllParents(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := FindAllParents()
+	containers, err := FindAllRunningParents()
 	assert.NoError(err)
-	assert.Equal(4, len(containers))
+	assert.Equal(3, len(containers))
 
 }
 
-func TestFindAllParentsEmpty(t *testing.T) {
+func TestFindAllRunningParentsEmpty(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -1270,13 +1270,13 @@ func TestFindAllParentsEmpty(t *testing.T) {
 	}
 	host2 := &Host{
 		Id:     "host2",
-		Distro: distro.Distro{Id: d1},
+		Distro: distro.Distro{Id: d2},
 		Status: evergreen.HostStarting,
 	}
 	assert.NoError(host1.Insert())
 	assert.NoError(host2.Insert())
 
-	containers, err := FindAllParents()
+	containers, err := FindAllRunningParents()
 	assert.NoError(err)
 	assert.Empty(containers)
 }
