@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -15,7 +14,7 @@ type MockUserManager struct{}
 
 var MockUser = user.DBUser{Id: "testuser"}
 
-func (MockUserManager) GetUserByToken(_ context.Context, _ string) (auth.User, error) {
+func (MockUserManager) GetUserByToken(_ context.Context, _ string) (gimlet.User, error) {
 	return &MockUser, nil
 }
 func (MockUserManager) CreateUserToken(_, _ string) (string, error)      { return MockUser.Username(), nil }

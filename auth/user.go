@@ -1,12 +1,5 @@
 package auth
 
-import "github.com/evergreen-ci/gimlet"
-
-type (
-	UserManager = gimlet.UserManager
-	User        = gimlet.User
-)
-
 type simpleUser struct {
 	UserId       string
 	Name         string

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
@@ -87,7 +87,7 @@ type Connector interface {
 	FindTestsByTaskId(string, string, string, int, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
-	FindUserById(string) (auth.User, error)
+	FindUserById(string) (gimlet.User, error)
 
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
@@ -98,7 +98,7 @@ type Connector interface {
 	// started by the given user. If the given user is a super-user,
 	// the host will also be returned regardless of who the host was
 	// started by
-	FindHostByIdWithOwner(string, auth.User) (*host.Host, error)
+	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(string, string, string, *user.DBUser) (*host.Host, error)

@@ -55,7 +55,7 @@ func NewGithubUserManager(g *evergreen.GithubAuthConfig) (gimlet.UserManager, er
 // If there are Authorized Users, it checks the authorized usernames against the GitHub user's login
 // If there is no match and there is an organization it checks the user's organizations against
 // the UserManager's Authorized organization string.
-func (gum *GithubUserManager) GetUserByToken(ctx context.Context, token string) (User, error) {
+func (gum *GithubUserManager) GetUserByToken(ctx context.Context, token string) (gimlet.User, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -494,7 +495,7 @@ type TaskExecutionPatchHandler struct {
 	Activated *bool  `json:"activated"`
 	Priority  *int64 `json:"priority"`
 
-	user auth.User
+	user gimlet.User
 	task *task.Task
 }
 
