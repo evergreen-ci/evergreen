@@ -27,9 +27,10 @@ import (
 // APIApp is a structure representing a single API service.
 type APIApp struct {
 	StrictSlash    bool
+	SimpleVersions bool
+	NoVersions     bool
 	isResolved     bool
 	prefix         string
-	defaultVersion int
 	port           int
 	router         *mux.Router
 	address        string
@@ -45,25 +46,13 @@ type APIApp struct {
 // for new methods.
 func NewApp() *APIApp {
 	a := &APIApp{
-		defaultVersion: -1, // this is the same as having no version prepended to the path.
-		port:           3000,
+		port: 3000,
 	}
 
 	a.AddMiddleware(negroni.NewRecovery())
 	a.AddMiddleware(NewAppLogger())
 
 	return a
-}
-
-// SetDefaultVersion allows you to specify a default version for the
-// application. Default versions must be 0 (no version,) or larger.
-func (a *APIApp) SetDefaultVersion(version int) {
-	if version < 0 {
-		grip.Warningf("%d is not a valid version", version)
-	} else {
-		a.defaultVersion = version
-		grip.Noticef("Set default api version to /v%d/", version)
-	}
 }
 
 // Router is the getter for an APIApp's router object. If thetr
@@ -94,81 +83,6 @@ func (a *APIApp) AddWrapper(m Middleware) {
 	a.wrappers = append(a.wrappers, m)
 }
 
-// Resolve processes the data in an application instance, including
-// all routes and creats a mux.Router object for the application
-// instance.
-func (a *APIApp) Resolve() error {
-	if a.isResolved {
-		return nil
-	}
-
-	catcher := grip.NewCatcher()
-	if a.router == nil {
-		a.router = mux.NewRouter().StrictSlash(a.StrictSlash)
-	}
-
-	for _, route := range a.routes {
-		if !route.IsValid() {
-			catcher.Add(fmt.Errorf("%d is an invalid api version. not adding route for %s",
-				route.version, route.route))
-			continue
-		}
-
-		var methods []string
-		for _, m := range route.methods {
-			methods = append(methods, strings.ToLower(m.String()))
-		}
-
-		handler := getRouteHandlerWithMiddlware(a.wrappers, route.handler)
-		if route.version > 0 {
-			versionedRoute := getVersionedRoute(a.prefix, route.version, route.route)
-			a.router.Handle(versionedRoute, handler).Methods(methods...)
-			grip.Debugln("added route for:", versionedRoute)
-		}
-
-		if route.version == a.defaultVersion {
-			route.route = getDefaultRoute(a.prefix, route.route)
-			a.router.Handle(route.route, handler).Methods(methods...)
-			grip.Debugln("added route for:", route.route)
-		}
-	}
-
-	a.isResolved = true
-
-	return catcher.Resolve()
-}
-
-func getRouteHandlerWithMiddlware(mws []Middleware, route http.Handler) http.Handler {
-	if len(mws) == 0 {
-		return route
-	}
-
-	n := negroni.New()
-	for _, m := range mws {
-		n.Use(m)
-	}
-	n.UseHandler(route)
-	return n
-}
-
-func getVersionedRoute(prefix string, version int, route string) string {
-	if strings.HasPrefix(route, prefix) {
-		if prefix == "" {
-			return fmt.Sprintf("/v%d%s", version, route)
-		}
-		route = route[len(prefix):]
-	}
-
-	return fmt.Sprintf("%s/v%d%s", prefix, version, route)
-}
-
-func getDefaultRoute(prefix, route string) string {
-	if strings.HasPrefix(route, prefix) {
-		return route
-	}
-	return prefix + route
-}
-
 // ResetMiddleware removes *all* middleware handlers from the current
 // application.
 func (a *APIApp) ResetMiddleware() {
@@ -179,33 +93,6 @@ func (a *APIApp) ResetMiddleware() {
 // current application.
 func (a *APIApp) RestWrappers() {
 	a.wrappers = []Middleware{}
-}
-
-// getHander internal helper resolves the negorni middleware for the
-// application and returns it in the form of a http.Handler for use in
-// stitching together applications.
-func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
-	if !a.isResolved {
-		return nil, errors.New("must resolve the application first")
-	}
-	n := negroni.New()
-	for _, m := range a.middleware {
-		n.Use(m)
-	}
-	n.UseHandler(a.router)
-
-	return n, nil
-}
-
-// Handler returns a handler interface for integration with other
-// server frameworks.
-func (a *APIApp) Handler() (http.Handler, error) {
-	if !a.isResolved {
-		if err := a.Resolve(); err != nil {
-			return nil, err
-		}
-	}
-	return a.getNegroni()
 }
 
 // Run configured API service on the configured port. Before running

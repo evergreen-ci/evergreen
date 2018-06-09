@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -32,9 +33,9 @@ func (b *NaiveUserManager) GetUserByToken(_ context.Context, token string) (User
 		possibleToken := fmt.Sprintf("%v:%v:%v", i, user.Email, md5.Sum([]byte(user.Username+user.Password)))
 		if token == possibleToken {
 			return &simpleUser{
-				user.Username,
-				user.DisplayName,
-				user.Email,
+				UserId:       user.Username,
+				Name:         user.DisplayName,
+				EmailAddress: user.Email,
 			}, nil
 		}
 	}
@@ -54,14 +55,10 @@ func (b *NaiveUserManager) CreateUserToken(username, password string) (string, e
 	return "", errors.New("No valid user for the given username and password")
 }
 
-func (*NaiveUserManager) GetLoginHandler(string) func(http.ResponseWriter, *http.Request) {
-	return nil
-}
-
-func (*NaiveUserManager) GetLoginCallbackHandler() func(http.ResponseWriter, *http.Request) {
-	return nil
-}
-
-func (*NaiveUserManager) IsRedirect() bool {
-	return false
+func (*NaiveUserManager) GetLoginHandler(string) http.HandlerFunc    { return nil }
+func (*NaiveUserManager) GetLoginCallbackHandler() http.HandlerFunc  { return nil }
+func (*NaiveUserManager) IsRedirect() bool                           { return false }
+func (*NaiveUserManager) GetUserByID(id string) (gimlet.User, error) { return getUserByID(id) }
+func (*NaiveUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
+	return getOrCreateUser(u)
 }

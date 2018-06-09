@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -40,7 +41,7 @@ type GithubUserManager struct {
 
 // NewGithubUserManager initializes a GithubUserManager with a Salt as randomly generated string used in Github
 // authentication
-func NewGithubUserManager(g *evergreen.GithubAuthConfig) (*GithubUserManager, error) {
+func NewGithubUserManager(g *evergreen.GithubAuthConfig) (gimlet.UserManager, error) {
 	if g.ClientId == "" {
 		return nil, errors.New("no client id for config")
 	}
@@ -86,7 +87,7 @@ func (*GithubUserManager) CreateUserToken(string, string) (string, error) {
 }
 
 // GetLoginHandler returns the function that starts oauth by redirecting the user to authenticate with Github
-func (gum *GithubUserManager) GetLoginHandler(callbackUri string) func(w http.ResponseWriter, r *http.Request) {
+func (gum *GithubUserManager) GetLoginHandler(callbackUri string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		githubScope := "user:email, read:org"
 		githubUrl := "https://github.com/login/oauth/authorize"
@@ -103,7 +104,7 @@ func (gum *GithubUserManager) GetLoginHandler(callbackUri string) func(w http.Re
 }
 
 // GetLoginCallbackHandler returns the function that is called when GitHub redirects the user back to Evergreen.
-func (gum *GithubUserManager) GetLoginCallbackHandler() func(w http.ResponseWriter, r *http.Request) {
+func (gum *GithubUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.FormValue("code")
 		if code == "" {
@@ -127,7 +128,7 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() func(w http.ResponseWrit
 
 		// if the state doesn't match, log the error and redirect back to the login page
 		if githubState != state {
-			grip.Errorf("Error unmatching states when authenticating with GitHub: ours: %v, theirs %v",
+			grip.Errorf("Error unmatching states when authenticating with GitHub: ours: %vb, theirs %v",
 				state, githubState)
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
@@ -146,6 +147,8 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() func(w http.ResponseWrit
 	}
 }
 
-func (*GithubUserManager) IsRedirect() bool {
-	return true
+func (*GithubUserManager) IsRedirect() bool                           { return true }
+func (*GithubUserManager) GetUserByID(id string) (gimlet.User, error) { return getUserByID(id) }
+func (*GithubUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
+	return getOrCreateUser(u)
 }

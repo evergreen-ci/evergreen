@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -73,3 +75,9 @@ func IsSuperUser(superUsers []string, u User) bool {
 	return false
 
 }
+
+func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
+	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email())
+}
+
+func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }

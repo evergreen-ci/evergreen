@@ -87,7 +87,7 @@ type Connector interface {
 	FindTestsByTaskId(string, string, string, int, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
-	FindUserById(string) (auth.APIUser, error)
+	FindUserById(string) (auth.User, error)
 
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.

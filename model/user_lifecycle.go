@@ -20,6 +20,14 @@ func SetUserAPIKey(userId, newKey string) error {
 	return user.UpdateOne(bson.M{user.IdKey: userId}, update)
 }
 
+func FindUserByID(id string) (*user.DBUser, error) {
+	t, err := user.FindOne(user.ById(id))
+	if err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 // GetOrCreateUser fetches a user with the given userId and returns it. If no document exists for
 // that userId, inserts it along with the provided display name and email.
 func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
