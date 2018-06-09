@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -35,11 +34,9 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error
 			return nil, errors.New("Cannot have multiple forms of authentication in configuration")
 		}
 		manager, err = NewGithubUserManager(authConfig.Github)
-
-		// if err!=nil has never returned an error, though it
-		// looks like it should, just printing a warning in
-		// the mean time.
-		grip.Warning(errors.WithStack(err))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if manager != nil {
