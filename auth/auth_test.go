@@ -33,7 +33,7 @@ func TestLoadUserManager(t *testing.T) {
 				Naive:  nil,
 				Github: &g}
 			_, err := LoadUserManager(a)
-			So(err, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 		})
 
 		Convey("a UserManager should not be able to be created if one AuthConfig type is Crowd", func() {
