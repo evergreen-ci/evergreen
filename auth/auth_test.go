@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -69,7 +70,7 @@ func TestSuperUserValidation(t *testing.T) {
 	assert.False(IsSuperUser(superUsers, nil))
 
 	assert.NotPanics(func() {
-		var u User = (*simpleUser)(nil)
+		var u gimlet.User = (*simpleUser)(nil)
 		assert.False(IsSuperUser(superUsers, u))
 	})
 }
