@@ -48,7 +48,7 @@ func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
 			Upsert:    true,
 		}, u)
 	if err != nil {
-		return nil, errirs.Wrapf(err, "problem find/create user '%s'", userId)
+		return nil, errors.Wrapf(err, "problem find/create user '%s'", userId)
 	}
 	return u, nil
 }
