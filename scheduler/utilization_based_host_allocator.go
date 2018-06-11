@@ -95,7 +95,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 		numNewHosts = len(taskQueue)
 	}
 	// enforce the max hosts cap
-	if numNewHosts+len(existingHosts) > d.PoolSize {
+	if isMaxHostsCapacity(d, numNewHosts, len(existingHosts)) {
 		numNewHosts = d.PoolSize - len(existingHosts)
 	}
 
@@ -266,4 +266,17 @@ func calcHostsForLongTasks(queue []model.TaskQueueItem, maxDurationPerHost time.
 	}
 
 	return newQueue, numRemoved
+}
+
+// isMaxHostsCapacity returns true if the max number of containers are already running
+func isMaxHostsCapacity(d distro.Distro, numNewHosts, numExistingHosts int) bool {
+	if d.MaxContainers > 0 {
+		if numNewHosts > (d.PoolSize*d.MaxContainers)-numExistingHosts {
+			return true
+		}
+	}
+	if numNewHosts+numExistingHosts > d.PoolSize {
+		return true
+	}
+	return false
 }
