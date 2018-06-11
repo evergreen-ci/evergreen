@@ -99,6 +99,9 @@ type Host struct {
 	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
 	// stores the ID of the host a container is on
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
+
+	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
+	SpawnOptions SpawnOptions `bson:"spawn,omitempty" json:"spawn,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -113,6 +116,22 @@ type ProvisionOptions struct {
 
 	// Owner is the user associated with the host used to populate any necessary metadata.
 	OwnerId string `bson:"owner_id" json:"owner_id"`
+}
+
+// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
+type SpawnOptions struct {
+	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
+	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
+	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
+	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
+
+	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
+	// this host should be torn down. Only one of TaskID or BuildID should be set.
+	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+
+	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
+	// this host should be torn down. Only one of TaskID or BuildID should be set.
+	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
 }
 
 const (
