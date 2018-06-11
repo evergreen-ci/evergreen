@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -101,9 +102,9 @@ type Host struct {
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
 	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
-  
+
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
-  SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -867,4 +868,47 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	}
 
 	return nil
+}
+
+// FindAllHostsSpawnedByTasks finds all running hosts spawned by the `createhost` command.
+func FindAllHostsSpawnedByTasks() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		SpawnOptionsKey: bson.M{
+			"$exists": true,
+		},
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks")
+	}
+	return hosts, nil
+}
+
+// FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
+func FindHostsSpawnedByTask(taskID string) ([]Host, error) {
+	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		taskIDKey: taskID,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks by task ID")
+	}
+	return hosts, nil
+}
+
+// FindHostsSpawnedByBuild finds hosts spawned by the `createhost` command scoped to a given build.
+func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
+	buildIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey)
+	query := db.Query(bson.M{
+		StatusKey:  evergreen.HostRunning,
+		buildIDKey: buildID,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by builds by build ID")
+	}
+	return hosts, nil
 }
