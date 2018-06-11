@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/spawn"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -50,7 +51,7 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	return h, nil
 }
 
-func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user auth.User) (*host.Host, error) {
+func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
 	return findHostByIdWithOwner(dbc, hostID, user)
 }
 
@@ -252,11 +253,11 @@ func (hc *MockHostConnector) TerminateHost(ctx context.Context, host *host.Host,
 	return errors.New("can't find host")
 }
 
-func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user auth.User) (*host.Host, error) {
+func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (*host.Host, error) {
 	return findHostByIdWithOwner(dbc, hostID, user)
 }
 
-func findHostByIdWithOwner(c Connector, hostID string, user auth.User) (*host.Host, error) {
+func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
 	host, err := c.FindHostById(hostID)
 	if err != nil {
 		return nil, &rest.APIError{

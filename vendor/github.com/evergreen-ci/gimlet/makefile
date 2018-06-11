@@ -54,14 +54,14 @@ $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
 	go get $(subst $(gopath)/src/,,$@)
 # end dependency installation tools
-t:
-	@echo $(testOutput)
+
 
 # userfacing targets for basic build and development operations
 lint:$(gopath)/src/$(projectPath) $(lintDeps)
 	$(gopath)/bin/gometalinter $(lintArgs) ./...
 lint-deps:$(lintDeps)
 build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
+	@mkdir -p $(buildDir)
 	go build ./.
 build-race:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
 	go build -race $(subst -,/,$(foreach pkg,$(packages),./$(pkg)))

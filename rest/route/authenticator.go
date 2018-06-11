@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 )
 
 // Authenticator is an interface which defines how requests can authenticate
@@ -88,7 +89,7 @@ func (rua *RequireUserAuthenticator) Authenticate(ctx context.Context, sc data.C
 	return nil
 }
 
-func validPriority(priority int64, user auth.User, sc data.Connector) bool {
+func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
 	if priority > evergreen.MaxTaskPriority {
 		return auth.IsSuperUser(sc.GetSuperUsers(), user)
 	}

@@ -41,7 +41,7 @@ type UIServer struct {
 	RootURL string
 
 	//authManager
-	UserManager        auth.UserManager
+	UserManager        gimlet.UserManager
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig

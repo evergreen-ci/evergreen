@@ -9,21 +9,12 @@ type GithubLoginUser struct {
 	OrganizationsURL string
 }
 
-func (u *GithubLoginUser) DisplayName() string {
-	return u.Name
-}
-
-func (u *GithubLoginUser) Email() string {
-	return u.EmailAddress
-}
-
-func (u *GithubLoginUser) Username() string {
-	return u.Login
-}
-
-func (u *GithubLoginUser) IsNil() bool {
-	return u == nil
-}
+func (u *GithubLoginUser) DisplayName() string { return u.Name }
+func (u *GithubLoginUser) Email() string       { return u.EmailAddress }
+func (u *GithubLoginUser) Username() string    { return u.Login }
+func (u *GithubLoginUser) IsNil() bool         { return u == nil }
+func (u *GithubLoginUser) GetAPIKey() string   { return "" }
+func (u *GithubLoginUser) Roles() []string     { return []string{} }
 
 type GithubAuthParameters struct {
 	ClientId     string `json:"client_id"`
