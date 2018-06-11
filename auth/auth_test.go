@@ -16,42 +16,47 @@ func TestLoadUserManager(t *testing.T) {
 		n := evergreen.NaiveAuthConfig{}
 		Convey("a UserManager should not be able to be created in an empty AuthConfig", func() {
 			a := evergreen.AuthConfig{}
-			_, err := LoadUserManager(a)
+			um, err := LoadUserManager(a)
 			So(err, ShouldNotBeNil)
+			So(um, ShouldBeNil)
 		})
 		Convey("a UserManager should not be able to be created if there are more than one AuthConfig type", func() {
 			a := evergreen.AuthConfig{
 				Crowd:  &c,
 				Naive:  &n,
 				Github: nil}
-			_, err := LoadUserManager(a)
+			um, err := LoadUserManager(a)
 			So(err, ShouldNotBeNil)
+			So(um, ShouldBeNil)
 		})
 		Convey("a UserManager should not be able to be created if one AuthConfig type is Github", func() {
 			a := evergreen.AuthConfig{
 				Crowd:  nil,
 				Naive:  nil,
 				Github: &g}
-			_, err := LoadUserManager(a)
+			um, err := LoadUserManager(a)
 			So(err, ShouldNotBeNil)
+			So(um, ShouldBeNil)
 		})
 
-		Convey("a UserManager should not be able to be created if one AuthConfig type is Crowd", func() {
+		Convey("a UserManager should be able to be created if one AuthConfig type is Crowd", func() {
 			a := evergreen.AuthConfig{
 				Crowd:  &c,
 				Naive:  nil,
 				Github: nil}
-			_, err := LoadUserManager(a)
+			um, err := LoadUserManager(a)
 			So(err, ShouldBeNil)
+			So(um, ShouldNotBeNil)
 		})
 
-		Convey("a UserManager should not be able to be created if one AuthConfig type is Naive", func() {
+		Convey("a UserManager should be able to be created if one AuthConfig type is Naive", func() {
 			a := evergreen.AuthConfig{
 				Crowd:  nil,
 				Naive:  &n,
 				Github: nil}
-			_, err := LoadUserManager(a)
+			um, err := LoadUserManager(a)
 			So(err, ShouldBeNil)
+			So(um, ShouldNotBeNil)
 		})
 	})
 }
