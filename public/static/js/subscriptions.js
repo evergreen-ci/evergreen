@@ -82,7 +82,7 @@ function subscriberPromise($mdDialog, verb, triggers, omitMethods, subscription)
     });
 }
 
-function subCtrl($scope, $mdDialog) {
+function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     // labels should complete the following sentence fragments:
     // 'then notify by ...'
     // 'when ...'
@@ -170,6 +170,15 @@ function subCtrl($scope, $mdDialog) {
             $scope.method = t[0];
         }
         $scope.trigger = lookupTrigger($scope.c.triggers, $scope.c.subscription.trigger, $scope.c.subscription.resource_type);
+
+    }else {
+        mciUserSettingsService.getUserSettings({success: function(resp) {
+            if (!$scope.targets[SUBSCRIPTION_SLACK]) {
+                $scope.targets[SUBSCRIPTION_SLACK] = "@" + resp.data.slack_username || "";
+            }
+        }, error: function(resp) {
+            console.log("failed to fetch user settings: ", resp);
+        }});
     }
 }
 
