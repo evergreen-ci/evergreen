@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -23,7 +24,7 @@ func SetUserAPIKey(userId, newKey string) error {
 func FindUserByID(id string) (*user.DBUser, error) {
 	t, err := user.FindOne(user.ById(id))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "db issue finding user '%s'", id)
 	}
 	return t, nil
 }
@@ -47,7 +48,7 @@ func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
 			Upsert:    true,
 		}, u)
 	if err != nil {
-		return nil, err
+		return nil, errirs.Wrapf(err, "problem find/create user '%s'", userId)
 	}
 	return u, nil
 }
