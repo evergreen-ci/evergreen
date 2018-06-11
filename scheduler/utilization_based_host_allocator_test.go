@@ -904,3 +904,241 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 	s.NoError(err)
 	s.Equal(0, hosts[s.distroName])
 }
+
+func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
+	h1 := host.Host{
+		Id:            "h1",
+		HasContainers: true,
+	}
+	h2 := host.Host{
+		Id:            "h2",
+		HasContainers: true,
+	}
+	h3 := host.Host{
+		Id:          "h3",
+		RunningTask: "t1",
+		ParentID:    "h1",
+	}
+	h4 := host.Host{
+		Id:          "h4",
+		RunningTask: "t2",
+		ParentID:    "h1",
+	}
+	h5 := host.Host{
+		Id:          "h5",
+		RunningTask: "t3",
+		ParentID:    "h2",
+	}
+	h6 := host.Host{
+		Id:          "h6",
+		RunningTask: "t4",
+		ParentID:    "h2",
+	}
+	h7 := host.Host{
+		Id:          "h7",
+		RunningTask: "t5",
+		ParentID:    "h2",
+	}
+	t1 := task.Task{
+		Id:               "t1",
+		Project:          s.projectName,
+		ExpectedDuration: 3 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-5 * time.Minute),
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:               "t2",
+		Project:          s.projectName,
+		ExpectedDuration: 10 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-5 * time.Minute),
+	}
+	s.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:               "t3",
+		Project:          s.projectName,
+		ExpectedDuration: 5 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now(),
+	}
+	s.NoError(t3.Insert())
+	t4 := task.Task{
+		Id:               "t4",
+		Project:          s.projectName,
+		ExpectedDuration: 5 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-10 * time.Minute),
+	}
+	s.NoError(t4.Insert())
+	t5 := task.Task{
+		Id:               "t5",
+		Project:          s.projectName,
+		ExpectedDuration: 15 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now(),
+	}
+	s.NoError(t5.Insert())
+
+	data := HostAllocatorData{
+		distros: map[string]distro.Distro{
+			s.distroName: s.distro,
+		},
+		existingDistroHosts: map[string][]host.Host{
+			s.distroName: []host.Host{h1, h2, h3, h4, h5, h6, h7},
+		},
+		freeHostFraction: 1,
+		taskQueueItems: map[string][]model.TaskQueueItem{
+			s.distroName: []model.TaskQueueItem{
+				// 2 long tasks + 9 minutes of tasks should need 3 hosts
+				// there are 2 idle tasks and 2 free hosts in the next 5 mins (factor = 1)
+				// so we need 0 hosts
+				{
+					ExpectedDuration: 5 * time.Minute,
+				},
+				{
+					ExpectedDuration: 2 * time.Minute,
+				},
+				{
+					ExpectedDuration: 15 * time.Minute,
+				},
+				{
+					ExpectedDuration: 30 * time.Second,
+				},
+				{
+					ExpectedDuration: 10 * time.Minute,
+				},
+				{
+					ExpectedDuration: 50 * time.Second,
+				},
+			},
+		},
+		usesContainers: true,
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
+	s.NoError(err)
+	s.Equal(0, hosts[s.distroName])
+}
+
+func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
+	h1 := host.Host{
+		Id:            "h1",
+		HasContainers: true,
+	}
+	h2 := host.Host{
+		Id:            "h2",
+		HasContainers: true,
+	}
+	h3 := host.Host{
+		Id:          "h3",
+		RunningTask: "t1",
+		ParentID:    "h1",
+	}
+	h4 := host.Host{
+		Id:          "h4",
+		RunningTask: "t2",
+		ParentID:    "h1",
+	}
+	h5 := host.Host{
+		Id:          "h5",
+		RunningTask: "t3",
+		ParentID:    "h2",
+	}
+	h6 := host.Host{
+		Id:          "h6",
+		RunningTask: "t4",
+		ParentID:    "h2",
+	}
+	h7 := host.Host{
+		Id:          "h7",
+		RunningTask: "t5",
+		ParentID:    "h2",
+	}
+	t1 := task.Task{
+		Id:               "t1",
+		Project:          s.projectName,
+		ExpectedDuration: 10 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-5 * time.Minute),
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:               "t2",
+		Project:          s.projectName,
+		ExpectedDuration: 12 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-5 * time.Minute),
+	}
+	s.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:               "t3",
+		Project:          s.projectName,
+		ExpectedDuration: 5 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now(),
+	}
+	s.NoError(t3.Insert())
+	t4 := task.Task{
+		Id:               "t4",
+		Project:          s.projectName,
+		ExpectedDuration: 5 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-10 * time.Minute),
+	}
+	s.NoError(t4.Insert())
+	t5 := task.Task{
+		Id:               "t5",
+		Project:          s.projectName,
+		ExpectedDuration: 13 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now(),
+	}
+	s.NoError(t5.Insert())
+
+	data := HostAllocatorData{
+		distros: map[string]distro.Distro{
+			s.distroName: s.distro,
+		},
+		existingDistroHosts: map[string][]host.Host{
+			s.distroName: []host.Host{h1, h2, h3, h4, h5, h6, h7},
+		},
+		freeHostFraction: 1,
+		taskQueueItems: map[string][]model.TaskQueueItem{
+			s.distroName: []model.TaskQueueItem{
+				// 3 long tasks + 10 minutes of tasks should need 5 hosts
+				// there is 1 idle task and 3 free hosts in the next 5 mins (factor = 1)
+				// so we need 1 host
+				{
+					ExpectedDuration: 5 * time.Minute,
+				},
+				{
+					ExpectedDuration: 2 * time.Minute,
+				},
+				{
+					ExpectedDuration: 15 * time.Minute,
+				},
+				{
+					ExpectedDuration: 30 * time.Second,
+				},
+				{
+					ExpectedDuration: 10 * time.Minute,
+				},
+				{
+					ExpectedDuration: 50 * time.Second,
+				},
+				{
+					ExpectedDuration: 50 * time.Second,
+				},
+				{
+					ExpectedDuration: 7 * time.Minute,
+				},
+			},
+		},
+		usesContainers: true,
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
+	s.NoError(err)
+	s.Equal(1, hosts[s.distroName])
+}
