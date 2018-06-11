@@ -101,7 +101,7 @@ type Host struct {
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
-	SpawnOptions SpawnOptions `bson:"spawn,omitempty" json:"spawn,omitempty"`
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
