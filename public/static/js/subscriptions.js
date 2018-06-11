@@ -97,6 +97,16 @@ function subCtrl($scope, $mdDialog) {
 
     $scope.closeDialog = function(save) {
         if(save === true) {
+            $scope.validationErrors = [];
+            for (var key in $scope.customValidation) {
+              var validationMsg = $scope.customValidation[key]($scope.extraData[key]);
+              if (validationMsg) {
+                $scope.validationErrors.push(validationMsg);
+              };
+            };
+            if ($scope.validationErrors.length > 0) {
+              return;
+            }
             subscriber = {
                 type: $scope.method.value,
                 target: $scope.targets[$scope.method.value],
@@ -123,6 +133,17 @@ function subCtrl($scope, $mdDialog) {
 
         return text;
     };
+
+    $scope.addCustomValidation = function() {
+      $scope.customValidation = {};
+      _.each($scope.c.triggers, function(trigger){
+          if (trigger.extraFields) {
+            _.each(trigger.extraFields, function(field) {
+              $scope.customValidation[field.key] = field.validator;
+            });
+          };
+      });
+    }
 
     $scope.valid = function() {
         if (!$scope.trigger || !$scope.method) {
@@ -169,6 +190,7 @@ function subCtrl($scope, $mdDialog) {
         }
       });
 
+    $scope.addCustomValidation();
     $scope.method = {};
     $scope.targets = {};
     $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {

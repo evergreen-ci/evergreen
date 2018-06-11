@@ -50,6 +50,9 @@
                         </md-list>
                     </div>
                 </div>
+                <div id="validationErrors" style="margin-top:6px;">
+                  <span ng-repeat="error in validationErrors" style="color:#d0073b">[[error]]</span>
+                </div>
             </div>
         </md-dialog-content>
         <md-dialog-actions>
