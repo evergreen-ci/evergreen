@@ -134,15 +134,13 @@ function subCtrl($scope, $mdDialog) {
         return text;
     };
 
-    $scope.addCustomValidation = function() {
+    $scope.addCustomValidation = function(fields) {
       $scope.customValidation = {};
-      _.each($scope.c.triggers, function(trigger){
-          if (trigger.extraFields) {
-            _.each(trigger.extraFields, function(field) {
-              $scope.customValidation[field.key] = field.validator;
-            });
-          };
-      });
+      if (fields) {
+        _.each(fields, function(field) {
+          $scope.customValidation[field.key] = field.validator;
+        });
+      };
     }
 
     $scope.valid = function() {
@@ -186,11 +184,12 @@ function subCtrl($scope, $mdDialog) {
       _.each($scope.c.triggers, function(trigger){
         if (trigger.trigger === $scope.trigger.trigger) {
           $scope.extraFields = trigger.extraFields;
+          $scope.addCustomValidation(trigger.extraFields);
           return;
         }
       });
+    };
 
-    $scope.addCustomValidation();
     $scope.method = {};
     $scope.targets = {};
     $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {
@@ -254,5 +253,4 @@ function addInSelectorsAndOwnerType(subscription, type, inType, id) {
     data: id
   });
   subscription.owner_type = "person";
-}
 }
