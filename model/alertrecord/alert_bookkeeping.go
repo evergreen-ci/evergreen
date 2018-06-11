@@ -20,6 +20,7 @@ var (
 	// TODO: EVG-3408
 	TaskFailedId         = "task_failed"
 	LastRevisionNotFound = "last_revision_not_found"
+	taskRegressionByTest = "task-regression-by-test"
 )
 
 // Host triggers
@@ -40,6 +41,7 @@ type AlertRecord struct {
 	VersionId           string        `bson:"version_id,omitempty"`
 	TaskName            string        `bson:"task_name,omitempty"`
 	Variant             string        `bson:"variant,omitempty"`
+	TestName            string        `bson:"test_name,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty"`
 }
 
@@ -113,6 +115,15 @@ func ByLastRevNotFound(projectId, versionId string) db.Q {
 		ProjectIdKey: projectId,
 		VersionIdKey: versionId,
 	}).Limit(1)
+}
+
+func FindByLastRegressionByTest(testName, taskName, variant, projectID string) (*AlertRecord, error) {
+	return FindOne(db.Query(bson.M{
+		TypeKey:      taskRegressionByTest,
+		TaskNameKey:  taskName,
+		VariantKey:   variant,
+		ProjectIdKey: projectID,
+	}).Sort([]string{"-" + RevisionOrderNumberKey}).Limit(1))
 }
 
 func (ar *AlertRecord) Insert() error {

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -214,7 +215,7 @@ func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertTyp
 }
 
 func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskSucceeded && t.data.Status != evergreen.TaskFailed {
+	if t.data.Status != evergreen.TaskSucceeded && !isFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -222,7 +223,7 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskFailed {
+	if !isFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -362,4 +363,61 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 	}
 
 	return n, errors.Wrap(rec.Insert(), "failed to process regression trigger")
+}
+
+func (t *taskTriggers) shouldIncludeTest(_ *testresult.TestResult) (bool, error) {
+	return false, nil
+}
+
+func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.Requester != evergreen.RepotrackerVersionRequester || !isFailedTaskStatus(t.data.Status) {
+		return nil, nil
+	}
+
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
+	if err != nil {
+		return nil, errors.Wrap(err, "error fetching previous task")
+
+	}
+
+	tests, err := testresult.FindByTaskIDAndExecution(t.task.Id, t.task.Execution)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to fetch tests for '%s'", t.task.Id)
+	}
+	if len(tests) == 0 {
+		return nil, nil
+	}
+
+	testsToAlert := []testresult.TestResult{}
+	catcher := grip.NewBasicCatcher()
+	if previousTask != nil {
+		for i := range tests {
+			var shouldInclude bool
+			shouldInclude, err = t.shouldIncludeTest(&tests[i])
+			if err != nil {
+				catcher.Add(err)
+			}
+			if shouldInclude {
+				testsToAlert = append(testsToAlert, tests[i])
+			}
+		}
+	}
+
+	n, err := t.generate(sub)
+	if err != nil {
+		return nil, err
+	}
+
+	rec := newAlertRecord(t.task, alertrecord.TaskFailTransitionId)
+	rec.RevisionOrderNumber = -1
+	if previousTask != nil {
+		rec.RevisionOrderNumber = previousTask.RevisionOrderNumber
+	}
+
+	return n, errors.Wrap(rec.Insert(), "failed to process regression trigger")
+}
+
+func isFailedTaskStatus(status string) bool {
+	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed || status == evergreen.TaskTestTimedOut
 }
