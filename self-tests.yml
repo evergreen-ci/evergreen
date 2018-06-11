@@ -349,6 +349,9 @@ tasks:
     name: test-model
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-alertrecord
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-artifact
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -463,6 +466,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-alertrecord
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-artifact

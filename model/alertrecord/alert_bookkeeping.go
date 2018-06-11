@@ -3,6 +3,7 @@ package alertrecord
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -12,7 +13,7 @@ const (
 )
 
 // Task triggers
-var (
+const (
 	FirstVersionFailureId  = "first_version_failure"
 	FirstVariantFailureId  = "first_variant_failure"
 	FirstTaskTypeFailureId = "first_tasktype_failure"
@@ -24,7 +25,7 @@ var (
 )
 
 // Host triggers
-var (
+const (
 	SpawnFailed                = "spawn_failed"
 	SpawnHostTwoHourWarning    = "spawn_twohour"
 	SpawnHostTwelveHourWarning = "spawn_twelvehour"
@@ -54,6 +55,7 @@ var (
 	VariantKey             = bsonutil.MustHaveTag(AlertRecord{}, "Variant")
 	ProjectIdKey           = bsonutil.MustHaveTag(AlertRecord{}, "ProjectId")
 	VersionIdKey           = bsonutil.MustHaveTag(AlertRecord{}, "VersionId")
+	testNameKey            = bsonutil.MustHaveTag(AlertRecord{}, "TestName")
 	RevisionOrderNumberKey = bsonutil.MustHaveTag(AlertRecord{}, "RevisionOrderNumber")
 )
 
@@ -117,15 +119,33 @@ func ByLastRevNotFound(projectId, versionId string) db.Q {
 	}).Limit(1)
 }
 
-func FindByLastRegressionByTest(testName, taskName, variant, projectID string) (*AlertRecord, error) {
+func FindByLastRegressionByTest(testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {
 	return FindOne(db.Query(bson.M{
 		TypeKey:      taskRegressionByTest,
-		TaskNameKey:  taskName,
+		testNameKey:  testName,
+		TaskNameKey:  taskDisplayName,
 		VariantKey:   variant,
 		ProjectIdKey: projectID,
-	}).Sort([]string{"-" + RevisionOrderNumberKey}).Limit(1))
+		RevisionOrderNumberKey: bson.M{
+			"$lte": beforeRevision,
+		},
+	}).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 func (ar *AlertRecord) Insert() error {
 	return db.Insert(Collection, ar)
+}
+
+func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID string, beforeRevision int) error {
+	record := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                taskRegressionByTest,
+		ProjectId:           projectID,
+		TaskName:            taskDisplayName,
+		Variant:             variant,
+		TestName:            testName,
+		RevisionOrderNumber: beforeRevision,
+	}
+
+	return errors.Wrap(record.Insert(), "failed to insert alert record")
 }
