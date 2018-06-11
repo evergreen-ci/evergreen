@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
@@ -1532,4 +1533,126 @@ func TestFindParentOfContainerNotParent(t *testing.T) {
 	parent, err := host1.GetParent()
 	assert.EqualError(err, "Host found is not a parent")
 	assert.Nil(parent)
+}
+
+func TestLastContainerFinishTimePipeline(t *testing.T) {
+
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing %v collections", Collection)
+	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing '%v' collection", task.Collection)
+	assert := assert.New(t)
+
+	startTimeOne := time.Now()
+	startTimeTwo := time.Now().Add(-10 * time.Minute)
+	startTimeThree := time.Now().Add(-1 * time.Hour)
+
+	durationOne := 5 * time.Minute
+	durationTwo := 30 * time.Minute
+	durationThree := 2 * time.Hour
+
+	h1 := Host{
+		Id:          "h1",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p1",
+		RunningTask: "t1",
+	}
+	assert.NoError(h1.Insert())
+	h2 := Host{
+		Id:          "h2",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p1",
+		RunningTask: "t2",
+	}
+	assert.NoError(h2.Insert())
+	h3 := Host{
+		Id:          "h3",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p1",
+		RunningTask: "t3",
+	}
+	assert.NoError(h3.Insert())
+	h4 := Host{
+		Id:          "h4",
+		Status:      evergreen.HostRunning,
+		RunningTask: "t4",
+	}
+	assert.NoError(h4.Insert())
+	h5 := Host{
+		Id:          "h5",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p2",
+		RunningTask: "t5",
+	}
+	assert.NoError(h5.Insert())
+	h6 := Host{
+		Id:          "h6",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p2",
+		RunningTask: "t6",
+	}
+	assert.NoError(h6.Insert())
+	t1 := task.Task{
+		Id: "t1",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationOne,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t1.Insert())
+	t2 := task.Task{
+		Id: "t2",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationTwo,
+		},
+		StartTime: startTimeTwo,
+	}
+	assert.NoError(t2.Insert())
+	t3 := task.Task{
+		Id: "t3",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationThree,
+		},
+		StartTime: startTimeThree,
+	}
+	assert.NoError(t3.Insert())
+	t4 := task.Task{
+		Id: "t4",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationThree,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t4.Insert())
+	t5 := task.Task{
+		Id: "t5",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationThree,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t5.Insert())
+	t6 := task.Task{
+		Id: "t6",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationTwo,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t6.Insert())
+
+	var out []FinishTime
+	var results map[string]time.Time
+	results = make(map[string]time.Time)
+
+	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &out)
+	assert.NoError(err)
+
+	for _, doc := range out {
+		results[doc.Id] = doc.FinishTime
+	}
+
+	// checks if last container finish time for each parent is within millisecond of expected
+	// necessary because Go uses nanoseconds while MongoDB uses milliseconds
+	assert.WithinDuration(results["p1"], startTimeThree.Add(durationThree), time.Millisecond)
+	assert.WithinDuration(results["p2"], startTimeOne.Add(durationThree), time.Millisecond)
+
 }

@@ -99,6 +99,8 @@ type Host struct {
 	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
 	// stores the ID of the host a container is on
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
+	// stores last expected finish time among all containers on the host
+	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -810,4 +812,39 @@ func (h *Host) GetParent() (*Host, error) {
 	}
 
 	return host, nil
+}
+
+// AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
+// errors if aggregation fails
+func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
+
+	var times []FinishTime
+	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
+	if err != nil {
+		return nil, errors.Wrap(err, "error aggregating parent finish times")
+	}
+	return times, nil
+
+}
+
+// updateLastContainerFinishTime updates latest finish time for a host with containers
+// errors if update operation fails
+func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
+
+	selector := bson.M{
+		IdKey: h.Id,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			LastContainerFinishTimeKey: t,
+		},
+	}
+
+	err := UpdateOne(selector, update)
+	if err != nil {
+		return errors.Wrapf(err, "error updating finish time for host %s", h.Id)
+	}
+
+	return nil
 }

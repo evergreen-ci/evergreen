@@ -66,6 +66,7 @@ var (
 	ContainerIDKey             = bsonutil.MustHaveTag(Host{}, "ContainerID")
 	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
 	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
+	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 )
 
 // === Queries ===
@@ -479,6 +480,57 @@ func inactiveHostCountPipeline() []bson.M {
 				"count": bson.M{
 					"$sum": 1,
 				},
+			},
+		},
+	}
+}
+
+// struct for storing Id and FinishTime pairs
+type FinishTime struct {
+	Id         string    `bson:"_id"`
+	FinishTime time.Time `bson:"finish_time"`
+}
+
+// aggregation pipeline to compute latest finish time for running hosts with child containers
+func lastContainerFinishTimePipeline() []bson.M {
+	return []bson.M{
+		{
+			// matches all containers
+			"$match": bson.M{
+				ParentIDKey: bson.M{"$exists": true},
+			},
+		},
+		{
+			// joins hosts and tasks collections on task ID
+			"$lookup": bson.M{
+				"from":         "tasks",
+				"localField":   RunningTaskKey,
+				"foreignField": IdKey,
+				"as":           "task",
+			},
+		},
+		{
+			// deconstructs $lookup array
+			"$unwind": "$task",
+		},
+		{
+			// groups containers by parent host ID
+			"$group": bson.M{
+				"_id": "$" + ParentIDKey,
+				"finish_time": bson.M{
+					// computes last container finish time for each host
+					"$max": bson.M{
+						"$add": []interface{}{"$task.start_time",
+							bson.M{"$divide": []interface{}{"$task.duration_prediction.value", time.Millisecond}},
+						},
+					},
+				},
+			},
+		},
+		{
+			// projects only ID and finish time
+			"$project": bson.M{
+				"finish_time": 1,
 			},
 		},
 	}
