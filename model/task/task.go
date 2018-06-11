@@ -670,7 +670,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
 
-	grip.Info(message.Fields{
+	grip.Debug(message.Fields{
 		"message":   "marking task finished",
 		"task_id":   t.Id,
 		"execution": t.Execution,
