@@ -151,7 +151,7 @@ func (t *buildTriggers) Selectors() []event.Selector {
 	}
 }
 
-func (t *buildTriggers) buildOutcome(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildSucceeded && t.data.Status != evergreen.BuildFailed {
 		return nil, nil
 	}
@@ -159,7 +159,7 @@ func (t *buildTriggers) buildOutcome(entry *event.EventLogEntry, sub *event.Subs
 	return t.generate(sub)
 }
 
-func (t *buildTriggers) buildFailure(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildFailure(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildFailed {
 		return nil, nil
 	}
@@ -167,7 +167,7 @@ func (t *buildTriggers) buildFailure(entry *event.EventLogEntry, sub *event.Subs
 	return t.generate(sub)
 }
 
-func (t *buildTriggers) buildSuccess(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *buildTriggers) buildSuccess(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.BuildSucceeded {
 		return nil, nil
 	}

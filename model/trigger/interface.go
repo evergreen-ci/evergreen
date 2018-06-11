@@ -22,25 +22,25 @@ type eventHandler interface {
 
 	// Process creates a notification for an event from a single
 	// Subscription
-	Process(*event.EventLogEntry, *event.Subscription) (*notification.Notification, error)
+	Process(*event.Subscription) (*notification.Notification, error)
 
 	// Validate returns true if the string refers to a valid trigger
 	ValidateTrigger(string) bool
 }
 
-type trigger func(*event.EventLogEntry, *event.Subscription) (*notification.Notification, error)
+type trigger func(*event.Subscription) (*notification.Notification, error)
 
 type base struct {
 	triggers map[string]trigger
 }
 
-func (b *base) Process(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (b *base) Process(sub *event.Subscription) (*notification.Notification, error) {
 	f, ok := b.triggers[sub.Trigger]
 	if !ok {
 		return nil, errors.Errorf("unknown trigger: '%s'", sub.Trigger)
 	}
 
-	return f(entry, sub)
+	return f(sub)
 }
 
 func (b *base) ValidateTrigger(t string) bool {

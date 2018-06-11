@@ -213,7 +213,7 @@ func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertTyp
 	return n, nil
 }
 
-func (t *taskTriggers) taskOutcome(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.TaskSucceeded && t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -221,7 +221,7 @@ func (t *taskTriggers) taskOutcome(entry *event.EventLogEntry, sub *event.Subscr
 	return t.generate(sub)
 }
 
-func (t *taskTriggers) taskFailure(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -229,7 +229,7 @@ func (t *taskTriggers) taskFailure(entry *event.EventLogEntry, sub *event.Subscr
 	return t.generate(sub)
 }
 
-func (t *taskTriggers) taskSuccess(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.TaskSucceeded {
 		return nil, nil
 	}
@@ -237,7 +237,7 @@ func (t *taskTriggers) taskSuccess(entry *event.EventLogEntry, sub *event.Subscr
 	return t.generate(sub)
 }
 
-func (t *taskTriggers) taskFirstFailureInBuild(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -252,7 +252,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(entry *event.EventLogEntry, sub *
 	return t.generateWithAlertRecord(sub, alertrecord.FirstVariantFailureId)
 }
 
-func (t *taskTriggers) taskFirstFailureInVersion(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -267,7 +267,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(entry *event.EventLogEntry, sub
 	return t.generateWithAlertRecord(sub, alertrecord.FirstVersionFailureId)
 }
 
-func (t *taskTriggers) taskFirstFailureInVersionWithName(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.TaskFailed {
 		return nil, nil
 	}
@@ -282,7 +282,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(entry *event.EventLogEn
 	return t.generateWithAlertRecord(sub, alertrecord.FirstTaskTypeFailureId)
 }
 
-func (t *taskTriggers) taskRegression(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.TaskFailed || t.task.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}

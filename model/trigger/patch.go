@@ -90,7 +90,7 @@ func (t *patchTriggers) Selectors() []event.Selector {
 	}
 }
 
-func (t *patchTriggers) patchOutcome(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *patchTriggers) patchOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.PatchSucceeded && t.data.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
@@ -98,7 +98,7 @@ func (t *patchTriggers) patchOutcome(entry *event.EventLogEntry, sub *event.Subs
 	return t.generate(sub)
 }
 
-func (t *patchTriggers) patchFailure(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *patchTriggers) patchFailure(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.PatchFailed {
 		return nil, nil
 	}
@@ -106,7 +106,7 @@ func (t *patchTriggers) patchFailure(entry *event.EventLogEntry, sub *event.Subs
 	return t.generate(sub)
 }
 
-func (t *patchTriggers) patchSuccess(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *patchTriggers) patchSuccess(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.PatchSucceeded {
 		return nil, nil
 	}
@@ -114,7 +114,7 @@ func (t *patchTriggers) patchSuccess(entry *event.EventLogEntry, sub *event.Subs
 	return t.generate(sub)
 }
 
-func (t *patchTriggers) patchStarted(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *patchTriggers) patchStarted(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.PatchStarted {
 		return nil, nil
 	}

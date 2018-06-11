@@ -87,7 +87,7 @@ func (t *versionTriggers) Selectors() []event.Selector {
 	}
 }
 
-func (t *versionTriggers) versionOutcome(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
 		return nil, nil
 	}
@@ -95,7 +95,7 @@ func (t *versionTriggers) versionOutcome(entry *event.EventLogEntry, sub *event.
 	return t.generate(sub)
 }
 
-func (t *versionTriggers) versionFailure(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionFailed {
 		return nil, nil
 	}
@@ -103,7 +103,7 @@ func (t *versionTriggers) versionFailure(entry *event.EventLogEntry, sub *event.
 	return t.generate(sub)
 }
 
-func (t *versionTriggers) versionSuccess(entry *event.EventLogEntry, sub *event.Subscription) (*notification.Notification, error) {
+func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionSucceeded {
 		return nil, nil
 	}

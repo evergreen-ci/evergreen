@@ -162,51 +162,51 @@ func (s *VersionSuite) TestAllTriggers() {
 }
 
 func (s *VersionSuite) TestVersionSuccess() {
-	n, err := s.t.versionSuccess(nil, &s.subs[1])
+	n, err := s.t.versionSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.versionSuccess(nil, &s.subs[1])
+	n, err = s.t.versionSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.versionSuccess(nil, &s.subs[1])
+	n, err = s.t.versionSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *VersionSuite) TestVersionFailure() {
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.versionOutcome(nil, &s.subs[0])
+	n, err := s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.versionFailure(nil, &s.subs[2])
+	n, err = s.t.versionFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.versionFailure(nil, &s.subs[2])
+	n, err = s.t.versionFailure(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *VersionSuite) TestVersionOutcome() {
 	s.data.Status = evergreen.VersionCreated
-	n, err := s.t.versionOutcome(nil, &s.subs[0])
+	n, err := s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.VersionSucceeded
-	n, err = s.t.versionOutcome(nil, &s.subs[0])
+	n, err = s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.VersionFailed
-	n, err = s.t.versionOutcome(nil, &s.subs[0])
+	n, err = s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }

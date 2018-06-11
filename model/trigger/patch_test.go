@@ -177,62 +177,62 @@ func (s *patchSuite) TestAllTriggers() {
 }
 
 func (s *patchSuite) TestPatchSuccess() {
-	n, err := s.t.patchSuccess(nil, &s.subs[1])
+	n, err := s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	n, err = s.t.patchSuccess(nil, &s.subs[1])
+	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchSucceeded
-	n, err = s.t.patchSuccess(nil, &s.subs[1])
+	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
 	s.data.Status = evergreen.PatchCreated
-	n, err := s.t.patchFailure(nil, &s.subs[2])
+	n, err := s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchSucceeded
-	n, err = s.t.patchFailure(nil, &s.subs[2])
+	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	n, err = s.t.patchFailure(nil, &s.subs[2])
+	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
 	s.data.Status = evergreen.PatchCreated
-	n, err := s.t.patchOutcome(nil, &s.subs[0])
+	n, err := s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchSucceeded
-	n, err = s.t.patchOutcome(nil, &s.subs[0])
+	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	n, err = s.t.patchOutcome(nil, &s.subs[0])
+	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchStarted() {
-	n, err := s.t.patchStarted(nil, &s.subs[0])
+	n, err := s.t.patchStarted(&s.subs[0])
 	s.Nil(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.PatchStarted
-	n, err = s.t.patchStarted(nil, &s.subs[0])
+	n, err = s.t.patchStarted(&s.subs[0])
 	s.Nil(err)
 	s.NotNil(n)
 }

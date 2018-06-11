@@ -160,53 +160,53 @@ func (s *buildSuite) TestAllTriggers() {
 }
 
 func (s *buildSuite) TestSuccess() {
-	n, err := s.t.buildSuccess(nil, &s.subs[1])
+	n, err := s.t.buildSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildFailed
-	n, err = s.t.buildSuccess(nil, &s.subs[1])
+	n, err = s.t.buildSuccess(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildSucceeded
-	n, err = s.t.buildSuccess(nil, &s.subs[1])
+	n, err = s.t.buildSuccess(&s.subs[1])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *buildSuite) TestFailure() {
-	n, err := s.t.buildFailure(nil, &s.subs[2])
+	n, err := s.t.buildFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildSucceeded
-	n, err = s.t.buildFailure(nil, &s.subs[2])
+	n, err = s.t.buildFailure(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildFailed
-	n, err = s.t.buildFailure(nil, &s.subs[2])
+	n, err = s.t.buildFailure(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 }
 
 func (s *buildSuite) TestOutcome() {
-	n, err := s.t.buildOutcome(nil, &s.subs[1])
+	n, err := s.t.buildOutcome(&s.subs[1])
 	s.NoError(err)
 	s.Nil(n)
 
-	n, err = s.t.buildOutcome(nil, &s.subs[0])
+	n, err = s.t.buildOutcome(&s.subs[0])
 	s.NoError(err)
 	s.Nil(n)
 
 	s.data.Status = evergreen.BuildSucceeded
-	n, err = s.t.buildOutcome(nil, &s.subs[0])
+	n, err = s.t.buildOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.data.Status = evergreen.BuildFailed
-	n, err = s.t.buildOutcome(nil, &s.subs[0])
+	n, err = s.t.buildOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
 }
