@@ -1272,16 +1272,14 @@ func TestFindAllRunningParentsOrdered(t *testing.T) {
 		LastContainerFinishTime: time.Now().Add(10 * time.Minute),
 	}
 	host2 := &Host{
-		Id:                      "host2",
-		Distro:                  distro.Distro{Id: d1},
-		Status:                  evergreen.HostStarting,
-		LastContainerFinishTime: time.Now().Add(10 * time.Minute),
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
 	}
 	host3 := &Host{
-		Id:                      "host3",
-		Distro:                  distro.Distro{Id: d1},
-		Status:                  evergreen.HostTerminated,
-		LastContainerFinishTime: time.Now().Add(10 * time.Minute),
+		Id:     "host3",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostTerminated,
 	}
 	host4 := &Host{
 		Id:                      "host4",
@@ -1298,10 +1296,9 @@ func TestFindAllRunningParentsOrdered(t *testing.T) {
 		LastContainerFinishTime: time.Now().Add(5 * time.Minute),
 	}
 	host6 := &Host{
-		Id:                      "host6",
-		Distro:                  distro.Distro{Id: d2},
-		Status:                  evergreen.HostProvisioning,
-		LastContainerFinishTime: time.Now().Add(20 * time.Minute),
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
 	}
 	host7 := &Host{
 		Id:                      "host7",
