@@ -496,9 +496,10 @@ func lastContainerFinishTimePipeline() []bson.M {
 	const output string = "finish_time"
 	return []bson.M{
 		{
-			// matches all containers
+			// matches all running containers
 			"$match": bson.M{
 				ParentIDKey: bson.M{"$exists": true},
+				StatusKey:   evergreen.HostRunning,
 			},
 		},
 		{

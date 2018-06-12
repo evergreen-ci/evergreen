@@ -749,14 +749,15 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 	return counts, nil
 }
 
-// FindAllContainers finds all the containers
-func FindAllContainers() ([]Host, error) {
+// FindAllRunningContainers finds all running containers
+func FindAllRunningContainers() ([]Host, error) {
 	query := db.Query(bson.M{
+		StatusKey:      evergreen.HostRunning,
 		ContainerIDKey: bson.M{"$exists": true},
 	})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding containers")
+		return nil, errors.Wrap(err, "Error finding running containers")
 	}
 
 	return hosts, nil
