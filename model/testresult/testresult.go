@@ -136,3 +136,17 @@ func TestResultsQuery(taskId, testId, status string, limit, sort, execution int)
 
 	return q
 }
+
+func FindByTaskIDAndExecutionGroupedByTestFile(taskID string, execution int) (map[string]*TestResult, error) {
+	tests, err := FindByTaskIDAndExecution(taskID, execution)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch tests")
+	}
+
+	out := map[string]*TestResult{}
+
+	for i := range tests {
+		out[tests[i].TestFile] = &tests[i]
+	}
+	return out, nil
+}

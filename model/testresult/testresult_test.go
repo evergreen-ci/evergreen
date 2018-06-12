@@ -208,3 +208,14 @@ func (s *TestResultSuite) TestFindByTaskIDAndExecution() {
 	s.NoError(err)
 	s.Len(tests, 0)
 }
+
+func (s *TestResultSuite) FindByTaskIDAndExecutionGroupedByTestFile() {
+	tests, err := FindByTaskIDAndExecutionGroupedByTestFile("taskid-5", 5)
+	s.NoError(err)
+	s.Len(tests, 5)
+
+	for k, v := range tests {
+		s.Equal(k, tests[k].TestFile)
+		s.Equal("taskid-5", v.TaskID)
+	}
+}
