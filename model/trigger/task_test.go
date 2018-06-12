@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -35,20 +38,21 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, event.SubscriptionsCollection, alertrecord.Collection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	s.task = task.Task{
 		Id:                  "test",
-		Version:             "test",
-		BuildId:             "test",
-		BuildVariant:        "test",
-		DistroId:            "test",
-		Project:             "test",
-		DisplayName:         "Test",
+		Version:             "test_version_id",
+		BuildId:             "test_build_id",
+		BuildVariant:        "test_build_variant",
+		DistroId:            "test_distro_id",
+		Project:             "test_project",
+		DisplayName:         "test-display-name",
 		StartTime:           startTime,
 		FinishTime:          startTime.Add(10 * time.Minute),
 		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(s.task.Insert())
 
@@ -417,4 +421,258 @@ func (s *taskSuite) TestRegression() {
 	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
+}
+
+func (s *taskSuite) makeTask(n int, taskStatus string) {
+	s.task.Id = fmt.Sprintf("task_%d", n)
+	s.task.Version = fmt.Sprintf("version_%d", n)
+	s.task.BuildId = fmt.Sprintf("build_id_%d", n)
+	s.task.RevisionOrderNumber = n
+	s.task.Status = taskStatus
+	s.data.Status = taskStatus
+	s.event.ResourceId = s.task.Id
+	s.NoError(s.task.Insert())
+}
+
+func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
+	if len(testName) == 0 {
+		testName = "test_0"
+	}
+	results := testresult.TestResult{
+		ID:        bson.NewObjectId(),
+		TestFile:  testName,
+		TaskID:    s.task.Id,
+		Execution: execution,
+		Status:    testStatus,
+	}
+	s.NoError(results.Insert())
+}
+
+func (s *taskSuite) TestRegressionByTest() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	s.makeTask(1, evergreen.TaskSucceeded)
+	s.makeTest(1, 0, "", evergreen.TestSucceededStatus)
+
+	// brand new task that succeeds should not generate
+	n, err := s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// triggering the notification again should not generate anything
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	s.makeTask(1, evergreen.TaskFailed)
+	s.makeTest(1, 0, "", evergreen.TestFailedStatus)
+
+	// brand new test fails should generate
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// triggering the notification again should not generate anything
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// next fail with same test shouldn't generate
+	s.makeTask(2, evergreen.TaskFailed)
+	s.makeTest(2, 0, "", evergreen.TestFailedStatus)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// triggering it again shouldn't notify
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// but if we add a new failed test, it should notify
+	s.makeTest(2, 0, "test_1", evergreen.TestFailedStatus)
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// triggering it again shouldn't notify
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// successful tasks shouldn't generate
+	s.makeTask(3, evergreen.TaskSucceeded)
+	s.makeTest(3, 0, "", evergreen.TestSucceededStatus)
+	s.makeTest(3, 0, "test_1", evergreen.TestSucceededStatus)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// transition to failure
+	s.makeTask(4, evergreen.TaskFailed)
+	s.makeTest(4, 0, "", evergreen.TestFailedStatus)
+	s.makeTest(4, 0, "test_1", evergreen.TestSucceededStatus)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// Remove a successful test, but we already notified on the remaining
+	// failed test
+	s.makeTask(5, evergreen.TaskFailed)
+	s.makeTest(5, 0, "", evergreen.TestFailedStatus)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// insert a couple of successful tasks
+	s.makeTask(6, evergreen.TaskSucceeded)
+	s.makeTest(6, 0, "", evergreen.TestSucceededStatus)
+
+	s.makeTask(7, evergreen.TaskSucceeded)
+	s.makeTest(7, 0, "", evergreen.TestSucceededStatus)
+
+	s.makeTask(8, evergreen.TaskSucceeded)
+	s.makeTest(8, 0, "", evergreen.TestSucceededStatus)
+
+	// now simulate a rerun of task6 failing
+	task7, err := task.FindOneIdOldOrNew("task_7", 0)
+	s.NoError(err)
+	s.NotNil(task7)
+	s.NoError(task7.Archive())
+	task7.Status = evergreen.TaskFailed
+	task7.Execution = 1
+	s.event.ResourceId = task7.Id
+	s.NoError(db.Update(task.Collection, bson.M{"_id": task7.Id}, &task7))
+
+	s.task = *task7
+	s.makeTest(7, 1, "", evergreen.TestFailedStatus)
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// make it fail again; it shouldn't generate
+	s.NoError(task7.Archive())
+	task7.Status = evergreen.TaskFailed
+	task7.Execution = 2
+	s.event.ResourceId = task7.Id
+	s.NoError(db.Update(task.Collection, bson.M{"_id": task7.Id}, &task7))
+	s.makeTest(7, 2, "", evergreen.TestFailedStatus)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// no tests, but system fail should generate
+	s.makeTask(9, evergreen.TaskSystemFailed)
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// but not in subsequent task
+	s.makeTask(10, evergreen.TaskSystemFailed)
+	s.NoError(err)
+	s.NotNil(n)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// Change in failure type should notify -> fail
+	s.makeTask(11, evergreen.TaskFailed)
+	s.makeTest(11, 0, "", evergreen.TestFailedStatus)
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// Change in failure type should notify -> system fail
+	s.makeTask(12, evergreen.TaskSystemFailed)
+	s.makeTest(12, 0, "", evergreen.TestFailedStatus)
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// TaskFailed with no tests should generate
+	s.makeTask(13, evergreen.TaskFailed)
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.NotNil(n)
+
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+
+	// but not in a subsequent task
+	s.makeTask(14, evergreen.TaskFailed)
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+}
+
+func TestIsTestRegression(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.True(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestFailedStatus))
+	assert.False(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestSucceededStatus))
+
+	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestFailedStatus))
+	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestSucceededStatus))
+
+	assert.True(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestFailedStatus))
+	assert.False(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestSucceededStatus))
+
+	assert.True(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestFailedStatus))
+	assert.False(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSucceededStatus))
+}
+
+func TestIsTaskRegression(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.False(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskSucceeded))
+	assert.True(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskSystemFailed))
+	assert.True(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskFailed))
+	assert.True(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskTestTimedOut))
+
+	assert.False(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskSucceeded))
+	assert.False(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskSystemFailed))
+	assert.True(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskFailed))
+	assert.True(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskTestTimedOut))
+
+	assert.False(isTaskRegression(evergreen.TaskFailed, evergreen.TaskSucceeded))
+	assert.True(isTaskRegression(evergreen.TaskFailed, evergreen.TaskSystemFailed))
+	assert.False(isTaskRegression(evergreen.TaskFailed, evergreen.TaskFailed))
+	assert.True(isTaskRegression(evergreen.TaskFailed, evergreen.TaskTestTimedOut))
 }
