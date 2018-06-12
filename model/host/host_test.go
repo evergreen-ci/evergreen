@@ -1781,10 +1781,12 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert.Equal(found[1].Id, "4")
 
 	found, err = FindHostsSpawnedByTask("task_1")
+	assert.NoError(err)
 	assert.Len(found, 1)
 	assert.Equal(found[0].Id, "1")
 
 	found, err = FindHostsSpawnedByBuild("build_1")
+	assert.NoError(err)
 	assert.Len(found, 2)
 	assert.Equal(found[0].Id, "1")
 	assert.Equal(found[1].Id, "4")
