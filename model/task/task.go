@@ -675,7 +675,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		"task_id":   t.Id,
 		"execution": t.Execution,
 		"project":   t.Project,
-		"status":    detail.Status,
 		"details":   t.Details,
 	})
 	return UpdateOne(
