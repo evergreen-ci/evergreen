@@ -1251,9 +1251,80 @@ func TestFindAllRunningParents(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	containers, err := FindAllRunningParents()
+	hosts, err := FindAllRunningParents()
 	assert.NoError(err)
-	assert.Equal(3, len(containers))
+	assert.Equal(3, len(hosts))
+
+}
+
+func TestFindAllRunningParentsOrdered(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:                      "host1",
+		Distro:                  distro.Distro{Id: d1},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(10 * time.Minute),
+	}
+	host2 := &Host{
+		Id:                      "host2",
+		Distro:                  distro.Distro{Id: d1},
+		Status:                  evergreen.HostStarting,
+		LastContainerFinishTime: time.Now().Add(10 * time.Minute),
+	}
+	host3 := &Host{
+		Id:                      "host3",
+		Distro:                  distro.Distro{Id: d1},
+		Status:                  evergreen.HostTerminated,
+		LastContainerFinishTime: time.Now().Add(10 * time.Minute),
+	}
+	host4 := &Host{
+		Id:                      "host4",
+		Distro:                  distro.Distro{Id: d1},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(30 * time.Minute),
+	}
+	host5 := &Host{
+		Id:                      "host5",
+		Distro:                  distro.Distro{Id: d2},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(5 * time.Minute),
+	}
+	host6 := &Host{
+		Id:                      "host6",
+		Distro:                  distro.Distro{Id: d2},
+		Status:                  evergreen.HostProvisioning,
+		LastContainerFinishTime: time.Now().Add(20 * time.Minute),
+	}
+	host7 := &Host{
+		Id:                      "host7",
+		Distro:                  distro.Distro{Id: d2},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(15 * time.Minute),
+	}
+
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+
+	hosts, err := FindAllRunningParentsOrdered()
+	assert.NoError(err)
+	assert.Equal(hosts[0].Id, host5.Id)
+	assert.Equal(hosts[1].Id, host1.Id)
+	assert.Equal(hosts[2].Id, host7.Id)
+	assert.Equal(hosts[3].Id, host4.Id)
 
 }
 

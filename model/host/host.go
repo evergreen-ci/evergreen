@@ -776,6 +776,22 @@ func FindAllRunningParents() ([]Host, error) {
 	return hosts, nil
 }
 
+// FindAllRunningParentsOrdered finds all running hosts with child containers,
+// sorted in order of soonest  to latest LastContainerFinishTime
+func FindAllRunningParentsOrdered() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
+		HasContainersKey: true,
+	})
+	querySorted := query.Sort([]string{LastContainerFinishTimeKey})
+	hosts, err := Find(querySorted)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding ordered running parents")
+	}
+
+	return hosts, nil
+}
+
 // GetContainers finds all the containers belonging to this host
 // errors if this host is not a parent
 func (h *Host) GetContainers() ([]Host, error) {
