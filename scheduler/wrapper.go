@@ -82,6 +82,9 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		},
 		freeHostFraction: conf.FreeHostFraction,
 	}
+	if distroSpec.MaxContainers > 0 {
+		allocatorArgs.usesContainers = true
+	}
 
 	allocator := GetHostAllocator(conf.HostAllocator)
 	newHosts, err := allocator(ctx, allocatorArgs)

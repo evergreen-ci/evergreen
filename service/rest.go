@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -64,7 +63,7 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 
 // AttachRESTHandler attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
-func GetRESTv1App(evgService restAPIService, um auth.UserManager) (*gimlet.APIApp, error) {
+func GetRESTv1App(evgService restAPIService, um gimlet.UserManager) (*gimlet.APIApp, error) {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
 	app.ResetMiddleware()

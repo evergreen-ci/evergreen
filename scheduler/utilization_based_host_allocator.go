@@ -34,7 +34,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 
 		// actual calculation logic is here
 		newHosts, err := evalHostUtilization(ctx, d, hostAllocatorData.taskQueueItems[name],
-			hostAllocatorData.existingDistroHosts[name], hostAllocatorData.freeHostFraction)
+			hostAllocatorData.existingDistroHosts[name], hostAllocatorData.freeHostFraction, hostAllocatorData.usesContainers)
 
 		if err != nil {
 			return nil, errors.Wrapf(err, "error calculating hosts for distro %s", name)
@@ -56,39 +56,44 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
 func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model.TaskQueueItem,
-	existingHosts []host.Host, freeHostFraction float64) (int, error) {
+	existingHosts []host.Host, freeHostFraction float64, usesContainers bool) (int, error) {
 
 	if !d.IsEphemeral() {
 		return 0, nil
 	}
+
+	maxDuration := MaxDurationPerDistroHost
+	if usesContainers {
+		maxDuration = MaxDurationPerDistroHostWithContainers
+	}
 	numNewHosts := 0
 
 	// allocate 1 host per task that is longer than the max duration
-	newTaskQueue, hostsForLongTasks := calcHostsForLongTasks(taskQueue, MaxDurationPerDistroHost)
+	newTaskQueue, hostsForLongTasks := calcHostsForLongTasks(taskQueue, maxDuration)
 
 	// determine the total expected running time of scheduled tasks
 	scheduledTasksDuration := calcScheduledTasksDuration(newTaskQueue)
 
 	// determine how many free hosts we have that are already up
-	numFreeHosts, err := calcExistingFreeHosts(existingHosts, freeHostFraction, MaxDurationPerDistroHost)
+	numFreeHosts, err := calcExistingFreeHosts(existingHosts, freeHostFraction, maxDuration)
 	if err != nil {
 		return numNewHosts, err
 	}
 
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
-	numNewHosts = calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, numFreeHosts, hostsForLongTasks)
+	numNewHosts = calcNewHostsNeeded(scheduledTasksDuration, maxDuration, numFreeHosts, hostsForLongTasks)
 
 	// calculate the same values for 0 and 1 values of the fraction (just for reporting purposes)
-	freeHostsIfZero, err := calcExistingFreeHosts(existingHosts, 0, MaxDurationPerDistroHost)
+	freeHostsIfZero, err := calcExistingFreeHosts(existingHosts, 0, maxDuration)
 	if err != nil {
 		return numNewHosts, err
 	}
-	freeHostsIfOne, err := calcExistingFreeHosts(existingHosts, 1, MaxDurationPerDistroHost)
+	freeHostsIfOne, err := calcExistingFreeHosts(existingHosts, 1, maxDuration)
 	if err != nil {
 		return numNewHosts, err
 	}
-	newHostsIfZero := calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, freeHostsIfZero, hostsForLongTasks)
-	newHostsIfOne := calcNewHostsNeeded(scheduledTasksDuration, MaxDurationPerDistroHost, freeHostsIfOne, hostsForLongTasks)
+	newHostsIfZero := calcNewHostsNeeded(scheduledTasksDuration, maxDuration, freeHostsIfZero, hostsForLongTasks)
+	newHostsIfOne := calcNewHostsNeeded(scheduledTasksDuration, maxDuration, freeHostsIfOne, hostsForLongTasks)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > len(taskQueue) {

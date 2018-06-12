@@ -39,7 +39,7 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	UserManager  auth.UserManager
+	UserManager  gimlet.UserManager
 	Settings     evergreen.Settings
 	clientConfig *evergreen.ClientConfig
 	queue        amboy.Queue
