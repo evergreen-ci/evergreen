@@ -783,9 +783,8 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey:        evergreen.HostRunning,
 		HasContainersKey: true,
-	})
-	querySorted := query.Sort([]string{LastContainerFinishTimeKey})
-	hosts, err := Find(querySorted)
+	}).Sort([]string{LastContainerFinishTimeKey})
+	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding ordered running parents")
 	}
@@ -844,8 +843,7 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 		},
 	}
 
-	err := UpdateOne(selector, update)
-	if err != nil {
+	if err := UpdateOne(selector, update); err != nil {
 		return errors.Wrapf(err, "error updating finish time for host %s", h.Id)
 	}
 
