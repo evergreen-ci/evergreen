@@ -156,11 +156,11 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 		if d.MaxContainers > 0 {
 			currentParents, err := host.FindAllRunningParents()
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, "could not find running parents")
 			}
 			existingContainers, err := host.FindAllRunningContainers()
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, "could not find running containers")
 			}
 
 			numNewParents := numNewParentsNeeded(len(currentParents), numHostsToSpawn,
