@@ -309,25 +309,12 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 	}
 }
 
-func PopulateLastContainerFinishTimeJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if flags.MonitorDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "monitor is disabled",
-				"impact":  "not submitting updating last container finish times",
-				"mode":    "degraded",
-			})
-			return nil
-		}
 
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
-		err = queue.Put(NewLastContainerFinishTimeJob(env, ts))
+		err := queue.Put(NewLastContainerFinishTimeJob(ts))
 		catcher.Add(err)
 
 		return catcher.Resolve()

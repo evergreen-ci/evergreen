@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -18,17 +17,13 @@ const (
 
 func init() {
 	registry.AddJobType(lastContainerFinishTimeJobName, func() amboy.Job {
-		return makeIdleHostJob()
+		return makeLastContainerFinishTimeJob()
 	})
 
 }
 
 type lastContainerFinishTimeJob struct {
-	job.Base   `bson:"metadata" json:"metadata" yaml:"metadata"`
-	Terminated bool `bson:"terminated" json:"terminated" yaml:"terminated"`
-
-	env      evergreen.Environment
-	settings *evergreen.Settings
+	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
 func makeLastContainerFinishTimeJob() *lastContainerFinishTimeJob {
@@ -45,7 +40,7 @@ func makeLastContainerFinishTimeJob() *lastContainerFinishTimeJob {
 	return j
 }
 
-func NewLastContainerFinishTimeJob(env evergreen.Environment, id string) amboy.Job {
+func NewLastContainerFinishTimeJob(id string) amboy.Job {
 	j := makeLastContainerFinishTimeJob()
 
 	j.SetID(fmt.Sprintf("%s.%s", lastContainerFinishTimeJobName, id))
@@ -55,14 +50,6 @@ func NewLastContainerFinishTimeJob(env evergreen.Environment, id string) amboy.J
 func (j *lastContainerFinishTimeJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
-	if j.settings == nil {
-		j.settings = j.env.Settings()
-	}
-
 	// get pairs of host ID and finish time for each host with containers
 	times, err := host.AggregateLastContainerFinishTimes()
 	j.AddError(err)
@@ -70,8 +57,10 @@ func (j *lastContainerFinishTimeJob) Run(ctx context.Context) {
 	// update last container finish time for each host with containers
 	for _, time := range times {
 		h, err := host.FindOneId(time.Id)
-		j.AddError(err)
-		err = h.UpdateLastContainerFinishTime(time.FinishTime)
-		j.AddError(err)
+		if err != nil {
+			j.AddError(err)
+			continue
+		}
+		j.AddError(h.UpdateLastContainerFinishTime(time.FinishTime))
 	}
 }

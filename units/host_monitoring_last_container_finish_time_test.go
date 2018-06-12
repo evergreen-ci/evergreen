@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -22,10 +21,6 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 	assert := assert.New(t)
 	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
-	env := &mock.Environment{
-		EvergreenSettings: testConfig,
-	}
 
 	mockCloud := cloud.GetMockProvider()
 	mockCloud.Reset()
@@ -78,7 +73,7 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 
-	j := NewLastContainerFinishTimeJob(env, "one")
+	j := NewLastContainerFinishTimeJob("one")
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())

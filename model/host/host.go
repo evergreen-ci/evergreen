@@ -814,21 +814,7 @@ func (h *Host) GetParent() (*Host, error) {
 	return host, nil
 }
 
-// AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
-// errors if aggregation fails
-func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
-
-	var times []FinishTime
-	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
-	if err != nil {
-		return nil, errors.Wrap(err, "error aggregating parent finish times")
-	}
-	return times, nil
-
-}
-
-// updateLastContainerFinishTime updates latest finish time for a host with containers
-// errors if update operation fails
+// UpdateLastContainerFinishTime updates latest finish time for a host with containers
 func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 
 	selector := bson.M{

@@ -1640,8 +1640,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 	assert.NoError(t6.Insert())
 
 	var out []FinishTime
-	var results map[string]time.Time
-	results = make(map[string]time.Time)
+	var results = make(map[string]time.Time)
 
 	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &out)
 	assert.NoError(err)
