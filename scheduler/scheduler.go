@@ -133,6 +133,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 	// loop over the distros, spawning up the appropriate number of hosts
 	// for each distro
 	hostsSpawnedPerDistro := make(map[string][]host.Host)
+
 	for distroId, numHostsToSpawn := range newHostsNeeded {
 		distroStartTime := time.Now()
 
@@ -146,12 +147,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 
 		d, err := distro.FindOne(distro.ById(distroId))
 		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"distro":  distroId,
-				"runner":  RunnerName,
-				"message": "failed to find distro",
-			}))
-			return nil, err
+			return nil, errors.Wrapf(err, "failed to find distro %s", distroId)
 		}
 
 		hostsSpawnedPerDistro[distroId] = make([]host.Host, 0, numHostsToSpawn)
@@ -167,16 +163,14 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 				return nil, err
 			}
 
-			numNewParents := calcNewParentsNeeded(len(currentParents), numHostsToSpawn,
+			numNewParents := numNewParentsNeeded(len(currentParents), numHostsToSpawn,
 				len(existingContainers), d)
 
-			numNewParents = parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), numHostsToSpawn)
-			numHostsToSpawn = containerCapacity(d, len(currentParents), len(existingContainers), numHostsToSpawn)
-
+			// only want to spawn amount of parents allowed based on pool size
+			numNewParentsToSpawn := parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), numHostsToSpawn)
 			// if there are parents to spawn, do not spawn containers in the same run
-			if numNewParents > 0 {
-				numHostsToSpawn = 0
-				parentIntentHosts, err := insertParents(d, numNewParents)
+			if numNewParentsToSpawn > 0 {
+				parentIntentHosts, err := insertParents(d, numNewParentsToSpawn)
 				if err != nil {
 					return nil, err
 				}
@@ -185,7 +179,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 				grip.Info(message.Fields{
 					"runner":         RunnerName,
 					"distro":         distroId,
-					"num_parents":    numNewParents,
+					"num_parents":    numNewParentsToSpawn,
 					"num_containers": numHostsToSpawn,
 					"operation":      "spawning new parents",
 					"span":           time.Since(distroStartTime).String(),
@@ -194,6 +188,8 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 				return hostsSpawnedPerDistro, nil
 			}
 
+			// only want to spawn amount of hosts/containers abased on
+			numHostsToSpawn = containerCapacity(d, len(currentParents), len(existingContainers), numHostsToSpawn)
 		}
 
 		for i := 0; i < numHostsToSpawn; i++ {
@@ -258,38 +254,31 @@ func generateParentHostOptions() cloud.HostOptions {
 	}
 }
 
-// FindAvailableParent finds a parent host that can accommodate container
-// based on oldest parent
+// FindAvailableParent finds a parent host that can accommodate container,
+// packing on parent that has task with longest expected finish time
 func findAvailableParent(d distro.Distro) (host.Host, error) {
-	allParents, err := host.FindAllRunningParents()
+	allParents, err := host.FindAllRunningParentsOrdered()
 	if err != nil {
-		err = errors.Wrap(err, "Could not find running parent hosts")
-		return host.Host{}, err
+		return host.Host{}, errors.Wrap(err, "Could not find running parent hosts")
 	}
 
-	oldestParent := host.Host{}
-	oldestTime := time.Now().Add(time.Hour * 1)
-	for _, parent := range allParents {
+	// parents come in sorted order from soonest to latest expected finish time
+	for i := len(allParents) - 1; i >= 0; i-- {
+		parent := allParents[i]
 		currentContainers, err := parent.GetContainers()
 		if err != nil {
-			err = errors.Wrapf(err, "Could not find containers for parent %s", parent.Id)
-			return host.Host{}, err
+			return host.Host{}, errors.Wrapf(err, "Could not find containers for parent %s", parent.Id)
 		}
-		if parent.CreationTime.Before(oldestTime) && len(currentContainers) < d.MaxContainers {
-			oldestParent = parent
-			oldestTime = parent.CreationTime
+		if len(currentContainers) < d.MaxContainers {
+			return parent, nil
 		}
 	}
-	if oldestParent.Id == "" {
-		return host.Host{}, errors.New("no available parent found for container")
-	}
-	return oldestParent, nil
-
+	return host.Host{}, errors.New("No available parent found for container")
 }
 
-// CalcNewParentsNeeded returns the number of additional parents needed to
+// numNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
-func calcNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingContainers int, d distro.Distro) int {
+func numNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingContainers int, d distro.Distro) int {
 	if numCurrentParents*d.MaxContainers < numExistingContainers+numContainersNeeded {
 		return int(math.Ceil(float64(numContainersNeeded) / float64(d.MaxContainers)))
 	}
@@ -332,14 +321,12 @@ func insertParents(d distro.Distro, numNewParents int) ([]host.Host, error) {
 
 		intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, parentHostOptions)
 		if err := intentHost.Insert(); err != nil {
-			err = errors.Wrapf(err, "Could not insert parent '%s'", intentHost.Id)
-
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":   RunnerName,
 				"host":     intentHost.Id,
 				"provider": d.Provider,
 			}))
-			return nil, err
+			return nil, errors.Wrapf(err, "Could not insert parent '%s'", intentHost.Id)
 		}
 		hostsSpawned = append(hostsSpawned, *intentHost)
 	}
@@ -350,14 +337,11 @@ func insertParents(d distro.Distro, numNewParents int) ([]host.Host, error) {
 func insertContainer(d distro.Distro) (*host.Host, error) {
 	hostOptions, err := generateHostOptions(d)
 	if err != nil {
-		err = errors.Wrapf(err, "Could not generate host options for distro %s", d.Id)
-		return nil, err
+		return nil, errors.Wrapf(err, "Could not generate host options for distro %s", d.Id)
 	}
 
 	intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
 	if err := intentHost.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
-
 		grip.Error(message.WrapError(err, message.Fields{
 			"distro":   d.Id,
 			"runner":   RunnerName,
@@ -365,7 +349,7 @@ func insertContainer(d distro.Distro) (*host.Host, error) {
 			"provider": d.Provider,
 		}))
 
-		return nil, err
+		return nil, errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
 	}
 	return intentHost, nil
 }

@@ -850,7 +850,6 @@ func (h *Host) GetParent() (*Host, error) {
 
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
 func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
-
 	selector := bson.M{
 		IdKey: h.Id,
 	}
