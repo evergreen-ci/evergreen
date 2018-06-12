@@ -167,20 +167,20 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 				return nil, err
 			}
 
-			numNewParents := calcNewParentsNeeded(len(currentParents),
-				len(existingContainers), numHostsToSpawn, d)
+			numNewParents := calcNewParentsNeeded(len(currentParents), numHostsToSpawn,
+				len(existingContainers), d)
 
-			numNewParents, numHostsToSpawn = parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), numHostsToSpawn)
+			numNewParents = parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), numHostsToSpawn)
+			numHostsToSpawn = containerCapacity(d, len(currentParents), len(existingContainers), numHostsToSpawn)
 
 			// if there are parents to spawn, do not spawn containers in the same run
 			if numNewParents > 0 {
+				numHostsToSpawn = 0
 				parentIntentHosts, err := insertParents(d, numNewParents)
 				if err != nil {
 					return nil, err
 				}
 				hostsSpawnedPerDistro[distroId] = append(hostsSpawnedPerDistro[distroId], parentIntentHosts...)
-
-				numHostsToSpawn = 0
 
 				grip.Info(message.Fields{
 					"runner":         RunnerName,
@@ -191,9 +191,9 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 					"span":           time.Since(distroStartTime).String(),
 					"duration":       time.Since(distroStartTime),
 				})
+				return hostsSpawnedPerDistro, nil
 			}
 
-			numHostsToSpawn = containerCapacity(d, len(currentParents), len(existingContainers), numHostsToSpawn)
 		}
 
 		for i := 0; i < numHostsToSpawn; i++ {
@@ -231,22 +231,21 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 // generateHostOptions generates host options based on what kind of host it is:
 // regular host or container
 func generateHostOptions(d distro.Distro) (cloud.HostOptions, error) {
-	if d.MaxContainers != 0 {
+	if d.MaxContainers > 0 {
 		parent, err := findAvailableParent(d)
 		if err != nil {
+			err = errors.Wrap(err, "Could not find available parent host")
 			return cloud.HostOptions{}, err
 		}
 		hostOptions := cloud.HostOptions{
 			ParentID: parent.Id,
 			UserName: evergreen.User,
-			UserHost: false,
 		}
 		return hostOptions, nil
 	}
 
 	hostOptions := cloud.HostOptions{
 		UserName: evergreen.User,
-		UserHost: false,
 	}
 	return hostOptions, nil
 }
@@ -256,7 +255,6 @@ func generateParentHostOptions() cloud.HostOptions {
 	return cloud.HostOptions{
 		HasContainers: true,
 		UserName:      evergreen.User,
-		UserHost:      false,
 	}
 }
 
@@ -265,6 +263,7 @@ func generateParentHostOptions() cloud.HostOptions {
 func findAvailableParent(d distro.Distro) (host.Host, error) {
 	allParents, err := host.FindAllRunningParents()
 	if err != nil {
+		err = errors.Wrap(err, "Could not find running parent hosts")
 		return host.Host{}, err
 	}
 
@@ -273,6 +272,7 @@ func findAvailableParent(d distro.Distro) (host.Host, error) {
 	for _, parent := range allParents {
 		currentContainers, err := parent.GetContainers()
 		if err != nil {
+			err = errors.Wrapf(err, "Could not find containers for parent %s", parent.Id)
 			return host.Host{}, err
 		}
 		if parent.CreationTime.Before(oldestTime) && len(currentContainers) < d.MaxContainers {
@@ -290,34 +290,30 @@ func findAvailableParent(d distro.Distro) (host.Host, error) {
 // CalcNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
 func calcNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingContainers int, d distro.Distro) int {
-	if numCurrentParents*d.MaxContainers <= numExistingContainers+numContainersNeeded {
+	if numCurrentParents*d.MaxContainers < numExistingContainers+numContainersNeeded {
 		return int(math.Ceil(float64(numContainersNeeded) / float64(d.MaxContainers)))
 	}
 	return 0
 }
 
-// parentCapacity calculates number of new parents and new containers to create
+// parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
-func parentCapacity(d distro.Distro, numNewParents, numCurrentParents, numCurrentContainers, numContainersToSpawn int) (int, int) {
+func parentCapacity(d distro.Distro, numNewParents, numCurrentParents, numCurrentContainers, numContainersToSpawn int) int {
 	// if there are already maximum numbers of parents running, only spawn
 	// enough containers to reach maximum capacity
 	if numCurrentParents >= d.PoolSize {
-		numContainersToSpawn = (numCurrentParents * d.MaxContainers) - numCurrentContainers
 		numNewParents = 0
 	}
 	// if adding all new parents results in more parents than allowed, only add
 	// enough parents to fill to capacity
 	if numNewParents+numCurrentParents > d.PoolSize {
 		numNewParents = d.MaxContainers - numCurrentParents
-		// since we are adding parents, do not add any containers on this run
-		numContainersToSpawn = 0
 	}
-	return numNewParents, numContainersToSpawn
+	return numNewParents
 }
 
 // containerCapacity calculates how many containers to make
-// if there are containers to spawn, do not spawn parents in the same run
-// instead spawn as many containers as possible now
+// checks to make sure we do not create more containers than can fit currently
 func containerCapacity(d distro.Distro, numCurrentParents, numCurrentContainers, numContainersToSpawn int) int {
 	if numContainersToSpawn > 0 {
 		numAvailableContainers := numCurrentParents*d.MaxContainers - numCurrentContainers
@@ -354,6 +350,7 @@ func insertParents(d distro.Distro, numNewParents int) ([]host.Host, error) {
 func insertContainer(d distro.Distro) (*host.Host, error) {
 	hostOptions, err := generateHostOptions(d)
 	if err != nil {
+		err = errors.Wrapf(err, "Could not generate host options for distro %s", d.Id)
 		return nil, err
 	}
 

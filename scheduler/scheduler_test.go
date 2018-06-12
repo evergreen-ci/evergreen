@@ -111,7 +111,7 @@ func (s *SchedulerSuite) TestCalcNewParentsNeeded() {
 	host3 := &host.Host{
 		Id:       "host3",
 		Distro:   distro.Distro{Id: "distro"},
-		Status:   evergreen.HostTerminated,
+		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 
@@ -188,7 +188,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	host3 := &host.Host{
 		Id:       "host3",
 		Distro:   distro.Distro{Id: "distro"},
-		Status:   evergreen.HostTerminated,
+		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	s.NoError(d.Insert())
