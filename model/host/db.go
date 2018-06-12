@@ -66,6 +66,7 @@ var (
 	ContainerIDKey             = bsonutil.MustHaveTag(Host{}, "ContainerID")
 	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
 	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
+	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 )
 
 // === Queries ===
@@ -482,4 +483,70 @@ func inactiveHostCountPipeline() []bson.M {
 			},
 		},
 	}
+}
+
+// FinishTime is a struct for storing pairs of host IDs and last container finish times
+type FinishTime struct {
+	Id         string    `bson:"_id"`
+	FinishTime time.Time `bson:"finish_time"`
+}
+
+// aggregation pipeline to compute latest finish time for running hosts with child containers
+func lastContainerFinishTimePipeline() []bson.M {
+	const output string = "finish_time"
+	return []bson.M{
+		{
+			// matches all running containers
+			"$match": bson.M{
+				ParentIDKey: bson.M{"$exists": true},
+				StatusKey:   evergreen.HostRunning,
+			},
+		},
+		{
+			// joins hosts and tasks collections on task ID
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": IdKey,
+				"as":           "task",
+			},
+		},
+		{
+			// deconstructs $lookup array
+			"$unwind": "$task",
+		},
+		{
+			// groups containers by parent host ID
+			"$group": bson.M{
+				"_id": "$" + ParentIDKey,
+				output: bson.M{
+					// computes last container finish time for each host
+					"$max": bson.M{
+						"$add": []interface{}{bsonutil.GetDottedKeyName("$task", "start_time"),
+							// divide by 1000000 to treat duration as milliseconds rather than as nanoseconds
+							bson.M{"$divide": []interface{}{bsonutil.GetDottedKeyName("$task", "duration_prediction", "value"), 1000000}},
+						},
+					},
+				},
+			},
+		},
+		{
+			// projects only ID and finish time
+			"$project": bson.M{
+				output: 1,
+			},
+		},
+	}
+}
+
+// AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
+func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
+
+	var times []FinishTime
+	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
+	if err != nil {
+		return nil, errors.Wrap(err, "error aggregating parent finish times")
+	}
+	return times, nil
+
 }

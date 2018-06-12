@@ -99,9 +99,11 @@ type Host struct {
 	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
 	// stores the ID of the host a container is on
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
-
+	// stores last expected finish time among all containers on the host
+	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
+  
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
-	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
+  SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -766,14 +768,15 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 	return counts, nil
 }
 
-// FindAllContainers finds all the containers
-func FindAllContainers() ([]Host, error) {
+// FindAllRunningContainers finds all running containers
+func FindAllRunningContainers() ([]Host, error) {
 	query := db.Query(bson.M{
+		StatusKey:      evergreen.HostRunning,
 		ContainerIDKey: bson.M{"$exists": true},
 	})
 	hosts, err := Find(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error finding containers")
+		return nil, errors.Wrap(err, "Error finding running containers")
 	}
 
 	return hosts, nil
@@ -788,6 +791,21 @@ func FindAllRunningParents() ([]Host, error) {
 	hosts, err := Find(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding running parents")
+	}
+
+	return hosts, nil
+}
+
+// FindAllRunningParentsOrdered finds all running hosts with child containers,
+// sorted in order of soonest  to latest LastContainerFinishTime
+func FindAllRunningParentsOrdered() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
+		HasContainersKey: true,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding ordered running parents")
 	}
 
 	return hosts, nil
@@ -829,4 +847,24 @@ func (h *Host) GetParent() (*Host, error) {
 	}
 
 	return host, nil
+}
+
+// UpdateLastContainerFinishTime updates latest finish time for a host with containers
+func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
+
+	selector := bson.M{
+		IdKey: h.Id,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			LastContainerFinishTimeKey: t,
+		},
+	}
+
+	if err := UpdateOne(selector, update); err != nil {
+		return errors.Wrapf(err, "error updating finish time for host %s", h.Id)
+	}
+
+	return nil
 }
