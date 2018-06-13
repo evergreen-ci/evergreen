@@ -149,7 +149,7 @@ func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification
 }
 
 func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionFailed {
+	if t.data.Status != evergreen.VersionFailed || t.version.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
 
@@ -157,18 +157,14 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving tasks for version")
 	}
-	count := 0 // TODO: maybe use this count in the message somewhere?
-	for _, t := range versionTasks {
-		shouldNotify, _, err := isTaskRegression(&t)
+	for _, task := range versionTasks {
+		isRegression, _, err := isTaskRegression(&task)
 		if err != nil {
 			return nil, errors.Wrap(err, "error evaluating task regression")
 		}
-		if shouldNotify {
-			count++
+		if isRegression {
+			return t.generate(sub)
 		}
 	}
-	if count == 0 {
-		return nil, nil
-	}
-	return t.generate(sub)
+	return nil, nil
 }
