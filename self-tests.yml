@@ -234,7 +234,7 @@ functions:
           - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
   remove-test-results:
     command: subprocess.exec
-    type: system
+    type: setup
     params:
       command: bash -c "rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
 
