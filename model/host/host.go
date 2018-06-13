@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -865,4 +866,19 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	}
 
 	return nil
+}
+
+// FindAllRunningParentsOnDistro finds all running parents related to a distro
+func FindAllRunningParentsByDistro(d distro.Distro) ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey:                                   evergreen.HostRunning,
+		HasContainersKey:                            true,
+		bsonutil.GetDottedKeyName(DistroKey, IdKey): d.Id,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding running parents on distro")
+	}
+
+	return hosts, nil
 }

@@ -154,7 +154,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 		// if distro can have containers, check if there are enough parents to hold
 		// new containers
 		if d.MaxContainers > 0 {
-			currentParents, err := host.FindAllRunningParents()
+			currentParents, err := host.FindAllRunningParentsByDistro(d)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not find running parents")
 			}
@@ -168,7 +168,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 
 			// only want to spawn amount of parents allowed based on pool size
 			numNewParentsToSpawn := parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), numHostsToSpawn)
-			// if there are parents to spawn, do not spawn containers in the same run
+
 			if numNewParentsToSpawn > 0 {
 				parentIntentHosts, err := insertParents(d, numNewParentsToSpawn)
 				if err != nil {
@@ -185,10 +185,9 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 					"span":           time.Since(distroStartTime).String(),
 					"duration":       time.Since(distroStartTime),
 				})
-				return hostsSpawnedPerDistro, nil
 			}
 
-			// only want to spawn amount of hosts/containers abased on
+			// only want to spawn amount of containers we can fit on currently running parents
 			numHostsToSpawn = containerCapacity(d, len(currentParents), len(existingContainers), numHostsToSpawn)
 		}
 
