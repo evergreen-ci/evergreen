@@ -267,6 +267,25 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         $scope.taskHost = $window.taskHost;
         $scope.jiraHost = $window.jiraHost;
         $scope.subscriptions = [];
+
+        $scope.validateDuration = function(duration) {
+          if (!Number.isInteger(+duration)) {
+            return duration + " must be an integer";
+          }
+          if (+duration < 0) {
+            return duration + " cannot be negative";
+          }
+          return "";
+        }
+        $scope.validatePercentage = function(percent) {
+          if (isNaN(percent)) {
+            return percent + " must be a number";
+          }
+          if (+percent < 0) {
+            return percent + " cannot be negative";
+          }
+          return "";
+        }
         $scope.triggers = [
           {
             trigger: "outcome",
@@ -282,6 +301,22 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             trigger: "success",
             resource_type: "TASK",
             label: "this task succeeds",
+          },
+          {
+            trigger: "exceeds_time",
+            resource_type: "TASK",
+            label: "the runtime for this task exceeds some duration",
+            extraFields: [
+              {text: "Task duration (seconds)", key: "task_duration_secs", validator: $scope.validateDuration}
+            ]
+          },
+          {
+            trigger: "exceeds_percentage",
+            resource_type: "TASK",
+            label: "the runtime for this task increases by some percentage",
+            extraFields: [
+              {text: "Percent increase", key: "task_percent_increase", validator: $scope.validatePercentage}
+            ]
           },
         ];
 

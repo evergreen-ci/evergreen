@@ -331,3 +331,79 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	s.NoError(err)
 	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 }
+
+func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	body := []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "object",
+			"data": "task",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "yahoo@aol.com",
+		},
+		"trigger_data": map[string]string{
+			"task_duration_secs": "foo",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: foo must be a number")
+
+	body = []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "object",
+			"data": "task",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "yahoo@aol.com",
+		},
+		"trigger_data": map[string]string{
+			"task_duration_secs": "-2",
+		},
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: -2 cannot be negative")
+
+	body = []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "object",
+			"data": "task",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "yahoo@aol.com",
+		},
+		"trigger_data": map[string]string{
+			"task_percent_increase": "a",
+		},
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: a must be a number")
+}

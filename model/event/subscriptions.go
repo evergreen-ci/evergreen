@@ -3,6 +3,7 @@ package event
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -248,7 +249,31 @@ func (s *Subscription) Validate() error {
 	if !IsValidOwnerType(string(s.OwnerType)) {
 		catcher.Add(errors.Errorf("%s is not a valid owner type", s.OwnerType))
 	}
+	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
+	return catcher.Resolve()
+}
+
+func (s *Subscription) runCustomValidation() error {
+	catcher := grip.NewBasicCatcher()
+
+	if taskDurationVal, ok := s.TriggerData["task_duration_secs"]; ok {
+		taskDuration, err := strconv.Atoi(taskDurationVal)
+		if err != nil {
+			catcher.Add(fmt.Errorf("%s must be a number", taskDurationVal))
+		} else if taskDuration < 0 {
+			catcher.Add(fmt.Errorf("%d cannot be negative", taskDuration))
+		}
+	}
+
+	if taskPercentVal, ok := s.TriggerData["task_percent_increase"]; ok {
+		taskPercent, err := strconv.ParseFloat(taskPercentVal, 32)
+		if err != nil {
+			catcher.Add(fmt.Errorf("%s must be a number", taskPercentVal))
+		} else if taskPercent < 0 {
+			catcher.Add(fmt.Errorf("%f cannot be negative", taskPercent))
+		}
+	}
 	return catcher.Resolve()
 }
 

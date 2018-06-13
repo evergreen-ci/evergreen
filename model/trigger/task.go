@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -27,6 +28,10 @@ const (
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegression                    = "regression"
+	triggerTaskExceedsTime                   = "exceeds_time"
+	triggerTaskRuntimeIncrease               = "exceeds_percentage"
+	taskDurationKey                          = "task_duration_secs"
+	percentIncreaseKey                       = "task_percent_increase"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -39,6 +44,8 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegression:                    t.taskRegression,
+		triggerTaskExceedsTime:                   t.taskExceedsTime,
+		triggerTaskRuntimeIncrease:               t.taskRuntimeIncrease,
 	}
 
 	return t
@@ -162,7 +169,7 @@ func (t *taskTriggers) Selectors() []event.Selector {
 	}
 }
 
-func (t *taskTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
+func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APITask{}
 	if err := api.BuildFromService(t.task); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
@@ -179,12 +186,15 @@ func (t *taskTriggers) makeData(sub *event.Subscription) (*commonTemplateData, e
 	if data.PastTenseStatus == evergreen.TaskSucceeded {
 		data.PastTenseStatus = "succeeded"
 	}
+	if pastTenseOverride != "" {
+		data.PastTenseStatus = pastTenseOverride
+	}
 
 	return &data, nil
 }
 
-func (t *taskTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
-	data, err := t.makeData(sub)
+func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
+	data, err := t.makeData(sub, pastTenseOverride)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to collect task data")
 	}
@@ -197,8 +207,8 @@ func (t *taskTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType string) (*notification.Notification, error) {
-	n, err := t.generate(sub)
+func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, pastTenseOverride string, alertType string) (*notification.Notification, error) {
+	n, err := t.generate(sub, pastTenseOverride)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +228,7 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
 func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
@@ -226,7 +236,7 @@ func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
 func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notification, error) {
@@ -234,7 +244,7 @@ func (t *taskTriggers) taskSuccess(sub *event.Subscription) (*notification.Notif
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
 func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notification.Notification, error) {
@@ -249,7 +259,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstVariantFailureId)
+	return t.generateWithAlertRecord(sub, "", alertrecord.FirstVariantFailureId)
 }
 
 func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*notification.Notification, error) {
@@ -264,7 +274,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstVersionFailureId)
+	return t.generateWithAlertRecord(sub, "", alertrecord.FirstVersionFailureId)
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
@@ -279,7 +289,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, alertrecord.FirstTaskTypeFailureId)
+	return t.generateWithAlertRecord(sub, "", alertrecord.FirstTaskTypeFailureId)
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
@@ -350,7 +360,7 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 		}
 	}
 
-	n, err := t.generate(sub)
+	n, err := t.generate(sub, "")
 	if err != nil {
 		return nil, err
 	}
@@ -362,4 +372,54 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 	}
 
 	return n, errors.Wrap(rec.Insert(), "failed to process regression trigger")
+}
+
+func (t *taskTriggers) taskExceedsTime(sub *event.Subscription) (*notification.Notification, error) {
+	if sub == nil || sub.TriggerData == nil {
+		return nil, fmt.Errorf("subscription %s is missing trigger data", sub.ID)
+	}
+	thresholdString, ok := sub.TriggerData[taskDurationKey]
+	if !ok {
+		return nil, fmt.Errorf("subscription %s has no task time threshold", sub.ID)
+	}
+	threshold, err := strconv.Atoi(thresholdString)
+	if err != nil {
+		return nil, fmt.Errorf("subscription %s has an invalid time threshold", sub.ID)
+	}
+	if t.event.EventType == event.TaskFinished {
+		maxDuration := time.Duration(threshold) * time.Second
+		if t.task.StartTime.Add(maxDuration).Before(t.task.FinishTime) {
+			return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
+		}
+	}
+	return nil, nil
+}
+
+func (t *taskTriggers) taskRuntimeIncrease(sub *event.Subscription) (*notification.Notification, error) {
+	if sub == nil || sub.TriggerData == nil {
+		return nil, fmt.Errorf("subscription %s is missing trigger data", sub.ID)
+	}
+	percentString, ok := sub.TriggerData[percentIncreaseKey]
+	if !ok {
+		return nil, fmt.Errorf("subscription %s has no percentage increase", sub.ID)
+	}
+	percent, err := strconv.ParseFloat(percentString, 32)
+	if err != nil {
+		return nil, fmt.Errorf("subscription %s has an invalid percentage", sub.ID)
+	}
+
+	if t.event.EventType == event.TaskFinished {
+		lastGreen, err := t.task.PreviousCompletedTask(t.task.Project, []string{evergreen.TaskSucceeded})
+		if err != nil {
+			return nil, errors.Wrap(err, "error retrieving last green task")
+		}
+		thisTaskDuration := float64(t.task.FinishTime.Sub(t.task.StartTime))
+		prevTaskDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
+		ratio := thisTaskDuration / prevTaskDuration
+		percentIncrease := 100*ratio - 100
+		if percentIncrease > percent {
+			return t.generate(sub, fmt.Sprintf("increased in runtime by over %f%%", percent))
+		}
+	}
+	return nil, nil
 }

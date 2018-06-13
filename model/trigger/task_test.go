@@ -119,6 +119,44 @@ func (s *taskSuite) SetupTest() {
 			},
 			Owner: "someone",
 		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeTask,
+			Trigger: "exceeds_time",
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				taskDurationKey: "300",
+			},
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeTask,
+			Trigger: "exceeds_percentage",
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				percentIncreaseKey: "50",
+			},
+		},
 	}
 
 	for i := range s.subs {
@@ -415,6 +453,71 @@ func (s *taskSuite) TestRegression() {
 	s.NotZero(*task4)
 	task4.Execution = 1
 	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+}
+
+func (s *taskSuite) TestTaskExceedsTime() {
+	now := time.Now()
+	// task that exceeds time should generate
+	s.t.event = &event.EventLogEntry{
+		EventType: event.TaskFinished,
+	}
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err := s.t.taskExceedsTime(&s.subs[3])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// task that does not exceed should not generate
+	s.task = task.Task{
+		Id:         "test",
+		StartTime:  now,
+		FinishTime: now.Add(1 * time.Minute),
+	}
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err = s.t.taskExceedsTime(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+
+	// unfinished task should not generate
+	s.event.EventType = event.TaskStarted
+	n, err = s.t.taskExceedsTime(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+}
+
+func (s *taskSuite) TestTaskRuntimeIncrease() {
+	now := time.Now()
+	lastGreen := task.Task{
+		Id:                  "test1",
+		BuildVariant:        "test",
+		Project:             "test",
+		DisplayName:         "Test",
+		StartTime:           now,
+		FinishTime:          now.Add(10 * time.Minute),
+		RevisionOrderNumber: -1,
+		Status:              evergreen.TaskSucceeded,
+	}
+	s.NoError(lastGreen.Insert())
+
+	// task that exceeds threshold should generate
+	s.task.FinishTime = s.task.StartTime.Add(20 * time.Minute)
+	s.t.event = &event.EventLogEntry{
+		EventType: event.TaskFinished,
+	}
+	n, err := s.t.taskRuntimeIncrease(&s.subs[4])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// task that does not exceed threshold should not generate
+	s.task.FinishTime = s.task.StartTime.Add(13 * time.Minute)
+	n, err = s.t.taskRuntimeIncrease(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
+
+	// unfinished task should not generate
+	s.event.EventType = event.TaskStarted
+	n, err = s.t.taskRuntimeIncrease(&s.subs[4])
 	s.NoError(err)
 	s.Nil(n)
 }
