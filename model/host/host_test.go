@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -1721,5 +1722,72 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 	// necessary because Go uses nanoseconds while MongoDB uses milliseconds
 	assert.WithinDuration(results["p1"], startTimeThree.Add(durationThree), time.Millisecond)
 	assert.WithinDuration(results["p2"], startTimeOne.Add(durationThree), time.Millisecond)
+}
 
+func TestFindHostsSpawnedByTasks(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(Collection))
+
+	hosts := []*Host{
+		{
+			Id:     "1",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_1",
+				BuildID: "build_1",
+			},
+		},
+		{
+			Id:     "2",
+			Status: evergreen.HostRunning,
+		},
+		{
+			Id:     "3",
+			Status: evergreen.HostRunning,
+		},
+		{
+			Id:     "4",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_2",
+				BuildID: "build_1",
+			},
+		},
+		{
+			Id:     "5",
+			Status: evergreen.HostDecommissioned,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_1",
+				BuildID: "build_1",
+			},
+		},
+		{
+			Id:     "6",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_2",
+				BuildID: "build_1",
+			},
+		},
+	}
+	for i := range hosts {
+		require.NoError(hosts[i].Insert())
+	}
+	found, err := FindAllHostsSpawnedByTasks()
+	assert.NoError(err)
+	assert.Len(found, 2)
+	assert.Equal(found[0].Id, "1")
+	assert.Equal(found[1].Id, "4")
+
+	found, err = FindHostsSpawnedByTask("task_1")
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal(found[0].Id, "1")
+
+	found, err = FindHostsSpawnedByBuild("build_1")
+	assert.NoError(err)
+	assert.Len(found, 2)
+	assert.Equal(found[0].Id, "1")
+	assert.Equal(found[1].Id, "4")
 }
