@@ -232,6 +232,12 @@ functions:
       params:
         files:
           - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
+  remove-test-results:
+    command: subprocess.exec
+    type: system
+    params:
+      command: rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
+
 
 #######################################
 #                Tasks                #
