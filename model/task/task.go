@@ -669,6 +669,14 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
+
+	grip.Debug(message.Fields{
+		"message":   "marking task finished",
+		"task_id":   t.Id,
+		"execution": t.Execution,
+		"project":   t.Project,
+		"details":   t.Details,
+	})
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,

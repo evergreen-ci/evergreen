@@ -67,6 +67,9 @@ var (
 	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
 	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
 	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
+	SpawnOptionsKey            = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
+	SpawnOptionsTaskIDKey      = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
+	SpawnOptionsBuildIDKey     = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 )
 
 // === Queries ===

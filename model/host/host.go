@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -101,6 +102,9 @@ type Host struct {
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
 	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
+
+	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -115,6 +119,22 @@ type ProvisionOptions struct {
 
 	// Owner is the user associated with the host used to populate any necessary metadata.
 	OwnerId string `bson:"owner_id" json:"owner_id"`
+}
+
+// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
+type SpawnOptions struct {
+	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
+	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
+	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
+	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
+
+	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
+	// this host should be torn down. Only one of TaskID or BuildID should be set.
+	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+
+	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
+	// this host should be torn down. Only one of TaskID or BuildID should be set.
+	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
 }
 
 const (
@@ -792,6 +812,16 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 	return hosts, nil
 }
 
+// FindAllRunningParentsOnDistro finds all running hosts of a given distro with child containers
+func FindAllRunningParentsByDistro(distroId string) ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey:                                          evergreen.HostRunning,
+		HasContainersKey:                                   true,
+		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroId,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	return Find(query)
+}
+
 // GetContainers finds all the containers belonging to this host
 // errors if this host is not a parent
 func (h *Host) GetContainers() ([]Host, error) {
@@ -848,4 +878,47 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	}
 
 	return nil
+}
+
+// FindAllHostsSpawnedByTasks finds all running hosts spawned by the `createhost` command.
+func FindAllHostsSpawnedByTasks() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		SpawnOptionsKey: bson.M{
+			"$exists": true,
+		},
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks")
+	}
+	return hosts, nil
+}
+
+// FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
+func FindHostsSpawnedByTask(taskID string) ([]Host, error) {
+	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		taskIDKey: taskID,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks by task ID")
+	}
+	return hosts, nil
+}
+
+// FindHostsSpawnedByBuild finds hosts spawned by the `createhost` command scoped to a given build.
+func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
+	buildIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey)
+	query := db.Query(bson.M{
+		StatusKey:  evergreen.HostRunning,
+		buildIDKey: buildID,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by builds by build ID")
+	}
+	return hosts, nil
 }
