@@ -37,25 +37,42 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 	record, err := FindByLastTaskRegressionByTest(testName, taskDisplayName, variant, projectID, beforeRevision)
 	s.NoError(err)
 	s.Require().NotNil(record)
-	s.Equal(5, record.RevisionOrderNumber)
-	s.Equal(testName, record.TestName)
-	s.Equal(taskDisplayName, record.TaskName)
-	s.Equal(variant, record.Variant)
-	s.Equal(projectID, record.ProjectId)
+	s.True(record.Id.Valid())
 	s.Equal(taskRegressionByTest, record.Type)
+	s.Empty(record.HostId)
+	s.Empty(record.TaskId)
+	s.Empty(record.TaskStatus)
+	s.Equal("project", record.ProjectId)
+	s.Empty(record.VersionId)
+	s.Equal("task", record.TaskName)
+	s.Equal("variant", record.Variant)
+	s.Equal("test", record.TestName)
+	s.Equal(5, record.RevisionOrderNumber)
 }
 
 func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() {
-	taskID := "task_0"
+	taskDisplayName := "task"
+	taskStatus := "something"
+	variant := "variant"
+	projectID := "project"
 	beforeRevision := 2
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID, beforeRevision))
 	beforeRevision = 5
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID, beforeRevision))
 
-	record, err := FindByLastTaskRegressionByTestWithNoTests(taskID, beforeRevision)
+	record, err := FindByLastTaskRegressionByTestWithNoTests(taskDisplayName, variant, projectID, beforeRevision)
+
 	s.NoError(err)
 	s.Require().NotNil(record)
-	s.Equal(5, record.RevisionOrderNumber)
-	s.Equal(taskID, record.TaskId)
+	s.True(record.Id.Valid())
 	s.Equal(taskRegressionByTestWithNoTests, record.Type)
+	s.Empty(record.HostId)
+	s.Empty(record.TaskId)
+	s.Equal("something", record.TaskStatus)
+	s.Equal("project", record.ProjectId)
+	s.Empty(record.VersionId)
+	s.Equal("task", record.TaskName)
+	s.Equal("variant", record.Variant)
+	s.Empty(record.TestName)
+	s.Equal(5, record.RevisionOrderNumber)
 }

@@ -39,6 +39,7 @@ type AlertRecord struct {
 	Type                string        `bson:"type"`
 	HostId              string        `bson:"host_id,omitempty"`
 	TaskId              string        `bson:"task_id,omitempty"`
+	TaskStatus          string        `bson:"task_status,omitempty"`
 	ProjectId           string        `bson:"project_id,omitempty"`
 	VersionId           string        `bson:"version_id,omitempty"`
 	TaskName            string        `bson:"task_name,omitempty"`
@@ -51,6 +52,7 @@ var (
 	IdKey                  = bsonutil.MustHaveTag(AlertRecord{}, "Id")
 	TypeKey                = bsonutil.MustHaveTag(AlertRecord{}, "Type")
 	TaskIdKey              = bsonutil.MustHaveTag(AlertRecord{}, "TaskId")
+	taskStatusKey          = bsonutil.MustHaveTag(AlertRecord{}, "TaskStatus")
 	HostIdKey              = bsonutil.MustHaveTag(AlertRecord{}, "HostId")
 	TaskNameKey            = bsonutil.MustHaveTag(AlertRecord{}, "TaskName")
 	VariantKey             = bsonutil.MustHaveTag(AlertRecord{}, "Variant")
@@ -133,12 +135,14 @@ func FindByLastTaskRegressionByTest(testName, taskDisplayName, variant, projectI
 	}).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
-func FindByLastTaskRegressionByTestWithNoTests(taskID string, beforeRevision int) (*AlertRecord, error) {
+func FindByLastTaskRegressionByTestWithNoTests(taskDisplayName, variant, projectID string, revision int) (*AlertRecord, error) {
 	return FindOne(db.Query(bson.M{
-		TypeKey:   taskRegressionByTestWithNoTests,
-		TaskIdKey: taskID,
+		TypeKey:      taskRegressionByTestWithNoTests,
+		TaskNameKey:  taskDisplayName,
+		VariantKey:   variant,
+		ProjectIdKey: projectID,
 		RevisionOrderNumberKey: bson.M{
-			"$lte": beforeRevision,
+			"$lte": revision,
 		},
 	}).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
@@ -161,11 +165,14 @@ func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, pro
 	return errors.Wrap(record.Insert(), "failed to insert alert record task-regression")
 }
 
-func InsertNewTaskRegressionByTestWithNoTestsRecord(taskID string, revision int) error {
+func InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  bson.NewObjectId(),
 		Type:                taskRegressionByTestWithNoTests,
-		TaskId:              taskID,
+		ProjectId:           projectID,
+		TaskName:            taskDisplayName,
+		TaskStatus:          taskStatus,
+		Variant:             variant,
 		RevisionOrderNumber: revision,
 	}
 
