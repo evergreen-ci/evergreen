@@ -23,6 +23,7 @@ var (
 	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
+	MaxContainersKey    = bsonutil.MustHaveTag(Distro{}, "MaxContainers")
 )
 
 const Collection = "distro"
@@ -65,6 +66,48 @@ func FindActive() ([]string, error) {
 
 	if err != nil {
 		return nil, errors.Wrap(err, "problem building list of all distros")
+	}
+
+	if len(out) != 1 {
+		return nil, errors.New("produced invalid results")
+	}
+
+	return out[0].Distros, nil
+}
+
+// FindActiveWithContainers gets all active distros that support containers
+func FindActiveWithContainers() ([]string, error) {
+	out := []struct {
+		Distros []string `bson:"distros"`
+	}{}
+	err := db.Aggregate(Collection, []bson.M{
+		{
+			"$match": bson.M{
+				DisabledKey: bson.M{
+					"$exists": false,
+				},
+				MaxContainersKey: bson.M{
+					"$gt": 0,
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				IdKey: 1,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": 0,
+				"distros": bson.M{
+					"$push": "$_id",
+				},
+			},
+		},
+	}, &out)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building list of all distros supporting containers")
 	}
 
 	if len(out) != 1 {
