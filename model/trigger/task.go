@@ -28,6 +28,7 @@ const (
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegression                    = "regression"
+	triggerTaskRegressionByTest              = "regression-by-test"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -40,6 +41,7 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegression:                    t.taskRegression,
+		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 	}
 
 	return t
