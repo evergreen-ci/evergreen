@@ -83,22 +83,25 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 		SecurityGroup: "sg-123456",
 		KeyName:       "keyName",
 	}
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.AMI = ""
 	s.Error(p.Validate())
 	p.AMI = "ami"
 
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.InstanceType = ""
 	s.Error(p.Validate())
 	p.InstanceType = "type"
 
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.SecurityGroup = ""
 	s.Error(p.Validate())
 	p.SecurityGroup = "sg-123456"
+	p.SecurityGroupIDs = []string{"sg-123456"}
+	s.Error(p.Validate())
+	p.SecurityGroupIDs = nil
 
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.KeyName = ""
 	s.Error(p.Validate())
 	p.KeyName = "keyName"
@@ -150,6 +153,20 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	s.Equal("anotherDeviceName", *b[1].DeviceName)
 	s.Equal("anotherVirtualName", *b[1].VirtualName)
 	s.NoError(err)
+
+	ebsMount := MountPoint{
+		DeviceName: "device",
+		Size:       10,
+		Iops:       100,
+		SnapshotID: "snapshot-1",
+	}
+	b, err = makeBlockDeviceMappings([]MountPoint{ebsMount})
+	s.NoError(err)
+	s.Len(b, 1)
+	s.Equal("device", *b[0].DeviceName)
+	s.Equal(int64(10), *b[0].Ebs.VolumeSize)
+	s.Equal(int64(100), *b[0].Ebs.Iops)
+	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
 func (s *EC2Suite) TestGetSettings() {
@@ -765,4 +782,19 @@ func (s *EC2Suite) TestUserDataExpand() {
 	expanded, err := s.autoManager.(*ec2Manager).expandUserData("${test} a thing")
 	s.NoError(err)
 	s.Equal("expand a thing", expanded)
+}
+
+func (s *EC2Suite) TestGetSecurityGroup() {
+	settings := EC2ProviderSettings{
+		SecurityGroup: "sg-1",
+	}
+	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroup())
+	settings = EC2ProviderSettings{
+		SecurityGroupIDs: []string{"sg-1"},
+	}
+	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroup())
+	settings = EC2ProviderSettings{
+		SecurityGroupIDs: []string{"sg-1", "sg-2"},
+	}
+	s.Equal([]*string{makeStringPtr("sg-1"), makeStringPtr("sg-2")}, settings.getSecurityGroup())
 }

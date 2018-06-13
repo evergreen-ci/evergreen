@@ -44,6 +44,9 @@ type EC2ProviderSettings struct {
 	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
 	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
 
+	// SecurityGroupIDs is a list of security group IDs.
+	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
+
 	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
 	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
 
@@ -66,8 +69,14 @@ type EC2ProviderSettings struct {
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
-	if s.AMI == "" || s.InstanceType == "" || s.SecurityGroup == "" || s.KeyName == "" {
-		return errors.New("AMI, instance type, security group, and key name must not be empty")
+	if s.AMI == "" || s.InstanceType == "" || s.KeyName == "" {
+		return errors.New("AMI, instance type, and key name must not be empty")
+	}
+	if s.SecurityGroup == "" && len(s.SecurityGroupIDs) == 0 {
+		return errors.New("Security group must not be empty")
+	}
+	if s.SecurityGroup != "" && len(s.SecurityGroupIDs) > 0 {
+		return errors.New("Must only set SecurityGroup or SecurityGroupIDs")
 	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
@@ -79,6 +88,18 @@ func (s *EC2ProviderSettings) Validate() error {
 		return errors.Wrap(err, "block device mappings invalid")
 	}
 	return nil
+}
+
+func (s *EC2ProviderSettings) getSecurityGroup() []*string {
+	groups := []*string{}
+	if len(s.SecurityGroupIDs) > 0 {
+		for _, group := range s.SecurityGroupIDs {
+			groups = append(groups, makeStringPtr(group))
+		}
+		return groups
+	}
+	groups = append(groups, makeStringPtr(s.SecurityGroup))
+	return groups
 }
 
 type ec2ProviderType int
@@ -156,12 +177,12 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
 				DeviceIndex:              makeInt64Ptr(0),
-				Groups:                   []*string{&ec2Settings.SecurityGroup},
+				Groups:                   ec2Settings.getSecurityGroup(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
-		input.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
+		input.SecurityGroups = ec2Settings.getSecurityGroup()
 	}
 
 	if ec2Settings.UserData != "" {
@@ -275,12 +296,12 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
 				DeviceIndex:              makeInt64Ptr(0),
-				Groups:                   []*string{&ec2Settings.SecurityGroup},
+				Groups:                   ec2Settings.getSecurityGroup(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
-		spotRequest.LaunchSpecification.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
+		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroup()
 	}
 
 	if ec2Settings.UserData != "" {
