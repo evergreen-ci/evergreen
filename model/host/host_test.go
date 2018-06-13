@@ -1725,6 +1725,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 
 }
 
+<<<<<<< Updated upstream
 func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -1791,4 +1792,77 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert.Len(found, 2)
 	assert.Equal(found[0].Id, "1")
 	assert.Equal(found[1].Id, "4")
+=======
+func TestCountParentsToDecommission(t *testing.T) {
+	assert := assert.New(t)
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing %v collections", Collection)
+	testutil.HandleTestingErr(db.Clear(distro.Collection), t, "Error clearing '%v' collection", distro.Collection)
+
+	d1 := &distro.Distro{Id: "d1", MaxContainers: 2}
+	d2 := &distro.Distro{Id: "d2", MaxContainers: 3}
+	assert.NoError(d1.Insert())
+	assert.NoError(d2.Insert())
+
+	host1 := &Host{
+		Id:            "host1",
+		Distro:        *d1,
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host2 := &Host{
+		Id:            "host2",
+		Distro:        *d1,
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host3 := &Host{
+		Id:            "host3",
+		Distro:        *d1,
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host4 := &Host{
+		Id:            "host4",
+		Distro:        *d2,
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Status:   evergreen.HostRunning,
+		ParentID: "host1",
+	}
+	host6 := &Host{
+		Id:       "host6",
+		Status:   evergreen.HostRunning,
+		ParentID: "host1",
+	}
+	host7 := &Host{
+		Id:       "host7",
+		Status:   evergreen.HostRunning,
+		ParentID: "host2",
+	}
+	host8 := &Host{
+		Id:       "host8",
+		Status:   evergreen.HostRunning,
+		ParentID: "host4",
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	num1, err := CountParentsToDecommission(d1.Id)
+	assert.NoError(err)
+	assert.Equal(1, num1)
+
+	num2, err := CountParentsToDecommission(d2.Id)
+	assert.NoError(err)
+	assert.Equal(0, num2)
+
+>>>>>>> Stashed changes
 }

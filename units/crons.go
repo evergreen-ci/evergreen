@@ -320,6 +320,27 @@ func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
 	}
 }
 
+func PopulateParentDecommissionJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+
+		// Find all active distros
+		distroIds, err := distro.FindActive()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		// Create ParentDecommissionJob for each distro
+		for _, distroId := range distroIds {
+			err = queue.Put(NewParentDecommissionJob(ts, distroId))
+			catcher.Add(err)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()

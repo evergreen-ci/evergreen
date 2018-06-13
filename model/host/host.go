@@ -2,6 +2,7 @@ package host
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -735,7 +736,7 @@ func FindHostsToTerminate() ([]Host, error) {
 				StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
 				StartedByKey:   evergreen.User,
 			},
-			{ // host.IsDecomissioned
+			{ // host.IsDecommissioned
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
@@ -858,6 +859,44 @@ func (h *Host) GetParent() (*Host, error) {
 	}
 
 	return host, nil
+}
+
+// CountParentsToDecommission computes the number of hosts with containers to deco
+func CountParentsToDecommission(distroId string) (int, error) {
+
+	parents, err := FindAllRunningParentsByDistro(distroId)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error finding running parents for distro")
+	}
+	numParents := len(parents)
+
+	// Build list of parent Ids
+	var parentIds []string
+	for _, parent := range parents {
+		parentIds = append(parentIds, parent.Id)
+	}
+
+	// Count number of containers on the parents
+	containersQuery := db.Query(bson.M{
+		StatusKey:   evergreen.HostRunning,
+		ParentIDKey: bson.M{"$in": parentIds},
+	})
+	numContainers, err := Count(containersQuery)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error counting containers on specified parents")
+	}
+
+	// Get maximum number of containers allowed on a parent with given distro
+	d, err := distro.FindOne(distro.ById(distroId))
+	if err != nil {
+		return 0, errors.Wrap(err, "Error getting max number of containers for distro")
+	}
+	maxContainersPerHost := d.MaxContainers
+
+	// Compute number of hosts to decommission based on excess capacity
+	numHostsToDeco := numParents - int(math.Ceil(float64(numContainers)/float64(maxContainersPerHost)))
+
+	return numHostsToDeco, nil
 }
 
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
