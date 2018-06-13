@@ -46,6 +46,7 @@ func (s *VersionSuite) SetupTest() {
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
 		Branch:     "mci",
+		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(s.version.Insert())
 
