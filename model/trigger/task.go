@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -28,8 +29,6 @@ const (
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegression                    = "regression"
-	triggerTaskExceedsTime                   = "exceeds_time"
-	triggerTaskRuntimeIncrease               = "exceeds_percentage"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -42,8 +41,8 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerTaskRegression:                    t.taskRegression,
-		triggerTaskExceedsTime:                   t.taskExceedsTime,
-		triggerTaskRuntimeIncrease:               t.taskRuntimeIncrease,
+		triggerExceedsDuration:                   t.taskExceedsDuration,
+		triggerRuntimeChangeByPercent:            t.taskRuntimeChange,
 	}
 
 	return t
@@ -205,7 +204,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, pastTenseOverride string, alertType string) (*notification.Notification, error) {
+func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType, pastTenseOverride string) (*notification.Notification, error) {
 	n, err := t.generate(sub, pastTenseOverride)
 	if err != nil {
 		return nil, err
@@ -257,7 +256,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(sub *event.Subscription) (*notifi
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, "", alertrecord.FirstVariantFailureId)
+	return t.generateWithAlertRecord(sub, alertrecord.FirstVariantFailureId, "")
 }
 
 func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*notification.Notification, error) {
@@ -272,7 +271,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(sub *event.Subscription) (*noti
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, "", alertrecord.FirstVersionFailureId)
+	return t.generateWithAlertRecord(sub, alertrecord.FirstVersionFailureId, "")
 }
 
 func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription) (*notification.Notification, error) {
@@ -287,7 +286,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 		return nil, nil
 	}
 
-	return t.generateWithAlertRecord(sub, "", alertrecord.FirstTaskTypeFailureId)
+	return t.generateWithAlertRecord(sub, alertrecord.FirstTaskTypeFailureId, "")
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
@@ -372,10 +371,8 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 	return n, errors.Wrap(rec.Insert(), "failed to process regression trigger")
 }
 
-func (t *taskTriggers) taskExceedsTime(sub *event.Subscription) (*notification.Notification, error) {
-	if sub == nil || sub.TriggerData == nil {
-		return nil, fmt.Errorf("subscription %s is missing trigger data", sub.ID)
-	}
+func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+
 	thresholdString, ok := sub.TriggerData[event.TaskDurationKey]
 	if !ok {
 		return nil, fmt.Errorf("subscription %s has no task time threshold", sub.ID)
@@ -384,20 +381,17 @@ func (t *taskTriggers) taskExceedsTime(sub *event.Subscription) (*notification.N
 	if err != nil {
 		return nil, fmt.Errorf("subscription %s has an invalid time threshold", sub.ID)
 	}
-	if t.event.EventType == event.TaskFinished {
-		maxDuration := time.Duration(threshold) * time.Second
-		if t.task.StartTime.Add(maxDuration).Before(t.task.FinishTime) {
-			return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
-		}
+
+	maxDuration := time.Duration(threshold) * time.Second
+	if !t.task.StartTime.Add(maxDuration).Before(t.task.FinishTime) {
+		return nil, nil
 	}
-	return nil, nil
+	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
 }
 
-func (t *taskTriggers) taskRuntimeIncrease(sub *event.Subscription) (*notification.Notification, error) {
-	if sub == nil || sub.TriggerData == nil {
-		return nil, fmt.Errorf("subscription %s is missing trigger data", sub.ID)
-	}
-	percentString, ok := sub.TriggerData[event.TaskPercentIncreaseKey]
+func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+
+	percentString, ok := sub.TriggerData[event.TaskPercentChangeKey]
 	if !ok {
 		return nil, fmt.Errorf("subscription %s has no percentage increase", sub.ID)
 	}
@@ -406,21 +400,22 @@ func (t *taskTriggers) taskRuntimeIncrease(sub *event.Subscription) (*notificati
 		return nil, fmt.Errorf("subscription %s has an invalid percentage", sub.ID)
 	}
 
-	if t.event.EventType == event.TaskFinished {
-		lastGreen, err := t.task.PreviousCompletedTask(t.task.Project, []string{evergreen.TaskSucceeded})
-		if err != nil {
-			return nil, errors.Wrap(err, "error retrieving last green task")
-		}
-		if lastGreen == nil {
-			return nil, nil
-		}
-		thisTaskDuration := float64(t.task.FinishTime.Sub(t.task.StartTime))
-		prevTaskDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
-		ratio := thisTaskDuration / prevTaskDuration
-		percentIncrease := 100*ratio - 100
-		if percentIncrease > percent {
-			return t.generate(sub, fmt.Sprintf("increased in runtime by %f%% (over threshold of %f%%)", percentIncrease, percent))
-		}
+	lastGreen, err := t.task.PreviousCompletedTask(t.task.Project, []string{evergreen.TaskSucceeded})
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving last green task")
 	}
-	return nil, nil
+	if lastGreen == nil {
+		return nil, nil
+	}
+	thisTaskDuration := float64(t.task.FinishTime.Sub(t.task.StartTime))
+	prevTaskDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
+	if prevTaskDuration == 0 {
+		return nil, nil
+	}
+	ratio := thisTaskDuration / prevTaskDuration
+	percentChange := math.Abs(100*ratio - 100)
+	if percentChange < percent {
+		return nil, nil
+	}
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %f%% (over threshold of %f%%)", percentChange, percent))
 }

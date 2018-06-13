@@ -62,6 +62,7 @@ func (s *patchSuite) SetupTest() {
 	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchStateChange,
 		ResourceId:   patchID.Hex(),
 		Data:         s.data,
 	}

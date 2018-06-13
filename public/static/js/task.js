@@ -281,8 +281,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           if (isNaN(percent)) {
             return percent + " must be a number";
           }
-          if (+percent < 0) {
-            return percent + " cannot be negative";
+          if (+percent <= 0) {
+            return percent + " must be positive";
           }
           return "";
         }
@@ -303,7 +303,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             label: "this task succeeds",
           },
           {
-            trigger: "exceeds_time",
+            trigger: "exceeds-duration",
             resource_type: "TASK",
             label: "the runtime for this task exceeds some duration",
             extraFields: [
@@ -311,11 +311,11 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             ]
           },
           {
-            trigger: "exceeds_percentage",
+            trigger: "runtime-change",
             resource_type: "TASK",
-            label: "the runtime for this task increases by some percentage",
+            label: "the runtime for this task changes by some percentage",
             extraFields: [
-              {text: "Percent increase", key: "task_percent_increase", validator: $scope.validatePercentage}
+              {text: "Percent increase", key: "task_percent_change", validator: $scope.validatePercentage}
             ]
           },
         ];

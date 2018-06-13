@@ -34,10 +34,10 @@ var (
 type OwnerType string
 
 const (
-	OwnerTypePerson        OwnerType = "person"
-	OwnerTypeProject       OwnerType = "project"
-	TaskDurationKey                  = "task_duration_secs"
-	TaskPercentIncreaseKey           = "task_percent_increase"
+	OwnerTypePerson      OwnerType = "person"
+	OwnerTypeProject     OwnerType = "project"
+	TaskDurationKey                = "task_duration_secs"
+	TaskPercentChangeKey           = "task_percent_change"
 )
 
 type Subscription struct {
@@ -268,12 +268,12 @@ func (s *Subscription) runCustomValidation() error {
 		}
 	}
 
-	if taskPercentVal, ok := s.TriggerData[TaskPercentIncreaseKey]; ok {
+	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
 		taskPercent, err := strconv.ParseFloat(taskPercentVal, 64)
 		if err != nil {
 			catcher.Add(fmt.Errorf("%s must be a number", taskPercentVal))
-		} else if taskPercent < 0 {
-			catcher.Add(fmt.Errorf("%f cannot be negative", taskPercent))
+		} else if taskPercent <= 0 {
+			catcher.Add(fmt.Errorf("%f must be positive", taskPercent))
 		}
 	}
 	return catcher.Resolve()
