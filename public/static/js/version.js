@@ -25,6 +25,11 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       label: "this version succeeds",
     },
     {
+      trigger: "regression",
+      resource_type: "VERSION",
+      label: "a previously-passing task in this version fails"
+    },
+    {
       trigger: "outcome",
       resource_type: "BUILD",
       label: "a build-variant in this version finishes"
