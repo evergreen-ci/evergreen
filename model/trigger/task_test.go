@@ -575,7 +575,6 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.data.Status = s.task.Status
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
-	s.task = s.task
 	s.makeTest(18, 1, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 

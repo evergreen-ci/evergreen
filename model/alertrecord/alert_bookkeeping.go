@@ -48,6 +48,7 @@ type AlertRecord struct {
 	RevisionOrderNumber int           `bson:"order,omitempty"`
 }
 
+//nolint: deadcode, megacheck
 var (
 	IdKey                  = bsonutil.MustHaveTag(AlertRecord{}, "Id")
 	TypeKey                = bsonutil.MustHaveTag(AlertRecord{}, "Type")
