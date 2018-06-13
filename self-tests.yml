@@ -236,7 +236,7 @@ functions:
     command: subprocess.exec
     type: system
     params:
-      command: rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
+      command: bash -c "rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
 
 
 #######################################
