@@ -19,9 +19,10 @@ const (
 	FirstTaskTypeFailureId = "first_tasktype_failure"
 	TaskFailTransitionId   = "task_transition_failure"
 	// TODO: EVG-3408
-	TaskFailedId         = "task_failed"
-	LastRevisionNotFound = "last_revision_not_found"
-	taskRegressionByTest = "task-regression-by-test"
+	TaskFailedId                    = "task_failed"
+	LastRevisionNotFound            = "last_revision_not_found"
+	taskRegressionByTest            = "task-regression-by-test"
+	taskRegressionByTestWithNoTests = "task-regression-by-test-with-no-tests"
 )
 
 // Host triggers
@@ -119,7 +120,7 @@ func ByLastRevNotFound(projectId, versionId string) db.Q {
 	}).Limit(1)
 }
 
-func FindByLastRegressionByTest(testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {
+func FindByLastTaskRegressionByTest(testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {
 	return FindOne(db.Query(bson.M{
 		TypeKey:      taskRegressionByTest,
 		testNameKey:  testName,
@@ -132,11 +133,21 @@ func FindByLastRegressionByTest(testName, taskDisplayName, variant, projectID st
 	}).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
+func FindByLastTaskRegressionByTestWithNoTests(taskID string, beforeRevision int) (*AlertRecord, error) {
+	return FindOne(db.Query(bson.M{
+		TypeKey:   taskRegressionByTestWithNoTests,
+		TaskIdKey: taskID,
+		RevisionOrderNumberKey: bson.M{
+			"$lte": beforeRevision,
+		},
+	}).Sort([]string{"-" + RevisionOrderNumberKey}))
+}
+
 func (ar *AlertRecord) Insert() error {
 	return db.Insert(Collection, ar)
 }
 
-func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID string, beforeRevision int) error {
+func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  bson.NewObjectId(),
 		Type:                taskRegressionByTest,
@@ -144,8 +155,19 @@ func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, pro
 		TaskName:            taskDisplayName,
 		Variant:             variant,
 		TestName:            testName,
-		RevisionOrderNumber: beforeRevision,
+		RevisionOrderNumber: revision,
 	}
 
-	return errors.Wrap(record.Insert(), "failed to insert alert record")
+	return errors.Wrap(record.Insert(), "failed to insert alert record task-regression")
+}
+
+func InsertNewTaskRegressionByTestWithNoTestsRecord(taskID string, revision int) error {
+	record := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                taskRegressionByTestWithNoTests,
+		TaskId:              taskID,
+		RevisionOrderNumber: revision,
+	}
+
+	return errors.Wrap(record.Insert(), "failed to insert alert record task-regression-by-test-with-no-tests")
 }

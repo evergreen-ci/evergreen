@@ -24,7 +24,7 @@ func (s *alertRecordSuite) SetupTest() {
 	s.NoError(db.ClearCollections(Collection))
 }
 
-func (s *alertRecordSuite) TestInsertNewTaskRegssionByTestRecord() {
+func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 	testName := "test"
 	taskDisplayName := "task"
 	variant := "variant"
@@ -34,7 +34,7 @@ func (s *alertRecordSuite) TestInsertNewTaskRegssionByTestRecord() {
 	beforeRevision = 5
 	s.NoError(InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID, beforeRevision))
 
-	record, err := FindByLastRegressionByTest(testName, taskDisplayName, variant, projectID, beforeRevision)
+	record, err := FindByLastTaskRegressionByTest(testName, taskDisplayName, variant, projectID, beforeRevision)
 	s.NoError(err)
 	s.Require().NotNil(record)
 	s.Equal(5, record.RevisionOrderNumber)
@@ -43,4 +43,19 @@ func (s *alertRecordSuite) TestInsertNewTaskRegssionByTestRecord() {
 	s.Equal(variant, record.Variant)
 	s.Equal(projectID, record.ProjectId)
 	s.Equal(taskRegressionByTest, record.Type)
+}
+
+func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() {
+	taskID := "task_0"
+	beforeRevision := 2
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskID, beforeRevision))
+	beforeRevision = 5
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskID, beforeRevision))
+
+	record, err := FindByLastTaskRegressionByTestWithNoTests(taskID, beforeRevision)
+	s.NoError(err)
+	s.Require().NotNil(record)
+	s.Equal(5, record.RevisionOrderNumber)
+	s.Equal(taskID, record.TaskId)
+	s.Equal(taskRegressionByTestWithNoTests, record.Type)
 }
