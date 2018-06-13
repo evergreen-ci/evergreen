@@ -1725,7 +1725,6 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 
 }
 
-<<<<<<< Updated upstream
 func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -1792,7 +1791,8 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert.Len(found, 2)
 	assert.Equal(found[0].Id, "1")
 	assert.Equal(found[1].Id, "4")
-=======
+}
+
 func TestCountParentsToDecommission(t *testing.T) {
 	assert := assert.New(t)
 	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing %v collections", Collection)
@@ -1863,6 +1863,4 @@ func TestCountParentsToDecommission(t *testing.T) {
 	num2, err := CountParentsToDecommission(d2.Id)
 	assert.NoError(err)
 	assert.Equal(0, num2)
-
->>>>>>> Stashed changes
 }
