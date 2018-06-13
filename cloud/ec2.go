@@ -90,7 +90,7 @@ func (s *EC2ProviderSettings) Validate() error {
 	return nil
 }
 
-func (s *EC2ProviderSettings) getSecurityGroup() []*string {
+func (s *EC2ProviderSettings) getSecurityGroups() []*string {
 	groups := []*string{}
 	if len(s.SecurityGroupIDs) > 0 {
 		for _, group := range s.SecurityGroupIDs {
@@ -177,12 +177,12 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
 				DeviceIndex:              makeInt64Ptr(0),
-				Groups:                   ec2Settings.getSecurityGroup(),
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
-		input.SecurityGroups = ec2Settings.getSecurityGroup()
+		input.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	if ec2Settings.UserData != "" {
@@ -296,12 +296,12 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
 				DeviceIndex:              makeInt64Ptr(0),
-				Groups:                   ec2Settings.getSecurityGroup(),
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
-		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroup()
+		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	if ec2Settings.UserData != "" {

@@ -788,13 +788,13 @@ func (s *EC2Suite) TestGetSecurityGroup() {
 	settings := EC2ProviderSettings{
 		SecurityGroup: "sg-1",
 	}
-	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroup())
+	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroup())
+	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1"), makeStringPtr("sg-2")}, settings.getSecurityGroup())
+	s.Equal([]*string{makeStringPtr("sg-1"), makeStringPtr("sg-2")}, settings.getSecurityGroups())
 }
