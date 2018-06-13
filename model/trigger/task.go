@@ -394,59 +394,6 @@ func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *testresu
 	return true, nil
 }
 
-func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notification.Notification, error) {
-	pp.Println(t.task)
-	if t.task.Requester != evergreen.RepotrackerVersionRequester || !isFailedTaskStatus(t.task.Status) {
-		return nil, nil
-	}
-
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
-	if err != nil {
-		return nil, errors.Wrap(err, "error fetching previous task")
-	}
-
-	tests, err := testresult.FindByTaskIDAndExecution(t.task.Id, t.task.Execution)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch tests for '%s'", t.task.Id)
-	}
-	pp.Println(tests)
-	if len(tests) == 0 {
-		return nil, errors.New("unimplemented")
-	}
-
-	if previousTask != nil {
-		t.oldTestResults, err = testresult.FindByTaskIDAndExecutionGroupedByTestFile(previousTask.Id, previousTask.Execution)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to fetch old test results")
-		}
-	}
-	pp.Println(tests)
-	testsToAlert := []testresult.TestResult{}
-	catcher := grip.NewBasicCatcher()
-	for i := range tests {
-		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(previousTask, &tests[i])
-		if err != nil {
-			catcher.Add(err)
-			continue
-		}
-		if shouldInclude {
-			testsToAlert = append(testsToAlert, tests[i])
-		}
-	}
-	if len(testsToAlert) == 0 {
-		return nil, nil
-	}
-
-	n, err := t.generate(sub)
-	if err != nil {
-		return nil, err
-	}
-
-	return n, catcher.Resolve()
-}
-
 func isFailedTaskStatus(status string) bool {
 	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed || status == evergreen.TaskTestTimedOut
 }
@@ -480,4 +427,56 @@ func isTaskRegression(oldStatus, newStatus string) bool {
 	}
 
 	return false
+}
+
+func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notification.Notification, error) {
+	pp.Println(t.task)
+	if t.task.Requester != evergreen.RepotrackerVersionRequester || !isFailedTaskStatus(t.task.Status) {
+		return nil, nil
+	}
+
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
+	if err != nil {
+		return nil, errors.Wrap(err, "error fetching previous task")
+	}
+
+	tests, err := testresult.FindByTaskIDAndExecution(t.task.Id, t.task.Execution)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to fetch tests for '%s'", t.task.Id)
+	}
+	if len(tests) == 0 {
+		return nil, errors.New("unimplemented")
+	}
+
+	if previousTask != nil {
+		t.oldTestResults, err = testresult.FindByTaskIDAndExecutionGroupedByTestFile(previousTask.Id, previousTask.Execution)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch old test results")
+		}
+	}
+
+	testsToAlert := []testresult.TestResult{}
+	catcher := grip.NewBasicCatcher()
+	for i := range tests {
+		var shouldInclude bool
+		shouldInclude, err = t.shouldIncludeTest(previousTask, &tests[i])
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		if shouldInclude {
+			testsToAlert = append(testsToAlert, tests[i])
+		}
+	}
+	if len(testsToAlert) == 0 {
+		return nil, nil
+	}
+
+	n, err := t.generate(sub)
+	if err != nil {
+		return nil, err
+	}
+
+	return n, catcher.Resolve()
 }

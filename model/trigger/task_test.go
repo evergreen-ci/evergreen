@@ -448,91 +448,64 @@ func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
 	s.NoError(results.Insert())
 }
 
+func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
+	n, err := s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Equal(shouldGenerate, n != nil)
+
+	// triggering the notification again should not generate anything
+	n, err = s.t.taskRegressionByTest(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
+}
+
 func (s *taskSuite) TestRegressionByTest() {
 	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
+	// brand new task that succeeds should not generate
 	s.makeTask(1, evergreen.TaskSucceeded)
 	s.makeTest(1, 0, "", evergreen.TestSucceededStatus)
 
-	// brand new task that succeeds should not generate
-	n, err := s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
-
-	// triggering the notification again should not generate anything
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(false)
 
 	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
+	// brand new test fails should generate
 	s.makeTask(1, evergreen.TaskFailed)
 	s.makeTest(1, 0, "", evergreen.TestFailedStatus)
 
-	// brand new test fails should generate
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	// triggering the notification again should not generate anything
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// next fail with same test shouldn't generate
 	s.makeTask(2, evergreen.TaskFailed)
 	s.makeTest(2, 0, "", evergreen.TestFailedStatus)
 
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
-
-	// triggering it again shouldn't notify
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(false)
 
 	// but if we add a new failed test, it should notify
 	s.makeTest(2, 0, "test_1", evergreen.TestFailedStatus)
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	// triggering it again shouldn't notify
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// successful tasks shouldn't generate
 	s.makeTask(3, evergreen.TaskSucceeded)
 	s.makeTest(3, 0, "", evergreen.TestSucceededStatus)
 	s.makeTest(3, 0, "test_1", evergreen.TestSucceededStatus)
 
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(false)
 
 	// transition to failure
 	s.makeTask(4, evergreen.TaskFailed)
 	s.makeTest(4, 0, "", evergreen.TestFailedStatus)
 	s.makeTest(4, 0, "test_1", evergreen.TestSucceededStatus)
 
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// Remove a successful test, but we already notified on the remaining
 	// failed test
 	s.makeTask(5, evergreen.TaskFailed)
 	s.makeTest(5, 0, "", evergreen.TestFailedStatus)
 
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(false)
 
 	// insert a couple of successful tasks
 	s.makeTask(6, evergreen.TaskSucceeded)
@@ -556,13 +529,7 @@ func (s *taskSuite) TestRegressionByTest() {
 
 	s.task = *task7
 	s.makeTest(7, 1, "", evergreen.TestFailedStatus)
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// make it fail again; it shouldn't generate
 	s.NoError(task7.Archive())
@@ -572,66 +539,33 @@ func (s *taskSuite) TestRegressionByTest() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": task7.Id}, &task7))
 	s.makeTest(7, 2, "", evergreen.TestFailedStatus)
 
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(false)
 
 	// no tests, but system fail should generate
 	s.makeTask(9, evergreen.TaskSystemFailed)
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// but not in subsequent task
 	s.makeTask(10, evergreen.TaskSystemFailed)
-	s.NoError(err)
-	s.NotNil(n)
-
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(false)
 
 	// Change in failure type should notify -> fail
 	s.makeTask(11, evergreen.TaskFailed)
 	s.makeTest(11, 0, "", evergreen.TestFailedStatus)
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// Change in failure type should notify -> system fail
 	s.makeTask(12, evergreen.TaskSystemFailed)
 	s.makeTest(12, 0, "", evergreen.TestFailedStatus)
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// TaskFailed with no tests should generate
 	s.makeTask(13, evergreen.TaskFailed)
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.NotNil(n)
-
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 
 	// but not in a subsequent task
 	s.makeTask(14, evergreen.TaskFailed)
-	n, err = s.t.taskRegressionByTest(&s.subs[2])
-	s.NoError(err)
-	s.Nil(n)
+	s.tryDoubleTrigger(true)
 }
 
 func TestIsTestRegression(t *testing.T) {
