@@ -451,7 +451,7 @@ func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	n, err := s.t.taskRegressionByTest(&s.subs[2])
 	s.NoError(err)
-	msg := "expected nil notification"
+	msg := fmt.Sprintf("expected nil notification; got '%s'", s.task.Id)
 	if shouldGenerate {
 		msg = "expected non nil notification"
 	}
@@ -463,107 +463,189 @@ func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	s.Nil(n)
 }
 
-func (s *taskSuite) TestRegressionByTest() {
-	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
-
-	// brand new task that succeeds should not generate
-	s.makeTask(1, evergreen.TaskSucceeded)
-	s.makeTest(1, 0, "", evergreen.TestSucceededStatus)
-
-	s.tryDoubleTrigger(false)
-
+func (s *taskSuite) TestRegressionByTestSimpleRegression() {
 	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
 	// brand new test fails should generate
 	s.makeTask(1, evergreen.TaskFailed)
 	s.makeTest(1, 0, "", evergreen.TestFailedStatus)
-
 	s.tryDoubleTrigger(true)
 
 	// next fail with same test shouldn't generate
 	s.makeTask(2, evergreen.TaskFailed)
 	s.makeTest(2, 0, "", evergreen.TestFailedStatus)
-
 	s.tryDoubleTrigger(false)
 
 	// but if we add a new failed test, it should notify
-	s.makeTest(2, 0, "test_1", evergreen.TestFailedStatus)
+	s.makeTask(3, evergreen.TaskFailed)
+	s.makeTest(3, 0, "test_1", evergreen.TestFailedStatus)
+	s.makeTest(3, 0, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
-
-	// successful tasks shouldn't generate
-	s.makeTask(3, evergreen.TaskSucceeded)
-	s.makeTest(3, 0, "", evergreen.TestSucceededStatus)
-	s.makeTest(3, 0, "test_1", evergreen.TestSucceededStatus)
-
-	s.tryDoubleTrigger(false)
 
 	// transition to failure
-	s.makeTask(4, evergreen.TaskFailed)
-	s.makeTest(4, 0, "", evergreen.TestFailedStatus)
-	s.makeTest(4, 0, "test_1", evergreen.TestSucceededStatus)
-
-	s.tryDoubleTrigger(true)
-
-	// Remove a successful test, but we already notified on the remaining
-	// failed test
-	s.makeTask(5, evergreen.TaskFailed)
-	s.makeTest(5, 0, "", evergreen.TestFailedStatus)
-
+	s.makeTask(4, evergreen.TaskSucceeded)
+	s.makeTest(4, 0, "", evergreen.TestSucceededStatus)
 	s.tryDoubleTrigger(false)
 
-	// insert a couple of successful tasks
+	s.makeTask(5, evergreen.TaskFailed)
+	s.makeTest(5, 0, "test_1", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(true)
+
+	// transition to system failure
 	s.makeTask(6, evergreen.TaskSucceeded)
 	s.makeTest(6, 0, "", evergreen.TestSucceededStatus)
+	s.tryDoubleTrigger(false)
 
-	s.makeTask(7, evergreen.TaskSucceeded)
-	s.makeTest(7, 0, "", evergreen.TestSucceededStatus)
+	s.makeTask(7, evergreen.TaskSystemFailed)
+	s.makeTest(7, 0, "", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(true)
 
-	s.makeTask(8, evergreen.TaskSucceeded)
-	s.makeTest(8, 0, "", evergreen.TestSucceededStatus)
+	// Transition from system failure to failure
+	s.makeTask(8, evergreen.TaskSystemFailed)
+	s.makeTest(8, 0, "", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(true)
 
-	// now simulate a rerun of task6 failing
-	task7, err := task.FindOneIdOldOrNew("task_7", 0)
-	s.NoError(err)
-	s.NotNil(task7)
-	s.NoError(task7.Archive())
-	task7.Status = evergreen.TaskFailed
-	task7.Execution = 1
-	s.event.ResourceId = task7.Id
-	s.NoError(db.Update(task.Collection, bson.M{"_id": task7.Id}, &task7))
+	// system fail with no tests
+	s.makeTask(9, evergreen.TaskSystemFailed)
+	s.tryDoubleTrigger(true)
+}
 
-	s.task = *task7
-	s.makeTest(7, 1, "", evergreen.TestFailedStatus)
+func (s *taskSuite) TestRegressionByTestWithNonAlertingStatuses() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	// brand new task that succeeds should not generate
+	s.makeTask(10, evergreen.TaskSucceeded)
+	s.makeTest(11, 0, "", evergreen.TestSucceededStatus)
+	s.tryDoubleTrigger(false)
+
+	// even after a failed task
+	s.makeTask(12, evergreen.TaskFailed)
+	s.makeTest(12, 0, "", evergreen.TestFailedStatus)
+
+	s.makeTask(13, evergreen.TaskSucceeded)
+	s.makeTest(13, 0, "", evergreen.TestSucceededStatus)
+	s.tryDoubleTrigger(false)
+}
+
+func (s *taskSuite) TestRegressionByTestWithTestChanges() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	// given a task with a failing test, and a succeeding one...
+	s.makeTask(14, evergreen.TaskFailed)
+	s.makeTest(14, 0, "", evergreen.TestFailedStatus)
+	s.makeTest(14, 0, "test_1", evergreen.TestSucceededStatus)
+	s.tryDoubleTrigger(true)
+
+	// Remove the successful test, but leave the failing one. Since we
+	// already notified, this should not generate
+	// failed test
+	s.makeTask(15, evergreen.TaskFailed)
+	s.makeTest(15, 0, "", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(false)
+
+	// add some successful tests, this should not notify
+	s.makeTask(16, evergreen.TaskFailed)
+	s.makeTest(16, 0, "", evergreen.TestFailedStatus)
+	s.makeTest(16, 0, "test_1", evergreen.TestSucceededStatus)
+	s.makeTest(16, 0, "test_2", evergreen.TestSucceededStatus)
+	s.tryDoubleTrigger(false)
+}
+
+func (s *taskSuite) TestRegressionByTestWithReruns() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	// insert a couple of successful tasks
+	s.makeTask(17, evergreen.TaskSucceeded)
+	s.makeTest(17, 0, "", evergreen.TestSucceededStatus)
+
+	s.makeTask(18, evergreen.TaskSucceeded)
+	s.makeTest(18, 0, "", evergreen.TestSucceededStatus)
+
+	task18 := s.task
+
+	s.makeTask(19, evergreen.TaskSucceeded)
+	s.makeTest(19, 0, "", evergreen.TestSucceededStatus)
+
+	// now simulate a rerun of task18 failing
+	s.task = task18
+	s.NoError(s.task.Archive())
+	s.task.Status = evergreen.TaskFailed
+	s.task.Execution = 1
+	s.event.ResourceId = s.task.Id
+	s.data.Status = s.task.Status
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+
+	s.task = s.task
+	s.makeTest(18, 1, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 
 	// make it fail again; it shouldn't generate
-	s.NoError(task7.Archive())
-	task7.Status = evergreen.TaskFailed
-	task7.Execution = 2
-	s.event.ResourceId = task7.Id
-	s.NoError(db.Update(task.Collection, bson.M{"_id": task7.Id}, &task7))
-	s.makeTest(7, 2, "", evergreen.TestFailedStatus)
+	s.NoError(s.task.Archive())
+	s.task.Status = evergreen.TaskFailed
+	s.task.Execution = 2
+	s.event.ResourceId = s.task.Id
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	s.makeTest(18, 2, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 
+	// make it system fail this time; it should generate
+	s.NoError(s.task.Archive())
+	s.task.Status = evergreen.TaskSystemFailed
+	s.task.Execution = 3
+	s.data.Status = s.task.Status
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	s.tryDoubleTrigger(true)
+
+	// but not on the repeat run
+	s.NoError(s.task.Archive())
+	s.task.Status = evergreen.TaskSystemFailed
+	s.task.Execution = 4
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	s.tryDoubleTrigger(false)
+}
+
+func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 	// no tests, but system fail should generate
-	s.makeTask(9, evergreen.TaskSystemFailed)
+	s.makeTask(20, evergreen.TaskSystemFailed)
 	s.tryDoubleTrigger(true)
 
 	// but not in subsequent task
-	s.makeTask(10, evergreen.TaskSystemFailed)
+	s.makeTask(21, evergreen.TaskSystemFailed)
 	s.tryDoubleTrigger(false)
 
 	// TaskFailed with no tests should generate
-	s.makeTask(11, evergreen.TaskFailed)
+	s.makeTask(22, evergreen.TaskFailed)
 	s.tryDoubleTrigger(true)
 
 	// but not in a subsequent task
-	s.makeTask(12, evergreen.TaskFailed)
+	s.makeTask(23, evergreen.TaskFailed)
 	s.tryDoubleTrigger(false)
 
 	// try same error status, but now with tests
-	s.makeTask(13, evergreen.TaskFailed)
-	s.makeTest(7, 0, "", evergreen.TestFailedStatus)
+	s.makeTask(24, evergreen.TaskFailed)
+	s.makeTest(25, 0, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
+
+	// pick a random task, and try and rerun it. It should not notify
+	//for i := 0; i < 5; i += 1 {
+	//	taskNum := rand.Intn(14)
+	//	randTask := fmt.Sprintf("task_%d", taskNum)
+
+	//	t, err := task.FindOne(task.ById(randTask))
+	//	s.NoError(err)
+	//	s.Require().NotNil(t)
+	//	s.Require().NoError(t.Archive())
+	//	t.Execution += 1
+	//	s.Require().NoError(task.UpdateOne(bson.M{
+	//		"_id": randTask,
+	//	}, t))
+	//	s.task = *t
+	//	s.event.ResourceId = randTask
+	//	s.data.Status = t.Status
+
+	//	s.tryDoubleTrigger(false)
+	//}
 }
 
 func TestIsTestRegression(t *testing.T) {

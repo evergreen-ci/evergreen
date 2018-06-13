@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -403,7 +404,7 @@ func isTaskRegression(oldStatus, newStatus string) bool {
 }
 
 func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *testresult.TestResult) (bool, error) {
-	if test.Status == evergreen.TestSkippedStatus || test.Status == evergreen.TestSilentlyFailedStatus {
+	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
 	record, err := alertrecord.FindByLastTaskRegressionByTest(test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
@@ -416,7 +417,13 @@ func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *testresu
 		}
 
 		oldTestResult, ok := t.oldTestResults[test.TestFile]
-		if ok && !isTestRegression(oldTestResult.Status, test.Status) {
+		pp.Println(oldTestResult, test)
+		if !ok {
+			if test.Status != evergreen.TestFailedStatus {
+				return false, nil
+			}
+
+		} else if !isTestRegression(oldTestResult.Status, test.Status) {
 			return false, nil
 		}
 	}
@@ -444,13 +451,14 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, errors.Wrapf(err, "failed to fetch tests for '%s'", t.task.Id)
 	}
 
+	record, err := alertrecord.FindByLastTaskRegressionByTestWithNoTests(t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch alertrecord (notests)")
+	}
+
 	catcher := grip.NewBasicCatcher()
 	// if no tests, alert only if it's a regression in task status
 	if len(tests) == 0 {
-		record, err := alertrecord.FindByLastTaskRegressionByTestWithNoTests(t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to fetch alertrecord")
-		}
 		if record != nil && !isTaskRegression(record.TaskStatus, t.task.Status) {
 			return nil, nil
 		}
@@ -476,6 +484,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 				testsToAlert = append(testsToAlert, tests[i])
 			}
 		}
+		pp.Println(testsToAlert)
 		if len(testsToAlert) == 0 {
 			return nil, nil
 		}
