@@ -614,38 +614,23 @@ func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 	s.makeTask(21, evergreen.TaskSystemFailed)
 	s.tryDoubleTrigger(false)
 
+	// add a test, it should alert even if the task status is the same
+	s.makeTask(22, evergreen.TaskSystemFailed)
+	s.makeTest(22, 0, "", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(true)
+
 	// TaskFailed with no tests should generate
-	s.makeTask(22, evergreen.TaskFailed)
+	s.makeTask(23, evergreen.TaskFailed)
 	s.tryDoubleTrigger(true)
 
 	// but not in a subsequent task
-	s.makeTask(23, evergreen.TaskFailed)
+	s.makeTask(24, evergreen.TaskFailed)
 	s.tryDoubleTrigger(false)
 
 	// try same error status, but now with tests
-	s.makeTask(24, evergreen.TaskFailed)
+	s.makeTask(25, evergreen.TaskFailed)
 	s.makeTest(25, 0, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
-
-	// pick a random task, and try and rerun it. It should not notify
-	//for i := 0; i < 5; i += 1 {
-	//	taskNum := rand.Intn(14)
-	//	randTask := fmt.Sprintf("task_%d", taskNum)
-
-	//	t, err := task.FindOne(task.ById(randTask))
-	//	s.NoError(err)
-	//	s.Require().NotNil(t)
-	//	s.Require().NoError(t.Archive())
-	//	t.Execution += 1
-	//	s.Require().NoError(task.UpdateOne(bson.M{
-	//		"_id": randTask,
-	//	}, t))
-	//	s.task = *t
-	//	s.event.ResourceId = randTask
-	//	s.data.Status = t.Status
-
-	//	s.tryDoubleTrigger(false)
-	//}
 }
 
 func TestIsTestRegression(t *testing.T) {

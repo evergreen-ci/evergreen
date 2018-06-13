@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -417,7 +416,6 @@ func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *testresu
 		}
 
 		oldTestResult, ok := t.oldTestResults[test.TestFile]
-		pp.Println(oldTestResult, test)
 		if !ok {
 			if test.Status != evergreen.TestFailedStatus {
 				return false, nil
@@ -484,7 +482,6 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 				testsToAlert = append(testsToAlert, tests[i])
 			}
 		}
-		pp.Println(testsToAlert)
 		if len(testsToAlert) == 0 {
 			return nil, nil
 		}
