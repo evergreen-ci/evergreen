@@ -819,12 +819,7 @@ func FindAllRunningParentsByDistro(distroId string) ([]Host, error) {
 		HasContainersKey:                                   true,
 		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroId,
 	}).Sort([]string{LastContainerFinishTimeKey})
-	hosts, err := Find(query)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error finding running parents by distro")
-	}
-
-	return hosts, nil
+	return Find(query)
 }
 
 // GetContainers finds all the containers belonging to this host
