@@ -813,11 +813,11 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 }
 
 // FindAllRunningParentsOnDistro finds all running hosts of a given distro with child containers
-func FindAllRunningParentsByDistro(d distro.Distro) ([]Host, error) {
+func FindAllRunningParentsByDistro(distroId string) ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey:                                          evergreen.HostRunning,
 		HasContainersKey:                                   true,
-		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): d.Id,
+		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroId,
 	}).Sort([]string{LastContainerFinishTimeKey})
 	hosts, err := Find(query)
 	if err != nil {
