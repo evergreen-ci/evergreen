@@ -451,7 +451,11 @@ func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
 	n, err := s.t.taskRegressionByTest(&s.subs[2])
 	s.NoError(err)
-	s.Equal(shouldGenerate, n != nil)
+	msg := "expected nil notification"
+	if shouldGenerate {
+		msg = "expected non nil notification"
+	}
+	s.Equal(shouldGenerate, n != nil, msg)
 
 	// triggering the notification again should not generate anything
 	n, err = s.t.taskRegressionByTest(&s.subs[2])
@@ -538,7 +542,6 @@ func (s *taskSuite) TestRegressionByTest() {
 	s.event.ResourceId = task7.Id
 	s.NoError(db.Update(task.Collection, bson.M{"_id": task7.Id}, &task7))
 	s.makeTest(7, 2, "", evergreen.TestFailedStatus)
-
 	s.tryDoubleTrigger(false)
 
 	// no tests, but system fail should generate
@@ -549,22 +552,17 @@ func (s *taskSuite) TestRegressionByTest() {
 	s.makeTask(10, evergreen.TaskSystemFailed)
 	s.tryDoubleTrigger(false)
 
-	// Change in failure type should notify -> fail
-	s.makeTask(11, evergreen.TaskFailed)
-	s.makeTest(11, 0, "", evergreen.TestFailedStatus)
-	s.tryDoubleTrigger(true)
-
-	// Change in failure type should notify -> system fail
-	s.makeTask(12, evergreen.TaskSystemFailed)
-	s.makeTest(12, 0, "", evergreen.TestFailedStatus)
-	s.tryDoubleTrigger(true)
-
 	// TaskFailed with no tests should generate
-	s.makeTask(13, evergreen.TaskFailed)
+	s.makeTask(11, evergreen.TaskFailed)
 	s.tryDoubleTrigger(true)
 
 	// but not in a subsequent task
-	s.makeTask(14, evergreen.TaskFailed)
+	s.makeTask(12, evergreen.TaskFailed)
+	s.tryDoubleTrigger(false)
+
+	// try same error status, but now with tests
+	s.makeTask(13, evergreen.TaskFailed)
+	s.makeTest(7, 0, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
 }
 
