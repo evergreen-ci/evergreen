@@ -4,14 +4,15 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager depending on what type of authentication (Crowd or Naive) is used.
-func LoadUserManager(authConfig evergreen.AuthConfig) (UserManager, error) {
-	var manager UserManager
+func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error) {
+	var manager gimlet.UserManager
 	var err error
 	if authConfig.Crowd != nil {
 		manager, err = NewCrowdUserManager(authConfig.Crowd)
@@ -33,11 +34,9 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (UserManager, error) {
 			return nil, errors.New("Cannot have multiple forms of authentication in configuration")
 		}
 		manager, err = NewGithubUserManager(authConfig.Github)
-
-		// if err!=nil has never returned an error, though it
-		// looks like it should, just printing a warning in
-		// the mean time.
-		grip.Warning(errors.WithStack(err))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if manager != nil {
@@ -62,7 +61,7 @@ func setLoginToken(token string, w http.ResponseWriter) {
 // IsSuperUser verifies that a given user has super user permissions.
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
-func IsSuperUser(superUsers []string, u User) bool {
+func IsSuperUser(superUsers []string, u gimlet.User) bool {
 	if u == nil || u.IsNil() {
 		return false
 	}
@@ -73,3 +72,9 @@ func IsSuperUser(superUsers []string, u User) bool {
 	return false
 
 }
+
+func getOrCreateUser(u gimlet.User) (gimlet.User, error) {
+	return model.GetOrCreateUser(u.Username(), u.DisplayName(), u.Email())
+}
+
+func getUserByID(id string) (gimlet.User, error) { return model.FindUserByID(id) }

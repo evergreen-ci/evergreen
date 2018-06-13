@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -18,6 +19,14 @@ func SaveUserSettings(userId string, settings user.UserSettings) error {
 func SetUserAPIKey(userId, newKey string) error {
 	update := bson.M{"$set": bson.M{user.APIKeyKey: newKey}}
 	return user.UpdateOne(bson.M{user.IdKey: userId}, update)
+}
+
+func FindUserByID(id string) (*user.DBUser, error) {
+	t, err := user.FindOne(user.ById(id))
+	if err != nil {
+		return nil, errors.Wrapf(err, "db issue finding user '%s'", id)
+	}
+	return t, nil
 }
 
 // GetOrCreateUser fetches a user with the given userId and returns it. If no document exists for
@@ -39,7 +48,7 @@ func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
 			Upsert:    true,
 		}, u)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "problem find/create user '%s'", userId)
 	}
 	return u, nil
 }

@@ -6,6 +6,9 @@ imports:
 - name: github.com/gorilla/mux
   version: ac112f7d75a0714af1bd86ab17749b31f7809640
 
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
+
 - name: github.com/mongodb/grip
   version: e5e74ee9128f8b676043365ad14944e5b046d251
 - name: github.com/urfave/negroni

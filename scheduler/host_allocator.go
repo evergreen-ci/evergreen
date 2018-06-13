@@ -25,6 +25,7 @@ type HostAllocatorData struct {
 	taskRunDistros      map[string][]string
 	distros             map[string]distro.Distro
 	freeHostFraction    float64
+	usesContainers      bool
 }
 
 func GetHostAllocator(name string) HostAllocator {

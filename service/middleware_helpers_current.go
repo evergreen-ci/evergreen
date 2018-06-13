@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +31,7 @@ func setUIRequestContext(r *http.Request, p projectContext) *http.Request {
 func setRestContext(r *http.Request, c *model.Context) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), RestContext, c))
 }
-func setRequestUser(r *http.Request, u auth.User) *http.Request {
+func setRequestUser(r *http.Request, u gimlet.User) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), evergreen.RequestUser, u))
 }
 

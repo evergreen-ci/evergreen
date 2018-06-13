@@ -1,0 +1,39 @@
+{{define "scripts"}}
+<script type="text/javascript">
+  window.JiraHost = {{.JiraHost}}
+</script>
+
+<script type="text/javascript" src="/static/app/signal-processing/SignalProcessingCtrl.js?hash={{ BuildRevision }}"></script>
+
+<link rel="stylesheet" href="/static/app/common/styles/ui-grid.css">
+{{end}}
+
+{{define "title"}}
+Signal Processing
+{{end}}
+
+{{define "content"}}
+<div ng-controller="SignalProcessingCtrl as $ctrl" class="content-container">
+  <div
+    class="grid"
+    ui-grid="$ctrl.gridOptions"
+    ui-grid-auto-resize
+    ui-grid-resize-columns
+    ui-grid-move-columns
+    ui-grid-auto-resize
+    ui-grid-empty-base-layer
+  >
+    <div class="ui-grid-overlay ng-cloak">
+      <md-progress-circular
+        mode="indeterminate"
+        md-diameter="70"
+        ng-show="$ctrl.isLoading"
+      >
+      </md-progress-circular>
+      <h1 ng-show="!$ctrl.isLoading && !$ctrl.gridOptions.data.length">
+        No data available!
+      </h1>
+    </div>
+  </div>
+</div>
+{{end}}

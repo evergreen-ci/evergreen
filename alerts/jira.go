@@ -152,6 +152,8 @@ func getSummary(ctx AlertContext) string {
 		subj.WriteString("System Failure: ")
 	case ctx.Task.Details.Type == model.SystemCommandType:
 		subj.WriteString("System Failure: ")
+	case ctx.Task.Details.Type == model.SetupCommandType:
+		subj.WriteString("Setup Failure: ")
 	default:
 		subj.WriteString("Failed: ")
 	}

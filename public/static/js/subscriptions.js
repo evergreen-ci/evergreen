@@ -82,7 +82,7 @@ function subscriberPromise($mdDialog, verb, triggers, omitMethods, subscription)
     });
 }
 
-function subCtrl($scope, $mdDialog) {
+function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     // labels should complete the following sentence fragments:
     // 'then notify by ...'
     // 'when ...'
@@ -92,10 +92,21 @@ function subCtrl($scope, $mdDialog) {
       $scope.subscription_methods = _($scope.subscription_methods).filter(function(method){
         return !$scope.c.omit[method.value];
       });
-    }
+    };
+    $scope.extraData = {};
 
     $scope.closeDialog = function(save) {
         if(save === true) {
+            $scope.validationErrors = [];
+            for (var key in $scope.customValidation) {
+              var validationMsg = $scope.customValidation[key]($scope.extraData[key]);
+              if (validationMsg) {
+                $scope.validationErrors.push(validationMsg);
+              };
+            };
+            if ($scope.validationErrors.length > 0) {
+              return;
+            }
             subscriber = {
                 type: $scope.method.value,
                 target: $scope.targets[$scope.method.value],
@@ -107,6 +118,7 @@ function subCtrl($scope, $mdDialog) {
             d.resource_type = $scope.trigger.resource_type;
             d.trigger = $scope.trigger.trigger;
             d.trigger_label = $scope.trigger.label;
+            d.trigger_data = $scope.extraData;
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -121,6 +133,15 @@ function subCtrl($scope, $mdDialog) {
 
         return text;
     };
+
+    $scope.addCustomValidation = function(fields) {
+      $scope.customValidation = {};
+      if (fields) {
+        _.each(fields, function(field) {
+          $scope.customValidation[field.key] = field.validator;
+        });
+      };
+    }
 
     $scope.valid = function() {
         if (!$scope.trigger || !$scope.method) {
@@ -158,6 +179,17 @@ function subCtrl($scope, $mdDialog) {
         return false;
     };
 
+
+    $scope.bindTrigger = function() {
+      _.each($scope.c.triggers, function(trigger){
+        if (trigger.trigger === $scope.trigger.trigger) {
+          $scope.extraFields = trigger.extraFields;
+          $scope.addCustomValidation(trigger.extraFields);
+          return;
+        }
+      });
+    };
+
     $scope.method = {};
     $scope.targets = {};
     $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {
@@ -170,6 +202,15 @@ function subCtrl($scope, $mdDialog) {
             $scope.method = t[0];
         }
         $scope.trigger = lookupTrigger($scope.c.triggers, $scope.c.subscription.trigger, $scope.c.subscription.resource_type);
+
+    }else {
+        mciUserSettingsService.getUserSettings({success: function(resp) {
+            if (!$scope.targets[SUBSCRIPTION_SLACK]) {
+                $scope.targets[SUBSCRIPTION_SLACK] = "@" + resp.data.slack_username || "";
+            }
+        }, error: function(resp) {
+            console.log("failed to fetch user settings: ", resp);
+        }});
     }
 }
 

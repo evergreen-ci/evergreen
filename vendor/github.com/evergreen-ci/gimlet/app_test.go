@@ -34,7 +34,6 @@ func (s *AppSuite) TestDefaultValuesAreSet() {
 	s.Equal(s.app.port, 3000)
 	s.False(s.app.StrictSlash)
 	s.False(s.app.isResolved)
-	s.Equal(s.app.defaultVersion, -1)
 }
 
 func (s *AppSuite) TestRouterGetterReturnsErrorWhenUnresovled() {
@@ -42,23 +41,6 @@ func (s *AppSuite) TestRouterGetterReturnsErrorWhenUnresovled() {
 
 	_, err := s.app.Router()
 	s.Error(err)
-}
-
-func (s *AppSuite) TestDefaultVersionSetter() {
-	s.Equal(s.app.defaultVersion, -1)
-	s.app.SetDefaultVersion(-2)
-	s.Equal(s.app.defaultVersion, -1)
-
-	s.app.SetDefaultVersion(0)
-	s.Equal(s.app.defaultVersion, 0)
-
-	s.app.SetDefaultVersion(1)
-	s.Equal(s.app.defaultVersion, 1)
-
-	for idx := range [100]int{} {
-		s.app.SetDefaultVersion(idx)
-		s.Equal(s.app.defaultVersion, idx)
-	}
 }
 
 func (s *AppSuite) TestMiddleWearResetEmptiesList() {
@@ -95,8 +77,8 @@ func (s *AppSuite) TestRouterReturnsRouterInstanceWhenResolved() {
 	s.Nil(r)
 	s.Error(err)
 
-	s.app.AddRoute("/foo").Version(1)
-	s.Error(s.app.Resolve())
+	s.app.AddRoute("/foo").Version(1).Get().Handler(func(_ http.ResponseWriter, _ *http.Request) {})
+	s.NoError(s.app.Resolve())
 	s.True(s.app.isResolved)
 
 	r, err = s.app.Router()
@@ -108,7 +90,18 @@ func (s *AppSuite) TestResolveEncountersErrorsWithAnInvalidRoot() {
 	s.False(s.app.isResolved)
 
 	s.app.AddRoute("/foo").Version(-10)
-	s.Error(s.app.Resolve())
+	err1 := s.app.Resolve()
+	s.Error(err1)
+
+	// also check that app.getNegroni
+	n, err2 := s.app.getNegroni()
+	s.Nil(n)
+	s.Error(err2)
+	s.Equal(err1, err2)
+
+	// also to run
+	err2 = s.app.Run(nil)
+	s.Equal(err1, err2)
 }
 
 func (s *AppSuite) TestSetPortToExistingValueIsANoOp() {
@@ -137,10 +130,10 @@ func (s *AppSuite) TestResolveValidRoute() {
 }
 
 func (s *AppSuite) TestResolveAppWithDefaultVersion() {
+	s.app.NoVersions = true
 	s.False(s.app.isResolved)
-	s.app.defaultVersion = 1
 	route := &APIRoute{
-		version: 1,
+		version: -1,
 		methods: []httpMethod{get},
 		handler: func(_ http.ResponseWriter, _ *http.Request) { grip.Info("hello") },
 		route:   "/foo",
@@ -149,6 +142,21 @@ func (s *AppSuite) TestResolveAppWithDefaultVersion() {
 	s.app.routes = append(s.app.routes, route)
 	s.NoError(s.app.Resolve())
 	s.True(s.app.isResolved)
+}
+
+func (s *AppSuite) TestResolveAppWithInvaldVersion() {
+	s.app.NoVersions = false
+	s.False(s.app.isResolved)
+	route := &APIRoute{
+		version: -1,
+		methods: []httpMethod{get},
+		handler: func(_ http.ResponseWriter, _ *http.Request) { grip.Info("hello") },
+		route:   "/foo",
+	}
+	s.True(route.IsValid())
+	s.app.routes = append(s.app.routes, route)
+	s.Error(s.app.Resolve())
+	s.False(s.app.isResolved)
 }
 
 func (s *AppSuite) TestSetHostOperations() {
@@ -170,46 +178,6 @@ func (s *AppSuite) TestSetPrefix() {
 	s.Equal("/foo", s.app.prefix)
 	s.app.SetPrefix("/bar")
 	s.Equal("/bar", s.app.prefix)
-}
-
-func (s *AppSuite) TestGetDefaultRoute() {
-	cases := map[string][]string{
-		"/foo":      []string{"", "/foo"},
-		"/rest/foo": []string{"", "/rest/foo"},
-		"/rest/bar": []string{"/rest", "/rest/bar"},
-		"/rest/baz": []string{"/rest", "/baz"},
-	}
-
-	for output, inputs := range cases {
-		if !s.Len(inputs, 2) {
-			continue
-		}
-
-		prefix := inputs[0]
-		route := inputs[1]
-
-		s.Equal(output, getDefaultRoute(prefix, route))
-	}
-}
-
-func (s *AppSuite) TestGetVersionRoute() {
-	cases := map[string][]interface{}{
-		"/v1/foo":      []interface{}{"", 1, "/foo"},
-		"/v1/rest/foo": []interface{}{"", 1, "/rest/foo"},
-		"/rest/v2/foo": []interface{}{"/rest", 2, "/foo"},
-		"/rest/v2/bar": []interface{}{"/rest", 2, "/rest/bar"},
-	}
-	for output, inputs := range cases {
-		if !s.Len(inputs, 3) {
-			continue
-		}
-
-		prefix := inputs[0].(string)
-		version := inputs[1].(int)
-		route := inputs[2].(string)
-
-		s.Equal(output, getVersionedRoute(prefix, version, route))
-	}
 }
 
 func (s *AppSuite) TestHandlerGetter() {
