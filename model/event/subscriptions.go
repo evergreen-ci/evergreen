@@ -34,8 +34,10 @@ var (
 type OwnerType string
 
 const (
-	OwnerTypePerson  OwnerType = "person"
-	OwnerTypeProject OwnerType = "project"
+	OwnerTypePerson        OwnerType = "person"
+	OwnerTypeProject       OwnerType = "project"
+	TaskDurationKey                  = "task_duration_secs"
+	TaskPercentIncreaseKey           = "task_percent_increase"
 )
 
 type Subscription struct {
@@ -257,7 +259,7 @@ func (s *Subscription) Validate() error {
 func (s *Subscription) runCustomValidation() error {
 	catcher := grip.NewBasicCatcher()
 
-	if taskDurationVal, ok := s.TriggerData["task_duration_secs"]; ok {
+	if taskDurationVal, ok := s.TriggerData[TaskDurationKey]; ok {
 		taskDuration, err := strconv.Atoi(taskDurationVal)
 		if err != nil {
 			catcher.Add(fmt.Errorf("%s must be a number", taskDurationVal))
@@ -266,8 +268,8 @@ func (s *Subscription) runCustomValidation() error {
 		}
 	}
 
-	if taskPercentVal, ok := s.TriggerData["task_percent_increase"]; ok {
-		taskPercent, err := strconv.ParseFloat(taskPercentVal, 32)
+	if taskPercentVal, ok := s.TriggerData[TaskPercentIncreaseKey]; ok {
+		taskPercent, err := strconv.ParseFloat(taskPercentVal, 64)
 		if err != nil {
 			catcher.Add(fmt.Errorf("%s must be a number", taskPercentVal))
 		} else if taskPercent < 0 {

@@ -135,7 +135,7 @@ func (s *taskSuite) SetupTest() {
 			},
 			Owner: "someone",
 			TriggerData: map[string]string{
-				taskDurationKey: "300",
+				event.TaskDurationKey: "300",
 			},
 		},
 		{
@@ -154,7 +154,7 @@ func (s *taskSuite) SetupTest() {
 			},
 			Owner: "someone",
 			TriggerData: map[string]string{
-				percentIncreaseKey: "50",
+				event.TaskPercentIncreaseKey: "50",
 			},
 		},
 	}

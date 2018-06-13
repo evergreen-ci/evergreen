@@ -30,8 +30,6 @@ const (
 	triggerTaskRegression                    = "regression"
 	triggerTaskExceedsTime                   = "exceeds_time"
 	triggerTaskRuntimeIncrease               = "exceeds_percentage"
-	taskDurationKey                          = "task_duration_secs"
-	percentIncreaseKey                       = "task_percent_increase"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -378,7 +376,7 @@ func (t *taskTriggers) taskExceedsTime(sub *event.Subscription) (*notification.N
 	if sub == nil || sub.TriggerData == nil {
 		return nil, fmt.Errorf("subscription %s is missing trigger data", sub.ID)
 	}
-	thresholdString, ok := sub.TriggerData[taskDurationKey]
+	thresholdString, ok := sub.TriggerData[event.TaskDurationKey]
 	if !ok {
 		return nil, fmt.Errorf("subscription %s has no task time threshold", sub.ID)
 	}
@@ -399,11 +397,11 @@ func (t *taskTriggers) taskRuntimeIncrease(sub *event.Subscription) (*notificati
 	if sub == nil || sub.TriggerData == nil {
 		return nil, fmt.Errorf("subscription %s is missing trigger data", sub.ID)
 	}
-	percentString, ok := sub.TriggerData[percentIncreaseKey]
+	percentString, ok := sub.TriggerData[event.TaskPercentIncreaseKey]
 	if !ok {
 		return nil, fmt.Errorf("subscription %s has no percentage increase", sub.ID)
 	}
-	percent, err := strconv.ParseFloat(percentString, 32)
+	percent, err := strconv.ParseFloat(percentString, 64)
 	if err != nil {
 		return nil, fmt.Errorf("subscription %s has an invalid percentage", sub.ID)
 	}
@@ -413,12 +411,15 @@ func (t *taskTriggers) taskRuntimeIncrease(sub *event.Subscription) (*notificati
 		if err != nil {
 			return nil, errors.Wrap(err, "error retrieving last green task")
 		}
+		if lastGreen == nil {
+			return nil, nil
+		}
 		thisTaskDuration := float64(t.task.FinishTime.Sub(t.task.StartTime))
 		prevTaskDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
 		ratio := thisTaskDuration / prevTaskDuration
 		percentIncrease := 100*ratio - 100
 		if percentIncrease > percent {
-			return t.generate(sub, fmt.Sprintf("increased in runtime by over %f%%", percent))
+			return t.generate(sub, fmt.Sprintf("increased in runtime by %f%% (over threshold of %f%%)", percentIncrease, percent))
 		}
 	}
 	return nil, nil
