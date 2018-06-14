@@ -538,4 +538,5 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	s.Equal(3, len(newHostsSpawned["distro"]))
 	s.NotEmpty(newHostsSpawned["distro"][0].ParentID)
 	s.NotEmpty(newHostsSpawned["distro"][1].ParentID)
+	s.NotEmpty(newHostsSpawned["distro"][2].ParentID)
 }
