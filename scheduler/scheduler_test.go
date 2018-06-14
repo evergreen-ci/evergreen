@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -479,4 +480,62 @@ func (s *SchedulerSuite) TestFindNoAvailableParent() {
 	availableParent, err := findAvailableParent(d)
 	s.EqualError(err, "No available parent found for container")
 	s.Empty(availableParent.Id)
+}
+
+func (s *SchedulerSuite) TestSpawnContainersStatic() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	hosts := []cloud.StaticHost{{Name: "host1"}, {Name: "host2"}, {Name: "host3"}}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerStatic,
+		MaxContainers: 1, ProviderSettings: &map[string]interface{}{"hosts": hosts}}
+
+	host1 := &host.Host{
+		Id:            "host1",
+		Host:          "host",
+		User:          "user",
+		Distro:        distro.Distro{Id: "distro"},
+		Provider:      evergreen.ProviderNameDockerStatic,
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host2 := &host.Host{
+		Id:            "host2",
+		Distro:        distro.Distro{Id: "distro"},
+		Provider:      evergreen.ProviderNameDockerStatic,
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host3 := &host.Host{
+		Id:            "host3",
+		Distro:        distro.Distro{Id: "distro"},
+		Provider:      evergreen.ProviderNameDockerStatic,
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+
+	s.NoError(d.Insert())
+	s.NoError(host1.Insert())
+	s.NoError(host2.Insert())
+	s.NoError(host3.Insert())
+
+	newHostsNeeded := map[string]int{
+		"distro": 4,
+	}
+
+	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
+	s.NoError(err)
+
+	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
+	s.NoError(err)
+	s.Equal(3, len(currentParents))
+	existingContainers, err := host.FindAllRunningContainers()
+	s.NoError(err)
+	numNewParents := numNewParentsNeeded(len(currentParents), newHostsNeeded["distro"], len(existingContainers), d)
+	numNewParentsToSpawn := parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), newHostsNeeded["distro"])
+	s.Equal(0, numNewParentsToSpawn)
+
+	s.Equal(3, len(newHostsSpawned["distro"]))
+	s.NotEmpty(newHostsSpawned["distro"][0].ParentID)
+	s.NotEmpty(newHostsSpawned["distro"][1].ParentID)
 }

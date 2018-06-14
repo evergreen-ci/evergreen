@@ -296,6 +296,10 @@ func parentCapacity(d distro.Distro, numNewParents, numCurrentParents, numCurren
 	if numNewParents+numCurrentParents > d.PoolSize {
 		numNewParents = d.MaxContainers - numCurrentParents
 	}
+	// if looking at a static docker provider, do not spawn any more parents
+	if d.Provider == evergreen.ProviderNameDockerStatic {
+		numNewParents = 0
+	}
 	return numNewParents
 }
 
