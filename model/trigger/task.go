@@ -297,15 +297,14 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 }
 
 func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
-	isRegression := false
 	if t.Status != evergreen.TaskFailed || t.Requester != evergreen.RepotrackerVersionRequester {
-		return isRegression, nil, nil
+		return false, nil, nil
 	}
 
 	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.RevisionOrderNumber,
 		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project))
 	if err != nil {
-		return isRegression, nil, errors.Wrap(err, "error fetching previous task")
+		return false, nil, errors.Wrap(err, "error fetching previous task")
 	}
 	if previousTask != nil {
 		q := alertrecord.ByLastFailureTransition(t.DisplayName, t.BuildVariant, t.Project)
@@ -316,14 +315,14 @@ func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			errMessage["error"] = err.Error()
 			grip.Error(errMessage)
-			return isRegression, nil, errors.Wrap(err, "failed to process regression trigger")
+			return false, nil, errors.Wrap(err, "failed to process regression trigger")
 		}
 
 		if previousTask.Status == evergreen.TaskSucceeded {
 			// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
 			// a sent alert for a transition after the same previously passing task.
 			if lastAlerted != nil && (lastAlerted.RevisionOrderNumber >= previousTask.RevisionOrderNumber) {
-				return isRegression, nil, nil
+				return false, nil, nil
 			}
 
 		} else if previousTask.Status == evergreen.TaskFailed {
@@ -336,7 +335,7 @@ func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 				errMessage["lastAlert"] = lastAlerted
 				errMessage["outcome"] = "not sending alert"
 				grip.Error(errMessage)
-				return isRegression, nil, errors.Wrap(err, "failed to process regression trigger")
+				return false, nil, errors.Wrap(err, "failed to process regression trigger")
 			}
 
 			// TODO: EVG-3407 how is this even possible?
@@ -352,18 +351,17 @@ func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 				}
 				grip.Warning(errMessage)
 				if !shouldSend {
-					return isRegression, nil, nil
+					return false, nil, nil
 				}
 
 			} else {
 				var old bool
 				if old, err = taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId); !old {
-					return isRegression, nil, errors.Wrap(err, "failed to process regression trigger")
+					return false, nil, errors.Wrap(err, "failed to process regression trigger")
 				}
 			}
 		}
 	}
-	isRegression = true
 
 	rec := newAlertRecord(t, alertrecord.TaskFailTransitionId)
 	rec.RevisionOrderNumber = -1
@@ -371,5 +369,5 @@ func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 		rec.RevisionOrderNumber = previousTask.RevisionOrderNumber
 	}
 
-	return isRegression, rec, nil
+	return true, rec, nil
 }
