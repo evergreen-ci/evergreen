@@ -32,7 +32,9 @@ const (
 )
 
 func makeTaskTriggers() eventHandler {
-	t := &taskTriggers{}
+	t := &taskTriggers{
+		oldTestResults: map[string]*testresult.TestResult{},
+	}
 	t.base.triggers = map[string]trigger{
 		triggerOutcome:                           t.taskOutcome,
 		triggerFailure:                           t.taskFailure,
@@ -64,7 +66,7 @@ func newAlertRecord(t *task.Task, alertType string) *alertrecord.AlertRecord {
 }
 
 func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
-	t, err := task.FindOne(task.ById(taskID))
+	t, err := task.FindOneNoMerge(task.ById(taskID))
 	if err != nil {
 		return false, err
 	}
@@ -440,7 +442,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
+	previousCompleteTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
 		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
@@ -453,13 +455,13 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 	record, err := alertrecord.FindByLastTaskRegressionByTestWithNoTests(t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch alertrecord (notests)")
+		return nil, errors.Wrap(err, "failed to fetch alertrecord")
 	}
 
 	catcher := grip.NewBasicCatcher()
 	// if no tests, alert only if it's a regression in task status
 	if len(tests) == 0 {
-		if record != nil && !isTaskRegression(record.TaskStatus, t.task.Status) {
+		if record != nil && !isTaskStatusRegression(record.TaskStatus, t.task.Status) {
 			return nil, nil
 		}
 		catcher.Add(alertrecord.InsertNewTaskRegressionByTestWithNoTestsRecord(t.task.DisplayName, t.task.Status, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber))
@@ -495,4 +497,23 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	return n, catcher.Resolve()
+}
+
+// mapTestResultsByTestFile creates map of test file to TestResult struct. If
+// multiple tests of the same name exist, this function will return a
+// failing test if one existed, otherwise it may return any test with
+// the same name
+func mapTestResultsByTestFile(t *task.Task) map[string]*task.TestResult {
+	m := map[string]*task.TestResult{}
+
+	for i := range t.LocalTestResults {
+		if testResult, ok := m[t.LocalTestResults[i].TestFile]; ok {
+			if !isTestStatusRegression(testResult.Status, t.LocalTestResults[i].Status) {
+				continue
+			}
+		}
+		m[t.LocalTestResults[i].TestFile] = &t.LocalTestResults[i]
+	}
+
+	return m
 }

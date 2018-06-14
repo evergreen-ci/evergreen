@@ -681,18 +681,18 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 
 	taskDoc := task.Task{}
 
-	initStatus := []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus,
+	statuses := []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus,
 		evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus}
 
-	for i := range initStatus {
+	for i := range statuses {
 		first := ""
 		second := ""
 		if rand.Intn(2) == 0 {
-			first = initStatus[i]
+			first = statuses[i]
 			second = evergreen.TestFailedStatus
 		} else {
 			first = evergreen.TestFailedStatus
-			second = initStatus[i]
+			second = statuses[i]
 		}
 		taskDoc.LocalTestResults = append(taskDoc.LocalTestResults,
 			task.TestResult{
@@ -712,7 +712,4 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 	for _, v := range m {
 		assert.Equal(evergreen.TestFailedStatus, v.Status)
 	}
-
-	taskDoc.LocalTestResults = []task.TestResult{}
-
 }
