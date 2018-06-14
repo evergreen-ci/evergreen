@@ -154,7 +154,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 		// if distro can have containers, check if there are enough parents to hold
 		// new containers
 		if d.MaxContainers > 0 {
-			currentParents, err := host.FindAllRunningParentsByDistro(d)
+			currentParents, err := host.FindAllRunningParentsByDistro(distroId)
 			if err != nil {
 				return nil, errors.Wrap(err, "could not find running parents")
 			}
@@ -177,13 +177,12 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 				hostsSpawnedPerDistro[distroId] = append(hostsSpawnedPerDistro[distroId], parentIntentHosts...)
 
 				grip.Info(message.Fields{
-					"runner":         RunnerName,
-					"distro":         distroId,
-					"num_parents":    numNewParentsToSpawn,
-					"num_containers": numHostsToSpawn,
-					"operation":      "spawning new parents",
-					"span":           time.Since(distroStartTime).String(),
-					"duration":       time.Since(distroStartTime),
+					"runner":      RunnerName,
+					"distro":      distroId,
+					"num_parents": numNewParentsToSpawn,
+					"operation":   "spawning new parents",
+					"span":        time.Since(distroStartTime).String(),
+					"duration":    time.Since(distroStartTime),
 				})
 			}
 
@@ -192,7 +191,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string]
 		}
 
 		for i := 0; i < numHostsToSpawn; i++ {
-			intentHost, err := insertContainer(d)
+			intentHost, err := insertIntent(d)
 			if err != nil {
 				return nil, err
 			}
@@ -332,8 +331,8 @@ func insertParents(d distro.Distro, numNewParents int) ([]host.Host, error) {
 	return hostsSpawned, nil
 }
 
-// insertContainer creates a host intent document for a container
-func insertContainer(d distro.Distro) (*host.Host, error) {
+// insertIntent creates a host intent document for a regular host or container
+func insertIntent(d distro.Distro) (*host.Host, error) {
 	hostOptions, err := generateHostOptions(d)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not generate host options for distro %s", d.Id)

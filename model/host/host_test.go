@@ -1763,7 +1763,7 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	parents, err := FindAllRunningParentsByDistro(distro.Distro{Id: d1})
+	parents, err := FindAllRunningParentsByDistro(d1)
 	assert.NoError(err)
 	assert.Equal(2, len(parents))
 }

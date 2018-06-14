@@ -122,7 +122,7 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded() {
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	currentParents, err := host.FindAllRunningParents()
+	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
 	s.NoError(err)
 	existingContainers, err := host.FindAllRunningContainers()
 	s.NoError(err)
@@ -159,7 +159,7 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded2() {
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	currentParents, err := host.FindAllRunningParents()
+	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
 	s.NoError(err)
 	existingContainers, err := host.FindAllRunningContainers()
 	s.NoError(err)
@@ -205,7 +205,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParents()
+	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
 	s.NoError(err)
 	existingContainers, err := host.FindAllRunningContainers()
 	s.NoError(err)
@@ -254,7 +254,7 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParents()
+	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
 	s.NoError(err)
 	existingContainers, err := host.FindAllRunningContainers()
 	s.NoError(err)
@@ -302,7 +302,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParents()
+	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
 	s.NoError(err)
 	existingContainers, err := host.FindAllRunningContainers()
 	s.NoError(err)
@@ -344,7 +344,7 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParents()
+	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
 	s.NoError(err)
 	existingContainers, err := host.FindAllRunningContainers()
 	s.NoError(err)
@@ -443,14 +443,14 @@ func (s *SchedulerSuite) TestFindNoAvailableParent() {
 	host3 := &host.Host{
 		Id:          "host3",
 		Distro:      distro.Distro{Id: "distro"},
-		Status:      evergreen.HostTerminated,
+		Status:      evergreen.HostRunning,
 		ParentID:    "host1",
 		RunningTask: "task1",
 	}
 	host4 := &host.Host{
 		Id:          "host4",
 		Distro:      distro.Distro{Id: "distro"},
-		Status:      evergreen.HostTerminated,
+		Status:      evergreen.HostRunning,
 		ParentID:    "host2",
 		RunningTask: "task2",
 	}
