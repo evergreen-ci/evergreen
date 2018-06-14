@@ -397,7 +397,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 			"target": "yahoo@aol.com",
 		},
 		"trigger_data": map[string]string{
-			"task_percent_increase": "a",
+			"task_percent_change": "a",
 		},
 	}}
 	jsonBody, err = json.Marshal(body)
