@@ -157,8 +157,9 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving tasks for version")
 	}
-	for _, task := range versionTasks {
-		isRegression, _, err := isTaskRegression(&task)
+	for i := range versionTasks {
+		task := &versionTasks[i]
+		isRegression, _, err := isTaskRegression(task)
 		if err != nil {
 			return nil, errors.Wrap(err, "error evaluating task regression")
 		}
