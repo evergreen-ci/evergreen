@@ -373,7 +373,7 @@ func isFailedTaskStatus(status string) bool {
 	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed || status == evergreen.TaskTestTimedOut
 }
 
-func isTestRegression(oldStatus, newStatus string) bool {
+func isTestStatusRegression(oldStatus, newStatus string) bool {
 	switch oldStatus {
 	case evergreen.TestSkippedStatus, evergreen.TestSucceededStatus,
 		evergreen.TestSilentlyFailedStatus:
@@ -385,7 +385,7 @@ func isTestRegression(oldStatus, newStatus string) bool {
 	return false
 }
 
-func isTaskRegression(oldStatus, newStatus string) bool {
+func isTaskStatusRegression(oldStatus, newStatus string) bool {
 	switch oldStatus {
 	case evergreen.TaskFailed:
 		if newStatus == evergreen.TaskSystemFailed || newStatus == evergreen.TaskTestTimedOut {
@@ -423,7 +423,7 @@ func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *testresu
 				return false, nil
 			}
 
-		} else if !isTestRegression(oldTestResult.Status, test.Status) {
+		} else if !isTestStatusRegression(oldTestResult.Status, test.Status) {
 			return false, nil
 		}
 	}

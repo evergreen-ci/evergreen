@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -635,42 +636,83 @@ func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 func TestIsTestRegression(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.True(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestFailedStatus))
-	assert.False(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus))
-	assert.False(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestSkippedStatus))
-	assert.False(isTestRegression(evergreen.TestSkippedStatus, evergreen.TestSucceededStatus))
+	assert.True(isTestStatusRegression(evergreen.TestSkippedStatus, evergreen.TestFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSkippedStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSkippedStatus, evergreen.TestSucceededStatus))
 
-	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestFailedStatus))
-	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus))
-	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestSkippedStatus))
-	assert.False(isTestRegression(evergreen.TestFailedStatus, evergreen.TestSucceededStatus))
+	assert.False(isTestStatusRegression(evergreen.TestFailedStatus, evergreen.TestFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestFailedStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestFailedStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestFailedStatus, evergreen.TestSucceededStatus))
 
-	assert.True(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestFailedStatus))
-	assert.False(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestSilentlyFailedStatus))
-	assert.False(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestSkippedStatus))
-	assert.False(isTestRegression(evergreen.TestSucceededStatus, evergreen.TestSucceededStatus))
+	assert.True(isTestStatusRegression(evergreen.TestSucceededStatus, evergreen.TestFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSucceededStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSucceededStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSucceededStatus, evergreen.TestSucceededStatus))
 
-	assert.True(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestFailedStatus))
-	assert.False(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSilentlyFailedStatus))
-	assert.False(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus))
-	assert.False(isTestRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSucceededStatus))
+	assert.True(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSilentlyFailedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus))
+	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSucceededStatus))
 }
 
 func TestIsTaskRegression(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.False(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskSucceeded))
-	assert.True(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskSystemFailed))
-	assert.True(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskFailed))
-	assert.True(isTaskRegression(evergreen.TaskSucceeded, evergreen.TaskTestTimedOut))
+	assert.False(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskSucceeded))
+	assert.True(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskSystemFailed))
+	assert.True(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskFailed))
+	assert.True(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskTestTimedOut))
 
-	assert.False(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskSucceeded))
-	assert.False(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskSystemFailed))
-	assert.True(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskFailed))
-	assert.True(isTaskRegression(evergreen.TaskSystemFailed, evergreen.TaskTestTimedOut))
+	assert.False(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskSucceeded))
+	assert.False(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskSystemFailed))
+	assert.True(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskFailed))
+	assert.True(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskTestTimedOut))
 
-	assert.False(isTaskRegression(evergreen.TaskFailed, evergreen.TaskSucceeded))
-	assert.True(isTaskRegression(evergreen.TaskFailed, evergreen.TaskSystemFailed))
-	assert.False(isTaskRegression(evergreen.TaskFailed, evergreen.TaskFailed))
-	assert.True(isTaskRegression(evergreen.TaskFailed, evergreen.TaskTestTimedOut))
+	assert.False(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskSucceeded))
+	assert.True(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskSystemFailed))
+	assert.False(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskFailed))
+	assert.True(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskTestTimedOut))
+}
+
+func TestMapTestResultsByTestFile(t *testing.T) {
+	assert := assert.New(t)
+
+	taskDoc := task.Task{}
+
+	initStatus := []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus,
+		evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus}
+
+	for i := range initStatus {
+		first := ""
+		second := ""
+		if rand.Intn(2) == 0 {
+			first = initStatus[i]
+			second = evergreen.TestFailedStatus
+		} else {
+			first = evergreen.TestFailedStatus
+			second = initStatus[i]
+		}
+		taskDoc.LocalTestResults = append(taskDoc.LocalTestResults,
+			task.TestResult{
+				TestFile: fmt.Sprintf("file%d", i),
+				Status:   first,
+			},
+			task.TestResult{
+				TestFile: fmt.Sprintf("file%d", i),
+				Status:   second,
+			},
+		)
+	}
+
+	m := mapTestResultsByTestFile(&taskDoc)
+	assert.Len(m, 4)
+
+	for _, v := range m {
+		assert.Equal(evergreen.TestFailedStatus, v.Status)
+	}
+
+	taskDoc.LocalTestResults = []task.TestResult{}
+
 }
