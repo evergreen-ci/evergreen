@@ -286,8 +286,12 @@ func numNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingCont
 // parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
 func parentCapacity(d distro.Distro, numNewParents, numCurrentParents, numCurrentContainers, numContainersToSpawn int) int {
-	// if there are already maximum numbers of parents running, only spawn
-	// enough containers to reach maximum capacity
+	// if looking at a static docker provider, do not spawn any more parents
+	if d.Provider == evergreen.ProviderNameDockerStatic {
+		numNewParents = 0
+	}
+	// if there are already maximum numbers of parents running, do not spawn
+	// any more parents
 	if numCurrentParents >= d.PoolSize {
 		numNewParents = 0
 	}
@@ -296,10 +300,7 @@ func parentCapacity(d distro.Distro, numNewParents, numCurrentParents, numCurren
 	if numNewParents+numCurrentParents > d.PoolSize {
 		numNewParents = d.MaxContainers - numCurrentParents
 	}
-	// if looking at a static docker provider, do not spawn any more parents
-	if d.Provider == evergreen.ProviderNameDockerStatic {
-		numNewParents = 0
-	}
+
 	return numNewParents
 }
 
