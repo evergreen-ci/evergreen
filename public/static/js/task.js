@@ -307,7 +307,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             resource_type: "TASK",
             label: "the runtime for this task exceeds some duration",
             extraFields: [
-              {text: "Task duration (seconds)", key: "task_duration_secs", validator: $scope.validateDuration}
+              {text: "Task duration (seconds)", key: "task-duration-secs", validator: $scope.validateDuration}
             ]
           },
           {
@@ -315,7 +315,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             resource_type: "TASK",
             label: "the runtime for this task changes by some percentage",
             extraFields: [
-              {text: "Percent change", key: "task_percent_change", validator: $scope.validatePercentage}
+              {text: "Percent change", key: "task-percent-change", validator: $scope.validatePercentage}
             ]
           },
         ];

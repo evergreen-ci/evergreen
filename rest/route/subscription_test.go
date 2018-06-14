@@ -349,7 +349,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 			"target": "yahoo@aol.com",
 		},
 		"trigger_data": map[string]string{
-			"task_duration_secs": "foo",
+			"task-duration-secs": "foo",
 		},
 	}}
 	jsonBody, err := json.Marshal(body)
@@ -373,7 +373,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 			"target": "yahoo@aol.com",
 		},
 		"trigger_data": map[string]string{
-			"task_duration_secs": "-2",
+			"task-duration-secs": "-2",
 		},
 	}}
 	jsonBody, err = json.Marshal(body)
@@ -397,7 +397,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 			"target": "yahoo@aol.com",
 		},
 		"trigger_data": map[string]string{
-			"task_percent_change": "a",
+			"task-percent-change": "a",
 		},
 	}}
 	jsonBody, err = json.Marshal(body)
@@ -405,5 +405,5 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: a must be a number")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
 }

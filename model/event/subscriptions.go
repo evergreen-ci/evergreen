@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -36,8 +37,8 @@ type OwnerType string
 const (
 	OwnerTypePerson      OwnerType = "person"
 	OwnerTypeProject     OwnerType = "project"
-	TaskDurationKey                = "task_duration_secs"
-	TaskPercentChangeKey           = "task_percent_change"
+	TaskDurationKey                = "task-duration-secs"
+	TaskPercentChangeKey           = "task-percent-change"
 )
 
 type Subscription struct {
@@ -269,10 +270,11 @@ func (s *Subscription) runCustomValidation() error {
 	}
 
 	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
-		taskPercent, err := strconv.ParseFloat(taskPercentVal, 64)
+		taskPercent, err := util.TryParseFloat(taskPercentVal)
 		if err != nil {
-			catcher.Add(fmt.Errorf("%s must be a number", taskPercentVal))
-		} else if taskPercent <= 0 {
+			return err
+		}
+		if taskPercent <= 0 {
 			catcher.Add(fmt.Errorf("%f must be positive", taskPercent))
 		}
 	}
