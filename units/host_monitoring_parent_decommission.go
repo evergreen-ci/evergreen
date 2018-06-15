@@ -61,7 +61,7 @@ func computeHostsToDecommission(parentIds []string, distroId string) (int, error
 
 	// Count number of containers on the parents
 	containersQuery := db.Query(bson.M{
-		host.StatusKey:   evergreen.HostRunning,
+		host.StatusKey:   bson.M{"$in": evergreen.UphostStatus},
 		host.ParentIDKey: bson.M{"$in": parentIds},
 	})
 	numContainers, err := host.Count(containersQuery)
@@ -120,13 +120,23 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
+
 		for _, c := range containersToDeco {
-			err := c.SetDecommissioned(evergreen.User, "")
-			j.AddError(err)
+			if c.Status == evergreen.HostRunning {
+				err := c.SetDecommissioned(evergreen.User, "")
+				j.AddError(err)
+			}
 		}
 
-		// Decommission parent host
-		err = h.SetDecommissioned(evergreen.User, "")
-		j.AddError(err)
+		// Decommission parent only if all containers have terminated
+		idle, err := h.IsIdleParent()
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+		if idle {
+			err := h.SetDecommissioned(evergreen.User, "")
+			j.AddError(err)
+		}
 	}
 }

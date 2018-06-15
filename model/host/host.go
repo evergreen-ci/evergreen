@@ -860,6 +860,29 @@ func (h *Host) GetParent() (*Host, error) {
 	return host, nil
 }
 
+// IsIdleParent determines whether a host with containers has exclusively
+// terminated containers
+func (h *Host) IsIdleParent() (bool, error) {
+	const idleTimeCutoff = 10 * time.Minute
+	if !h.HasContainers {
+		return false, errors.New("Host does not host containers")
+	}
+	// sanity check so that hosts not immediately decommissioned
+	if time.Since(h.StartTime) < idleTimeCutoff {
+		return false, nil
+	}
+	query := db.Query(bson.M{
+		ParentIDKey: h.Id,
+		StatusKey:   bson.M{"$in": evergreen.UnterminatedStatus},
+	})
+	num, err := Count(query)
+	if err != nil {
+		return false, errors.Wrap(err, "Error counting non-terminated containers")
+	}
+
+	return num == 0, nil
+}
+
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
 func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 

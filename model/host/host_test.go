@@ -1508,6 +1508,71 @@ func TestGetContainersNotParent(t *testing.T) {
 	assert.Empty(containers)
 }
 
+func TestIsIdleParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	startTimeRecent := time.Now().Add(-5 * time.Minute)
+	startTimeOld := time.Now().Add(-1 * time.Hour)
+
+	host1 := &Host{
+		Id:        "host1",
+		Status:    evergreen.HostRunning,
+		StartTime: startTimeOld,
+	}
+	host2 := &Host{
+		Id:            "host2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		StartTime:     startTimeRecent,
+	}
+	host3 := &Host{
+		Id:            "host3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		StartTime:     startTimeOld,
+	}
+	host4 := &Host{
+		Id:            "host4",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		StartTime:     startTimeOld,
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Status:   evergreen.HostTerminated,
+		ParentID: "host3",
+	}
+	host6 := &Host{
+		Id:       "host6",
+		Status:   evergreen.HostDecommissioned,
+		ParentID: "host4",
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+
+	idle, err := host1.IsIdleParent()
+	assert.False(idle)
+	assert.EqualError(err, "Host does not host containers")
+
+	idle, err = host2.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	idle, err = host3.IsIdleParent()
+	assert.True(idle)
+	assert.NoError(err)
+
+	idle, err = host4.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+}
+
 func TestFindParentOfContainer(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -15,6 +16,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const tsFormat = "2006-01-02.15-04-05"
@@ -325,15 +327,23 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
-		// Find all active distros
-		distroIds, err := distro.FindActiveWithContainers()
+		// Find all active distros supporting containers
+		query := db.Query(bson.M{
+			distro.DisabledKey: bson.M{
+				"$exists": false,
+			},
+			distro.MaxContainersKey: bson.M{
+				"$gt": 0,
+			},
+		})
+		distros, err := distro.Find(query)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
 		// Create ParentDecommissionJob for each distro
-		for _, distroId := range distroIds {
-			catcher.Add(queue.Put(NewParentDecommissionJob(ts, distroId)))
+		for _, d := range distros {
+			catcher.Add(queue.Put(NewParentDecommissionJob(ts, d.Id)))
 		}
 
 		return catcher.Resolve()
