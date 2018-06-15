@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -125,8 +126,18 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
+	slackColor := evergreenFail
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
+		slackColor = evergreenSuccess
 		data.PastTenseStatus = "succeeded"
+	}
+
+	data.slack = []message.SlackAttachment{
+		{
+			Title:     "Evergreen Version",
+			TitleLink: data.URL,
+			Color:     slackColor,
+		},
 	}
 
 	return &data, nil
