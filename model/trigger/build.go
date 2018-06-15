@@ -198,7 +198,37 @@ func (t *buildTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		data.githubState = message.GithubStateSuccess
 		data.PastTenseStatus = "succeeded"
 	}
+	data.slack = t.buildAttachments(&data)
+
 	return &data, nil
+}
+
+func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.SlackAttachment {
+	attachments := []message.SlackAttachment{}
+
+	attachments = append(attachments, message.SlackAttachment{
+		Fallback:  fmt.Sprintf("Build '%s' %s (%s)", data.ID, data.PastTenseStatus, data.URL),
+		Title:     "Evergreen",
+		TitleLink: data.URL,
+	})
+
+	attachmentsCount := 0
+	for i := range t.build.Tasks {
+		if attachmentsCount == 10 {
+			break
+		}
+		if t.build.Tasks[i].Status == evergreen.TaskSucceeded {
+			continue
+		}
+		attachments = append(attachments, message.SlackAttachment{
+			Title:     t.build.Tasks[i].Id,
+			TitleLink: fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.build.Tasks[i].Id),
+			Color:     evergreenFail,
+		})
+		attachmentsCount++
+	}
+
+	return attachments
 }
 
 func (t *buildTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
