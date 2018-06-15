@@ -211,6 +211,11 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		Title:     "Evergreen Build",
 		TitleLink: data.URL,
 	})
+	if t.data.Status == evergreen.BuildSucceeded {
+		attachments[0].Color = evergreenFail
+	} else {
+		attachments[0].Color = evergreenSuccess
+	}
 
 	attachmentsCount := 0
 	for i := range t.build.Tasks {

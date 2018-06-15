@@ -176,8 +176,18 @@ func (t *taskTriggers) makeData(sub *event.Subscription) (*commonTemplateData, e
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
+	slackColor := evergreenFail
 	if data.PastTenseStatus == evergreen.TaskSucceeded {
+		slackColor = evergreenSuccess
 		data.PastTenseStatus = "succeeded"
+	}
+
+	data.slack = []message.SlackAttachment{
+		{
+			Title:     "Evergreen Task",
+			TitleLink: data.URL,
+			Color:     slackColor,
+		},
 	}
 
 	return &data, nil
