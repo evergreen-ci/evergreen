@@ -708,14 +708,11 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 		evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus}
 
 	for i := range statuses {
-		first := ""
-		second := ""
+		first := evergreen.TestFailedStatus
+		second := statuses[i]
 		if rand.Intn(2) == 0 {
 			first = statuses[i]
 			second = evergreen.TestFailedStatus
-		} else {
-			first = evergreen.TestFailedStatus
-			second = statuses[i]
 		}
 		taskDoc.LocalTestResults = append(taskDoc.LocalTestResults,
 			task.TestResult{
