@@ -92,10 +92,21 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       $scope.subscription_methods = _($scope.subscription_methods).filter(function(method){
         return !$scope.c.omit[method.value];
       });
-    }
+    };
+    $scope.extraData = {};
 
     $scope.closeDialog = function(save) {
         if(save === true) {
+            $scope.validationErrors = [];
+            for (var key in $scope.customValidation) {
+              var validationMsg = $scope.customValidation[key]($scope.extraData[key]);
+              if (validationMsg) {
+                $scope.validationErrors.push(validationMsg);
+              };
+            };
+            if ($scope.validationErrors.length > 0) {
+              return;
+            }
             subscriber = {
                 type: $scope.method.value,
                 target: $scope.targets[$scope.method.value],
@@ -107,6 +118,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             d.resource_type = $scope.trigger.resource_type;
             d.trigger = $scope.trigger.trigger;
             d.trigger_label = $scope.trigger.label;
+            d.trigger_data = $scope.extraData;
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -121,6 +133,15 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
 
         return text;
     };
+
+    $scope.addCustomValidation = function(fields) {
+      $scope.customValidation = {};
+      if (fields) {
+        _.each(fields, function(field) {
+          $scope.customValidation[field.key] = field.validator;
+        });
+      };
+    }
 
     $scope.valid = function() {
         if (!$scope.trigger || !$scope.method) {
@@ -156,6 +177,17 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         }
 
         return false;
+    };
+
+
+    $scope.bindTrigger = function() {
+      _.each($scope.c.triggers, function(trigger){
+        if (trigger.trigger === $scope.trigger.trigger) {
+          $scope.extraFields = trigger.extraFields;
+          $scope.addCustomValidation(trigger.extraFields);
+          return;
+        }
+      });
     };
 
     $scope.method = {};

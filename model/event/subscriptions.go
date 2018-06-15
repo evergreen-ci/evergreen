@@ -3,8 +3,10 @@ package event
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -27,35 +29,40 @@ var (
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionOwnerKey          = bsonutil.MustHaveTag(Subscription{}, "Owner")
 	subscriptionOwnerTypeKey      = bsonutil.MustHaveTag(Subscription{}, "OwnerType")
+	subscriptionTriggerDataKey    = bsonutil.MustHaveTag(Subscription{}, "TriggerData")
 )
 
 type OwnerType string
 
 const (
-	OwnerTypePerson  OwnerType = "person"
-	OwnerTypeProject OwnerType = "project"
+	OwnerTypePerson      OwnerType = "person"
+	OwnerTypeProject     OwnerType = "project"
+	TaskDurationKey                = "task-duration-secs"
+	TaskPercentChangeKey           = "task-percent-change"
 )
 
 type Subscription struct {
-	ID             bson.ObjectId `bson:"_id"`
-	Type           string        `bson:"type"`
-	Trigger        string        `bson:"trigger"`
-	Selectors      []Selector    `bson:"selectors,omitempty"`
-	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
-	Subscriber     Subscriber    `bson:"subscriber"`
-	Owner          string        `bson:"owner"`
-	OwnerType      OwnerType     `bson:"owner_type"`
+	ID             bson.ObjectId     `bson:"_id"`
+	Type           string            `bson:"type"`
+	Trigger        string            `bson:"trigger"`
+	Selectors      []Selector        `bson:"selectors,omitempty"`
+	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
+	Subscriber     Subscriber        `bson:"subscriber"`
+	OwnerType      OwnerType         `bson:"owner_type"`
+	Owner          string            `bson:"owner"`
+	TriggerData    map[string]string `bson:"trigger_data,omitempty"`
 }
 
 type unmarshalSubscription struct {
-	ID             bson.ObjectId `bson:"_id"`
-	Type           string        `bson:"type"`
-	Trigger        string        `bson:"trigger"`
-	Selectors      []Selector    `bson:"selectors,omitempty"`
-	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
-	Subscriber     Subscriber    `bson:"subscriber"`
-	Owner          string        `bson:"owner"`
-	OwnerType      OwnerType     `bson:"owner_type"`
+	ID             bson.ObjectId     `bson:"_id"`
+	Type           string            `bson:"type"`
+	Trigger        string            `bson:"trigger"`
+	Selectors      []Selector        `bson:"selectors,omitempty"`
+	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
+	Subscriber     Subscriber        `bson:"subscriber"`
+	OwnerType      OwnerType         `bson:"owner_type"`
+	Owner          string            `bson:"owner"`
+	TriggerData    map[string]string `bson:"trigger_data,omitempty"`
 }
 
 func (s *Subscription) SetBSON(raw bson.Raw) error {
@@ -73,6 +80,7 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 	s.Subscriber = temp.Subscriber
 	s.Owner = temp.Owner
 	s.OwnerType = temp.OwnerType
+	s.TriggerData = temp.TriggerData
 
 	return nil
 }
@@ -169,6 +177,7 @@ func (s *Subscription) Upsert() error {
 		subscriptionSubscriberKey:     s.Subscriber,
 		subscriptionOwnerKey:          s.Owner,
 		subscriptionOwnerTypeKey:      s.OwnerType,
+		subscriptionTriggerDataKey:    s.TriggerData,
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
@@ -243,7 +252,32 @@ func (s *Subscription) Validate() error {
 	if !IsValidOwnerType(string(s.OwnerType)) {
 		catcher.Add(errors.Errorf("%s is not a valid owner type", s.OwnerType))
 	}
+	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
+	return catcher.Resolve()
+}
+
+func (s *Subscription) runCustomValidation() error {
+	catcher := grip.NewBasicCatcher()
+
+	if taskDurationVal, ok := s.TriggerData[TaskDurationKey]; ok {
+		taskDuration, err := strconv.Atoi(taskDurationVal)
+		if err != nil {
+			catcher.Add(fmt.Errorf("%s must be a number", taskDurationVal))
+		} else if taskDuration < 0 {
+			catcher.Add(fmt.Errorf("%d cannot be negative", taskDuration))
+		}
+	}
+
+	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
+		taskPercent, err := util.TryParseFloat(taskPercentVal)
+		if err != nil {
+			return err
+		}
+		if taskPercent <= 0 {
+			catcher.Add(fmt.Errorf("%f must be positive", taskPercent))
+		}
+	}
 	return catcher.Resolve()
 }
 

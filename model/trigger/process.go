@@ -15,9 +15,9 @@ import (
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification, error) {
-	h := registry.eventHandler(e.ResourceType)
+	h := registry.eventHandler(e.ResourceType, e.EventType)
 	if h == nil {
-		return nil, errors.Errorf("unknown event ResourceType: '%s'", e.ResourceType)
+		return nil, errors.Errorf("unknown event ResourceType '%s' or EventType '%s'", e.ResourceType, e.EventType)
 	}
 
 	if err := h.Fetch(e); err != nil {

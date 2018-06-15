@@ -226,7 +226,7 @@ func IsAbortable(t Task) bool {
 }
 
 // IsFinished returns true if the project is no longer running
-func IsFinished(t Task) bool {
+func (t Task) IsFinished() bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
 		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
@@ -669,6 +669,14 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
+
+	grip.Debug(message.Fields{
+		"message":   "marking task finished",
+		"task_id":   t.Id,
+		"execution": t.Execution,
+		"project":   t.Project,
+		"details":   t.Details,
+	})
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -710,7 +718,7 @@ func (t *Task) UpdateDisplayTask() error {
 			t.Activated = true
 		}
 
-		if IsFinished(execTask) {
+		if execTask.IsFinished() {
 			hasFinishedTasks = true
 		} else if execTask.IsDispatchable() {
 			hasUnfinishedTasks = true
@@ -767,6 +775,9 @@ func (t *Task) UpdateDisplayTask() error {
 
 	t.Status = status
 	t.TimeTaken = timeTaken
+	if t.IsFinished() {
+		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
+	}
 	return nil
 }
 
