@@ -3,12 +3,16 @@ package operations
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -97,6 +101,7 @@ func Agent() cli.Command {
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			go hardShutdownForSignals(ctx, cancel)
 
 			sender, err := agent.GetSender(ctx, opts.LogPrefix, "init")
 			if err != nil {
@@ -113,5 +118,19 @@ func Agent() cli.Command {
 			return err
 		},
 	}
+}
 
+func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc) {
+	defer recovery.LogStackTraceAndExit("agent signal handler")
+	sigChan := make(chan os.Signal, 2)
+	signal.Notify(sigChan, syscall.SIGTERM)
+
+	select {
+	case <-ctx.Done():
+	case <-sigChan:
+		grip.Info("service exiting after receiving signal")
+	}
+	serviceCanceler()
+	time.Sleep(time.Second)
+	os.Exit(2)
 }
