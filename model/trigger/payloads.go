@@ -31,6 +31,9 @@ const (
 	triggerOutcome = "outcome"
 	triggerFailure = "failure"
 	triggerSuccess = "success"
+
+	evergreenSuccess = "#4ead4a"
+	evergreenFail    = "#ce3c3e"
 )
 
 type commonTemplateData struct {
@@ -41,7 +44,9 @@ type commonTemplateData struct {
 	PastTenseStatus string
 	Headers         http.Header
 
-	apiModel          restModel.Model
+	apiModel restModel.Model
+	slack    []message.SlackAttachment
+
 	githubContext     string
 	githubState       message.GithubState
 	githubDescription string
@@ -190,7 +195,8 @@ func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	msg := buf.String()
 
 	return &notification.SlackPayload{
-		Body: msg,
+		Body:        msg,
+		Attachments: t.slack,
 	}, nil
 }
 
