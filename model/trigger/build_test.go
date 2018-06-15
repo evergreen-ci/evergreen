@@ -37,9 +37,11 @@ func (s *buildSuite) SetupTest() {
 	s.NoError(db.ClearCollections(event.AllLogCollection, build.Collection, event.SubscriptionsCollection))
 
 	s.build = build.Build{
-		Id:           "test",
-		BuildVariant: "testvariant",
-		Status:       evergreen.BuildCreated,
+		Id:                  "test",
+		BuildVariant:        "testvariant",
+		Project:             "proj",
+		Status:              evergreen.BuildCreated,
+		RevisionOrderNumber: 2,
 	}
 	s.NoError(s.build.Insert())
 
@@ -110,6 +112,44 @@ func (s *buildSuite) SetupTest() {
 				},
 			},
 			Owner: "someone",
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeBuild,
+			Trigger: triggerExceedsDuration,
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				event.BuildDurationKey: "300",
+			},
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeBuild,
+			Trigger: triggerRuntimeChangeByPercent,
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				event.BuildPercentChangeKey: "50",
+			},
 		},
 	}
 
@@ -243,4 +283,67 @@ func (s *buildSuite) TestTaskStatusToDesc() {
 		},
 	}
 	s.Equal("none succeeded, 1 failed in 10s", taskStatusToDesc(b))
+}
+
+func (s *buildSuite) TestBuildExceedsTime() {
+	// build that exceeds time should generate
+	s.t.event = &event.EventLogEntry{
+		EventType: event.BuildStateChange,
+	}
+	s.t.data.Status = evergreen.BuildSucceeded
+	s.t.build.TimeTaken = 20 * time.Minute
+	n, err := s.t.buildExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// build that does not exceed should not generate
+	s.t.build.TimeTaken = 4 * time.Minute
+	n, err = s.t.buildExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+
+	// unfinished build should not generate
+	s.t.data.Status = evergreen.BuildStarted
+	s.t.build.TimeTaken = 20 * time.Minute
+	n, err = s.t.buildExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+}
+
+func (s *buildSuite) TestBuildRuntimeChange() {
+	// no previous task should not generate
+	s.build.TimeTaken = 20 * time.Minute
+	s.t.event = &event.EventLogEntry{
+		EventType: event.BuildStateChange,
+	}
+	s.t.data.Status = evergreen.BuildSucceeded
+	n, err := s.t.buildRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
+
+	// task that exceeds threshold should generate
+	lastGreen := build.Build{
+		RevisionOrderNumber: 1,
+		BuildVariant:        s.build.BuildVariant,
+		Project:             s.build.Project,
+		TimeTaken:           10 * time.Minute,
+		Status:              evergreen.BuildSucceeded,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	s.NoError(lastGreen.Insert())
+	n, err = s.t.buildRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// build that does not exceed threshold should not generate
+	s.build.TimeTaken = 11 * time.Minute
+	n, err = s.t.buildRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
+
+	// build that finished too quickly should generate
+	s.build.TimeTaken = 4 * time.Minute
+	n, err = s.t.buildRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.NotNil(n)
 }

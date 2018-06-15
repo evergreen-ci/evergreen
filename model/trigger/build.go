@@ -2,12 +2,16 @@ package trigger
 
 import (
 	"fmt"
+	"math"
+	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -95,9 +99,11 @@ type buildTriggers struct {
 func makeBuildTriggers() eventHandler {
 	t := &buildTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerOutcome: t.buildOutcome,
-		triggerFailure: t.buildFailure,
-		triggerSuccess: t.buildSuccess,
+		triggerOutcome:                t.buildOutcome,
+		triggerFailure:                t.buildFailure,
+		triggerSuccess:                t.buildSuccess,
+		triggerExceedsDuration:        t.buildExceedsDuration,
+		triggerRuntimeChangeByPercent: t.buildRuntimeChange,
 	}
 	return t
 }
@@ -156,7 +162,7 @@ func (t *buildTriggers) buildOutcome(sub *event.Subscription) (*notification.Not
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
 func (t *buildTriggers) buildFailure(sub *event.Subscription) (*notification.Notification, error) {
@@ -164,7 +170,7 @@ func (t *buildTriggers) buildFailure(sub *event.Subscription) (*notification.Not
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
 func (t *buildTriggers) buildSuccess(sub *event.Subscription) (*notification.Notification, error) {
@@ -172,10 +178,63 @@ func (t *buildTriggers) buildSuccess(sub *event.Subscription) (*notification.Not
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
-func (t *buildTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
+func (t *buildTriggers) buildExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.BuildSucceeded && t.data.Status != evergreen.BuildFailed {
+		return nil, nil
+	}
+	thresholdString, ok := sub.TriggerData[event.BuildDurationKey]
+	if !ok {
+		return nil, fmt.Errorf("subscription %s has no build time threshold", sub.ID)
+	}
+	threshold, err := strconv.Atoi(thresholdString)
+	if err != nil {
+		return nil, fmt.Errorf("subscription %s has an invalid time threshold", sub.ID)
+	}
+
+	maxDuration := time.Duration(threshold) * time.Second
+	if t.build.TimeTaken < maxDuration {
+		return nil, nil
+	}
+	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
+}
+
+func (t *buildTriggers) buildRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.BuildSucceeded && t.data.Status != evergreen.BuildFailed {
+		return nil, nil
+	}
+	percentString, ok := sub.TriggerData[event.BuildPercentChangeKey]
+	if !ok {
+		return nil, fmt.Errorf("subscription %s has no percentage increase", sub.ID)
+	}
+	percent, err := strconv.ParseFloat(percentString, 64)
+	if err != nil {
+		return nil, fmt.Errorf("subscription %s has an invalid percentage", sub.ID)
+	}
+
+	lastGreen, err := t.build.PreviousSuccessful()
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving last green build")
+	}
+	if lastGreen == nil {
+		return nil, nil
+	}
+	thisBuildDuration := float64(t.build.TimeTaken)
+	prevBuildDuration := float64(lastGreen.TimeTaken)
+	ratio := thisBuildDuration / prevBuildDuration
+	if !util.IsFiniteNumericFloat(ratio) {
+		return nil, nil
+	}
+	percentChange := math.Abs(100*ratio - 100)
+	if percentChange < percent {
+		return nil, nil
+	}
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %f%% (over threshold of %f%%)", percentChange, percent))
+}
+
+func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIBuild{}
 	if err := api.BuildFromService(*t.build); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
@@ -198,11 +257,14 @@ func (t *buildTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		data.githubState = message.GithubStateSuccess
 		data.PastTenseStatus = "succeeded"
 	}
+	if pastTenseOverride != "" {
+		data.PastTenseStatus = pastTenseOverride
+	}
 	return &data, nil
 }
 
-func (t *buildTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
-	data, err := t.makeData(sub)
+func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
+	data, err := t.makeData(sub, pastTenseOverride)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to collect build data")
 	}
