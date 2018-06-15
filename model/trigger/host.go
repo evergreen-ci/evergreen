@@ -63,6 +63,10 @@ func (t *hostTriggers) Selectors() []event.Selector {
 			Type: selectorObject,
 			Data: "host",
 		},
+		{
+			Type: selectorOwner,
+			Data: t.host.StartedBy,
+		},
 	}
 }
 
