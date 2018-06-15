@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/command"
@@ -131,6 +130,5 @@ func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelF
 		grip.Info("service exiting after receiving signal")
 	}
 	serviceCanceler()
-	time.Sleep(time.Second)
 	os.Exit(2)
 }
