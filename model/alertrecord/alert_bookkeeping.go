@@ -163,7 +163,7 @@ func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, pro
 		RevisionOrderNumber: revision,
 	}
 
-	return errors.Wrap(record.Insert(), "failed to insert alert record task-regression")
+	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTest)
 }
 
 func InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID string, revision int) error {
@@ -177,5 +177,5 @@ func InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus,
 		RevisionOrderNumber: revision,
 	}
 
-	return errors.Wrap(record.Insert(), "failed to insert alert record task-regression-by-test-with-no-tests")
+	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTestWithNoTests)
 }
