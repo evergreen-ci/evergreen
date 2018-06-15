@@ -15,7 +15,6 @@ import (
 
 func TestBuildTriggers(t *testing.T) {
 	suite.Run(t, &buildSuite{})
-
 }
 
 type buildSuite struct {
@@ -49,6 +48,7 @@ func (s *buildSuite) SetupTest() {
 	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeBuild,
+		EventType:    event.BuildStateChange,
 		ResourceId:   "test",
 		Data:         s.data,
 	}

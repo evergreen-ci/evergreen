@@ -3,8 +3,10 @@ package event
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -33,8 +35,10 @@ var (
 type OwnerType string
 
 const (
-	OwnerTypePerson  OwnerType = "person"
-	OwnerTypeProject OwnerType = "project"
+	OwnerTypePerson      OwnerType = "person"
+	OwnerTypeProject     OwnerType = "project"
+	TaskDurationKey                = "task-duration-secs"
+	TaskPercentChangeKey           = "task-percent-change"
 )
 
 type Subscription struct {
@@ -248,7 +252,32 @@ func (s *Subscription) Validate() error {
 	if !IsValidOwnerType(string(s.OwnerType)) {
 		catcher.Add(errors.Errorf("%s is not a valid owner type", s.OwnerType))
 	}
+	catcher.Add(s.runCustomValidation())
 	catcher.Add(s.Subscriber.Validate())
+	return catcher.Resolve()
+}
+
+func (s *Subscription) runCustomValidation() error {
+	catcher := grip.NewBasicCatcher()
+
+	if taskDurationVal, ok := s.TriggerData[TaskDurationKey]; ok {
+		taskDuration, err := strconv.Atoi(taskDurationVal)
+		if err != nil {
+			catcher.Add(fmt.Errorf("%s must be a number", taskDurationVal))
+		} else if taskDuration < 0 {
+			catcher.Add(fmt.Errorf("%d cannot be negative", taskDuration))
+		}
+	}
+
+	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
+		taskPercent, err := util.TryParseFloat(taskPercentVal)
+		if err != nil {
+			return err
+		}
+		if taskPercent <= 0 {
+			catcher.Add(fmt.Errorf("%f must be positive", taskPercent))
+		}
+	}
 	return catcher.Resolve()
 }
 

@@ -51,6 +51,7 @@ func (s *VersionSuite) SetupTest() {
 	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeVersion,
+		EventType:    event.VersionStateChange,
 		ResourceId:   versionID,
 		Data:         s.data,
 	}
