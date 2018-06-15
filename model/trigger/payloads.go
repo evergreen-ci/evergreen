@@ -31,6 +31,7 @@ const (
 	triggerOutcome                = "outcome"
 	triggerFailure                = "failure"
 	triggerSuccess                = "success"
+	triggerRegression             = "regression"
 	triggerExceedsDuration        = "exceeds-duration"
 	triggerRuntimeChangeByPercent = "runtime-change"
 )

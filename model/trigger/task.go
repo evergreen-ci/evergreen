@@ -29,7 +29,6 @@ const (
 	triggerTaskFirstFailureInBuild           = "first-failure-in-build"
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
-	triggerTaskRegression                    = "regression"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -41,7 +40,6 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInBuild:           t.taskFirstFailureInBuild,
 		triggerTaskFirstFailureInVersion:         t.taskFirstFailureInVersion,
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
-		triggerTaskRegression:                    t.taskRegression,
 		triggerExceedsDuration:                   t.taskExceedsDuration,
 		triggerRuntimeChangeByPercent:            t.taskRuntimeChange,
 	}
@@ -291,38 +289,52 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskFailed || t.task.Requester != evergreen.RepotrackerVersionRequester {
+	shouldNotify, alert, err := isTaskRegression(t.task)
+	if err != nil {
+		return nil, err
+	}
+	if !shouldNotify {
 		return nil, nil
 	}
-
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
+	n, err := t.generate(sub, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "error fetching previous task")
+		return nil, err
+	}
+	return n, errors.Wrap(alert.Insert(), "failed to process regression trigger")
+}
 
+func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
+	if t.Status != evergreen.TaskFailed || t.Requester != evergreen.RepotrackerVersionRequester {
+		return false, nil, nil
+	}
+
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.RevisionOrderNumber,
+		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project))
+	if err != nil {
+		return false, nil, errors.Wrap(err, "error fetching previous task")
 	}
 	if previousTask != nil {
-		q := alertrecord.ByLastFailureTransition(t.task.DisplayName, t.task.BuildVariant, t.task.Project)
+		q := alertrecord.ByLastFailureTransition(t.DisplayName, t.BuildVariant, t.Project)
 		var lastAlerted *alertrecord.AlertRecord
 		lastAlerted, err = alertrecord.FindOne(q)
 		if err != nil {
-			errMessage := getShouldExecuteError(t.task, previousTask)
+			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			errMessage["error"] = err.Error()
 			grip.Error(errMessage)
-			return nil, errors.Wrap(err, "failed to process regression trigger")
+			return false, nil, errors.Wrap(err, "failed to process regression trigger")
 		}
 
 		if previousTask.Status == evergreen.TaskSucceeded {
 			// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
 			// a sent alert for a transition after the same previously passing task.
 			if lastAlerted != nil && (lastAlerted.RevisionOrderNumber >= previousTask.RevisionOrderNumber) {
-				return nil, nil
+				return false, nil, nil
 			}
 
 		} else if previousTask.Status == evergreen.TaskFailed {
 			if lastAlerted == nil {
-				errMessage := getShouldExecuteError(t.task, previousTask)
+				errMessage := getShouldExecuteError(t, previousTask)
 				errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 				if err != nil {
 					errMessage["error"] = err.Error()
@@ -330,13 +342,13 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 				errMessage["lastAlert"] = lastAlerted
 				errMessage["outcome"] = "not sending alert"
 				grip.Error(errMessage)
-				return nil, errors.Wrap(err, "failed to process regression trigger")
+				return false, nil, errors.Wrap(err, "failed to process regression trigger")
 			}
 
 			// TODO: EVG-3407 how is this even possible?
 			if lastAlerted.TaskId == "" {
 				shouldSend := sometimes.Quarter()
-				errMessage := getShouldExecuteError(t.task, previousTask)
+				errMessage := getShouldExecuteError(t, previousTask)
 				errMessage[message.FieldsMsgName] = "empty last alert task_id"
 				errMessage["lastAlert"] = lastAlerted
 				if shouldSend {
@@ -346,30 +358,25 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 				}
 				grip.Warning(errMessage)
 				if !shouldSend {
-					return nil, nil
+					return false, nil, nil
 				}
 
 			} else {
 				var old bool
 				if old, err = taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId); !old {
-					return nil, errors.Wrap(err, "failed to process regression trigger")
+					return false, nil, errors.Wrap(err, "failed to process regression trigger")
 				}
 			}
 		}
 	}
 
-	n, err := t.generate(sub, "")
-	if err != nil {
-		return nil, err
-	}
-
-	rec := newAlertRecord(t.task, alertrecord.TaskFailTransitionId)
+	rec := newAlertRecord(t, alertrecord.TaskFailTransitionId)
 	rec.RevisionOrderNumber = -1
 	if previousTask != nil {
 		rec.RevisionOrderNumber = previousTask.RevisionOrderNumber
 	}
 
-	return n, errors.Wrap(rec.Insert(), "failed to process regression trigger")
+	return true, rec, nil
 }
 
 func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
