@@ -761,6 +761,17 @@ func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
 	return task, err
 }
 
+// FindOneByIDOldOrNew attempts to find a given task ID by first looking in the
+// old collection, then the tasks collection without merging test results
+func FindOneByIDOldOrNewNoMerge(id string, execution int) (*Task, error) {
+	task, err := FindOneOldNoMerge(ById(fmt.Sprintf("%s_%d", id, execution)))
+	if task == nil || err != nil {
+		return FindOneNoMerge(ById(id))
+	}
+
+	return task, err
+}
+
 // Find returns all tasks that satisfy the query.
 func Find(query db.Q) ([]Task, error) {
 	tasks := []Task{}
