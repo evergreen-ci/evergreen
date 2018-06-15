@@ -153,7 +153,7 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	versionTasks, err := task.Find(task.ByVersion(t.version.Id))
+	versionTasks, err := task.FindWithDisplayTasks(task.ByVersion(t.version.Id))
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving tasks for version")
 	}
