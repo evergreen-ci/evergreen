@@ -635,6 +635,15 @@ func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 	s.tryDoubleTrigger(true)
 }
 
+func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
+	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	s.makeTask(26, evergreen.TaskFailed)
+	s.makeTest(26, 0, "", evergreen.TestFailedStatus)
+	s.makeTest(26, 0, "", evergreen.TestSucceededStatus)
+	s.tryDoubleTrigger(true)
+}
+
 func (s *taskSuite) makeTaskTriggers(id string, execution int) *taskTriggers {
 	t := makeTaskTriggers()
 	e := event.EventLogEntry{
