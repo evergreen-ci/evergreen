@@ -450,6 +450,7 @@ func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
+	s.t = s.makeTaskTriggers(s.task.Id, s.task.Execution)
 	n, err := s.t.taskRegressionByTest(&s.subs[2])
 	s.NoError(err)
 	msg := fmt.Sprintf("expected nil notification; got '%s'", s.task.Id)
@@ -606,6 +607,7 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 
 func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
 	// no tests, but system fail should generate
 	s.makeTask(20, evergreen.TaskSystemFailed)
 	s.tryDoubleTrigger(true)
@@ -631,6 +633,18 @@ func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 	s.makeTask(25, evergreen.TaskFailed)
 	s.makeTest(25, 0, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
+}
+
+func (s *taskSuite) makeTaskTriggers(id string, execution int) *taskTriggers {
+	t := makeTaskTriggers()
+	e := event.EventLogEntry{
+		ResourceId: id,
+		Data: &event.TaskEventData{
+			Execution: execution,
+		},
+	}
+	s.Require().NoError(t.Fetch(&e))
+	return t.(*taskTriggers)
 }
 
 func TestIsTestRegression(t *testing.T) {

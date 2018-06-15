@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -33,7 +32,7 @@ const (
 
 func makeTaskTriggers() eventHandler {
 	t := &taskTriggers{
-		oldTestResults: map[string]*testresult.TestResult{},
+		oldTestResults: map[string]*task.TestResult{},
 	}
 	t.base.triggers = map[string]trigger{
 		triggerOutcome:                           t.taskOutcome,
@@ -110,7 +109,7 @@ type taskTriggers struct {
 	task     *task.Task
 	uiConfig evergreen.UIConfig
 
-	oldTestResults map[string]*testresult.TestResult
+	oldTestResults map[string]*task.TestResult
 
 	base
 }
@@ -406,7 +405,7 @@ func isTaskStatusRegression(oldStatus, newStatus string) bool {
 	return false
 }
 
-func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *testresult.TestResult) (bool, error) {
+func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *task.TestResult) (bool, error) {
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
@@ -442,15 +441,10 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	previousCompleteTask, err := task.FindOneNoMerge(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
+	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
 		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
-	}
-
-	tests, err := testresult.FindByTaskIDAndExecution(t.task.Id, t.task.Execution)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch tests for '%s'", t.task.Id)
 	}
 
 	record, err := alertrecord.FindByLastTaskRegressionByTestWithNoTests(t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
@@ -460,7 +454,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 	catcher := grip.NewBasicCatcher()
 	// if no tests, alert only if it's a regression in task status
-	if len(tests) == 0 {
+	if len(t.task.LocalTestResults) == 0 {
 		if record != nil && !isTaskStatusRegression(record.TaskStatus, t.task.Status) {
 			return nil, nil
 		}
@@ -468,27 +462,25 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 	} else {
 		if previousCompleteTask != nil {
-			t.oldTestResults, err = testresult.FindByTaskIDAndExecutionGroupedByTestFile(previousCompleteTask.Id, previousCompleteTask.Execution)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to fetch old test results")
-			}
+			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask)
 		}
 
-		testsToAlert := []testresult.TestResult{}
-		for i := range tests {
+		testsToAlert := []task.TestResult{}
+		for i := range t.task.LocalTestResults {
 			var shouldInclude bool
-			shouldInclude, err = t.shouldIncludeTest(previousCompleteTask, &tests[i])
+			shouldInclude, err = t.shouldIncludeTest(previousCompleteTask, &t.task.LocalTestResults[i])
 			if err != nil {
 				catcher.Add(err)
 				continue
 			}
 			if shouldInclude {
-				testsToAlert = append(testsToAlert, tests[i])
+				testsToAlert = append(testsToAlert, t.task.LocalTestResults[i])
 			}
 		}
 		if len(testsToAlert) == 0 {
 			return nil, nil
 		}
+		// TODO EVG-3416 use testsToAlert in message formatting
 	}
 
 	n, err := t.generate(sub)
