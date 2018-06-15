@@ -33,3 +33,14 @@ func TryParseFloat(s string) (float64, error) {
 	}
 	return f, nil
 }
+
+// IsFiniteNumericFloat takes a float64 and checks that it is not +inf, -inf, or NaN
+func IsFiniteNumericFloat(f float64) bool {
+	if math.IsNaN(f) {
+		return false
+	}
+	if math.IsInf(f, 0) {
+		return false
+	}
+	return true
+}

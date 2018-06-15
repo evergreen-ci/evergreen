@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -409,10 +410,10 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 	}
 	thisTaskDuration := float64(t.task.FinishTime.Sub(t.task.StartTime))
 	prevTaskDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
-	if prevTaskDuration == 0 {
+	ratio := thisTaskDuration / prevTaskDuration
+	if !util.IsFiniteNumericFloat(ratio) {
 		return nil, nil
 	}
-	ratio := thisTaskDuration / prevTaskDuration
 	percentChange := math.Abs(100*ratio - 100)
 	if percentChange < percent {
 		return nil, nil

@@ -278,7 +278,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           return "";
         }
         $scope.validatePercentage = function(percent) {
-          if (isNaN(percent)) {
+          if (!isFinite(percent)) {
             return percent + " must be a number";
           }
           if (+percent <= 0) {
