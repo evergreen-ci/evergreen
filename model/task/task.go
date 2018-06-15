@@ -775,6 +775,9 @@ func (t *Task) UpdateDisplayTask() error {
 
 	t.Status = status
 	t.TimeTaken = timeTaken
+	if IsFinished(*t) {
+		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
+	}
 	return nil
 }
 
