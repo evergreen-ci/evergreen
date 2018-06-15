@@ -42,6 +42,7 @@ func makeTaskTriggers() eventHandler {
 		triggerTaskFirstFailureInVersionWithName: t.taskFirstFailureInVersionWithName,
 		triggerExceedsDuration:                   t.taskExceedsDuration,
 		triggerRuntimeChangeByPercent:            t.taskRuntimeChange,
+		triggerRegression:                        t.taskRegression,
 	}
 
 	return t
