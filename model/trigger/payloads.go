@@ -72,7 +72,7 @@ const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }
 
 const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .ID }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
 
-const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const slackTemplate string = `Your {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
 func makeHeaders(selectors []event.Selector) http.Header {
 	headers := http.Header{}

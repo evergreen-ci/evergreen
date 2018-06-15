@@ -405,8 +405,10 @@ func (e *envState) initSenders() error {
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
 		sender, err = send.NewSlackLogger(&send.SlackOptions{
-			Channel: "#",
-			Name:    "evergreen",
+			Channel:  "#",
+			Name:     "evergreen",
+			Username: "Evergreen",
+			IconURL:  fmt.Sprintf(e.settings.Ui.Url, "/static/img/evergreen_green.png"),
 		}, slack.Token, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup slack logger")
