@@ -212,8 +212,8 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
 			s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
 	} else {
-		logger.Task().Infof("Putting %v into path %v in s3 bucket %v",
-			s3pc.LocalFile, s3pc.RemoteFile, s3pc.Bucket)
+		logger.Task().Infof("Putting %s into %s/%s/%s",
+			s3pc.LocalFile, s3baseURL, s3pc.Bucket, s3pc.RemoteFile)
 	}
 
 	errChan := make(chan error)

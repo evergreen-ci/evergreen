@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -801,7 +802,7 @@ func TestTaskResultOutcome(t *testing.T) {
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
-	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing task collection")
+	testutil.HandleTestingErr(db.ClearCollections(Collection, event.AllLogCollection), t, "error clearing collection")
 	assert := assert.New(t)
 	dt := Task{
 		Id:          "dt",
@@ -894,6 +895,14 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
+
+	// check that the updates above logged an event for the first one
+	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))
+	assert.NoError(err)
+	assert.Len(events, 1)
+	events, err = event.Find(event.AllLogCollection, event.TaskEventsForId(dt2.Id))
+	assert.NoError(err)
+	assert.Len(events, 0)
 }
 
 func TestMergeTestResultsBulk(t *testing.T) {
@@ -1021,16 +1030,30 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	}
 	require.NoError(taskDoc.Insert())
 	require.NoError(taskDoc.Archive())
+	result0 := testresult.TestResult{
+		ID:        bson.NewObjectId(),
+		TaskID:    "task",
+		Execution: 0,
+	}
+	result1 := testresult.TestResult{
+		ID:        bson.NewObjectId(),
+		TaskID:    "task",
+		Execution: 1,
+	}
+	require.NoError(result0.Insert())
+	require.NoError(result1.Insert())
 
 	task00, err := FindOneIdOldOrNew("task", 0)
 	assert.NoError(err)
 	require.NotNil(task00)
 	assert.Equal("task_0", task00.Id)
 	assert.Equal(0, task00.Execution)
+	assert.Len(task00.LocalTestResults, 1)
 
 	task01, err := FindOneIdOldOrNew("task", 1)
 	assert.NoError(err)
 	require.NotNil(task01)
 	assert.Equal("task", task01.Id)
 	assert.Equal(1, task01.Execution)
+	assert.Len(task01.LocalTestResults, 1)
 }
