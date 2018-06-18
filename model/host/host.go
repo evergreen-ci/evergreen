@@ -108,8 +108,6 @@ type Host struct {
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
 
-type HostGroup []Host
-
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
 	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
