@@ -48,24 +48,24 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 		if len(proj.TicketSearchProjects) == 0 {
 			return fmt.Errorf("ticket_search_projects cannot be empty")
 		}
-		if proj.AlternativeEndpointURL != "" {
-			if _, err := url.Parse(proj.AlternativeEndpointURL); err != nil {
-				return errors.Wrapf(err, `Failed to parse alt_endpoint_url for project "%s"`, projName)
+		if proj.BFSuggestionServer != "" {
+			if _, err := url.Parse(proj.BFSuggestionServer); err != nil {
+				return errors.Wrapf(err, `Failed to parse bf_suggestion_server for project "%s"`, projName)
 			}
-			if proj.AlternativeEndpointUsername == "" && proj.AlternativeEndpointPassword != "" {
+			if proj.BFSuggestionUsername == "" && proj.BFSuggestionPassword != "" {
 				return errors.Errorf(`Failed validating configuration for project "%s": `+
-					"alt_endpoint_password must be blank if alt_endpoint_username is blank", projName)
+					"bf_suggestion_password must be blank if bf_suggestion_username is blank", projName)
 			}
-			if proj.AlternativeEndpointTimeoutSecs <= 0 {
+			if proj.BFSuggestionTimeoutSecs <= 0 {
 				return errors.Errorf(`Failed validating configuration for project "%s": `+
-					"alt_endpoint_timeout_secs must be positive", projName)
+					"bf_suggestion_timeout_secs must be positive", projName)
 			}
-		} else if proj.AlternativeEndpointUsername != "" || proj.AlternativeEndpointPassword != "" {
+		} else if proj.BFSuggestionUsername != "" || proj.BFSuggestionPassword != "" {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
-				"alt_endpoint_username and alt_endpoint_password must be blank alt_endpoint_url is blank", projName)
-		} else if proj.AlternativeEndpointTimeoutSecs != 0 {
+				"bf_suggestion_username and bf_suggestion_password must be blank alt_endpoint_url is blank", projName)
+		} else if proj.BFSuggestionTimeoutSecs != 0 {
 			return errors.Errorf(`Failed validating configuration for project "%s": `+
-				"alt_endpoint_timeout_secs must be zero when alt_endpoint_url is blank", projName)
+				"bf_suggestion_timeout_secs must be zero when bf_suggestion_url is blank", projName)
 		}
 	}
 	bbp.opts = bbpOptions
