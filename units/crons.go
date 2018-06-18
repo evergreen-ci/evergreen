@@ -618,3 +618,20 @@ func PopulateLegacyRunnerJobs(env evergreen.Environment, part int) amboy.QueueOp
 		return catcher.Resolve()
 	}
 }
+
+func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.AlertsDisabled {
+			return nil
+		}
+
+		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(queue.Put(NewSpawnhostExpirationWarningsJob(ts)))
+		return catcher.Resolve()
+	}
+}
