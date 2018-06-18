@@ -28,20 +28,25 @@ const (
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 
-	TaskStarted          = "started"
-	TaskUnstarted        = "unstarted"
-	TaskUndispatched     = "undispatched"
-	TaskDispatched       = "dispatched"
-	TaskFailed           = "failed"
-	TaskSucceeded        = "success"
-	TaskInactive         = "inactive"
-	TaskSystemFailed     = "system-failed"
+	// Task Statuses used in the database models
+	TaskStarted      = "started"
+	TaskUnstarted    = "unstarted"
+	TaskUndispatched = "undispatched"
+	TaskDispatched   = "dispatched"
+	TaskFailed       = "failed"
+	TaskSucceeded    = "success"
+	TaskInactive     = "inactive"
+	TaskSystemFailed = "system-failed"
+	TaskTestTimedOut = "test-timed-out"
+
+	// Task Statuses used only in TaskEndDetails
 	TaskSetupFailed      = "setup-failed"
 	TaskTimedOut         = "task-timed-out"
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
-	TaskTestTimedOut     = "test-timed-out"
-	TaskConflict         = "task-conflict"
+
+	// TaskConflict is used only in communication with the Agent
+	TaskConflict = "task-conflict"
 
 	TestFailedStatus         = "fail"
 	TestSilentlyFailedStatus = "silentfail"
