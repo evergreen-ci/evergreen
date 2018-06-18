@@ -51,7 +51,7 @@ func (s *taskSuite) SetupTest() {
 		Project:             "test_project",
 		DisplayName:         "test-display-name",
 		StartTime:           startTime,
-		FinishTime:          startTime.Add(10 * time.Minute),
+		FinishTime:          startTime.Add(20 * time.Minute),
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
@@ -807,9 +807,7 @@ func (s *taskSuite) TestTaskExceedsTime() {
 }
 
 func (s *taskSuite) TestTaskRuntimeChange() {
-	now := time.Now()
 	// no previous task should not generate
-	s.task.FinishTime = s.task.StartTime.Add(20 * time.Minute)
 	s.t.event = &event.EventLogEntry{
 		EventType: event.TaskFinished,
 	}
@@ -820,16 +818,16 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 	// task that exceeds threshold should generate
 	lastGreen := task.Task{
 		Id:                  "test1",
-		BuildVariant:        "test",
-		Project:             "test",
-		DisplayName:         "Test",
-		StartTime:           now,
-		FinishTime:          now.Add(10 * time.Minute),
+		BuildVariant:        "test_build_variant",
+		DistroId:            "test_distro_id",
+		Project:             "test_project",
+		DisplayName:         "test-display-name",
+		StartTime:           s.task.StartTime.Add(-time.Hour),
 		RevisionOrderNumber: -1,
 		Status:              evergreen.TaskSucceeded,
 	}
+	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
 	s.NoError(lastGreen.Insert())
-	s.task.FinishTime = s.task.StartTime.Add(20 * time.Minute)
 	n, err = s.t.taskRuntimeChange(&s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
