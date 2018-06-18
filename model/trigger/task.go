@@ -29,10 +29,13 @@ const (
 	triggerTaskFirstFailureInBuild           = "first-failure-in-build"
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
+	triggerTaskRegressionByTest              = "regression-by-test"
 )
 
 func makeTaskTriggers() eventHandler {
-	t := &taskTriggers{}
+	t := &taskTriggers{
+		oldTestResults: map[string]*task.TestResult{},
+	}
 	t.base.triggers = map[string]trigger{
 		triggerOutcome:                           t.taskOutcome,
 		triggerFailure:                           t.taskFailure,
@@ -43,6 +46,7 @@ func makeTaskTriggers() eventHandler {
 		triggerExceedsDuration:                   t.taskExceedsDuration,
 		triggerRuntimeChangeByPercent:            t.taskRuntimeChange,
 		triggerRegression:                        t.taskRegression,
+		triggerTaskRegressionByTest:              t.taskRegressionByTest,
 	}
 
 	return t
@@ -65,7 +69,7 @@ func newAlertRecord(t *task.Task, alertType string) *alertrecord.AlertRecord {
 }
 
 func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
-	t, err := task.FindOne(task.ById(taskID))
+	t, err := task.FindOneNoMerge(task.ById(taskID))
 	if err != nil {
 		return false, err
 	}
@@ -108,6 +112,8 @@ type taskTriggers struct {
 	data     *event.TaskEventData
 	task     *task.Task
 	uiConfig evergreen.UIConfig
+
+	oldTestResults map[string]*task.TestResult
 
 	base
 }
@@ -221,7 +227,7 @@ func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertTyp
 }
 
 func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskSucceeded && t.data.Status != evergreen.TaskFailed {
+	if t.data.Status != evergreen.TaskSucceeded && !isFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -229,7 +235,7 @@ func (t *taskTriggers) taskOutcome(sub *event.Subscription) (*notification.Notif
 }
 
 func (t *taskTriggers) taskFailure(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.TaskFailed {
+	if !isFailedTaskStatus(t.data.Status) {
 		return nil, nil
 	}
 
@@ -427,4 +433,144 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 		return nil, nil
 	}
 	return t.generate(sub, fmt.Sprintf("changed in runtime by %f%% (over threshold of %f%%)", percentChange, percent))
+}
+
+func isFailedTaskStatus(status string) bool {
+	return status == evergreen.TaskFailed || status == evergreen.TaskSystemFailed || status == evergreen.TaskTestTimedOut
+}
+
+func isTestStatusRegression(oldStatus, newStatus string) bool {
+	switch oldStatus {
+	case evergreen.TestSkippedStatus, evergreen.TestSucceededStatus,
+		evergreen.TestSilentlyFailedStatus:
+		if newStatus == evergreen.TestFailedStatus {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isTaskStatusRegression(oldStatus, newStatus string) bool {
+	switch oldStatus {
+	case evergreen.TaskFailed:
+		if newStatus == evergreen.TaskSystemFailed || newStatus == evergreen.TaskTestTimedOut {
+			return true
+		}
+
+	case evergreen.TaskSystemFailed:
+		if newStatus == evergreen.TaskFailed || newStatus == evergreen.TaskTestTimedOut {
+			return true
+		}
+
+	case evergreen.TaskSucceeded:
+		return isFailedTaskStatus(newStatus)
+	}
+
+	return false
+}
+
+func (t *taskTriggers) shouldIncludeTest(previousTask *task.Task, test *task.TestResult) (bool, error) {
+	if test.Status != evergreen.TestFailedStatus {
+		return false, nil
+	}
+	record, err := alertrecord.FindByLastTaskRegressionByTest(test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	if err != nil {
+		return false, errors.Wrap(err, "Failed to fetch alert record")
+	}
+	if record != nil {
+		if record.RevisionOrderNumber == t.task.RevisionOrderNumber || previousTask == nil {
+			return false, nil
+		}
+
+		oldTestResult, ok := t.oldTestResults[test.TestFile]
+		if !ok {
+			if test.Status != evergreen.TestFailedStatus {
+				return false, nil
+			}
+
+		} else if !isTestStatusRegression(oldTestResult.Status, test.Status) {
+			return false, nil
+		}
+	}
+
+	err = alertrecord.InsertNewTaskRegressionByTestRecord(test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to save alert record")
+	}
+	return true, nil
+}
+
+func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.Requester != evergreen.RepotrackerVersionRequester || !isFailedTaskStatus(t.task.Status) {
+		return nil, nil
+	}
+
+	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
+	if err != nil {
+		return nil, errors.Wrap(err, "error fetching previous task")
+	}
+
+	record, err := alertrecord.FindByLastTaskRegressionByTestWithNoTests(t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch alertrecord")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	// if no tests, alert only if it's a regression in task status
+	if len(t.task.LocalTestResults) == 0 {
+		if record != nil && !isTaskStatusRegression(record.TaskStatus, t.task.Status) {
+			return nil, nil
+		}
+		catcher.Add(alertrecord.InsertNewTaskRegressionByTestWithNoTestsRecord(t.task.DisplayName, t.task.Status, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber))
+
+	} else {
+		if previousCompleteTask != nil {
+			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask)
+		}
+
+		testsToAlert := []task.TestResult{}
+		for i := range t.task.LocalTestResults {
+			var shouldInclude bool
+			shouldInclude, err = t.shouldIncludeTest(previousCompleteTask, &t.task.LocalTestResults[i])
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			if shouldInclude {
+				testsToAlert = append(testsToAlert, t.task.LocalTestResults[i])
+			}
+		}
+		if len(testsToAlert) == 0 {
+			return nil, nil
+		}
+		// TODO EVG-3416 use testsToAlert in message formatting
+	}
+
+	n, err := t.generate(sub, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return n, catcher.Resolve()
+}
+
+// mapTestResultsByTestFile creates map of test file to TestResult struct. If
+// multiple tests of the same name exist, this function will return a
+// failing test if one existed, otherwise it may return any test with
+// the same name
+func mapTestResultsByTestFile(t *task.Task) map[string]*task.TestResult {
+	m := map[string]*task.TestResult{}
+
+	for i := range t.LocalTestResults {
+		if testResult, ok := m[t.LocalTestResults[i].TestFile]; ok {
+			if !isTestStatusRegression(testResult.Status, t.LocalTestResults[i].Status) {
+				continue
+			}
+		}
+		m[t.LocalTestResults[i].TestFile] = &t.LocalTestResults[i]
+	}
+
+	return m
 }

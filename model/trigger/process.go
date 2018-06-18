@@ -38,7 +38,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	for i := range subscriptions {
 		n, err := h.Process(&subscriptions[i])
 		catcher.Add(err)
-		if err != nil || n == nil {
+		if n == nil {
 			continue
 		}
 
