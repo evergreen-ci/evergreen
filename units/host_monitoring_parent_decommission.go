@@ -128,8 +128,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 			continue
 		}
 		if idle {
-			err := h.SetDecommissioned(evergreen.User, "")
-			j.AddError(err)
+			j.AddError(h.SetDecommissioned(evergreen.User, ""))
 		}
 	}
 }
