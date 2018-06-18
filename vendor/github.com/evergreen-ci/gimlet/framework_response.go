@@ -1,11 +1,10 @@
 package gimlet
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // Responder is an interface for constructing a response from a
@@ -106,7 +105,7 @@ func (r *responseBuilder) SetStatus(s int) error {
 
 func (r *responseBuilder) SetPages(p *ResponsePages) error {
 	if err := p.Validate(); err != nil {
-		return errors.Wrap(err, "cannot set an invalid page definition")
+		return fmt.Errorf("cannot set an invalid page definition: %s", err.Error())
 	}
 
 	r.pages = p
@@ -187,7 +186,7 @@ func (r *responderImpl) SetStatus(s int) error {
 
 func (r *responderImpl) SetPages(p *ResponsePages) error {
 	if err := p.Validate(); err != nil {
-		return errors.Wrap(err, "cannot set an invalid page definition")
+		return fmt.Errorf("cannot set an invalid page definition: %s", err.Error())
 	}
 
 	r.pages = p

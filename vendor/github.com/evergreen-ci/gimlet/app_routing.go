@@ -1,6 +1,7 @@
 package gimlet
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -12,9 +13,25 @@ import (
 // route.
 type APIRoute struct {
 	route   string
+	prefix  string
 	methods []httpMethod
 	handler http.HandlerFunc
 	version int
+}
+
+func (a *APIRoute) String() string {
+	var methods []string
+	for _, m := range a.methods {
+		methods = append(methods, m.String())
+	}
+
+	return fmt.Sprintf(
+		"r='%s', v='%d', methods=[%s], defined=%t",
+		a.route,
+		a.version,
+		strings.Join(methods, ", "),
+		a.handler != nil,
+	)
 }
 
 // AddRoute is the primary method for creating and registering a new route with an
@@ -36,8 +53,6 @@ func (a *APIApp) AddRoute(r string) *APIRoute {
 // IsValid checks if a route has is valid and populated.
 func (r *APIRoute) IsValid() bool {
 	switch {
-	case r.version < 0:
-		return false
 	case len(r.methods) == 0:
 		return false
 	case r.handler == nil:
@@ -48,6 +63,9 @@ func (r *APIRoute) IsValid() bool {
 		return true
 	}
 }
+
+// Prefix allows per-route prefixes, which will override the application's global prefix if set.
+func (r *APIRoute) Prefix(p string) *APIRoute { r.prefix = p; return r }
 
 // Version allows you to specify an integer for the version of this
 // route. Version is chainable.

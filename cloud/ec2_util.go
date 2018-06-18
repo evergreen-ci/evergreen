@@ -36,7 +36,9 @@ const (
 type MountPoint struct {
 	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
 	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
-	Size        int    `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
+	Size        int64  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
+	Iops        int64  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
+	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
 }
 
 var (
@@ -262,12 +264,15 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			}
 			// EBS - size but no virtual name
 			mappings = append(mappings, &ec2aws.BlockDeviceMapping{
-				DeviceName:  &mounts[i].DeviceName,
-				VirtualName: &mounts[i].VirtualName,
+				DeviceName: &mounts[i].DeviceName,
 				Ebs: &ec2aws.EbsBlockDevice{
 					DeleteOnTermination: makeBoolPtr(true),
+					Iops:                &mounts[i].Iops,
+					SnapshotId:          &mounts[i].SnapshotID,
+					VolumeSize:          &mounts[i].Size,
 				},
 			})
+			continue
 		}
 		// instance store - virtual name but no size
 		mappings = append(mappings, &ec2aws.BlockDeviceMapping{

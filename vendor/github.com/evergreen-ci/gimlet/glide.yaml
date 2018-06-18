@@ -7,3 +7,4 @@ import:
   - gzip
 - package: github.com/mongodb/grip
 - package: github.com/stretchr/testify
+- package: gopkg.in/yaml.v2

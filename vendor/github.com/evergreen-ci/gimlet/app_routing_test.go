@@ -46,6 +46,13 @@ func (s *RoutingSuite) TestPutMethod() {
 	s.Equal(r.methods[0].String(), "PUT")
 }
 
+func (s *RoutingSuite) TestPrefixMethod() {
+	r := s.app.AddRoute("/work").Prefix("foo")
+	s.Len(s.app.routes, 1)
+	s.Equal(r, s.app.routes[0])
+	s.Equal(s.app.routes[0].prefix, "foo")
+}
+
 func (s *RoutingSuite) TestDeleteMethod() {
 	r := s.app.AddRoute("/work").Delete()
 	s.Len(s.app.routes, 1)
@@ -126,4 +133,36 @@ func (s *RoutingSuite) TestRouteValidation() {
 
 	r.route = "/foo"
 	s.True(r.IsValid())
+}
+
+func (s *RoutingSuite) TestStringNoMethods() {
+	r := s.app.AddRoute("/foo").Version(2)
+	str := r.String()
+	s.Contains(str, "v='2")
+	s.Contains(str, "/foo")
+	s.Contains(str, "defined=false")
+	s.Contains(str, "defined=false")
+	s.Contains(str, "methods=[]")
+}
+
+func (s *RoutingSuite) TestStringWithMethods() {
+	r := s.app.AddRoute("/foo").Version(2).Get().Patch()
+	str := r.String()
+	s.Contains(str, "v='2")
+	s.Contains(str, "/foo")
+	s.Contains(str, "defined=false")
+	s.Contains(str, "defined=false")
+	s.Contains(str, "GET")
+	s.Contains(str, "PATCH")
+}
+
+func (s *RoutingSuite) TestResolveRoutes() {
+	s.app.prefix = "/bar"
+	r := s.app.AddRoute("/foo").Version(-1).Get()
+	s.Equal("/foo", r.resolveLegacyRoute(s.app, false))
+	s.Equal("/bar/foo", r.resolveLegacyRoute(s.app, true))
+
+	r.route = "foo"
+	s.Equal("foo", r.resolveLegacyRoute(s.app, false))
+	s.Equal("/bar/foo", r.resolveLegacyRoute(s.app, true))
 }

@@ -232,6 +232,15 @@ functions:
       params:
         files:
           - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
+  remove-test-results:
+    - command: shell.exec
+      type: system
+      params:
+        shell: bash
+        script: |
+          set -o xtrace
+          rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
+          rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
 
 #######################################
 #                Tasks                #

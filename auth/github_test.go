@@ -10,8 +10,8 @@ import (
 func TestGithubAuthManager(t *testing.T) {
 	Convey("When creating a UserManager with a GitHub authentication", t, func() {
 		g := evergreen.GithubAuthConfig{
-			ClientId:     "",
-			ClientSecret: "",
+			ClientId:     "foo",
+			ClientSecret: "bar",
 			Users:        nil,
 			Organization: "",
 		}

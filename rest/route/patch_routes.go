@@ -119,14 +119,7 @@ func (p *patchByIdHandler) Handler() RequestHandler {
 
 func (p *patchByIdHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	vars := mux.Vars(r)
-	patchId := vars["patch_id"]
-	if len(patchId) != 12 {
-		return rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Invalid patch ID",
-		}
-	}
-	p.patchId = patchId
+	p.patchId = vars["patch_id"]
 	return nil
 }
 

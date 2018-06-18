@@ -39,8 +39,8 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection))
-	startTime := time.Now().Truncate(time.Millisecond)
+	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection))
+	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
 		Id:                  "test",
@@ -330,7 +330,7 @@ func (s *taskSuite) TestRegression() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// brand new task fails should generate
-	n, err := s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err := s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -339,7 +339,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.Id = "test2"
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -352,7 +352,7 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskSucceeded
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
@@ -365,7 +365,7 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -375,25 +375,27 @@ func (s *taskSuite) TestRegression() {
 	s.task.BuildId = "test5"
 	s.task.RevisionOrderNumber = 5
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
-	s.NotNil(n)
+	s.Nil(n)
 
 	// already failing task should renotify if the task failed more than
 	// 2 days ago
-	oldTime := s.task.FinishTime
-	s.task.FinishTime = oldTime.Add(-3 * 24 * time.Hour)
-	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	oldFinishTime := time.Now().Add(-3 * 24 * time.Hour)
+	s.NoError(db.Update(task.Collection, bson.M{"_id": "test4"}, bson.M{
+		"$set": bson.M{
+			"finish_time": oldFinishTime,
+		},
+	}))
 	s.task.Id = "test6"
 	s.task.Version = "test6"
 	s.task.BuildId = "test6"
 	s.task.RevisionOrderNumber = 6
 	s.NoError(s.task.Insert())
 
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
-	s.task.FinishTime = oldTime
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// if regression was trigged after an older success, we should generate
@@ -409,7 +411,7 @@ func (s *taskSuite) TestRegression() {
 	s.task.RevisionOrderNumber = 8
 	s.task.Status = evergreen.TaskFailed
 	s.NoError(s.task.Insert())
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	n, err = s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -419,7 +421,8 @@ func (s *taskSuite) TestRegression() {
 	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{"_id": "test4"}), task4))
 	s.NotZero(*task4)
 	task4.Execution = 1
-	n, err = s.t.taskFirstFailureInVersionWithName(&s.subs[2])
+	s.task = *task4
+	n, err = s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 }

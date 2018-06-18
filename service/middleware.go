@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
@@ -327,7 +328,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 // UserMiddleware is middleware which checks for session tokens on the Request
 // and looks up and attaches a user for that token if one is found.
-func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func UserMiddleware(um gimlet.UserManager) func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	return func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		token := ""
 		var err error
