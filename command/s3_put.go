@@ -287,7 +287,7 @@ retryLoop:
 				s3URL := url.URL{
 					Scheme: "s3",
 					Host:   s3pc.Bucket,
-					ePath:  remoteName,
+					Path:   remoteName,
 				}
 
 				fpath = filepath.Join(s3pc.workDir, fpath)
