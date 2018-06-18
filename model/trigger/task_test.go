@@ -62,6 +62,7 @@ func (s *taskSuite) SetupTest() {
 	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
+		EventType:    event.TaskFinished,
 		ResourceId:   "test",
 		Data:         s.data,
 	}
@@ -124,6 +125,44 @@ func (s *taskSuite) SetupTest() {
 			},
 			Owner: "someone",
 		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeTask,
+			Trigger: triggerExceedsDuration,
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				event.TaskDurationKey: "300",
+			},
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeTask,
+			Trigger: triggerRuntimeChangeByPercent,
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				event.TaskPercentChangeKey: "50",
+			},
+		},
 	}
 
 	for i := range s.subs {
@@ -145,7 +184,7 @@ func (s *taskSuite) SetupTest() {
 func (s *taskSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 0)
+	s.Len(n, 1)
 
 	s.task.Status = evergreen.TaskSucceeded
 	s.data.Status = evergreen.TaskSucceeded
@@ -153,7 +192,7 @@ func (s *taskSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 2)
+	s.Len(n, 3)
 
 	s.task.Status = evergreen.TaskFailed
 	s.data.Status = evergreen.TaskFailed
@@ -161,7 +200,7 @@ func (s *taskSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 2)
+	s.Len(n, 3)
 }
 
 func (s *taskSuite) TestSuccess() {
@@ -735,4 +774,75 @@ func TestMapTestResultsByTestFile(t *testing.T) {
 	for _, v := range m {
 		assert.Equal(evergreen.TestFailedStatus, v.Status)
 	}
+}
+
+func (s *taskSuite) TestTaskExceedsTime() {
+	now := time.Now()
+	// task that exceeds time should generate
+	s.t.event = &event.EventLogEntry{
+		EventType: event.TaskFinished,
+	}
+	s.t.data.Status = evergreen.TaskSucceeded
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err := s.t.taskExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// task that does not exceed should not generate
+	s.task = task.Task{
+		Id:         "test",
+		StartTime:  now,
+		FinishTime: now.Add(1 * time.Minute),
+	}
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err = s.t.taskExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+
+	// unfinished task should not generate
+	s.event.EventType = event.TaskStarted
+	n, err = s.t.taskExceedsDuration(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+}
+
+func (s *taskSuite) TestTaskRuntimeChange() {
+	now := time.Now()
+	// no previous task should not generate
+	s.task.FinishTime = s.task.StartTime.Add(20 * time.Minute)
+	s.t.event = &event.EventLogEntry{
+		EventType: event.TaskFinished,
+	}
+	n, err := s.t.taskRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
+
+	// task that exceeds threshold should generate
+	lastGreen := task.Task{
+		Id:                  "test1",
+		BuildVariant:        "test",
+		Project:             "test",
+		DisplayName:         "Test",
+		StartTime:           now,
+		FinishTime:          now.Add(10 * time.Minute),
+		RevisionOrderNumber: -1,
+		Status:              evergreen.TaskSucceeded,
+	}
+	s.NoError(lastGreen.Insert())
+	s.task.FinishTime = s.task.StartTime.Add(20 * time.Minute)
+	n, err = s.t.taskRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// task that does not exceed threshold should not generate
+	s.task.FinishTime = s.task.StartTime.Add(13 * time.Minute)
+	n, err = s.t.taskRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
+
+	// task that finished too quickly should generate
+	s.task.FinishTime = s.task.StartTime.Add(2 * time.Minute)
+	n, err = s.t.taskRuntimeChange(&s.subs[4])
+	s.NoError(err)
+	s.NotNil(n)
 }

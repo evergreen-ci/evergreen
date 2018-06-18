@@ -9,20 +9,25 @@ import (
 )
 
 var registry = triggerRegistry{
-	handlers: map[string]eventHandlerFactory{},
+	handlers: map[registryKey]eventHandlerFactory{},
 	lock:     sync.RWMutex{},
 }
 
+type registryKey struct {
+	resourceType  string
+	eventDataType string
+}
+
 type triggerRegistry struct {
-	handlers map[string]eventHandlerFactory
+	handlers map[registryKey]eventHandlerFactory
 	lock     sync.RWMutex
 }
 
-func (r *triggerRegistry) eventHandler(resourceType string) eventHandler {
+func (r *triggerRegistry) eventHandler(resourceType, eventDataType string) eventHandler {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	f, ok := r.handlers[resourceType]
+	f, ok := r.handlers[registryKey{resourceType: resourceType, eventDataType: eventDataType}]
 	if !ok {
 		grip.Error(message.Fields{
 			"message": "unknown event handler",
@@ -39,15 +44,16 @@ func (r *triggerRegistry) registerEventHandler(resourceType, eventData string, h
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if _, ok := r.handlers[resourceType]; ok {
+	key := registryKey{resourceType: resourceType, eventDataType: eventData}
+	if _, ok := r.handlers[key]; ok {
 		panic(fmt.Sprintf("tried to register an eventHandler with duplicate key '%s'", resourceType))
 	}
 
-	r.handlers[resourceType] = h
+	r.handlers[key] = h
 }
 
-func ValidateTrigger(resourceType, triggerName string) bool {
-	h := registry.eventHandler(resourceType)
+func ValidateTrigger(resourceType, eventDataType, triggerName string) bool {
+	h := registry.eventHandler(resourceType, eventDataType)
 	if h == nil {
 		return false
 	}
