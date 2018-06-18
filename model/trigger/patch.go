@@ -130,6 +130,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
+		Description:       t.patch.Description,
 		Object:            objectPatch,
 		Project:           t.patch.Project,
 		URL:               fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version),
@@ -162,6 +163,13 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		TitleLink: data.URL,
 		Color:     slackColor,
 	})
+	if len(t.patch.Description) > 0 {
+		data.slack = append(data.slack, message.SlackAttachment{
+			Title: "Description",
+			Color: slackColor,
+			Text:  t.patch.Description,
+		})
+	}
 
 	return &data, nil
 }

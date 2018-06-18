@@ -40,6 +40,7 @@ type commonTemplateData struct {
 	ID              string
 	Object          string
 	Project         string
+	Description     string
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
@@ -60,6 +61,7 @@ const emailTemplate string = `<html>
 <p>Hi,</p>
 
 <p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .ID }}</a> has {{ .PastTenseStatus }}.</p>
+<p>{{ .Description }}</p>
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
@@ -77,7 +79,7 @@ const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }
 
 const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .ID }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
 
-const slackTemplate string = `Your {{ .Object }} | in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const slackTemplate string = `Your {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
 func makeHeaders(selectors []event.Selector) http.Header {
 	headers := http.Header{}
