@@ -207,7 +207,7 @@ func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notifi
 	if percentChange < percent {
 		return nil, nil
 	}
-	return t.generate(sub, fmt.Sprintf("changed in runtime by %f%% (over threshold of %f%%)", percentChange, percent))
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %.1f%%)", percentChange, percent))
 }
 
 func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {
