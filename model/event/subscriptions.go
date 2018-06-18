@@ -41,6 +41,8 @@ const (
 	TaskPercentChangeKey              = "task-percent-change"
 	VersionDurationKey                = "version-duration-secs"
 	VersionPercentChangeKey           = "version-percent-change"
+	BuildDurationKey                  = "build-duration-secs"
+	BuildPercentChangeKey             = "build-percent-change"
 )
 
 type Subscription struct {
@@ -273,6 +275,12 @@ func (s *Subscription) runCustomValidation() error {
 	}
 	if versionPercentVal, ok := s.TriggerData[VersionPercentChangeKey]; ok {
 		catcher.Add(validatePositiveFloat(versionPercentVal))
+	}
+	if buildDurationVal, ok := s.TriggerData[BuildDurationKey]; ok {
+		catcher.Add(validatePositiveInt(buildDurationVal))
+	}
+	if buildPercentVal, ok := s.TriggerData[BuildPercentChangeKey]; ok {
+		catcher.Add(validatePositiveFloat(buildPercentVal))
 	}
 	return catcher.Resolve()
 }
