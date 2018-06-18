@@ -3,10 +3,8 @@ package units
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -14,7 +12,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -54,47 +51,13 @@ func NewParentDecommissionJob(id string, distroId string) amboy.Job {
 	return j
 }
 
-// computeParentsToDecommission computes the number of hosts with containers to deco
-func computeHostsToDecommission(parentIds []string, distroId string) (int, error) {
-
-	numParents := len(parentIds)
-
-	// Count number of containers on the parents
-	containersQuery := db.Query(bson.M{
-		host.StatusKey:   bson.M{"$in": evergreen.UphostStatus},
-		host.ParentIDKey: bson.M{"$in": parentIds},
-	})
-	numContainers, err := host.Count(containersQuery)
-	if err != nil {
-		return 0, errors.Wrap(err, "Error counting containers on specified parents")
-	}
-
-	// Get maximum number of containers allowed on a parent with given distro
-	d, err := distro.FindOne(distro.ById(distroId))
-	if err != nil {
-		return 0, errors.Wrap(err, "Error getting max number of containers for distro")
-	}
-	maxContainersPerParent := d.MaxContainers
-
-	// Compute number of hosts to decommission based on excess capacity
-	numParentsToDeco := numParents - int(math.Ceil(float64(numContainers)/float64(maxContainersPerParent)))
-
-	// Sanity check
-	if numParentsToDeco < 0 {
-		numParentsToDeco = 0
-	}
-
-	return numParentsToDeco, nil
-}
-
-func (j *parentDecommissionJob) Run(ctx context.Context) {
-	defer j.MarkComplete()
+// findParentsToDecommission finds hosts with containers to deco
+func findParentsToDecommission(distroId string) ([]host.Host, error) {
 
 	// Find hosts that will finish all container tasks soonest
-	parents, err := host.FindAllRunningParentsByDistro(j.distroId)
+	parents, err := host.FindAllRunningParentsByDistro(distroId)
 	if err != nil {
-		j.AddError(err)
-		return
+		return nil, errors.Wrap(err, "Error retrieving running parents by distro")
 	}
 
 	// Build list of parent Ids
@@ -103,14 +66,44 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		parentIds = append(parentIds, parent.Id)
 	}
 
-	numParentsToDeco, err := computeHostsToDecommission(parentIds, j.distroId)
+	numParents := len(parentIds)
+	numContainers, err := host.CountContainersOnParents(parentIds)
 	if err != nil {
-		j.AddError(err)
-		return
+		return nil, errors.Wrap(err, "Error counting containers on specified parents")
+	}
+
+	// Get maximum number of containers allowed on a parent with given distro
+	d, err := distro.FindOne(distro.ById(distroId))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error getting max number of containers for distro")
+	}
+	maxContainersPerParent := d.MaxContainers
+
+	// Compute number of hosts to decommission based on excess capacity
+	numParentsToDeco, err := host.ComputeParentsToDecommission(numParents,
+		numContainers, maxContainersPerParent)
+
+	// Sanity check
+	if err != nil {
+		return nil, errors.Wrap(err, "Error computing number of parents to decommission")
+	} else if numParentsToDeco < 0 || numParentsToDeco > numParents {
+		return nil, errors.New("Invalid number of parents to decommission")
 	}
 
 	// Get desired number parents with nearest LastContainerFinishTime
 	parentsToDeco := parents[:numParentsToDeco]
+
+	return parentsToDeco, nil
+}
+
+func (j *parentDecommissionJob) Run(ctx context.Context) {
+	defer j.MarkComplete()
+
+	parentsToDeco, err := findParentsToDecommission(j.distroId)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
 
 	for _, h := range parentsToDeco {
 
@@ -118,13 +111,13 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		containersToDeco, err := h.GetContainers()
 		if err != nil {
 			j.AddError(err)
-			return
+			continue
 		}
 
 		for _, c := range containersToDeco {
 			if c.Status == evergreen.HostRunning {
-				err := c.SetDecommissioned(evergreen.User, "")
-				j.AddError(err)
+				j.AddError(c.SetDecommissioned(evergreen.User, ""))
+				continue
 			}
 		}
 
@@ -132,7 +125,7 @@ func (j *parentDecommissionJob) Run(ctx context.Context) {
 		idle, err := h.IsIdleParent()
 		if err != nil {
 			j.AddError(err)
-			return
+			continue
 		}
 		if idle {
 			err := h.SetDecommissioned(evergreen.User, "")

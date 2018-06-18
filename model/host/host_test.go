@@ -1512,31 +1512,31 @@ func TestIsIdleParent(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
-	startTimeRecent := time.Now().Add(-5 * time.Minute)
-	startTimeOld := time.Now().Add(-1 * time.Hour)
+	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
+	provisionTimeOld := time.Now().Add(-1 * time.Hour)
 
 	host1 := &Host{
-		Id:        "host1",
-		Status:    evergreen.HostRunning,
-		StartTime: startTimeOld,
+		Id:            "host1",
+		Status:        evergreen.HostRunning,
+		ProvisionTime: provisionTimeOld,
 	}
 	host2 := &Host{
 		Id:            "host2",
 		Status:        evergreen.HostRunning,
 		HasContainers: true,
-		StartTime:     startTimeRecent,
+		ProvisionTime: provisionTimeRecent,
 	}
 	host3 := &Host{
 		Id:            "host3",
 		Status:        evergreen.HostRunning,
 		HasContainers: true,
-		StartTime:     startTimeOld,
+		ProvisionTime: provisionTimeOld,
 	}
 	host4 := &Host{
 		Id:            "host4",
 		Status:        evergreen.HostRunning,
 		HasContainers: true,
-		StartTime:     startTimeOld,
+		ProvisionTime: provisionTimeOld,
 	}
 	host5 := &Host{
 		Id:       "host5",
@@ -1555,19 +1555,28 @@ func TestIsIdleParent(t *testing.T) {
 	assert.NoError(host5.Insert())
 	assert.NoError(host6.Insert())
 
+	// does not have containers --> false
 	idle, err := host1.IsIdleParent()
 	assert.False(idle)
-	assert.EqualError(err, "Host does not host containers")
+	assert.NoError(err)
 
+	// recent provision time --> false
 	idle, err = host2.IsIdleParent()
 	assert.False(idle)
 	assert.NoError(err)
 
+	// old provision time --> true
 	idle, err = host3.IsIdleParent()
 	assert.True(idle)
 	assert.NoError(err)
 
+	// has decommissioned container --> false
 	idle, err = host4.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	// ios a container --> false
+	idle, err = host5.IsIdleParent()
 	assert.False(idle)
 	assert.NoError(err)
 
@@ -1855,4 +1864,96 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert.Len(found, 2)
 	assert.Equal(found[0].Id, "1")
 	assert.Equal(found[1].Id, "4")
+}
+
+func TestComputeParentsToDecommission(t *testing.T) {
+	assert := assert.New(t)
+
+	// No containers --> decommission all parents
+	c1, err := ComputeParentsToDecommission(5, 0, 100)
+	assert.NoError(err)
+	assert.Equal(c1, 5)
+
+	// Max containers --> decommission no parents
+	c2, err := ComputeParentsToDecommission(5, 500, 100)
+	assert.NoError(err)
+	assert.Equal(c2, 0)
+
+	// Some containers --> decommission excess parents
+	c3, err := ComputeParentsToDecommission(5, 250, 100)
+	assert.NoError(err)
+	assert.Equal(c3, 2)
+
+	// MaxContainers is zero --> throw error (cannot divide by 0)
+	_, err = ComputeParentsToDecommission(5, 10, 0)
+	assert.EqualError(err, "Distro does not support containers")
+}
+
+func TestCountContainersOnParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	h1 := Host{
+		Id:            "h1",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h2 := Host{
+		Id:            "h2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h3 := Host{
+		Id:            "h3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h4 := Host{
+		Id:       "h4",
+		Status:   evergreen.HostRunning,
+		ParentID: "h1",
+	}
+	h5 := Host{
+		Id:       "h5",
+		Status:   evergreen.HostRunning,
+		ParentID: "h1",
+	}
+	h6 := Host{
+		Id:       "h6",
+		Status:   evergreen.HostRunning,
+		ParentID: "h2",
+	}
+	assert.NoError(h1.Insert())
+	assert.NoError(h2.Insert())
+	assert.NoError(h3.Insert())
+	assert.NoError(h4.Insert())
+	assert.NoError(h5.Insert())
+	assert.NoError(h6.Insert())
+
+	c1, err := CountContainersOnParents([]string{"h1", "h2"})
+	assert.NoError(err)
+	assert.Equal(c1, 3)
+
+	c2, err := CountContainersOnParents([]string{"h1", "h3"})
+	assert.NoError(err)
+	assert.Equal(c2, 2)
+
+	c3, err := CountContainersOnParents([]string{"h2", "h3"})
+	assert.NoError(err)
+	assert.Equal(c3, 1)
+
+	// Parents have no containers
+	c4, err := CountContainersOnParents([]string{"h3"})
+	assert.NoError(err)
+	assert.Equal(c4, 0)
+
+	// Parents are actually containers
+	c5, err := CountContainersOnParents([]string{"h4", "h5", "h6"})
+	assert.NoError(err)
+	assert.Equal(c5, 0)
+
+	// Parents list is empty
+	c6, err := CountContainersOnParents([]string{})
+	assert.NoError(err)
+	assert.Equal(c6, 0)
 }

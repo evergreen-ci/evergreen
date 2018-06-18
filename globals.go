@@ -220,18 +220,6 @@ var (
 		HostProvisionFailed,
 	}
 
-	// UnfinishedStatus is a list of all host statuses that precede termination.
-	// This is used to determine whether parents should wait for child containers
-	// to finish their tasks.
-	UnterminatedStatus = []string{
-		HostRunning,
-		HostUninitialized,
-		HostStarting,
-		HostProvisioning,
-		HostProvisionFailed,
-		HostDecommissioned,
-	}
-
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}

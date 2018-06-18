@@ -2,6 +2,7 @@ package host
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -106,6 +107,8 @@ type Host struct {
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
+
+type HostGroup []Host
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
@@ -865,15 +868,15 @@ func (h *Host) GetParent() (*Host, error) {
 func (h *Host) IsIdleParent() (bool, error) {
 	const idleTimeCutoff = 10 * time.Minute
 	if !h.HasContainers {
-		return false, errors.New("Host does not host containers")
+		return false, nil
 	}
 	// sanity check so that hosts not immediately decommissioned
-	if time.Since(h.StartTime) < idleTimeCutoff {
+	if h.IdleTime() < idleTimeCutoff {
 		return false, nil
 	}
 	query := db.Query(bson.M{
 		ParentIDKey: h.Id,
-		StatusKey:   bson.M{"$in": evergreen.UnterminatedStatus},
+		StatusKey:   bson.M{"$ne": evergreen.HostTerminated},
 	})
 	num, err := Count(query)
 	if err != nil {
@@ -944,4 +947,23 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 		return nil, errors.Wrap(err, "Error finding hosts spawned by builds by build ID")
 	}
 	return hosts, nil
+}
+
+// ComputeParentsToDecommission calculates how many excess parents to decommission
+func ComputeParentsToDecommission(nParents, nContainers, nContainersPerParent int) (int, error) {
+	// Prevent division by zero MaxContainers value
+	if nContainersPerParent == 0 {
+		return 0, errors.New("Distro does not support containers")
+	}
+	return nParents - int(math.Ceil(float64(nContainers)/float64(nContainersPerParent))), nil
+}
+
+// CountContainersOnParents counts how many containers are children of the
+// hosts specified by a list of host IDs
+func CountContainersOnParents(parentIds []string) (int, error) {
+	query := db.Query(bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UphostStatus},
+		ParentIDKey: bson.M{"$in": parentIds},
+	})
+	return Count(query)
 }
