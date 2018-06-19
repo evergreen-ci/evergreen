@@ -346,6 +346,12 @@ mciModule.factory('PerfDiscoveryDataService', function(
                 buildName: task.buildName,
                 taskName: task.taskName,
               })
+              // the name may have been changed to remove '_WT'
+              if (!baseline)
+                baseline = _.findWhere(promise.baselineTasks, {
+                  buildName: task.buildName,
+                  taskName: task.taskName + '_WT',
+                })
               // Skip items with no baseline results
               if (!baseline) return null
 
