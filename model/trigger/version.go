@@ -104,9 +104,9 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
-	slackColor := evergreenFail
+	slackColor := evergreenFailColor
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
-		slackColor = evergreenSuccess
+		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
 	}
 

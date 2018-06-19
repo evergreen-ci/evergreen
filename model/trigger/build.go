@@ -274,9 +274,9 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		TitleLink: data.URL,
 	})
 	if t.data.Status == evergreen.BuildSucceeded {
-		attachments[0].Color = evergreenFail
+		attachments[0].Color = evergreenFailColor
 	} else {
-		attachments[0].Color = evergreenSuccess
+		attachments[0].Color = evergreenSuccessColor
 	}
 
 	attachmentsCount := 0
@@ -290,7 +290,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		attachments = append(attachments, message.SlackAttachment{
 			Title:     t.build.Tasks[i].Id,
 			TitleLink: fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.build.Tasks[i].Id),
-			Color:     evergreenFail,
+			Color:     evergreenFailColor,
 		})
 		attachmentsCount++
 	}

@@ -35,8 +35,9 @@ const (
 	triggerExceedsDuration        = "exceeds-duration"
 	triggerRuntimeChangeByPercent = "runtime-change"
 
-	evergreenSuccess = "#4ead4a"
-	evergreenFail    = "#ce3c3e"
+	evergreenSuccessColor    = "#4ead4a"
+	evergreenFailColor       = "#ce3c3e"
+	evergreenSystemFailColor = "#ce3c3e"
 )
 
 type commonTemplateData struct {

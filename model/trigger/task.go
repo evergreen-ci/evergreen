@@ -186,9 +186,13 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
-	slackColor := evergreenFail
-	if data.PastTenseStatus == evergreen.TaskSucceeded {
-		slackColor = evergreenSuccess
+	slackColor := evergreenFailColor
+
+	if data.PastTenseStatus == evergreen.TaskSystemFailed {
+		slackColor = evergreenSystemFailColor
+
+	} else if data.PastTenseStatus == evergreen.TaskSucceeded {
+		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
 	}
 	if pastTenseOverride != "" {
