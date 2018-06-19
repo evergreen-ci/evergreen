@@ -158,18 +158,13 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 			Color:     slackColor,
 		})
 	}
+
 	data.slack = append(data.slack, message.SlackAttachment{
 		Title:     "Evergreen Patch",
 		TitleLink: data.URL,
+		Text:      t.patch.Description,
 		Color:     slackColor,
 	})
-	if len(t.patch.Description) > 0 {
-		data.slack = append(data.slack, message.SlackAttachment{
-			Title: "Description",
-			Color: slackColor,
-			Text:  t.patch.Description,
-		})
-	}
 
 	return &data, nil
 }

@@ -115,6 +115,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 			Title:     "Evergreen Version",
 			TitleLink: data.URL,
 			Color:     slackColor,
+			Text:      t.version.Message,
 		},
 	}
 

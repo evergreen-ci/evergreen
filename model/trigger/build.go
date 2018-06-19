@@ -269,8 +269,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	attachments := []message.SlackAttachment{}
 
 	attachments = append(attachments, message.SlackAttachment{
-		Fallback:  fmt.Sprintf("Build '%s' %s (%s)", data.ID, data.PastTenseStatus, data.URL),
-		Title:     "Evergreen Build",
+		Title:     fmt.Sprintf("Evergreen Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
 	})
 	if t.data.Status == evergreen.BuildSucceeded {

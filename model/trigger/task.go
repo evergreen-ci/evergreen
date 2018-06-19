@@ -201,7 +201,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data.slack = []message.SlackAttachment{
 		{
-			Title:     "Evergreen Task",
+			Title:     fmt.Sprintf("Evergreen Task: %s", t.task.DisplayName),
 			TitleLink: data.URL,
 			Color:     slackColor,
 		},
