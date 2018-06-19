@@ -593,10 +593,10 @@ func mapTestResultsByTestFile(t *task.Task) map[string]*task.TestResult {
 
 func taskFormat(t *task.Task) string {
 	if t.Status == evergreen.TaskSucceeded {
-		return fmt.Sprintf("took %s")
+		return fmt.Sprintf("took %s", t.ExpectedDuration)
 	}
 
-	return fmt.Sprintf("took %s, task status was: %s", detailStatusToHumanSpeak(t.Details.Status))
+	return fmt.Sprintf("took %s, task status was: %s", t.ExpectedDuration, detailStatusToHumanSpeak(t.Details.Status))
 }
 
 func detailStatusToHumanSpeak(status string) string {
