@@ -947,7 +947,7 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
-// Count counts how many containers are children of the given group of hosts
+// CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
 	query := db.Query(bson.M{
