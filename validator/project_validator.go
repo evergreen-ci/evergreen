@@ -50,6 +50,7 @@ var projectSyntaxValidators = []projectValidator{
 	verifyTaskDependencies,
 	verifyTaskRequirements,
 	validateBVNames,
+	validateDisplayTaskNames,
 	validateBVTaskNames,
 	checkAllDependenciesSpec,
 	validateProjectTaskNames,
@@ -555,6 +556,32 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 				)
 			}
 			buildVariantTasks[task.Name] = true
+		}
+	}
+	return errs
+}
+
+func validateDisplayTaskNames(project *model.Project) []ValidationError {
+	errs := []ValidationError{}
+
+	// build a map of task names
+	tn := map[string]struct{}{}
+	for _, t := range project.Tasks {
+		tn[t.Name] = struct{}{}
+	}
+
+	// check display tasks
+	for _, bv := range project.BuildVariants {
+		for _, dp := range bv.DisplayTasks {
+			for _, etn := range dp.ExecutionTasks {
+				if strings.HasPrefix(etn, "display_") {
+					errs = append(errs,
+						ValidationError{
+							Level:   Error,
+							Message: fmt.Sprintf("execution task '%s' has prefix 'display_' which is invalid", etn),
+						})
+				}
+			}
 		}
 	}
 	return errs
