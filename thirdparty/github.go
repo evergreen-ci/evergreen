@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ const (
 	GithubAPIStatusMinor = "minor"
 	GithubAPIStatusMajor = "major"
 	GithubAPIStatusGood  = "good"
+
+	githubAcceptDiff = "application/vnd.github.v3.diff"
 )
 
 func githubShouldRetry(attempt rehttp.Attempt) bool {
@@ -632,4 +635,70 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data patch.Githu
 	}
 
 	return *commit.Parents[0].SHA, nil
+}
+
+// GetGithubDiff downloads a diff from a Github Pull Request diff. This function
+// does not use go-github because this operation is not supported
+func GetGithubPullRequestDiff(ctx context.Context, token string, gh *patch.GithubPatch) (string, []patch.Summary, error) {
+	client, err := util.GetOAuth2HTTPClient(token)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "error getting http client")
+	}
+	defer util.PutHTTPClient(client)
+
+	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to create github request")
+	}
+
+	diff, err := doGithubRequest(client, req, githubAcceptDiff)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
+	}
+
+	summaries, err := GetPatchSummaries(diff)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to get patch summary")
+	}
+
+	return diff, summaries, nil
+}
+
+func doGithubRequest(client *http.Client, req *http.Request, accept string) (string, error) {
+	req.Header.Del("Accept")
+	req.Header.Add("Accept", accept)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to fetch data from github")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf("Expected 200 OK, got %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
+		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
+			patch.SizeLimit, resp.ContentLength)
+	}
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read response body from github response")
+	}
+
+	return string(bytes), nil
+}
+
+// buildPatchURL creates a URL to enable downloading patch files through the
+// Github API
+func buildPatchURL(gp *patch.GithubPatch) string {
+	url := &url.URL{
+		Scheme: "https",
+		Host:   "api.github.com",
+		Path: fmt.Sprintf("/repos/%s/%s/pulls/%d.diff", gp.BaseOwner,
+			gp.BaseRepo, gp.PRNumber),
+	}
+
+	return url.String()
 }
