@@ -271,6 +271,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	attachments = append(attachments, message.SlackAttachment{
 		Title:     fmt.Sprintf("Evergreen Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
+		Text:      taskStatusToDesc(t.build),
 	})
 	if t.data.Status == evergreen.BuildSucceeded {
 		attachments[0].Color = evergreenSuccessColor
@@ -290,7 +291,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 			Title:     t.build.Tasks[i].DisplayName,
 			TitleLink: fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.build.Tasks[i].Id),
 			Color:     evergreenFailColor,
-			Text:      taskStatusToDesc(t.build),
+			Text:      taskFormatFromCache(&t.build.Tasks[i]),
 		})
 		attachmentsCount++
 	}
@@ -310,4 +311,12 @@ func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride stri
 	}
 
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func taskFormatFromCache(t *build.TaskCache) string {
+	if t.Status == evergreen.TaskSucceeded {
+		return fmt.Sprintf("took %s")
+	}
+
+	return fmt.Sprintf("took %s, task status was: %s", detailStatusToHumanSpeak(t.StatusDetails.Status))
 }

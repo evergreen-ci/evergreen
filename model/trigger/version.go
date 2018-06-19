@@ -106,10 +106,9 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 	}
 	slackColor := evergreenFailColor
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
-		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
+		slackColor = evergreenSuccessColor
 	}
-
 	data.slack = []message.SlackAttachment{
 		{
 			Title:     "Evergreen Version",

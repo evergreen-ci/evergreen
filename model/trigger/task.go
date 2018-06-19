@@ -203,6 +203,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		{
 			Title:     fmt.Sprintf("Evergreen Task: %s", t.task.DisplayName),
 			TitleLink: data.URL,
+			Text:      taskFormat(t.task),
 			Color:     slackColor,
 		},
 	}
@@ -587,4 +588,27 @@ func mapTestResultsByTestFile(t *task.Task) map[string]*task.TestResult {
 	}
 
 	return m
+}
+
+func taskFormat(t *task.Task) string {
+	if t.Status == evergreen.TaskSucceeded {
+		return fmt.Sprintf("took %s")
+	}
+
+	return fmt.Sprintf("took %s, task status was: %s", detailStatusToHumanSpeak(t.Details.Status))
+}
+
+func detailStatusToHumanSpeak(status string) string {
+	switch status {
+	case evergreen.TaskSetupFailed:
+		return "task setup failed"
+	case evergreen.TaskTimedOut:
+		return "the task timed out"
+	case evergreen.TaskSystemUnresponse:
+		return "the system was unresponsive"
+	case evergreen.TaskSystemTimedOut:
+		return "the system timed out"
+	default:
+		return fmt.Sprintf("some thing else (%s)", status)
+	}
 }
