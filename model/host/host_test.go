@@ -1928,6 +1928,7 @@ func TestGetHostIds(t *testing.T) {
 	}
 	ids := hosts.GetHostIds()
 	assert.Equal([]string{"h1", "h2", "h3"}, ids)
+}
 
 func TestFindAllRunningParentsByDistro(t *testing.T) {
 	assert := assert.New(t)
