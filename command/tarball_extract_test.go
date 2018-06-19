@@ -112,13 +112,13 @@ func (s *TarballExtractSuite) TestExtractionWorkingCase() {
 	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
 
 	counter := 0
-	filepath.Walk(s.targetLocation, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(s.targetLocation, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		counter++
 		return nil
 	})
-
+	s.NoError(err)
 	s.True(counter > 1)
 }
