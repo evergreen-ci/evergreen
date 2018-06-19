@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1834,4 +1835,94 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 	parents, err := FindAllRunningParentsByDistro(d1)
 	assert.NoError(err)
 	assert.Equal(2, len(parents))
+}
+
+func TestHostsSpawnedByTasks(t *testing.T) {
+	assert := require.New(t)
+	require := require.New(t)
+	db.ClearCollections(Collection, task.Collection, build.Collection)
+	finishedTask := &task.Task{
+		Id:     "running_task",
+		Status: evergreen.TaskSucceeded,
+	}
+	require.NoError(finishedTask.Insert())
+	finishedBuild := &build.Build{
+		Id:     "running_build",
+		Status: evergreen.BuildSucceeded,
+	}
+	require.NoError(finishedBuild.Insert())
+	hosts := []*Host{
+		{
+			Id:     "running_host_timeout",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "running_host_task",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "running_host_build",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "terminated_host_timeout",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "terminated_host_task",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "terminated_host_build",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "host_not_spawned_by_task",
+			Status: evergreen.HostRunning,
+		},
+	}
+	for i := range hosts {
+		require.NoError(hosts[i].Insert())
+	}
+
+	found, err := AllHostsSpawnedByTasksTimedOut()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_timeout", found[0].Id)
+
+	found, err = AllHostsSpawnedByFinishedTasks()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_task", found[0].Id)
+
+	found, err = AllHostsSpawnedByFinishedBuilds()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_build", found[0].Id)
+
+	found, err = AllHostsSpawnedByTasksToTerminate()
+	assert.NoError(err)
+	assert.Len(found, 3)
 }
