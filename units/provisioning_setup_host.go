@@ -474,6 +474,8 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		}
 		h.Distro = d
 
+		sshOptions = append(sshOptions, "-o", "ConnectTimeout=30")
+
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
 		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {

@@ -36,7 +36,7 @@ func NewSCPCommand(src, dest, hostname, user string, options []string) Command {
 		Dest:           dest,
 		RemoteHostName: hostname,
 		User:           user,
-		Options:        options,
+		Options:        append(options, "-o", "ConnectTimeout=30"),
 	}
 }
 
