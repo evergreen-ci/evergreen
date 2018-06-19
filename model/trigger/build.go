@@ -270,7 +270,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	attachments := []message.SlackAttachment{}
 
 	attachments = append(attachments, message.SlackAttachment{
-		Title:     t.build.DisplayName,
+		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
 		TitleLink: data.URL,
 		Text:      taskStatusToDesc(t.build),
 	})
@@ -289,7 +289,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 			continue
 		}
 		attachments = append(attachments, message.SlackAttachment{
-			Title:     t.build.Tasks[i].DisplayName,
+			Title:     fmt.Sprintf("Task: %s", t.build.Tasks[i].DisplayName),
 			TitleLink: taskLink(&t.uiConfig, t.build.Tasks[i].Id, -1),
 			Color:     evergreenFailColor,
 			Text:      taskFormatFromCache(&t.build.Tasks[i]),
