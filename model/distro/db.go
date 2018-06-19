@@ -1,6 +1,8 @@
 package distro
 
 import (
+	"math"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -110,4 +112,27 @@ func ByProvider(p string) db.Q {
 // BySpawnAllowed returns a query that contains the SpawnAllowed selector.
 func BySpawnAllowed() db.Q {
 	return db.Query(bson.D{{SpawnAllowedKey, true}})
+}
+
+// ByActiveWithContainers returns a query that finds active distros
+// supporting containers
+func ByActiveWithContainers() db.Q {
+	return db.Query(bson.M{
+		DisabledKey: bson.M{
+			"$exists": false,
+		},
+		MaxContainersKey: bson.M{
+			"$gt": 0,
+		},
+	})
+}
+
+// ComputeParentsToDecommission calculates how many excess parents to
+// decommission for the provided distro
+func (d *Distro) ComputeParentsToDecommission(nParents, nContainers int) (int, error) {
+	// Prevent division by zero MaxContainers value
+	if d.MaxContainers == 0 {
+		return 0, errors.New("Distro does not support containers")
+	}
+	return nParents - int(math.Ceil(float64(nContainers)/float64(d.MaxContainers))), nil
 }

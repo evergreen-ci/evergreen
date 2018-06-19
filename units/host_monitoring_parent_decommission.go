@@ -27,7 +27,8 @@ func init() {
 
 type parentDecommissionJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
-	distroId string
+	DistroId string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
+	distro   *distro.Distro
 }
 
 func makeParentDecommissionJob() *parentDecommissionJob {
@@ -44,44 +45,31 @@ func makeParentDecommissionJob() *parentDecommissionJob {
 	return j
 }
 
-func NewParentDecommissionJob(id string, distroId string) amboy.Job {
+func NewParentDecommissionJob(id string, d distro.Distro) amboy.Job {
 	j := makeParentDecommissionJob()
-	j.distroId = distroId
-	j.SetID(fmt.Sprintf("%s.%s.%s", parentDecommissionJobName, j.distroId, id))
+	j.DistroId = d.Id
+	j.distro = &d
+	j.SetID(fmt.Sprintf("%s.%s.%s", parentDecommissionJobName, j.DistroId, id))
 	return j
 }
 
 // findParentsToDecommission finds hosts with containers to deco
-func findParentsToDecommission(distroId string) ([]host.Host, error) {
+func (j *parentDecommissionJob) findParentsToDecommission() ([]host.Host, error) {
 
 	// Find hosts that will finish all container tasks soonest
-	parents, err := host.FindAllRunningParentsByDistro(distroId)
+	parents, err := host.FindAllRunningParentsByDistro(j.DistroId)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retrieving running parents by distro")
 	}
+	numParents := len(parents)
 
-	// Build list of parent Ids
-	var parentIds []string
-	for _, parent := range parents {
-		parentIds = append(parentIds, parent.Id)
-	}
-
-	numParents := len(parentIds)
-	numContainers, err := host.CountContainersOnParents(parentIds)
+	numContainers, err := host.HostGroup(parents).CountContainersOnParents()
 	if err != nil {
 		return nil, errors.Wrap(err, "Error counting containers on specified parents")
 	}
 
-	// Get maximum number of containers allowed on a parent with given distro
-	d, err := distro.FindOne(distro.ById(distroId))
-	if err != nil {
-		return nil, errors.Wrap(err, "Error getting max number of containers for distro")
-	}
-	maxContainersPerParent := d.MaxContainers
-
 	// Compute number of hosts to decommission based on excess capacity
-	numParentsToDeco, err := host.ComputeParentsToDecommission(numParents,
-		numContainers, maxContainersPerParent)
+	numParentsToDeco, err := j.distro.ComputeParentsToDecommission(numParents, numContainers)
 
 	// Sanity check
 	if err != nil {
@@ -99,7 +87,7 @@ func findParentsToDecommission(distroId string) ([]host.Host, error) {
 func (j *parentDecommissionJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	parentsToDeco, err := findParentsToDecommission(j.distroId)
+	parentsToDeco, err := j.findParentsToDecommission()
 	if err != nil {
 		j.AddError(err)
 		return

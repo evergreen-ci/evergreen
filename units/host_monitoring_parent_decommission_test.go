@@ -86,7 +86,7 @@ func TestDecommissioningContainersOnParent(t *testing.T) {
 	assert.NoError(host6.Insert())
 	assert.NoError(host7.Insert())
 
-	j := NewParentDecommissionJob("one", "d1")
+	j := NewParentDecommissionJob("one", *d1)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())
@@ -173,7 +173,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	assert.NoError(host3.Insert())
 	assert.NoError(host4.Insert())
 
-	j := NewParentDecommissionJob("two", "d2")
+	j := NewParentDecommissionJob("two", *d2)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())

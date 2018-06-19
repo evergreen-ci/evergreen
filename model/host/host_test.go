@@ -1866,29 +1866,6 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert.Equal(found[1].Id, "4")
 }
 
-func TestComputeParentsToDecommission(t *testing.T) {
-	assert := assert.New(t)
-
-	// No containers --> decommission all parents
-	c1, err := ComputeParentsToDecommission(5, 0, 100)
-	assert.NoError(err)
-	assert.Equal(c1, 5)
-
-	// Max containers --> decommission no parents
-	c2, err := ComputeParentsToDecommission(5, 500, 100)
-	assert.NoError(err)
-	assert.Equal(c2, 0)
-
-	// Some containers --> decommission excess parents
-	c3, err := ComputeParentsToDecommission(5, 250, 100)
-	assert.NoError(err)
-	assert.Equal(c3, 2)
-
-	// MaxContainers is zero --> throw error (cannot divide by 0)
-	_, err = ComputeParentsToDecommission(5, 10, 0)
-	assert.EqualError(err, "Distro does not support containers")
-}
-
 func TestCountContainersOnParents(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -1930,30 +1907,47 @@ func TestCountContainersOnParents(t *testing.T) {
 	assert.NoError(h5.Insert())
 	assert.NoError(h6.Insert())
 
-	c1, err := CountContainersOnParents([]string{"h1", "h2"})
+	c1, err := HostGroup{h1, h2}.CountContainersOnParents()
 	assert.NoError(err)
 	assert.Equal(c1, 3)
 
-	c2, err := CountContainersOnParents([]string{"h1", "h3"})
+	c2, err := HostGroup{h1, h3}.CountContainersOnParents()
 	assert.NoError(err)
 	assert.Equal(c2, 2)
 
-	c3, err := CountContainersOnParents([]string{"h2", "h3"})
+	c3, err := HostGroup{h2, h3}.CountContainersOnParents()
 	assert.NoError(err)
 	assert.Equal(c3, 1)
 
 	// Parents have no containers
-	c4, err := CountContainersOnParents([]string{"h3"})
+	c4, err := HostGroup{h3}.CountContainersOnParents()
 	assert.NoError(err)
 	assert.Equal(c4, 0)
 
 	// Parents are actually containers
-	c5, err := CountContainersOnParents([]string{"h4", "h5", "h6"})
+	c5, err := HostGroup{h4, h5, h6}.CountContainersOnParents()
 	assert.NoError(err)
 	assert.Equal(c5, 0)
 
 	// Parents list is empty
-	c6, err := CountContainersOnParents([]string{})
+	c6, err := HostGroup{}.CountContainersOnParents()
 	assert.NoError(err)
 	assert.Equal(c6, 0)
+}
+
+func TestGetHostIds(t *testing.T) {
+	assert := assert.New(t)
+	hosts := HostGroup{
+		Host{
+			Id: "h1",
+		},
+		Host{
+			Id: "h2",
+		},
+		Host{
+			Id: "h3",
+		},
+	}
+	ids := hosts.GetHostIds()
+	assert.Equal([]string{"h1", "h2", "h3"}, ids)
 }

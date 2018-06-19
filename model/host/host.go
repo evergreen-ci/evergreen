@@ -2,7 +2,6 @@ package host
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -107,6 +106,8 @@ type Host struct {
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
+
+type HostGroup []Host
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
@@ -947,21 +948,21 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
-// ComputeParentsToDecommission calculates how many excess parents to decommission
-func ComputeParentsToDecommission(nParents, nContainers, nContainersPerParent int) (int, error) {
-	// Prevent division by zero MaxContainers value
-	if nContainersPerParent == 0 {
-		return 0, errors.New("Distro does not support containers")
-	}
-	return nParents - int(math.Ceil(float64(nContainers)/float64(nContainersPerParent))), nil
-}
-
-// CountContainersOnParents counts how many containers are children of the
-// hosts specified by a list of host IDs
-func CountContainersOnParents(parentIds []string) (int, error) {
+// Count counts how many containers are children of the given group of hosts
+func (hosts HostGroup) CountContainersOnParents() (int, error) {
+	ids := hosts.GetHostIds()
 	query := db.Query(bson.M{
 		StatusKey:   bson.M{"$in": evergreen.UphostStatus},
-		ParentIDKey: bson.M{"$in": parentIds},
+		ParentIDKey: bson.M{"$in": ids},
 	})
 	return Count(query)
+}
+
+// GetHostIds returns a slice of host IDs for the given group of hosts
+func (hosts HostGroup) GetHostIds() []string {
+	var ids []string
+	for _, h := range hosts {
+		ids = append(ids, h.Id)
+	}
+	return ids
 }
