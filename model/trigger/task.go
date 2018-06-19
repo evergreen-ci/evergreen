@@ -183,7 +183,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		DisplayName:     t.task.DisplayName,
 		Object:          "task",
 		Project:         t.task.Project,
-		URL:             fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.task.Id),
+		URL:             taskLink(&t.uiConfig, t.task.Id, t.task.Execution),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}

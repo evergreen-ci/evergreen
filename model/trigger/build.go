@@ -245,7 +245,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 		DisplayName:     t.build.DisplayName,
 		Object:          objectBuild,
 		Project:         t.build.Project,
-		URL:             fmt.Sprintf("%s/build/%s", t.uiConfig.Url, t.build.Id),
+		URL:             buildLink(&t.uiConfig, t.build.Id),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
@@ -290,7 +290,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 		}
 		attachments = append(attachments, message.SlackAttachment{
 			Title:     t.build.Tasks[i].DisplayName,
-			TitleLink: fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.build.Tasks[i].Id),
+			TitleLink: taskLink(&t.uiConfig, t.build.Tasks[i].Id, -1),
 			Color:     evergreenFailColor,
 			Text:      taskFormatFromCache(&t.build.Tasks[i]),
 		})

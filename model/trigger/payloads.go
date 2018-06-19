@@ -8,6 +8,7 @@ import (
 	"net/http"
 	ttemplate "text/template"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -278,4 +279,19 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	}
 
 	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
+}
+
+func taskLink(ui *evergreen.UIConfig, taskID string, execution int) string {
+	if execution < 0 {
+		return fmt.Sprintf("%s/task/%s", ui.Url, taskID)
+	}
+	return fmt.Sprintf("%s/task/%s/%d", ui.Url, taskID, execution)
+}
+
+func buildLink(ui *evergreen.UIConfig, buildID string) string {
+	return fmt.Sprintf("%s/build/%s/", ui.Url, buildID)
+}
+
+func versionLink(ui *evergreen.UIConfig, versionID string) string {
+	return fmt.Sprintf("%s/version/%s/", ui.Url, versionID)
 }

@@ -1,8 +1,6 @@
 package trigger
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -101,7 +99,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 		DisplayName:     t.version.Id,
 		Object:          objectVersion,
 		Project:         t.version.Identifier,
-		URL:             fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.version.Id),
+		URL:             versionLink(&t.uiConfig, t.version.Id),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
