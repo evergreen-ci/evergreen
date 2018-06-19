@@ -73,6 +73,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       resource_type: "TASK",
       label: "a previously passing task fails",
     },
+    {
+      trigger: "regression-by-test",
+      resource_type: "TASK",
+      label: "a previously passing test in a task fails",
+    },
   ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed

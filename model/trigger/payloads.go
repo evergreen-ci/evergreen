@@ -28,9 +28,12 @@ const (
 	selectorInVersion = "in-version"
 	selectorInBuild   = "in-build"
 
-	triggerOutcome = "outcome"
-	triggerFailure = "failure"
-	triggerSuccess = "success"
+	triggerOutcome                = "outcome"
+	triggerFailure                = "failure"
+	triggerSuccess                = "success"
+	triggerRegression             = "regression"
+	triggerExceedsDuration        = "exceeds-duration"
+	triggerRuntimeChangeByPercent = "runtime-change"
 )
 
 type commonTemplateData struct {

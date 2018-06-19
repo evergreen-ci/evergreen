@@ -263,3 +263,22 @@ function addInSelectorsAndOwnerType(subscription, type, inType, id) {
   });
   subscription.owner_type = "person";
 }
+
+function validateDuration(duration) {
+  if (!Number.isInteger(+duration)) {
+    return duration + " must be an integer";
+  }
+  if (+duration < 0) {
+    return duration + " cannot be negative";
+  }
+  return "";
+}
+function validatePercentage(percent) {
+  if (!isFinite(percent)) {
+    return percent + " must be a number";
+  }
+  if (+percent <= 0) {
+    return percent + " must be positive";
+  }
+  return "";
+}

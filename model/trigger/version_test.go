@@ -6,7 +6,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -33,7 +35,7 @@ func (s *VersionSuite) SetupSuite() {
 }
 
 func (s *VersionSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, version.Collection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, version.Collection, event.SubscriptionsCollection, task.Collection, alertrecord.Collection))
 	startTime := time.Now().Truncate(time.Millisecond)
 
 	versionID := "5aeb4514f27e4f9984646d97"
@@ -43,6 +45,8 @@ func (s *VersionSuite) SetupTest() {
 		Identifier: "test",
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
+		Branch:     "mci",
+		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(s.version.Insert())
 
@@ -51,6 +55,7 @@ func (s *VersionSuite) SetupTest() {
 	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypeVersion,
+		EventType:    event.VersionStateChange,
 		ResourceId:   versionID,
 		Data:         s.data,
 	}
@@ -59,7 +64,7 @@ func (s *VersionSuite) SetupTest() {
 		{
 			ID:      bson.NewObjectId(),
 			Type:    event.ResourceTypeVersion,
-			Trigger: "outcome",
+			Trigger: triggerOutcome,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -78,7 +83,7 @@ func (s *VersionSuite) SetupTest() {
 		{
 			ID:      bson.NewObjectId(),
 			Type:    event.ResourceTypeVersion,
-			Trigger: "success",
+			Trigger: triggerSuccess,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -97,7 +102,26 @@ func (s *VersionSuite) SetupTest() {
 		{
 			ID:      bson.NewObjectId(),
 			Type:    event.ResourceTypeVersion,
-			Trigger: "failure",
+			Trigger: triggerFailure,
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type: event.EvergreenWebhookSubscriberType,
+				Target: &event.WebhookSubscriber{
+					URL:    "http://example.com/2",
+					Secret: []byte("secret"),
+				},
+			},
+			Owner: "someone",
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeVersion,
+			Trigger: triggerRegression,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -209,4 +233,59 @@ func (s *VersionSuite) TestVersionOutcome() {
 	n, err = s.t.versionOutcome(&s.subs[0])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func (s *VersionSuite) TestVersionRegression() {
+	t1 := task.Task{
+		Id:                  "t1",
+		Version:             s.version.Id,
+		BuildVariant:        "test",
+		Project:             s.version.Branch,
+		DisplayName:         "Test",
+		Status:              evergreen.TaskSucceeded,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(t1.Insert())
+
+	// a successful version should not generate
+	s.data.Status = evergreen.VersionSucceeded
+	n, err := s.t.versionRegression(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
+
+	// a failing version for the first time should generate
+	t2 := task.Task{
+		Id:                  "t2",
+		Version:             s.version.Id,
+		BuildVariant:        "test",
+		Project:             s.version.Branch,
+		DisplayName:         "Test",
+		Status:              evergreen.TaskFailed,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(t2.Insert())
+	s.data.Status = evergreen.VersionFailed
+	n, err = s.t.versionRegression(&s.subs[3])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// a version with a task that has failed before should not generate
+	t3 := task.Task{
+		Id:                  "t3",
+		Version:             "foo",
+		BuildVariant:        "test",
+		Project:             s.version.Branch,
+		DisplayName:         "Test",
+		Status:              evergreen.TaskFailed,
+		FinishTime:          time.Now().Add(-1 * time.Hour),
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 1,
+	}
+	s.NoError(t3.Insert())
+	s.NoError(newAlertRecord(&t3, alertrecord.TaskFailTransitionId).Insert())
+	n, err = s.t.versionRegression(&s.subs[3])
+	s.NoError(err)
+	s.Nil(n)
 }

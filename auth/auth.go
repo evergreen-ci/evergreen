@@ -62,9 +62,10 @@ func setLoginToken(token string, w http.ResponseWriter) {
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
 func IsSuperUser(superUsers []string, u gimlet.User) bool {
-	if u == nil || u.IsNil() {
+	if u == nil {
 		return false
 	}
+
 	if util.StringSliceContains(superUsers, u.Username()) ||
 		len(superUsers) == 0 {
 		return true

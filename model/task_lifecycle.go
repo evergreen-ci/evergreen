@@ -111,7 +111,7 @@ func ActivatePreviousTask(taskId, caller string) error {
 	}
 
 	// if this is the first time we're running the task, or it's finished or it is blacklisted
-	if prevTask == nil || task.IsFinished(*prevTask) || prevTask.Priority < 0 {
+	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 {
 		return nil
 	}
 
@@ -187,7 +187,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	// only allow re-execution for failed or successful tasks
-	if !task.IsFinished(*t) {
+	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
@@ -283,7 +283,7 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 			}
 			canDeactivate := true
 			for _, et := range execTasks {
-				if task.IsFinished(et) || task.IsAbortable(et) {
+				if et.IsFinished() || task.IsAbortable(et) {
 					canDeactivate = false
 					break
 				}
@@ -508,7 +508,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
-		if task.IsFinished(t) {
+		if t.IsFinished() {
 			var displayTask *task.Task
 			status := ""
 			finishedTasks++
@@ -524,7 +524,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				}
 				t = *displayTask
 				status = t.Status
-				if !task.IsFinished(t) {
+				if t.IsFinished() {
 					continue
 				}
 			}

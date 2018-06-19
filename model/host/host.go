@@ -95,7 +95,6 @@ type Host struct {
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
 
 	// managed containers require different information based on host type
-	ContainerID string `bson:"container_id,omitempty" json:"container_id,omitempty"`
 	// True if this host is a parent of containers
 	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
 	// stores the ID of the host a container is on
@@ -575,6 +574,7 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				ProjectKey:          h.Project,
 				ProvisionOptionsKey: h.ProvisionOptions,
 				StartTimeKey:        h.StartTime,
+				HasContainersKey:    h.HasContainers,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -771,11 +771,11 @@ func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
 	return counts, nil
 }
 
-// FindAllRunningContainers finds all running containers
+// FindAllRunningContainers finds all the containers that are currently running
 func FindAllRunningContainers() ([]Host, error) {
 	query := db.Query(bson.M{
-		StatusKey:      evergreen.HostRunning,
-		ContainerIDKey: bson.M{"$exists": true},
+		ParentIDKey: bson.M{"$exists": true},
+		StatusKey:   evergreen.HostRunning,
 	})
 	hosts, err := Find(query)
 	if err != nil {
@@ -887,7 +887,6 @@ func (h *Host) IsIdleParent() (bool, error) {
 
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
 func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
-
 	selector := bson.M{
 		IdKey: h.Id,
 	}
