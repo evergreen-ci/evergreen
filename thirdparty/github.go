@@ -63,6 +63,25 @@ func githubShouldRetry(attempt rehttp.Attempt) bool {
 	return false
 }
 
+// githubShouldRetryWith404s allows HTTP requests to respond event when 404s
+// are returned.
+func githubShouldRetryWith404s(attempt rehttp.Attempt) bool {
+	if attempt.Response == nil {
+		return true
+	}
+
+	limit := parseGithubRateLimit(attempt.Response.Header)
+	if limit.Remaining == 0 {
+		return false
+	}
+
+	if attempt.Response.StatusCode == http.StatusNotFound {
+		return true
+	}
+
+	return githubShouldRetry(attempt)
+}
+
 func getGithubClient(token string) (*http.Client, error) {
 	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), rehttp.RetryTemporaryErr(), githubShouldRetry)
 	return util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
@@ -599,7 +618,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
 func GetPullRequestMergeBase(ctx context.Context, token string, data patch.GithubPatch) (string, error) {
-	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetry)
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
 	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 
 	if err != nil {
@@ -640,7 +659,8 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data patch.Githu
 // GetGithubDiff downloads a diff from a Github Pull Request diff. This function
 // does not use go-github because this operation is not supported
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh *patch.GithubPatch) (string, []patch.Summary, error) {
-	client, err := util.GetOAuth2HTTPClient(token)
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
+	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error getting http client")
 	}
