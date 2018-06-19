@@ -331,7 +331,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		filepath.Join("~", name),
 		hostInfo.Hostname,
 		user,
-		append([]string{"-vvv", "-P", hostInfo.Port, "-o", "ConnectTimeout=30"}, sshOptions...))
+		append([]string{"-vvv", "-P", hostInfo.Port}, sshOptions...))
 
 	if err = scpCmd.SetOutput(output); err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
