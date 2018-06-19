@@ -316,8 +316,8 @@ func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride stri
 
 func taskFormatFromCache(t *build.TaskCache) string {
 	if t.Status == evergreen.TaskSucceeded {
-		return fmt.Sprintf("took %s")
+		return fmt.Sprintf("took %s", t.TimeTaken)
 	}
 
-	return fmt.Sprintf("took %s, task status was: %s", detailStatusToHumanSpeak(t.StatusDetails.Status))
+	return fmt.Sprintf("took %s, task status was: %s", t.TimeTaken, detailStatusToHumanSpeak(t.StatusDetails.Status))
 }
