@@ -152,7 +152,6 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		data.githubDescription = fmt.Sprintf("patch finished in %s", t.patch.FinishTime.Sub(t.patch.StartTime).String())
 	}
 	if t.patch.IsGithubPRPatch() {
-		data.Object = "pull request"
 		data.slack = append(data.slack, message.SlackAttachment{
 			Title:     "Github Pull Request",
 			TitleLink: fmt.Sprintf("https://github.com/%s/%s/pull/%d#partial-pull-merging", t.patch.GithubPatchData.BaseOwner, t.patch.GithubPatchData.BaseRepo, t.patch.GithubPatchData.PRNumber),
