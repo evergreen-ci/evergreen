@@ -30,6 +30,7 @@ func (s *payloadSuite) SetupTest() {
 
 	s.t = commonTemplateData{
 		ID:              "1234",
+		DisplayName:     "display-1234",
 		Object:          "patch",
 		Project:         "test",
 		URL:             s.url,
@@ -67,7 +68,7 @@ func (s *payloadSuite) TestJIRAComment() {
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal("Evergreen patch [1234|https://example.com/patch/1234] in 'test' has failed!", *m)
+	s.Equal("Evergreen patch [display-1234|https://example.com/patch/1234] in 'test' has failed!", *m)
 }
 
 func (s *payloadSuite) TestJIRAIssue() {
@@ -75,8 +76,8 @@ func (s *payloadSuite) TestJIRAIssue() {
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal("Evergreen patch '1234' in 'test' has failed", m.Summary)
-	s.Equal("Evergreen patch [1234|https://example.com/patch/1234] in 'test' has failed!", m.Description)
+	s.Equal("Evergreen patch 'display-1234' in 'test' has failed", m.Summary)
+	s.Equal("Evergreen patch [display-1234|https://example.com/patch/1234] in 'test' has failed!", m.Description)
 }
 
 func (s *payloadSuite) TestSlack() {
@@ -84,7 +85,7 @@ func (s *payloadSuite) TestSlack() {
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal("Your patch <https://example.com/patch/1234|1234> in 'test' has failed!", m.Body)
+	s.Equal("Your patch <https://example.com/patch/1234|display-1234> in 'test' has failed!", m.Body)
 	s.Empty(m.Attachments)
 }
 
