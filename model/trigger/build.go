@@ -281,16 +281,17 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 
 	attachmentsCount := 0
 	for i := range t.build.Tasks {
-		if attachmentsCount == 10 {
+		if attachmentsCount == slackAttachmentsLimit {
 			break
 		}
 		if t.build.Tasks[i].Status == evergreen.TaskSucceeded {
 			continue
 		}
 		attachments = append(attachments, message.SlackAttachment{
-			Title:     t.build.Tasks[i].Id,
+			Title:     t.build.Tasks[i].DisplayName,
 			TitleLink: fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.build.Tasks[i].Id),
 			Color:     evergreenFailColor,
+			Text:      taskStatusToDesc(t.build),
 		})
 		attachmentsCount++
 	}
