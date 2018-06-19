@@ -200,7 +200,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if !evergreen.IsPatchRequester(t.Requester) {
 		if t.IsPartOfDisplay() {
 			parent := t.DisplayTask
-			if task.IsFinished(*parent) {
+			if parent.IsFinished() {
 				grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(parent.Id),
 					"processing alert triggers for display task %s", parent.Id))
 			}

@@ -226,7 +226,7 @@ func IsAbortable(t Task) bool {
 }
 
 // IsFinished returns true if the project is no longer running
-func IsFinished(t Task) bool {
+func (t Task) IsFinished() bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
 		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
@@ -718,7 +718,7 @@ func (t *Task) UpdateDisplayTask() error {
 			t.Activated = true
 		}
 
-		if IsFinished(execTask) {
+		if execTask.IsFinished() {
 			hasFinishedTasks = true
 		} else if execTask.IsDispatchable() {
 			hasUnfinishedTasks = true
@@ -775,6 +775,9 @@ func (t *Task) UpdateDisplayTask() error {
 
 	t.Status = status
 	t.TimeTaken = timeTaken
+	if t.IsFinished() {
+		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
+	}
 	return nil
 }
 

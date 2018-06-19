@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHostDocumentConsistency(t *testing.T) {
+func TestStaticHostDocumentConsistency(t *testing.T) {
 	assert := assert.New(t)
 	const hostName = "hostName"
 	const secret = "iamasecret"
@@ -113,4 +113,40 @@ func TestHostDocumentConsistency(t *testing.T) {
 	assert.Equal(staticReferenceHost.Secret, hostFromDB.Secret)
 	assert.WithinDuration(staticReferenceHost.LastCommunicationTime, hostFromDB.LastCommunicationTime, 1*time.Second)
 	assert.Equal(staticReferenceHost.AgentRevision, hostFromDB.AgentRevision)
+}
+
+func TestDockerStaticHostUpdate(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(distro.Collection))
+	assert.NoError(db.Clear(host.Collection))
+
+	const hostName = "hostName"
+	const agentRevision = "12345"
+	const distroName = "distroName"
+	const numHosts = 10
+
+	hosts := []cloud.StaticHost{}
+
+	for i := 0; i < numHosts; i++ {
+		hostInterval := strconv.Itoa(i)
+		hosts = append(hosts, cloud.StaticHost{Name: hostName + hostInterval})
+	}
+
+	d := distro.Distro{
+		Id:       distroName,
+		Provider: evergreen.ProviderNameDockerStatic,
+		ProviderSettings: &map[string]interface{}{
+			"hosts": hosts,
+		},
+	}
+	assert.NoError(d.Insert())
+
+	staticHosts, err := doStaticHostUpdate(d)
+	assert.NoError(err)
+	for _, h := range staticHosts {
+		host, err := host.FindOne(host.ById(h))
+		assert.NoError(err)
+		assert.Equal(evergreen.ProviderNameDockerStatic, host.Provider)
+		assert.True(host.HasContainers)
+	}
 }

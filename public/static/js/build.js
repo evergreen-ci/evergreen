@@ -93,6 +93,22 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       label: "this build succeeds"
     },
     {
+      trigger: "exceeds-duration",
+      resource_type: "BUILD",
+      label: "the runtime for this build exceeds some duration",
+      extraFields: [
+        {text: "Build duration (seconds)", key: "build-duration-secs", validator: validateDuration}
+      ]
+    },
+    {
+      trigger: "runtime-change",
+      resource_type: "BUILD",
+      label: "the runtime for this build changes by some percentage",
+      extraFields: [
+        {text: "Percent change", key: "build-percent-change", validator: validatePercentage}
+      ]
+    },
+    {
       trigger: "outcome",
       resource_type: "TASK",
       label: "a task in this build finishes"

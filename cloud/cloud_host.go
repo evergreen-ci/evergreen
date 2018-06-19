@@ -15,6 +15,9 @@ type HostOptions struct {
 	ExpirationDuration *time.Duration
 	UserName           string
 	UserHost           bool
+
+	HasContainers bool
+	ParentID      string
 }
 
 //CloudHost is a provider-agnostic host object that delegates methods
