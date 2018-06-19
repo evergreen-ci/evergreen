@@ -242,6 +242,7 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 
 	data := commonTemplateData{
 		ID:              t.build.Id,
+		DisplayName:     t.build.DisplayName,
 		Object:          objectBuild,
 		Project:         t.build.Project,
 		URL:             fmt.Sprintf("%s/build/%s", t.uiConfig.Url, t.build.Id),
@@ -269,7 +270,7 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	attachments := []message.SlackAttachment{}
 
 	attachments = append(attachments, message.SlackAttachment{
-		Title:     fmt.Sprintf("Evergreen Build: %s", t.build.DisplayName),
+		Title:     t.build.DisplayName,
 		TitleLink: data.URL,
 		Text:      taskStatusToDesc(t.build),
 	})

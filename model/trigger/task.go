@@ -180,6 +180,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data := commonTemplateData{
 		ID:              t.task.Id,
+		DisplayName:     t.task.DisplayName,
 		Object:          "task",
 		Project:         t.task.Project,
 		URL:             fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.task.Id),
@@ -201,7 +202,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data.slack = []message.SlackAttachment{
 		{
-			Title:     fmt.Sprintf("Evergreen Task: %s", t.task.DisplayName),
+			Title:     t.task.DisplayName,
 			TitleLink: data.URL,
 			Text:      taskFormat(t.task),
 			Color:     slackColor,

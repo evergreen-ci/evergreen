@@ -98,6 +98,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 
 	data := commonTemplateData{
 		ID:              t.version.Id,
+		DisplayName:     t.version.Id,
 		Object:          objectVersion,
 		Project:         t.version.Identifier,
 		URL:             fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.version.Id),

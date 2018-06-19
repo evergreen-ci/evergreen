@@ -48,6 +48,7 @@ const (
 
 type commonTemplateData struct {
 	ID              string
+	DisplayName     string
 	Object          string
 	Project         string
 	Description     string
@@ -70,7 +71,7 @@ const emailTemplate string = `<html>
 <body>
 <p>Hi,</p>
 
-<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .ID }}</a> has {{ .PastTenseStatus }}.</p>
+<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
 <p>{{ .Description }}</p>
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
@@ -85,11 +86,11 @@ const emailTemplate string = `<html>
 </html>
 `
 
-const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .DisplayName }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
-const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .ID }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
+const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .DisplayName }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
 
-const slackTemplate string = `Your {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const slackTemplate string = `Your {{ .Object }} <{{ .URL }}|{{ .DisplayName }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
 func makeHeaders(selectors []event.Selector) http.Header {
 	headers := http.Header{}
