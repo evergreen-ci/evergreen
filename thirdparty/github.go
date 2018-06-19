@@ -660,7 +660,7 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data patch.Githu
 // does not use go-github because this operation is not supported
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh *patch.GithubPatch) (string, []patch.Summary, error) {
 	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
-	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	client, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error getting http client")
 	}
