@@ -331,7 +331,7 @@ func (j *setupHostJob) copyScript(ctx context.Context, settings *evergreen.Setti
 		filepath.Join("~", name),
 		hostInfo.Hostname,
 		user,
-		append([]string{"-vvv", "-P", hostInfo.Port}, sshOptions...))
+		append([]string{"-vvv", "-P", hostInfo.Port, "-o", "ConnectTimeout=30"}, sshOptions...))
 
 	if err = scpCmd.SetOutput(output); err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
@@ -473,6 +473,8 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 
 		}
 		h.Distro = d
+
+		sshOptions = append(sshOptions, "-o", "ConnectTimeout=30")
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
