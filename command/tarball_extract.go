@@ -60,7 +60,7 @@ func (e *tarballExtract) Execute(ctx context.Context,
 
 	archive, err := os.Open(e.ArchivePath)
 	if err != nil {
-		return errors.Wrapf(err, "problem reading file '%s'")
+		return errors.Wrapf(err, "problem reading file '%s'", e.ArchivePath)
 	}
 
 	defer func() {

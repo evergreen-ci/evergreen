@@ -200,7 +200,7 @@ func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excl
 	tarReader := tar.NewReader(gzipReader)
 	err = extractTarArcive(ctx, tarReader, rootPath, excludes)
 	if err != nil {
-		return errors.Wrapf(err, "error extracting %v", rootPath)
+		return errors.Wrapf(err, "error extracting %s", rootPath)
 	}
 
 	return nil
