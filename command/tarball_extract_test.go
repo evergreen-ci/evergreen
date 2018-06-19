@@ -78,7 +78,9 @@ func (s *TarballExtractSuite) TestErrorsIfNoTarget() {
 }
 
 func (s *TarballExtractSuite) TestErrorsAndNormalizedPath() {
-	s.conf.WorkDir = "/srv/evergreen"
+	var err error
+	s.conf.WorkDir, err = filepath.Abs(filepath.Join("srv", "evergreen"))
+	s.Require().NoError(err)
 	s.cmd.TargetDirectory = "foo"
 
 	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
