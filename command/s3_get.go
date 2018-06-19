@@ -1,8 +1,6 @@
 package command
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"context"
 	"io"
 	"os"
@@ -242,16 +240,8 @@ func (c *s3get) get(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 
-	// wrap the reader in a gzip reader and a tar reader
-	gzipReader, err := gzip.NewReader(reader)
-	if err != nil {
-		return errors.Wrapf(err, "error creating gzip reader for %v", c.RemoteFile)
-	}
-
-	tarReader := tar.NewReader(gzipReader)
-	err = util.Extract(ctx, tarReader, c.ExtractTo)
-	if err != nil {
-		return errors.Wrapf(err, "error extracting %v to %v", c.RemoteFile, c.ExtractTo)
+	if err := util.ExtractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
+		return errors.Wrapf(err, "problem extracting %s from archive", c.RemoteFile)
 	}
 
 	return nil
