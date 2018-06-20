@@ -8,6 +8,7 @@ import (
 	"net/http"
 	ttemplate "text/template"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -34,17 +35,31 @@ const (
 	triggerRegression             = "regression"
 	triggerExceedsDuration        = "exceeds-duration"
 	triggerRuntimeChangeByPercent = "runtime-change"
+
+	evergreenSuccessColor    = "#4ead4a"
+	evergreenFailColor       = "#ce3c3e"
+	evergreenSystemFailColor = "#ce3c3e"
+
+	// slackAttachmentsLimit is a limit to the number of extra entries to
+	// attach to a Slack message. It does not count the link to Evergreen,
+	// or the link back to Github Pull Requests.
+	// This number MUST NOT exceed 100, and Slack recommends a limit of 10
+	slackAttachmentsLimit = 10
 )
 
 type commonTemplateData struct {
 	ID              string
+	DisplayName     string
 	Object          string
 	Project         string
+	Description     string
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
 
-	apiModel          restModel.Model
+	apiModel restModel.Model
+	slack    []message.SlackAttachment
+
 	githubContext     string
 	githubState       message.GithubState
 	githubDescription string
@@ -57,7 +72,8 @@ const emailTemplate string = `<html>
 <body>
 <p>Hi,</p>
 
-<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .ID }}</a> has {{ .PastTenseStatus }}.</p>
+<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
+<p>{{ .Description }}</p>
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
@@ -71,11 +87,11 @@ const emailTemplate string = `<html>
 </html>
 `
 
-const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .DisplayName }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
-const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .ID }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
+const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .DisplayName }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
 
-const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const slackTemplate string = `The {{ .Object }} <{{ .URL }}|{{ .DisplayName }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
 func makeHeaders(selectors []event.Selector) http.Header {
 	headers := http.Header{}
@@ -193,7 +209,8 @@ func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	msg := buf.String()
 
 	return &notification.SlackPayload{
-		Body: msg,
+		Body:        msg,
+		Attachments: t.slack,
 	}, nil
 }
 
@@ -262,4 +279,19 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	}
 
 	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
+}
+
+func taskLink(ui *evergreen.UIConfig, taskID string, execution int) string {
+	if execution < 0 {
+		return fmt.Sprintf("%s/task/%s", ui.Url, taskID)
+	}
+	return fmt.Sprintf("%s/task/%s/%d", ui.Url, taskID, execution)
+}
+
+func buildLink(ui *evergreen.UIConfig, buildID string) string {
+	return fmt.Sprintf("%s/build/%s/", ui.Url, buildID)
+}
+
+func versionLink(ui *evergreen.UIConfig, versionID string) string {
+	return fmt.Sprintf("%s/version/%s/", ui.Url, versionID)
 }
