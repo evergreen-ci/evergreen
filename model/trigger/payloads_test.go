@@ -85,7 +85,7 @@ func (s *payloadSuite) TestSlack() {
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal("Your patch <https://example.com/patch/1234|display-1234> in 'test' has failed!", m.Body)
+	s.Equal("The patch <https://example.com/patch/1234|display-1234> in 'test' has failed!", m.Body)
 	s.Empty(m.Attachments)
 }
 

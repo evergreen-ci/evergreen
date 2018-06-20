@@ -610,7 +610,7 @@ func detailStatusToHumanSpeak(status string) string {
 	case evergreen.TaskSystemUnresponse:
 		return "because the system was unresponsive"
 	case evergreen.TaskSystemTimedOut:
-		return "beacuse the system timed out"
+		return "because the system timed out"
 	default:
 		return fmt.Sprintf("because of something else (%s)", status)
 	}
