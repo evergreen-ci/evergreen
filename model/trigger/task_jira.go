@@ -56,11 +56,12 @@ type jiraBuilder struct {
 	issueType string
 	uiRoot    string
 
-	Task       *task.Task
-	Build      *build.Build
-	Host       *host.Host
-	ProjectRef *model.ProjectRef
-	Version    *version.Version
+	Task        *task.Task
+	Build       *build.Build
+	Host        *host.Host
+	ProjectRef  *model.ProjectRef
+	Version     *version.Version
+	FailedTests []task.TestResult
 }
 
 // isXgenProjBF is a gross function to figure out if the jira instance
@@ -91,7 +92,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 
 	if isXgenProjBF("mongodb", j.project) { // TODO
 		failedTests := []string{}
-		for _, t := range j.Task.FailedTests {
+		for _, t := range j.FailedTests {
 			failedTests = append(failedTests, t.TestFile)
 		}
 		issue.Fields = map[string]interface{}{}
@@ -273,6 +274,11 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 		ProjectRef: projectRef,
 		Build:      buildDoc,
 		Host:       hostDoc,
+	}
+	for i := range j.task.LocalTestResults {
+		if j.task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
+			b.FailedTests = append(b.FailedTests, j.task.LocalTestResults[i])
+		}
 	}
 
 	return b.build()
