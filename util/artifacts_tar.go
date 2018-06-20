@@ -190,8 +190,24 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 	}
 }
 
+func ExtractTarball(ctx context.Context, reader io.Reader, rootPath string, excludes []string) error {
+	// wrap the reader in a gzip reader and a tar reader
+	gzipReader, err := gzip.NewReader(reader)
+	if err != nil {
+		return errors.Wrap(err, "error creating gzip reader")
+	}
+
+	tarReader := tar.NewReader(gzipReader)
+	err = extractTarArcive(ctx, tarReader, rootPath, excludes)
+	if err != nil {
+		return errors.Wrapf(err, "error extracting %s", rootPath)
+	}
+
+	return nil
+}
+
 // Extract unpacks the tar.Reader into rootPath.
-func Extract(ctx context.Context, tarReader *tar.Reader, rootPath string) error {
+func extractTarArcive(ctx context.Context, tarReader *tar.Reader, rootPath string, excludes []string) error {
 	for {
 		hdr, err := tarReader.Next()
 		if err == io.EOF {
@@ -207,17 +223,22 @@ func Extract(ctx context.Context, tarReader *tar.Reader, rootPath string) error 
 		if hdr.Typeflag == tar.TypeDir {
 			// this tar entry is a directory - need to mkdir it
 			localDir := fmt.Sprintf("%v/%v", rootPath, hdr.Name)
-			err = os.MkdirAll(localDir, 0755)
-			if err != nil {
+			if err = os.MkdirAll(localDir, 0755); err != nil {
 				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
 			// this tar entry is a regular file (not a dir or link)
 			// first, ensure the file's parent directory exists
 			localFile := fmt.Sprintf("%v/%v", rootPath, hdr.Name)
+
+			for _, ignore := range excludes {
+				if match, _ := filepath.Match(ignore, localFile); match {
+					continue
+				}
+			}
+
 			dir := filepath.Dir(localFile)
-			err = os.MkdirAll(dir, 0755)
-			if err != nil {
+			if err = os.MkdirAll(dir, 0755); err != nil {
 				return errors.WithStack(err)
 			}
 
@@ -232,15 +253,13 @@ func Extract(ctx context.Context, tarReader *tar.Reader, rootPath string) error 
 				return errors.WithStack(err)
 			}
 
-			_, err = io.Copy(f, tarReader)
-			if err != nil {
+			if _, err = io.Copy(f, tarReader); err != nil {
 				grip.CatchError(f.Close())
 				return errors.WithStack(err)
 			}
 
 			// File's permissions should match what was in the archive
-			err = os.Chmod(f.Name(), os.FileMode(int32(hdr.Mode)))
-			if err != nil {
+			if err = os.Chmod(f.Name(), os.FileMode(int32(hdr.Mode))); err != nil {
 				grip.CatchError(f.Close())
 				return errors.WithStack(err)
 			}
