@@ -148,6 +148,13 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
 
+	// This test should fail, but it triggers the retry logic which in turn
+	// causes the context to expire, so we reset the context with a longer
+	// deadline here
+	s.cancel()
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	s.Require().NotNil(s.ctx)
+	s.Require().NotNil(s.cancel)
 	data.BaseRepo = "conifer"
 	hash, err = GetPullRequestMergeBase(s.ctx, s.token, data)
 	s.Error(err)
