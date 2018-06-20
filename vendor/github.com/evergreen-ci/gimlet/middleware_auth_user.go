@@ -8,6 +8,8 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+// UserMiddlewareConfiguration is an keyed-arguments struct used to
+// produce the user manager middleware.
 type UserMiddlewareConfiguration struct {
 	SkipCookie      bool
 	SkipHeaderCheck bool
@@ -20,18 +22,20 @@ func setUserForRequest(r *http.Request, u User) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), userKey, u))
 }
 
-func GetUser(ctx context.Context) (User, bool) {
+// GetUser returns the user attached to the request. The User object
+// is nil when
+func GetUser(ctx context.Context) User {
 	u := ctx.Value(userKey)
 	if u == nil {
-		return nil, false
+		return nil
 	}
 
 	usr, ok := u.(User)
 	if !ok {
-		return nil, false
+		return nil
 	}
 
-	return usr, true
+	return usr
 }
 
 type userMiddleware struct {
@@ -39,6 +43,9 @@ type userMiddleware struct {
 	manager UserManager
 }
 
+// UserMiddleware produces a middleware that parses requests and uses
+// the UserManager attached to the request to find and attach a user
+// to the request.
 func UserMiddleware(um UserManager, conf UserMiddlewareConfiguration) Middleware {
 	return &userMiddleware{
 		conf:    conf,
