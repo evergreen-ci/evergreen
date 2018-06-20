@@ -90,6 +90,12 @@ func (s *slackJournal) Send(m message.Composer) {
 			msg, params = s.opts.produceMessage(m)
 		}
 
+		params.IconUrl = s.opts.IconURL
+		params.Username = s.opts.Username
+		if len(params.Username) != 0 || len(params.IconUrl) != 0 {
+			params.AsUser = false
+		}
+
 		if err := s.opts.client.ChatPostMessage(channel, msg, params); err != nil {
 			s.ErrorHandler(err, message.NewFormattedMessage(m.Priority(),
 				"%s\n", msg))
@@ -107,6 +113,10 @@ type SlackOptions struct {
 	Channel  string `bson:"channel" json:"channel" yaml:"channel"`
 	Hostname string `bson:"hostname" json:"hostname" yaml:"hostname"`
 	Name     string `bson:"name" json:"name" yaml:"name"`
+	// Username and IconURL allow the slack sender to set a display
+	// name and icon. Setting either parameter will force as_user to false.
+	Username string `bson:"username" json:"username" yaml:"username"`
+	IconURL  string `bson:"icon_url" json:"icon_url" yaml:"icon_url"`
 
 	// Configuration options for appending structured data to the
 	// message sent to slack. The BasicMetadata option appends
