@@ -265,6 +265,7 @@ vendor-clean:
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/gorilla/context/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/pkg/
 	rm -rf vendor/github.com/mholt/archiver/rar.go
+	rm -rf vendor/github.com/mholt/archiver/tarbz2.go
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
 	rm -rf vendor/gopkg.in/mgo.v2/testdb/
 	rm -rf vendor/gopkg.in/mgo.v2/testserver/
