@@ -54,6 +54,10 @@ func (e *tarballExtract) Execute(ctx context.Context,
 		e.TargetDirectory = filepath.Join(conf.WorkDir, e.TargetDirectory)
 	}
 
+	if !filepath.IsAbs(e.ArchivePath) {
+		e.ArchivePath = filepath.Join(conf.WorkDir, e.ArchivePath)
+	}
+
 	if _, err := os.Stat(e.ArchivePath); os.IsNotExist(err) {
 		return errors.Errorf("archive '%s' does not exist", e.ArchivePath)
 	}
