@@ -20,7 +20,7 @@ import (
 func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, logger grip.Journaler) (int, error) {
 
-	pathsToAdd, genErr := streamArchiveContents(ctx, rootPath, includes, excludes)
+	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, excludes)
 
 	numFilesArchived := 0
 	done := make(chan bool)
@@ -127,8 +127,6 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 		return numFilesArchived, errors.New("archive creation operation canceled")
 	case <-done:
 		return numFilesArchived, nil
-	case err := <-genErr:
-		return numFilesArchived, err
 	case err := <-errChan:
 		return numFilesArchived, err
 	}

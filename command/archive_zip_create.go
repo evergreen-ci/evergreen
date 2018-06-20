@@ -82,7 +82,7 @@ func (c *zipArchiveCreate) Execute(ctx context.Context,
 	}
 
 	if err := archiver.Zip.Make(c.Target, filenames); err != nil {
-		return errors.Wrapf(err, "problem constructing zip archive.")
+		return errors.Wrapf(err, "problem constructing zip archive '%s'", c.Target)
 	}
 
 	logger.Task().Info(message.Fields{

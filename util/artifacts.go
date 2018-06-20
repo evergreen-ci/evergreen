@@ -14,30 +14,32 @@ import (
 type ArchiveContentFile struct {
 	Path string
 	Info os.FileInfo
+	err  error
 }
 
 func FindContentsToArchive(ctx context.Context, rootPath string, includes, excludes []string) ([]ArchiveContentFile, error) {
 	out := []ArchiveContentFile{}
+	catcher := grip.NewBasicCatcher()
+	for fn := range streamArchiveContents(ctx, rootPath, includes, excludes) {
+		if fn.err != nil {
+			catcher.Add(fn.err)
+			continue
+		}
 
-	files, errs := streamArchiveContents(ctx, rootPath, includes, excludes)
-	for fn := range files {
 		out = append(out, fn)
 	}
 
-	err, ok := <-errs
-	if ok && err != nil {
-		return nil, err
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
 	}
 
 	return out, nil
 }
 
-func streamArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) (<-chan ArchiveContentFile, <-chan error) {
-	errChan := make(chan error)
+func streamArchiveContents(ctx context.Context, rootPath string, includes, excludes []string) <-chan ArchiveContentFile {
 	outputChan := make(chan ArchiveContentFile)
 
 	go func() {
-		defer close(errChan)
 		defer close(outputChan)
 
 		for _, includePattern := range includes {
@@ -45,51 +47,51 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 			dir = filepath.Join(rootPath, dir)
 			exists, err := FileExists(dir)
 			if err != nil {
-				errChan <- err
+				outputChan <- ArchiveContentFile{err: err}
 			}
 			if !exists {
 				continue
 			}
 
 			if ctx.Err() != nil {
-				errChan <- errors.New("archive creation operation canceled")
+				outputChan <- ArchiveContentFile{err: errors.New("archive creation operation canceled")}
 			}
 
 			var walk filepath.WalkFunc
 
 			if filematch == "**" {
 				walk = func(path string, info os.FileInfo, err error) error {
-					outputChan <- ArchiveContentFile{path, info}
+					outputChan <- ArchiveContentFile{path, info, nil}
 					return nil
 				}
-				grip.Warning(filepath.Walk(dir, walk))
+				_ = filepath.Walk(dir, walk)
 			} else if strings.Contains(filematch, "**") {
 				globSuffix := filematch[2:]
 				walk = func(path string, info os.FileInfo, err error) error {
 					if strings.HasSuffix(filepath.Base(path), globSuffix) {
-						outputChan <- ArchiveContentFile{path, info}
+						outputChan <- ArchiveContentFile{path, info, nil}
 					}
 					return nil
 				}
-				grip.Warning(filepath.Walk(dir, walk))
+				_ = filepath.Walk(dir, walk)
 			} else {
 				walk = func(path string, info os.FileInfo, err error) error {
 					a, b := filepath.Split(path)
 					if filepath.Clean(a) == filepath.Clean(dir) {
 						match, err := filepath.Match(filematch, b)
 						if err != nil {
-							errChan <- err
+							outputChan <- ArchiveContentFile{err: err}
 						}
 						if match {
-							outputChan <- ArchiveContentFile{path, info}
+							outputChan <- ArchiveContentFile{path, info, nil}
 						}
 					}
 					return nil
 				}
-				grip.Warning(filepath.Walk(rootPath, walk))
+				_ = filepath.Walk(rootPath, walk)
 			}
 		}
 	}()
 
-	return outputChan, errChan
+	return outputChan
 }
