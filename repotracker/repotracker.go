@@ -597,6 +597,9 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 }
 
 func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
+	if !projectRef.NotifyOnBuildFailure {
+		return nil
+	}
 	subscriptionBase := event.Subscription{
 		Type:      event.ResourceTypeVersion,
 		Trigger:   "regression",
@@ -604,22 +607,21 @@ func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 	}
 	subscribers := []event.Subscriber{}
 
-	// if the commit author wants build break notifications, subscribe them to this commit
+	// if the commit author wants build break notifications, don't send to admins
 	if v.AuthorID != "" {
-		subscriber, err := makeBuildBreakSubscriber(v.AuthorID)
-		if err != nil {
-			return err
-		}
+		subscriber, _ := makeBuildBreakSubscriber(v.AuthorID)
 		if subscriber != nil {
-			subscribers = append(subscribers, *subscriber)
+			return nil
 		}
 	}
 	// if the project has build break notifications, subscribe admins if no one subscribed
+	catcher := grip.NewSimpleCatcher()
 	if projectRef.NotifyOnBuildFailure && len(subscribers) == 0 {
 		for _, admin := range projectRef.Admins {
 			subscriber, err := makeBuildBreakSubscriber(admin)
 			if err != nil {
-				return err
+				catcher.Add(err)
+				continue
 			}
 			if subscriber != nil {
 				subscribers = append(subscribers, *subscriber)
@@ -627,7 +629,6 @@ func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 		}
 	}
 
-	catcher := grip.NewSimpleCatcher()
 	for _, subscriber := range subscribers {
 		newSubscription := subscriptionBase
 		newSubscription.Subscriber = subscriber
@@ -654,6 +655,8 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 			subscriber.Target = u.Email()
 		} else if preference == user.PreferenceSlack {
 			subscriber.Target = u.Settings.SlackUsername
+		} else {
+			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
 		}
 	}
 
