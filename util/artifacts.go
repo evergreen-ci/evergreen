@@ -48,6 +48,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 			exists, err := FileExists(dir)
 			if err != nil {
 				outputChan <- ArchiveContentFile{err: err}
+				continue
 			}
 			if !exists {
 				continue
@@ -55,6 +56,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 
 			if ctx.Err() != nil {
 				outputChan <- ArchiveContentFile{err: errors.New("archive creation operation canceled")}
+				return
 			}
 
 			var walk filepath.WalkFunc
@@ -62,7 +64,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 			if filematch == "**" {
 				walk = func(path string, info os.FileInfo, err error) error {
 					outputChan <- ArchiveContentFile{path, info, nil}
-					return nil
+					return
 				}
 				_ = filepath.Walk(dir, walk)
 			} else if strings.Contains(filematch, "**") {
@@ -71,7 +73,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 					if strings.HasSuffix(filepath.Base(path), globSuffix) {
 						outputChan <- ArchiveContentFile{path, info, nil}
 					}
-					return nil
+					return
 				}
 				_ = filepath.Walk(dir, walk)
 			} else {
@@ -86,7 +88,7 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 							outputChan <- ArchiveContentFile{path, info, nil}
 						}
 					}
-					return nil
+					return
 				}
 				_ = filepath.Walk(rootPath, walk)
 			}
