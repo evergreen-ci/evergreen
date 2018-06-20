@@ -12,7 +12,7 @@ import (
 // It accepts all tokens and return the same user for all tokens.
 type MockUserManager struct{}
 
-var MockUser = user.DBUser{Id: "testuser"}
+var MockUser = user.DBUser{Id: "testuser", APIKey: "testapikey"}
 
 func (MockUserManager) GetUserByToken(_ context.Context, _ string) (gimlet.User, error) {
 	return &MockUser, nil
@@ -21,5 +21,5 @@ func (MockUserManager) CreateUserToken(_, _ string) (string, error)      { retur
 func (MockUserManager) GetLoginHandler(_ string) http.HandlerFunc        { return nil }
 func (MockUserManager) IsRedirect() bool                                 { return false }
 func (MockUserManager) GetLoginCallbackHandler() http.HandlerFunc        { return nil }
-func (MockUserManager) GetOrCreateUser(gimlet.User) (gimlet.User, error) { return nil, nil }
-func (MockUserManager) GetUserByID(string) (gimlet.User, error)          { return nil, nil }
+func (MockUserManager) GetOrCreateUser(gimlet.User) (gimlet.User, error) { return &MockUser, nil }
+func (MockUserManager) GetUserByID(string) (gimlet.User, error)          { return &MockUser, nil }

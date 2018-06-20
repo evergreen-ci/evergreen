@@ -4,12 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -30,9 +27,6 @@ func setUIRequestContext(r *http.Request, p projectContext) *http.Request {
 }
 func setRestContext(r *http.Request, c *model.Context) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), RestContext, c))
-}
-func setRequestUser(r *http.Request, u gimlet.User) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), evergreen.RequestUser, u))
 }
 
 func setRequestID(r *http.Request, id int) *http.Request {
@@ -81,15 +75,6 @@ func GetProject(r *http.Request) (*model.ProjectRef, *model.Project) {
 	}
 
 	return pref.(*model.ProjectRef), p.(*model.Project)
-}
-
-// GetUser returns a user if one is attached to the request. Returns nil if the user is not logged
-// in, assuming that the middleware to lookup user information is enabled on the request handler.
-func GetUser(r *http.Request) *user.DBUser {
-	if rv := r.Context().Value(evergreen.RequestUser); rv != nil {
-		return rv.(*user.DBUser)
-	}
-	return nil
 }
 
 // GetProjectContext fetches the projectContext associated with the request. Returns an error

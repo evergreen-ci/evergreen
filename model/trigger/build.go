@@ -242,9 +242,10 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 
 	data := commonTemplateData{
 		ID:              t.build.Id,
+		DisplayName:     t.build.DisplayName,
 		Object:          objectBuild,
 		Project:         t.build.Project,
-		URL:             fmt.Sprintf("%s/build/%s", t.uiConfig.Url, t.build.Id),
+		URL:             buildLink(&t.uiConfig, t.build.Id),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
@@ -260,7 +261,43 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
 	}
+	data.slack = t.buildAttachments(&data)
+
 	return &data, nil
+}
+
+func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.SlackAttachment {
+	attachments := []message.SlackAttachment{}
+
+	attachments = append(attachments, message.SlackAttachment{
+		Title:     fmt.Sprintf("Build: %s", t.build.DisplayName),
+		TitleLink: data.URL,
+		Text:      taskStatusToDesc(t.build),
+	})
+	if t.data.Status == evergreen.BuildSucceeded {
+		attachments[0].Color = evergreenSuccessColor
+	} else {
+		attachments[0].Color = evergreenFailColor
+	}
+
+	attachmentsCount := 0
+	for i := range t.build.Tasks {
+		if attachmentsCount == slackAttachmentsLimit {
+			break
+		}
+		if t.build.Tasks[i].Status == evergreen.TaskSucceeded {
+			continue
+		}
+		attachments = append(attachments, message.SlackAttachment{
+			Title:     fmt.Sprintf("Task: %s", t.build.Tasks[i].DisplayName),
+			TitleLink: taskLink(&t.uiConfig, t.build.Tasks[i].Id, -1),
+			Color:     evergreenFailColor,
+			Text:      taskFormatFromCache(&t.build.Tasks[i]),
+		})
+		attachmentsCount++
+	}
+
+	return attachments
 }
 
 func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
@@ -275,4 +312,12 @@ func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride stri
 	}
 
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func taskFormatFromCache(t *build.TaskCache) string {
+	if t.Status == evergreen.TaskSucceeded {
+		return fmt.Sprintf("took %s", t.TimeTaken)
+	}
+
+	return fmt.Sprintf("took %s, the task failed %s", t.TimeTaken, detailStatusToHumanSpeak(t.StatusDetails.Status))
 }

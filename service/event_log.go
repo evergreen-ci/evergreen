@@ -7,32 +7,34 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 )
 
 func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
-	resourceType := strings.ToUpper(mux.Vars(r)["resource_type"])
-	resourceId := mux.Vars(r)["resource_id"]
-	u := GetUser(r)
+	vars := gimlet.GetVars(r)
+	resourceType := strings.ToUpper(vars["resource_type"])
+	resourceID := vars["resource_id"]
+	ctx := r.Context()
+	u := gimlet.GetUser(ctx)
 
 	var eventQuery db.Q
 	switch resourceType {
 	case event.ResourceTypeTask:
-		eventQuery = event.MostRecentTaskEvents(resourceId, 100)
+		eventQuery = event.MostRecentTaskEvents(resourceID, 100)
 	case event.ResourceTypeScheduler:
-		eventQuery = event.RecentSchedulerEvents(resourceId, 500)
+		eventQuery = event.RecentSchedulerEvents(resourceID, 500)
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery = event.MostRecentHostEvents(resourceId, 5000)
+		eventQuery = event.MostRecentHostEvents(resourceID, 5000)
 	case event.ResourceTypeDistro:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery = event.MostRecentDistroEvents(resourceId, 200)
+		eventQuery = event.MostRecentDistroEvents(resourceID, 200)
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

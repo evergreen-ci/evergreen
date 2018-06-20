@@ -82,9 +82,11 @@ func (s *TarballExtractSuite) TestErrorsAndNormalizedPath() {
 	s.conf.WorkDir, err = filepath.Abs(filepath.Join("srv", "evergreen"))
 	s.Require().NoError(err)
 	s.cmd.TargetDirectory = "foo"
+	s.cmd.ArchivePath = "bar"
 
 	s.Error(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
 	s.Contains(s.cmd.TargetDirectory, s.conf.WorkDir)
+	s.Contains(s.cmd.ArchivePath, s.conf.WorkDir)
 }
 
 func (s *TarballExtractSuite) TestExtractionArchiveDoesNotExist() {

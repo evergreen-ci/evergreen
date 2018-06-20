@@ -180,17 +180,33 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data := commonTemplateData{
 		ID:              t.task.Id,
+		DisplayName:     t.task.DisplayName,
 		Object:          "task",
 		Project:         t.task.Project,
-		URL:             fmt.Sprintf("%s/task/%s", t.uiConfig.Url, t.task.Id),
+		URL:             taskLink(&t.uiConfig, t.task.Id, t.task.Execution),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
-	if data.PastTenseStatus == evergreen.TaskSucceeded {
+	slackColor := evergreenFailColor
+
+	if data.PastTenseStatus == evergreen.TaskSystemFailed {
+		slackColor = evergreenSystemFailColor
+
+	} else if data.PastTenseStatus == evergreen.TaskSucceeded {
+		slackColor = evergreenSuccessColor
 		data.PastTenseStatus = "succeeded"
 	}
 	if pastTenseOverride != "" {
 		data.PastTenseStatus = pastTenseOverride
+	}
+
+	data.slack = []message.SlackAttachment{
+		{
+			Title:     t.task.DisplayName,
+			TitleLink: data.URL,
+			Text:      taskFormat(t.task),
+			Color:     slackColor,
+		},
 	}
 
 	return &data, nil
@@ -587,4 +603,29 @@ func mapTestResultsByTestFile(t *task.Task) map[string]*task.TestResult {
 	}
 
 	return m
+}
+
+func taskFormat(t *task.Task) string {
+	if t.Status == evergreen.TaskSucceeded {
+		return fmt.Sprintf("took %s", t.ExpectedDuration)
+	}
+
+	return fmt.Sprintf("took %s, the task failed %s", t.ExpectedDuration, detailStatusToHumanSpeak(t.Details.Status))
+}
+
+func detailStatusToHumanSpeak(status string) string {
+	switch status {
+	case evergreen.TaskFailed:
+		return ""
+	case evergreen.TaskSetupFailed:
+		return "because a setup task failed"
+	case evergreen.TaskTimedOut:
+		return "because it timed out"
+	case evergreen.TaskSystemUnresponse:
+		return "because the system was unresponsive"
+	case evergreen.TaskSystemTimedOut:
+		return "because the system timed out"
+	default:
+		return fmt.Sprintf("because of something else (%s)", status)
+	}
 }
