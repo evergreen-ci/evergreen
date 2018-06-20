@@ -40,13 +40,13 @@ func (c *ContainerPoolsConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
-func (c *ContainerPoolsConfig) GetContainerPool(id string) (*ContainerPool, error) {
+func (c *ContainerPoolsConfig) GetContainerPool(id string) (ContainerPool, error) {
 	for _, pool := range c.Pools {
 		if pool.Id == id {
-			return &pool, nil
+			return pool, nil
 		}
 	}
-	return nil, errors.Errorf("error retrieving container pool %s", id)
+	return ContainerPool{}, errors.Errorf("error retrieving container pool %s", id)
 }
 
 func (c *ContainerPoolsConfig) ValidateAndDefault() error { return nil }
