@@ -18,7 +18,7 @@ var (
 	testConfig            = testutil.TestConfig()
 	firstRevision         = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
 	lastRevision          = "d0d878e81b303fd2abbf09331e54af41d6cd0c7d"
-	distantEvgRevision    = "46d69e662b54a8e03267d165f2a1bc8980865d67"
+	distantEvgRevision    = "e7e8d84b7d72e2761b13d10f7a93c3de24e81a2e"
 	firstRemoteConfigRef  = "6dbe53d948906ed3e0a355eb25b9d54e5b011209"
 	secondRemoteConfigRef = "9b6c7d7f479da84b767995076b13c31796a5e2bf"
 	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
