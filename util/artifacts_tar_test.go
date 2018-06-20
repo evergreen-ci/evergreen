@@ -30,7 +30,7 @@ func TestArchiveExtract(t *testing.T) {
 		defer f.Close()
 		defer gz.Close()
 
-		err = Extract(context.Background(), tarReader, filepath.Join(testDir, "testdata", "artifacts_test"))
+		err = extractTarArcive(context.Background(), tarReader, filepath.Join(testDir, "testdata", "artifacts_test"), []string{})
 		So(err, ShouldBeNil)
 
 		Convey("extracted data should match the archive contents", func() {
@@ -89,7 +89,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 
 		f2, gz2, tarReader, err := TarGzReader(filepath.Join(testDir, "testdata", "artifacts_out.tar.gz"))
 		require.NoError(t, err, "Couldn't open test tarball")
-		err = Extract(context.Background(), tarReader, filepath.Join(testDir, "testdata", "artifacts_out"))
+		err = extractTarArcive(context.Background(), tarReader, filepath.Join(testDir, "testdata", "artifacts_out"), []string{})
 		defer f2.Close()
 		defer gz2.Close()
 		So(err, ShouldBeNil)

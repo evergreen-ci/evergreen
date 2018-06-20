@@ -258,7 +258,7 @@ func TestGetChangedFiles(t *testing.T) {
 		Convey("a revision that does not exist should fail", func() {
 			files, err := grp.GetChangedFiles(ctx, "00000000000000000000000000")
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "Not Found")
+			So(err.Error(), ShouldContainSubstring, "No commit found for SHA: 00000000000000000000000000")
 			So(files, ShouldBeNil)
 		})
 	})
