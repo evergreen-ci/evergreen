@@ -40,6 +40,8 @@ func (c *ContainerPoolsConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
+// GetContainerPool retrieves the container pool with a given id from
+// a ContainerPoolsConfig struct
 func (c *ContainerPoolsConfig) GetContainerPool(id string) (ContainerPool, error) {
 	for _, pool := range c.Pools {
 		if pool.Id == id {
