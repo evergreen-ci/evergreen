@@ -52,3 +52,4 @@ import:
   - package: github.com/google/go-querystring
   - package: github.com/google/shlex
   - package: github.com/PuerkitoBio/rehttp
+  - package: github.com/mholt/archiver

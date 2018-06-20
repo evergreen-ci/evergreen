@@ -16,15 +16,16 @@ import (
 )
 
 type TarballExtractSuite struct {
-	ctx            context.Context
-	cancel         context.CancelFunc
-	conf           *model.TaskConfig
-	comm           client.Communicator
-	logger         client.LoggerProducer
+	ctx    context.Context
+	cancel context.CancelFunc
+	conf   *model.TaskConfig
+	comm   client.Communicator
+	logger client.LoggerProducer
+
 	cmd            *tarballExtract
 	targetLocation string
+	params         map[string]interface{}
 
-	params map[string]interface{}
 	suite.Suite
 }
 
