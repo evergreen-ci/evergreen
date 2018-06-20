@@ -8,6 +8,10 @@ type basicAuthenticator struct {
 	groups map[string][]string
 }
 
+// NewBasicAuthenticator constructs a minimum viable authenticate
+// implementation, backed by access lists and user tables passed to
+// the constructor. The Authenicator is, therefore, functionally
+// immutable after construction.
 func NewBasicAuthenticator(users []User, groups map[string][]string) Authenticator {
 	if groups == nil {
 		groups = map[string][]string{}
@@ -19,7 +23,7 @@ func NewBasicAuthenticator(users []User, groups map[string][]string) Authenticat
 	}
 
 	for _, u := range users {
-		if u != nil && !u.IsNil() {
+		if u != nil {
 			a.users[u.Username()] = u
 		}
 	}

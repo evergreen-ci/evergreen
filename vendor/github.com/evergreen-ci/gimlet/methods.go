@@ -28,8 +28,11 @@ func (m httpMethod) String() string {
 	}
 }
 
+// OutputFormat enumerates output formats for response writers.
 type OutputFormat int
 
+// Enumerations of supported output formats used by gimlet rendering
+// facilities.
 const (
 	JSON OutputFormat = iota
 	TEXT
@@ -38,6 +41,7 @@ const (
 	BINARY
 )
 
+// IsValid provides a predicate to validate OutputFormat values.
 func (o OutputFormat) IsValid() bool {
 	switch o {
 	case JSON, TEXT, HTML, BINARY, YAML:
@@ -64,6 +68,8 @@ func (o OutputFormat) String() string {
 	}
 }
 
+// ContentType returns a mime content-type string for output formats
+// produced by gimlet's rendering.
 func (o OutputFormat) ContentType() string {
 	switch o {
 	case JSON:
