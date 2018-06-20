@@ -762,7 +762,6 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 }
 
 type APIContainerPoolsConfig struct {
-	// check APINaiveAuthConfig APIAuthUser to see if its always
 	Pools []APIContainerPool `json:"pools"`
 }
 
