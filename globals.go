@@ -40,6 +40,7 @@ const (
 	TaskTestTimedOut = "test-timed-out"
 
 	// Task Statuses used only in TaskEndDetails
+	// TaskFailed and TaskSucceeded are also used here
 	TaskSetupFailed      = "setup-failed"
 	TaskTimedOut         = "task-timed-out"
 	TaskSystemUnresponse = "system-unresponsive"
