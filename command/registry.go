@@ -19,6 +19,7 @@ func init() {
 	cmds := map[string]CommandFactory{
 		"archive.targz_pack":    tarballCreateFactory,
 		"archive.targz_extract": tarballExtractFactory,
+		"archive.zip_pack":      zipArchiveCreateFactory,
 		"attach.results":        attachResultsFactory,
 		"attach.xunit_results":  xunitResultsFactory,
 		"attach.artifacts":      attachArtifactsFactory,
