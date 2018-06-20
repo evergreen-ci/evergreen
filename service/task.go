@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -303,7 +302,9 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
+	ctx := r.Context()
+	usr := gimlet.GetUser(ctx)
+	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -522,22 +523,25 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	wrapper := &taskLogsWrapper{}
 	if logType == "EV" {
-		loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		var loggedEvents []event.EventLogEntry
+		loggedEvents, err = event.Find(event.AllLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		gimlet.WriteJSON(w, loggedEvents)
 		return
-	} else {
-		taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, GetUser(r) != nil)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		wrapper.LogMessages = taskLogs
-		gimlet.WriteJSON(w, wrapper)
 	}
+
+	ctx := r.Context()
+	usr := gimlet.GetUser(ctx)
+	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, usr != nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	wrapper.LogMessages = taskLogs
+	gimlet.WriteJSON(w, wrapper)
 }
 
 func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
@@ -562,7 +566,9 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// restrict access if the user is not logged in
-	if GetUser(r) == nil {
+	ctx := r.Context()
+	usr := gimlet.GetUser(ctx)
+	if usr == nil {
 		if logType == AllLogsType {
 			logTypeFilter = []string{apimodels.TaskLogPrefix}
 		}
@@ -580,14 +586,14 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	type logTemplateData struct {
 		Data chan apimodels.LogMessage
-		User *user.DBUser
+		User gimlet.User
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html")
+		uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log_raw.html")
 		return
 	}
-	uis.render.Stream(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")
+	uis.render.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log.html")
 }
 
 // avoids type-checking json params for the below function
@@ -622,7 +628,8 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authUser := GetUser(r)
+	ctx := r.Context()
+	authUser := gimlet.GetUser(ctx)
 	authName := authUser.DisplayName()
 
 	// determine what action needs to be taken
@@ -752,12 +759,12 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-
+	usr := gimlet.GetUser(ctx)
 	template := "task_log.html"
 	data := struct {
 		Data chan apimodels.LogMessage
-		User *user.DBUser
-	}{displayLogs, GetUser(r)}
+		User gimlet.User
+	}{displayLogs, usr}
 
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
