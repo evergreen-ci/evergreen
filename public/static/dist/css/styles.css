@@ -278,7 +278,8 @@ h3.section-heading {
   background-color: #5cb85c;
   color: white;
 }
-.failed {
+.failed,
+.test-timed-out {
   background-color: #d9534f;
   color: white;
 }
