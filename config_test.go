@@ -542,4 +542,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	s.NoError(err)
 	s.NotNil(lookup)
 	s.Equal(lookup, config.Pools[1])
+
+	lookup, err = settings.ContainerPools.GetContainerPool("test-pool-3")
+	s.EqualError(err, "error retrieving container pool test-pool-3")
 }

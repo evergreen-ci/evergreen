@@ -34,7 +34,7 @@ func (c *ContainerPoolsConfig) Get() error {
 func (c *ContainerPoolsConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"pools": c.Pools,
+			poolsKey: c.Pools,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())

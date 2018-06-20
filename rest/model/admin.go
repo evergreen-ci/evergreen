@@ -763,14 +763,14 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 
 type APIContainerPoolsConfig struct {
 	// check APINaiveAuthConfig APIAuthUser to see if its always
-	Pools []*APIContainerPool `json:"pools"`
+	Pools []APIContainerPool `json:"pools"`
 }
 
 func (a *APIContainerPoolsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.ContainerPoolsConfig:
 		for _, pool := range v.Pools {
-			APIpool := &APIContainerPool{}
+			APIpool := APIContainerPool{}
 			if err := APIpool.BuildFromService(pool); err != nil {
 				return err
 			}
@@ -817,9 +817,6 @@ func (a *APIContainerPool) BuildFromService(h interface{}) error {
 }
 
 func (a *APIContainerPool) ToService() (interface{}, error) {
-	if a == nil {
-		return nil, nil
-	}
 	return evergreen.ContainerPool{
 		Distro:        FromAPIString(a.Distro),
 		Id:            FromAPIString(a.Id),

@@ -68,6 +68,9 @@ var (
 	webhookNotificationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookNotificationsDisabled")
 	githubStatusAPIDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 	taskLoggingDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
+
+	// ContainerPoolsConfig keys
+	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
 )
 
 func byId(id string) bson.M {
