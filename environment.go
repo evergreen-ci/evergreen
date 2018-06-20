@@ -404,6 +404,9 @@ func (e *envState) initSenders() error {
 	}
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
+		// this sender is initialised with an invalid channel. Any
+		// messages sent with it that do not use message.SlackMessage
+		// will not be received
 		sender, err = send.NewSlackLogger(&send.SlackOptions{
 			Channel:  "#",
 			Name:     "evergreen",
