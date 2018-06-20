@@ -197,14 +197,28 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 }
 
 func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
-	data, err := t.makeData(sub, pastTenseOverride)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect task data")
-	}
+	var payload interface{}
+	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
+		project, ok := sub.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
+		}
+		var err error
+		payload, err = t.makeJIRATaskPayload(*project)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create jira payload for task")
+		}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), data)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build notification")
+	} else {
+		data, err := t.makeData(sub, pastTenseOverride)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to collect task data")
+		}
+
+		payload, err = makeCommonPayload(sub, t.Selectors(), data)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build notification")
+		}
 	}
 
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
