@@ -319,5 +319,5 @@ func taskFormatFromCache(t *build.TaskCache) string {
 		return fmt.Sprintf("took %s", t.TimeTaken)
 	}
 
-	return fmt.Sprintf("took %s, task status was: %s", t.TimeTaken, detailStatusToHumanSpeak(t.StatusDetails.Status))
+	return fmt.Sprintf("took %s, the task failed %s", t.TimeTaken, detailStatusToHumanSpeak(t.StatusDetails.Status))
 }

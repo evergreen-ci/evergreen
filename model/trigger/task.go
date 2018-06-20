@@ -596,20 +596,22 @@ func taskFormat(t *task.Task) string {
 		return fmt.Sprintf("took %s", t.ExpectedDuration)
 	}
 
-	return fmt.Sprintf("took %s, task status was: %s", t.ExpectedDuration, detailStatusToHumanSpeak(t.Details.Status))
+	return fmt.Sprintf("took %s, the task failed %s", t.ExpectedDuration, detailStatusToHumanSpeak(t.Details.Status))
 }
 
 func detailStatusToHumanSpeak(status string) string {
 	switch status {
+	case evergreen.TaskFailed:
+		return ""
 	case evergreen.TaskSetupFailed:
-		return "task setup failed"
+		return "because a setup task failed"
 	case evergreen.TaskTimedOut:
-		return "the task timed out"
+		return "because it timed out"
 	case evergreen.TaskSystemUnresponse:
-		return "the system was unresponsive"
+		return "because the system was unresponsive"
 	case evergreen.TaskSystemTimedOut:
-		return "the system timed out"
+		return "beacuse the system timed out"
 	default:
-		return fmt.Sprintf("some thing else (%s)", status)
+		return fmt.Sprintf("because of something else (%s)", status)
 	}
 }
