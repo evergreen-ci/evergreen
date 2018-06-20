@@ -374,14 +374,6 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
-	projectVars, err := model.FindOneProjectVars(projectRef.Identifier)
-	if err != nil {
-		return false, errors.Wrapf(err, "Could not find project vars for project '%s'", projectRef.Identifier)
-	}
-	if projectVars == nil {
-		return false, errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
-	}
-
 	isMember, err := authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
