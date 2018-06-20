@@ -40,11 +40,8 @@ func (c *ContainerPoolsConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
-<<<<<<< HEAD
 // GetContainerPool retrieves the container pool with a given id from
 // a ContainerPoolsConfig struct
-=======
->>>>>>> EVG-3520 add pool mapping to admin collection and methods to get/set mapping
 func (c *ContainerPoolsConfig) GetContainerPool(id string) (ContainerPool, error) {
 	for _, pool := range c.Pools {
 		if pool.Id == id {

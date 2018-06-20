@@ -542,10 +542,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	s.NoError(err)
 	s.NotNil(lookup)
 	s.Equal(lookup, config.Pools[1])
-<<<<<<< HEAD
 
 	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
 	s.EqualError(err, "error retrieving container pool test-pool-3")
-=======
->>>>>>> EVG-3520 add pool mapping to admin collection and methods to get/set mapping
 }
