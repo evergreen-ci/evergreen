@@ -14,6 +14,7 @@ import (
 func init() {
 	registry.AddType(ResourceTypeHost, hostEventDataFactory)
 	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
+	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
 }
 
 const (
