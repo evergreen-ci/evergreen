@@ -2000,7 +2000,7 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 func TestHostsSpawnedByTasks(t *testing.T) {
 	assert := require.New(t)
 	require := require.New(t)
-	db.ClearCollections(Collection, task.Collection, build.Collection)
+	require.NoError(db.ClearCollections(Collection, task.Collection, build.Collection))
 	finishedTask := &task.Task{
 		Id:     "running_task",
 		Status: evergreen.TaskSucceeded,
