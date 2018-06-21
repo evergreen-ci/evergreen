@@ -12,11 +12,11 @@ import (
 )
 
 func init() {
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeHostTriggers)
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionError, makeHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionError, makeSpawnHostTriggers)
 }
 
-type hostTriggers struct {
+type spawnHostTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.HostEventData
 	host     *host.Host
@@ -25,15 +25,15 @@ type hostTriggers struct {
 	base
 }
 
-func makeHostTriggers() eventHandler {
-	t := &hostTriggers{}
+func makeSpawnHostTriggers() eventHandler {
+	t := &spawnHostTriggers{}
 	t.base.triggers = map[string]trigger{
 		triggerOutcome: t.hostSpawnOutcome,
 	}
 	return t
 }
 
-func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *spawnHostTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
 	t.host, err = host.FindOneId(e.ResourceId)
 	if err != nil {
@@ -54,7 +54,7 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 	return nil
 }
 
-func (t *hostTriggers) Selectors() []event.Selector {
+func (t *spawnHostTriggers) Selectors() []event.Selector {
 	return []event.Selector{
 		{
 			Type: selectorID,
@@ -71,7 +71,7 @@ func (t *hostTriggers) Selectors() []event.Selector {
 	}
 }
 
-func (t *hostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {
 	if !t.host.UserHost {
 		return nil, nil
 	}
@@ -79,7 +79,7 @@ func (t *hostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.
 	return t.generate(sub)
 }
 
-func (t *hostTriggers) slack() *notification.SlackPayload {
+func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 	text := fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro)
 
 	var attachment message.SlackAttachment
@@ -138,7 +138,7 @@ const spawnHostEmailTemplate string = `<html>
 </html>
 `
 
-func (t *hostTriggers) email() *message.Email {
+func (t *spawnHostTriggers) email() *message.Email {
 	status := "failed to spawn"
 	url := spawnHostURL(t.uiConfig.Url, t.host.Id)
 	cmd := "N/A"
@@ -155,7 +155,7 @@ func (t *hostTriggers) email() *message.Email {
 	}
 }
 
-func (t *hostTriggers) makePayload(sub *event.Subscription) interface{} {
+func (t *spawnHostTriggers) makePayload(sub *event.Subscription) interface{} {
 	var payload interface{}
 	if sub.Type == event.SlackSubscriberType {
 		payload = t.slack()
@@ -167,7 +167,7 @@ func (t *hostTriggers) makePayload(sub *event.Subscription) interface{} {
 	return payload
 }
 
-func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
+func (t *spawnHostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	payload := t.makePayload(sub)
 	if payload == nil {
 		return nil, nil
