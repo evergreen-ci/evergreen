@@ -29,7 +29,8 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	n := negroni.New()
 	n.Use(NewRecoveryLogger())
-	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
+	n.Use(gimlet.UserMiddleware(as.UserManager, GetUserMiddlewareConf()))
+
 	n.UseHandler(router)
 	return n, nil
 }

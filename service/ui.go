@@ -346,7 +346,8 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // user/project, but other data will still be returned
 func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
 	viewData := ViewData{}
-	userCtx := GetUser(r)
+	ctx := r.Context()
+	userCtx := gimlet.GetUser(ctx)
 	if needsUser && userCtx == nil {
 		grip.Error("no user attached to request")
 	}
@@ -370,9 +371,13 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	if err != nil {
 		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
 	}
+
+	if u, ok := userCtx.(*user.DBUser); ok {
+		viewData.User = u
+	}
+
 	viewData.Banner = settings.Banner
 	viewData.BannerTheme = string(settings.BannerTheme)
-	viewData.User = userCtx
 	viewData.ProjectData = projectCtx
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
 	viewData.Csrf = csrf.TemplateField(r)

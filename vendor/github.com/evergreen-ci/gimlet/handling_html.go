@@ -16,14 +16,14 @@ func WriteHTML(w http.ResponseWriter, data interface{}) {
 	WriteHTMLResponse(w, http.StatusOK, data)
 }
 
-// WriteErrorHTML write the data, converted to text as possible, to
+// WriteHTMLError write the data, converted to text as possible, to
 // the response body as HTML with a bad-request (e.g. 400) response code.
 func WriteHTMLError(w http.ResponseWriter, data interface{}) {
 	// 400
 	WriteHTMLResponse(w, http.StatusBadRequest, data)
 }
 
-// WriteErrorHTML write the data, converted to text as possible, to
+// WriteHTMLInternalError write the data, converted to text as possible, to
 // the response body as HTML with an internal server error (e.g. 500)
 // response code.
 func WriteHTMLInternalError(w http.ResponseWriter, data interface{}) {
