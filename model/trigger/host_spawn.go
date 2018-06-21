@@ -86,7 +86,7 @@ func (t *hostTriggers) slack() *notification.SlackPayload {
 	if t.event.EventType == event.EventHostProvisioned {
 		attachment = message.SlackAttachment{
 			Title:     "Evergreen Host",
-			TitleLink: fmt.Sprintf("%s/host/%s", t.uiConfig.Url, t.host.Id),
+			TitleLink: spawnHostURL(t.uiConfig.Url, t.host.Id),
 			Color:     "good",
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
@@ -96,7 +96,7 @@ func (t *hostTriggers) slack() *notification.SlackPayload {
 				},
 				&message.SlackAttachmentField{
 					Title: "ssh command",
-					Value: fmt.Sprintf("ssh %s@%s", t.host.User, t.host.Host),
+					Value: sshCommand(t.host),
 				},
 			},
 		}
@@ -105,7 +105,7 @@ func (t *hostTriggers) slack() *notification.SlackPayload {
 		text = fmt.Sprintf("Host with distro '%s' has failed to spawn", t.host.Distro)
 		attachment = message.SlackAttachment{
 			Title:     "Click here to spawn another host",
-			TitleLink: fmt.Sprintf("%s/spawn", t.uiConfig.Url),
+			TitleLink: spawnHostURL(t.uiConfig.Url, ""),
 			Color:     "danger",
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
@@ -123,8 +123,36 @@ func (t *hostTriggers) slack() *notification.SlackPayload {
 	}
 }
 
-func (t *hostTriggers) email() (*notification.SlackPayload, error) {
-	return nil, nil
+const spawnHostEmailSubjectTemplate string = `Evergreen Spawn Host with distro '%s' has %s`
+const spawnHostEmailTemplate string = `<html>
+<head>
+</head>
+<body>
+<p>Hi,</p>
+
+<p>The Evergreen <a href="%s">Spawn Host</a> in '%s' has %s.</p>
+<p>SSH Command: %s</p>
+
+
+</body>
+</html>
+`
+
+func (t *hostTriggers) email() *message.Email {
+	status := "failed to spawn"
+	url := spawnHostURL(t.uiConfig.Url, t.host.Id)
+	cmd := "N/A"
+	if t.event.EventType == event.EventHostProvisionError {
+		status = "spawned"
+		url = spawnHostURL(t.uiConfig.Url, "")
+		cmd = sshCommand(t.host)
+	}
+
+	return &message.Email{
+		Subject:           fmt.Sprintf(spawnHostEmailSubjectTemplate, t.host.Distro.Id, status),
+		Body:              fmt.Sprintf(spawnHostEmailTemplate, url, t.host.Distro.Id, status, cmd),
+		PlainTextContents: false,
+	}
 }
 
 func (t *hostTriggers) makePayload(sub *event.Subscription) interface{} {
@@ -133,7 +161,7 @@ func (t *hostTriggers) makePayload(sub *event.Subscription) interface{} {
 		payload = t.slack()
 
 	} else if sub.Type == event.EmailSubscriberType {
-		payload, _ = t.email()
+		payload = t.email()
 	}
 
 	return payload
@@ -146,4 +174,15 @@ func (t *hostTriggers) generate(sub *event.Subscription) (*notification.Notifica
 	}
 
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func spawnHostURL(base, hostID string) string {
+	if len(hostID) == 0 {
+		return fmt.Sprintf("%s/spawn", base)
+	}
+	return fmt.Sprintf("%s/host/%s", base, hostID)
+}
+
+func sshCommand(h *host.Host) string {
+	return fmt.Sprintf("ssh %s@%s", h.User, h.Host)
 }
