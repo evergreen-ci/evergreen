@@ -150,7 +150,7 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 }
 
 func MakeVersionSelectors(v version.Version) []event.Selector {
-	return []event.Selector{
+	selectors := []event.Selector{
 		{
 			Type: selectorID,
 			Data: v.Id,
@@ -172,4 +172,8 @@ func MakeVersionSelectors(v version.Version) []event.Selector {
 			Data: v.Branch,
 		},
 	}
+	if v.AuthorID != "" {
+		selectors = append(selectors, event.Selector{Type: selectorOwner, Data: v.AuthorID})
+	}
+	return selectors
 }
