@@ -251,11 +251,22 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		hosts, err := host.FindHostsToTerminate()
 		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
+			"operation": "populate host termination jobs",
 			"cron":      hostTerminationJobName,
 			"impact":    "hosts termination interrupted",
 		}))
+		catcher.Add(err)
 
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+		}
+
+		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "populate hosts spawned by tasks termination jobs",
+			"cron":      hostTerminationJobName,
+			"impact":    "hosts termination interrupted",
+		}))
 		catcher.Add(err)
 
 		for _, h := range hosts {
