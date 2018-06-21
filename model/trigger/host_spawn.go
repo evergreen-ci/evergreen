@@ -13,7 +13,7 @@ import (
 
 func init() {
 	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisioned, makeSpawnHostTriggers)
-	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionError, makeSpawnHostTriggers)
+	registry.registerEventHandler(event.ResourceTypeHost, event.EventHostProvisionFailed, makeSpawnHostTriggers)
 }
 
 type spawnHostTriggers struct {
