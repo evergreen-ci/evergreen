@@ -543,6 +543,6 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	s.NotNil(lookup)
 	s.Equal(lookup, config.Pools[1])
 
-	lookup, err = settings.ContainerPools.GetContainerPool("test-pool-3")
+	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
 	s.EqualError(err, "error retrieving container pool test-pool-3")
 }
