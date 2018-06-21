@@ -56,8 +56,8 @@ func TestGetVarsInvocation(t *testing.T) {
 
 type erroringReadCloser struct{}
 
-func (_ *erroringReadCloser) Read(_ []byte) (int, error) { return 0, errors.New("test") }
-func (_ *erroringReadCloser) Close() error               { return nil }
+func (*erroringReadCloser) Read(_ []byte) (int, error) { return 0, errors.New("test") }
+func (*erroringReadCloser) Close() error               { return nil }
 
 func TestRequestReadingErrorPropogating(t *testing.T) {
 	errc := &erroringReadCloser{}

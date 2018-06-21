@@ -33,10 +33,9 @@ func getPatchByIdManager(route string, version int) *RouteManager {
 				RequestHandler: &patchByIdHandler{},
 			},
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPatch,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &patchChangeStatusHandler{},
+				MethodType:     http.MethodPatch,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &patchChangeStatusHandler{},
 			},
 		},
 	}
@@ -72,7 +71,7 @@ func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 }
 
 func (p *patchChangeStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	user := GetUser(ctx)
+	user := MustHaveUser(ctx)
 	if p.Priority != nil {
 		priority := *p.Priority
 		if ok := validPriority(priority, user, sc); !ok {
@@ -167,10 +166,9 @@ func getPatchesByUserManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodGet,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    p.Handler(),
+				MethodType:     http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: p.Handler(),
 			},
 		},
 	}
@@ -402,10 +400,9 @@ func getPatchAbortManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    p.Handler(),
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: p.Handler(),
 			},
 		},
 	}
@@ -426,7 +423,8 @@ func (p *patchAbortHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 }
 
 func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.AbortPatch(p.patchId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.AbortPatch(p.patchId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Abort error")
@@ -470,10 +468,9 @@ func getPatchRestartManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    p.Handler(),
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: p.Handler(),
 			},
 		},
 	}
@@ -496,7 +493,8 @@ func (p *patchRestartHandler) ParseAndValidate(ctx context.Context, r *http.Requ
 func (p *patchRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 
 	// If the version has not been finalized, returns NotFound
-	err := sc.RestartVersion(p.patchId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.RestartVersion(p.patchId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Restart error")

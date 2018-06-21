@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -176,7 +177,7 @@ func (s *VersionSuite) TestAbortVersion() {
 // TestRestartVersion tests the route for restarting a version.
 func (s *VersionSuite) TestRestartVersion() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "caller1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
 
 	handler := &versionRestartHandler{versionId: "versionId"}
 

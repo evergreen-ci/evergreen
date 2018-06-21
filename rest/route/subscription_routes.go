@@ -16,22 +16,19 @@ func getSubscriptionRouteManager(route string, version int) *RouteManager {
 	h := &subscriptionPostHandler{}
 
 	postHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    h.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: h.Handler(),
+		MethodType:     http.MethodPost,
 	}
 	getHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    &subscriptionGetHandler{},
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: &subscriptionGetHandler{},
+		MethodType:     http.MethodGet,
 	}
 	deleteHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    &subscriptionDeleteHandler{},
-		MethodType:        http.MethodDelete,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: &subscriptionDeleteHandler{},
+		MethodType:     http.MethodDelete,
 	}
 
 	routeManager := RouteManager{

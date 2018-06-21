@@ -38,10 +38,9 @@ func getHostRouteManager(route string, version int) *RouteManager {
 	}
 
 	hostPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    &hostPostHandler{},
-		MethodType:        http.MethodPost,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: &hostPostHandler{},
+		MethodType:     http.MethodPost,
 	}
 
 	hostRoute := RouteManager{
@@ -76,10 +75,9 @@ func getHostsByUserManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodGet,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    h.Handler(),
+				MethodType:     http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: h.Handler(),
 			},
 		},
 	}
@@ -341,10 +339,9 @@ func getHostTerminateRouteManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &hostTerminateHandler{},
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &hostTerminateHandler{},
 			},
 		},
 	}
@@ -405,10 +402,9 @@ func getHostChangeRDPPasswordRouteManager(route string, version int) *RouteManag
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &hostChangeRDPPasswordHandler{},
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &hostChangeRDPPasswordHandler{},
 			},
 		},
 	}
@@ -482,10 +478,9 @@ func getHostExtendExpirationRouteManager(route string, version int) *RouteManage
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &hostExtendExpirationHandler{},
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &hostExtendExpirationHandler{},
 			},
 		},
 	}

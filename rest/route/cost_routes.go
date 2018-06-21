@@ -182,10 +182,9 @@ func getCostTaskByProjectRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    c.Handler(),
-				MethodType:        http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: c.Handler(),
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,
@@ -201,7 +200,8 @@ func (h *costTasksByProjectHandler) Handler() RequestHandler {
 }
 
 func (h *costTasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	args := costTasksByProjectArgs{User: GetUser(ctx)}
+	usr := MustHaveUser(ctx)
+	args := costTasksByProjectArgs{User: usr}
 	args.projectID = mux.Vars(r)["project_id"]
 	if args.projectID == "" {
 		return errors.New("request data incomplete")

@@ -172,9 +172,8 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 
 func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUserSettings, error) {
 	oldSettings := APIUserSettings{}
-	err := oldSettings.BuildFromService(current)
-	if err != nil {
-		return oldSettings, err
+	if err := oldSettings.BuildFromService(current); err != nil {
+		return oldSettings, errors.Wrap(err, "problem applying update to user settings")
 	}
 
 	reflectOldSettings := reflect.ValueOf(&oldSettings)

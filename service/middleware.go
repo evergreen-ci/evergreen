@@ -69,15 +69,28 @@ func MustHaveProjectContext(r *http.Request) projectContext {
 // MustHaveUser gets the user from the request or
 // panics if it does not exist.
 func MustHaveUser(r *http.Request) *user.DBUser {
-	u := GetUser(r)
+	u := gimlet.GetUser(r.Context())
 	if u == nil {
 		panic("no user attached to request")
 	}
-	return u
+	usr, ok := u.(*user.DBUser)
+	if !ok {
+		panic("malformed user attached to request")
+	}
+
+	return usr
 }
 
 // ToPluginContext creates a UIContext from the projectContext data.
-func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *user.DBUser) plugin.UIContext {
+func (pc projectContext) ToPluginContext(settings evergreen.Settings, usr gimlet.User) plugin.UIContext {
+	dbUser, ok := usr.(*user.DBUser)
+	grip.CriticalWhen(!ok, message.Fields{
+		"message":  "problem converting user interface to db record",
+		"location": "service/middleware.ToPluginContext",
+		"cause":    "programmer error",
+		"type":     fmt.Sprintf("%T", usr),
+	})
+
 	return plugin.UIContext{
 		Settings:   settings,
 		User:       dbUser,
@@ -87,6 +100,7 @@ func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *us
 		Patch:      pc.Patch,
 		ProjectRef: pc.ProjectRef,
 	}
+
 }
 
 // GetSettings returns the global evergreen settings.
@@ -98,9 +112,10 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 // authenticated and that the user is either a super user or is part of the project context's project's admins.
 func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		// get the project context
 		projCtx := MustHaveProjectContext(r)
-		if dbUser := GetUser(r); dbUser != nil {
+		if dbUser := gimlet.GetUser(ctx); dbUser != nil {
 			if uis.isSuperUser(dbUser) || isAdmin(dbUser, projCtx.ProjectRef) {
 				next(w, r)
 				return
@@ -116,7 +131,7 @@ func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 // execute the onFail handler. If onFail is nil, a simple "unauthorized" error will be sent.
 func requireUser(onSuccess, onFail http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if GetUser(r) == nil {
+		if user := gimlet.GetUser(r.Context()); user == nil {
 			if onFail != nil {
 				onFail(w, r)
 				return
@@ -138,7 +153,9 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 			f(w, r)
 			return
 		}
-		if uis.isSuperUser(GetUser(r)) {
+
+		usr := gimlet.GetUser(r.Context())
+		if usr != nil && uis.isSuperUser(usr) {
 			next(w, r)
 			return
 		}
@@ -149,11 +166,8 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 // isSuperUser verifies that a given user has super user permissions.
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
-func (uis *UIServer) isSuperUser(u *user.DBUser) bool {
-	if u == nil {
-		return false
-	}
-	if util.StringSliceContains(uis.Settings.SuperUsers, u.Id) ||
+func (uis *UIServer) isSuperUser(u gimlet.User) bool {
+	if util.StringSliceContains(uis.Settings.SuperUsers, u.Username()) ||
 		len(uis.Settings.SuperUsers) == 0 {
 		return true
 	}
@@ -164,11 +178,9 @@ func (uis *UIServer) isSuperUser(u *user.DBUser) bool {
 
 // isAdmin returns false if the user is nil or if its id is not
 // located in ProjectRef's Admins field.
-func isAdmin(u *user.DBUser, project *model.ProjectRef) bool {
-	if u == nil {
-		return false
-	}
-	return util.StringSliceContains(project.Admins, u.Id)
+func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
+
+	return util.StringSliceContains(project.Admins, u.Username())
 }
 
 // RedirectToLogin forces a redirect to the login page. The redirect param is set on the query
@@ -201,12 +213,13 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
 			return
 		}
-		if projCtx.ProjectRef != nil && projCtx.ProjectRef.Private && GetUser(r) == nil {
+		usr := gimlet.GetUser(r.Context())
+		if usr == nil && (projCtx.ProjectRef != nil && projCtx.ProjectRef.Private) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
 
-		if projCtx.Patch != nil && GetUser(r) == nil {
+		if usr == nil && projCtx.Patch != nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
@@ -220,7 +233,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 // populateProjectRefs loads all project refs into the context. If includePrivate is true,
 // all available projects will be included, otherwise only public projects will be loaded.
 // Sets IsAdmin to true if the user id is located in a project's admin list.
-func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, dbUser *user.DBUser) error {
+func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, user gimlet.User) error {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return err
@@ -241,7 +254,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 			pc.AllProjects = append(pc.AllProjects, uiProj)
 		}
 
-		if includePrivate && (isSuperUser || isAdmin(dbUser, &p)) {
+		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
 			pc.IsAdmin = true
 		}
 	}
@@ -275,9 +288,9 @@ func (uis *UIServer) getRequestProjectId(r *http.Request) string {
 // This is done by reading in specific variables and inferring other required
 // context variables when necessary (e.g. loading a project based on the task).
 func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
-	dbUser := GetUser(r)
+	dbUser := gimlet.GetUser(r.Context())
 
-	vars := mux.Vars(r)
+	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]
@@ -326,60 +339,11 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	return pc, nil
 }
 
-// UserMiddleware is middleware which checks for session tokens on the Request
-// and looks up and attaches a user for that token if one is found.
-func UserMiddleware(um gimlet.UserManager) func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	return func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		token := ""
-		var err error
-		// Grab token auth from cookies
-		for _, cookie := range r.Cookies() {
-			if cookie.Name == evergreen.AuthTokenCookie {
-				if token, err = url.QueryUnescape(cookie.Value); err == nil {
-					break
-				}
-			}
-		}
-
-		// Grab API auth details from header
-		var authDataAPIKey, authDataName string
-		if len(r.Header["Api-Key"]) > 0 {
-			authDataAPIKey = r.Header["Api-Key"][0]
-		}
-		if len(r.Header["Auth-Username"]) > 0 {
-			authDataName = r.Header["Auth-Username"][0]
-		}
-		if len(authDataName) == 0 && len(r.Header["Api-User"]) > 0 {
-			authDataName = r.Header["Api-User"][0]
-		}
-
-		if len(token) > 0 {
-			ctx := r.Context()
-			dbUser, err := um.GetUserByToken(ctx, token)
-			if err != nil {
-				grip.Infof("Error getting user %s: %+v", authDataName, err)
-			} else {
-				// Get the user's full details from the DB or create them if they don't exists
-				dbUser, err = model.GetOrCreateUser(dbUser.Username(), dbUser.DisplayName(), dbUser.Email())
-				if err != nil {
-					grip.Infof("Error looking up user %s: %+v", dbUser.Username(), err)
-				} else {
-					r = setRequestUser(r, dbUser)
-				}
-			}
-		} else if len(authDataAPIKey) > 0 {
-			dbUser, err := user.FindOne(user.ById(authDataName))
-			if dbUser != nil && err == nil {
-				if dbUser.APIKey != authDataAPIKey {
-					http.Error(rw, "Unauthorized - invalid API key", http.StatusUnauthorized)
-					return
-				}
-				r = setRequestUser(r, dbUser)
-			} else {
-				grip.Errorln("Error getting user:", err)
-			}
-		}
-		next(rw, r)
+func GetUserMiddlewareConf() gimlet.UserMiddlewareConfiguration {
+	return gimlet.UserMiddlewareConfiguration{
+		CookieName:     evergreen.AuthTokenCookie,
+		HeaderKeyName:  evergreen.APIKeyHeader,
+		HeaderUserName: evergreen.APIUserHeader,
 	}
 }
 

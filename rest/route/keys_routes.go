@@ -26,16 +26,14 @@ func getKeysRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &keysGetHandler{},
-				MethodType:        http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &keysGetHandler{},
+				MethodType:     http.MethodGet,
 			},
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &keysPostHandler{},
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &keysPostHandler{},
+				MethodType:     http.MethodPost,
 			},
 		},
 		Version: version,
@@ -164,10 +162,9 @@ func getKeysDeleteRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &keysDeleteHandler{},
-				MethodType:        http.MethodDelete,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &keysDeleteHandler{},
+				MethodType:     http.MethodDelete,
 			},
 		},
 		Version: version,

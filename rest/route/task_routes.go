@@ -26,7 +26,7 @@ const (
 func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	trh := &taskRestartHandler{}
 	taskRestart := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    trh.Handler(),
 		MethodType:        http.MethodPost,
@@ -43,10 +43,9 @@ func getTaskRestartRouteManager(route string, version int) *RouteManager {
 func getTasksByBuildRouteManager(route string, version int) *RouteManager {
 	tbh := &tasksByBuildHandler{}
 	tasksByBuild := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    tbh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: tbh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -60,7 +59,7 @@ func getTasksByBuildRouteManager(route string, version int) *RouteManager {
 func getTaskRouteManager(route string, version int) *RouteManager {
 	tep := &TaskExecutionPatchHandler{}
 	taskExecutionPatch := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext, PrefetchUser},
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
 		Authenticator:     &NoAuthAuthenticator{},
 		RequestHandler:    tep.Handler(),
 		MethodType:        http.MethodPatch,
@@ -68,10 +67,9 @@ func getTaskRouteManager(route string, version int) *RouteManager {
 
 	tgh := &taskGetHandler{}
 	taskGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    tgh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: tgh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -85,10 +83,9 @@ func getTaskRouteManager(route string, version int) *RouteManager {
 func getTasksByProjectAndCommitRouteManager(route string, version int) *RouteManager {
 	tph := &tasksByProjectHandler{}
 	tasksByProj := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    tph.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: tph.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -106,10 +103,9 @@ func getTaskAbortManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    t.Handler(),
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: t.Handler(),
 			},
 		},
 	}
@@ -606,7 +602,7 @@ func (t *taskAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request
 }
 
 func (t *taskAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.AbortTask(t.taskId, GetUser(ctx).Id)
+	err := sc.AbortTask(t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Abort error")

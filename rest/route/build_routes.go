@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -35,10 +36,9 @@ func getBuildByIdRouteManager(route string, version int) *RouteManager {
 				MethodType:     http.MethodGet,
 			},
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &buildChangeStatusHandler{},
-				MethodType:        http.MethodPatch,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &buildChangeStatusHandler{},
+				MethodType:     http.MethodPatch,
 			},
 		},
 	}
@@ -116,7 +116,7 @@ func (b *buildChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 }
 
 func (b *buildChangeStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	user := GetUser(ctx)
+	user := gimlet.GetUser(ctx)
 	if b.Priority != nil {
 		priority := *b.Priority
 		if ok := validPriority(priority, user, sc); !ok {
@@ -169,10 +169,9 @@ func getBuildAbortRouteManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    (&buildAbortHandler{}).Handler(),
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: (&buildAbortHandler{}).Handler(),
+				MethodType:     http.MethodPost,
 			},
 		},
 	}
@@ -189,7 +188,8 @@ func (b *buildAbortHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 }
 
 func (b *buildAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.AbortBuild(b.buildId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.AbortBuild(b.buildId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Abort error")
@@ -234,10 +234,9 @@ func getBuildRestartManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    (&buildRestartHandler{}).Handler(),
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: (&buildRestartHandler{}).Handler(),
+				MethodType:     http.MethodPost,
 			},
 		},
 	}
@@ -254,7 +253,8 @@ func (b *buildRestartHandler) ParseAndValidate(ctx context.Context, r *http.Requ
 }
 
 func (b *buildRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.RestartBuild(b.buildId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.RestartBuild(b.buildId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Restart error")

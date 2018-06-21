@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/gimlet"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -63,7 +64,7 @@ func (s *AdminRouteSuite) SetupSuite() {
 
 func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
 	s.NoError(err)
@@ -140,8 +141,8 @@ func (s *AdminRouteSuite) TestGetAuthentication() {
 	}
 	s.sc.SetSuperUsers([]string{"super_user"})
 
-	superCtx := context.WithValue(context.Background(), evergreen.RequestUser, &superUser)
-	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
+	superCtx := gimlet.AttachUser(context.Background(), &superUser)
+	normalCtx := gimlet.AttachUser(context.Background(), &normalUser)
 
 	s.NoError(s.getHandler.Authenticate(superCtx, s.sc))
 	s.Error(s.getHandler.Authenticate(normalCtx, s.sc))
@@ -156,8 +157,8 @@ func (s *AdminRouteSuite) TestPostAuthentication() {
 	}
 	s.sc.SetSuperUsers([]string{"super_user"})
 
-	superCtx := context.WithValue(context.Background(), evergreen.RequestUser, &superUser)
-	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
+	superCtx := gimlet.AttachUser(context.Background(), &superUser)
+	normalCtx := gimlet.AttachUser(context.Background(), &normalUser)
 
 	s.NoError(s.postHandler.Authenticate(superCtx, s.sc))
 	s.Error(s.postHandler.Authenticate(normalCtx, s.sc))
@@ -169,7 +170,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 
 	routeManager := getRevertRouteManager(route, version)
 	user := &user.DBUser{Id: "userName"}
-	ctx := context.WithValue(context.Background(), evergreen.RequestUser, user)
+	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
 	s.Equal(route, routeManager.Route)
 	s.Equal(version, routeManager.Version)
@@ -213,7 +214,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 func TestRestartRoute(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 	const route = "/admin/restart"
 	const version = 2
 
@@ -264,7 +265,7 @@ func TestRestartRoute(t *testing.T) {
 func TestBannerRoutes(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 	const route = "/admin/banner"
 	const version = 2
 
@@ -327,7 +328,7 @@ func TestAdminEventRoute(t *testing.T) {
 
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	routeManager := getAdminSettingsManager("/admin/settings", 2)
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
