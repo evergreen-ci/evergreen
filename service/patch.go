@@ -96,7 +96,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-	curUser := gimlet.GetUser(r.Context())
+	curUser := GetUser(r)
 	if curUser == nil {
 		http.Error(w, "Not authorized to schedule patch", http.StatusUnauthorized)
 		return

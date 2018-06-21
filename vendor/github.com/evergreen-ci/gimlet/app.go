@@ -89,7 +89,7 @@ func (a *APIApp) ResetMiddleware() {
 	a.middleware = []Middleware{}
 }
 
-// RestWrappers removes all route-specific middleware from the
+// ResetWrappers removes all route-specific middleware from the
 // current application.
 func (a *APIApp) RestWrappers() {
 	a.wrappers = []Middleware{}

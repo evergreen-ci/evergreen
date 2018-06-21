@@ -25,8 +25,7 @@ func TestAppSuite(t *testing.T) {
 
 func (s *AppSuite) SetupTest() {
 	s.app = NewApp()
-	err := grip.GetSender().SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Info})
-	s.NoError(err)
+	grip.GetSender().SetLevel(send.LevelInfo{Threshold: level.Info})
 }
 
 func (s *AppSuite) TestDefaultValuesAreSet() {
@@ -101,7 +100,7 @@ func (s *AppSuite) TestResolveEncountersErrorsWithAnInvalidRoot() {
 	s.Equal(err1, err2)
 
 	// also to run
-	err2 = s.app.Run(context.TODO())
+	err2 = s.app.Run(nil)
 	s.Equal(err1, err2)
 }
 

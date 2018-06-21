@@ -2,12 +2,10 @@ package service
 
 import (
 	"net/http"
-
-	"github.com/evergreen-ci/gimlet"
 )
 
 func (uis *UIServer) notificationsPage(w http.ResponseWriter, r *http.Request) {
-	currentUser := gimlet.GetUser(r.Context())
+	currentUser := GetUser(r)
 	if currentUser == nil {
 		http.Error(w, "No user logged in", http.StatusUnauthorized)
 		return

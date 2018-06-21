@@ -8,11 +8,6 @@ import (
 	"github.com/urfave/negroni"
 )
 
-// AssembleHandler takes a router and one or more applications and
-// returns an application.
-//
-// Eventually the router will become an implementation detail of
-// this/related functions.
 func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) {
 	catcher := grip.NewBasicCatcher()
 	mws := []Middleware{}
@@ -29,7 +24,9 @@ func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) 
 			n.UseHandler(r)
 			router.PathPrefix(app.prefix).Handler(n)
 		} else {
-			mws = append(mws, app.middleware...)
+			for _, m := range app.middleware {
+				mws = append(mws, m)
+			}
 
 			catcher.Add(app.attachRoutes(router, true))
 		}

@@ -4,14 +4,13 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/gimlet"
 )
 
 // GetPluginHandler returns a handler function given the template route and data to go to that page.
 func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projCtx := MustHaveProjectContext(r)
-		u := gimlet.GetUser(r.Context())
+		u := GetUser(r)
 		pluginCtx := plugin.UIContext{
 			Settings:   uis.Settings,
 			User:       u,

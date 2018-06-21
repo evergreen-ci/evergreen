@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
+	"github.com/urfave/negroni"
 )
 
 // restContextKey is the type used to store
@@ -29,27 +30,24 @@ type restV1middleware struct {
 
 func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	vars := gimlet.GetVars(r)
-	ctx := r.Context()
-	pctx, err := model.LoadContext(vars["task_id"], vars["build_id"], vars["version_id"], vars["patch_id"], vars["project_id"])
+	ctx, err := model.LoadContext(vars["task_id"], vars["build_id"], vars["version_id"], vars["patch_id"], vars["project_id"])
 	if err != nil {
 		// Some database lookup failed when fetching the data - log it
 		ra.LoggedError(rw, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
 		return
 	}
 
-	usr := gimlet.GetUser(ctx)
-
-	if pctx.ProjectRef != nil && pctx.ProjectRef.Private && usr == nil {
+	if ctx.ProjectRef != nil && ctx.ProjectRef.Private && GetUser(r) == nil {
 		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	if pctx.Patch != nil && usr == nil {
+	if ctx.Patch != nil && GetUser(r) == nil {
 		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	r = setRestContext(r, &pctx)
+	r = setRestContext(r, &ctx)
 	next(rw, r)
 }
 
@@ -71,7 +69,7 @@ func GetRESTv1App(evgService restAPIService, um gimlet.UserManager) (*gimlet.API
 	app.ResetMiddleware()
 	app.SetPrefix(evergreen.RestRoutePrefix)
 	app.AddMiddleware(NewRecoveryLogger())
-	app.AddMiddleware(gimlet.UserMiddleware(um, GetUserMiddlewareConf()))
+	app.AddMiddleware(negroni.HandlerFunc(UserMiddleware(um)))
 	app.AddWrapper(&restV1middleware{rest})
 
 	// REST routes
