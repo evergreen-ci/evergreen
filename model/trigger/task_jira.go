@@ -52,9 +52,10 @@ type jiraTestFailure struct {
 }
 
 type jiraBuilder struct {
-	project   string
-	issueType string
-	uiRoot    string
+	project    string
+	issueType  string
+	uiRoot     string
+	jiraConfig *evergreen.JiraConfig
 
 	Task        *task.Task
 	Build       *build.Build
@@ -90,7 +91,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 		Description: description,
 	}
 
-	if isXgenProjBF("mongodb", j.project) { // TODO
+	if isXgenProjBF(j.jiraConfig.Host, j.project) {
 		failedTests := []string{}
 		for _, t := range j.FailedTests {
 			failedTests = append(failedTests, t.TestFile)
@@ -274,7 +275,13 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 		ProjectRef: projectRef,
 		Build:      buildDoc,
 		Host:       hostDoc,
+		jiraConfig: &evergreen.JiraConfig{},
 	}
+
+	if err = b.jiraConfig.Get(); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch jira settings while building jira task payload")
+	}
+
 	for i := range j.task.LocalTestResults {
 		if j.task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			b.FailedTests = append(b.FailedTests, j.task.LocalTestResults[i])
