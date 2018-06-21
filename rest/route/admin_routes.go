@@ -72,18 +72,16 @@ func (h *legacyAdminGetHandler) Execute(ctx context.Context, sc data.Connector) 
 func getAdminSettingsManager(route string, version int) *RouteManager {
 	agh := &adminGetHandler{}
 	adminGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    agh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: agh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	aph := &adminPostHandler{}
 	adminPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    aph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: aph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	adminRoute := RouteManager{
@@ -174,18 +172,16 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 func getBannerRouteManager(route string, version int) *RouteManager {
 	bph := &bannerPostHandler{}
 	bannerPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    bph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: bph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	bgh := &bannerGetHandler{}
 	bannerGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    bgh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: bgh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	bannerRoute := RouteManager{
@@ -263,10 +259,9 @@ func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 func getServiceFlagsRouteManager(route string, version int) *RouteManager {
 	fph := &flagsPostHandler{}
 	flagsPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    fph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: fph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	flagsRoute := RouteManager{
@@ -319,10 +314,9 @@ func getRestartRouteManager(queue amboy.Queue) routeManagerFactory {
 		}
 
 		restartHandler := MethodHandler{
-			PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-			Authenticator:     &SuperUserAuthenticator{},
-			RequestHandler:    rh.Handler(),
-			MethodType:        http.MethodPost,
+			Authenticator:  &SuperUserAuthenticator{},
+			RequestHandler: rh.Handler(),
+			MethodType:     http.MethodPost,
 		}
 
 		restartRoute := RouteManager{
@@ -395,10 +389,9 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 func getRevertRouteManager(route string, version int) *RouteManager {
 	rh := revertHandler{}
 	handler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    rh.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: rh.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	return &RouteManager{
@@ -522,10 +515,9 @@ func getClearTaskQueueRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &SuperUserAuthenticator{},
-				RequestHandler:    &clearTaskQueueHandler{},
-				MethodType:        http.MethodDelete,
+				Authenticator:  &SuperUserAuthenticator{},
+				RequestHandler: &clearTaskQueueHandler{},
+				MethodType:     http.MethodDelete,
 			},
 		},
 		Version: version,

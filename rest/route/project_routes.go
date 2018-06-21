@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -30,10 +31,9 @@ func getProjectRouteManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &NoAuthAuthenticator{},
-				RequestHandler:    p.Handler(),
-				MethodType:        http.MethodGet,
+				Authenticator:  &NoAuthAuthenticator{},
+				RequestHandler: p.Handler(),
+				MethodType:     http.MethodGet,
 			},
 		},
 	}
@@ -48,7 +48,10 @@ func (p *projectGetHandler) Handler() RequestHandler {
 }
 
 func (p *projectGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = projectGetArgs{User: GetUser(ctx)}
+	usrabs := gimlet.GetUser(ctx)
+	u, _ := usrabs.(*user.DBUser)
+
+	p.Args = projectGetArgs{User: u}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }

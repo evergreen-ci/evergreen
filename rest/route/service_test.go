@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -20,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
@@ -803,7 +803,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 		Convey("then should error on empty body", func() {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -826,7 +826,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -848,7 +848,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -872,7 +872,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldBeNil)
@@ -944,7 +944,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		Convey("should error on empty project", func() {
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -955,7 +955,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			projCtx.Task = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -1000,6 +1000,8 @@ func TestTaskGetHandler(t *testing.T) {
 					},
 				}
 
+				req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
+
 				rr := httptest.NewRecorder()
 				r.ServeHTTP(rr, req)
 				So(rr.Code, ShouldEqual, http.StatusOK)
@@ -1036,6 +1038,7 @@ func TestTaskGetHandler(t *testing.T) {
 					So(err, ShouldBeNil)
 					req.Header.Add("Api-Key", "Key")
 					req.Header.Add("Api-User", "User")
+					req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
 
 					rr := httptest.NewRecorder()
 					r.ServeHTTP(rr, req)
@@ -1051,6 +1054,7 @@ func TestTaskGetHandler(t *testing.T) {
 					So(err, ShouldBeNil)
 					req.Header.Add("Api-Key", "Key")
 					req.Header.Add("Api-User", "User")
+					req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
 
 					rr := httptest.NewRecorder()
 					r.ServeHTTP(rr, req)

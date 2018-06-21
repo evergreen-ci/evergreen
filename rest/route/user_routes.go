@@ -22,18 +22,16 @@ type userSettingsPostHandler struct {
 func getUserSettingsRouteManager(route string, version int) *RouteManager {
 	h := userSettingsPostHandler{}
 	userSettingsPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    h.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: h.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	i := userSettingsGetHandler{}
 	userSettingsGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    i.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: i.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	return &RouteManager{
@@ -60,7 +58,7 @@ func (h *userSettingsPostHandler) Execute(ctx context.Context, sc data.Connector
 	}
 	changedSettings, err := model.ApplyUserChanges(u.Settings, h.settings)
 	if err != nil {
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrapf(err, "problem applying user settings")
 	}
 	userSettingsInterface, err := changedSettings.ToService()
 	if err != nil {

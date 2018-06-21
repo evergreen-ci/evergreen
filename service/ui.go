@@ -374,6 +374,8 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 
 	if u, ok := userCtx.(*user.DBUser); ok {
 		viewData.User = u
+	} else if userCtx != nil {
+		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
 	}
 
 	viewData.Banner = settings.Banner

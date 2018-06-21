@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -50,7 +50,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	_, err := model.GetOrCreateUser("me", "me", "foo@bar.com")
 	s.NoError(err)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := map[string]interface{}{
 		"slack_username": "@test",
 		"notifications": map[string]string{
@@ -86,7 +86,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 		},
 	}
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me", Settings: settings})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me", Settings: settings})
 	body := map[string]interface{}{
 		"notifications": map[string]string{
 			"build_break": "slack",

@@ -179,6 +179,7 @@ func (uis *UIServer) isSuperUser(u gimlet.User) bool {
 // isAdmin returns false if the user is nil or if its id is not
 // located in ProjectRef's Admins field.
 func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
+
 	return util.StringSliceContains(project.Admins, u.Username())
 }
 
@@ -213,13 +214,12 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		usr := gimlet.GetUser(r.Context())
-
-		if projCtx.ProjectRef != nil && projCtx.ProjectRef.Private && usr == nil {
+		if usr == nil && (projCtx.ProjectRef != nil && projCtx.ProjectRef.Private) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
 
-		if projCtx.Patch != nil && usr == nil {
+		if usr == nil && projCtx.Patch != nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
