@@ -609,23 +609,24 @@ func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 
 	// if the commit author wants build break notifications, don't send to admins
 	if v.AuthorID != "" {
-		subscriber, _ := makeBuildBreakSubscriber(v.AuthorID)
-		if subscriber != nil {
+		author, err := user.FindOne(user.ById(v.AuthorID))
+		if err != nil {
+			return errors.Wrap(err, "unable to retrieve user")
+		}
+		if author.Settings.Notifications.BuildBreakID.Valid() {
 			return nil
 		}
 	}
 	// if the project has build break notifications, subscribe admins if no one subscribed
 	catcher := grip.NewSimpleCatcher()
-	if projectRef.NotifyOnBuildFailure && len(subscribers) == 0 {
-		for _, admin := range projectRef.Admins {
-			subscriber, err := makeBuildBreakSubscriber(admin)
-			if err != nil {
-				catcher.Add(err)
-				continue
-			}
-			if subscriber != nil {
-				subscribers = append(subscribers, *subscriber)
-			}
+	for _, admin := range projectRef.Admins {
+		subscriber, err := makeBuildBreakSubscriber(admin)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		if subscriber != nil {
+			subscribers = append(subscribers, *subscriber)
 		}
 	}
 
