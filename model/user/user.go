@@ -49,6 +49,8 @@ type NotificationPreferences struct {
 	BuildBreakID  bson.ObjectId              `bson:"build_break_id,omitempty" json:"-"`
 	PatchFinish   UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
 	PatchFinishID bson.ObjectId              `bson:"patch_finish_id,omitempty" json:"-"`
+	SpawnHost     UserSubscriptionPreference `bson:"spawn_host" json:"spawn_host"`
+	SpawnHostID   bson.ObjectId              `bson:"spawn_host_id,omitempty" json:"-"`
 }
 
 type UserSubscriptionPreference string

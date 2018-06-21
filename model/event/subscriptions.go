@@ -403,3 +403,21 @@ func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subs
 		Subscriber: sub,
 	}
 }
+
+func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
+	return Subscription{
+		Type:    ResourceTypeHost,
+		Trigger: triggerOutcome,
+		Selectors: []Selector{
+			{
+				Type: "object",
+				Data: "host",
+			},
+			{
+				Type: "owner",
+				Data: owner,
+			},
+		},
+		Subscriber: sub,
+	}
+}

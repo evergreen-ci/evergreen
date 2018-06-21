@@ -116,6 +116,8 @@ type APINotificationPreferences struct {
 	BuildBreakID  APIString `json:"build_break_id,omitempty"`
 	PatchFinish   APIString `json:"patch_finish"`
 	PatchFinishID APIString `json:"patch_finish_id,omitempty"`
+	SpawnHost     APIString `json:"spawn_host"`
+	SpawnHostID   APIString `json:"spawn_host_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
@@ -126,11 +128,15 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	case user.NotificationPreferences:
 		n.BuildBreak = ToAPIString(string(v.BuildBreak))
 		n.PatchFinish = ToAPIString(string(v.PatchFinish))
+		n.SpawnHost = ToAPIString(string(v.SpawnHost))
 		if v.BuildBreakID != "" {
 			n.BuildBreakID = ToAPIString(v.BuildBreakID.Hex())
 		}
 		if v.PatchFinishID != "" {
 			n.PatchFinishID = ToAPIString(v.PatchFinishID.Hex())
+		}
+		if v.SpawnHostID != "" {
+			n.SpawnHostID = ToAPIString(v.SpawnHostID.Hex())
 		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
@@ -144,6 +150,7 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	}
 	buildbreak := FromAPIString(n.BuildBreak)
 	patchFinish := FromAPIString(n.PatchFinish)
+	spawnHost := FromAPIString(n.SpawnHost)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
 		return nil, errors.New("Build break preference is not a valid type")
 	}
@@ -153,6 +160,7 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	preferences := user.NotificationPreferences{
 		BuildBreak:  user.UserSubscriptionPreference(buildbreak),
 		PatchFinish: user.UserSubscriptionPreference(patchFinish),
+		SpawnHost:   user.UserSubscriptionPreference(spawnHost),
 	}
 	var err error
 	if n.BuildBreakID != nil {
@@ -163,6 +171,12 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	}
 	if n.PatchFinishID != nil {
 		preferences.PatchFinishID, err = user.FormatObjectID(FromAPIString(n.PatchFinishID))
+		if err != nil {
+			return nil, err
+		}
+	}
+	if n.SpawnHostID != nil {
+		preferences.SpawnHostID, err = user.FormatObjectID(FromAPIString(n.SpawnHostID))
 		if err != nil {
 			return nil, err
 		}
