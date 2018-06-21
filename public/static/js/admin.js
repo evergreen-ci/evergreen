@@ -36,6 +36,7 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
       });
 
       $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : "";
+      $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : "";
 
       $scope.Settings = resp.data;
     }
@@ -85,6 +86,28 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     } catch(e) {
       alert("Error parsing plugin yaml: " + e);
       return;
+    }
+
+    try {
+      $scope.Settings.container_pools.pools = jsyaml.safeLoad($scope.tempContainerPools);
+    } catch(e) {
+      alert("Error parsing container pools yaml: " + e);
+      return;
+    }
+
+    if ($scope.tempContainerPools === null || $scope.tempContainerPools === undefined || $scope.tempContainerPools == "") {
+      $scope.Settings.container_pools.pools = [];
+    }
+
+    // do not save settings if duplicate container pool IDs found
+    var uniqueIds = new Set()
+    for (var i = 0; i < $scope.Settings.container_pools.pools.length; i++) {
+      var p = $scope.Settings.container_pools.pools[i]
+      if (uniqueIds.has(p.id)) {
+        alert("Error saving settings: found duplicate container pool ID: " + p.id);
+        return;
+      }
+      uniqueIds.add(p.id)
     }
 
     if ($scope.tempPlugins === null || $scope.tempPlugins === undefined || $scope.tempPlugins == "") {
