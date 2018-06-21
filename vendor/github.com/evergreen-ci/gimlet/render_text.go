@@ -78,11 +78,8 @@ func (r *textRenderer) Render(out io.Writer, data interface{}, entryPoint string
 	if err != nil {
 		return err
 	}
-	err = t.ExecuteTemplate(out, entryPoint, data)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return t.ExecuteTemplate(out, entryPoint, data)
 }
 
 func (r *textRenderer) WriteResponse(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) {
@@ -95,7 +92,7 @@ func (r *textRenderer) WriteResponse(w http.ResponseWriter, status int, data int
 
 	w.Header().Set("Content-Type", "text/plain; charset="+r.opts.Encoding)
 	w.WriteHeader(status)
-	w.Write(out.Bytes())
+	_, _ = w.Write(out.Bytes())
 }
 
 // StreamText calls Text() on its args and writes the output directly to the response with a text/plain Content-Type.

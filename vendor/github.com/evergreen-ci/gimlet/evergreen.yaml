@@ -1,0 +1,158 @@
+stepback: false 
+command_type: test
+ignore:
+    - "*.md" # don't schedule tests if a commit only changes markdown files
+    - "*.rst"
+    - "buildscripts/*" # our scripts are untested, so don't schedule tests for them
+
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/gimlet
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  run-make:
+    command: subprocess.exec
+    params:
+      working_dir: gopath/src/github.com/evergreen-ci/gimlet
+      binary: make
+      args: ["${make_args|}", "${target}"]
+      env:
+        DISABLE_COVERAGE: ${disable_coverage}
+        GOARCH: ${goarch}
+        GO_BIN_PATH: ${gobin}
+        GOOS: ${goos}
+        GOPATH: ${workdir}/gopath
+        GOROOT: ${goroot}
+        RACE_ENABLED: ${race_enabed}
+        TEST_TIMEOUT: ${test_timeout}
+
+
+#######################################
+#                Tasks                #
+#######################################
+post:
+  - command: gotest.parse_files
+    type: setup
+    params:
+      files:
+        - "gopath/src/github.com/evergreen-ci/gimlet/build/output.*"
+        - "gopath/src/github.com/evergreen-ci/gimlet/build/test.*.out"
+        - "gopath/src/github.com/evergreen-ci/gimlet/build/race.*.out"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/gimlet/build/output.*.coverage.html"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/html
+      permissions: public-read
+      display_name: "(html) coverage:"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/gimlet/build/output.*.coverage"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: public-read
+      display_name: "(txt) coverage:"
+
+tasks:
+  # the build (with and without the race detector) and lint tasks use
+  # a template that does not include test result parsing.
+  - name: lint
+    tags: ["report"]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/evergreen-ci/gimlet
+      - func: run-make
+        vars: { target: "lint" }
+
+  - name: coverage
+    tags: [ "report" ]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/evergreen-ci/gimlet
+      - func: run-make
+        vars:
+          target: "coverage-html"
+          make_args: "-k"
+
+  - <<: *run-build
+    tags: ["test"]
+    name: test
+
+  - <<: *run-build
+    tags: ["race"]
+    name: race
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: race-detector
+    display_name: Race Detector (Arch Linux)
+    expansions:
+      race_enabed: true
+      test_timeout: 15m
+      disable_coverage: yes
+    run_on:
+      - archlinux-test
+    tasks:
+      - name: ".race"
+
+  - name: coverage
+    display_name: Coverage
+    run_on:
+      - ubuntu1604-test
+    expansions:
+      test_timeout: 15m
+      gobin: /opt/go1.8/go/bin/go
+      goroot: /opt/go1.8/go
+    tasks:
+      - name: ".report"
+        stepback: false
+
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    expansions:
+      gobin: /opt/go1.8/go/bin/go
+      disable_coverage: yes
+      goroot: /opt/go1.8/go
+    run_on:
+      - ubuntu1604-test
+    tasks:
+      - ".test"
+
+  - name: macos
+    display_name: macOS 10.12
+    expansions:
+      disable_coverage: yes
+      gobin: /usr/local/go1.8/go/bin/go
+      goroot: /usr/local/go1.8/go
+    run_on:
+      - macos-1012
+    tasks:
+      - name: ".test"

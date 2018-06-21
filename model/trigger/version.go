@@ -1,14 +1,13 @@
 package trigger
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -97,14 +96,25 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 
 	data := commonTemplateData{
 		ID:              t.version.Id,
+		DisplayName:     t.version.Id,
 		Object:          objectVersion,
 		Project:         t.version.Identifier,
-		URL:             fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.version.Id),
+		URL:             versionLink(&t.uiConfig, t.version.Id),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
+	slackColor := evergreenFailColor
 	if data.PastTenseStatus == evergreen.VersionSucceeded {
 		data.PastTenseStatus = "succeeded"
+		slackColor = evergreenSuccessColor
+	}
+	data.slack = []message.SlackAttachment{
+		{
+			Title:     "Evergreen Version",
+			TitleLink: data.URL,
+			Color:     slackColor,
+			Text:      t.version.Message,
+		},
 	}
 
 	return &data, nil

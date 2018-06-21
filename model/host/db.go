@@ -105,12 +105,15 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	)
 }
 
+// AllIdleEphemeral finds all running ephemeral hosts without containers
+// that have no running tasks.
 func AllIdleEphemeral() ([]Host, error) {
 	query := db.Query(bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StartedByKey:   evergreen.User,
-		StatusKey:      evergreen.HostRunning,
-		ProviderKey:    bson.M{"$in": evergreen.ProviderSpawnable},
+		RunningTaskKey:   bson.M{"$exists": false},
+		StartedByKey:     evergreen.User,
+		StatusKey:        evergreen.HostRunning,
+		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+		HasContainersKey: bson.M{"$ne": true},
 	})
 
 	return Find(query)

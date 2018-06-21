@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -36,13 +36,13 @@ func (self *AttachPlugin) Name() string                           { return Attac
 func (self *AttachPlugin) Configure(map[string]interface{}) error { return nil }
 
 // stripHiddenFiles is a helper for only showing users the files they are allowed to see.
-func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact.File {
+func stripHiddenFiles(files []artifact.File, pluginUser gimlet.User) []artifact.File {
 	publicFiles := []artifact.File{}
 	for _, file := range files {
 		switch {
 		case file.Visibility == artifact.None:
 			continue
-		case file.Visibility == artifact.Private && pluginUser == nil:
+		case file.Visibility == artifact.Private && pluginUser != nil:
 			continue
 		default:
 			publicFiles = append(publicFiles, file)

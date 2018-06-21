@@ -64,7 +64,7 @@ func (s *RenderSuite) TestBaseHTML() {
 		err := s.render.Render(out, s.testData, "base", "test1.html", "test2.html")
 
 		s.NoError(err)
-		s.Equal(s.expected, string(out.Bytes()))
+		s.Equal(s.expected, out.String())
 	}
 
 	if r, ok := s.render.(*htmlRenderer); ok {
@@ -116,7 +116,7 @@ func (s *RenderSuite) TestWriteHTTP() {
 	}
 	htmlHandler(w, req)
 
-	s.Equal(s.expected, string(w.Body.Bytes()))
+	s.Equal(s.expected, w.Body.String())
 	s.Equal(http.StatusOK, w.Code)
 
 	w = httptest.NewRecorder()
