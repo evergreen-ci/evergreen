@@ -543,20 +543,6 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 0)
 
-	// just a user
-	subs = []event.Subscription{}
-	assert.NoError(db.Clear(event.SubscriptionsCollection))
-	v2 := version.Version{
-		Id:         "v1",
-		Identifier: proj1.Identifier,
-		Requester:  evergreen.RepotrackerVersionRequester,
-		Branch:     "branch",
-		AuthorID:   u.Id,
-	}
-	assert.NoError(addBuildBreakSubscriptions(&v2, &proj1))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
-	assert.Len(subs, 1)
-
 	// just a project
 	subs = []event.Subscription{}
 	assert.NoError(db.Clear(event.SubscriptionsCollection))
