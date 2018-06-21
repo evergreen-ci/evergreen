@@ -32,14 +32,14 @@ func WriteYAML(w http.ResponseWriter, data interface{}) {
 	WriteYAMLResponse(w, http.StatusOK, data)
 }
 
-// WriteYAMLError is a helper method to write YAML data to the body of
+// WriteErrorYAML is a helper method to write YAML data to the body of
 // an HTTP request and return 400 (user error.)
 func WriteYAMLError(w http.ResponseWriter, data interface{}) {
 	// 400
 	WriteYAMLResponse(w, http.StatusBadRequest, data)
 }
 
-// WriteYAMLInternalError is a helper method to write YAML data to the
+// WriteInternalErrorYAML is a helper method to write YAML data to the
 // body of an HTTP request and return 500 (internal error.)
 func WriteYAMLInternalError(w http.ResponseWriter, data interface{}) {
 	// 500

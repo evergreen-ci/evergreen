@@ -16,5 +16,4 @@ const (
 	authHandlerKey
 	userManagerKey
 	userKey
-	loggingAnnotationsKey
 )

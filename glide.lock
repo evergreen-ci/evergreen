@@ -122,4 +122,4 @@ imports:
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/evergreen-ci/gimlet
-    version: e4f8d7888ebe829a47f343cd51ecb77a68538e60
+    version: a4bf40f727e2e04f13065d94cb45cc2fbe9ff2af

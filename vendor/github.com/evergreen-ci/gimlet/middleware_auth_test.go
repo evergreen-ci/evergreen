@@ -14,13 +14,16 @@ func TestMiddlewareValueAccessors(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	a := GetAuthenticator(ctx)
+	a, ok := GetAuthenticator(ctx)
+	assert.False(ok)
 	assert.Nil(a)
 
-	userm := GetUserManager(ctx)
+	userm, ok := GetUserManager(ctx)
+	assert.False(ok)
 	assert.Nil(userm)
 
-	usr := GetUser(ctx)
+	usr, ok := GetUser(ctx)
+	assert.False(ok)
 	assert.Nil(usr)
 
 	var idone, idtwo int
@@ -36,13 +39,16 @@ func TestMiddlewareValueAccessors(t *testing.T) {
 	ctx = context.WithValue(ctx, userManagerKey, true)
 	ctx = context.WithValue(ctx, userKey, true)
 
-	a = GetAuthenticator(ctx)
+	a, ok = GetAuthenticator(ctx)
+	assert.False(ok)
 	assert.Nil(a)
 
-	userm = GetUserManager(ctx)
+	userm, ok = GetUserManager(ctx)
+	assert.False(ok)
 	assert.Nil(userm)
 
-	usr = GetUser(ctx)
+	usr, ok = GetUser(ctx)
+	assert.False(ok)
 	assert.Nil(usr)
 }
 
@@ -112,6 +118,7 @@ func TestAuthRequiredBehavior(t *testing.T) {
 	// try again with an authenticator...
 	//
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
+	rw = httptest.NewRecorder()
 	rw = httptest.NewRecorder()
 	ctx := req.Context()
 	ctx = setAuthenticator(ctx, authenticator)
@@ -214,10 +221,12 @@ func TestAuthAttachWrapper(t *testing.T) {
 		rctx := r.Context()
 		assert.NotEqual(rctx, baseCtx)
 
-		um := GetUserManager(rctx)
+		um, ok := GetUserManager(rctx)
+		assert.True(ok)
 		assert.Equal(usermanager, um)
 
-		ath := GetAuthenticator(rctx)
+		ath, ok := GetAuthenticator(rctx)
+		assert.True(ok)
 		assert.Equal(authenticator, ath)
 
 		counter++
@@ -267,6 +276,7 @@ func TestRoleRestrictedAccessMiddleware(t *testing.T) {
 	// try again with an authenticator...
 	//
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
+	rw = httptest.NewRecorder()
 	rw = httptest.NewRecorder()
 	ctx := req.Context()
 	ctx = setAuthenticator(ctx, authenticator)
@@ -368,6 +378,7 @@ func TestGroupAccessRequired(t *testing.T) {
 	// try again with an authenticator...
 	//
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
+	rw = httptest.NewRecorder()
 	rw = httptest.NewRecorder()
 	ctx := req.Context()
 	ctx = setAuthenticator(ctx, authenticator)
@@ -471,6 +482,7 @@ func TestRestrictedAccessMiddleware(t *testing.T) {
 	// try again with a user attached but no authenticator...
 	//
 	req = httptest.NewRequest("GET", "http://localhost/bar", body)
+	rw = httptest.NewRecorder()
 	rw = httptest.NewRecorder()
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, userKey, user)

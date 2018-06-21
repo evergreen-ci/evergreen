@@ -14,6 +14,7 @@ type User interface {
 	DisplayName() string
 	Email() string
 	Username() string
+	IsNil() bool
 	GetAPIKey() string
 	Roles() []string
 }

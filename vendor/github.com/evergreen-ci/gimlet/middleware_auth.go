@@ -45,37 +45,32 @@ func setUserManager(ctx context.Context, um UserManager) context.Context {
 	return context.WithValue(ctx, userManagerKey, um)
 }
 
-// GetAuthenticator returns an the attached interface to the
-// context. If there is no authenticator attached, then
-// GetAutenticator returns nil.
-func GetAuthenticator(ctx context.Context) Authenticator {
+func GetAuthenticator(ctx context.Context) (Authenticator, bool) {
 	a := ctx.Value(authHandlerKey)
 	if a == nil {
-		return nil
+		return nil, false
 	}
 
 	amgr, ok := a.(Authenticator)
 	if !ok {
-		return nil
+		return nil, false
 	}
 
-	return amgr
+	return amgr, true
 }
 
-// GetUserManager returns the attached UserManager to the current
-// request, returning nil if no such object is attached.
-func GetUserManager(ctx context.Context) UserManager {
+func GetUserManager(ctx context.Context) (UserManager, bool) {
 	m := ctx.Value(userManagerKey)
 	if m == nil {
-		return nil
+		return nil, false
 	}
 
 	umgr, ok := m.(UserManager)
 	if !ok {
-		return nil
+		return nil, false
 	}
 
-	return umgr
+	return umgr, true
 }
 
 // NewRoleRequired provides middlesware that requires a specific role
@@ -90,8 +85,8 @@ type requiredRole struct {
 func (rr *requiredRole) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 
-	user := GetUser(ctx)
-	if user == nil {
+	user, ok := GetUser(ctx)
+	if !ok {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -125,14 +120,14 @@ type requiredGroup struct {
 func (rg *requiredGroup) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 
-	authenticator := GetAuthenticator(ctx)
-	if authenticator == nil {
+	authenticator, ok := GetAuthenticator(ctx)
+	if !ok {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	user := GetUser(ctx)
-	if user == nil {
+	user, ok := GetUser(ctx)
+	if !ok {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -154,24 +149,24 @@ func (rg *requiredGroup) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	next(rw, r)
 }
 
-// NewRequireAuthHandler provides middlesware that requires that users be
+// NewRequireAuth provides middlesware that requires that users be
 // authenticated generally to access the resource, but does no
 // validation of their access.
 func NewRequireAuthHandler() Middleware { return &requireAuthHandler{} }
 
 type requireAuthHandler struct{}
 
-func (*requireAuthHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (_ *requireAuthHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 
-	authenticator := GetAuthenticator(ctx)
-	if authenticator == nil {
+	authenticator, ok := GetAuthenticator(ctx)
+	if !ok {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	user := GetUser(ctx)
-	if user == nil {
+	user, ok := GetUser(ctx)
+	if !ok {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -209,14 +204,14 @@ type restrictedAccessHandler struct {
 func (ra *restrictedAccessHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 
-	user := GetUser(ctx)
-	if user == nil {
+	user, ok := GetUser(ctx)
+	if !ok {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	authenticator := GetAuthenticator(ctx)
-	if authenticator == nil {
+	authenticator, ok := GetAuthenticator(ctx)
+	if !ok {
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}

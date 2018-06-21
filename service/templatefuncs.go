@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/gimlet"
 )
 
 const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Read-Evergreen"
@@ -54,10 +53,9 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[stri
 
 		// GetTimezone returns the timezone for a user.
 		// Defaults to "New_York".
-		"GetTimezone": func(u gimlet.User) string {
-			usr, ok := u.(*user.DBUser)
-			if ok && usr != nil && usr.Settings.Timezone != "" {
-				return usr.Settings.Timezone
+		"GetTimezone": func(u *user.DBUser) string {
+			if u != nil && u.Settings.Timezone != "" {
+				return u.Settings.Timezone
 			}
 			return "America/New_York"
 		},
