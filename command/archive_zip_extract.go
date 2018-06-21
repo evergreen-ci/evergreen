@@ -54,10 +54,6 @@ func (e *zipExtract) Execute(ctx context.Context,
 		e.TargetDirectory = filepath.Join(conf.WorkDir, e.TargetDirectory)
 	}
 
-	if e.TargetDirectory == "" {
-		return errors.New("must specify a target directory")
-	}
-
 	if !filepath.IsAbs(e.ArchivePath) {
 		e.ArchivePath = filepath.Join(conf.WorkDir, e.ArchivePath)
 	}
