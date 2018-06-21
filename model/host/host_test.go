@@ -1907,17 +1907,17 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		require.NoError(hosts[i].Insert())
 	}
 
-	found, err := AllHostsSpawnedByTasksTimedOut()
+	found, err := allHostsSpawnedByTasksTimedOut()
 	assert.NoError(err)
 	assert.Len(found, 1)
 	assert.Equal("running_host_timeout", found[0].Id)
 
-	found, err = AllHostsSpawnedByFinishedTasks()
+	found, err = allHostsSpawnedByFinishedTasks()
 	assert.NoError(err)
 	assert.Len(found, 1)
 	assert.Equal("running_host_task", found[0].Id)
 
-	found, err = AllHostsSpawnedByFinishedBuilds()
+	found, err = allHostsSpawnedByFinishedBuilds()
 	assert.NoError(err)
 	assert.Len(found, 1)
 	assert.Equal("running_host_build", found[0].Id)

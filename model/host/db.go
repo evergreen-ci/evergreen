@@ -123,15 +123,15 @@ func AllIdleEphemeral() ([]Host, error) {
 func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 	catcher := grip.NewBasicCatcher()
 	var hosts []Host
-	timedOutHosts, err := AllHostsSpawnedByTasksTimedOut()
+	timedOutHosts, err := allHostsSpawnedByTasksTimedOut()
 	hosts = append(hosts, timedOutHosts...)
 	catcher.Add(err)
 
-	taskHosts, err := AllHostsSpawnedByFinishedTasks()
+	taskHosts, err := allHostsSpawnedByFinishedTasks()
 	hosts = append(hosts, taskHosts...)
 	catcher.Add(err)
 
-	buildHosts, err := AllHostsSpawnedByFinishedBuilds()
+	buildHosts, err := allHostsSpawnedByFinishedBuilds()
 	hosts = append(hosts, buildHosts...)
 	catcher.Add(err)
 
@@ -141,8 +141,8 @@ func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 	return hosts, nil
 }
 
-// AllHostsSpawnedByTasksTimedOut finds hosts spawned by tasks that should be terminated because they are past their timeout.
-func AllHostsSpawnedByTasksTimedOut() ([]Host, error) {
+// allHostsSpawnedByTasksTimedOut finds hosts spawned by tasks that should be terminated because they are past their timeout.
+func allHostsSpawnedByTasksTimedOut() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey: evergreen.HostRunning,
 		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTimeoutKey): bson.M{"$lte": time.Now()},
@@ -150,8 +150,8 @@ func AllHostsSpawnedByTasksTimedOut() ([]Host, error) {
 	return Find(query)
 }
 
-// AllHostsSpawnedByFinishedTasks finds hosts spawned by tasks that should be terminated because their tasks have finished.
-func AllHostsSpawnedByFinishedTasks() ([]Host, error) {
+// allHostsSpawnedByFinishedTasks finds hosts spawned by tasks that should be terminated because their tasks have finished.
+func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 	const runningTasks = "running_tasks"
 	pipeline := []bson.M{
 		{"$lookup": bson.M{
@@ -162,6 +162,7 @@ func AllHostsSpawnedByFinishedTasks() ([]Host, error) {
 		}},
 		{"$unwind": "$" + runningTasks},
 		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$project": bson.M{runningTasks: 0}},
 	}
 	var hosts []Host
 	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
@@ -170,8 +171,8 @@ func AllHostsSpawnedByFinishedTasks() ([]Host, error) {
 	return hosts, nil
 }
 
-// AllHostsSpawnedByFinishedBuilds finds hosts spawned by tasks that should be terminated because their builds have finished.
-func AllHostsSpawnedByFinishedBuilds() ([]Host, error) {
+// allHostsSpawnedByFinishedBuilds finds hosts spawned by tasks that should be terminated because their builds have finished.
+func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 	const runningBuilds = "running_builds"
 	pipeline := []bson.M{
 		{"$lookup": bson.M{
@@ -182,6 +183,7 @@ func AllHostsSpawnedByFinishedBuilds() ([]Host, error) {
 		}},
 		{"$unwind": "$" + runningBuilds},
 		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$project": bson.M{runningBuilds: 0}},
 	}
 	var hosts []Host
 	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
