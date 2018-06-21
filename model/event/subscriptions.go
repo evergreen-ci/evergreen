@@ -39,6 +39,8 @@ const (
 	OwnerTypeProject                 OwnerType = "project"
 	TaskDurationKey                            = "task-duration-secs"
 	TaskPercentChangeKey                       = "task-percent-change"
+	BuildDurationKey                           = "build-duration-secs"
+	BuildPercentChangeKey                      = "build-percent-change"
 	ImplicitSubscriptionPatchOutcome           = "patch-outcome"
 	ImplicitSubscriptionBuildBreak             = "build-break"
 )
@@ -263,24 +265,40 @@ func (s *Subscription) runCustomValidation() error {
 	catcher := grip.NewBasicCatcher()
 
 	if taskDurationVal, ok := s.TriggerData[TaskDurationKey]; ok {
-		taskDuration, err := strconv.Atoi(taskDurationVal)
-		if err != nil {
-			catcher.Add(fmt.Errorf("%s must be a number", taskDurationVal))
-		} else if taskDuration < 0 {
-			catcher.Add(fmt.Errorf("%d cannot be negative", taskDuration))
-		}
+		catcher.Add(validatePositiveInt(taskDurationVal))
 	}
-
 	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
-		taskPercent, err := util.TryParseFloat(taskPercentVal)
-		if err != nil {
-			return err
-		}
-		if taskPercent <= 0 {
-			catcher.Add(fmt.Errorf("%f must be positive", taskPercent))
-		}
+		catcher.Add(validatePositiveFloat(taskPercentVal))
+	}
+	if buildDurationVal, ok := s.TriggerData[BuildDurationKey]; ok {
+		catcher.Add(validatePositiveInt(buildDurationVal))
+	}
+	if buildPercentVal, ok := s.TriggerData[BuildPercentChangeKey]; ok {
+		catcher.Add(validatePositiveFloat(buildPercentVal))
 	}
 	return catcher.Resolve()
+}
+
+func validatePositiveInt(s string) error {
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return fmt.Errorf("%s must be a number", s)
+	}
+	if val < 0 {
+		return fmt.Errorf("%d cannot be negative", val)
+	}
+	return nil
+}
+
+func validatePositiveFloat(s string) error {
+	val, err := util.TryParseFloat(s)
+	if err != nil {
+		return err
+	}
+	if val <= 0 {
+		return fmt.Errorf("%f must be positive", val)
+	}
+	return nil
 }
 
 func (s *Subscription) String() string {

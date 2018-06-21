@@ -46,6 +46,8 @@ var (
 	TaskCacheActivatedKey     = bsonutil.MustHaveTag(TaskCache{}, "Activated")
 )
 
+var CompletedStatuses = []string{evergreen.BuildSucceeded, evergreen.BuildFailed}
+
 // Queries
 
 // All returns all builds.

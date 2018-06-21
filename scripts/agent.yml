@@ -110,6 +110,16 @@ tasks:
           source_dir: "archive"
           include:
             - "*_to_archive"
+      - command: archive.targz_extract
+        params:
+          path: "archive.tgz"
+          destination: "output"
+      - command: archive.zip_pack
+        params:
+          target: "archive.zip"
+          source_dir: "archive"
+          include:
+            - "*_to_archive"
       - command: attach.results
         params:
           file_location: "src/command/testdata/attach/plugin_attach_results.json"

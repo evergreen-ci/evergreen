@@ -106,6 +106,8 @@ type Host struct {
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
 
+type HostGroup []Host
+
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
 	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
@@ -572,6 +574,7 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				ProjectKey:          h.Project,
 				ProvisionOptionsKey: h.ProvisionOptions,
 				StartTimeKey:        h.StartTime,
+				HasContainersKey:    h.HasContainers,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -734,7 +737,7 @@ func FindHostsToTerminate() ([]Host, error) {
 				StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
 				StartedByKey:   evergreen.User,
 			},
-			{ // host.IsDecomissioned
+			{ // host.IsDecommissioned
 				RunningTaskKey: bson.M{"$exists": false},
 				StatusKey:      evergreen.HostDecommissioned,
 			},
@@ -859,6 +862,29 @@ func (h *Host) GetParent() (*Host, error) {
 	return host, nil
 }
 
+// IsIdleParent determines whether a host with containers has exclusively
+// terminated containers
+func (h *Host) IsIdleParent() (bool, error) {
+	const idleTimeCutoff = 10 * time.Minute
+	if !h.HasContainers {
+		return false, nil
+	}
+	// sanity check so that hosts not immediately decommissioned
+	if h.IdleTime() < idleTimeCutoff {
+		return false, nil
+	}
+	query := db.Query(bson.M{
+		ParentIDKey: h.Id,
+		StatusKey:   bson.M{"$ne": evergreen.HostTerminated},
+	})
+	num, err := Count(query)
+	if err != nil {
+		return false, errors.Wrap(err, "Error counting non-terminated containers")
+	}
+
+	return num == 0, nil
+}
+
 // UpdateLastContainerFinishTime updates latest finish time for a host with containers
 func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	selector := bson.M{
@@ -919,4 +945,23 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 		return nil, errors.Wrap(err, "Error finding hosts spawned by builds by build ID")
 	}
 	return hosts, nil
+}
+
+// CountContainersOnParents counts how many containers are children of the given group of hosts
+func (hosts HostGroup) CountContainersOnParents() (int, error) {
+	ids := hosts.GetHostIds()
+	query := db.Query(bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UphostStatus},
+		ParentIDKey: bson.M{"$in": ids},
+	})
+	return Count(query)
+}
+
+// GetHostIds returns a slice of host IDs for the given group of hosts
+func (hosts HostGroup) GetHostIds() []string {
+	var ids []string
+	for _, h := range hosts {
+		ids = append(ids, h.Id)
+	}
+	return ids
 }

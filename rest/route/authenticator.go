@@ -38,6 +38,9 @@ type SuperUserAuthenticator struct{}
 // 'NotFound' errors to prevent leaking sensitive information.
 func (s *SuperUserAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
 	u := GetUser(ctx)
+	if u == nil {
+		return nil
+	}
 
 	if auth.IsSuperUser(sc.GetSuperUsers(), u) {
 		return nil
@@ -59,10 +62,12 @@ func (p *ProjectAdminAuthenticator) Authenticate(ctx context.Context, sc data.Co
 	projCtx := MustHaveProjectContext(ctx)
 	u := GetUser(ctx)
 
-	// If either a superuser or admin, request is allowed to proceed.
-	if auth.IsSuperUser(sc.GetSuperUsers(), u) ||
-		util.StringSliceContains(projCtx.ProjectRef.Admins, u.Username()) {
-		return nil
+	if u != nil {
+		// If either a superuser or admin, request is allowed to proceed.
+		if auth.IsSuperUser(sc.GetSuperUsers(), u) ||
+			util.StringSliceContains(projCtx.ProjectRef.Admins, u.Username()) {
+			return nil
+		}
 	}
 
 	return rest.APIError{

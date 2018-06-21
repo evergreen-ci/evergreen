@@ -3,6 +3,7 @@ package data
 import (
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
@@ -16,6 +17,22 @@ import (
 type DBPatchIntentConnector struct{}
 
 func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy.Queue) error {
+	patchDoc := intent.NewPatch()
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
+	if err != nil {
+		return &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "failed to fetch project_ref",
+		}
+	}
+	if projectRef == nil {
+		return &rest.APIError{
+			StatusCode: http.StatusUnprocessableEntity,
+			Message:    "cannot map pull request to project",
+		}
+	}
+
 	if err := intent.Insert(); err != nil {
 		return &rest.APIError{
 			StatusCode: http.StatusInternalServerError,

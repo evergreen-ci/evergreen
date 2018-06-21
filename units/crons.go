@@ -251,11 +251,22 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		hosts, err := host.FindHostsToTerminate()
 		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
+			"operation": "populate host termination jobs",
 			"cron":      hostTerminationJobName,
 			"impact":    "hosts termination interrupted",
 		}))
+		catcher.Add(err)
 
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+		}
+
+		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "populate hosts spawned by tasks termination jobs",
+			"cron":      hostTerminationJobName,
+			"impact":    "hosts termination interrupted",
+		}))
 		catcher.Add(err)
 
 		for _, h := range hosts {
@@ -315,6 +326,25 @@ func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		err := queue.Put(NewLastContainerFinishTimeJob(ts))
 		catcher.Add(err)
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateParentDecommissionJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+
+		distros, err := distro.Find(distro.ByActiveWithContainers())
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		// Create ParentDecommissionJob for each distro
+		for _, d := range distros {
+			catcher.Add(queue.Put(NewParentDecommissionJob(ts, d)))
+		}
 
 		return catcher.Resolve()
 	}

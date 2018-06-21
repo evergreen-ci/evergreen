@@ -84,6 +84,10 @@ imports:
   - name: github.com/aws/aws-sdk-go
     version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
 
+  - name: github.com/mholt/archiver
+    version: 4a8a092653655d29c8e091cf2ecf91cbe697f0de
+
+
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
   - name: github.com/jpillora/backoff
@@ -106,7 +110,7 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/mongodb/grip
-    version: 7ec499c3201dc7726da08f3f51e90386ec26a3d7
+    version: 49d6778dfb7c62ba4c0e1a031ff6335930b9e37b
   - name: github.com/mongodb/anser
     version: a39cb2703e7f53a0d46f17a785d25f85fa19923a
   - name: github.com/mongodb/amboy
