@@ -30,5 +30,5 @@ func main() {
 	c := session.DB(dbName).C(collection)
 
 	grip.CatchEmergencyFatal(c.UpdateId(id, bson.M{"$set": bson.M{key: value}}))
-	grip.Infof("set the value of '%s' to '%s' for document '%s' in collection '%s'", key, value, id, collection)
+	grip.Infof("set the value of '%s' for document '%s' in collection '%s'", key, id, collection)
 }
