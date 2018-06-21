@@ -5,6 +5,10 @@ mciModule
     PATCH_ID_LEN: 24,
   })
 
+  .constant('BF', {
+    OPEN_STATUSES: ['Open', 'In Progress', 'Waiting for bug fix'],
+  })
+
   .constant('STITCH_CONFIG', {
     PERF: {
       serviceType: 'mongodb',
@@ -13,6 +17,7 @@ mciModule
       // Assets associated with this instance
       DB_PERF: 'perf',
       COLL_CHANGE_POINTS: 'change_points',
+      COLL_BUILD_FAILURES: 'build_failures',
     }
   })
 
