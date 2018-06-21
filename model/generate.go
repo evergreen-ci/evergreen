@@ -16,6 +16,7 @@ const (
 	maxGeneratedBuildVariants = 100
 	maxGeneratedTasks         = 1000
 	GenerateTasksCommandName  = "generate.tasks"
+	CreateHostCommandName     = "createhost"
 )
 
 // GeneratedProject is a subset of the Project type, and is generated from the

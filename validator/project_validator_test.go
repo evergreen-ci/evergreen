@@ -1840,3 +1840,80 @@ buildvariants:
 	assert.NoError(err)
 	assert.Len(semanticErrs, 0)
 }
+
+func TestValidateCreateHosts(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	// passing case
+	yml := `
+  tasks:
+  - name: t_1
+    commands:
+    - command: createhost
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	var p model.Project
+	err := model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs := validateCreateHosts(&p)
+	assert.Len(errs, 0)
+
+	// error: times called per task
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: createhost
+    - command: createhost
+    - command: createhost
+    - command: createhost
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
+
+	// error: total times called
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: createhost
+    - command: createhost
+    - command: createhost
+  - name: t_2
+    commands:
+    - command: createhost
+    - command: createhost
+    - command: createhost
+  - name: t_3
+    commands:
+    - command: createhost
+    - command: createhost
+    - command: createhost
+  - name: t_4
+    commands:
+    - command: createhost
+    - command: createhost
+    - command: createhost
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+    - name: t_2
+    - name: t_3
+    - name: t_4
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
+}
