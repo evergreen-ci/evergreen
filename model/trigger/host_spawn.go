@@ -35,6 +35,10 @@ func makeSpawnHostTriggers() eventHandler {
 
 func (t *spawnHostTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
+	if err = t.uiConfig.Get(); err != nil {
+		return errors.Wrap(err, "Failed to fetch ui config")
+	}
+
 	t.host, err = host.FindOneId(e.ResourceId)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch host '%s'", e.ResourceId)
@@ -90,12 +94,12 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 			Color:     "good",
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
-					Title: "distro",
+					Title: "Distro",
 					Value: t.host.Distro.Id,
 					Short: true,
 				},
 				&message.SlackAttachmentField{
-					Title: "ssh command",
+					Title: "SSH Command",
 					Value: sshCommand(t.host),
 				},
 			},
@@ -109,7 +113,7 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 			Color:     "danger",
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
-					Title: "distro",
+					Title: "Distro",
 					Value: t.host.Distro.Id,
 					Short: true,
 				},
@@ -157,10 +161,10 @@ func (t *spawnHostTriggers) email() *message.Email {
 
 func (t *spawnHostTriggers) makePayload(sub *event.Subscription) interface{} {
 	var payload interface{}
-	if sub.Type == event.SlackSubscriberType {
+	if sub.Subscriber.Type == event.SlackSubscriberType {
 		payload = t.slack()
 
-	} else if sub.Type == event.EmailSubscriberType {
+	} else if sub.Subscriber.Type == event.EmailSubscriberType {
 		payload = t.email()
 	}
 
