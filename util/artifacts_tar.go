@@ -20,7 +20,7 @@ import (
 func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, logger grip.Journaler) (int, error) {
 
-	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, excludes)
+	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, []string{})
 
 	numFilesArchived := 0
 	done := make(chan bool)
