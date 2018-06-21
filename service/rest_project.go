@@ -24,6 +24,7 @@ func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
 // getProjectsIds returns a JSON response of an array of active project Ids.
 // Users must use credentials to see private projects.
 func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
 	refs, err := model.FindAllProjectRefs()
 	if err != nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{
@@ -31,9 +32,6 @@ func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	ctx := r.Context()
-	u := gimlet.GetUser(ctx)
 	projects := []string{}
 	for _, r := range refs {
 		if r.Enabled && (!r.Private || u != nil) {

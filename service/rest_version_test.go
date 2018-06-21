@@ -454,7 +454,7 @@ func TestActivateVersion(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	n := negroni.New()
-	n.Use(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	n.Use(negroni.HandlerFunc(UserMiddleware(uis.UserManager)))
 	n.UseHandler(router)
 
 	Convey("When marking a particular version as active", t, func() {

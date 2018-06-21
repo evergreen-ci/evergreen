@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -72,8 +71,8 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 		return nil, err
 	}
 
-	req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
-	req.Header.Add(evergreen.APIUserHeader, ac.User)
+	req.Header.Add("Api-Key", ac.APIKey)
+	req.Header.Add("Api-User", ac.User)
 	resp, err := ac.httpClient.Do(req)
 	if err != nil {
 		return nil, err

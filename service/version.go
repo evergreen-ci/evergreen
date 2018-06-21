@@ -40,9 +40,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	ctx := r.Context()
-	currentUser := gimlet.GetUser(ctx)
+	currentUser := GetUser(r)
 	if projCtx.Patch != nil {
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 		// diff builds for each build in the version
@@ -131,7 +129,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	}
 	versionAsUI.Builds = uiBuilds
 
-	pluginContext := projCtx.ToPluginContext(uis.Settings, currentUser)
+	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -140,12 +138,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		CanEdit       bool
 		JiraHost      string
 		ViewData
-	}{
-		Version:       &versionAsUI,
-		PluginContent: pluginContent,
-		CanEdit:       currentUser != nil,
-		JiraHost:      uis.Settings.Jira.Host,
-		ViewData:      uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
+	}{&versionAsUI, pluginContent, currentUser != nil,
+		uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +166,8 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authName := user.DisplayName()
+	authUser := GetUser(r)
+	authName := authUser.DisplayName()
 
 	// determine what action needs to be taken
 	switch jsonMap.Action {
@@ -290,8 +285,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := r.Context()
-	user := gimlet.GetUser(ctx)
+	user := GetUser(r)
 	versions := make([]*uiVersion, 0, len(data))
 
 	for _, version := range data {

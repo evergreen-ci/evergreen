@@ -6,16 +6,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	DBUser := GetUser(r)
 	template := "not_admin.html"
-	DBUser := gimlet.GetUser(ctx)
-	if DBUser != nil && uis.isSuperUser(DBUser) {
+	if uis.isSuperUser(DBUser) {
 		template = "admin.html"
 	}
 	data := struct {
@@ -25,10 +23,9 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	DBUser := gimlet.GetUser(ctx)
+	DBUser := GetUser(r)
 	template := "not_admin.html"
-	if DBUser != nil && uis.isSuperUser(DBUser) {
+	if uis.isSuperUser(DBUser) {
 		template = "admin_events.html"
 	}
 	dc := &data.DBAdminConnector{}

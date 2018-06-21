@@ -88,11 +88,8 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
 	}
 
-	ctx := r.Context()
-	user := gimlet.GetUser(ctx)
-
 	// set data for plugin data function injection
-	pluginContext := projCtx.ToPluginContext(uis.Settings, user)
+	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.BuildPage, pluginContext)
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
