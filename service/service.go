@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -39,33 +42,41 @@ func GetServer(addr string, n http.Handler) *http.Server {
 }
 
 func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
+	app := gimlet.NewApp()
+	app.ResetMiddleware()
+	app.AddMiddleware(NewRecoveryLogger())
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
+
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
-	app, err := GetRESTv1App(as, uis.UserManager)
+	restv1, err := GetRESTv1App(as)
 	if err != nil {
 		return nil, err
 	}
 
-	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
+	restv2API := gimlet.NewApp()
+	restv2UI := gimlet.NewApp()
+	restv2UI.ResetMiddleware()
 
-	if err = app.Resolve(); err != nil {
-		return nil, err
-	}
+	restv2API.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
+	restv2UI.SetPrefix(evergreen.RestRoutePrefix)
+
+	// attach restv2 handlers
+	route.AttachHandler(restv2API, as.queue, as.Settings.ApiUrl, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
+	route.AttachHandler(restv2UI, uis.queue, uis.Settings.Ui.Url, uis.Settings.SuperUsers, []byte(uis.Settings.Api.GithubWebhookSecret))
+
 	// in the future the following functions will be above this
 	// point, and we'll just have the app, but during the legacy
 	// transition, we convert the app to a router and then attach
 	// legacy routes directly.
 
-	router, err := app.Router()
+	r := mux.NewRouter()
+	err = uis.AttachRoutes(r)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	as.AttachRoutes(r)
 
-	err = uis.AttachRoutes(router)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	as.AttachRoutes(router)
-
-	return app.Handler()
+	return gimlet.AssembleHandler(r, app, restv1, restv2API, restv2UI)
 }
