@@ -46,6 +46,7 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.ResetMiddleware()
 	app.AddMiddleware(NewRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
@@ -59,7 +60,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	restv2API.ResetMiddleware()
 	restv2UI.ResetMiddleware()
 
-	restv1.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
 	restv2API.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	restv2UI.SetPrefix(evergreen.RestRoutePrefix)
 
