@@ -17,7 +17,7 @@ func getDistroRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			{
-				Authenticator:  &NoAuthAuthenticator{},
+				Authenticator:  &RequireUserAuthenticator{},
 				RequestHandler: &distroGetHandler{},
 				MethodType:     http.MethodGet,
 			},
