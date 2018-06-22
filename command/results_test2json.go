@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"path"
 	"strings"
@@ -200,21 +201,30 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 			iteration: iteration[data[i].Test],
 		}
 		if len(data[i].Test) == 0 {
-			// TODO this ignores package level results and benchmarks
-			continue
+			key.name = fmt.Sprintf("package-%s", data[i].Package)
+		}
+		if _, ok := m[key]; !ok {
+			m[key] = &goTest2JSONMergedTestEvent{}
 		}
 
 		switch data[i].Action {
 		case "run":
-			m[key] = &goTest2JSONMergedTestEvent{StartTime: data[i].Time}
+			m[key].StartTime = data[i].Time
 
-		case "pass", "fail", "bench":
+		case "pass", "fail":
 			m[key].Status = data[i].Action
 			m[key].EndTime = data[i].Time
 			m[key].Elapsed = data[i].Elapsed
+
+			// compute the start time from the end time, plus the elapsed
+			if m[key].StartTime.IsZero() {
+				elapsedNano := m[key].Elapsed * float64(time.Second)
+				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
+			}
+
 			iteration[data[i].Test] += 1
 
-		case "pause", "cont", "output":
+		case "pause", "cont", "output", "bench":
 			m[key].Output = append(m[key].Output, strings.TrimRightFunc(data[i].Output, unicode.IsSpace))
 		}
 	}
@@ -235,6 +245,7 @@ func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2J
 
 	result := task.TestResult{
 		TestFile:  key,
+		LineNum:   1,
 		Status:    evergreen.TestFailedStatus,
 		StartTime: float64(test2JSON.StartTime.Unix()),
 		EndTime:   float64(test2JSON.EndTime.Unix()),

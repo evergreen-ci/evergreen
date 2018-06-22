@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	test2JSONFile = "command/testdata/test2json.json"
+	test2JSONFile          = "command/testdata/test2json.json"
+	test2JSONBenchmarkFile = "command/testdata/test2json_benchmark.json"
 )
 
 type test2JSONSuite struct {
@@ -88,9 +89,30 @@ func (s *test2JSONSuite) TestExecute() {
 	s.Len(msgs, 5)
 	s.noErrorMessages(msgs)
 
-	s.Len(s.comm.LocalTestResults.Results, 13)
-	s.Equal(13, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 13)
+	s.Len(s.comm.LocalTestResults.Results, 14)
+	s.Equal(14, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 14)
+
+	logFiles := map[string]bool{}
+	for _, result := range s.comm.LocalTestResults.Results {
+		_, ok := logFiles[result.LogId]
+		s.False(ok)
+		logFiles[result.LogId] = true
+	}
+}
+
+func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
+	logger := client.NewSingleChannelLogHarness("test", s.sender)
+	s.c.Files[0] = test2JSONBenchmarkFile
+	s.c.Execute(context.Background(), s.comm, logger, s.conf)
+
+	msgs := drainMessages(s.sender)
+	s.Len(msgs, 5)
+	s.noErrorMessages(msgs)
+
+	s.Len(s.comm.LocalTestResults.Results, 4)
+	s.Equal(4, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 4)
 
 	logFiles := map[string]bool{}
 	for _, result := range s.comm.LocalTestResults.Results {
