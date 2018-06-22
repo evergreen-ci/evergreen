@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/grid"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -43,7 +43,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	var revisionFailures grid.RevisionFailures
 	var depth int
 
-	d := mux.Vars(r)["depth"]
+	d := gimlet.GetVars(r)["depth"]
 	if d == "" {
 		depth = defaultGridDepth
 	} else {

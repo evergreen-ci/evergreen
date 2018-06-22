@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -344,8 +343,9 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 //versionFind redirects to the correct version page based on the gitHash and versionId given.
 //It finds the version associated with the versionId and gitHash and redirects to /version/{version_id}.
 func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["project_id"]
-	revision := mux.Vars(r)["revision"]
+	vars := gimlet.GetVars(r)
+	id := vars["project_id"]
+	revision := vars["revision"]
 	if len(revision) < 5 {
 		http.Error(w, "revision not long enough: must be at least 5 characters", http.StatusBadRequest)
 		return
