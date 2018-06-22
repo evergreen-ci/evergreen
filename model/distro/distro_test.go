@@ -99,36 +99,3 @@ func TestFindActive(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(active, 2)
 }
-
-func TestComputeParentsToDecommission(t *testing.T) {
-	assert := assert.New(t)
-
-	d1 := &Distro{
-		Id:            "d1",
-		MaxContainers: 100,
-	}
-
-	d2 := &Distro{
-		Id:            "d2",
-		MaxContainers: 0,
-	}
-
-	// No containers --> decommission all parents
-	c1, err := d1.ComputeParentsToDecommission(5, 0)
-	assert.NoError(err)
-	assert.Equal(c1, 5)
-
-	// Max containers --> decommission no parents
-	c2, err := d1.ComputeParentsToDecommission(5, 500)
-	assert.NoError(err)
-	assert.Equal(c2, 0)
-
-	// Some containers --> decommission excess parents
-	c3, err := d1.ComputeParentsToDecommission(5, 250)
-	assert.NoError(err)
-	assert.Equal(c3, 2)
-
-	// MaxContainers is zero --> throw error (cannot divide by 0)
-	_, err = d2.ComputeParentsToDecommission(5, 10)
-	assert.EqualError(err, "Distro does not support containers")
-}

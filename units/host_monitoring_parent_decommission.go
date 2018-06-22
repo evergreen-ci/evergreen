@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -26,9 +27,10 @@ func init() {
 }
 
 type parentDecommissionJob struct {
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
-	DistroId string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
-	distro   *distro.Distro
+	job.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
+	DistroId      string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
+	distro        *distro.Distro
+	MaxContainers int
 }
 
 func makeParentDecommissionJob() *parentDecommissionJob {
@@ -45,10 +47,11 @@ func makeParentDecommissionJob() *parentDecommissionJob {
 	return j
 }
 
-func NewParentDecommissionJob(id string, d distro.Distro) amboy.Job {
+func NewParentDecommissionJob(id string, d distro.Distro, maxContainers int) amboy.Job {
 	j := makeParentDecommissionJob()
 	j.DistroId = d.Id
 	j.distro = &d
+	j.MaxContainers = maxContainers
 	j.SetID(fmt.Sprintf("%s.%s.%s", parentDecommissionJobName, j.DistroId, id))
 	return j
 }
@@ -69,12 +72,10 @@ func (j *parentDecommissionJob) findParentsToDecommission() ([]host.Host, error)
 	}
 
 	// Compute number of hosts to decommission based on excess capacity
-	numParentsToDeco, err := j.distro.ComputeParentsToDecommission(numParents, numContainers)
+	numParentsToDeco := numParents - int(math.Ceil(float64(numContainers)/float64(j.MaxContainers)))
 
 	// Sanity check
-	if err != nil {
-		return nil, errors.Wrap(err, "Error computing number of parents to decommission")
-	} else if numParentsToDeco < 0 || numParentsToDeco > numParents {
+	if numParentsToDeco < 0 || numParentsToDeco > numParents {
 		return nil, errors.New("Invalid number of parents to decommission")
 	}
 

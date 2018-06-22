@@ -336,14 +336,19 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
-		distros, err := distro.Find(distro.ByActiveWithContainers())
+		settings, err := evergreen.GetConfig()
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "Error finding evergreen settings")
 		}
+		containerPools := settings.ContainerPools.Pools
 
 		// Create ParentDecommissionJob for each distro
-		for _, d := range distros {
-			catcher.Add(queue.Put(NewParentDecommissionJob(ts, d)))
+		for _, c := range containerPools {
+			d, err := distro.FindOne(distro.ById(c.Distro))
+			if err != nil {
+				return errors.Wrapf(err, "Could not find parent distro %s", c.Distro)
+			}
+			catcher.Add(queue.Put(NewParentDecommissionJob(ts, d, c.MaxContainers)))
 		}
 
 		return catcher.Resolve()

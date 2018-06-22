@@ -27,7 +27,7 @@ func TestDecommissioningContainersOnParent(t *testing.T) {
 	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing %v collections", host.Collection)
 	testutil.HandleTestingErr(db.Clear(distro.Collection), t, "Error clearing '%v' collection", distro.Collection)
 
-	d1 := &distro.Distro{Id: "d1", MaxContainers: 2}
+	d1 := &distro.Distro{Id: "d1"}
 	assert.NoError(d1.Insert())
 
 	startTime := time.Now().Add(-1 * time.Hour)
@@ -86,7 +86,8 @@ func TestDecommissioningContainersOnParent(t *testing.T) {
 	assert.NoError(host6.Insert())
 	assert.NoError(host7.Insert())
 
-	j := NewParentDecommissionJob("one", *d1)
+	// MaxContainers: 2
+	j := NewParentDecommissionJob("one", *d1, 2)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())
@@ -135,7 +136,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing %v collections", host.Collection)
 	testutil.HandleTestingErr(db.Clear(distro.Collection), t, "Error clearing '%v' collection", distro.Collection)
 
-	d2 := &distro.Distro{Id: "d2", MaxContainers: 3}
+	d2 := &distro.Distro{Id: "d2"}
 	assert.NoError(d2.Insert())
 
 	now := time.Now()
@@ -173,7 +174,8 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	assert.NoError(host3.Insert())
 	assert.NoError(host4.Insert())
 
-	j := NewParentDecommissionJob("two", *d2)
+	// MaxContainers: 3
+	j := NewParentDecommissionJob("two", *d2, 3)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())
