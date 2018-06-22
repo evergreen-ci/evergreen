@@ -42,15 +42,22 @@ func GetServer(addr string, n http.Handler) *http.Server {
 }
 
 func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
+	app := gimlet.NewApp()
+	app.ResetMiddleware()
+	app.AddMiddleware(NewRecoveryLogger())
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
-	restv1, err := GetRESTv1App(as, uis.UserManager)
+	restv1, err := GetRESTv1App(as)
 	if err != nil {
 		return nil, err
 	}
 
 	restv2API := gimlet.NewApp()
 	restv2UI := gimlet.NewApp()
+	restv2API.ResetMiddleware()
+	restv2UI.ResetMiddleware()
 
 	restv1.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
 	restv2API.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
@@ -72,5 +79,5 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	}
 	as.AttachRoutes(r)
 
-	return gimlet.AssembleHandler(r, restv1, restv2API, restv2UI)
+	return gimlet.AssembleHandler(r, app, restv1, restv2API, restv2UI)
 }
