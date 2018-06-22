@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
@@ -247,9 +246,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	// Admin routes
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
 	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
-
-	// attaches /rest/v2 routes
-	route.AttachHandler(r, uis.queue, uis.Settings.Ui.Url, evergreen.RestRoutePrefix, uis.Settings.SuperUsers, []byte(uis.Settings.Api.GithubWebhookSecret))
 
 	// Static Path handlers
 	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))

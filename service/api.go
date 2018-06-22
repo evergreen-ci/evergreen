@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -638,10 +637,6 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 
 // NewRouter returns the root router for all APIServer endpoints.
 func (as *APIServer) AttachRoutes(root *mux.Router) {
-	// attaches /rest/v2 routes
-	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
-	route.AttachHandler(root, as.queue, as.Settings.ApiUrl, APIV2Prefix, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
-
 	r := root.PathPrefix("/api/2/").Subrouter()
 	r.HandleFunc("/", home)
 

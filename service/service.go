@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -45,6 +46,10 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
+	route.AttachHandler(app, as.queue, as.Settings.ApiUrl, APIV2Prefix, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
+	route.AttachHandler(app, uis.queue, uis.Settings.Ui.Url, evergreen.RestRoutePrefix, uis.Settings.SuperUsers, []byte(uis.Settings.Api.GithubWebhookSecret))
 
 	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
 
