@@ -3,6 +3,8 @@ package model
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,7 +34,7 @@ func TestDistroNoAMIForStatic(t *testing.T) {
 func TestDistroAMIForEC2(t *testing.T) {
 	d := distro.Distro{
 		Id:       "testId",
-		Provider: "ec2",
+		Provider: evergreen.ProviderNameEc2Auto,
 		ProviderSettings: &map[string]interface{}{
 			"ami": "ami-000000",
 		},
@@ -41,5 +43,5 @@ func TestDistroAMIForEC2(t *testing.T) {
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
 	assert.Nil(t, err)
-	assert.Equal(t, FromAPIString(apiDistro.ImageID), "ami-000000")
+	assert.Equal(t, "ami-000000", FromAPIString(apiDistro.ImageID))
 }
