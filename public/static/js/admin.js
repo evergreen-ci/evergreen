@@ -105,7 +105,6 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     for (var i = 0; i < parsedContainerPools.length; i++) {
       var p = parsedContainerPools[i]
       // check fields
-      console.log(p)
       if (!p.distro || !p.id || !p.max_containers) {
         notificationService.pushNotification("Error saving settings: container pool field cannot be null", "errorHeader");
         return

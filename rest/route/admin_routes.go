@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -149,6 +150,12 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	}
 	err = newSettings.Validate()
 	if err != nil {
+		grip.Info("inside validate")
+		return ResponseData{}, errors.Wrap(err, "Validation error")
+	}
+	err = distro.ValidateContainerPoolDistros(newSettings)
+	if err != nil {
+		grip.Info("inside validate container pools")
 		return ResponseData{}, errors.Wrap(err, "Validation error")
 	}
 	err = distro.ValidateContainerPoolDistros(newSettings)
