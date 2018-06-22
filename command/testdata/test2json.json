@@ -1,451 +1,119 @@
-{"Time":"2018-06-22T13:34:27.269080343-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.26936613-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== RUN   TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.269383148-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== PAUSE TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.269390005-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.269396471-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.269401712-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== RUN   TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.269409491-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== PAUSE TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.269415388-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.269423344-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.269428838-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== RUN   TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.269434679-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== PAUSE TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.26943986-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.269445393-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.269450626-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== RUN   TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.269466176-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== PAUSE TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.269472227-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.269481089-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.269486837-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== RUN   TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.269492676-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== PAUSE TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.26949794-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.269503349-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.269508568-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== RUN   TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.269514353-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== PAUSE TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.269521778-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.269527231-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.269544081-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== RUN   TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.269556854-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== PAUSE TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.269562999-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.269568536-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.269573708-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== RUN   TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.269579585-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== PAUSE TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.269592041-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.269597972-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.269603326-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== CONT  TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.269609127-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.269614289-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== CONT  TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.269627093-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"--- FAIL: TestNativeTestFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.269633358-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\tawesome_test.go:48: true is not equal to false\n"}
-{"Time":"2018-06-22T13:34:27.269639348-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.269654137-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.26965962-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== CONT  TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.269665747-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"--- PASS: TestTestifyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.269671702-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.269676969-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.269681971-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== CONT  TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.269688032-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"--- PASS: TestNativeTestPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.269700017-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.269705424-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.269710403-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== CONT  TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.269721143-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"--- FAIL: TestFailingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.26972775-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tpitiful_test.go:17\n"}
-{"Time":"2018-06-22T13:34:27.269733564-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.269742039-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.269747459-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.269755041-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== CONT  TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.269760793-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.269765921-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== CONT  TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.269771557-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.269776887-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== CONT  TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.269782847-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"--- PASS: TestPassingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.269788615-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.269794043-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"  asinine test \u001b[32m✔\u001b[0m--- FAIL: TestTestifyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.269799888-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:19\n"}
-{"Time":"2018-06-22T13:34:27.269805553-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.26981307-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.269818832-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"  asinine test \n"}
-{"Time":"2018-06-22T13:34:27.269829652-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.269835177-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\u001b[31m\u001b[0m\u001b[33m\u001b[0m\u001b[32m\n"}
-{"Time":"2018-06-22T13:34:27.269843835-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"1 total assertion\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.269852498-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.269875384-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.269893212-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"--- PASS: TestConveyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.269903365-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[33m✘\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.269915646-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.269925629-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[31m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.269933868-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"Failures:\n"}
-{"Time":"2018-06-22T13:34:27.269939406-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.269944756-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  * /Users/rsamuels/go/src/github.com/evergreen-ci/evergreen/test2/awesome_test.go \n"}
-{"Time":"2018-06-22T13:34:27.269950217-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Line 32:\n"}
-{"Time":"2018-06-22T13:34:27.269958669-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Expected: 'true'\n"}
-{"Time":"2018-06-22T13:34:27.269964209-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Actual:   'false'\n"}
-{"Time":"2018-06-22T13:34:27.269969518-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  (Should be equal)\n"}
-{"Time":"2018-06-22T13:34:27.269974936-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.26998019-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.269985663-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"2 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.269991137-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.269997184-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270003128-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"--- FAIL: TestConveyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270008889-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270014181-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.270019308-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== RUN   TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.270025115-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== PAUSE TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.270036207-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.270041709-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.270046916-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== RUN   TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.270062789-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== PAUSE TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.27006918-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.270074694-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.270079978-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== RUN   TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.270085656-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== PAUSE TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.270090938-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.270096859-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.27010274-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== RUN   TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.270113332-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== PAUSE TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.270119074-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.270126872-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.270132327-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== RUN   TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.270138249-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== PAUSE TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.270143615-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.270149107-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.27015436-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== RUN   TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.270160133-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== PAUSE TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.270165339-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.270170876-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270176026-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== RUN   TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.27018195-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== PAUSE TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270187115-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270192594-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270197775-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== RUN   TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270203522-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== PAUSE TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270212931-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270219137-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.270224387-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== CONT  TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.270230407-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"--- PASS: TestTestifyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270238752-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270244572-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270249671-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== CONT  TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270255368-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.270260594-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== CONT  TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.270275823-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"--- FAIL: TestFailingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270281832-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tpitiful_test.go:17\n"}
-{"Time":"2018-06-22T13:34:27.270293843-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.270299969-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270305325-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.270310363-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== CONT  TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.270316313-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"--- PASS: TestNativeTestPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270322315-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270330419-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.27034155-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== CONT  TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270353305-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.27036115-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== CONT  TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.2703713-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"--- PASS: TestPassingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270377815-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270387532-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.27039317-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== CONT  TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.270399249-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"--- FAIL: TestNativeTestFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270407935-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\tawesome_test.go:48: true is not equal to false\n"}
-{"Time":"2018-06-22T13:34:27.270413499-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.270420104-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"  asinine test \u001b[32m✔\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.270429235-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.270438332-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\u001b[31m\u001b[0m\u001b[33m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.270445698-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"3 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.270451301-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.270456957-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270462277-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.270467219-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== CONT  TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.270473097-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"--- FAIL: TestTestifyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.27047875-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.270484027-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"  asinine test \tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:19\n"}
-{"Time":"2018-06-22T13:34:27.270489609-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.270497661-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270503402-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"--- PASS: TestConveyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270515329-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[33m✘\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.270521154-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.270526623-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[31m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.270532005-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"Failures:\n"}
-{"Time":"2018-06-22T13:34:27.270541994-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.27054788-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  * /Users/rsamuels/go/src/github.com/evergreen-ci/evergreen/test2/awesome_test.go \n"}
-{"Time":"2018-06-22T13:34:27.270553402-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Line 32:\n"}
-{"Time":"2018-06-22T13:34:27.270558713-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Expected: 'true'\n"}
-{"Time":"2018-06-22T13:34:27.270563995-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Actual:   'false'\n"}
-{"Time":"2018-06-22T13:34:27.270571711-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  (Should be equal)\n"}
-{"Time":"2018-06-22T13:34:27.270577401-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.270582798-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.270588363-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"4 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.270593706-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.270599477-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270605034-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"--- FAIL: TestConveyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270610576-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.2706158-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.270620818-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== RUN   TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.270629495-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== PAUSE TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.270637622-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.270645285-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.270658504-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== RUN   TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.270664587-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== PAUSE TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.27066986-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.270681331-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.270686727-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== RUN   TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.270692509-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== PAUSE TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.270703649-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.270713823-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.270719603-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== RUN   TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.270725347-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== PAUSE TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.270730517-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.270735839-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.270740858-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== RUN   TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.270746654-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== PAUSE TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.270751837-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.270757202-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.270762337-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== RUN   TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.270767985-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== PAUSE TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.27077313-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.27077852-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270783811-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== RUN   TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.2707975-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== PAUSE TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270803768-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270809344-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270820641-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== RUN   TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270826717-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== PAUSE TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270831994-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.27083749-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.270842611-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== CONT  TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.270848164-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.270853281-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== CONT  TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.270863868-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.270874337-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== CONT  TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.270881067-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"--- FAIL: TestNativeTestFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270886808-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\tawesome_test.go:48: true is not equal to false\n"}
-{"Time":"2018-06-22T13:34:27.270892465-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270897966-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270903038-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== CONT  TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270908539-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.270918577-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== CONT  TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.270924604-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"--- FAIL: TestTestifyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270936672-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:19\n"}
-{"Time":"2018-06-22T13:34:27.270942494-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.270948317-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270953881-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"--- PASS: TestTestifyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270959546-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270971006-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.270975962-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== CONT  TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.270983756-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"--- PASS: TestNativeTestPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.270989936-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.270995178-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.271000115-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== CONT  TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.271005648-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.271010928-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== CONT  TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.271016687-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"--- PASS: TestPassingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271027548-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271034029-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"--- FAIL: TestFailingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271039665-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tpitiful_test.go:17\n"}
-{"Time":"2018-06-22T13:34:27.271045197-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.271057097-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271062691-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  asinine test \n"}
-{"Time":"2018-06-22T13:34:27.271068006-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  asinine test \u001b[32m✔\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.271073501-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271078719-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\u001b[31m\u001b[0m\u001b[33m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.271084156-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"5 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.271103701-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271109275-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271114719-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"--- PASS: TestConveyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271119914-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[33m✘\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.27112514-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271130249-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[31m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.271152864-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"Failures:\n"}
-{"Time":"2018-06-22T13:34:27.271159027-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271164289-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  * /Users/rsamuels/go/src/github.com/evergreen-ci/evergreen/test2/awesome_test.go \n"}
-{"Time":"2018-06-22T13:34:27.271169602-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Line 32:\n"}
-{"Time":"2018-06-22T13:34:27.271174761-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Expected: 'true'\n"}
-{"Time":"2018-06-22T13:34:27.271184448-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Actual:   'false'\n"}
-{"Time":"2018-06-22T13:34:27.27119311-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  (Should be equal)\n"}
-{"Time":"2018-06-22T13:34:27.271198472-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.27120359-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.27120896-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"6 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.271214143-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271219844-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.27122524-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"--- FAIL: TestConveyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271230656-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271235645-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.271240448-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== RUN   TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.271245938-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== PAUSE TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.271250933-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.271256187-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.271261102-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== RUN   TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.271266529-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== PAUSE TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.271277232-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.271282469-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.27128751-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== RUN   TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.271292976-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== PAUSE TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.271297957-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.271303124-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.271310473-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== RUN   TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.271323242-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== PAUSE TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.271330809-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.271339476-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.271350613-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== RUN   TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.271359608-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== PAUSE TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.271367445-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.271373847-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.271379687-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== RUN   TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.271424138-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== PAUSE TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.271434989-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.271442977-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.271450463-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== RUN   TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.271471159-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== PAUSE TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.271479431-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.271487532-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.271495041-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== RUN   TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.27151245-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== PAUSE TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.271518332-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.271524783-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.271529844-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== CONT  TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.271535995-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"--- PASS: TestTestifyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271541934-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271547312-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.271552099-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== CONT  TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.271557601-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.271562695-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== CONT  TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.271568195-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.271579324-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== CONT  TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.271585759-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.27159076-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== CONT  TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.27159651-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"--- FAIL: TestNativeTestFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271601994-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\tawesome_test.go:48: true is not equal to false\n"}
-{"Time":"2018-06-22T13:34:27.271607426-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271612506-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.271617431-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== CONT  TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.2716292-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"--- PASS: TestNativeTestPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271635217-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271640253-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.271645136-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== CONT  TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.271656138-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.271661248-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== CONT  TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.271666462-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271671584-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  asinine test \n"}
-{"Time":"2018-06-22T13:34:27.271677015-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  asinine test \u001b[32m✔\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.271687851-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271697258-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[31m\u001b[0m\u001b[33m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.271706366-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"7 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.27171373-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271726911-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"--- PASS: TestPassingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271735013-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271746047-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"--- PASS: TestConveyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271752898-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271758514-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"--- FAIL: TestFailingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271763873-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tpitiful_test.go:17\n"}
-{"Time":"2018-06-22T13:34:27.27176947-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.271775297-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271780505-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"--- FAIL: TestTestifyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.27178577-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:19\n"}
-{"Time":"2018-06-22T13:34:27.271791157-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.27179633-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\u001b[33m✘\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.271801575-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271806567-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\u001b[31m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.271811785-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"Failures:\n"}
-{"Time":"2018-06-22T13:34:27.271816813-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271821832-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"  * /Users/rsamuels/go/src/github.com/evergreen-ci/evergreen/test2/awesome_test.go \n"}
-{"Time":"2018-06-22T13:34:27.271827206-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"  Line 32:\n"}
-{"Time":"2018-06-22T13:34:27.271841235-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"  Expected: 'true'\n"}
-{"Time":"2018-06-22T13:34:27.271846893-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"  Actual:   'false'\n"}
-{"Time":"2018-06-22T13:34:27.271852161-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"  (Should be equal)\n"}
-{"Time":"2018-06-22T13:34:27.271857437-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271862626-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.271868003-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"8 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.271879408-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.271890079-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.271901115-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"--- FAIL: TestConveyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.271907434-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.27191286-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.271917869-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== RUN   TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.271923454-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== PAUSE TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.271928553-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.271933865-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.271938989-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== RUN   TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.271944662-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== PAUSE TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.271949666-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.271954799-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.271965212-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== RUN   TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.271970954-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== PAUSE TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.271976077-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.271981549-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.271986633-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== RUN   TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.271992034-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== PAUSE TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.271997058-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.272002324-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.272007335-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== RUN   TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.272018241-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== PAUSE TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.272023735-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.272029233-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.272039177-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== RUN   TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.272057136-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== PAUSE TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.272063119-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.272068572-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.272073765-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== RUN   TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.272079459-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== PAUSE TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.272084623-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.272089813-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.272094704-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== RUN   TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.272100337-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== PAUSE TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.272105459-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.272110608-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
-{"Time":"2018-06-22T13:34:27.272115392-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== CONT  TestTestifyPass\n"}
-{"Time":"2018-06-22T13:34:27.272120716-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
-{"Time":"2018-06-22T13:34:27.272125584-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== CONT  TestNativeTestFail\n"}
-{"Time":"2018-06-22T13:34:27.272130942-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
-{"Time":"2018-06-22T13:34:27.272135803-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== CONT  TestTestifyFail\n"}
-{"Time":"2018-06-22T13:34:27.272143811-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.272148919-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== CONT  TestPassingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.272154784-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"--- PASS: TestPassingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.272160658-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.272166074-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"--- PASS: TestTestifyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.27217153-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.27217887-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
-{"Time":"2018-06-22T13:34:27.272184075-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== CONT  TestConveyPass\n"}
-{"Time":"2018-06-22T13:34:27.272193648-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
-{"Time":"2018-06-22T13:34:27.272199235-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== CONT  TestConveyFail\n"}
-{"Time":"2018-06-22T13:34:27.272205035-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"--- FAIL: TestTestifyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.272210503-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:19\n"}
-{"Time":"2018-06-22T13:34:27.272215843-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.272221497-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.272236314-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"--- FAIL: TestNativeTestFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.272241914-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\tawesome_test.go:48: true is not equal to false\n"}
-{"Time":"2018-06-22T13:34:27.272250914-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.272261678-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
-{"Time":"2018-06-22T13:34:27.272266673-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== CONT  TestNativeTestPass\n"}
-{"Time":"2018-06-22T13:34:27.272272408-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"--- PASS: TestNativeTestPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.27227819-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.272283294-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
-{"Time":"2018-06-22T13:34:27.272288264-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== CONT  TestFailingButInAnotherFile\n"}
-{"Time":"2018-06-22T13:34:27.272293338-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.272298473-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  asinine test \n"}
-{"Time":"2018-06-22T13:34:27.272303548-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\u001b[32m--- FAIL: TestFailingButInAnotherFile (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.272308789-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tpitiful_test.go:17\n"}
-{"Time":"2018-06-22T13:34:27.272314128-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
-{"Time":"2018-06-22T13:34:27.272319415-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"✔\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.272324664-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.272334286-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\u001b[31m\u001b[0m\u001b[33m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.272340308-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"9 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.272345527-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.272353456-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"--- PASS: TestConveyPass (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.272359293-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  asinine test \u001b[33m✘\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.272364867-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.272369962-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[31m\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.272375227-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"Failures:\n"}
-{"Time":"2018-06-22T13:34:27.272380324-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.272385416-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  * /Users/rsamuels/go/src/github.com/evergreen-ci/evergreen/test2/awesome_test.go \n"}
-{"Time":"2018-06-22T13:34:27.272390692-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Line 32:\n"}
-{"Time":"2018-06-22T13:34:27.272395937-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Expected: 'true'\n"}
-{"Time":"2018-06-22T13:34:27.272401106-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  Actual:   'false'\n"}
-{"Time":"2018-06-22T13:34:27.272411505-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  (Should be equal)\n"}
-{"Time":"2018-06-22T13:34:27.272417135-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.272422228-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\u001b[0m\u001b[33m\n"}
-{"Time":"2018-06-22T13:34:27.272427659-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"10 total assertions\u001b[0m\n"}
-{"Time":"2018-06-22T13:34:27.272432832-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
-{"Time":"2018-06-22T13:34:27.272438421-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.272443942-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"--- FAIL: TestConveyFail (0.00s)\n"}
-{"Time":"2018-06-22T13:34:27.272448915-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Elapsed":0}
-{"Time":"2018-06-22T13:34:27.272454062-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Output":"FAIL\n"}
-{"Time":"2018-06-22T13:34:27.273005212-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Output":"FAIL\tgithub.com/evergreen-ci/evergreen/test2\t0.013s\n"}
-{"Time":"2018-06-22T13:34:27.273035589-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Elapsed":0.013}
+{"Time":"2018-06-22T17:11:46.110758003-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
+{"Time":"2018-06-22T17:11:46.111025649-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== RUN   TestTestifyPass\n"}
+{"Time":"2018-06-22T17:11:46.111039042-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== PAUSE TestTestifyPass\n"}
+{"Time":"2018-06-22T17:11:46.111045642-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
+{"Time":"2018-06-22T17:11:46.111052249-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
+{"Time":"2018-06-22T17:11:46.111057487-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== RUN   TestTestifyFail\n"}
+{"Time":"2018-06-22T17:11:46.111063105-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"=== PAUSE TestTestifyFail\n"}
+{"Time":"2018-06-22T17:11:46.111068205-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail"}
+{"Time":"2018-06-22T17:11:46.111073516-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
+{"Time":"2018-06-22T17:11:46.111078802-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== RUN   TestConveyPass\n"}
+{"Time":"2018-06-22T17:11:46.11108458-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== PAUSE TestConveyPass\n"}
+{"Time":"2018-06-22T17:11:46.111089724-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
+{"Time":"2018-06-22T17:11:46.111095107-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
+{"Time":"2018-06-22T17:11:46.111101985-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== RUN   TestConveyFail\n"}
+{"Time":"2018-06-22T17:11:46.111107914-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== PAUSE TestConveyFail\n"}
+{"Time":"2018-06-22T17:11:46.111112944-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
+{"Time":"2018-06-22T17:11:46.111120502-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
+{"Time":"2018-06-22T17:11:46.111125952-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== RUN   TestNativeTestPass\n"}
+{"Time":"2018-06-22T17:11:46.111131827-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== PAUSE TestNativeTestPass\n"}
+{"Time":"2018-06-22T17:11:46.111137059-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
+{"Time":"2018-06-22T17:11:46.111144782-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
+{"Time":"2018-06-22T17:11:46.111149826-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== RUN   TestNativeTestFail\n"}
+{"Time":"2018-06-22T17:11:46.11115542-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== PAUSE TestNativeTestFail\n"}
+{"Time":"2018-06-22T17:11:46.111160462-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
+{"Time":"2018-06-22T17:11:46.111165693-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail"}
+{"Time":"2018-06-22T17:11:46.111175751-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail","Output":"=== RUN   TestSkippedTestFail\n"}
+{"Time":"2018-06-22T17:11:46.111194528-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail","Output":"=== PAUSE TestSkippedTestFail\n"}
+{"Time":"2018-06-22T17:11:46.111203161-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail"}
+{"Time":"2018-06-22T17:11:46.111208734-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail"}
+{"Time":"2018-06-22T17:11:46.111213769-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail","Output":"=== RUN   TestTestifySuiteFail\n"}
+{"Time":"2018-06-22T17:11:46.112532523-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail/TestThings"}
+{"Time":"2018-06-22T17:11:46.112547834-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail/TestThings","Output":"=== RUN   TestTestifySuiteFail/TestThings\n"}
+{"Time":"2018-06-22T17:11:46.112684463-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail","Output":"--- FAIL: TestTestifySuiteFail (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.112700783-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail/TestThings","Output":"    --- FAIL: TestTestifySuiteFail/TestThings (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.112711254-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail/TestThings","Output":"    \tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:65\n"}
+{"Time":"2018-06-22T17:11:46.112718009-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail/TestThings","Output":"    \t\t\r\tError:      \tShould be true\n"}
+{"Time":"2018-06-22T17:11:46.112724259-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail/TestThings","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.112738885-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuiteFail","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.11274429-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite"}
+{"Time":"2018-06-22T17:11:46.112755412-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite","Output":"=== RUN   TestTestifySuite\n"}
+{"Time":"2018-06-22T17:11:46.114511658-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite/TestThings"}
+{"Time":"2018-06-22T17:11:46.114532631-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite/TestThings","Output":"=== RUN   TestTestifySuite/TestThings\n"}
+{"Time":"2018-06-22T17:11:46.11460533-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite","Output":"--- PASS: TestTestifySuite (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.114637586-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite/TestThings","Output":"    --- PASS: TestTestifySuite/TestThings (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.11464967-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite/TestThings","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.114658682-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifySuite","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.114666198-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
+{"Time":"2018-06-22T17:11:46.114681331-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== RUN   TestPassingButInAnotherFile\n"}
+{"Time":"2018-06-22T17:11:46.114739295-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== PAUSE TestPassingButInAnotherFile\n"}
+{"Time":"2018-06-22T17:11:46.11474917-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
+{"Time":"2018-06-22T17:11:46.11475598-04:00","Action":"run","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
+{"Time":"2018-06-22T17:11:46.114761396-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== RUN   TestFailingButInAnotherFile\n"}
+{"Time":"2018-06-22T17:11:46.114769422-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== PAUSE TestFailingButInAnotherFile\n"}
+{"Time":"2018-06-22T17:11:46.114777938-04:00","Action":"pause","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
+{"Time":"2018-06-22T17:11:46.114783716-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass"}
+{"Time":"2018-06-22T17:11:46.114788881-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"=== CONT  TestTestifyPass\n"}
+{"Time":"2018-06-22T17:11:46.114795362-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Output":"--- PASS: TestTestifyPass (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.114801331-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyPass","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.114806974-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail"}
+{"Time":"2018-06-22T17:11:46.114811925-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"=== CONT  TestNativeTestFail\n"}
+{"Time":"2018-06-22T17:11:46.114817423-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail"}
+{"Time":"2018-06-22T17:11:46.114822466-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail","Output":"=== CONT  TestSkippedTestFail\n"}
+{"Time":"2018-06-22T17:11:46.11482841-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"--- FAIL: TestNativeTestFail (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.114836571-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Output":"\tawesome_test.go:49: true is not equal to false\n"}
+{"Time":"2018-06-22T17:11:46.114842677-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestFail","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.114847806-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass"}
+{"Time":"2018-06-22T17:11:46.114852818-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"=== CONT  TestNativeTestPass\n"}
+{"Time":"2018-06-22T17:11:46.114858542-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail","Output":"--- SKIP: TestSkippedTestFail (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.114866461-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail","Output":"\tawesome_test.go:55: skipping because reasons\n"}
+{"Time":"2018-06-22T17:11:46.114874516-04:00","Action":"skip","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestSkippedTestFail","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.114880127-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Output":"--- PASS: TestNativeTestPass (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.114895372-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestNativeTestPass","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.114916025-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail"}
+{"Time":"2018-06-22T17:11:46.11492596-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"=== CONT  TestConveyFail\n"}
+{"Time":"2018-06-22T17:11:46.114939328-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass"}
+{"Time":"2018-06-22T17:11:46.1149528-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"=== CONT  TestConveyPass\n"}
+{"Time":"2018-06-22T17:11:46.11495878-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.114964102-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"  asinine test === CONT  TestTestifyFail\n"}
+{"Time":"2018-06-22T17:11:46.114969664-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile"}
+{"Time":"2018-06-22T17:11:46.114974671-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"=== CONT  TestFailingButInAnotherFile\n"}
+{"Time":"2018-06-22T17:11:46.114980548-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"--- FAIL: TestTestifyFail (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.114987108-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tawesome_test.go:20\n"}
+{"Time":"2018-06-22T17:11:46.114997068-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Output":"\t\t\r\tError:      \tShould be true\n"}
+{"Time":"2018-06-22T17:11:46.115003372-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestTestifyFail","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.115008789-04:00","Action":"cont","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile"}
+{"Time":"2018-06-22T17:11:46.115013843-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"=== CONT  TestPassingButInAnotherFile\n"}
+{"Time":"2018-06-22T17:11:46.11501917-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.115027167-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"  asinine test \u001b[32m✔\u001b[0m\n"}
+{"Time":"2018-06-22T17:11:46.115033388-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.115038763-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\u001b[31m\u001b[0m\u001b[33m\u001b[0m\u001b[32m\n"}
+{"Time":"2018-06-22T17:11:46.115044382-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"1 total assertion\u001b[0m\n"}
+{"Time":"2018-06-22T17:11:46.11505595-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.115062129-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Output":"--- PASS: TestPassingButInAnotherFile (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.115073127-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestPassingButInAnotherFile","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.115078798-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Output":"--- PASS: TestConveyPass (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.115090151-04:00","Action":"pass","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyPass","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.115101128-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"--- FAIL: TestFailingButInAnotherFile (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.115107049-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\tassertions.go:239: \r                          \r\tError Trace:\tpitiful_test.go:17\n"}
+{"Time":"2018-06-22T17:11:46.115112513-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\t\t\r\tError:      \tShould be true\n"}
+{"Time":"2018-06-22T17:11:46.115120352-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\u001b[33m✘\u001b[0m\n"}
+{"Time":"2018-06-22T17:11:46.11512616-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.115131434-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\u001b[31m\u001b[0m\u001b[33m\n"}
+{"Time":"2018-06-22T17:11:46.115136862-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"Failures:\n"}
+{"Time":"2018-06-22T17:11:46.115142013-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.115147259-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  * /Users/rsamuels/go/src/github.com/evergreen-ci/evergreen/test2/awesome_test.go \n"}
+{"Time":"2018-06-22T17:11:46.115152755-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  Line 33:\n"}
+{"Time":"2018-06-22T17:11:46.11515792-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  Expected: 'true'\n"}
+{"Time":"2018-06-22T17:11:46.115163114-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  Actual:   'false'\n"}
+{"Time":"2018-06-22T17:11:46.115170978-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"  (Should be equal)\n"}
+{"Time":"2018-06-22T17:11:46.11517854-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.115189323-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\u001b[0m\u001b[33m\n"}
+{"Time":"2018-06-22T17:11:46.115208634-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"2 total assertions\u001b[0m\n"}
+{"Time":"2018-06-22T17:11:46.115217738-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Output":"\n"}
+{"Time":"2018-06-22T17:11:46.115225769-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestFailingButInAnotherFile","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.11523152-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Output":"--- FAIL: TestConveyFail (0.00s)\n"}
+{"Time":"2018-06-22T17:11:46.115236704-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Test":"TestConveyFail","Elapsed":0}
+{"Time":"2018-06-22T17:11:46.115247138-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Output":"FAIL\n"}
+{"Time":"2018-06-22T17:11:46.116724701-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2","Output":"FAIL\tgithub.com/evergreen-ci/evergreen/test2\t0.016s\n"}
+{"Time":"2018-06-22T17:11:46.116835218-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2","Elapsed":0.016}

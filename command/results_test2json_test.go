@@ -1,8 +1,14 @@
 package command
 
 import (
+	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -13,6 +19,10 @@ const (
 type test2JSONSuite struct {
 	args map[string]interface{}
 	c    *goTest2JSONCommand
+
+	sender *send.InternalSender
+	comm   *client.Mock
+	conf   *model.TaskConfig
 
 	suite.Suite
 }
@@ -29,6 +39,16 @@ func (s *test2JSONSuite) SetupTest() {
 		"files": []string{test2JSONFile},
 	}
 	s.Equal("gotest.parse_json", s.c.Name())
+
+	s.comm = &client.Mock{
+		LogID: "log0",
+	}
+	s.conf = &model.TaskConfig{
+		Task: &task.Task{
+			Id: "task0",
+		},
+	}
+	s.sender = send.MakeInternalLogger()
 }
 
 func (s *test2JSONSuite) TestNoFiles() {
@@ -50,4 +70,49 @@ func (s *test2JSONSuite) TestParseArgs() {
 	}
 	s.NoError(s.c.ParseParams(s.args))
 	s.Equal(s.args["files"], s.c.Files)
+
+	s.args = map[string]interface{}{
+		"files": []string{"some/other/*.json"},
+	}
+
+	s.c.Files = []string{}
+	s.NoError(s.c.ParseParams(s.args))
+	// TODO TEST EXPANSIONS
+}
+
+func (s *test2JSONSuite) TestExecute() {
+	logger := client.NewSingleChannelLogHarness("test", s.sender)
+	s.c.Execute(context.Background(), s.comm, logger, s.conf)
+
+	msgs := drainMessages(s.sender)
+	s.Len(msgs, 5)
+	s.noErrorMessages(msgs)
+
+	s.Len(s.comm.LocalTestResults.Results, 13)
+	s.Equal(13, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 13)
+
+	logFiles := map[string]bool{}
+	for _, result := range s.comm.LocalTestResults.Results {
+		_, ok := logFiles[result.LogId]
+		s.False(ok)
+		logFiles[result.LogId] = true
+	}
+}
+
+func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
+	for i := range msgs {
+		if msgs[i].Priority >= level.Warning {
+			s.T().Errorf("message: '%s' had level: %s", msgs[i].Message.String(), msgs[i].Level)
+		}
+	}
+}
+
+func drainMessages(sender *send.InternalSender) []*send.InternalMessage {
+	out := []*send.InternalMessage{}
+	for msg, ok := sender.GetMessageSafe(); ok; msg, ok = sender.GetMessageSafe() {
+		out = append(out, msg)
+	}
+
+	return out
 }
