@@ -298,9 +298,12 @@ mciModule.factory('PerfDiscoveryDataService', function(
     })
   }
 
-  // Group BFs by task, bv and test
-  // Sort BFs in each group by status/date
-  // Mark open BFs as `isOpen`
+  // * Group BFs by task, bv and test
+  // * Sort BFs in each group by status/date
+  // * Mark open BFs by setting `_isOpen` to true -
+  //   required for the next step
+  //            / GRP 1 \  / GRP 2 \ / GRP N \
+  // :returns: [[BF, ...], [BF, ...],  ...   ]
   function postprocessBFs(bfs) {
     return _.chain(bfs)
       // Group all BFs by task, bv and test
@@ -318,10 +321,10 @@ mciModule.factory('PerfDiscoveryDataService', function(
           .map(function(bfs) {
             return _.sortBy(bfs, '-created')
           })
-          // Kind of minor optimisation - sets isOpen to true for
+          // Kind of minor optimisation - sets _isOpen to true for
           // each BF which was considered to be open on the first stage
           .each(function(bfs, idx) {
-            idx == 0 && _.each(bfs, function(bf) { bf.isOpen = true })
+            idx == 0 && _.each(bfs, function(bf) { bf._isOpen = true })
           })
           // Merging two splits into single array of BFs
           .flatten(true)

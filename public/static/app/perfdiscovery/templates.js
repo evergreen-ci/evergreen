@@ -36,7 +36,7 @@ mciModule.run(function($templateCache) {
     '<div class="ui-grid-cell-contents">' +
       '<span ng-repeat="item in COL_FIELD">' +
         '<span ' +
-          'ng-class="!item.isOpen && \'strikethrough\'" ' +
+          'ng-class="!item._isOpen && \'strikethrough\'" ' +
           'title="{{item.summary}}" ' +
           'ng-bind-html="item.key | jiraLinkify : grid.appScope.$ctrl.jiraHost" ' +
         '></span>' +
