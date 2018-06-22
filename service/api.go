@@ -121,7 +121,7 @@ func Serve(l net.Listener, handler http.Handler) error {
 // in the header with the secret in the db to ensure that they are the same.
 func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		t, code, err := model.ValidateTask(mux.Vars(r)["taskId"], checkSecret, r)
+		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], checkSecret, r)
 		if err != nil {
 			as.LoggedError(w, r, code, errors.Wrap(err, "invalid task"))
 			return
@@ -135,7 +135,7 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 // project and project ref to the request context.
 func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projectId := mux.Vars(r)["projectId"]
+		projectId := gimlet.GetVars(r)["projectId"]
 		if projectId == "" {
 			as.LoggedError(w, r, http.StatusBadRequest, errors.New("missing project Id"))
 			return
@@ -171,7 +171,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 
 func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		h, code, err := model.ValidateHost(mux.Vars(r)["hostId"], r)
+		h, code, err := model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
 		if err != nil {
 			as.LoggedError(w, r, code, errors.Wrap(err, "host not assigned to run task"))
 			return
@@ -434,8 +434,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 // Get the host with the id specified in the request
 func getHostFromRequest(r *http.Request) (*host.Host, error) {
 	// get id and secret from the request.
-	vars := mux.Vars(r)
-	tag := vars["tag"]
+	tag := gimlet.GetVars(r)["tag"]
 	if len(tag) == 0 {
 		return nil, errors.New("no host tag supplied")
 	}
@@ -459,7 +458,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// if the host failed
-	setupSuccess := mux.Vars(r)["status"]
+	setupSuccess := gimlet.GetVars(r)["status"]
 	if setupSuccess == evergreen.HostStatusFailed {
 		grip.Infof("Initializing host %s failed", hostObj.Id)
 		// send notification to the Evergreen team about this provisioning failure
@@ -527,8 +526,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["identifier"]
+	id := gimlet.GetVars(r)["identifier"]
 	projectRef, err := model.FindOneProjectRef(id)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)

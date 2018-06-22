@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -270,8 +269,7 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 // 4. The default project in the UI settings, if present.
 // 5. The first project in the complete list of all project refs.
 func (uis *UIServer) getRequestProjectId(r *http.Request) string {
-	vars := mux.Vars(r)
-	projectId := vars["project_id"]
+	projectId := gimlet.GetVars(r)["project_id"]
 	if len(projectId) > 0 {
 		return projectId
 	}

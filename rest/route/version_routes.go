@@ -8,14 +8,13 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
 // getVersionIdFromRequest is a helpfer function that fetches versionId from
 // request.
 func getVersionIdFromRequest(r *http.Request) string {
-	return mux.Vars(r)["version_id"]
+	return gimlet.GetVars(r)["version_id"]
 }
 
 type versionHandler struct {

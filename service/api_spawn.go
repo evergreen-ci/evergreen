@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -79,7 +78,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	vars := gimlet.GetVars(r)
 	instanceId := vars["instance_id"]
 	status := vars["status"]
 
@@ -148,8 +147,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 
 // returns info on the host specified
 func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	instanceId := vars["instance_id"]
+	instanceId := gimlet.GetVars(r)["instance_id"]
 
 	h, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
@@ -167,8 +165,7 @@ func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
 
 // returns info on all of the hosts spawned by a user
 func (as *APIServer) hostsInfoForUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	user := vars["user"]
+	user := gimlet.GetVars(r)["user"]
 
 	hosts, err := host.Find(host.ByUserWithUnterminatedStatus(user))
 	if err != nil {
