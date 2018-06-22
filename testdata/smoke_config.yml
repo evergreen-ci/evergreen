@@ -65,3 +65,4 @@ service_flags:
     scheduler_disabled: false
     github_pr_testing_disabled: true
     repotracker_push_event_disabled: true
+logpath: "STDOUT"

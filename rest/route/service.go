@@ -9,11 +9,10 @@ import (
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a Connector then attaches each of the main functions for
 // the api to the router.
-func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL, prefix string, superUsers []string, githubSecret []byte) {
+func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers []string, githubSecret []byte) {
 	sc := &data.DBConnector{}
 
 	sc.SetURL(URL)
-	sc.SetPrefix(prefix)
 	sc.SetSuperUsers(superUsers)
 	GetHandler(app, sc, queue, githubSecret)
 }

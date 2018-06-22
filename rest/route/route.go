@@ -31,7 +31,6 @@ type RouteManager struct {
 func (rm *RouteManager) Register(app *gimlet.APIApp, sc data.Connector) {
 	for _, method := range rm.Methods {
 		api := app.AddRoute(rm.Route).Version(rm.Version).Handler(makeHandler(method, sc))
-
 		switch method.MethodType {
 		case http.MethodGet:
 			api.Get()

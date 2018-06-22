@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -974,7 +973,6 @@ func TestTaskGetHandler(t *testing.T) {
 		rm := getTaskRouteManager("/tasks/{task_id}", 2)
 		sc := &data.MockConnector{}
 		sc.SetPrefix("rest")
-		r := mux.NewRouter()
 
 		Convey("and task is in the service context", func() {
 			sc.MockTaskConnector.CachedTasks = []task.Task{
@@ -985,7 +983,14 @@ func TestTaskGetHandler(t *testing.T) {
 					OldTaskId: "testTaskId",
 				},
 			}
-			rm.Register(r, sc)
+
+			app := gimlet.NewApp()
+			app.SetPrefix(sc.GetPrefix())
+			rm.Register(app, sc)
+			So(app.Resolve(), ShouldBeNil)
+			r, err := app.Router()
+			So(err, ShouldBeNil)
+
 			Convey("a request with a user should then return no error and a task should"+
 				" should be returned", func() {
 				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
