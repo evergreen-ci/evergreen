@@ -176,6 +176,11 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 )
 
+const (
+	GenerateTasksCommandName = "generate.tasks"
+	CreateHostCommandName    = "create.host"
+)
+
 type SenderKey int
 
 const (
