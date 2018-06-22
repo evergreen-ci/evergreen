@@ -57,7 +57,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 
 	restv2API := gimlet.NewApp()
 	restv2UI := gimlet.NewApp()
-	restv2API.ResetMiddleware()
 	restv2UI.ResetMiddleware()
 
 	restv2API.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
