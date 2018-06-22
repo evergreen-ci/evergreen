@@ -255,12 +255,10 @@ func Provisioning() db.Q {
 }
 
 func FindByFirstProvisioningAttempt() ([]Host, error) {
-	q := db.Query(bson.M{
+	return Find(db.Query(bson.M{
 		ProvisionAttemptsKey: 0,
 		StatusKey:            evergreen.HostProvisioning,
-	})
-
-	return Find(q)
+	}))
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
