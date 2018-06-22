@@ -89,26 +89,36 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     }
 
     try {
-      $scope.Settings.container_pools.pools = jsyaml.safeLoad($scope.tempContainerPools);
+      var parsedContainerPools = jsyaml.safeLoad($scope.tempContainerPools);
     } catch(e) {
       alert("Error parsing container pools yaml: " + e);
       return;
     }
 
-    if ($scope.tempContainerPools === null || $scope.tempContainerPools === undefined || $scope.tempContainerPools == "") {
-      $scope.Settings.container_pools.pools = [];
+    if (!$scope.tempContainerPools) {
+      parsedContainerPools = [];
     }
 
-    // do not save settings if duplicate container pool IDs found
-    var uniqueIds = new Set()
-    for (var i = 0; i < $scope.Settings.container_pools.pools.length; i++) {
-      var p = $scope.Settings.container_pools.pools[i]
-      if (uniqueIds.has(p.id)) {
+    // do not save settings if any container pool field is null
+    // or if duplicate container pool IDs found
+    var uniqueIds = {}
+    for (var i = 0; i < parsedContainerPools.length; i++) {
+      var p = parsedContainerPools[i]
+      // check fields
+      if (!p.Distro || !p.Id || !p.MaxContainers) {
+        alert("Error saving settings: container pool field cannot be null");
+        return
+      }
+
+      // check uniqueness
+      if (p.id in uniqueIds) {
         alert("Error saving settings: found duplicate container pool ID: " + p.id);
         return;
       }
-      uniqueIds.add(p.id)
+      uniqueIds[p.id] = true
     }
+
+    $scope.Settings.container_pools.pools = parsedContainerPools;
 
     if ($scope.tempPlugins === null || $scope.tempPlugins === undefined || $scope.tempPlugins == "") {
       $scope.Settings.plugins = {};
