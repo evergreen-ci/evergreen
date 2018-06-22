@@ -85,7 +85,7 @@ imports:
     version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
 
   - name: github.com/mholt/archiver
-    version: 4a8a092653655d29c8e091cf2ecf91cbe697f0de
+    version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
 
 
   - name: github.com/pkg/errors
