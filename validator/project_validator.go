@@ -890,14 +890,14 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 }
 
 func validateGenerateTasks(p *model.Project) []ValidationError {
-	ts := p.TasksThatCallCommand(model.GenerateTasksCommandName)
-	return validateTimesCalledPerTask(p, ts, model.GenerateTasksCommandName, 1)
+	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
+	return validateTimesCalledPerBuildVariant(p, ts, evergreen.GenerateTasksCommandName, 1)
 }
 
 func validateCreateHosts(p *model.Project) []ValidationError {
-	ts := p.TasksThatCallCommand(model.CreateHostCommandName)
-	errs := validateTimesCalledPerTask(p, ts, model.CreateHostCommandName, 3)
-	errs = append(errs, validateTimesCalledTotal(p, ts, model.CreateHostCommandName, 10)...)
+	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
+	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 10)...)
 	return errs
 }
 
@@ -912,6 +912,24 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 					})
 				}
 			}
+		}
+	}
+	return errs
+}
+
+func validateTimesCalledPerBuildVariant(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+	for _, bv := range p.BuildVariants {
+		total := 0
+		for _, t := range bv.Tasks {
+			if count, ok := ts[t.Name]; ok {
+				total += count
+			}
+		}
+		if total > times {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("variant %s may only call %s %d times but calls it %d times", bv.Name, commandName, times, total),
+				Level:   Error,
+			})
 		}
 	}
 	return errs

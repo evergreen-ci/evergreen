@@ -1850,7 +1850,7 @@ func TestValidateCreateHosts(t *testing.T) {
   tasks:
   - name: t_1
     commands:
-    - command: createhost
+    - command: create.host
   buildvariants:
   - name: "bv"
     tasks:
@@ -1867,10 +1867,10 @@ func TestValidateCreateHosts(t *testing.T) {
   tasks:
   - name: t_1
     commands:
-    - command: createhost
-    - command: createhost
-    - command: createhost
-    - command: createhost
+    - command: create.host
+    - command: create.host
+    - command: create.host
+    - command: create.host
   buildvariants:
   - name: "bv"
     tasks:
@@ -1886,24 +1886,24 @@ func TestValidateCreateHosts(t *testing.T) {
   tasks:
   - name: t_1
     commands:
-    - command: createhost
-    - command: createhost
-    - command: createhost
+    - command: create.host
+    - command: create.host
+    - command: create.host
   - name: t_2
     commands:
-    - command: createhost
-    - command: createhost
-    - command: createhost
+    - command: create.host
+    - command: create.host
+    - command: create.host
   - name: t_3
     commands:
-    - command: createhost
-    - command: createhost
-    - command: createhost
+    - command: create.host
+    - command: create.host
+    - command: create.host
   - name: t_4
     commands:
-    - command: createhost
-    - command: createhost
-    - command: createhost
+    - command: create.host
+    - command: create.host
+    - command: create.host
   buildvariants:
   - name: "bv"
     tasks:

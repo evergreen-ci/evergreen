@@ -1063,7 +1063,7 @@ func (p *Project) TasksThatCallCommand(find string) map[string]int {
 // IsGenerateTask indicates that the task generates other tasks, which the
 // scheduler will use to prioritize this task.
 func (p *Project) IsGenerateTask(taskName string) bool {
-	_, ok := p.TasksThatCallCommand(GenerateTasksCommandName)[taskName]
+	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[taskName]
 	return ok
 }
 
