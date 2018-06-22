@@ -101,6 +101,10 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	settings := j.env.Settings()
 
 	j.AddError(j.setupHost(ctx, j.host, settings))
+
+	if j.host.Status == evergreen.HostProvisioning && j.env.RemoteQueue().Started() {
+		j.env.RemoteQueue().Put(NewHostSetupJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.host.ProvisionAttempts)))
+	}
 }
 
 var (
