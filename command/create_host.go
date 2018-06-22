@@ -12,16 +12,16 @@ import (
 
 type createHost struct {
 	// EC2-related settings
-	AMI            string    `mapstructure:"ami"`
-	Distro         string    `mapstructure:"distro"`
-	EBSDevice      ebsDevice `mapstructure:"ebs_block_device"`
-	InstanceType   string    `mapstructure:"instance_type"`
-	Region         string    `mapstructure:"region"`
-	SecurityGroups []string  `mapstructure:"security_group_ids"`
-	Spot           bool      `mapstructure:"spot"`
-	Subnet         string    `mapstructure:"subnet_id"`
-	UserdataFile   string    `mapstructure:"userdata_file"`
-	VPC            string    `mapstructure:"vpc_id"`
+	AMI            string      `mapstructure:"ami"`
+	Distro         string      `mapstructure:"distro"`
+	EBSDevices     []ebsDevice `mapstructure:"ebs_block_device"`
+	InstanceType   string      `mapstructure:"instance_type"`
+	Region         string      `mapstructure:"region"`
+	SecurityGroups []string    `mapstructure:"security_group_ids"`
+	Spot           bool        `mapstructure:"spot"`
+	Subnet         string      `mapstructure:"subnet_id"`
+	UserdataFile   string      `mapstructure:"userdata_file"`
+	VPC            string      `mapstructure:"vpc_id"`
 
 	// authentication settings
 	AWSKeyID  string `mapstructure:"aws_access_key_id"`
@@ -80,14 +80,9 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 		}
 	}
 
-	if (c.AWSKeyID != "" && c.AWSSecret == "") || (c.AWSKeyID == "" && c.AWSSecret != "") {
-		catcher.Add(errors.New("aws_access_key_id and aws_secret_access_key must both be set or unset"))
-	}
-	if c.KeyName != "" && (c.AWSKeyID != "" || c.AWSSecret != "") {
-		catcher.Add(errors.New("key_name cannot be set if aws_access_key_id is set"))
-	}
-	if c.KeyName == "" && c.AWSKeyID == "" {
-		catcher.Add(errors.New("must set either key_name or aws_access_key_id"))
+	if !(c.AWSKeyID == "" && c.AWSSecret == "" && c.KeyName == "") &&
+		!(c.AWSKeyID != "" && c.AWSSecret != "" && c.KeyName != "") {
+		catcher.Add(errors.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset"))
 	}
 
 	if c.NumHosts > 10 || c.NumHosts < 0 {

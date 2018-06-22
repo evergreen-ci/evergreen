@@ -19,9 +19,8 @@ func TestCreateHostSuite(t *testing.T) {
 
 func (s *createHostSuite) SetupTest() {
 	s.params = map[string]interface{}{
-		"distro":   "myDistro",
-		"key_name": "key1",
-		"scope":    "task",
+		"distro": "myDistro",
+		"scope":  "task",
 	}
 	s.cmd = createHost{}
 }
@@ -53,14 +52,11 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["vpc_id"] = "vpc"
 	s.NoError(s.cmd.ParseParams(s.params))
 
-	// having both a key name and key ID is an error
+	// having a key id but nothing else is an error
 	s.params["aws_access_key_id"] = "keyid"
-	s.Contains(s.cmd.ParseParams(s.params).Error(), "key_name cannot be set if aws_access_key_id is set")
-
-	// verify errors for missing key information
-	s.params["key_name"] = ""
-	s.Contains(s.cmd.ParseParams(s.params).Error(), "aws_access_key_id and aws_secret_access_key must both be set or unset")
+	s.Contains(s.cmd.ParseParams(s.params).Error(), "aws_access_key_id, aws_secret_access_key, key_name must all be set or unset")
 	s.params["aws_secret_access_key"] = "secret"
+	s.params["key_name"] = "key"
 	s.NoError(s.cmd.ParseParams(s.params))
 
 	// verify errors for things controlled by the agent
