@@ -216,7 +216,7 @@ func (uis *UIServer) bbSendFeedback(rw http.ResponseWriter, r *http.Request) {
 		Execution    int                    `json:"execution"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	if err := util.ReadJSONInto(r.Body, &input); err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
