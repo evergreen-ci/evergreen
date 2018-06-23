@@ -197,7 +197,7 @@ func (uis *UIServer) bbGetFeedback(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	feedbackItems, err := bfsc.getFeedback(context.TODO(), t, u.Username())
+	feedbackItems, err := bfsc.getFeedback(r.Context(), t, u.Username())
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
@@ -227,7 +227,7 @@ func (uis *UIServer) bbSendFeedback(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bfsc.sendFeedback(context.TODO(), t, u.Username(), input.FeedbackType, input.FeedbackData)
+	err = bfsc.sendFeedback(r.Context(), t, u.Username(), input.FeedbackType, input.FeedbackData)
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
@@ -249,7 +249,7 @@ func (uis *UIServer) bbRemoveFeedback(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bfsc.removeFeedback(context.TODO(), t, u.Username(), feedbackType)
+	err = bfsc.removeFeedback(r.Context(), t, u.Username(), feedbackType)
 	if err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
