@@ -87,7 +87,8 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		}
 		]
 	}`
-	util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err := util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
 
 	tickets, err := altEndpoint.parseResponseData(data)
 
@@ -136,7 +137,8 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		}
 		]
 	}`
-	util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
 
 	tickets, err = altEndpoint.parseResponseData(data)
 
@@ -152,7 +154,8 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		"status": "ok",
 		"suggestions": []
 	}`
-	util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
 
 	tickets, err = altEndpoint.parseResponseData(data)
 
@@ -167,7 +170,8 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		"execution": 0,
 		"status": "scheduled"
 	}`
-	util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
 
 	tickets, err = altEndpoint.parseResponseData(data)
 

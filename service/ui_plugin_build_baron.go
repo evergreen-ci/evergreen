@@ -84,7 +84,7 @@ func (uis *UIServer) bbGetTaskAndBFSuggestionClient(taskId string, execution str
 
 	bfsc, ok = getBFSuggestionClient(bbProj)
 	if !ok {
-		err := errors.Errorf("No BF Suggestion Server configured for the project %v", t.Project)
+		err = errors.Errorf("No BF Suggestion Server configured for the project %v", t.Project)
 		return nil, bfsc, err
 	}
 
@@ -340,23 +340,6 @@ func (js *jiraSuggest) GetTimeout() time.Duration {
 type altEndpointSuggest struct {
 	bfsc        bfSuggestionClient
 	timeoutSecs int
-}
-
-type altEndpointSuggestion struct {
-	TestName string `json:"test_name"`
-	Issues   []struct {
-		Key         string `json:"key"`
-		Summary     string `json:"summary"`
-		Status      string `json:"status"`
-		Resolution  string `json:"resolution"`
-		CreatedDate string `json:"created_date"`
-		UpdatedDate string `json:"updated_date"`
-	}
-}
-
-type altEndpointResponse struct {
-	Status      string                  `json:"status"`
-	Suggestions []altEndpointSuggestion `json:"suggestions"`
 }
 
 func (aes *altEndpointSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {

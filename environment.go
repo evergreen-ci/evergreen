@@ -438,10 +438,10 @@ type BuildBaronProject struct {
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
 
 	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
-	BFSuggestionServer              string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server"`
-	BFSuggestionUsername            string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username"`
-	BFSuggestionPassword            string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password"`
-	BFSuggestionTimeoutSecs         int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs"`
+	BFSuggestionServer            string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server"`
+	BFSuggestionUsername          string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username"`
+	BFSuggestionPassword          string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password"`
+	BFSuggestionTimeoutSecs       int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs"`
 }
 
 func (e *envState) persistSettings() error {
