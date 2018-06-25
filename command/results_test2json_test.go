@@ -4,7 +4,9 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -102,10 +104,80 @@ func (s *test2JSONSuite) TestExecute() {
 	s.Len(s.comm.TestLogs, 14)
 	s.saneTestResults()
 
-	for _, test := range s.comm.LocalTestResults.Results {
-		s.NotEqual(test.StartTime, test.EndTime)
-		s.NotEqual(test.EndTime-test.StartTime, 0)
+	expectedResults := map[string]testEventExpectation{
+		"TestConveyPass": {
+			StartTime: "2018-06-25T12:05:04.017015269-04:00",
+			EndTime:   "2018-06-25T12:05:34.035040344-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"TestConveyFail": {
+			StartTime: "2018-06-25T12:05:04.017036781-04:00",
+			EndTime:   "2018-06-25T12:05:34.034868188-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestFailingButInAnotherFile": {
+			StartTime: "2018-06-25T12:05:24.032450248-04:00",
+			EndTime:   "2018-06-25T12:05:34.034820373-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestNativeTestPass": {
+			StartTime: "2018-06-25T12:05:04.01707699-04:00",
+			EndTime:   "2018-06-25T12:05:34.034725614-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"TestNativeTestFail": {
+			StartTime: "2018-06-25T12:05:04.017098154-04:00",
+			EndTime:   "2018-06-25T12:05:34.034919477-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestPassingButInAnotherFile": {
+			StartTime: "2018-06-25T12:05:24.032378982-04:00",
+			EndTime:   "2018-06-25T12:05:34.035090616-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"TestSkippedTestFail": {
+			StartTime: "2018-06-25T12:05:04.0171186-04:00",
+			EndTime:   "2018-06-25T12:05:44.034981576-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestTestifyFail": {
+			StartTime: "2018-06-25T12:05:04.016984664-04:00",
+			EndTime:   "2018-06-25T12:05:44.034874417-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestTestifyPass": {
+			StartTime: "2018-06-25T12:05:04.016652959-04:00",
+			EndTime:   "2018-06-25T12:05:34.034985982-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"TestTestifySuite": {
+			StartTime: "2018-06-25T12:05:14.024473312-04:00",
+			EndTime:   "2018-06-25T12:05:24.032367066-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"TestTestifySuiteFail": {
+			StartTime: "2018-06-25T12:05:04.017169659-04:00",
+			EndTime:   "2018-06-25T12:05:14.024456046-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestTestifySuiteFail/TestThings": {
+			StartTime: "2018-06-25T12:05:04.019154773-04:00",
+			EndTime:   "2018-06-25T12:05:14.02441206-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestTestifySuite/TestThings": {
+			StartTime: "2018-06-25T12:05:14.027554888-04:00",
+			EndTime:   "2018-06-25T12:05:24.03234939-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"package-github.com/evergreen-ci/evergreen/test2": {
+			StartTime: "2018-06-25T12:05:04.016652959-04:00",
+			EndTime:   "2018-06-25T12:05:44.037218299-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
 	}
+	s.Len(expectedResults, 14)
+	s.doTableTest(expectedResults)
 }
 
 func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
@@ -121,6 +193,35 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	s.Equal(4, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 4)
 	s.saneTestResults()
+
+	expectedResults := map[string]testEventExpectation{
+		"BenchmarkSomethingFailing": {
+			StartTime: "2018-06-25T14:31:40.822048716-04:00",
+			EndTime:   "2018-06-25T14:31:40.822048716-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"BenchmarkSomething-8": {
+			StartTime: "2018-06-25T14:31:20.813873718-04:00",
+			EndTime:   "2018-06-25T14:31:20.813873718-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"BenchmarkSomethingElse-8": {
+			StartTime: "2018-06-25T14:31:40.821868721-04:00",
+			EndTime:   "2018-06-25T14:31:40.821868721-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"BenchmarkSomethingSilent-8": {
+			StartTime: "2018-06-25T14:31:30.819257417-04:00",
+			EndTime:   "2018-06-25T14:31:30.819257417-04:00",
+			Status:    evergreen.TestSucceededStatus,
+		},
+		"package-github.com/evergreen-ci/evergreen/test2_bench": {
+			StartTime: "2018-06-25T14:31:00.800956739-04:00",
+			EndTime:   "2018-06-25T14:31:40.828956739-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+	}
+	s.doTableTest(expectedResults)
 
 	for _, result := range s.comm.LocalTestResults.Results {
 		// benchmark timings should be 0, except for the package level
@@ -149,6 +250,12 @@ func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
 	s.saneTestResults()
 }
 
+type testEventExpectation struct {
+	StartTime string
+	EndTime   string
+	Status    string
+}
+
 func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
 	s.c.Files[0] = test2JSONPanicFile
 	logger := client.NewSingleChannelLogHarness("test", s.sender)
@@ -162,6 +269,50 @@ func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
 	s.Equal(3, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 3)
 	s.saneTestResults()
+
+	expectedResults := map[string]testEventExpectation{
+		"TestWillPanic": {
+			StartTime: "2018-06-25T14:57:29.280697961-04:00",
+			EndTime:   "2018-06-25T14:57:39.287082569-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestTestifySuitePanic": {
+			StartTime: "2018-06-25T14:57:29.281022553-04:00",
+			EndTime:   "2018-06-25T14:57:29.281073606-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"TestTestifySuitePanic/TestWillPanic": {
+			StartTime: "2018-06-25T14:57:29.281033889-04:00",
+			EndTime:   "2018-06-25T14:57:29.28262775-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+		"github.com/evergreen-ci/evergreen/test2/panic": {
+			StartTime: "2018-06-25T14:57:29.280697961-04:00",
+			EndTime:   "2018-06-25T14:57:39.287082569-04:00",
+			Status:    evergreen.TestFailedStatus,
+		},
+	}
+	s.doTableTest(expectedResults)
+}
+
+func (s *test2JSONSuite) doTableTest(expectedResults map[string]testEventExpectation) {
+	for _, test := range s.comm.LocalTestResults.Results {
+		expected, ok := expectedResults[test.TestFile]
+		if !ok {
+			s.T().Logf("Missing expected results for %s", test.TestFile)
+			continue
+		}
+
+		start, err := time.Parse(time.RFC3339Nano, expected.StartTime)
+		s.NoError(err)
+		s.Equal(float64(start.Unix()), test.StartTime, test.TestFile)
+
+		end, err := time.Parse(time.RFC3339Nano, expected.EndTime)
+		s.NoError(err)
+		s.Equal(float64(end.Unix()), test.EndTime, test.TestFile)
+
+		s.Equal(expected.Status, test.Status)
+	}
 }
 
 func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
@@ -189,7 +340,7 @@ func (s *test2JSONSuite) saneTestResults() {
 		// benchmark output is weird: You'd think you would get a
 		// start and an end time, or an average iteration time, but
 		// you don't
-		if !strings.HasPrefix(result.TestFile, "Benchmark") {
+		if !strings.HasPrefix(result.TestFile, "Benchmark") && !strings.Contains(result.TestFile, "Panic") {
 			s.True((result.EndTime - result.StartTime) >= 10)
 		}
 	}
