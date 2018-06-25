@@ -23,12 +23,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     'id': 'docker',
     'display': 'Docker'
   }, {
-    'id': 'docker-static',
-    'display': 'Docker Static'
-  }, {
-    'id': 'docker-dynamic',
-    'display': 'Docker Dynamic'
-  }, {
     'id': 'openstack',
     'display': 'OpenStack'
   }, {
