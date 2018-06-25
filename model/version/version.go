@@ -53,15 +53,12 @@ type Version struct {
 }
 
 func (v *Version) LastSuccessful() (*Version, error) {
-	versions, err := Find(BySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
-		[]string{"-" + RevisionOrderNumberKey}).Limit(1))
+	lastGreen, err := FindOne(BySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
+		[]string{"-" + RevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving last successful version")
 	}
-	if len(versions) == 0 {
-		return nil, nil
-	}
-	return &versions[0], nil
+	return lastGreen, nil
 }
 
 func (self *Version) UpdateBuildVariants() error {
