@@ -471,9 +471,9 @@ func getBFSuggestionClient(bbProj evergreen.BuildBaronProject) (bfSuggestionClie
 }
 
 const suggestionPath = "/suggestions/{task_id}/{execution}"
-const getFeedbackPath = "/feedback/{task_id}/{execution}/{user_id}"
+const getFeedbackPath = "/feedback/{task_id}/{execution}/user_id/{user_id}"
 const sendFeedbackPath = "/feedback/{task_id}/{execution}"
-const removeFeedbackPath = "/feedback/{task_id}/{execution}/{user_id}/{feedback_type}"
+const removeFeedbackPath = "/feedback/{task_id}/{execution}/user_id/{user_id}/feedback_type/{feedback_type}"
 
 type bfSuggestionClient struct {
 	server   string
