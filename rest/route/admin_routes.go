@@ -155,10 +155,6 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	if err != nil {
 		return ResponseData{}, errors.Wrap(err, "Validation error")
 	}
-	err = distro.ValidateContainerPoolDistros(newSettings)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Validation error")
-	}
 
 	_, err = sc.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
