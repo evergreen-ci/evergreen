@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
@@ -248,9 +247,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
 	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
 
-	// attaches /rest/v2 routes
-	route.AttachHandler(r, uis.queue, uis.Settings.Ui.Url, evergreen.RestRoutePrefix, uis.Settings.SuperUsers, []byte(uis.Settings.Api.GithubWebhookSecret))
-
 	// Static Path handlers
 	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
 
@@ -346,7 +342,8 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // user/project, but other data will still be returned
 func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
 	viewData := ViewData{}
-	userCtx := GetUser(r)
+	ctx := r.Context()
+	userCtx := gimlet.GetUser(ctx)
 	if needsUser && userCtx == nil {
 		grip.Error("no user attached to request")
 	}
@@ -370,9 +367,15 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	if err != nil {
 		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
 	}
+
+	if u, ok := userCtx.(*user.DBUser); ok {
+		viewData.User = u
+	} else if userCtx != nil {
+		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
+	}
+
 	viewData.Banner = settings.Banner
 	viewData.BannerTheme = string(settings.BannerTheme)
-	viewData.User = userCtx
 	viewData.ProjectData = projectCtx
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
 	viewData.Csrf = csrf.TemplateField(r)

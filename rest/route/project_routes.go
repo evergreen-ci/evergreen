@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -30,10 +30,9 @@ func getProjectRouteManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &NoAuthAuthenticator{},
-				RequestHandler:    p.Handler(),
-				MethodType:        http.MethodGet,
+				Authenticator:  &NoAuthAuthenticator{},
+				RequestHandler: p.Handler(),
+				MethodType:     http.MethodGet,
 			},
 		},
 	}
@@ -48,7 +47,10 @@ func (p *projectGetHandler) Handler() RequestHandler {
 }
 
 func (p *projectGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = projectGetArgs{User: GetUser(ctx)}
+	usrabs := gimlet.GetUser(ctx)
+	u, _ := usrabs.(*user.DBUser)
+
+	p.Args = projectGetArgs{User: u}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -158,8 +160,7 @@ func (h *versionsGetHandler) Handler() RequestHandler {
 
 func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	var err error
-	vars := mux.Vars(r)
-	h.project = vars["project_id"]
+	h.project = gimlet.GetVars(r)["project_id"]
 	limit := r.URL.Query().Get("limit")
 	if limit != "" {
 		h.limit, err = strconv.Atoi(limit)

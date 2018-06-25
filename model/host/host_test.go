@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1489,6 +1490,80 @@ func TestGetContainersNotParent(t *testing.T) {
 	assert.Empty(containers)
 }
 
+func TestIsIdleParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
+	provisionTimeOld := time.Now().Add(-1 * time.Hour)
+
+	host1 := &Host{
+		Id:            "host1",
+		Status:        evergreen.HostRunning,
+		ProvisionTime: provisionTimeOld,
+	}
+	host2 := &Host{
+		Id:            "host2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeRecent,
+	}
+	host3 := &Host{
+		Id:            "host3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
+	}
+	host4 := &Host{
+		Id:            "host4",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Status:   evergreen.HostTerminated,
+		ParentID: "host3",
+	}
+	host6 := &Host{
+		Id:       "host6",
+		Status:   evergreen.HostDecommissioned,
+		ParentID: "host4",
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+
+	// does not have containers --> false
+	idle, err := host1.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	// recent provision time --> false
+	idle, err = host2.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	// old provision time --> true
+	idle, err = host3.IsIdleParent()
+	assert.True(idle)
+	assert.NoError(err)
+
+	// has decommissioned container --> false
+	idle, err = host4.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	// ios a container --> false
+	idle, err = host5.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+}
+
 func TestFindParentOfContainer(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -1770,6 +1845,92 @@ func TestFindHostsSpawnedByTasks(t *testing.T) {
 	assert.Equal(found[1].Id, "4")
 }
 
+func TestCountContainersOnParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	h1 := Host{
+		Id:            "h1",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h2 := Host{
+		Id:            "h2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h3 := Host{
+		Id:            "h3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h4 := Host{
+		Id:       "h4",
+		Status:   evergreen.HostRunning,
+		ParentID: "h1",
+	}
+	h5 := Host{
+		Id:       "h5",
+		Status:   evergreen.HostRunning,
+		ParentID: "h1",
+	}
+	h6 := Host{
+		Id:       "h6",
+		Status:   evergreen.HostRunning,
+		ParentID: "h2",
+	}
+	assert.NoError(h1.Insert())
+	assert.NoError(h2.Insert())
+	assert.NoError(h3.Insert())
+	assert.NoError(h4.Insert())
+	assert.NoError(h5.Insert())
+	assert.NoError(h6.Insert())
+
+	c1, err := HostGroup{h1, h2}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c1, 3)
+
+	c2, err := HostGroup{h1, h3}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c2, 2)
+
+	c3, err := HostGroup{h2, h3}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c3, 1)
+
+	// Parents have no containers
+	c4, err := HostGroup{h3}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c4, 0)
+
+	// Parents are actually containers
+	c5, err := HostGroup{h4, h5, h6}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c5, 0)
+
+	// Parents list is empty
+	c6, err := HostGroup{}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c6, 0)
+}
+
+func TestGetHostIds(t *testing.T) {
+	assert := assert.New(t)
+	hosts := HostGroup{
+		Host{
+			Id: "h1",
+		},
+		Host{
+			Id: "h2",
+		},
+		Host{
+			Id: "h3",
+		},
+	}
+	ids := hosts.GetHostIds()
+	assert.Equal([]string{"h1", "h2", "h3"}, ids)
+}
+
 func TestFindAllRunningParentsByDistro(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
@@ -1834,4 +1995,128 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 	parents, err := FindAllRunningParentsByDistro(d1)
 	assert.NoError(err)
 	assert.Equal(2, len(parents))
+}
+
+func TestHostsSpawnedByTasks(t *testing.T) {
+	assert := require.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(Collection, task.Collection, build.Collection))
+	finishedTask := &task.Task{
+		Id:     "running_task",
+		Status: evergreen.TaskSucceeded,
+	}
+	require.NoError(finishedTask.Insert())
+	finishedBuild := &build.Build{
+		Id:     "running_build",
+		Status: evergreen.BuildSucceeded,
+	}
+	require.NoError(finishedBuild.Insert())
+	hosts := []*Host{
+		{
+			Id:     "running_host_timeout",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "running_host_task",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "running_host_build",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "terminated_host_timeout",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "terminated_host_task",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "terminated_host_build",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "host_not_spawned_by_task",
+			Status: evergreen.HostRunning,
+		},
+	}
+	for i := range hosts {
+		require.NoError(hosts[i].Insert())
+	}
+
+	found, err := allHostsSpawnedByTasksTimedOut()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_timeout", found[0].Id)
+
+	found, err = allHostsSpawnedByFinishedTasks()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_task", found[0].Id)
+
+	found, err = allHostsSpawnedByFinishedBuilds()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_build", found[0].Id)
+
+	found, err = AllHostsSpawnedByTasksToTerminate()
+	assert.NoError(err)
+	assert.Len(found, 3)
+}
+
+func TestFindByFirstProvisioningAttempt(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	hosts := []Host{
+		{
+			Id:          "host1",
+			Status:      evergreen.HostRunning,
+			RunningTask: "task",
+		},
+		{
+			Id:     "host2",
+			Status: evergreen.HostStarting,
+		},
+		{
+			Id:     "host3",
+			Status: evergreen.HostProvisioning,
+		},
+		{
+			Id:                "host4",
+			ProvisionAttempts: 3,
+			Status:            evergreen.HostProvisioning,
+		},
+	}
+	for i := range hosts {
+		assert.NoError(hosts[i].Insert())
+	}
+
+	hosts, err := FindByFirstProvisioningAttempt()
+	assert.NoError(err)
+	assert.Len(hosts, 1)
+	assert.Equal("host3", hosts[0].Id)
 }

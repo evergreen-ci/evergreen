@@ -16,7 +16,6 @@ func TestBasicUserImplementation(t *testing.T) {
 	assert.Equal(MakeBasicUser(), NewBasicUser("", "", "", nil))
 
 	var usr *basicUser
-	assert.True(usr.IsNil())
 
 	// accessors
 	usr = &basicUser{
@@ -32,7 +31,6 @@ func TestBasicUserImplementation(t *testing.T) {
 	assert.Equal(usr.Roles()[0], "admin")
 	assert.Contains(usr.DisplayName(), usr.ID)
 	assert.Contains(usr.DisplayName(), usr.EmailAddress)
-	assert.False(usr.IsNil())
 
 	assert.False(userHasRole(usr, "sudo"))
 	assert.True(userHasRole(usr, "admin"))

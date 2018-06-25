@@ -6,7 +6,7 @@ packages := $(name) agent operations cloud command db subprocess util plugin uni
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron
 packages += thirdparty alerts auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
-packages += model-grid rest-client rest-data rest-route rest-model migrations spawn model-trigger
+packages += model-grid rest-client rest-data rest-route rest-model migrations spawn model-trigger model-alertrecord
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -264,12 +264,18 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/gorilla/context/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/pkg/
+	rm -rf vendor/github.com/mholt/archiver/rar.go
+	rm -rf vendor/github.com/mholt/archiver/tarbz2.go
+	rm -rf vendor/github.com/mholt/archiver/tarlz4.go
+	rm -rf vendor/github.com/mholt/archiver/tarsz.go
+	rm -rf vendor/github.com/mholt/archiver/tarxz.go
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
 	rm -rf vendor/gopkg.in/mgo.v2/testdb/
 	rm -rf vendor/gopkg.in/mgo.v2/testserver/
 	rm -rf vendor/gopkg.in/mgo.v2/internal/json/testdata
 	rm -rf vendor/gopkg.in/mgo.v2/.git/
 	rm -rf vendor/gopkg.in/mgo.v2/txn/
+	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
 # end vendoring tooling configuration
 

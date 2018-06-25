@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip/message"
 )
 
@@ -97,8 +96,7 @@ func (as *APIServer) listRuntimes(w http.ResponseWriter, r *http.Request) {
 // if one or more processes last finished before the timeout cutoff. DevOps tools
 // should be able to do a regex for "SUCCESS" or "ERROR" to check for timeouts.
 func (as *APIServer) lateRuntimes(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	timeAsString := vars["seconds"]
+	timeAsString := gimlet.GetVars(r)["seconds"]
 	if len(timeAsString) == 0 {
 		http.Error(w, "Must supply an amount in seconds with timeout query", http.StatusBadRequest)
 		return

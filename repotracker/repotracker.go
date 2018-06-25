@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/notify"
@@ -369,6 +371,10 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			return nil, err
 		}
+		if err = addBuildBreakSubscriptions(v, ref); err != nil {
+			return nil, err
+		}
+
 		newestVersion = v
 	}
 	return newestVersion, nil
@@ -588,4 +594,72 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
+	if !projectRef.NotifyOnBuildFailure {
+		return nil
+	}
+	subscriptionBase := event.Subscription{
+		Type:      event.ResourceTypeVersion,
+		Trigger:   "regression",
+		Selectors: trigger.MakeVersionSelectors(*v),
+	}
+	subscribers := []event.Subscriber{}
+
+	// if the commit author wants build break notifications, don't send to admins
+	if v.AuthorID != "" {
+		author, err := user.FindOne(user.ById(v.AuthorID))
+		if err != nil {
+			return errors.Wrap(err, "unable to retrieve user")
+		}
+		if author.Settings.Notifications.BuildBreakID.Valid() {
+			return nil
+		}
+	}
+	// if the project has build break notifications, subscribe admins if no one subscribed
+	catcher := grip.NewSimpleCatcher()
+	for _, admin := range projectRef.Admins {
+		subscriber, err := makeBuildBreakSubscriber(admin)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		if subscriber != nil {
+			subscribers = append(subscribers, *subscriber)
+		}
+	}
+
+	for _, subscriber := range subscribers {
+		newSubscription := subscriptionBase
+		newSubscription.Subscriber = subscriber
+		catcher.Add(newSubscription.Upsert())
+	}
+	return catcher.Resolve()
+}
+
+func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
+	u, err := user.FindOne(user.ById(userID))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find user")
+	}
+	if u == nil {
+		return nil, errors.Errorf("user %s does not exist", userID)
+	}
+	var subscriber *event.Subscriber
+	preference := u.Settings.Notifications.BuildBreak
+	if preference != "" {
+		subscriber = &event.Subscriber{
+			Type: string(preference),
+		}
+		if preference == user.PreferenceEmail {
+			subscriber.Target = u.Email()
+		} else if preference == user.PreferenceSlack {
+			subscriber.Target = u.Settings.SlackUsername
+		} else {
+			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
+		}
+	}
+
+	return subscriber, nil
 }

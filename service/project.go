@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -84,8 +83,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	_ = MustHaveProjectContext(r)
 	_ = MustHaveUser(r)
 
-	vars := mux.Vars(r)
-	id := vars["project_id"]
+	id := gimlet.GetVars(r)["project_id"]
 
 	projRef, err := model.FindOneProjectRef(id)
 	if err != nil {
@@ -171,9 +169,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	dbUser := MustHaveUser(r)
 	_ = MustHaveProjectContext(r)
-
-	vars := mux.Vars(r)
-	id := vars["project_id"]
+	id := gimlet.GetVars(r)["project_id"]
 
 	projectRef, err := model.FindOneProjectRef(id)
 
@@ -455,8 +451,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 	_ = MustHaveProjectContext(r)
 
-	vars := mux.Vars(r)
-	id := vars["project_id"]
+	id := gimlet.GetVars(r)["project_id"]
 
 	projectRef, err := model.FindOneProjectRef(id)
 	if err != nil {
@@ -512,8 +507,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	MustHaveUser(r)
 
-	vars := mux.Vars(r)
-	id := vars["project_id"]
+	id := gimlet.GetVars(r)["project_id"]
 
 	body := util.NewRequestReader(r)
 	defer body.Close()

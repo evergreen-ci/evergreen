@@ -1,12 +1,16 @@
 package repotracker
 
 import (
+	"bytes"
 	"context"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
@@ -18,7 +22,6 @@ var (
 	testConfig            = testutil.TestConfig()
 	firstRevision         = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
 	lastRevision          = "d0d878e81b303fd2abbf09331e54af41d6cd0c7d"
-	distantEvgRevision    = "46d69e662b54a8e03267d165f2a1bc8980865d67"
 	firstRemoteConfigRef  = "6dbe53d948906ed3e0a355eb25b9d54e5b011209"
 	secondRemoteConfigRef = "9b6c7d7f479da84b767995076b13c31796a5e2bf"
 	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
@@ -26,6 +29,38 @@ var (
 	projectRef    *model.ProjectRef
 	evgProjectRef *model.ProjectRef
 )
+
+func getDistantEVGRevision() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	cmd, err := subprocess.NewLocalExec("git", []string{"rev-list", "--reverse", "HEAD~100", "--max-count=1"}, nil, cwd)
+	if err != nil {
+		return "", err
+	}
+
+	buf := &bytes.Buffer{}
+
+	err = cmd.SetOutput(subprocess.OutputOptions{
+		SuppressError: true,
+		Output:        buf,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	err = cmd.Run(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(buf.String()), nil
+}
 
 func resetProjectRefs() {
 	projectRef = &model.ProjectRef{
@@ -72,6 +107,9 @@ func TestGetRevisionsSinceWithPaging(t *testing.T) {
 	}
 	Convey("When fetching commits from the evergreen repository", t, func() {
 		Convey("fetching > the size of a github page should succeed", func() {
+			distantEvgRevision, err := getDistantEVGRevision()
+			So(err, ShouldBeNil)
+			So(distantEvgRevision, ShouldNotEqual, "")
 			revisions, err := grp.GetRevisionsSince(distantEvgRevision, 5000)
 			So(err, ShouldBeNil)
 			Convey("and the revision should be found", func() {
@@ -258,7 +296,7 @@ func TestGetChangedFiles(t *testing.T) {
 		Convey("a revision that does not exist should fail", func() {
 			files, err := grp.GetChangedFiles(ctx, "00000000000000000000000000")
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "Not Found")
+			So(err.Error(), ShouldContainSubstring, "No commit found for SHA: 00000000000000000000000000")
 			So(files, ShouldBeNil)
 		})
 	})

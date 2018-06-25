@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -98,7 +99,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
 	h.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
@@ -109,7 +110,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	h.hostID = "host1"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -126,7 +127,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 
 	s.Equal(evergreen.HostUninitialized, s.sc.CachedHosts[2].Status)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -140,7 +141,7 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -154,7 +155,7 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -168,7 +169,7 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -204,7 +205,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecute() {
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -217,7 +218,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFail
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -229,7 +230,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 	h.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -262,7 +263,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -274,7 +275,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost()
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -317,7 +318,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 	h.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
@@ -351,7 +352,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 	h.addHours = 9001 * time.Hour
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
@@ -368,7 +369,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecute() {
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.NoError(err)
@@ -383,7 +384,7 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() 
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
@@ -398,7 +399,7 @@ func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["root"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.NoError(err)
@@ -413,7 +414,7 @@ func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsers
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)

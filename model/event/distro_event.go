@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 func init() {
@@ -37,7 +38,11 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 	}
 
 	if err := NewDBEventLogger(AllLogCollection).LogEvent(&event); err != nil {
-		grip.Errorf("Error logging distro event: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeDistro,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
 	}
 }
 

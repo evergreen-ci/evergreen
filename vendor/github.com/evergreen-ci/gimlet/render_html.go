@@ -74,11 +74,8 @@ func (r *htmlRenderer) Render(out io.Writer, data interface{}, entryPoint string
 	if err != nil {
 		return err
 	}
-	err = t.ExecuteTemplate(out, entryPoint, data)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return t.ExecuteTemplate(out, entryPoint, data)
 }
 
 func (r *htmlRenderer) WriteResponse(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) {
@@ -91,7 +88,7 @@ func (r *htmlRenderer) WriteResponse(w http.ResponseWriter, status int, data int
 
 	w.Header().Set("Content-Type", "text/html; charset="+r.opts.Encoding)
 	w.WriteHeader(status)
-	w.Write(out.Bytes())
+	_, _ = w.Write(out.Bytes())
 }
 
 func (r *htmlRenderer) Stream(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) {

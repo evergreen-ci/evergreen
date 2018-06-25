@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -88,8 +87,11 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
 	}
 
+	ctx := r.Context()
+	user := gimlet.GetUser(ctx)
+
 	// set data for plugin data function injection
-	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
+	pluginContext := projCtx.ToPluginContext(uis.Settings, user)
 	pluginContent := getPluginDataAndHTML(uis, plugin.BuildPage, pluginContext)
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -209,7 +211,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
-	buildId := mux.Vars(r)["build_id"]
+	buildId := gimlet.GetVars(r)["build_id"]
 
 	before, err := getIntValue(r, "before", 3)
 	if err != nil {

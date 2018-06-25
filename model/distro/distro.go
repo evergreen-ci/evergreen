@@ -1,7 +1,9 @@
 package distro
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"path/filepath"
 	"regexp"
@@ -32,6 +34,8 @@ type Distro struct {
 	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 
 	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
+
+	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
 
 type ValidateFormat string
@@ -95,4 +99,14 @@ func (d *Distro) BinaryName() string {
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
+}
+
+// ComputeParentsToDecommission calculates how many excess parents to
+// decommission for the provided distro
+func (d *Distro) ComputeParentsToDecommission(nParents, nContainers int) (int, error) {
+	// Prevent division by zero MaxContainers value
+	if d.MaxContainers == 0 {
+		return 0, errors.New("Distro does not support containers")
+	}
+	return nParents - int(math.Ceil(float64(nContainers)/float64(d.MaxContainers))), nil
 }

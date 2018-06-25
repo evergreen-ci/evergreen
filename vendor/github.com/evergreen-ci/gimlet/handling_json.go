@@ -28,14 +28,14 @@ func WriteJSON(w http.ResponseWriter, data interface{}) {
 	WriteJSONResponse(w, http.StatusOK, data)
 }
 
-// WriteErrorJSON is a helper method to write JSON data to the body of
+// WriteJSONError is a helper method to write JSON data to the body of
 // an HTTP request and return 400 (user error.)
 func WriteJSONError(w http.ResponseWriter, data interface{}) {
 	// 400
 	WriteJSONResponse(w, http.StatusBadRequest, data)
 }
 
-// WriteInternalErrorJSON is a helper method to write JSON data to the
+// WriteJSONInternalError is a helper method to write JSON data to the
 // body of an HTTP request and return 500 (internal error.)
 func WriteJSONInternalError(w http.ResponseWriter, data interface{}) {
 	// 500

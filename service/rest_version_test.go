@@ -44,8 +44,9 @@ func TestGetRecentVersions(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, userManager)
+	app, err := GetRESTv1App(&uis)
 	testutil.HandleTestingErr(err, t, "error setting up router")
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -249,8 +250,9 @@ func TestGetVersionInfo(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, uis.UserManager)
+	app, err := GetRESTv1App(&uis)
 	testutil.HandleTestingErr(err, t, "error setting up router")
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -353,8 +355,9 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, userManager)
+	app, err := GetRESTv1App(&uis)
 	testutil.HandleTestingErr(err, t, "error setting up router")
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -448,13 +451,14 @@ func TestActivateVersion(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, uis.UserManager)
+	app, err := GetRESTv1App(&uis)
 	testutil.HandleTestingErr(err, t, "error setting up router")
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	n := negroni.New()
-	n.Use(negroni.HandlerFunc(UserMiddleware(uis.UserManager)))
+	n.Use(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	n.UseHandler(router)
 
 	Convey("When marking a particular version as active", t, func() {
@@ -590,8 +594,9 @@ func TestGetVersionStatus(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, userManager)
+	app, err := GetRESTv1App(&uis)
 	testutil.HandleTestingErr(err, t, "error setting up router")
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 

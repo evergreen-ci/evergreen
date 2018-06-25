@@ -19,18 +19,18 @@ type APIRoute struct {
 	version int
 }
 
-func (a *APIRoute) String() string {
+func (r *APIRoute) String() string {
 	var methods []string
-	for _, m := range a.methods {
+	for _, m := range r.methods {
 		methods = append(methods, m.String())
 	}
 
 	return fmt.Sprintf(
 		"r='%s', v='%d', methods=[%s], defined=%t",
-		a.route,
-		a.version,
+		r.route,
+		r.version,
 		strings.Join(methods, ", "),
-		a.handler != nil,
+		r.handler != nil,
 	)
 }
 

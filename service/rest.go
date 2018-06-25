@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-	"github.com/urfave/negroni"
 )
 
 // restContextKey is the type used to store
@@ -30,24 +29,27 @@ type restV1middleware struct {
 
 func (ra *restV1middleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	vars := gimlet.GetVars(r)
-	ctx, err := model.LoadContext(vars["task_id"], vars["build_id"], vars["version_id"], vars["patch_id"], vars["project_id"])
+	ctx := r.Context()
+	pctx, err := model.LoadContext(vars["task_id"], vars["build_id"], vars["version_id"], vars["patch_id"], vars["project_id"])
 	if err != nil {
 		// Some database lookup failed when fetching the data - log it
 		ra.LoggedError(rw, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
 		return
 	}
 
-	if ctx.ProjectRef != nil && ctx.ProjectRef.Private && GetUser(r) == nil {
+	usr := gimlet.GetUser(ctx)
+
+	if pctx.ProjectRef != nil && pctx.ProjectRef.Private && usr == nil {
 		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	if ctx.Patch != nil && GetUser(r) == nil {
+	if pctx.Patch != nil && usr == nil {
 		gimlet.WriteTextResponse(rw, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	r = setRestContext(r, &ctx)
+	r = setRestContext(r, &pctx)
 	next(rw, r)
 }
 
@@ -63,13 +65,11 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 
 // AttachRESTHandler attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
-func GetRESTv1App(evgService restAPIService, um gimlet.UserManager) (*gimlet.APIApp, error) {
+func GetRESTv1App(evgService restAPIService) (*gimlet.APIApp, error) {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
 	app.ResetMiddleware()
 	app.SetPrefix(evergreen.RestRoutePrefix)
-	app.AddMiddleware(NewRecoveryLogger())
-	app.AddMiddleware(negroni.HandlerFunc(UserMiddleware(um)))
 	app.AddWrapper(&restV1middleware{rest})
 
 	// REST routes

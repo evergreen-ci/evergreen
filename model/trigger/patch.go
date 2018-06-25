@@ -130,6 +130,8 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
+		DisplayName:       t.patch.Id.Hex(),
+		Description:       t.patch.Description,
 		Object:            objectPatch,
 		Project:           t.patch.Project,
 		URL:               fmt.Sprintf("%s/version/%s", t.uiConfig.Url, t.patch.Version),
@@ -139,7 +141,9 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		githubContext:     "evergreen",
 		githubDescription: "tasks are running",
 	}
+	slackColor := evergreenFailColor
 	if t.data.Status == evergreen.PatchSucceeded {
+		slackColor = evergreenSuccessColor
 		data.githubState = message.GithubStateSuccess
 		data.githubDescription = fmt.Sprintf("patch finished in %s", t.patch.FinishTime.Sub(t.patch.StartTime).String())
 
@@ -147,6 +151,21 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		data.githubState = message.GithubStateFailure
 		data.githubDescription = fmt.Sprintf("patch finished in %s", t.patch.FinishTime.Sub(t.patch.StartTime).String())
 	}
+	if t.patch.IsGithubPRPatch() {
+		data.slack = append(data.slack, message.SlackAttachment{
+			Title:     "Github Pull Request",
+			TitleLink: fmt.Sprintf("https://github.com/%s/%s/pull/%d#partial-pull-merging", t.patch.GithubPatchData.BaseOwner, t.patch.GithubPatchData.BaseRepo, t.patch.GithubPatchData.PRNumber),
+			Color:     slackColor,
+		})
+	}
+
+	data.slack = append(data.slack, message.SlackAttachment{
+		Title:     "Evergreen Patch",
+		TitleLink: data.URL,
+		Text:      t.patch.Description,
+		Color:     slackColor,
+	})
+
 	return &data, nil
 }
 

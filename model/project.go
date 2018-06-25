@@ -1030,39 +1030,40 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
 }
 
-// GenerateTasksTasks returns a map of tasks that call `generate.tasks`.
-func (p *Project) GenerateTasksTasks() map[string]struct{} {
+// TasksThatCallCommand returns a map of tasks that call a given command.
+func (p *Project) TasksThatCallCommand(find string) map[string]int {
 	// get all functions that call `generate.tasks`
-	fs := map[string]struct{}{}
+	fs := map[string]int{}
 	for f, cmds := range p.Functions {
 		for _, c := range cmds.List() {
-			if c.Command == GenerateTasksCommandName {
-				fs[f] = struct{}{}
+			if c.Command == find {
+				fs[f] = fs[f] + 1
 			}
 		}
 	}
 
 	// get all tasks that call `generate.tasks`
-	ts := map[string]struct{}{}
+	ts := map[string]int{}
 	for _, t := range p.Tasks {
 		for _, c := range t.Commands {
 			if c.Function != "" {
-				if _, ok := fs[c.Function]; ok {
-					ts[t.Name] = struct{}{}
+				if times, ok := fs[c.Function]; ok {
+					ts[t.Name] = ts[t.Name] + times
 				}
 			}
-			if c.Command == GenerateTasksCommandName {
-				ts[t.Name] = struct{}{}
+			if c.Command == find {
+				ts[t.Name] = ts[t.Name] + 1
 			}
 		}
 	}
 	return ts
+
 }
 
 // IsGenerateTask indicates that the task generates other tasks, which the
 // scheduler will use to prioritize this task.
 func (p *Project) IsGenerateTask(taskName string) bool {
-	_, ok := p.GenerateTasksTasks()[taskName]
+	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[taskName]
 	return ok
 }
 

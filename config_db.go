@@ -47,6 +47,7 @@ var (
 	logPathKey            = bsonutil.MustHaveTag(Settings{}, "LogPath")
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
 	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Settings{}, "GithubPRCreatorOrg")
+	containerPoolsKey     = bsonutil.MustHaveTag(Settings{}, "ContainerPools")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
@@ -67,6 +68,9 @@ var (
 	webhookNotificationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookNotificationsDisabled")
 	githubStatusAPIDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 	taskLoggingDisabledKey          = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
+
+	// ContainerPoolsConfig keys
+	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
 )
 
 func byId(id string) bson.M {

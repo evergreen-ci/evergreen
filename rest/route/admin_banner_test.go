@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +30,7 @@ func TestAdminBannerRoute(t *testing.T) {
 
 	// run the route
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	// test changing the banner with no change in theme
 	body := model.APIBanner{

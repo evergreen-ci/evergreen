@@ -36,6 +36,7 @@ func resetRegistry() error {
 		&APIConfig{},
 		&AuthConfig{},
 		&CloudProviders{},
+		&ContainerPoolsConfig{},
 		&HostInitConfig{},
 		&JiraConfig{},
 		&LoggerConfig{},
