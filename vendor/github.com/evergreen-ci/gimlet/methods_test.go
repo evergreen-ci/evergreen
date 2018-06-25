@@ -14,6 +14,7 @@ func TestMethodString(t *testing.T) {
 		delete:          "DELETE",
 		patch:           "PATCH",
 		post:            "POST",
+		head:            "HEAD",
 		httpMethod(100): "",
 		httpMethod(50):  "",
 	}

@@ -17,7 +17,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/urfave/negroni"
 )
 
 // Key used for storing variables in request context with type safety.
@@ -172,13 +171,11 @@ func (uis *UIServer) isSuperUser(u gimlet.User) bool {
 	}
 
 	return false
-
 }
 
 // isAdmin returns false if the user is nil or if its id is not
 // located in ProjectRef's Admins field.
 func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
-
 	return util.StringSliceContains(project.Admins, u.Username())
 }
 
@@ -359,80 +356,4 @@ func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, fmt.Sprintf("%s - %s",
 		http.StatusText(http.StatusForbidden), reason),
 		http.StatusForbidden)
-}
-
-// RecoveryLogger is a middleware handler that logs the request as it goes in and the response as it goes out.
-type RecoveryLogger struct {
-	// ids is a channel producing unique, autoincrementing request ids that are included in logs.
-	ids chan int
-}
-
-// NewRecoveryLogger returns negroni middleware that logs each
-// request, and recovers from panics encountered during request processing.
-func NewRecoveryLogger() *RecoveryLogger {
-	ids := make(chan int, 100)
-	go func() {
-		reqId := 0
-		for {
-			ids <- reqId
-			reqId++
-		}
-	}()
-
-	return &RecoveryLogger{ids}
-}
-
-func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	start := time.Now()
-	reqID := <-l.ids
-
-	r = setRequestID(r, reqID)
-
-	remote := r.Header.Get(remoteAddrHeaderName)
-	if remote == "" {
-		remote = r.RemoteAddr
-	}
-
-	grip.Debug(message.Fields{
-		"action":  "started",
-		"method":  r.Method,
-		"remote":  remote,
-		"request": reqID,
-		"path":    r.URL.Path,
-	})
-
-	defer func() {
-		if err := recover(); err != nil {
-			if rw.Header().Get("Content-Type") == "" {
-				rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			}
-
-			rw.WriteHeader(http.StatusInternalServerError)
-
-			grip.Critical(message.WrapStack(2, message.Fields{
-				"panic":    err,
-				"action":   "aborted",
-				"request":  reqID,
-				"duration": time.Since(start),
-				"path":     r.URL.Path,
-				"span":     time.Since(start).String(),
-			}))
-		}
-	}()
-
-	next(rw, r)
-
-	res := rw.(negroni.ResponseWriter)
-
-	grip.Info(message.Fields{
-		"method":   r.Method,
-		"remote":   remote,
-		"request":  reqID,
-		"path":     r.URL.Path,
-		"duration": time.Since(start),
-		"action":   "completed",
-		"status":   res.Status(),
-		"outcome":  http.StatusText(res.Status()),
-		"span":     time.Since(start).String(),
-	})
 }

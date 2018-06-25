@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"github.com/urfave/negroni"
 )
 
@@ -17,8 +18,14 @@ func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) 
 	catcher := grip.NewBasicCatcher()
 	mws := []Middleware{}
 
+	seenPrefixes := make(map[string]struct{})
 	for _, app := range apps {
 		if app.prefix != "" {
+			if _, ok := seenPrefixes[app.prefix]; ok {
+				catcher.Add(errors.Errorf("route prefix '%s' defined more than once", app.prefix))
+			}
+			seenPrefixes[app.prefix] = struct{}{}
+
 			n := negroni.New()
 			for _, m := range app.middleware {
 				n.Use(m)

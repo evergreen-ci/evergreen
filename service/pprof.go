@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
 )
@@ -38,7 +39,7 @@ func GetHandlerPprof(settings *evergreen.Settings) http.Handler {
 	root.HandleFunc("/trace", http.HandlerFunc(trace))
 
 	n := negroni.New()
-	n.Use(NewRecoveryLogger())
+	n.Use(gimlet.NewRecoveryLogger())
 	n.UseHandler(router)
 	return n
 }

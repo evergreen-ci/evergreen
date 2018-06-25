@@ -85,6 +85,14 @@ func (s *RoutingSuite) TestPostMethod() {
 	s.Equal(r.methods[0].String(), "POST")
 }
 
+func (s *RoutingSuite) TestHeadMethod() {
+	r := s.app.AddRoute("/work").Head()
+	s.Len(s.app.routes, 1)
+	s.Len(r.methods, 1)
+	s.Equal(r.methods[0], head)
+	s.Equal(r.methods[0].String(), "HEAD")
+}
+
 func (s *RoutingSuite) TestRouteHandlerInterface() {
 	s.Len(s.app.routes, 0)
 	r := s.app.AddRoute("/foo")
@@ -165,4 +173,24 @@ func (s *RoutingSuite) TestResolveRoutes() {
 	r.route = "foo"
 	s.Equal("foo", r.resolveLegacyRoute(s.app, false))
 	s.Equal("/bar/foo", r.resolveLegacyRoute(s.app, true))
+}
+
+func (s *RoutingSuite) TestMethodMethodValidCases() {
+	methods := []string{"GET", "PUT", "POST", "DELETE", "PATCH", "HEAD"}
+	for idx, m := range methods {
+		s.Len(s.app.routes, idx)
+		r := s.app.AddRoute("/" + m + "Foo").Method(m)
+		s.Len(r.methods, 1)
+		s.NotNil(r)
+	}
+}
+
+func (s *RoutingSuite) TestMethodMethodIsInvalid() {
+	methods := []string{"FFFF", "PPPPP", "RRRR", "DELTER", "PUTCH", "TRACE"}
+	for idx, m := range methods {
+		s.Len(s.app.routes, idx)
+		r := s.app.AddRoute("/" + m + "Foo").Method(m)
+		s.Len(r.methods, 0)
+		s.NotNil(r)
+	}
 }

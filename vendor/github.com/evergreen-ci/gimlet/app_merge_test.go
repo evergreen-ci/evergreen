@@ -24,6 +24,13 @@ func TestAssembleHandler(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(h)
 
+	// can't have duplicated methods
+	app2 := NewApp()
+	app2.SetPrefix("foo")
+	h, err = AssembleHandler(router, app, app2)
+	assert.Error(err)
+	assert.Nil(h)
+
 	app = NewApp()
 	h, err = AssembleHandler(router, app)
 	assert.NoError(err)
