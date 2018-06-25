@@ -398,6 +398,7 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	return db.Query(bson.M{
 		StatusKey:    evergreen.HostRunning,
 		StartedByKey: evergreen.User,
+		bsonutil.GetDottedKeyName(DistroKey, distro.NoTasksAllowedKey): false,
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},

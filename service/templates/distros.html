@@ -457,6 +457,10 @@ Evergreen - Distros
             <input type="checkbox" ng-model="activeDistro.disabled">
             Disable scheduling this distro. Tasks already in the schedule will be dispatched.
         </p>
+        <p class="distro-checkbox checkbox">
+            <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.no_tasks_allowed">
+            Prevent spawning tasks on this distro.
+        </p>
       </div>
     </div>
   </div>
