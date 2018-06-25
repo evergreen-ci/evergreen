@@ -158,9 +158,9 @@ func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
 	s.Len(msgs, 5)
 	s.noErrorMessages(msgs)
 
-	s.Len(s.comm.LocalTestResults.Results, 1)
-	s.Equal(1, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 1)
+	s.Len(s.comm.LocalTestResults.Results, 3)
+	s.Equal(3, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 3)
 	s.saneTestResults()
 }
 
