@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -223,15 +221,11 @@ func (t *buildTriggers) buildRuntimeChange(sub *event.Subscription) (*notificati
 	}
 	thisBuildDuration := float64(t.build.TimeTaken)
 	prevBuildDuration := float64(lastGreen.TimeTaken)
-	ratio := thisBuildDuration / prevBuildDuration
-	if !util.IsFiniteNumericFloat(ratio) {
+	shouldNotify, percentChange := runtimeExceedsThreshold(percent, prevBuildDuration, thisBuildDuration)
+	if !shouldNotify {
 		return nil, nil
 	}
-	percentChange := math.Abs(100*ratio - 100)
-	if percentChange < percent {
-		return nil, nil
-	}
-	return t.generate(sub, fmt.Sprintf("changed in runtime by %f%% (over threshold of %f%%)", percentChange, percent))
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %.1f%%)", percentChange, percent))
 }
 
 func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
