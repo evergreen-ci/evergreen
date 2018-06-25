@@ -258,6 +258,15 @@ func TestJIRADescription(t *testing.T) {
 				})
 			})
 		})
+		Convey("a nil host should not error", func() {
+			ctx.Host = nil
+			d, err := getDescription(ctx, ui)
+			So(err, ShouldBeNil)
+			So(d, ShouldNotEqual, "")
+			So(d, ShouldContainSubstring, TaskName)
+			So(d, ShouldContainSubstring, ProjectName)
+			So(d, ShouldContainSubstring, BuildName)
+		})
 	})
 }
 
