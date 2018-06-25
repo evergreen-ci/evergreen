@@ -63,6 +63,7 @@ func (s *AdminRouteSuite) SetupSuite() {
 }
 
 func (s *AdminRouteSuite) TestAdminRoute() {
+	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
