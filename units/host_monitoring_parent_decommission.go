@@ -29,7 +29,6 @@ func init() {
 type parentDecommissionJob struct {
 	job.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
 	DistroId      string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
-	distro        *distro.Distro
 	MaxContainers int
 }
 
@@ -47,10 +46,9 @@ func makeParentDecommissionJob() *parentDecommissionJob {
 	return j
 }
 
-func NewParentDecommissionJob(id string, d distro.Distro, maxContainers int) amboy.Job {
+func NewParentDecommissionJob(id, d string, maxContainers int) amboy.Job {
 	j := makeParentDecommissionJob()
-	j.DistroId = d.Id
-	j.distro = &d
+	j.DistroId = d
 	j.MaxContainers = maxContainers
 	j.SetID(fmt.Sprintf("%s.%s.%s", parentDecommissionJobName, j.DistroId, id))
 	return j
@@ -87,6 +85,11 @@ func (j *parentDecommissionJob) findParentsToDecommission() ([]host.Host, error)
 
 func (j *parentDecommissionJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
+	_, err := distro.FindOne(distro.ById(j.DistroId))
+	if err != nil {
+		j.AddError(err)
+	}
 
 	parentsToDeco, err := j.findParentsToDecommission()
 	if err != nil {

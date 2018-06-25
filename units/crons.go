@@ -344,11 +344,7 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 
 		// Create ParentDecommissionJob for each distro
 		for _, c := range containerPools {
-			d, err := distro.FindOne(distro.ById(c.Distro))
-			if err != nil {
-				return errors.Wrapf(err, "Could not find parent distro %s", c.Distro)
-			}
-			catcher.Add(queue.Put(NewParentDecommissionJob(ts, d, c.MaxContainers)))
+			catcher.Add(queue.Put(NewParentDecommissionJob(ts, c.Distro, c.MaxContainers)))
 		}
 
 		return catcher.Resolve()

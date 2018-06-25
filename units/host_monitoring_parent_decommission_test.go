@@ -87,7 +87,7 @@ func TestDecommissioningContainersOnParent(t *testing.T) {
 	assert.NoError(host7.Insert())
 
 	// MaxContainers: 2
-	j := NewParentDecommissionJob("one", *d1, 2)
+	j := NewParentDecommissionJob("one", (*d1).Id, 2)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())
@@ -175,7 +175,7 @@ func TestDecommissioningParentWithTerminatedContainers(t *testing.T) {
 	assert.NoError(host4.Insert())
 
 	// MaxContainers: 3
-	j := NewParentDecommissionJob("two", *d2, 3)
+	j := NewParentDecommissionJob("two", (*d2).Id, 3)
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())
