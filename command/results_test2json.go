@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -26,11 +27,13 @@ import (
 // The following rules hold true of Golang's JSON output:
 // 1. A single line of output corresponds to a single TestEvent
 // 2. Golang offers no field to distinguish between subsequent runs of a test
-// from settings -test.count to a number greater than 1. However, Golang will
-// not run more than one test of the same name at once, even with a call
-// to t.Parallel(). This means that you can observe a "fail" or "pass" action
-// with the same test name, you know that the next time you see "run",
+// such as when setting -test.count to a number greater than 1. However,
+// Golang will not run more than one test of the same name at once, even with a
+// call to t.Parallel(). This means that you can observe a "fail" or "pass"
+// action with the same test name, you know that the next time you see "run",
 // it corresponds to a subsequent run.
+// 3. Benchmarks do not have a "run" action
+// 4. Output has trailing newlines
 type goTest2JSONTestEvent struct {
 	// Time is the time that the line was processed by by go test
 	Time time.Time // encodes as an RFC3339-format string
@@ -89,6 +92,10 @@ func (c *goTest2JSONCommand) ParseParams(params map[string]interface{}) error {
 func (c *goTest2JSONCommand) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+		return errors.Wrap(err, "failed to expand files")
+	}
+
 	catcher := grip.NewBasicCatcher()
 	for i := range c.Files {
 		if ctx.Err() != nil {
@@ -100,6 +107,7 @@ func (c *goTest2JSONCommand) Execute(ctx context.Context,
 
 	return catcher.Resolve()
 }
+
 func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	logger.Task().Infof("Parsing test file '%s'...", file)
@@ -204,7 +212,7 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 			key.name = fmt.Sprintf("package-%s", data[i].Package)
 		}
 		if _, ok := m[key]; !ok {
-			m[key] = &goTest2JSONMergedTestEvent{}
+			m[key] = &goTest2JSONMergedTestEvent{StartTime: data[i].Time}
 		}
 
 		switch data[i].Action {
@@ -213,19 +221,29 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 
 		case "pass", "fail":
 			m[key].Status = data[i].Action
-			m[key].EndTime = data[i].Time
 			m[key].Elapsed = data[i].Elapsed
+			m[key].EndTime = data[i].Time
 
 			// compute the start time from the end time, plus the elapsed
-			if m[key].StartTime.IsZero() {
+			if m[key].StartTime.IsZero() || strings.HasPrefix(key.name, "package-") {
 				elapsedNano := m[key].Elapsed * float64(time.Second)
 				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
 			}
 
 			iteration[data[i].Test] += 1
 
-		case "pause", "cont", "output", "bench":
+		case "bench":
+			m[key].Status = "pass"
+			m[key].EndTime = data[i].Time
+			m[key].Elapsed = float64(m[key].EndTime.Sub(m[key].StartTime) / time.Second)
+
+		case "pause", "cont", "output":
 			m[key].Output = append(m[key].Output, strings.TrimRightFunc(data[i].Output, unicode.IsSpace))
+			// test2json doesn't guarantee the pass/fail event, so we'll
+			// override as we go
+			if len(m[key].Status) == 0 {
+				m[key].EndTime = data[i].Time
+			}
 		}
 	}
 
@@ -251,7 +269,7 @@ func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2J
 		EndTime:   float64(test2JSON.EndTime.Unix()),
 	}
 	switch test2JSON.Status {
-	case "pass", "bench":
+	case "pass":
 		result.Status = evergreen.TestSucceededStatus
 	case "skip":
 		result.Status = evergreen.TestSkippedStatus

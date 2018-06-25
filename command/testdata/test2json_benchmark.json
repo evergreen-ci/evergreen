@@ -1,42 +1,24 @@
-{"Time":"2018-06-22T17:27:59.161668689-04:00","Action":"output","Package":"package","Output":"goos: darwin\n"}
-{"Time":"2018-06-22T17:27:59.162011864-04:00","Action":"output","Package":"package","Output":"goarch: amd64\n"}
-{"Time":"2018-06-22T17:27:59.162023017-04:00","Action":"output","Package":"package","Output":"pkg: package\n"}
-{"Time":"2018-06-22T17:27:59.162030395-04:00","Action":"output","Package":"package","Output":"BenchmarkSomething-8          \t"}
-{"Time":"2018-06-22T17:27:59.165488562-04:00","Action":"output","Package":"package","Output":"2000000000\t         0.00 ns/op\n"}
-{"Time":"2018-06-22T17:27:59.165510394-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"--- BENCH: BenchmarkSomething-8\n"}
-{"Time":"2018-06-22T17:27:59.165524547-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
-{"Time":"2018-06-22T17:27:59.165540972-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:14: end\n"}
-{"Time":"2018-06-22T17:27:59.165549925-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
-{"Time":"2018-06-22T17:27:59.165555739-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:14: end\n"}
-{"Time":"2018-06-22T17:27:59.165562078-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
-{"Time":"2018-06-22T17:27:59.165569805-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:14: end\n"}
-{"Time":"2018-06-22T17:27:59.165576807-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
-{"Time":"2018-06-22T17:27:59.165582356-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:14: end\n"}
-{"Time":"2018-06-22T17:27:59.165587484-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
-{"Time":"2018-06-22T17:27:59.165592708-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:14: end\n"}
-{"Time":"2018-06-22T17:27:59.165597946-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"\t... [output truncated]\n"}
-{"Time":"2018-06-22T17:27:59.166206364-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"BenchmarkSomethingElse-8      \t"}
-{"Time":"2018-06-22T17:27:59.169680409-04:00","Action":"output","Package":"package","Test":"BenchmarkSomething-8","Output":"2000000000\t         0.00 ns/op\n"}
-{"Time":"2018-06-22T17:27:59.169696398-04:00","Action":"bench","Package":"package","Test":"BenchmarkSomething-8"}
-{"Time":"2018-06-22T17:27:59.169703316-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"--- BENCH: BenchmarkSomethingElse-8\n"}
-{"Time":"2018-06-22T17:27:59.169710563-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:18: start\n"}
-{"Time":"2018-06-22T17:27:59.169718359-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:22: end\n"}
-{"Time":"2018-06-22T17:27:59.169725773-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:18: start\n"}
-{"Time":"2018-06-22T17:27:59.169732378-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:22: end\n"}
-{"Time":"2018-06-22T17:27:59.169737795-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:18: start\n"}
-{"Time":"2018-06-22T17:27:59.169744226-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:22: end\n"}
-{"Time":"2018-06-22T17:27:59.169753373-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:18: start\n"}
-{"Time":"2018-06-22T17:27:59.169768559-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:22: end\n"}
-{"Time":"2018-06-22T17:27:59.16977505-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:18: start\n"}
-{"Time":"2018-06-22T17:27:59.169780604-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:22: end\n"}
-{"Time":"2018-06-22T17:27:59.169785847-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingElse-8","Output":"\t... [output truncated]\n"}
-{"Time":"2018-06-22T17:27:59.170332436-04:00","Action":"bench","Package":"package","Test":"BenchmarkSomethingElse-8"}
-{"Time":"2018-06-22T17:27:59.170348356-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingFailing","Output":"--- FAIL: BenchmarkSomethingFailing\n"}
-{"Time":"2018-06-22T17:27:59.170359417-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:26: start\n"}
-{"Time":"2018-06-22T17:27:59.170365902-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:31: deliberately failing\n"}
-{"Time":"2018-06-22T17:27:59.170374391-04:00","Action":"output","Package":"package","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:32: end\n"}
-{"Time":"2018-06-22T17:27:59.170381917-04:00","Action":"fail","Package":"package","Test":"BenchmarkSomethingFailing"}
-{"Time":"2018-06-22T17:27:59.170386932-04:00","Action":"output","Package":"package","Output":"FAIL\n"}
-{"Time":"2018-06-22T17:27:59.17119633-04:00","Action":"output","Package":"package","Output":"exit status 1\n"}
-{"Time":"2018-06-22T17:27:59.171227298-04:00","Action":"output","Package":"package","Output":"FAIL\tpackage\t0.016s\n"}
-{"Time":"2018-06-22T17:27:59.171237361-04:00","Action":"fail","Package":"package","Elapsed":0.016}
+{"Time":"2018-06-25T13:46:50.136419183-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"goos: darwin\n"}
+{"Time":"2018-06-25T13:46:50.136680777-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"goarch: amd64\n"}
+{"Time":"2018-06-25T13:46:50.136690336-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"pkg: github.com/evergreen-ci/evergreen/test2_bench\n"}
+{"Time":"2018-06-25T13:46:50.136696335-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"BenchmarkSomething-8          \t       1\t10001518245 ns/op\n"}
+{"Time":"2018-06-25T13:46:50.136715631-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"--- BENCH: BenchmarkSomething-8\n"}
+{"Time":"2018-06-25T13:46:50.13672703-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
+{"Time":"2018-06-25T13:46:50.136733548-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:15: end\n"}
+{"Time":"2018-06-25T13:47:00.137418784-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"BenchmarkSomethingElse-8      \t"}
+{"Time":"2018-06-25T13:47:00.137469824-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"       1\t10000781457 ns/op\n"}
+{"Time":"2018-06-25T13:47:00.137488392-04:00","Action":"bench","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8"}
+{"Time":"2018-06-25T13:47:00.137499162-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"--- BENCH: BenchmarkSomethingElse-8\n"}
+{"Time":"2018-06-25T13:47:00.137509929-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:19: start\n"}
+{"Time":"2018-06-25T13:47:00.137520538-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:24: end\n"}
+{"Time":"2018-06-25T13:47:10.13982993-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"BenchmarkSomethingSilent-8    \t       1\t10001867853 ns/op\n"}
+{"Time":"2018-06-25T13:47:20.141415009-04:00","Action":"bench","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8"}
+{"Time":"2018-06-25T13:47:20.141493206-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"--- FAIL: BenchmarkSomethingFailing\n"}
+{"Time":"2018-06-25T13:47:20.141515165-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:35: start\n"}
+{"Time":"2018-06-25T13:47:20.141527803-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:41: deliberately failing\n"}
+{"Time":"2018-06-25T13:47:20.141538318-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:42: end\n"}
+{"Time":"2018-06-25T13:47:20.141548217-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing"}
+{"Time":"2018-06-25T13:47:20.141569075-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"FAIL\n"}
+{"Time":"2018-06-25T13:47:20.142957973-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"exit status 1\n"}
+{"Time":"2018-06-25T13:47:20.142991117-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"FAIL\tgithub.com/evergreen-ci/evergreen/test2_bench\t40.015s\n"}
+{"Time":"2018-06-25T13:47:20.143012107-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2_bench","Elapsed":40.015}

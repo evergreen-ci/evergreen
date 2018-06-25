@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -14,6 +15,7 @@ import (
 
 const (
 	test2JSONFile          = "command/testdata/test2json.json"
+	test2JSONWindowsFile   = "command/testdata/test2json_windows.json"
 	test2JSONBenchmarkFile = "command/testdata/test2json_benchmark.json"
 )
 
@@ -48,7 +50,9 @@ func (s *test2JSONSuite) SetupTest() {
 		Task: &task.Task{
 			Id: "task0",
 		},
+		Expansions: util.NewExpansions(map[string]string{}),
 	}
+	s.conf.Expansions.Put("expandme", test2JSONFile)
 	s.sender = send.MakeInternalLogger()
 }
 
@@ -71,19 +75,21 @@ func (s *test2JSONSuite) TestParseArgs() {
 	}
 	s.NoError(s.c.ParseParams(s.args))
 	s.Equal(s.args["files"], s.c.Files)
+}
 
-	s.args = map[string]interface{}{
-		"files": []string{"some/other/*.json"},
-	}
-
-	s.c.Files = []string{}
-	s.NoError(s.c.ParseParams(s.args))
-	// TODO TEST EXPANSIONS
+func (s *test2JSONSuite) TestPathExpansions() {
+	s.c.Files = []string{"${expandme}"}
+	logger := client.NewSingleChannelLogHarness("test", s.sender)
+	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
+	s.Require().Equal(test2JSONFile, s.c.Files[0])
+	msgs := drainMessages(s.sender)
+	s.Len(msgs, 5)
+	s.noErrorMessages(msgs)
 }
 
 func (s *test2JSONSuite) TestExecute() {
 	logger := client.NewSingleChannelLogHarness("test", s.sender)
-	s.c.Execute(context.Background(), s.comm, logger, s.conf)
+	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 
 	msgs := drainMessages(s.sender)
 	s.Len(msgs, 5)
@@ -92,19 +98,18 @@ func (s *test2JSONSuite) TestExecute() {
 	s.Len(s.comm.LocalTestResults.Results, 14)
 	s.Equal(14, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 14)
+	s.saneTestResults()
 
-	logFiles := map[string]bool{}
-	for _, result := range s.comm.LocalTestResults.Results {
-		_, ok := logFiles[result.LogId]
-		s.False(ok)
-		logFiles[result.LogId] = true
+	for _, test := range s.comm.LocalTestResults.Results {
+		s.NotEqual(test.StartTime, test.EndTime)
+		s.NotEqual(test.EndTime-test.StartTime, 0)
 	}
 }
 
 func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	logger := client.NewSingleChannelLogHarness("test", s.sender)
 	s.c.Files[0] = test2JSONBenchmarkFile
-	s.c.Execute(context.Background(), s.comm, logger, s.conf)
+	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 
 	msgs := drainMessages(s.sender)
 	s.Len(msgs, 5)
@@ -113,13 +118,22 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	s.Len(s.comm.LocalTestResults.Results, 4)
 	s.Equal(4, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 4)
+	s.saneTestResults()
+}
 
-	logFiles := map[string]bool{}
-	for _, result := range s.comm.LocalTestResults.Results {
-		_, ok := logFiles[result.LogId]
-		s.False(ok)
-		logFiles[result.LogId] = true
-	}
+func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
+	s.c.Files[0] = test2JSONWindowsFile
+	logger := client.NewSingleChannelLogHarness("test", s.sender)
+	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
+
+	msgs := drainMessages(s.sender)
+	s.Len(msgs, 5)
+	s.noErrorMessages(msgs)
+
+	s.Len(s.comm.LocalTestResults.Results, 14)
+	s.Equal(14, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 14)
+	s.saneTestResults()
 }
 
 func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
@@ -127,6 +141,24 @@ func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
 		if msgs[i].Priority >= level.Warning {
 			s.T().Errorf("message: '%s' had level: %s", msgs[i].Message.String(), msgs[i].Level)
 		}
+	}
+}
+
+// Assert: non-zero start/end times, starttime > endtime
+//	   no duplicate log IDs
+func (s *test2JSONSuite) saneTestResults() {
+	logFiles := map[string]bool{}
+	for _, result := range s.comm.LocalTestResults.Results {
+		_, ok := logFiles[result.LogId]
+		s.False(ok)
+		logFiles[result.LogId] = true
+	}
+
+	for _, result := range s.comm.LocalTestResults.Results {
+		s.False(result.StartTime == 0)
+		s.False(result.EndTime == 0)
+		s.True(result.EndTime >= result.StartTime)
+		s.True((result.EndTime - result.StartTime) >= 10)
 	}
 }
 
