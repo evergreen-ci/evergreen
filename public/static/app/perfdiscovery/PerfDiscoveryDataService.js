@@ -315,7 +315,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
         return _.chain(bfsGroup)
           // Split Bfs into two category 'Open' and 'not open'
           .partition(function(bf) {
-            return _.contains(bf.status, BF.OPEN_STATUSES)
+            return _.contains(BF.OPEN_STATUSES, bf.status)
           })
           // Sort BFs in each split by date created
           .map(function(bfs) {

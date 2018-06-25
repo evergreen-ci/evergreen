@@ -119,7 +119,10 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       .then(function(bfGroups) {
 
         // Match grouped points (by task, bv, test) w/ rows
-        _.each(bfGroups, function(bfs) {
+        _.each(bfGroups, function(bfGroup) {
+          // Dedupe by 'key' (BFs might have different revisions or other fields)
+          var bfs = _.uniq(bfGroup, function(d) { return d.key })
+
           var bf = bfs[0] // using the first element as characteristic
 
           var matcher = {
