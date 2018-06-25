@@ -16,6 +16,7 @@ import (
 
 const (
 	test2JSONFile          = "command/testdata/test2json.json"
+	test2JSONPanicFile     = "command/testdata/test2json_panic.json"
 	test2JSONWindowsFile   = "command/testdata/test2json_windows.json"
 	test2JSONBenchmarkFile = "command/testdata/test2json_benchmark.json"
 )
@@ -121,10 +122,10 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	s.Len(s.comm.TestLogs, 4)
 	s.saneTestResults()
 
-	for _, result := range s.comm.LocalresultResults.Results {
+	for _, result := range s.comm.LocalTestResults.Results {
 		// benchmark timings should be 0, except for the package level
 		// result
-		if strings.HasPrefix(result.resultFile, "package-") {
+		if strings.HasPrefix(result.TestFile, "package-") {
 			s.NotEqual(result.StartTime, result.EndTime)
 			s.True((result.EndTime - result.StartTime) > 0)
 		} else {
@@ -145,6 +146,21 @@ func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
 	s.Len(s.comm.LocalTestResults.Results, 14)
 	s.Equal(14, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 14)
+	s.saneTestResults()
+}
+
+func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
+	s.c.Files[0] = test2JSONPanicFile
+	logger := client.NewSingleChannelLogHarness("test", s.sender)
+	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
+
+	msgs := drainMessages(s.sender)
+	s.Len(msgs, 5)
+	s.noErrorMessages(msgs)
+
+	s.Len(s.comm.LocalTestResults.Results, 1)
+	s.Equal(1, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
 }
 
