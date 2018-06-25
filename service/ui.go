@@ -251,24 +251,23 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
 
 	// Plugin routes
-	rootPluginRouter := r.PathPrefix("/plugin").Subrouter()
-	rootPluginRouter.HandleFunc("/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
-	rootPluginRouter.HandleFunc("/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
-	rootPluginRouter.HandleFunc("/buildbaron/note/{task_id}", bbGetNote).Methods("GET")
-	rootPluginRouter.HandleFunc("/buildbaron/note/{task_id}", bbSaveNote).Methods("PUT")
-	rootPluginRouter.HandleFunc("/buildbaron/file_ticket", uis.bbFileTicket).Methods("POST")
-	rootPluginRouter.HandleFunc("/manifest/get/{project_id}/{revision}", uis.GetManifest)
-	rootPluginRouter.HandleFunc("/dashboard/tasks/project/{project_id}/version/{version_id}", perfDashGetTasksForVersion)
-	rootPluginRouter.HandleFunc("/json/version", perfGetVersion)
-	rootPluginRouter.HandleFunc("/json/version/{version_id}/{name}", perfGetTasksForVersion)
-	rootPluginRouter.HandleFunc("/json/version/latest/{project_id}/{name}", perfGetTasksForLatestVersion)
-	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/", perfGetTaskById)
-	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/tags", perfGetTags)
-	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/tag", perfHandleTaskTag).Methods("POST", "DELETE")
-	rootPluginRouter.HandleFunc("/json/tags/", perfGetProjectTags)
-	rootPluginRouter.HandleFunc("/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
-	rootPluginRouter.HandleFunc("/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
-	rootPluginRouter.HandleFunc("/json/history/{task_id}/{name}", perfGetTaskHistory)
+	r.HandleFunc("/plugin/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
+	r.HandleFunc("/plugin/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
+	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbGetNote).Methods("GET")
+	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbSaveNote).Methods("PUT")
+	r.HandleFunc("/plugin/buildbaron/file_ticket", uis.bbFileTicket).Methods("POST")
+	r.HandleFunc("/plugin/manifest/get/{project_id}/{revision}", uis.GetManifest)
+	r.HandleFunc("/plugin/dashboard/tasks/project/{project_id}/version/{version_id}", perfDashGetTasksForVersion)
+	r.HandleFunc("/plugin/json/version", perfGetVersion)
+	r.HandleFunc("/plugin/json/version/{version_id}/{name}", perfGetTasksForVersion)
+	r.HandleFunc("/plugin/json/version/latest/{project_id}/{name}", perfGetTasksForLatestVersion)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/", perfGetTaskById)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tags", perfGetTags)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tag", perfHandleTaskTag).Methods("POST", "DELETE")
+	r.HandleFunc("/plugin/json/tags/", perfGetProjectTags)
+	r.HandleFunc("/plugin/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
+	r.HandleFunc("/plugin/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
+	r.HandleFunc("/plugin/json/history/{task_id}/{name}", perfGetTaskHistory)
 
 	for _, pl := range plugin.UIPlugins {
 		// get the settings
@@ -282,7 +281,7 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 		if appPlugin, ok := pl.(plugin.AppUIPlugin); ok {
 			// register the app level pa}rt of the plugin
 			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
-			rootPluginRouter.HandleFunc(fmt.Sprintf("/%v/app", pl.Name()), uis.loadCtx(appFunction))
+			r.HandleFunc(fmt.Sprintf("/plugin/%v/app", pl.Name()), uis.loadCtx(appFunction))
 		}
 
 		// check if there are any errors getting the panel config
@@ -294,17 +293,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 			grip.Debugf("No UI config needed for plugin %s, skipping", pl.Name())
 			continue
 		}
-
-		plRouter := rootPluginRouter.PathPrefix(fmt.Sprintf("/%v/", pl.Name())).Subrouter()
-
-		// set up a fileserver in plugin's static root, if one is provided
-		pluginAssetsPath := filepath.Join(uis.Home, "public", "static", "plugins", pl.Name())
-
-		grip.Infof("Registering assets path for plugin '%s' in %s", pl.Name(), pluginAssetsPath)
-		plRouter.PathPrefix("/static/").Handler(
-			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
-				http.FileServer(http.Dir(pluginAssetsPath))),
-		)
 	}
 
 	return nil
