@@ -69,7 +69,8 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.NoError(db.Clear(distro.Collection))
 	d1 := &distro.Distro{
-		Id: "valid-distro",
+		Id:             "valid-distro",
+		NoTasksAllowed: true,
 	}
 	d2 := &distro.Distro{
 		Id:            "invalid-distro",
