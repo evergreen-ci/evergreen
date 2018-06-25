@@ -35,8 +35,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
         $scope.tempExpansions.push(obj);
       });
 
-      $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : "";
-      $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : "";
+      $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
+      $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
       $scope.Settings = resp.data;
     }
@@ -84,14 +84,14 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     try {
       $scope.Settings.plugins = jsyaml.safeLoad($scope.tempPlugins);
     } catch(e) {
-      alert("Error parsing plugin yaml: " + e);
+      notificationService.pushNotification("Error parsing plugin yaml: " + e, "errorHeader");
       return;
     }
 
     try {
       var parsedContainerPools = jsyaml.safeLoad($scope.tempContainerPools);
     } catch(e) {
-      alert("Error parsing container pools yaml: " + e);
+      notificationService.pushNotification("Error parsing container pools yaml: " + e, "errorHeader");
       return;
     }
 
@@ -105,14 +105,15 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     for (var i = 0; i < parsedContainerPools.length; i++) {
       var p = parsedContainerPools[i]
       // check fields
-      if (!p.Distro || !p.Id || !p.MaxContainers) {
-        alert("Error saving settings: container pool field cannot be null");
+      console.log(p)
+      if (!p.distro || !p.id || !p.max_containers) {
+        notificationService.pushNotification("Error saving settings: container pool field cannot be null", "errorHeader");
         return
       }
 
       // check uniqueness
       if (p.id in uniqueIds) {
-        alert("Error saving settings: found duplicate container pool ID: " + p.id);
+        notificationService.pushNotification("Error saving settings: found duplicate container pool ID: " + p.id , "errorHeader");
         return;
       }
       uniqueIds[p.id] = true
