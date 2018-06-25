@@ -239,7 +239,8 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 
 		case "bench":
 			// benchmarks do not give you an average iteration
-			// time, so we can't provide a Start and End time
+			// time, so we can't provide an accurate Start and end time
+			m[key].Status = "pass"
 			m[key].StartTime = data[i].Time
 			m[key].EndTime = data[i].Time
 
@@ -258,16 +259,6 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 }
 
 func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2JSONMergedTestEvent) (task.TestResult, model.TestLog) {
-	// Status    string  `json:"status" bson:"status"`
-	// TestFile  string  `json:"test_file" bson:"test_file"`
-	// URL       string  `json:"url" bson:"url,omitempty"`
-	// URLRaw    string  `json:"url_raw" bson:"url_raw,omitempty"`
-	// LogId     string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	// LineNum   int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
-	// ExitCode  int     `json:"exit_code" bson:"exit_code"`
-	// StartTime float64 `json:"start" bson:"start"`
-	// EndTime   float64 `json:"end" bson:"end"`
-
 	result := task.TestResult{
 		TestFile:  key,
 		LineNum:   1,
@@ -280,11 +271,6 @@ func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2J
 		result.Status = evergreen.TestSucceededStatus
 	case "skip":
 		result.Status = evergreen.TestSkippedStatus
-	case "":
-		// If we didn't record a status for a benchmark, it passed
-		if strings.HasPrefix(key, "Benchmark") {
-			result.Status = evergreen.TestSucceededStatus
-		}
 	}
 
 	log := model.TestLog{
