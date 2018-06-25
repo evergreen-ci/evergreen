@@ -29,7 +29,7 @@ func init() {
 type parentDecommissionJob struct {
 	job.Base      `bson:"metadata" json:"metadata" yaml:"metadata"`
 	DistroId      string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
-	MaxContainers int
+	MaxContainers int    `bson:"max_containers" json:"max_containers" yaml:"max_containers"`
 }
 
 func makeParentDecommissionJob() *parentDecommissionJob {
