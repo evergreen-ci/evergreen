@@ -196,7 +196,6 @@ type goTest2JSONMergedTestEvent struct {
 	Status    string
 	StartTime time.Time
 	EndTime   time.Time
-	Elapsed   float64
 }
 
 func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goTest2JSONMergedTestEvent {
@@ -221,21 +220,23 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 
 		case "pass", "fail":
 			m[key].Status = data[i].Action
-			m[key].Elapsed = data[i].Elapsed
 			m[key].EndTime = data[i].Time
 
-			// compute the start time from the end time, plus the elapsed
-			if m[key].StartTime.IsZero() || strings.HasPrefix(key.name, "package-") {
-				elapsedNano := m[key].Elapsed * float64(time.Second)
+			// For the package level results, we need to compute
+			// the start time
+			if strings.HasPrefix(key.name, "package-") {
+				elapsedNano := data[i].Elapsed * float64(time.Second)
 				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
 			}
 
 			iteration[data[i].Test] += 1
 
 		case "bench":
+			// benchmarks do not give you an average iteration
+			// time, so we can't provide a Start and End time
 			m[key].Status = "pass"
+			m[key].StartTime = data[i].Time
 			m[key].EndTime = data[i].Time
-			m[key].Elapsed = float64(m[key].EndTime.Sub(m[key].StartTime) / time.Second)
 
 		case "pause", "cont", "output":
 			m[key].Output = append(m[key].Output, strings.TrimRightFunc(data[i].Output, unicode.IsSpace))

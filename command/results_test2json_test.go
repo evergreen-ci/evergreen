@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -119,6 +120,17 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	s.Equal(4, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 4)
 	s.saneTestResults()
+
+	for _, result := range s.comm.LocalresultResults.Results {
+		// benchmark timings should be 0, except for the package level
+		// result
+		if strings.HasPrefix(result.resultFile, "package-") {
+			s.NotEqual(result.StartTime, result.EndTime)
+			s.True((result.EndTime - result.StartTime) > 0)
+		} else {
+			s.Equal(result.StartTime, result.EndTime)
+		}
+	}
 }
 
 func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
@@ -158,7 +170,12 @@ func (s *test2JSONSuite) saneTestResults() {
 		s.False(result.StartTime == 0)
 		s.False(result.EndTime == 0)
 		s.True(result.EndTime >= result.StartTime)
-		s.True((result.EndTime - result.StartTime) >= 10)
+		// benchmark output is weird: You'd think you would get a
+		// start and an end time, or an average iteration time, but
+		// you don't
+		if !strings.HasPrefix(result.TestFile, "Benchmark") {
+			s.True((result.EndTime - result.StartTime) >= 10)
+		}
 	}
 }
 

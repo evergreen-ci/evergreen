@@ -1,24 +1,23 @@
-{"Time":"2018-06-25T13:46:50.136419183-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"goos: darwin\n"}
-{"Time":"2018-06-25T13:46:50.136680777-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"goarch: amd64\n"}
-{"Time":"2018-06-25T13:46:50.136690336-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"pkg: github.com/evergreen-ci/evergreen/test2_bench\n"}
-{"Time":"2018-06-25T13:46:50.136696335-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"BenchmarkSomething-8          \t       1\t10001518245 ns/op\n"}
-{"Time":"2018-06-25T13:46:50.136715631-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"--- BENCH: BenchmarkSomething-8\n"}
-{"Time":"2018-06-25T13:46:50.13672703-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
-{"Time":"2018-06-25T13:46:50.136733548-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:15: end\n"}
-{"Time":"2018-06-25T13:47:00.137418784-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"BenchmarkSomethingElse-8      \t"}
-{"Time":"2018-06-25T13:47:00.137469824-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"       1\t10000781457 ns/op\n"}
-{"Time":"2018-06-25T13:47:00.137488392-04:00","Action":"bench","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8"}
-{"Time":"2018-06-25T13:47:00.137499162-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"--- BENCH: BenchmarkSomethingElse-8\n"}
-{"Time":"2018-06-25T13:47:00.137509929-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:19: start\n"}
-{"Time":"2018-06-25T13:47:00.137520538-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:24: end\n"}
-{"Time":"2018-06-25T13:47:10.13982993-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"BenchmarkSomethingSilent-8    \t       1\t10001867853 ns/op\n"}
-{"Time":"2018-06-25T13:47:20.141415009-04:00","Action":"bench","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8"}
-{"Time":"2018-06-25T13:47:20.141493206-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"--- FAIL: BenchmarkSomethingFailing\n"}
-{"Time":"2018-06-25T13:47:20.141515165-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:35: start\n"}
-{"Time":"2018-06-25T13:47:20.141527803-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:41: deliberately failing\n"}
-{"Time":"2018-06-25T13:47:20.141538318-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:42: end\n"}
-{"Time":"2018-06-25T13:47:20.141548217-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing"}
-{"Time":"2018-06-25T13:47:20.141569075-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"FAIL\n"}
-{"Time":"2018-06-25T13:47:20.142957973-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"exit status 1\n"}
-{"Time":"2018-06-25T13:47:20.142991117-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"FAIL\tgithub.com/evergreen-ci/evergreen/test2_bench\t40.015s\n"}
-{"Time":"2018-06-25T13:47:20.143012107-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2_bench","Elapsed":40.015}
+{"Time":"2018-06-25T14:31:10.817497203-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"goos: darwin\n"}
+{"Time":"2018-06-25T14:31:10.819173593-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"goarch: amd64\n"}
+{"Time":"2018-06-25T14:31:10.819183183-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"pkg: github.com/evergreen-ci/evergreen/test2_bench\n"}
+{"Time":"2018-06-25T14:31:10.819188773-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"BenchmarkSomething-8          \t       1\t10004678013 ns/op\n"}
+{"Time":"2018-06-25T14:31:10.819208889-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"--- BENCH: BenchmarkSomething-8\n"}
+{"Time":"2018-06-25T14:31:10.819217562-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:10: start\n"}
+{"Time":"2018-06-25T14:31:10.819223386-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"\tbenchmark_test.go:15: end\n"}
+{"Time":"2018-06-25T14:31:20.813835923-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8","Output":"BenchmarkSomethingElse-8      \t       1\t10001785393 ns/op\n"}
+{"Time":"2018-06-25T14:31:20.813873718-04:00","Action":"bench","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomething-8"}
+{"Time":"2018-06-25T14:31:20.813883843-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"--- BENCH: BenchmarkSomethingElse-8\n"}
+{"Time":"2018-06-25T14:31:20.813893771-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:19: start\n"}
+{"Time":"2018-06-25T14:31:20.81390368-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"\tbenchmark_test.go:24: end\n"}
+{"Time":"2018-06-25T14:31:30.819257417-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8","Output":"BenchmarkSomethingSilent-8    \t       1\t10005034392 ns/op\n"}
+{"Time":"2018-06-25T14:31:40.821868721-04:00","Action":"bench","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingElse-8"}
+{"Time":"2018-06-25T14:31:40.821958429-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"--- FAIL: BenchmarkSomethingFailing\n"}
+{"Time":"2018-06-25T14:31:40.821991744-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:35: start\n"}
+{"Time":"2018-06-25T14:31:40.822009366-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:41: deliberately failing\n"}
+{"Time":"2018-06-25T14:31:40.822034656-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing","Output":"\tbenchmark_test.go:42: end\n"}
+{"Time":"2018-06-25T14:31:40.822048716-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2_bench","Test":"BenchmarkSomethingFailing"}
+{"Time":"2018-06-25T14:31:40.822061438-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"FAIL\n"}
+{"Time":"2018-06-25T14:31:40.828888872-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"exit status 1\n"}
+{"Time":"2018-06-25T14:31:40.828936426-04:00","Action":"output","Package":"github.com/evergreen-ci/evergreen/test2_bench","Output":"FAIL\tgithub.com/evergreen-ci/evergreen/test2_bench\t40.023s\n"}
+{"Time":"2018-06-25T14:31:40.828956739-04:00","Action":"fail","Package":"github.com/evergreen-ci/evergreen/test2_bench","Elapsed":40.028}
