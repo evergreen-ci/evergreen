@@ -310,7 +310,8 @@ func (e *envState) initQueues(ctx context.Context) []error {
 
 func (e *envState) initClientConfig() {
 	if e.settings == nil {
-		return errors.New("no settings object, cannot build client configuration")
+		grip.Critical("no settings object, cannot build client configuration")
+		return
 	}
 	var err error
 
