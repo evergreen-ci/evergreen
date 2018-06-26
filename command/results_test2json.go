@@ -38,8 +38,10 @@ import (
 // 5. test2json's output on Windows uses Unix-style line endings
 // 6. Benchmarks do not provide Elapsed, even on fail
 type goTest2JSONTestEvent struct {
-	// Time is the time that the line was processed by by go test
-	Time time.Time // encodes as an RFC3339-format string
+	// Time is the time that the line was processed by by go test. Contrary
+	// to the documentation, this string appears to be an RFC3339Nano
+	// formatted string
+	Time time.Time
 	// Action is one of:
 	// run    - the test has started running
 	// pause  - the test has been paused
@@ -122,28 +124,35 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 		return errors.Wrapf(err, "Error parsing test file: %s", err)
 	}
 
-	merged := processParsedJSONFile(events)
+	testLog, merged := processTestEvents(events)
 	if len(merged) == 0 {
 		logger.Task().Warning("Parsed no events from test file")
 		return nil
 	}
 
 	logger.Task().Info("Sending test logs to server...")
-	results := []task.TestResult{}
+	log := model.TestLog{
+		Name:          "",
+		Task:          conf.Task.Id,
+		TaskExecution: conf.Task.Execution,
+		Lines:         testLog,
+	}
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	for k, v := range merged {
-		testResult, log := goMergedTest2JSONToTestResult(k.name, conf.Task, v)
+	var logID string
+	logID, err = comm.SendTestLog(ctx, td, &log)
+	if err != nil {
+		// continue on error to let the other logs be posted
+		logger.Task().Errorf("failed to post log: %v", err)
+		return errors.Wrap(err, "failed to post log")
+	}
+	logger.Task().Info("Finished posting logs to server")
 
-		var logID string
-		logID, err = comm.SendTestLog(ctx, td, &log)
-		if err != nil {
-			// continue on error to let the other logs be posted
-			logger.Task().Errorf("problem posting log: %v", err)
-		}
+	results := make([]task.TestResult, 0, len(merged))
+	for k, v := range merged {
+		testResult := goMergedTest2JSONToTestResult(k.name, conf.Task, v)
 		testResult.LogId = logID
 		results = append(results, testResult)
 	}
-	logger.Task().Info("Finished posting logs to server")
 
 	logger.Task().Info("Sending parsed results to server...")
 	if err := comm.SendTestResults(ctx, td, &task.LocalTestResults{
@@ -197,14 +206,15 @@ func parseGoTest2JSON(bytes []byte) (*goTest2JSONTestEvent, error) {
 }
 
 type goTest2JSONMergedTestEvent struct {
-	Output    []string
 	Status    string
+	StartLine int
 	StartTime time.Time
 	EndTime   time.Time
 }
 
-func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goTest2JSONMergedTestEvent {
+func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONKey]*goTest2JSONMergedTestEvent) {
 	iteration := map[string]int{}
+	testLog := []string{}
 	m := map[goTest2JSONKey]*goTest2JSONMergedTestEvent{}
 
 	for i := range data {
@@ -222,6 +232,7 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 		switch data[i].Action {
 		case "run":
 			m[key].StartTime = data[i].Time
+			m[key].StartLine = i + 1
 
 		case "pass", "fail", "skip":
 			m[key].Status = data[i].Action
@@ -231,7 +242,7 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 			// so we just set start/end to the same time
 			if strings.HasPrefix(key.name, "Benchmark") {
 				m[key].StartTime = data[i].Time
-			} else {
+			} else if m[key].StartTime.IsZero() {
 				elapsedNano := math.Ceil(data[i].Elapsed * float64(time.Second))
 				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
 			}
@@ -246,23 +257,26 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 			m[key].EndTime = data[i].Time
 
 		case "pause", "cont", "output":
-			m[key].Output = append(m[key].Output, strings.TrimRightFunc(data[i].Output, unicode.IsSpace))
+			if data[i].Action == "output" {
+				testLog = append(testLog, strings.TrimRightFunc(data[i].Output, unicode.IsSpace))
+			}
 			// test2json does not guarantee that all tests will
 			// have a "pass" or "fail" event (ex: panics), so
-			// this allows those tests to have an end time
+			// we assign the most recent event's time to the EndTime
+			// if the status hasn't been set yet
 			if len(m[key].Status) == 0 {
 				m[key].EndTime = data[i].Time
 			}
 		}
 	}
 
-	return m
+	return testLog, m
 }
 
-func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2JSONMergedTestEvent) (task.TestResult, model.TestLog) {
+func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2JSONMergedTestEvent) task.TestResult {
 	result := task.TestResult{
 		TestFile:  key,
-		LineNum:   1,
+		LineNum:   test2JSON.StartLine,
 		Status:    evergreen.TestFailedStatus,
 		StartTime: float64(test2JSON.StartTime.Unix()),
 		EndTime:   float64(test2JSON.EndTime.Unix()),
@@ -274,12 +288,5 @@ func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2J
 		result.Status = evergreen.TestSkippedStatus
 	}
 
-	log := model.TestLog{
-		Name:          key,
-		Task:          t.Id,
-		TaskExecution: t.Execution,
-		Lines:         test2JSON.Output,
-	}
-
-	return result, log
+	return result
 }

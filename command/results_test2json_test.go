@@ -70,6 +70,8 @@ func (s *test2JSONSuite) TestNoFiles() {
 		"files": []string{},
 	}
 	s.EqualError(s.c.ParseParams(s.args), "error validating params: must specify at least one file pattern to parse: 'map[files:[]]'")
+
+	s.EqualError(s.c.ParseParams(nil), "error validating params: must specify at least one file pattern to parse: 'map[]'")
 }
 
 func (s *test2JSONSuite) TestParseArgs() {
@@ -100,18 +102,18 @@ func (s *test2JSONSuite) TestExecute() {
 	s.noErrorMessages(msgs)
 
 	s.Len(s.comm.LocalTestResults.Results, 14)
-	s.Equal(14, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 14)
+	s.Equal(1, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
 
 	expectedResults := map[string]testEventExpectation{
 		"TestConveyPass": {
-			StartTime: "2018-06-25T12:05:24.035040344-04:00",
+			StartTime: "2018-06-25T12:05:04.017015269-04:00",
 			EndTime:   "2018-06-25T12:05:34.035040344-04:00",
 			Status:    evergreen.TestSucceededStatus,
 		},
 		"TestConveyFail": {
-			StartTime: "2018-06-25T12:05:24.034868188-04:00",
+			StartTime: "2018-06-25T12:05:04.017036781-04:00",
 			EndTime:   "2018-06-25T12:05:34.034868188-04:00",
 			Status:    evergreen.TestFailedStatus,
 		},
@@ -121,12 +123,12 @@ func (s *test2JSONSuite) TestExecute() {
 			Status:    evergreen.TestFailedStatus,
 		},
 		"TestNativeTestPass": {
-			StartTime: "2018-06-25T12:05:24.034725614-04:00",
+			StartTime: "2018-06-25T12:05:04.01707699-04:00",
 			EndTime:   "2018-06-25T12:05:34.034725614-04:00",
 			Status:    evergreen.TestSucceededStatus,
 		},
 		"TestNativeTestFail": {
-			StartTime: "2018-06-25T12:05:24.034919477-04:00",
+			StartTime: "2018-06-25T12:05:04.017098154-04:00",
 			EndTime:   "2018-06-25T12:05:34.034919477-04:00",
 			Status:    evergreen.TestFailedStatus,
 		},
@@ -136,17 +138,17 @@ func (s *test2JSONSuite) TestExecute() {
 			Status:    evergreen.TestSucceededStatus,
 		},
 		"TestSkippedTestFail": {
-			StartTime: "2018-06-25T12:05:34.034981576-04:00",
+			StartTime: "2018-06-25T12:05:04.0171186-04:00",
 			EndTime:   "2018-06-25T12:05:44.034981576-04:00",
 			Status:    evergreen.TestSkippedStatus,
 		},
 		"TestTestifyFail": {
-			StartTime: "2018-06-25T12:05:34.034874417-04:00",
+			StartTime: "2018-06-25T12:05:04.016984664-04:00",
 			EndTime:   "2018-06-25T12:05:44.034874417-04:00",
 			Status:    evergreen.TestFailedStatus,
 		},
 		"TestTestifyPass": {
-			StartTime: "2018-06-25T12:05:24.034985982-04:00",
+			StartTime: "2018-06-25T12:05:04.016652959-04:00",
 			EndTime:   "2018-06-25T12:05:34.034985982-04:00",
 			Status:    evergreen.TestSucceededStatus,
 		},
@@ -190,8 +192,8 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	s.noErrorMessages(msgs)
 
 	s.Len(s.comm.LocalTestResults.Results, 4)
-	s.Equal(4, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 4)
+	s.Equal(1, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
 
 	expectedResults := map[string]testEventExpectation{
@@ -245,8 +247,8 @@ func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
 	s.noErrorMessages(msgs)
 
 	s.Len(s.comm.LocalTestResults.Results, 14)
-	s.Equal(14, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 14)
+	s.Equal(1, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
 }
 
@@ -266,8 +268,8 @@ func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
 	s.noErrorMessages(msgs)
 
 	s.Len(s.comm.LocalTestResults.Results, 3)
-	s.Equal(3, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 3)
+	s.Equal(1, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
 
 	expectedResults := map[string]testEventExpectation{
@@ -324,15 +326,7 @@ func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
 }
 
 // Assert: non-zero start/end times, starttime > endtime
-//	   no duplicate log IDs
 func (s *test2JSONSuite) saneTestResults() {
-	logFiles := map[string]bool{}
-	for _, result := range s.comm.LocalTestResults.Results {
-		_, ok := logFiles[result.LogId]
-		s.False(ok)
-		logFiles[result.LogId] = true
-	}
-
 	for _, result := range s.comm.LocalTestResults.Results {
 		s.False(result.StartTime == 0)
 		s.False(result.EndTime == 0)
