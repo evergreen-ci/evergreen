@@ -253,6 +253,11 @@ type goTest2JSONMergedTestEvent struct {
 	EndTime   time.Time
 }
 
+func startTimeFromEndTimeAndElapsed(endTime time.Time, elapsedSeconds float64) time.Time {
+	elapsedNano := math.Ceil(elapsedSeconds * float64(time.Second))
+	return endTime.Add(-time.Duration(elapsedNano))
+}
+
 func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONKey]*goTest2JSONMergedTestEvent) {
 	iteration := map[string]int{}
 	testLog := []string{}
@@ -264,8 +269,8 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 			iteration: iteration[event.Test],
 		}
 
-		if len(event.Test) == 0 && event.Action != actionOutput {
-			continue
+		if len(event.Test) == 0 {
+			key.name = "package"
 		}
 		if _, ok := m[key]; !ok {
 			m[key] = &goTest2JSONMergedTestEvent{}
@@ -284,8 +289,7 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 			if strings.HasPrefix(key.name, "Benchmark") {
 				m[key].StartTime = event.Time
 			} else if m[key].StartTime.IsZero() {
-				elapsedNano := math.Ceil(event.Elapsed * float64(time.Second))
-				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
+				m[key].StartTime = startTimeFromEndTimeAndElapsed(event.Time, event.Elapsed)
 			}
 
 			iteration[event.Test] += 1
@@ -311,10 +315,17 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 					m[key].StartLine = len(testLog) - 1
 				}
 			}
-			if len(event.Test) == 0 {
-				delete(m, key)
-			}
 		}
+	}
+
+	// if we have more than 1 result, then we ditch the package
+	// level result
+	if len(m) > 1 {
+		key := goTest2JSONKey{
+			name:      "package",
+			iteration: iteration["package"],
+		}
+		delete(m, key)
 	}
 
 	return testLog, m

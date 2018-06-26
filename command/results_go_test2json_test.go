@@ -263,11 +263,13 @@ func (s *test2JSONSuite) TestExecuteWithSilentBenchmarks() {
 	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 
 	msgs := drainMessages(s.sender)
-	s.Len(msgs, 4)
+	s.Len(msgs, 5)
 
-	s.Nil(s.comm.LocalTestResults)
+	s.Len(s.comm.LocalTestResults.Results, 1)
 	s.Equal(1, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 1)
+	s.saneTestResults()
+	s.Equal(evergreen.TestSucceededStatus, s.comm.LocalTestResults.Results[0].Status)
 }
 
 func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
