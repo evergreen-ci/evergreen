@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -45,7 +44,7 @@ func (uis *UIServer) myPatchesTimeline(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request) {
-	author := mux.Vars(r)["user_id"]
+	author := gimlet.GetVars(r)["user_id"]
 	uis.patchTimelineWrapper(author, w, r)
 }
 
@@ -71,7 +70,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	}
 	skip := pageNum * DefaultLimit
 
-	user := mux.Vars(r)["user_id"]
+	user := gimlet.GetVars(r)["user_id"]
 	var patches []patch.Patch
 	if len(user) > 0 {
 		patches, err = patch.Find(patch.ByUser(user).

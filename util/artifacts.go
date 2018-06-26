@@ -63,17 +63,29 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 
 			if filematch == "**" {
 				walk = func(path string, info os.FileInfo, err error) error {
+					for _, ignore := range excludes {
+						if match, _ := filepath.Match(ignore, path); match {
+							return nil
+						}
+					}
+
 					outputChan <- ArchiveContentFile{path, info, nil}
-					return err
+					return nil
 				}
 				_ = filepath.Walk(dir, walk)
 			} else if strings.Contains(filematch, "**") {
 				globSuffix := filematch[2:]
 				walk = func(path string, info os.FileInfo, err error) error {
 					if strings.HasSuffix(filepath.Base(path), globSuffix) {
+						for _, ignore := range excludes {
+							if match, _ := filepath.Match(ignore, path); match {
+								return nil
+							}
+						}
+
 						outputChan <- ArchiveContentFile{path, info, nil}
 					}
-					return err
+					return nil
 				}
 				_ = filepath.Walk(dir, walk)
 			} else {
@@ -85,10 +97,16 @@ func streamArchiveContents(ctx context.Context, rootPath string, includes, exclu
 							outputChan <- ArchiveContentFile{err: err}
 						}
 						if match {
+							for _, ignore := range excludes {
+								if exmatch, _ := filepath.Match(ignore, path); exmatch {
+									return nil
+								}
+							}
+
 							outputChan <- ArchiveContentFile{path, info, nil}
 						}
 					}
-					return err
+					return nil
 				}
 				_ = filepath.Walk(rootPath, walk)
 			}

@@ -120,6 +120,18 @@ tasks:
           source_dir: "archive"
           include:
             - "*_to_archive"
+      - command: archive.zip_extract
+        params:
+          path: "archive.zip"
+          destination: "output"
+      - command: archive.auto_extract
+        params:
+          path: "archive.zip"
+          destination: "output"
+      - command: archive.auto_extract
+        params:
+          path: "archive.tgz"
+          destination: "output"
       - command: attach.results
         params:
           file_location: "src/command/testdata/attach/plugin_attach_results.json"

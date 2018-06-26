@@ -152,7 +152,15 @@ type appRecoveryLogger struct {
 
 // NewRecoveryLogger logs request start, end, and recovers from panics
 // (logging the panic as well).
-func NewRecoveryLogger() Middleware { return &appRecoveryLogger{} }
+func NewRecoveryLogger(j grip.Journaler) Middleware { return &appRecoveryLogger{Journaler: j} }
+
+// MakeRecoveryLoger constructs a middleware layer that logs request
+// start, end, and recovers from panics (logging the panic as well).
+//
+// This logger uses the default grip logger.
+func MakeRecoveryLogger() Middleware {
+	return &appRecoveryLogger{Journaler: logging.MakeGrip(grip.GetSender())}
+}
 
 func (l *appRecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	r = setupLogger(l.Journaler, r)

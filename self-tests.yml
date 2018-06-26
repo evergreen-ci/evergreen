@@ -332,9 +332,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-spawn
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-monitor
@@ -451,9 +448,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-service
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
-    name: race-spawn
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-monitor
