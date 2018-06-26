@@ -91,13 +91,15 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 			settings.Jira.Password),
 	}
 
+	plugins := plugin.GetPublished()
 	uis.PanelManager = &plugin.SimplePanelManager{}
-	if err := uis.PanelManager.RegisterPlugins(plugin.UIPlugins); err != nil {
+
+	if err := uis.PanelManager.RegisterPlugins(plugins); err != nil {
 		return nil, errors.Wrap(err, "problem initializing plugins")
 	}
 
 	catcher := grip.NewBasicCatcher()
-	for _, pl := range plugin.UIPlugins {
+	for _, pl := range plugins {
 		// get the settings
 		pluginSettings, ok := uis.Settings.Plugins[pl.Name()]
 		if !ok {
