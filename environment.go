@@ -140,7 +140,6 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	catcher.Add(e.initSenders())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
-	catcher.Add(e.initClientConfig())
 	if confPath != "" {
 		catcher.Add(e.persistSettings())
 	}
@@ -309,15 +308,24 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	return catcher.Errors()
 }
 
-func (e *envState) initClientConfig() (err error) {
+func (e *envState) initClientConfig() {
 	if e.settings == nil {
-		return errors.New("no settings object, cannot build client configuration")
+		grip.Critical("no settings object, cannot build client configuration")
+		return
 	}
+	var err error
+
 	e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
-	if err == nil && len(e.clientConfig.ClientBinaries) == 0 {
-		grip.Warning("No clients are available for this server")
+
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "problem finding local clients",
+			"cause":   "infrastructure configuration issue",
+			"impact":  "agent deploys",
+		}))
+	} else if len(e.clientConfig.ClientBinaries) == 0 {
+		grip.Critical("No clients are available for this server")
 	}
-	return errors.WithStack(err)
 }
 
 func (e *envState) initSenders() error {
@@ -525,7 +533,10 @@ func (e *envState) ClientConfig() *ClientConfig {
 	defer e.mu.RUnlock()
 
 	if e.clientConfig == nil {
-		return nil
+		e.initClientConfig()
+		if e.clientConfig == nil {
+			return nil
+		}
 	}
 
 	config := *e.clientConfig
