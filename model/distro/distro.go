@@ -30,10 +30,9 @@ type Distro struct {
 	SSHKey      string   `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions  []string `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 
-	SpawnAllowed   bool        `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
-	NoTasksAllowed bool        `bson:"no_tasks_allowed" json:"no_tasks_allowed,omitempty" mapstructure:"no_tasks_allowed,omitempty"`
-	Expansions     []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
-	Disabled       bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+	SpawnAllowed bool        `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 
 	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
 
@@ -124,9 +123,6 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 		}
 		if d.ContainerPool != "" {
 			catcher.Add(fmt.Errorf("container pool %s has invalid distro", pool.Id))
-		}
-		if !d.NoTasksAllowed {
-			catcher.Add(fmt.Errorf("distro %s cannot be allowed to spawn tasks", pool.Distro))
 		}
 	}
 	return errors.WithStack(catcher.Resolve())
