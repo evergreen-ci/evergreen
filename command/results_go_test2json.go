@@ -25,10 +25,17 @@ import (
 )
 
 var (
-	testStartRegex = regexp.MustCompile(`^=== (RUN|BENCH)\s+(.*)\n`)
+	testStartRegex = regexp.MustCompile(`^=== (RUN|BENCH)\s+.*$`)
+	// Match benchmark output like "BenchmarkSomethingSilent-8    	       1	10005034392 ns/op"
+	benchmarkRegex = regexp.MustCompile(fmt.Sprintf(`^(%s)(-\d+)?\s+\d+\s+\d+\s+`, identRegex))
 )
 
 const (
+	// Golang ident (see grammar spec)
+	identRegex      = `\p{L}(\p{L}|\d)*`
+	benchFailPrefix = "--- FAIL: %s"
+	benchSkipPrefix = "--- SKIP: %s"
+
 	actionPass   = "pass"
 	actionFail   = "fail"
 	actionRun    = "run"
@@ -54,6 +61,9 @@ const (
 // 4. The file emitted by test2json on Windows uses Unix-style line endings
 // 5. Benchmarks do not provide Elapsed, even on fail, except in the package
 // level result
+// 6. Benchmark output will not necessarily match the Test. For example,
+// in the benchmark corpus, the output for BenchmarkSomethingSilent-8 is tagged
+// with Test name BenchmarkSomethingElse-8
 type goTest2JSONTestEvent struct {
 	// Time is the time that the line was processed by by go test. Contrary
 	// to the documentation, this string appears to be an RFC3339Nano
@@ -242,13 +252,14 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 	testLog := []string{}
 	m := map[goTest2JSONKey]*goTest2JSONMergedTestEvent{}
 
-	for i, event := range data {
+	for _, event := range data {
 		key := goTest2JSONKey{
 			name:      event.Test,
 			iteration: iteration[event.Test],
 		}
-		if len(event.Test) == 0 {
-			key.name = fmt.Sprintf("package-%s", event.Package)
+
+		if len(event.Test) == 0 && event.Action != actionOutput {
+			continue
 		}
 		if _, ok := m[key]; !ok {
 			m[key] = &goTest2JSONMergedTestEvent{}
@@ -274,8 +285,6 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 			iteration[event.Test] += 1
 
 		case actionBench:
-			// benchmarks do not give you an average iteration
-			// time, so we can't provide an accurate Start and end time
 			m[key].Status = actionPass
 			m[key].StartTime = event.Time
 			m[key].EndTime = event.Time
@@ -290,16 +299,39 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 			}
 
 			if event.Action == actionOutput {
-				trimmedLined := strings.TrimRightFunc(event.Output, unicode.IsSpace)
-				testLog = append(testLog, trimmedLined)
-				if testStartRegex.MatchString(trimmedLined) {
-					m[key].StartLine = i
+				trimmedLine := strings.TrimRightFunc(event.Output, unicode.IsSpace)
+				testLog = append(testLog, trimmedLine)
+				if shouldTagLineNumber(trimmedLine, event.Package, key.name) {
+					m[key].StartLine = len(testLog) - 1
 				}
+			}
+			if len(event.Test) == 0 {
+				delete(m, key)
 			}
 		}
 	}
 
 	return testLog, m
+}
+
+func shouldTagLineNumber(line, packageName, testName string) bool {
+	if testStartRegex.MatchString(line) {
+		return true
+	}
+
+	// All tests below apply only to benchmarks
+	if !strings.HasPrefix(testName, "Benchmark") {
+		return false
+	}
+
+	if strings.HasPrefix(line, fmt.Sprintf(benchFailPrefix, testName)) {
+		return true
+	}
+	if strings.HasPrefix(line, fmt.Sprintf(benchSkipPrefix, testName)) {
+		return true
+	}
+
+	return false
 }
 
 func goMergedTest2JSONToTestResult(key string, t *task.Task, test2JSON *goTest2JSONMergedTestEvent) task.TestResult {

@@ -11,16 +11,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 )
 
 const (
-	test2JSONFile          = "command/testdata/test2json.json"
-	test2JSONPanicFile     = "command/testdata/test2json_panic.json"
-	test2JSONWindowsFile   = "command/testdata/test2json_windows.json"
-	test2JSONBenchmarkFile = "command/testdata/test2json_benchmark.json"
+	test2JSONFile                = "command/testdata/test2json.json"
+	test2JSONPanicFile           = "command/testdata/test2json_panic.json"
+	test2JSONWindowsFile         = "command/testdata/test2json_windows.json"
+	test2JSONBenchmarkFile       = "command/testdata/test2json_benchmark.json"
+	test2JSONSilentBenchmarkFile = "command/testdata/test2json_benchmark_silent.json"
 )
 
 type test2JSONSuite struct {
@@ -101,7 +103,7 @@ func (s *test2JSONSuite) TestExecute() {
 	s.Len(msgs, 5)
 	s.noErrorMessages(msgs)
 
-	s.Len(s.comm.LocalTestResults.Results, 14)
+	s.Len(s.comm.LocalTestResults.Results, 13)
 	s.Equal(1, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
@@ -111,74 +113,82 @@ func (s *test2JSONSuite) TestExecute() {
 			StartTime: "2018-06-25T12:05:04.017015269-04:00",
 			EndTime:   "2018-06-25T12:05:34.035040344-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 4,
 		},
 		"TestConveyFail": {
 			StartTime: "2018-06-25T12:05:04.017036781-04:00",
 			EndTime:   "2018-06-25T12:05:34.034868188-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 6,
 		},
 		"TestFailingButInAnotherFile": {
 			StartTime: "2018-06-25T12:05:24.032450248-04:00",
 			EndTime:   "2018-06-25T12:05:34.034820373-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 30,
 		},
 		"TestNativeTestPass": {
 			StartTime: "2018-06-25T12:05:04.01707699-04:00",
 			EndTime:   "2018-06-25T12:05:34.034725614-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 8,
 		},
 		"TestNativeTestFail": {
 			StartTime: "2018-06-25T12:05:04.017098154-04:00",
 			EndTime:   "2018-06-25T12:05:34.034919477-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 10,
 		},
 		"TestPassingButInAnotherFile": {
 			StartTime: "2018-06-25T12:05:24.032378982-04:00",
 			EndTime:   "2018-06-25T12:05:34.035090616-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 28,
 		},
 		"TestSkippedTestFail": {
 			StartTime: "2018-06-25T12:05:04.0171186-04:00",
 			EndTime:   "2018-06-25T12:05:44.034981576-04:00",
 			Status:    evergreen.TestSkippedStatus,
+			LineInLog: 12,
 		},
 		"TestTestifyFail": {
 			StartTime: "2018-06-25T12:05:04.016984664-04:00",
 			EndTime:   "2018-06-25T12:05:44.034874417-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 2,
 		},
 		"TestTestifyPass": {
 			StartTime: "2018-06-25T12:05:04.016652959-04:00",
 			EndTime:   "2018-06-25T12:05:34.034985982-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 0,
 		},
 		"TestTestifySuite": {
 			StartTime: "2018-06-25T12:05:14.024473312-04:00",
 			EndTime:   "2018-06-25T12:05:24.032367066-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 22,
 		},
 		"TestTestifySuiteFail": {
 			StartTime: "2018-06-25T12:05:04.017169659-04:00",
 			EndTime:   "2018-06-25T12:05:14.024456046-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 14,
 		},
 		"TestTestifySuiteFail/TestThings": {
 			StartTime: "2018-06-25T12:05:04.019154773-04:00",
 			EndTime:   "2018-06-25T12:05:14.02441206-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 15,
 		},
 		"TestTestifySuite/TestThings": {
 			StartTime: "2018-06-25T12:05:14.027554888-04:00",
 			EndTime:   "2018-06-25T12:05:24.03234939-04:00",
 			Status:    evergreen.TestSucceededStatus,
-		},
-		"package-github.com/evergreen-ci/evergreen/test2": {
-			StartTime: "2018-06-25T12:05:04.016652959-04:00",
-			EndTime:   "2018-06-25T12:05:44.037218299-04:00",
-			Status:    evergreen.TestFailedStatus,
+			LineInLog: 23,
 		},
 	}
-	s.Len(expectedResults, 14)
+	s.Len(expectedResults, 13)
 	s.doTableTest(expectedResults)
 }
 
@@ -191,36 +201,47 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	s.Len(msgs, 5)
 	s.noErrorMessages(msgs)
 
-	s.Len(s.comm.LocalTestResults.Results, 4)
+	s.Len(s.comm.LocalTestResults.Results, 5)
 	s.Equal(1, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
 
 	expectedResults := map[string]testEventExpectation{
 		"BenchmarkSomethingFailing": {
-			StartTime: "2018-06-25T14:31:40.822048716-04:00",
-			EndTime:   "2018-06-25T14:31:40.822048716-04:00",
+			StartTime: "2018-06-26T11:39:55.144987764-04:00",
+			EndTime:   "2018-06-26T11:39:55.144987764-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 12,
 		},
 		"BenchmarkSomething-8": {
-			StartTime: "2018-06-25T14:31:20.813873718-04:00",
-			EndTime:   "2018-06-25T14:31:20.813873718-04:00",
+			StartTime: "2018-06-26T11:39:35.141056901-04:00",
+			EndTime:   "2018-06-26T11:39:35.141056901-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 0, // TODO
 		},
 		"BenchmarkSomethingElse-8": {
-			StartTime: "2018-06-25T14:31:40.821868721-04:00",
-			EndTime:   "2018-06-25T14:31:40.821868721-04:00",
+			StartTime: "2018-06-26T11:39:55.144650126-04:00",
+			EndTime:   "2018-06-26T11:39:55.144650126-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 0, // TODO
 		},
 		"BenchmarkSomethingSilent-8": {
 			StartTime: "2018-06-25T14:31:30.819257417-04:00",
 			EndTime:   "2018-06-25T14:31:30.819257417-04:00",
 			Status:    evergreen.TestSucceededStatus,
+			LineInLog: 15,
 		},
-		"package-github.com/evergreen-ci/evergreen/test2_bench": {
-			StartTime: "2018-06-25T14:31:00.800956739-04:00",
-			EndTime:   "2018-06-25T14:31:40.828956739-04:00",
-			Status:    evergreen.TestFailedStatus,
+		"BenchmarkSomethingSkipped": {
+			StartTime: "2018-06-26T11:39:55.145230368-04:00",
+			EndTime:   "2018-06-26T11:39:55.145230368-04:00",
+			Status:    evergreen.TestSkippedStatus,
+			LineInLog: 16,
+		},
+		"BenchmarkSomethingSkippedSilent": {
+			StartTime: "2018-06-26T11:39:55.145309703-04:00",
+			EndTime:   "2018-06-26T11:39:55.145309703-04:00",
+			Status:    evergreen.TestSkippedStatus,
+			LineInLog: 19,
 		},
 	}
 	s.doTableTest(expectedResults)
@@ -237,6 +258,20 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	}
 }
 
+func (s *test2JSONSuite) TestExecuteWithSilentBenchmarks() {
+	logger := client.NewSingleChannelLogHarness("test", s.sender)
+	s.c.Files[0] = test2JSONSilentBenchmarkFile
+	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
+
+	msgs := drainMessages(s.sender)
+	pp.Println(msgs)
+	s.Len(msgs, 3)
+
+	s.Nil(s.comm.LocalTestResults)
+	s.Equal(1, s.comm.TestLogCount)
+	s.Len(s.comm.TestLogs, 1)
+}
+
 func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
 	s.c.Files[0] = test2JSONWindowsFile
 	logger := client.NewSingleChannelLogHarness("test", s.sender)
@@ -246,7 +281,7 @@ func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
 	s.Len(msgs, 5)
 	s.noErrorMessages(msgs)
 
-	s.Len(s.comm.LocalTestResults.Results, 14)
+	s.Len(s.comm.LocalTestResults.Results, 13)
 	s.Equal(1, s.comm.TestLogCount)
 	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
@@ -256,6 +291,7 @@ type testEventExpectation struct {
 	StartTime string
 	EndTime   string
 	Status    string
+	LineInLog int
 }
 
 func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
@@ -277,21 +313,19 @@ func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
 			StartTime: "2018-06-25T14:57:29.280697961-04:00",
 			EndTime:   "2018-06-25T14:57:39.287082569-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 0,
 		},
 		"TestTestifySuitePanic": {
 			StartTime: "2018-06-25T14:57:29.281022553-04:00",
 			EndTime:   "2018-06-25T14:57:29.281073606-04:00",
 			Status:    evergreen.TestFailedStatus,
+			LineInLog: 2,
 		},
 		"TestTestifySuitePanic/TestWillPanic": {
 			StartTime: "2018-06-25T14:57:29.281033889-04:00",
 			EndTime:   "2018-06-25T14:57:29.28262775-04:00",
 			Status:    evergreen.TestFailedStatus,
-		},
-		"github.com/evergreen-ci/evergreen/test2/panic": {
-			StartTime: "2018-06-25T14:57:29.280697961-04:00",
-			EndTime:   "2018-06-25T14:57:39.287082569-04:00",
-			Status:    evergreen.TestFailedStatus,
+			LineInLog: 6,
 		},
 	}
 	s.doTableTest(expectedResults)
@@ -314,6 +348,7 @@ func (s *test2JSONSuite) doTableTest(expectedResults map[string]testEventExpecta
 		s.Equal(float64(end.Unix()), test.EndTime, test.TestFile)
 
 		s.Equal(expected.Status, test.Status)
+		s.Equal(expected.LineInLog, test.LineNum, test.TestFile)
 	}
 }
 
@@ -327,6 +362,7 @@ func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
 
 // Assert: non-zero start/end times, starttime > endtime
 func (s *test2JSONSuite) saneTestResults() {
+	s.Require().NotNil(s.comm.LocalTestResults)
 	for _, result := range s.comm.LocalTestResults.Results {
 		s.False(result.StartTime == 0)
 		s.False(result.EndTime == 0)
