@@ -3,6 +3,8 @@ mciModule.controller('SignalProcessingCtrl', function(
 ) {
   var vm = this;
   var projectId = $window.project
+  // TODO later this might be replaced with some sort of pagination
+  var LIMIT = 500
 
   var state = {
     sorting: null,
@@ -42,7 +44,7 @@ mciModule.controller('SignalProcessingCtrl', function(
       chain.push(mdbSorting(sorting))
     }
 
-    chain.push({$limit: 250})
+    chain.push({$limit: LIMIT})
     return chain
   }
 
