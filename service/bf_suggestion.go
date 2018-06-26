@@ -194,7 +194,7 @@ func (bfsc *bfSuggestionClient) sendFeedback(ctx context.Context, t *task.Task, 
 
 	_, err := bfsc.post(ctx, url, feedback)
 	if err != nil {
-		grip.Error(fmt.Sprintf("Failed to send feedback to BF Suggestion server (url: %s, data: %v): %v", url, feedback, err))
+		grip.Error(fmt.Sprintf("Failed to send feedback to BF Suggestion server (url: %s, data: %v): %s", url, feedback, err))
 	}
 	return err
 }
@@ -210,7 +210,7 @@ func (bfsc *bfSuggestionClient) removeFeedback(ctx context.Context, t *task.Task
 
 	_, err := bfsc.delete(ctx, url)
 	if err != nil {
-		grip.Error(fmt.Sprintf("Failed to delete user feedback from BF Suggestion server (url: %s): %v", url, err))
+		grip.Error(fmt.Sprintf("Failed to delete user feedback from BF Suggestion server (url: %s): %s", url, err))
 	}
 	return err
 }

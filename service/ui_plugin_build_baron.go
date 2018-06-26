@@ -261,7 +261,7 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	}
 	bbProj, ok := uis.buildBaronProjects[t.Project]
 	if !ok {
-		gimlet.WriteJSON(rw, fmt.Sprintf("Build Baron project for %v not found", t.Project))
+		gimlet.WriteJSON(rw, fmt.Sprintf("Build Baron project for %s not found", t.Project))
 		return
 	}
 
@@ -279,13 +279,13 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 	var source string
 
 	tickets, source, err = multiSource.Suggest(t)
-	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	if err != nil {
-		message := fmt.Sprintf("Error searching for tickets: %v", err)
+		message := fmt.Sprintf("Error searching for tickets: %s", err)
 		grip.Error(message)
 		gimlet.WriteJSONInternalError(rw, message)
 		return
 	}
+	jql := t.GetJQL(bbProj.TicketSearchProjects)
 	gimlet.WriteJSON(rw, searchReturnInfo{Issues: tickets, Search: jql, Source: source})
 }
 
