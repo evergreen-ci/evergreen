@@ -22,7 +22,6 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/":                                  getPlaceHolderManger,
 		"/admin":                             getLegacyAdminSettingsManager,
 		"/admin/banner":                      getBannerRouteManager,
 		"/admin/events":                      getAdminEventRouteManager,
@@ -79,4 +78,6 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 	for path, getManager := range routes {
 		getManager(path, 2).Register(app, sc)
 	}
+
+	app.AddRoute("/").Version(2).RouteHandler(makePlaceHolderManger(sc)).Get()
 }
