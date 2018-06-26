@@ -16,8 +16,8 @@ func init() {
 }
 
 var includes = []template.HTML{
-	`<script type="text/javascript" src="/plugin/perf/static/js/trend_chart.js"></script>`,
-	`<script type="text/javascript" src="/plugin/perf/static/js/perf.js"></script>`,
+	`<script type="text/javascript" src="/static/plugins/perf/js/trend_chart.js"></script>`,
+	`<script type="text/javascript" src="/static/plugins/perf/js/perf.js"></script>`,
 }
 
 // PerfPlugin displays performance statistics in the UI.
