@@ -321,7 +321,7 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		"method":  r.Method,
 		"url":     r.URL,
 		"code":    code,
-		"request": GetRequestID(r),
+		"request": gimlet.GetRequestID(r.Context()),
 		"stack":   string(debug.Stack()),
 	}))
 

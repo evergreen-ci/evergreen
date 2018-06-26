@@ -608,7 +608,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		"url":     r.URL.String(),
 		"code":    code,
 		"len":     r.ContentLength,
-		"request": GetRequestID(r),
+		"request": gimlet.GetRequestID(r.Context()),
 	}))
 
 	// if JSON is the preferred content type for the request, reply with a json message
