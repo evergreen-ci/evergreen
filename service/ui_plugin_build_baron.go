@@ -78,14 +78,12 @@ func (uis *UIServer) bbGetTaskAndBFSuggestionClient(taskId string, execution str
 
 	bbProj, ok := uis.buildBaronProjects[t.Project]
 	if !ok {
-		err = errors.Errorf("Build Baron project for %v not found", t.Project)
-		return nil, bfsc, err
+		return nil, bfsc, errors.Errorf("Build Baron project for %v not found", t.Project)
 	}
 
 	bfsc, ok = getBFSuggestionClient(bbProj)
 	if !ok {
-		err = errors.Errorf("No BF Suggestion Server configured for the project %v", t.Project)
-		return nil, bfsc, err
+		return nil, bfsc, errors.Errorf("No BF Suggestion Server configured for the project %v", t.Project)
 	}
 
 	return t, bfsc, err
