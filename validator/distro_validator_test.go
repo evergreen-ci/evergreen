@@ -266,3 +266,59 @@ func TestEnsureNonZeroID(t *testing.T) {
 	assert.Nil(ensureHasNonZeroID(ctx, &distro.Distro{Id: "foo"}, conf))
 	assert.Nil(ensureHasNonZeroID(ctx, &distro.Distro{Id: " "}, conf))
 }
+
+func TestEnsureValidContainerPool(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert.NoError(db.Clear(distro.Collection))
+
+	conf := &evergreen.Settings{
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro: "d4",
+					Id:     "test-pool-valid",
+				},
+				evergreen.ContainerPool{
+					Distro: "d1",
+					Id:     "test-pool-invalid",
+				},
+			},
+		},
+	}
+
+	d1 := &distro.Distro{
+		Id:            "d1",
+		ContainerPool: "test-pool-valid",
+	}
+	d2 := &distro.Distro{
+		Id:            "d2",
+		ContainerPool: "test-pool-invalid",
+	}
+	d3 := &distro.Distro{
+		Id:            "d3",
+		ContainerPool: "test-pool-missing",
+	}
+	d4 := &distro.Distro{
+		Id: "d4",
+	}
+	assert.NoError(d1.Insert())
+	assert.NoError(d2.Insert())
+	assert.NoError(d3.Insert())
+	assert.NoError(d4.Insert())
+
+	err := ensureValidContainerPool(ctx, d1, conf)
+	assert.Equal(err, []ValidationError{{Error,
+		"error in container pool settings: container pool test-pool-invalid has invalid distro"}})
+	err = ensureValidContainerPool(ctx, d2, conf)
+	assert.Equal(err, []ValidationError{{Error,
+		"error in container pool settings: container pool test-pool-invalid has invalid distro"}})
+	err = ensureValidContainerPool(ctx, d3, conf)
+	assert.Equal(err, []ValidationError{{Error,
+		"distro container pool does not exist"}})
+	err = ensureValidContainerPool(ctx, d4, conf)
+	assert.Nil(err)
+}

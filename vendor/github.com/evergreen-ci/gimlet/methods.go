@@ -1,5 +1,7 @@
 package gimlet
 
+import "net/http"
+
 type httpMethod int
 
 // Typed constants for specifying HTTP method types on routes.
@@ -9,20 +11,23 @@ const (
 	post
 	delete
 	patch
+	head
 )
 
 func (m httpMethod) String() string {
 	switch m {
 	case get:
-		return "GET"
+		return http.MethodGet
 	case put:
-		return "PUT"
+		return http.MethodPut
 	case delete:
-		return "DELETE"
+		return http.MethodDelete
 	case patch:
-		return "PATCH"
+		return http.MethodPatch
 	case post:
-		return "POST"
+		return http.MethodPost
+	case head:
+		return http.MethodHead
 	default:
 		return ""
 	}
