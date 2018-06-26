@@ -56,7 +56,7 @@ func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
 	var ok bool
 	t.data, ok = e.Data.(*event.VersionEventData)
 	if !ok {
-		return errors.Wrapf(err, "version '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+		return errors.Errorf("version '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
 	}
 	t.event = e
 
