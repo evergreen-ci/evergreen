@@ -19,7 +19,6 @@ import (
 const (
 	test2JSONFile                = "command/testdata/test2json.json"
 	test2JSONPanicFile           = "command/testdata/test2json_panic.json"
-	test2JSONWindowsFile         = "command/testdata/test2json_windows.json"
 	test2JSONBenchmarkFile       = "command/testdata/test2json_benchmark.json"
 	test2JSONSilentBenchmarkFile = "command/testdata/test2json_benchmark_silent.json"
 )
@@ -270,21 +269,6 @@ func (s *test2JSONSuite) TestExecuteWithSilentBenchmarks() {
 	s.Len(s.comm.TestLogs, 1)
 	s.saneTestResults()
 	s.Equal(evergreen.TestSucceededStatus, s.comm.LocalTestResults.Results[0].Status)
-}
-
-func (s *test2JSONSuite) TestExecuteWithWindowsResultsFile() {
-	s.c.Files[0] = test2JSONWindowsFile
-	logger := client.NewSingleChannelLogHarness("test", s.sender)
-	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
-
-	msgs := drainMessages(s.sender)
-	s.Len(msgs, 5)
-	s.noErrorMessages(msgs)
-
-	s.Len(s.comm.LocalTestResults.Results, 13)
-	s.Equal(1, s.comm.TestLogCount)
-	s.Len(s.comm.TestLogs, 1)
-	s.saneTestResults()
 }
 
 type testEventExpectation struct {
