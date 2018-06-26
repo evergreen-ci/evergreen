@@ -57,7 +57,7 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 	var err error
 	t.data, ok = e.Data.(*event.HostEventData)
 	if !ok {
-		return errors.New("expected host event data")
+		return errors.Errorf("expected host event data, got %T", e.Data)
 	}
 
 	t.host, err = host.FindOneId(e.ResourceId)
@@ -105,9 +105,11 @@ func (t *hostTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
-		payload, err = hostEmail(t.templateData, subjectTempl, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationEmailPayload(t.templateData, subjectTempl, bodyTempl, sub.Selectors)
 	case event.SlackSubscriberType:
-		payload, err = hostSlackMessage(t.templateData, bodyTempl, sub.Selectors)
+		payload, err = hostExpirationSlackPayload(t.templateData, bodyTempl, sub.Selectors)
+	default:
+		return nil, nil
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to parse templates")
@@ -116,7 +118,7 @@ func (t *hostTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func hostEmail(t hostTemplateData, subjectString, bodyString string, selectors []event.Selector) (*message.Email, error) {
+func hostExpirationEmailPayload(t hostTemplateData, subjectString, bodyString string, selectors []event.Selector) (*message.Email, error) {
 	subjectTemplate, err := template.New("subject").Parse(subjectString)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse subject template")
@@ -147,7 +149,7 @@ func hostEmail(t hostTemplateData, subjectString, bodyString string, selectors [
 	}, nil
 }
 
-func hostSlackMessage(t hostTemplateData, messageString string, selectors []event.Selector) (*notification.SlackPayload, error) {
+func hostExpirationSlackPayload(t hostTemplateData, messageString string, selectors []event.Selector) (*notification.SlackPayload, error) {
 	messageTemplate, err := template.New("subject").Parse(messageString)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")

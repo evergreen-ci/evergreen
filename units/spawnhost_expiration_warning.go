@@ -77,6 +77,10 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 	}
 
 	for _, h := range expiringSoonHosts {
+		if ctx.Err() != nil {
+			j.AddError(errors.New("spawnhost expiration warning run canceled"))
+			return
+		}
 		if err = alerts.RunSpawnWarningTriggers(&h); err != nil {
 			j.AddError(err)
 			grip.Error(message.WrapError(err, message.Fields{

@@ -89,14 +89,14 @@ func (s *hostSuite) SetupTest() {
 }
 
 func (s *hostSuite) TestEmailMessage() {
-	email, err := hostEmail(s.testData, expiringHostTitle, expiringHostBody, s.t.Selectors())
+	email, err := hostExpirationEmailPayload(s.testData, expiringHostTitle, expiringHostBody, s.t.Selectors())
 	s.NoError(err)
 	s.Equal("myDistro host termination reminder", email.Subject)
 	s.Contains(email.Body, "Your myDistro host with id myHost will be terminated at")
 }
 
 func (s *hostSuite) TestSlackMessage() {
-	msg, err := hostSlackMessage(s.testData, expiringHostBody, s.t.Selectors())
+	msg, err := hostExpirationSlackPayload(s.testData, expiringHostBody, s.t.Selectors())
 	s.NoError(err)
 	s.Contains(msg.Body, "Your myDistro host with id myHost will be terminated at")
 }
@@ -106,12 +106,6 @@ func (s *hostSuite) TestAllTriggers() {
 	n, err := NotificationsFromEvent(s.t.event)
 	s.NoError(err)
 	s.Len(n, 1)
-
-	// random event should not trigger
-	// s.t.event.EventType = event.EventHostStarted
-	// n, err = NotificationsFromEvent(s.t.event)
-	// s.NoError(err)
-	// s.Len(n, 0)
 }
 
 func (s *hostSuite) TestHostExpiration() {
