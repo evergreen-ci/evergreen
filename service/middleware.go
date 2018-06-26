@@ -49,9 +49,6 @@ const (
 	// These are private custom types to avoid key collisions.
 	RequestTask reqCtxKey = iota
 	RequestProjectContext
-	requestID
-
-	remoteAddrHeaderName = "X-Cluster-Client-Ip"
 )
 
 // MustHaveProjectContext gets the projectContext from the request,
