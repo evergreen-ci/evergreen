@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -131,8 +132,9 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	}
 
 	logger.Task().Info("Sending test logs to server...")
+	_, suiteName := filepath.Split(file)
 	log := model.TestLog{
-		Name:          "",
+		Name:          suiteName,
 		Task:          conf.Task.Id,
 		TaskExecution: conf.Task.Execution,
 		Lines:         testLog,
