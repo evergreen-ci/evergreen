@@ -9,6 +9,7 @@ import (
 	"math"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -21,6 +22,21 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+)
+
+var (
+	testStartRegex = regexp.MustCompile(`^=== (RUN|BENCH)\s+(.*)\n`)
+)
+
+const (
+	actionPass   = "pass"
+	actionFail   = "fail"
+	actionRun    = "run"
+	actionPause  = "pause"
+	actionCont   = "cont"
+	actionBench  = "bench"
+	actionOutput = "output"
+	actionSkip   = "skip"
 )
 
 // Golang's JSON result output ('test2json') is a newline delimited list
@@ -213,7 +229,9 @@ func parseGoTest2JSON(bytes []byte) (*goTest2JSONTestEvent, error) {
 }
 
 type goTest2JSONMergedTestEvent struct {
-	Status    string
+	// Status is an evergreen.Test.* constant
+	Status string
+	// 0-indexed line number into the log
 	StartLine int
 	StartTime time.Time
 	EndTime   time.Time
@@ -237,11 +255,10 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 		}
 
 		switch event.Action {
-		case "run":
+		case actionRun:
 			m[key].StartTime = event.Time
-			m[key].StartLine = i + 1
 
-		case "pass", "fail", "skip":
+		case actionPass, actionFail, actionSkip:
 			m[key].Status = event.Action
 			m[key].EndTime = event.Time
 
@@ -256,23 +273,28 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 
 			iteration[event.Test] += 1
 
-		case "bench":
+		case actionBench:
 			// benchmarks do not give you an average iteration
 			// time, so we can't provide an accurate Start and end time
-			m[key].Status = "pass"
+			m[key].Status = actionPass
 			m[key].StartTime = event.Time
 			m[key].EndTime = event.Time
 
-		case "pause", "cont", "output":
-			if event.Action == "output" {
-				testLog = append(testLog, strings.TrimRightFunc(event.Output, unicode.IsSpace))
-			}
+		case actionPause, actionCont, actionOutput:
 			// test2json does not guarantee that all tests will
 			// have a "pass" or "fail" event (ex: panics), so
 			// we assign the most recent event's time to the EndTime
 			// if the status hasn't been set yet
 			if len(m[key].Status) == 0 {
 				m[key].EndTime = event.Time
+			}
+
+			if event.Action == actionOutput {
+				trimmedLined := strings.TrimRightFunc(event.Output, unicode.IsSpace)
+				testLog = append(testLog, trimmedLined)
+				if testStartRegex.MatchString(trimmedLined) {
+					m[key].StartLine = i
+				}
 			}
 		}
 	}
