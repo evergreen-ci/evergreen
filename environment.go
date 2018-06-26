@@ -534,7 +534,9 @@ func (e *envState) ClientConfig() *ClientConfig {
 
 	if e.clientConfig == nil {
 		e.initClientConfig()
-		return nil
+		if e.clientConfig == nil {
+			return nil
+		}
 	}
 
 	config := *e.clientConfig
