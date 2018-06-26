@@ -48,6 +48,6 @@ func TestRouteResolutionHelpers(t *testing.T) {
 	assert.NoError(t, err)
 	h := getRouteHandlerWithMiddlware(nil, handler)
 	assert.Equal(t, handler, h)
-	h = getRouteHandlerWithMiddlware([]Middleware{NewRecoveryLogger()}, handler)
+	h = getRouteHandlerWithMiddlware([]Middleware{MakeRecoveryLogger()}, handler)
 	assert.NotEqual(t, handler, h)
 }

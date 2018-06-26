@@ -46,8 +46,7 @@ func TestReqestPanicLogger(t *testing.T) {
 
 	sender, err := send.NewInternalLogger("test", grip.GetSender().Level())
 	assert.NoError(err)
-	middlewear := NewRecoveryLogger().(*appRecoveryLogger)
-	middlewear.Journaler = logging.MakeGrip(sender)
+	middlewear := NewRecoveryLogger(logging.MakeGrip(sender)).(*appRecoveryLogger)
 
 	next := func(w http.ResponseWriter, r *http.Request) {
 		middlewear.Journaler.Info("hello")
@@ -70,8 +69,7 @@ func TestReqestPanicLoggerWithPanic(t *testing.T) {
 
 	sender, err := send.NewInternalLogger("test", grip.GetSender().Level())
 	assert.NoError(err)
-	middlewear := NewRecoveryLogger().(*appRecoveryLogger)
-	middlewear.Journaler = logging.MakeGrip(sender)
+	middlewear := NewRecoveryLogger(logging.MakeGrip(sender))
 
 	next := func(w http.ResponseWriter, r *http.Request) {
 		panic("oops")
@@ -157,8 +155,7 @@ func TestLoggingAnnotation(t *testing.T) {
 
 	sender, err := send.NewInternalLogger("test", grip.GetSender().Level())
 	assert.NoError(err)
-	middlewear := NewRecoveryLogger().(*appRecoveryLogger)
-	middlewear.Journaler = logging.MakeGrip(sender)
+	middlewear := NewRecoveryLogger(logging.MakeGrip(sender))
 
 	var called bool
 	next := func(w http.ResponseWriter, r *http.Request) {
