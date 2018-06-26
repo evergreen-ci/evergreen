@@ -101,12 +101,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 	catcher := grip.NewBasicCatcher()
 	for _, pl := range plugins {
 		// get the settings
-		pluginSettings, ok := uis.Settings.Plugins[pl.Name()]
-		if !ok {
-			catcher.Add(errors.Errorf("plugin settings for %s are not defined", pl.Name()))
-			continue
-		}
-		catcher.Add(pl.Configure(pluginSettings))
+		catcher.Add(pl.Configure(uis.Settings.Plugins[pl.Name()]))
 	}
 
 	if catcher.HasErrors() {
