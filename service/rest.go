@@ -65,7 +65,7 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 
 // AttachRESTHandler attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
-func GetRESTv1App(evgService restAPIService) (*gimlet.APIApp, error) {
+func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
 	app.ResetMiddleware()
@@ -94,5 +94,5 @@ func GetRESTv1App(evgService restAPIService) (*gimlet.APIApp, error) {
 	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig)
 	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus)
 
-	return app, nil
+	return app
 }
