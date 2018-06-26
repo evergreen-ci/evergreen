@@ -2,7 +2,6 @@ package distro
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"path/filepath"
 	"regexp"
@@ -100,16 +99,6 @@ func (d *Distro) BinaryName() string {
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
-}
-
-// ComputeParentsToDecommission calculates how many excess parents to
-// decommission for the provided distro
-func (d *Distro) ComputeParentsToDecommission(nParents, nContainers int) (int, error) {
-	// Prevent division by zero MaxContainers value
-	if d.MaxContainers == 0 {
-		return 0, errors.New("Distro does not support containers")
-	}
-	return nParents - int(math.Ceil(float64(nContainers)/float64(d.MaxContainers))), nil
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
