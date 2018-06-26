@@ -153,3 +153,74 @@ func TestResponseBuilderConstructor(t *testing.T) {
 	assert.Error(err)
 	assert.Nil(resp)
 }
+
+func TestSimpleResponseBuilder(t *testing.T) {
+	f := map[string]interface{}{"foo": "bar"}
+	st := struct{ Foo chan struct{} }{Foo: make(chan struct{})}
+
+	t.Run("TextConstructor", func(t *testing.T) {
+		for idx, resp := range []Responder{
+			NewTextResponse("foo"),
+			NewTextErrorResponse("foo"),
+			NewTextInternalErrorResponse("foo"),
+		} {
+			assert.Equal(t, TEXT, resp.Format(), "%d", idx)
+		}
+	})
+	t.Run("HTMLConstructor", func(t *testing.T) {
+		for idx, resp := range []Responder{
+			NewHTMLResponse("foo"),
+			NewHTMLErrorResponse("foo"),
+			NewHTMLInternalErrorResponse("foo"),
+		} {
+			assert.Equal(t, HTML, resp.Format(), "%d", idx)
+		}
+	})
+	t.Run("BinaryConstructor", func(t *testing.T) {
+		for idx, resp := range []Responder{
+			NewBinaryResponse(f),
+			NewBinaryErrorResponse(f),
+			NewBinaryInternalErrorResponse(f),
+		} {
+			assert.Equal(t, BINARY, resp.Format(), "%d", idx)
+		}
+	})
+	t.Run("JSONConstructorValid", func(t *testing.T) {
+		for idx, resp := range []Responder{
+			NewJSONResponse(f),
+			NewJSONErrorResponse(f),
+			NewJSONInternalErrorResponse(f),
+		} {
+			assert.Equal(t, JSON, resp.Format(), "%d", idx)
+		}
+	})
+	t.Run("JSONConstructorInvalid", func(t *testing.T) {
+		for idx, resp := range []Responder{
+			NewJSONResponse(st),
+			NewJSONErrorResponse(st),
+			NewJSONInternalErrorResponse(st),
+		} {
+			assert.Equal(t, TEXT, resp.Format(), "%d", idx)
+			assert.Equal(t, http.StatusInternalServerError, resp.Status())
+		}
+	})
+	t.Run("YAMLConstructorValid", func(t *testing.T) {
+		for idx, resp := range []Responder{
+			NewYAMLResponse(f),
+			NewYAMLErrorResponse(f),
+			NewYAMLInternalErrorResponse(f),
+		} {
+			assert.Equal(t, YAML, resp.Format(), "%d", idx)
+		}
+	})
+	t.Run("YAMLConstructorInvalid", func(t *testing.T) {
+		for idx, resp := range []Responder{
+			NewYAMLResponse(st),
+			NewYAMLErrorResponse(st),
+			NewYAMLInternalErrorResponse(st),
+		} {
+			assert.Equal(t, TEXT, resp.Format(), "%d", idx)
+			assert.Equal(t, http.StatusInternalServerError, resp.Status())
+		}
+	})
+}
