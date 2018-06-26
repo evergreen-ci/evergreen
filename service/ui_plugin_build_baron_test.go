@@ -50,8 +50,7 @@ var (
 func TestAltEndpointParseResponseData(t *testing.T) {
 	assert := assert.New(t)
 
-	bfsc := bfSuggestionClient{}
-	altEndpoint := altEndpointSuggest{bfsc, 0}
+	altEndpoint := altEndpointSuggest{nil, 0}
 	data := bfSuggestionResponse{}
 	rawJSON := `{
 		"task_id": "my_task",
@@ -96,7 +95,7 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 	assert.Equal([]thirdparty.JiraTicket{ticket1, ticket2, ticket3}, tickets,
 		"expected JIRA tickets for all suggestions to be returned")
 
-	altEndpoint = altEndpointSuggest{bfsc, 0}
+	altEndpoint = altEndpointSuggest{nil, 0}
 	data = bfSuggestionResponse{}
 	rawJSON = `{
 		"task_id": "my_task",
@@ -146,7 +145,7 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 	assert.Equal([]thirdparty.JiraTicket{ticket1, ticket3, ticket2}, tickets,
 		"expected JIRA tickets for all tests to be returned")
 
-	altEndpoint = altEndpointSuggest{bfsc, 0}
+	altEndpoint = altEndpointSuggest{nil, 0}
 	data = bfSuggestionResponse{}
 	rawJSON = `{
 		"task_id": "my_task",
@@ -163,7 +162,7 @@ func TestAltEndpointParseResponseData(t *testing.T) {
 		"expected an error to be return if no suggestions were made")
 	assert.Nil(tickets)
 
-	altEndpoint = altEndpointSuggest{bfsc, 0}
+	altEndpoint = altEndpointSuggest{nil, 0}
 	data = bfSuggestionResponse{}
 	rawJSON = `{
 		"task_id": "my_task",
