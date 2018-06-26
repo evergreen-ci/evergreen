@@ -57,14 +57,17 @@ func bbGetTask(taskId string, execution string) (*task.Task, error) {
 	oldId := fmt.Sprintf("%v_%v", taskId, execution)
 	t, err := task.FindOneOld(task.ById(oldId))
 	if err != nil {
-		return t, err
+		return t, errors.Wrap(err, "Failed to find task with old Id")
 	}
 	// if the archived task was not found, we must be looking for the most recent exec
 	if t == nil {
 		t, err = task.FindOne(task.ById(taskId))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "Failed to find task")
 		}
+	}
+	if t == nil {
+		return nil, errors.Errorf("No task found for taskId: %s and execution: %s", taskId, execution)
 	}
 	return t, nil
 }
@@ -78,12 +81,12 @@ func (uis *UIServer) bbGetTaskAndBFSuggestionClient(taskId string, execution str
 
 	bbProj, ok := uis.buildBaronProjects[t.Project]
 	if !ok {
-		return nil, bfsc, errors.Errorf("Build Baron project for %v not found", t.Project)
+		return nil, bfsc, errors.Errorf("Build Baron project for %s not found", t.Project)
 	}
 
 	bfsc, ok = getBFSuggestionClient(bbProj)
 	if !ok {
-		return nil, bfsc, errors.Errorf("No BF Suggestion Server configured for the project %v", t.Project)
+		return nil, bfsc, errors.Errorf("No BF Suggestion Server configured for the project %s", t.Project)
 	}
 
 	return t, bfsc, err
@@ -225,8 +228,7 @@ func (uis *UIServer) bbSendFeedback(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = bfsc.sendFeedback(r.Context(), t, u.Username(), input.FeedbackType, input.FeedbackData)
-	if err != nil {
+	if err = bfsc.sendFeedback(r.Context(), t, u.Username(), input.FeedbackType, input.FeedbackData); err != nil {
 		gimlet.WriteJSONInternalError(rw, err.Error())
 		return
 	}
@@ -457,10 +459,8 @@ func (mss *multiSourceSuggest) raceSuggest(t *task.Task) ([]thirdparty.JiraTicke
 /////////////////////////////////
 
 func getBFSuggestionClient(bbProj evergreen.BuildBaronProject) (bfSuggestionClient, bool) {
-	var client bfSuggestionClient
-
 	if bbProj.BFSuggestionServer == "" {
-		return client, false
+		return bfSuggestionClient{}, false
 	}
 	return bfSuggestionClient{
 		bbProj.BFSuggestionServer,
@@ -525,7 +525,7 @@ func (bfsc *bfSuggestionClient) post(ctx context.Context, url string, data inter
 	if data != nil {
 		jsonBytes, err := json.Marshal(data)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "Failed to encode the request body to JSON")
 		}
 		body = bytes.NewReader(jsonBytes)
 	}
@@ -634,7 +634,7 @@ func (bfsc *bfSuggestionClient) sendFeedback(ctx context.Context, t *task.Task, 
 
 	_, err := bfsc.post(ctx, url, feedback)
 	if err != nil {
-		grip.Error(fmt.Sprintf("Failed to send feedback to BF Suggestion server (url: %v, data: %v): %v", url, feedback, err))
+		grip.Error(fmt.Sprintf("Failed to send feedback to BF Suggestion server (url: %s, data: %v): %v", url, feedback, err))
 	}
 	return err
 }
@@ -650,7 +650,7 @@ func (bfsc *bfSuggestionClient) removeFeedback(ctx context.Context, t *task.Task
 
 	_, err := bfsc.delete(ctx, url)
 	if err != nil {
-		grip.Error(fmt.Sprintf("Failed to delete user feedback from BF Suggestion server (url: %v): %v", url, err))
+		grip.Error(fmt.Sprintf("Failed to delete user feedback from BF Suggestion server (url: %s): %v", url, err))
 	}
 	return err
 }
