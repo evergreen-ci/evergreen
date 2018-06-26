@@ -79,10 +79,10 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 			{
 				Page:      plugin.TaskPage,
 				Position:  plugin.PageRight,
-				PanelHTML: template.HTML(`<div ng-include="'/plugin/buildbaron/static/partials/task_build_baron.html'"></div>`),
+				PanelHTML: template.HTML(`<div ng-include="'/static/plugins/buildbaron/partials/task_build_baron.html'"></div>`),
 				Includes: []template.HTML{
-					template.HTML(`<link href="/plugin/buildbaron/static/css/task_build_baron.css" rel="stylesheet"/>`),
-					template.HTML(`<script type="text/javascript" src="/plugin/buildbaron/static/js/task_build_baron.js"></script>`),
+					template.HTML(`<link href="/static/plugins/buildbaron/css/task_build_baron.css" rel="stylesheet"/>`),
+					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
 					_, enabled := bbp.opts.Projects[context.ProjectRef.Identifier]
