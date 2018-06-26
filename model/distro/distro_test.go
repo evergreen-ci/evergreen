@@ -145,7 +145,6 @@ func TestValidateContainerPoolDistros(t *testing.T) {
 		Id:            "invalid-distro",
 		ContainerPool: "test-pool-1",
 	}
-
 	assert.NoError(d1.Insert())
 	assert.NoError(d2.Insert())
 
