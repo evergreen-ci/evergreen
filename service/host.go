@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -43,8 +42,7 @@ type uiParams struct {
 }
 
 func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["host_id"]
+	id := gimlet.GetVars(r)["host_id"]
 
 	h, err := host.FindOne(host.ById(id))
 	if err != nil {
@@ -100,9 +98,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	env := evergreen.GetEnvironment()
 	queue := env.RemoteQueue()
 	u := MustHaveUser(r)
-
-	vars := mux.Vars(r)
-	id := vars["host_id"]
+	id := gimlet.GetVars(r)["host_id"]
 
 	h, err := host.FindOne(host.ById(id))
 	if err != nil {

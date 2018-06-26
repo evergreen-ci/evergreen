@@ -42,7 +42,7 @@ func stripHiddenFiles(files []artifact.File, pluginUser gimlet.User) []artifact.
 		switch {
 		case file.Visibility == artifact.None:
 			continue
-		case file.Visibility == artifact.Private && pluginUser != nil:
+		case file.Visibility == artifact.Private && pluginUser == nil:
 			continue
 		default:
 			publicFiles = append(publicFiles, file)

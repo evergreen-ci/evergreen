@@ -3,6 +3,7 @@ package model
 import (
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -15,7 +16,6 @@ import (
 const (
 	maxGeneratedBuildVariants = 100
 	maxGeneratedTasks         = 1000
-	GenerateTasksCommandName  = "generate.tasks"
 )
 
 // GeneratedProject is a subset of the Project type, and is generated from the
@@ -300,14 +300,14 @@ func isNonZeroBV(bv parserBV) bool {
 func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projectMaps, catcher grip.Catcher) {
 	for _, t := range g.Tasks {
 		for _, cmd := range t.Commands {
-			if cmd.Command == GenerateTasksCommandName {
+			if cmd.Command == evergreen.GenerateTasksCommandName {
 				catcher.Add(errors.New("cannot define 'generate.tasks' from a 'generate.tasks' block"))
 			}
 		}
 	}
 	for _, f := range g.Functions {
 		for _, cmd := range f.List() {
-			if cmd.Command == GenerateTasksCommandName {
+			if cmd.Command == evergreen.GenerateTasksCommandName {
 				catcher.Add(errors.New("cannot define 'generate.tasks' from a 'generate.tasks' block"))
 			}
 		}
@@ -323,13 +323,13 @@ func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projec
 
 func validateCommands(projectTask *ProjectTask, cachedProject projectMaps, pvt parserBVTaskUnit, catcher grip.Catcher) {
 	for _, cmd := range projectTask.Commands {
-		if cmd.Command == GenerateTasksCommandName {
+		if cmd.Command == evergreen.GenerateTasksCommandName {
 			catcher.Add(errors.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", pvt.Name))
 		}
 		if cmd.Function != "" {
 			if functionCmds, ok := cachedProject.functions[cmd.Function]; ok {
 				for _, functionCmd := range functionCmds.List() {
-					if functionCmd.Command == GenerateTasksCommandName {
+					if functionCmd.Command == evergreen.GenerateTasksCommandName {
 						catcher.Add(errors.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", cmd.Function))
 					}
 				}

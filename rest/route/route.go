@@ -1,10 +1,12 @@
 package route
 
 import (
-	"fmt"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // routeManagerFactory is a function type used to create RouteManagers and used to register handlders.
@@ -26,11 +28,24 @@ type RouteManager struct {
 
 // Register builds http handlers for each of the defined methods and attaches
 // these to the given router.
-func (rm *RouteManager) Register(r *mux.Router, sc data.Connector) {
+func (rm *RouteManager) Register(app *gimlet.APIApp, sc data.Connector) {
 	for _, method := range rm.Methods {
-		routeHandlerFunc := makeHandler(method, sc)
-		sr := r.PathPrefix(fmt.Sprintf("/%s/v%d/", sc.GetPrefix(), rm.Version)).Subrouter().StrictSlash(true)
-
-		sr.HandleFunc(rm.Route, routeHandlerFunc).Methods(method.MethodType)
+		api := app.AddRoute(rm.Route).Version(rm.Version).Handler(makeHandler(method, sc))
+		switch method.MethodType {
+		case http.MethodGet:
+			api.Get()
+		case http.MethodPost:
+			api.Post()
+		case http.MethodDelete:
+			api.Delete()
+		case http.MethodPatch:
+			api.Patch()
+		default:
+			grip.Alert(message.Fields{
+				"message": "problem registering rout",
+				"route":   rm.Route,
+				"cause":   "programmer error",
+			})
+		}
 	}
 }

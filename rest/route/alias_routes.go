@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -34,8 +34,7 @@ func (a *aliasGetHandler) Handler() RequestHandler {
 }
 
 func (a *aliasGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	a.name = vars["name"]
+	a.name = gimlet.GetVars(r)["name"]
 	return nil
 }
 

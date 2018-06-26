@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -49,8 +48,7 @@ func (b *buildGetHandler) Handler() RequestHandler {
 }
 
 func (b *buildGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	b.buildId = vars["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	return nil
 }
 
@@ -98,7 +96,7 @@ func (b *buildChangeStatusHandler) Handler() RequestHandler {
 }
 
 func (b *buildChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	b.buildId = mux.Vars(r)["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -182,8 +180,7 @@ func (b *buildAbortHandler) Handler() RequestHandler {
 }
 
 func (b *buildAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	b.buildId = vars["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	return nil
 }
 
@@ -247,8 +244,7 @@ func (b *buildRestartHandler) Handler() RequestHandler {
 }
 
 func (b *buildRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	b.buildId = vars["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	return nil
 }
 
