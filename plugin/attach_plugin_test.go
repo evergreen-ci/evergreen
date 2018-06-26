@@ -1,4 +1,4 @@
-package attach
+package plugin
 
 import (
 	"testing"
