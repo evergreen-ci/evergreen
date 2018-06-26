@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"path"
 	"strings"
 	"time"
@@ -57,7 +58,7 @@ type goTest2JSONTestEvent struct {
 	// empty
 	Test string
 	// Elapsed is the number of seconds a test took. It is set only when
-	// action is pass or fail
+	// action is pass or fail for tests, and in the package scope
 	Elapsed float64 // seconds
 	// Output is the line that gotest captured, including trailing newlines
 	// or carriage returns. On Windows, the trailing newlines are
@@ -213,7 +214,7 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 			key.name = fmt.Sprintf("package-%s", data[i].Package)
 		}
 		if _, ok := m[key]; !ok {
-			m[key] = &goTest2JSONMergedTestEvent{StartTime: data[i].Time}
+			m[key] = &goTest2JSONMergedTestEvent{}
 		}
 
 		switch data[i].Action {
@@ -224,16 +225,13 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 			m[key].Status = data[i].Action
 			m[key].EndTime = data[i].Time
 
-			// For the package level results, we need to compute
-			// the start time
-			if strings.HasPrefix(key.name, "package-") {
-				elapsedNano := data[i].Elapsed * float64(time.Second)
-				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
-			}
 			// Benchmark test results do not provide accurate timing,
 			// so we just zero it
 			if strings.HasPrefix(key.name, "Benchmark") {
 				m[key].StartTime = data[i].Time
+			} else {
+				elapsedNano := math.Ceil(data[i].Elapsed * float64(time.Second))
+				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
 			}
 
 			iteration[data[i].Test] += 1

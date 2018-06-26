@@ -106,12 +106,12 @@ func (s *test2JSONSuite) TestExecute() {
 
 	expectedResults := map[string]testEventExpectation{
 		"TestConveyPass": {
-			StartTime: "2018-06-25T12:05:04.017015269-04:00",
+			StartTime: "2018-06-25T12:05:24.035040344-04:00",
 			EndTime:   "2018-06-25T12:05:34.035040344-04:00",
 			Status:    evergreen.TestSucceededStatus,
 		},
 		"TestConveyFail": {
-			StartTime: "2018-06-25T12:05:04.017036781-04:00",
+			StartTime: "2018-06-25T12:05:24.034868188-04:00",
 			EndTime:   "2018-06-25T12:05:34.034868188-04:00",
 			Status:    evergreen.TestFailedStatus,
 		},
@@ -121,12 +121,12 @@ func (s *test2JSONSuite) TestExecute() {
 			Status:    evergreen.TestFailedStatus,
 		},
 		"TestNativeTestPass": {
-			StartTime: "2018-06-25T12:05:04.01707699-04:00",
+			StartTime: "2018-06-25T12:05:24.034725614-04:00",
 			EndTime:   "2018-06-25T12:05:34.034725614-04:00",
 			Status:    evergreen.TestSucceededStatus,
 		},
 		"TestNativeTestFail": {
-			StartTime: "2018-06-25T12:05:04.017098154-04:00",
+			StartTime: "2018-06-25T12:05:24.034919477-04:00",
 			EndTime:   "2018-06-25T12:05:34.034919477-04:00",
 			Status:    evergreen.TestFailedStatus,
 		},
@@ -136,17 +136,17 @@ func (s *test2JSONSuite) TestExecute() {
 			Status:    evergreen.TestSucceededStatus,
 		},
 		"TestSkippedTestFail": {
-			StartTime: "2018-06-25T12:05:04.0171186-04:00",
+			StartTime: "2018-06-25T12:05:34.034981576-04:00",
 			EndTime:   "2018-06-25T12:05:44.034981576-04:00",
 			Status:    evergreen.TestSkippedStatus,
 		},
 		"TestTestifyFail": {
-			StartTime: "2018-06-25T12:05:04.016984664-04:00",
+			StartTime: "2018-06-25T12:05:34.034874417-04:00",
 			EndTime:   "2018-06-25T12:05:44.034874417-04:00",
 			Status:    evergreen.TestFailedStatus,
 		},
 		"TestTestifyPass": {
-			StartTime: "2018-06-25T12:05:04.016652959-04:00",
+			StartTime: "2018-06-25T12:05:24.034985982-04:00",
 			EndTime:   "2018-06-25T12:05:34.034985982-04:00",
 			Status:    evergreen.TestSucceededStatus,
 		},
