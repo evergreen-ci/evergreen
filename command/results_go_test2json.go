@@ -27,17 +27,17 @@ import (
 // of the following struct, encoded as JSON.
 
 // The following rules APPEAR to hold true of Golang's JSON output:
-// 1. A single line of output corresponds to a single TestEvent
-// 2. Golang offers no field to distinguish between subsequent runs of a test
+// 1. Golang offers no field to distinguish between subsequent runs of a test,
 // such as when setting -test.count to a number greater than 1. However,
 // Golang will not run more than one test of the same name at once, even with a
-// call to t.Parallel(). This means that you can observe a "fail" or "pass"
+// call to t.Parallel(). This means that when you observe a "fail" or "pass"
 // action with the same test name, you know that the next time you see "run",
-// it corresponds to a subsequent run.
-// 3. Benchmarks do not have a "run" action
-// 4. Output has trailing newlines, even on Windows
-// 5. test2json's output on Windows uses Unix-style line endings
-// 6. Benchmarks do not provide Elapsed, even on fail
+// it corresponds to a subsequent iteration.
+// 2. Benchmarks do not have a "run" action
+// 3. The Output field has trailing newlines, even on Windows
+// 4. The file emitted by test2json on Windows uses Unix-style line endings
+// 5. Benchmarks do not provide Elapsed, even on fail, except in the package
+// level result
 type goTest2JSONTestEvent struct {
 	// Time is the time that the line was processed by by go test. Contrary
 	// to the documentation, this string appears to be an RFC3339Nano
@@ -224,55 +224,55 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 	testLog := []string{}
 	m := map[goTest2JSONKey]*goTest2JSONMergedTestEvent{}
 
-	for i := range data {
+	for i, event := range data {
 		key := goTest2JSONKey{
-			name:      data[i].Test,
-			iteration: iteration[data[i].Test],
+			name:      event.Test,
+			iteration: iteration[event.Test],
 		}
-		if len(data[i].Test) == 0 {
-			key.name = fmt.Sprintf("package-%s", data[i].Package)
+		if len(event.Test) == 0 {
+			key.name = fmt.Sprintf("package-%s", event.Package)
 		}
 		if _, ok := m[key]; !ok {
 			m[key] = &goTest2JSONMergedTestEvent{}
 		}
 
-		switch data[i].Action {
+		switch event.Action {
 		case "run":
-			m[key].StartTime = data[i].Time
+			m[key].StartTime = event.Time
 			m[key].StartLine = i + 1
 
 		case "pass", "fail", "skip":
-			m[key].Status = data[i].Action
-			m[key].EndTime = data[i].Time
+			m[key].Status = event.Action
+			m[key].EndTime = event.Time
 
 			// Benchmark test results do not provide any timing info
 			// so we just set start/end to the same time
 			if strings.HasPrefix(key.name, "Benchmark") {
-				m[key].StartTime = data[i].Time
+				m[key].StartTime = event.Time
 			} else if m[key].StartTime.IsZero() {
-				elapsedNano := math.Ceil(data[i].Elapsed * float64(time.Second))
+				elapsedNano := math.Ceil(event.Elapsed * float64(time.Second))
 				m[key].StartTime = m[key].EndTime.Add(-time.Duration(elapsedNano))
 			}
 
-			iteration[data[i].Test] += 1
+			iteration[event.Test] += 1
 
 		case "bench":
 			// benchmarks do not give you an average iteration
 			// time, so we can't provide an accurate Start and end time
 			m[key].Status = "pass"
-			m[key].StartTime = data[i].Time
-			m[key].EndTime = data[i].Time
+			m[key].StartTime = event.Time
+			m[key].EndTime = event.Time
 
 		case "pause", "cont", "output":
-			if data[i].Action == "output" {
-				testLog = append(testLog, strings.TrimRightFunc(data[i].Output, unicode.IsSpace))
+			if event.Action == "output" {
+				testLog = append(testLog, strings.TrimRightFunc(event.Output, unicode.IsSpace))
 			}
 			// test2json does not guarantee that all tests will
 			// have a "pass" or "fail" event (ex: panics), so
 			// we assign the most recent event's time to the EndTime
 			// if the status hasn't been set yet
 			if len(m[key].Status) == 0 {
-				m[key].EndTime = data[i].Time
+				m[key].EndTime = event.Time
 			}
 		}
 	}
