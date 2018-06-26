@@ -82,7 +82,7 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 // ToPluginContext creates a UIContext from the projectContext data.
 func (pc projectContext) ToPluginContext(settings evergreen.Settings, usr gimlet.User) plugin.UIContext {
 	dbUser, ok := usr.(*user.DBUser)
-	grip.CriticalWhen(!ok, message.Fields{
+	grip.CriticalWhen(!ok && usr != nil, message.Fields{
 		"message":  "problem converting user interface to db record",
 		"location": "service/middleware.ToPluginContext",
 		"cause":    "programmer error",
