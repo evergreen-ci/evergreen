@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
@@ -97,12 +96,27 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 		return nil, errors.Wrap(err, "problem initializing plugins")
 	}
 
+	catcher := grip.NewBasicCatcher()
+	for _, pl := range plugin.UIPlugins {
+		// get the settings
+		pluginSettings, ok := uis.Settings.Plugins[pl.Name()]
+		if !ok {
+			catcher.Add(errors.Errorf("plugin settings for %s are not defined", pl.Name()))
+			continue
+		}
+		catcher.Add(pl.Configure(pluginSettings))
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
 	return uis, nil
 }
 
 // NewRouter sets up a request router for the UI, installing
 // hard-coded routes as well as those belonging to plugins.
-func (uis *UIServer) AttachRoutes(r *mux.Router) error {
+func (uis *UIServer) AttachRoutes(r *mux.Router) {
 	r = r.StrictSlash(true)
 
 	// User login and logout
@@ -268,34 +282,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/plugin/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
 	r.HandleFunc("/plugin/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
 	r.HandleFunc("/plugin/json/history/{task_id}/{name}", perfGetTaskHistory)
-
-	for _, pl := range plugin.UIPlugins {
-		// get the settings
-		pluginSettings := uis.Settings.Plugins[pl.Name()]
-		err := pl.Configure(pluginSettings)
-		if err != nil {
-			return errors.Wrapf(err, "Failed to configure plugin %v", pl.Name())
-		}
-
-		// check if a plugin is an app level plugin first
-		if appPlugin, ok := pl.(plugin.AppUIPlugin); ok {
-			// register the app level pa}rt of the plugin
-			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
-			r.HandleFunc(fmt.Sprintf("/plugin/%v/app", pl.Name()), uis.loadCtx(appFunction))
-		}
-
-		// check if there are any errors getting the panel config
-		uiConf, err := pl.GetPanelConfig()
-		if err != nil {
-			return errors.Wrapf(err, "Error getting UI config for plugin %v: %v", pl.Name())
-		}
-		if uiConf == nil {
-			grip.Debugf("No UI config needed for plugin %s, skipping", pl.Name())
-			continue
-		}
-	}
-
-	return nil
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
