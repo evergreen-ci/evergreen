@@ -60,7 +60,8 @@ type goTest2JSONTestEvent struct {
 	// action is pass or fail
 	Elapsed float64 // seconds
 	// Output is the line that gotest captured, including trailing newlines
-	// or carriage returns
+	// or carriage returns. On Windows, the trailing newlines are
+	// Unix-style
 	Output string
 }
 
@@ -219,7 +220,7 @@ func processParsedJSONFile(data []*goTest2JSONTestEvent) map[goTest2JSONKey]*goT
 		case "run":
 			m[key].StartTime = data[i].Time
 
-		case "pass", "fail":
+		case "pass", "fail", "skip":
 			m[key].Status = data[i].Action
 			m[key].EndTime = data[i].Time
 

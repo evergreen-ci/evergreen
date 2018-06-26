@@ -138,7 +138,7 @@ func (s *test2JSONSuite) TestExecute() {
 		"TestSkippedTestFail": {
 			StartTime: "2018-06-25T12:05:04.0171186-04:00",
 			EndTime:   "2018-06-25T12:05:44.034981576-04:00",
-			Status:    evergreen.TestFailedStatus,
+			Status:    evergreen.TestSkippedStatus,
 		},
 		"TestTestifyFail": {
 			StartTime: "2018-06-25T12:05:04.016984664-04:00",
