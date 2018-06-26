@@ -480,7 +480,7 @@ type bfSuggestionClient struct {
 }
 
 // Send a request to the BF Suggestion server.
-func (bfsc *bfSuggestionClient) request(ctx context.Context, req *http.Request) (io.ReadCloser, error) {
+func (bfsc *bfSuggestionClient) request(ctx context.Context, req *http.Request) ([]byte, error) {
 	client := util.GetHTTPClient()
 	defer util.PutHTTPClient(client)
 
@@ -493,18 +493,21 @@ func (bfsc *bfSuggestionClient) request(ctx context.Context, req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Errorf("Failed to read HTTP response body (status: %v)", resp.Status)
+	}
+
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, errors.Errorf("HTTP request returned unexpected status: %v", resp.Status)
-		}
 		return nil, errors.Errorf("HTTP request returned unexpected status=%v: %s", resp.Status, string(body))
 	}
-	return resp.Body, nil
+	return body, nil
 }
 
 // Send a GET request to the BF Suggestion server.
-func (bfsc *bfSuggestionClient) get(ctx context.Context, url string) (io.ReadCloser, error) {
+func (bfsc *bfSuggestionClient) get(ctx context.Context, url string) ([]byte, error) {
 	var req *http.Request
 	var err error
 
@@ -517,7 +520,7 @@ func (bfsc *bfSuggestionClient) get(ctx context.Context, url string) (io.ReadClo
 }
 
 // Send a POST request to the BF Suggestion server.
-func (bfsc *bfSuggestionClient) post(ctx context.Context, url string, data interface{}) (io.ReadCloser, error) {
+func (bfsc *bfSuggestionClient) post(ctx context.Context, url string, data interface{}) ([]byte, error) {
 	var body io.Reader = nil
 	if data != nil {
 		jsonBytes, err := json.Marshal(data)
@@ -536,7 +539,7 @@ func (bfsc *bfSuggestionClient) post(ctx context.Context, url string, data inter
 }
 
 // Send a DELETE request to the BF Suggestion server.
-func (bfsc *bfSuggestionClient) delete(ctx context.Context, url string) (io.ReadCloser, error) {
+func (bfsc *bfSuggestionClient) delete(ctx context.Context, url string) ([]byte, error) {
 	var req *http.Request
 	var err error
 
@@ -578,7 +581,7 @@ func (bfsc *bfSuggestionClient) getSuggestions(ctx context.Context, t *task.Task
 		return data, err
 	}
 
-	if err = util.ReadJSONInto(body, &data); err != nil {
+	if err = json.Unmarshal(body, &data); err != nil {
 		return data, errors.Wrap(err, "Failed to parse Build Baron suggestions")
 	}
 	if data.Status != "ok" {
@@ -614,7 +617,7 @@ func (bfsc *bfSuggestionClient) getFeedback(ctx context.Context, t *task.Task, u
 		return items, err
 	}
 
-	if err = util.ReadJSONInto(body, &data); err != nil {
+	if err = json.Unmarshal(body, &data); err != nil {
 		return items, errors.Wrap(err, "Failed to parse Build Baron feedback")
 	}
 	return data.FeedbackItems, nil
