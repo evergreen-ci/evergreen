@@ -147,3 +147,30 @@ func (r *APIRoute) Patch() *APIRoute {
 	r.methods = append(r.methods, patch)
 	return r
 }
+
+// Head is a chainable method to add a handler for the HEAD method
+// to the current route. Routes may specify multiple methods.
+func (r *APIRoute) Head() *APIRoute {
+	r.methods = append(r.methods, head)
+	return r
+}
+
+// Method makes it possible to specify an HTTP method pragmatically.
+func (r *APIRoute) Method(m string) *APIRoute {
+	switch m {
+	case get.String():
+		return r.Get()
+	case put.String():
+		return r.Put()
+	case post.String():
+		return r.Post()
+	case delete.String():
+		return r.Delete()
+	case patch.String():
+		return r.Patch()
+	case head.String():
+		return r.Head()
+	default:
+		return r
+	}
+}

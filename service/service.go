@@ -44,7 +44,7 @@ func GetServer(addr string, n http.Handler) *http.Server {
 func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app := gimlet.NewApp()
 	app.ResetMiddleware()
-	app.AddMiddleware(NewRecoveryLogger())
+	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
 
