@@ -28,8 +28,8 @@ import (
 const (
 	msPerNS            = 1000 * 1000
 	maxNoteSize        = 16 * 1024 // 16KB
-	JIRASource         = "JIRA"
-	BFSuggestionSource = "BF Suggestion Server"
+	jiraSource         = "JIRA"
+	bfSuggestionSource = "BF Suggestion Server"
 )
 
 func bbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
@@ -407,7 +407,7 @@ func (mss *multiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, s
 	if mss.altSuggester != nil {
 		tickets, source, err = mss.raceSuggest(t)
 	} else {
-		source = JIRASource
+		source = jiraSource
 		tickets, err = mss.jiraSuggester.Suggest(context.TODO(), t)
 	}
 	return tickets, source, err
@@ -448,10 +448,10 @@ func (mss *multiSourceSuggest) raceSuggest(t *task.Task) ([]thirdparty.JiraTicke
 		}))
 
 		fallbackChanRes := <-fallbackChan
-		return fallbackChanRes.Tickets, JIRASource, fallbackChanRes.Error
+		return fallbackChanRes.Tickets, jiraSource, fallbackChanRes.Error
 	}
 
-	return suggestions, BFSuggestionSource, nil
+	return suggestions, bfSuggestionSource, nil
 }
 
 /////////////////////////////////
