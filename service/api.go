@@ -644,10 +644,6 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	root.HandleFunc("/api/tasks/{projectId}", requireUser(as.checkProject(as.listTasks), nil)).Methods("GET")
 	root.HandleFunc("/api/variants/{projectId}", requireUser(as.checkProject(as.listVariants), nil)).Methods("GET")
 
-	// Task Queue routes
-	root.HandleFunc("/api/task_queue", as.getTaskQueueSizes).Methods("GET")
-	root.HandleFunc("/api/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
-
 	// Client auto-update routes
 	root.HandleFunc("/api/update", as.getUpdate).Methods("GET")
 
@@ -663,10 +659,13 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	root.HandleFunc("/api/patches/{patchId:\\w+}/modules", requireUser(as.deletePatchModule, nil)).Methods("DELETE")
 	root.HandleFunc("/api/patches/{patchId:\\w+}/modules", requireUser(as.updatePatchModule, nil)).Methods("POST")
 
-	// Routes for operating on existing spawn hosts - get info, terminate, etc.
+	// SpawnHosts
 	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.hostInfo, nil)).Methods("GET")
 	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.modifyHost, nil)).Methods("POST")
-	root.HandleFunc("/apispawn/ready/{instance_id:[\\w_\\-\\@]+}/{status}", requireUser(as.spawnHostReady, nil)).Methods("POST")
+	root.HandleFunc("/api/spawn/ready/{instance_id:[\\w_\\-\\@]+}/{status}", requireUser(as.spawnHostReady, nil)).Methods("POST")
+	root.HandleFunc("/api/spawns/", requireUser(as.requestHost, nil)).Methods("PUT")
+	root.HandleFunc("/api/spawns/{user}/", requireUser(as.hostsInfoForUser, nil)).Methods("GET")
+	root.HandleFunc("/api/spawns/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
 
 	// Internal status reporting
 	root.HandleFunc("/api/runtimes/", as.listRuntimes).Methods("GET")
@@ -674,21 +673,16 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	root.HandleFunc("/api/status/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
 	root.HandleFunc("/api/status/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
 	root.HandleFunc("/api/status/stuck_hosts", as.getStuckHosts).Methods("GET")
+	root.HandleFunc("/api/task_queue", as.getTaskQueueSizes).Methods("GET")
+	root.HandleFunc("/api/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
 
 	// Hosts callback
 	root.HandleFunc("/api/2/host/{tag:[\\w_\\-\\@]+}/ready/{status}", as.hostReady).Methods("POST")
 
-	// Spawnhost routes - creating new hosts, listing existing hosts, listing distros
-	root.HandleFunc("/api/spawns/", requireUser(as.requestHost, nil)).Methods("PUT")
-	root.HandleFunc("/api/spawns/{user}/", requireUser(as.hostsInfoForUser, nil)).Methods("GET")
-	root.HandleFunc("/api/spawns/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
-
 	// Agent routes
 	root.HandleFunc("/api/2/agent/next_task", as.checkHost(as.NextTask)).Methods("GET")
-
 	root.HandleFunc("/api/2/task/{taskId}/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
 	root.HandleFunc("/api/2/task/{taskId}/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
-
 	root.HandleFunc("/api/2/task/{taskId}/log", as.checkTask(true, as.checkHost(as.AppendTaskLog))).Methods("POST")
 	root.HandleFunc("/api/2/task/{taskId}/heartbeat", as.checkTask(true, as.checkHost(as.Heartbeat))).Methods("POST")
 	root.HandleFunc("/api/2/task/{taskId}/results", as.checkTask(true, as.checkHost(as.AttachResults))).Methods("POST")
