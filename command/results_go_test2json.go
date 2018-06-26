@@ -159,7 +159,10 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	testLog, merged := processTestEvents(events)
 	if len(merged) == 0 {
 		logger.Task().Warning("Parsed no events from test file")
-		return nil
+		if len(testLog) == 0 {
+			logger.Task().Warning("Test log is empty")
+			return nil
+		}
 	}
 
 	logger.Task().Info("Sending test logs to server...")
@@ -180,6 +183,9 @@ func (c *goTest2JSONCommand) executeOneFile(ctx context.Context, file string,
 	}
 	logger.Task().Info("Finished posting logs to server")
 
+	if len(merged) == 0 {
+		return nil
+	}
 	results := make([]task.TestResult, 0, len(merged))
 	for k, v := range merged {
 		testResult := goMergedTest2JSONToTestResult(k.name, conf.Task, v)

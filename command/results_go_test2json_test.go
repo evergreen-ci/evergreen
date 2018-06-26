@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -264,8 +263,7 @@ func (s *test2JSONSuite) TestExecuteWithSilentBenchmarks() {
 	s.Require().NoError(s.c.Execute(context.Background(), s.comm, logger, s.conf))
 
 	msgs := drainMessages(s.sender)
-	pp.Println(msgs)
-	s.Len(msgs, 3)
+	s.Len(msgs, 4)
 
 	s.Nil(s.comm.LocalTestResults)
 	s.Equal(1, s.comm.TestLogCount)
