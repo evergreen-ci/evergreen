@@ -118,39 +118,34 @@
         <div class="buildbaron-feedback" style="margin-top:12px" ng-show="enableFeedback">
           <div class="row">
              <div class="col-lg-12">
-                <div style="vertical-align: text-top; margin-top: 5px;">
+                <div style="margin-top: 5px;">
                 Feedback:
-                <span class="buildbaron-feedback-icons" style="vertical-align: text-top;" ng-show="showComment == false">
-                  <a href=""
+                <span class="buildbaron-feedback-icons" ng-show="showComment == false">
+                  <i class="fa fa-hourglass-o" style="color: green; cursor: pointer;"
                      ng-click="toggleFeedback('time_spent', {'time_spent': 0});"
-                     ng-class="{'buildbaron-feedback-icon-highlight': feedback.time_spent.time_spent == 0}"
+                     ng-class="{'fa-lg': feedback.time_spent.time_spent == 0}"
                      ng-mouseover="feedbackDescription = 'I spent less than 5 minutes investigating this failure.'"
-                     ng-mouseleave="feedbackDescription = ''">
-                    <i class="fa fa-hourglass-o" style="color: green;"></i></a>
-                  <a href=""
+                     ng-mouseleave="feedbackDescription = ''"></i>
+                  <i class="fa fa-hourglass-end" style="color: orange; cursor: pointer;"
                      ng-click="toggleFeedback('time_spent', {'time_spent': 5});"
-                     ng-class="{'buildbaron-feedback-icon-highlight': feedback.time_spent.time_spent == 5}"
+                     ng-class="{'fa-lg': feedback.time_spent.time_spent == 5}"
                      ng-mouseover="feedbackDescription = 'I spent between 5 and 20 minutes investigating this failure.'"
-                     ng-mouseleave="feedbackDescription=''">
-                     <i class="fa fa-hourglass-end" style="color: orange;"></i></a>
-                  <a href=""
+                     ng-mouseleave="feedbackDescription=''"></i>
+                  <i class="fa fa-hourglass" style="color: red; cursor: pointer;"
                      ng-click="toggleFeedback('time_spent', {'time_spent': 20});"
-                     ng-class="{'buildbaron-feedback-icon-highlight': feedback.time_spent.time_spent == 20}"
+                     ng-class="{'fa-lg': feedback.time_spent.time_spent == 20}"
                      ng-mouseover="feedbackDescription = 'I spent over 20 minutes investigating this failure.'"
-                     ng-mouseleave="feedbackDescription = ''">
-                    <i class="fa fa-hourglass" style="color: red;"></i></a>
-                  <a href=""
+                     ng-mouseleave="feedbackDescription = ''"></i>
+                  <i class="fa fa-frown-o" style="color: black; cursor: pointer;"
                      ng-click="toggleFeedback('suggestions_quality', {'ok': false});"
-                     ng-class="{'buildbaron-feedback-icon-highlight': feedback.suggestions_quality.ok === false}"
+                     ng-class="{'fa-lg': feedback.suggestions_quality.ok === false}"
                      ng-mouseover="feedbackDescription = 'The suggestions are not accurate.'"
-                     ng-mouseleave="clearFeedbackDescriptionIfNotClicked()">
-                    <i class="fa fa-frown-o" style="color: black;"></i></a>
-                  <a href=""
+                     ng-mouseleave="clearFeedbackDescriptionIfNotClicked()"></i>
+                  <i class="fa fa-smile-o" style="color: black; cursor: pointer;"
                      ng-click="toggleFeedback('suggestions_quality', {'ok': true});"
-                     ng-class="{'buildbaron-feedback-icon-highlight': feedback.suggestions_quality.ok === true}"
+                     ng-class="{'fa-lg': feedback.suggestions_quality.ok === true}"
                      ng-mouseover="feedbackDescription = 'The suggestions are accurate.'"
-                     ng-mouseleave="feedbackDescription = ''">
-                    <i class="fa fa-smile-o" style="color: black;"></i></a>
+                     ng-mouseleave="feedbackDescription = ''"></i>
                 </span>
                 <span class="buildbaron-feedback-description" ng-show="feedbackDescription != ''">&ldquo;[[feedbackDescription]]&rdquo;</span>
               </div>
