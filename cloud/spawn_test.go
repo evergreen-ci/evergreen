@@ -1,4 +1,4 @@
-package spawn
+package cloud
 
 import (
 	"testing"
