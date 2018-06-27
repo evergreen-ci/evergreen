@@ -30,9 +30,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const provisionRetryLimit = 15
-
-const setupHostJobName = "provisioning-setup-host"
+const (
+	provisionRetryLimit = 15
+	setupHostJobName    = "provisioning-setup-host"
+)
 
 func init() {
 	registry.AddJobType(setupHostJobName, func() amboy.Job {
