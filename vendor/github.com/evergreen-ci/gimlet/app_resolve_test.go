@@ -1,12 +1,16 @@
 package gimlet
 
 import (
+	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRouteResolutionHelpers(t *testing.T) {
+	hndlr := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	logger := MakeRecoveryLogger()
 	app := &APIApp{}
 	for _, tc := range []struct {
 		route     *APIRoute
@@ -20,6 +24,7 @@ func TestRouteResolutionHelpers(t *testing.T) {
 				prefix:  "/foo",
 				version: 1,
 				route:   "/bar",
+				handler: hndlr,
 			},
 		},
 		{
@@ -28,6 +33,7 @@ func TestRouteResolutionHelpers(t *testing.T) {
 			route: &APIRoute{
 				prefix:  "/foo",
 				version: 1,
+				handler: hndlr,
 				route:   "/bar",
 			},
 		},
@@ -36,18 +42,25 @@ func TestRouteResolutionHelpers(t *testing.T) {
 			addPrefix: true,
 			route: &APIRoute{
 				prefix:  "/foo",
+				handler: hndlr,
 				version: 1,
 				route:   "/foo/bar",
 			},
 		},
 	} {
+		// by default there's no middleware and everything's
+		// the same
 		assert.Equal(t, tc.expected, tc.route.resolveVersionedRoute(app, tc.addPrefix))
-	}
+		h := tc.route.getHandlerWithMiddlware(nil)
+		assert.Equal(t, fmt.Sprint(hndlr), fmt.Sprint(h))
 
-	handler, err := NewApp().Handler()
-	assert.NoError(t, err)
-	h := getRouteHandlerWithMiddlware(nil, handler)
-	assert.Equal(t, handler, h)
-	h = getRouteHandlerWithMiddlware([]Middleware{MakeRecoveryLogger()}, handler)
-	assert.NotEqual(t, handler, h)
+		// if there's global middleware, we're different
+		h = tc.route.getHandlerWithMiddlware([]Middleware{logger})
+		assert.NotEqual(t, fmt.Sprint(hndlr), fmt.Sprint(h))
+
+		// if you add wrapper middleware we're different differently
+		tc.route.wrappers = append(tc.route.wrappers, logger)
+		h = tc.route.getHandlerWithMiddlware(nil)
+		assert.NotEqual(t, fmt.Sprint(hndlr), fmt.Sprint(h))
+	}
 }
