@@ -35,16 +35,17 @@ var (
 type OwnerType string
 
 const (
-	OwnerTypePerson                  OwnerType = "person"
-	OwnerTypeProject                 OwnerType = "project"
-	TaskDurationKey                            = "task-duration-secs"
-	TaskPercentChangeKey                       = "task-percent-change"
-	BuildDurationKey                           = "build-duration-secs"
-	BuildPercentChangeKey                      = "build-percent-change"
-	VersionDurationKey                         = "version-duration-secs"
-	VersionPercentChangeKey                    = "version-percent-change"
-	ImplicitSubscriptionPatchOutcome           = "patch-outcome"
-	ImplicitSubscriptionBuildBreak             = "build-break"
+	OwnerTypePerson                         OwnerType = "person"
+	OwnerTypeProject                        OwnerType = "project"
+	TaskDurationKey                                   = "task-duration-secs"
+	TaskPercentChangeKey                              = "task-percent-change"
+	BuildDurationKey                                  = "build-duration-secs"
+	BuildPercentChangeKey                             = "build-percent-change"
+	VersionDurationKey                                = "version-duration-secs"
+	VersionPercentChangeKey                           = "version-percent-change"
+	ImplicitSubscriptionPatchOutcome                  = "patch-outcome"
+	ImplicitSubscriptionBuildBreak                    = "build-break"
+	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
 )
 
 type Subscription struct {
@@ -389,6 +390,8 @@ func CreateOrUpdateImplicitSubscription(subscriptionType string, id bson.ObjectI
 				temp = NewPatchOutcomeSubscriptionByOwner(user, subscriber)
 			case ImplicitSubscriptionBuildBreak:
 				temp = NewBuildBreakSubscriptionByOwner(user, subscriber)
+			case ImplicitSubscriptionSpawnhostExpiration:
+				temp = NewSpawnhostExpirationSubscription(user, subscriber)
 			}
 			sub = &temp
 		} else {
@@ -432,6 +435,10 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return NewSubscriptionByOwner(owner, sub, ResourceTypeVersion, "regression")
+}
+
+func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, "expiration")
 }
 
 func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
