@@ -159,10 +159,15 @@ func hostExpirationSlackPayload(t hostTemplateData, messageString string, select
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute slack template")
 	}
-	message := buf.String()
+	msg := buf.String()
 
 	return &notification.SlackPayload{
-		Body: message,
+		Body: msg,
+		Attachments: []message.SlackAttachment{{
+			Title:     "Spawnhost Page",
+			TitleLink: t.URL,
+			Color:     evergreenSuccessColor,
+		}},
 	}, nil
 }
 
