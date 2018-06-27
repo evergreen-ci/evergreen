@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/urfave/negroni"
 )
 
@@ -171,18 +172,16 @@ func (l *appRecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 			if rw.Header().Get("Content-Type") == "" {
 				rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			}
-
 			rw.WriteHeader(http.StatusInternalServerError)
 
-			l.Critical(message.WrapStack(2, message.Fields{
-				"panic":    err,
+			_ = recovery.SendMessageWithPanicError(err, nil, l.Journaler, message.Fields{
 				"action":   "aborted",
 				"request":  GetRequestID(ctx),
 				"duration": time.Since(getRequestStartAt(ctx)),
 				"path":     r.URL.Path,
 				"remote":   r.RemoteAddr,
 				"length":   r.ContentLength,
-			}))
+			})
 		}
 	}()
 	next(rw, r)
