@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -324,12 +325,20 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 			{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 		},
 	)
+	grip.Debug(message.Fields{
+		"message":       "debugging task history",
+		"task_pipeline": pipeline,
+	})
 
 	var aggregatedTasks []bson.M
 	if err = pipeline.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
 	}
 	chunk.Tasks = aggregatedTasks
+	grip.Debug(message.Fields{
+		"message":      "debugging task history",
+		"task_results": aggregatedTasks,
+	})
 
 	failedTests, err := iter.GetFailedTests(pipeline)
 	if err != nil {
@@ -382,11 +391,19 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 		},
 	)
 
+	grip.Debug(message.Fields{
+		"message":  "debugging test name history",
+		"pipeline": pipeline,
+	})
 	var output []bson.M
 
 	if err = pipeline.All(&output); err != nil {
 		return nil, errors.WithStack(err)
 	}
+	grip.Debug(message.Fields{
+		"message":      "debugging test name history",
+		"task_results": output,
+	})
 
 	names := make([]string, 0)
 	for _, doc := range output {
