@@ -15,6 +15,7 @@ type jiraClientMock struct {
 
 	lastIssue   string
 	lastSummary string
+	lastFields  *jira.IssueFields
 }
 
 func (j *jiraClientMock) CreateClient(_ *http.Client, _ string) error {
@@ -38,6 +39,7 @@ func (j *jiraClientMock) PostIssue(fields *jira.IssueFields) error {
 
 	j.numSent++
 	j.lastSummary = fields.Summary
+	j.lastFields = fields
 
 	return nil
 }

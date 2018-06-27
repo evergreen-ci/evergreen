@@ -1,7 +1,6 @@
 package distro
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -12,6 +11,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Distro struct {
@@ -109,4 +110,20 @@ func (d *Distro) ComputeParentsToDecommission(nParents, nContainers int) (int, e
 		return 0, errors.New("Distro does not support containers")
 	}
 	return nParents - int(math.Ceil(float64(nContainers)/float64(d.MaxContainers))), nil
+}
+
+// ValidateContainerPoolDistros ensures that container pools have valid distros
+func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+	catcher := grip.NewSimpleCatcher()
+
+	for _, pool := range s.ContainerPools.Pools {
+		d, err := FindOne(ById(pool.Distro))
+		if err != nil {
+			catcher.Add(fmt.Errorf("error finding distro for container pool %s", pool.Id))
+		}
+		if d.ContainerPool != "" {
+			catcher.Add(fmt.Errorf("container pool %s has invalid distro", pool.Id))
+		}
+	}
+	return errors.WithStack(catcher.Resolve())
 }

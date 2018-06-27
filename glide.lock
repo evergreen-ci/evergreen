@@ -85,7 +85,7 @@ imports:
     version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
 
   - name: github.com/mholt/archiver
-    version: 4a8a092653655d29c8e091cf2ecf91cbe697f0de
+    version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
 
 
   - name: github.com/pkg/errors
@@ -110,7 +110,7 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/mongodb/grip
-    version: 49d6778dfb7c62ba4c0e1a031ff6335930b9e37b
+    version: fd96dd8f02257a4f8e7eb50c989e88802c254d24
   - name: github.com/mongodb/anser
     version: a39cb2703e7f53a0d46f17a785d25f85fa19923a
   - name: github.com/mongodb/amboy
@@ -122,4 +122,4 @@ imports:
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/evergreen-ci/gimlet
-    version: 191328df843760a7e228a5f4008190d8bf88b183
+    version: 99f9944f77832bd826b13650cde4788235788eae

@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -144,7 +143,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	executionStr := mux.Vars(r)["execution"]
+	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
@@ -514,7 +513,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	execution, err := strconv.Atoi(mux.Vars(r)["execution"])
+	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
 	if err != nil {
 		http.Error(w, "Invalid execution number", http.StatusBadRequest)
 		return
@@ -552,7 +551,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	execution, err := strconv.Atoi(mux.Vars(r)["execution"])
+	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
 	grip.Warning(err)
 	logType := r.FormValue("type")
 
@@ -706,7 +705,8 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
-	logId := mux.Vars(r)["log_id"]
+	vars := gimlet.GetVars(r)
+	logId := vars["log_id"]
 	var (
 		testLog  *model.TestLog
 		err      error
@@ -720,9 +720,9 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		taskID := mux.Vars(r)["task_id"]
-		testName := mux.Vars(r)["test_name"]
-		taskExecutionsAsString := mux.Vars(r)["task_execution"]
+		taskID := vars["task_id"]
+		testName := vars["test_name"]
+		taskExecutionsAsString := vars["task_execution"]
 		taskExec, err = strconv.Atoi(taskExecutionsAsString)
 		if err != nil {
 			http.Error(w, "task execution num must be an int", http.StatusBadRequest)

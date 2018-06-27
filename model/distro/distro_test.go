@@ -132,3 +132,45 @@ func TestComputeParentsToDecommission(t *testing.T) {
 	_, err = d2.ComputeParentsToDecommission(5, 10)
 	assert.EqualError(err, "Distro does not support containers")
 }
+
+func TestValidateContainerPoolDistros(t *testing.T) {
+	assert := assert.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert.NoError(db.Clear(Collection))
+
+	d1 := &Distro{
+		Id: "valid-distro",
+	}
+	d2 := &Distro{
+		Id:            "invalid-distro",
+		ContainerPool: "test-pool-1",
+	}
+	assert.NoError(d1.Insert())
+	assert.NoError(d2.Insert())
+
+	testSettings := &evergreen.Settings{
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro:        "valid-distro",
+					Id:            "test-pool-1",
+					MaxContainers: 100,
+				},
+				evergreen.ContainerPool{
+					Distro:        "invalid-distro",
+					Id:            "test-pool-2",
+					MaxContainers: 100,
+				},
+				evergreen.ContainerPool{
+					Distro:        "missing-distro",
+					Id:            "test-pool-3",
+					MaxContainers: 100,
+				},
+			},
+		},
+	}
+
+	err := ValidateContainerPoolDistros(testSettings)
+	assert.Contains(err.Error(), "container pool test-pool-2 has invalid distro")
+	assert.Contains(err.Error(), "error finding distro for container pool test-pool-3")
+}

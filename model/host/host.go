@@ -327,6 +327,7 @@ func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
+	h.ProvisionTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -335,7 +336,7 @@ func (h *Host) MarkAsProvisioned() error {
 			"$set": bson.M{
 				StatusKey:        evergreen.HostRunning,
 				ProvisionedKey:   true,
-				ProvisionTimeKey: time.Now(),
+				ProvisionTimeKey: h.ProvisionTime,
 			},
 		},
 	)

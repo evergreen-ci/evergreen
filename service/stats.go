@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -104,9 +103,10 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buildVariant := mux.Vars(r)["build_variant"]
-	taskName := mux.Vars(r)["task_name"]
-	request := mux.Vars(r)["request"]
+	vars := gimlet.GetVars(r)
+	buildVariant := vars["build_variant"]
+	taskName := vars["task_name"]
+	request := vars["request"]
 
 	project, err := projCtx.GetProject()
 	if err != nil || project == nil {

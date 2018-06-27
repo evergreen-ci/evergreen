@@ -41,8 +41,9 @@ func TestGetBuildInfo(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, uis.UserManager)
+	app, err := GetRESTv1App(&uis)
 	testutil.HandleTestingErr(err, t, "error setting up router")
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -204,8 +205,9 @@ func TestGetBuildStatus(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, userManager)
+	app, err := GetRESTv1App(&uis)
 	testutil.HandleTestingErr(err, t, "error setting up router")
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 

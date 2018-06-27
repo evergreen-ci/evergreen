@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 )
 
 type (
@@ -31,7 +30,7 @@ type PrefetchFunc func(context.Context, data.Connector, *http.Request) (context.
 // PrefetchProjectContext gets the information related to the project that the request contains
 // and fetches the associated project context and attaches that to the request context.
 func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Request) (context.Context, error) {
-	vars := mux.Vars(r)
+	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]

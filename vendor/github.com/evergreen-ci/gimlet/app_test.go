@@ -204,7 +204,7 @@ func (s *AppSuite) TestAppRun() {
 
 func (s *AppSuite) TestWrapperAccessors() {
 	s.Len(s.app.wrappers, 0)
-	s.app.AddWrapper(NewRecoveryLogger())
+	s.app.AddWrapper(MakeRecoveryLogger())
 	s.Len(s.app.wrappers, 1)
 	s.app.RestWrappers()
 	s.Len(s.app.wrappers, 0)
