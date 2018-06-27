@@ -26,7 +26,6 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		"/admin/banner":                      getBannerRouteManager,
 		"/admin/events":                      getAdminEventRouteManager,
 		"/admin/restart":                     getRestartRouteManager(queue),
-		"/admin/revert":                      getRevertRouteManager,
 		"/admin/service_flags":               getServiceFlagsRouteManager,
 		"/admin/settings":                    getAdminSettingsManager,
 		"/admin/task_queue":                  getClearTaskQueueRouteManager,
@@ -79,5 +78,8 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		getManager(path, 2).Register(app, sc)
 	}
 
+	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers())
+
 	app.AddRoute("/").Version(2).RouteHandler(makePlaceHolderManger(sc)).Get()
+	app.AddRoute("/admin/revert").Version(2).RouteHandler(makeRevertRouteManager(sc)).Post().Wrap(superUser)
 }

@@ -216,13 +216,10 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	const route = "/admin/revert"
 	const version = 2
 
-	routeManager := getRevertRouteManager(route, version)
+	routeManager := makeRevertRouteManager(s.sc)
 	user := &user.DBUser{Id: "userName"}
 	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
-	s.Equal(route, routeManager.Route)
-	s.Equal(version, routeManager.Version)
-	handler := routeManager.Methods[0]
 	changes := restModel.APIAdminSettings{
 		SuperUsers: []string{"me"},
 	}
@@ -243,11 +240,11 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/revert", buffer)
 	s.NoError(err)
-	s.NoError(handler.ParseAndValidate(ctx, request))
-	resp, err := handler.Execute(ctx, s.sc)
+	ctx, err = routeManager.Parse(ctx, request)
 	s.NoError(err)
+	resp := routeManager.Run(ctx)
 	s.NotNil(resp)
-
+	s.Equal(http.StatusOK, resp.Status())
 	body = struct {
 		GUID string `json:"guid"`
 	}{""}
@@ -256,7 +253,9 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/revert", buffer)
 	s.NoError(err)
-	s.Error(handler.ParseAndValidate(ctx, request))
+	ctx, err = routeManager.Parse(ctx, request)
+	s.Error(err)
+	s.NotNil(ctx)
 }
 
 func TestRestartRoute(t *testing.T) {
