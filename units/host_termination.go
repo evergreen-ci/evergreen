@@ -213,15 +213,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 					"host":       j.host.Id,
 					"subject":    subj,
 				})
-				continue
+			} else {
+				mailer.Send(message.NewEmailMessage(level.Error, message.Email{
+					From:       settings.Notify.SMTP.From,
+					Recipients: settings.Notify.SMTP.AdminEmail,
+					Subject:    subj,
+					Body:       err.Error(),
+				}))
 			}
-
-			mailer.Send(message.NewEmailMessage(level.Error, message.Email{
-				From:       settings.Notify.SMTP.From,
-				Recipients: settings.Notify.SMTP.AdminEmail,
-				Subject:    subj,
-				Body:       err.Error(),
-			}))
 		}
 	}
 
