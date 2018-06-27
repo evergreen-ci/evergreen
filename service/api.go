@@ -427,24 +427,6 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Get the host with the id specified in the request
-func getHostFromRequest(r *http.Request) (*host.Host, error) {
-	// get id and secret from the request.
-	tag := gimlet.GetVars(r)["tag"]
-	if len(tag) == 0 {
-		return nil, errors.New("no host tag supplied")
-	}
-	// find the host
-	h, err := host.FindOne(host.ById(tag))
-	if h == nil {
-		return nil, errors.Errorf("no host with tag: %v", tag)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return h, nil
-}
-
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["identifier"]

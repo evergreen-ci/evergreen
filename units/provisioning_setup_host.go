@@ -148,7 +148,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 
 		mailer, err := j.env.GetSender(evergreen.SenderEmail)
 		if err != nil {
-			errors.Wrapf(err, "problem sending host init error email for host %s", h.Id)
+			return errors.Wrapf(err, "problem sending host init error email for host %s", h.Id)
 		}
 		mailer.Send(message.NewEmailMessage(level.Error, message.Email{
 			From:       settings.Notify.SMTP.From,
