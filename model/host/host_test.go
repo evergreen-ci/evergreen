@@ -627,6 +627,20 @@ func TestUpsert(t *testing.T) {
 				So(host.Host, ShouldEqual, "host2")
 
 			})
+
+		Convey("Upserting a host with new ID should set priv_atttempts", func() {
+			So(host.Insert(), ShouldBeNil)
+			So(host.Remove(), ShouldBeNil)
+			host.Id = "s-12345"
+			_, err := host.Upsert()
+			So(err, ShouldBeNil)
+
+			out := bson.M{}
+			So(db.FindOneQ(Collection, db.Query(bson.M{}), &out), ShouldBeNil)
+			val, ok := out[ProvisionAttemptsKey]
+			So(ok, ShouldBeTrue)
+			So(val, ShouldEqual, 0)
+		})
 	})
 }
 
@@ -2119,4 +2133,13 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(hosts, 1)
 	assert.Equal("host3", hosts[0].Id)
+
+	assert.NoError(db.ClearCollections(Collection))
+	assert.NoError(db.Insert(Collection, bson.M{
+		"_id":    "host5",
+		"status": evergreen.HostProvisioning,
+	}))
+	hosts, err = FindByFirstProvisioningAttempt()
+	assert.NoError(err)
+	assert.Empty(hosts)
 }
