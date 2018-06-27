@@ -1,12 +1,18 @@
 package trigger
 
 import (
+	"fmt"
+	"math"
+	"strconv"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -31,10 +37,12 @@ type versionTriggers struct {
 func makeVersionTriggers() eventHandler {
 	t := &versionTriggers{}
 	t.base.triggers = map[string]trigger{
-		triggerOutcome:    t.versionOutcome,
-		triggerFailure:    t.versionFailure,
-		triggerSuccess:    t.versionSuccess,
-		triggerRegression: t.versionRegression,
+		triggerOutcome:                t.versionOutcome,
+		triggerFailure:                t.versionFailure,
+		triggerSuccess:                t.versionSuccess,
+		triggerRegression:             t.versionRegression,
+		triggerExceedsDuration:        t.versionExceedsDuration,
+		triggerRuntimeChangeByPercent: t.versionRuntimeChange,
 	}
 	return t
 }
@@ -67,7 +75,7 @@ func (t *versionTriggers) Selectors() []event.Selector {
 	return MakeVersionSelectors(*t.version)
 }
 
-func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
+func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIVersion{}
 	if err := api.BuildFromService(t.version); err != nil {
 		return nil, errors.Wrap(err, "error building json model")
@@ -95,12 +103,15 @@ func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData
 			Text:      t.version.Message,
 		},
 	}
+	if pastTenseOverride != "" {
+		data.PastTenseStatus = pastTenseOverride
+	}
 
 	return &data, nil
 }
 
-func (t *versionTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
-	data, err := t.makeData(sub)
+func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
+	data, err := t.makeData(sub, pastTenseOverride)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to collect version data")
 	}
@@ -118,7 +129,7 @@ func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
 func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
@@ -126,7 +137,7 @@ func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
 }
 
 func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
@@ -134,7 +145,60 @@ func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(sub, "")
+}
+
+func (t *versionTriggers) versionExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+		return nil, nil
+	}
+	thresholdString, ok := sub.TriggerData[event.VersionDurationKey]
+	if !ok {
+		return nil, fmt.Errorf("subscription %s has no build time threshold", sub.ID)
+	}
+	threshold, err := strconv.Atoi(thresholdString)
+	if err != nil {
+		return nil, fmt.Errorf("subscription %s has an invalid time threshold", sub.ID)
+	}
+
+	maxDuration := time.Duration(threshold) * time.Second
+	if !t.version.StartTime.Add(maxDuration).Before(t.version.FinishTime) {
+		return nil, nil
+	}
+	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
+}
+
+func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+		return nil, nil
+	}
+	percentString, ok := sub.TriggerData[event.VersionPercentChangeKey]
+	if !ok {
+		return nil, fmt.Errorf("subscription %s has no percentage increase", sub.ID)
+	}
+	percent, err := strconv.ParseFloat(percentString, 64)
+	if err != nil {
+		return nil, fmt.Errorf("subscription %s has an invalid percentage", sub.ID)
+	}
+
+	lastGreen, err := t.version.LastSuccessful()
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving last green build")
+	}
+	if lastGreen == nil {
+		return nil, nil
+	}
+	thisVersionDuration := float64(t.version.FinishTime.Sub(t.version.StartTime))
+	prevVersionDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
+	ratio := thisVersionDuration / prevVersionDuration
+	if !util.IsFiniteNumericFloat(ratio) {
+		return nil, nil
+	}
+	percentChange := math.Abs(100*ratio - 100)
+	if percentChange < percent {
+		return nil, nil
+	}
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %.1f%%)", percentChange, percent))
 }
 
 func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {
@@ -153,7 +217,7 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 			return nil, errors.Wrap(err, "error evaluating task regression")
 		}
 		if isRegression {
-			return t.generate(sub)
+			return t.generate(sub, "")
 		}
 	}
 	return nil, nil

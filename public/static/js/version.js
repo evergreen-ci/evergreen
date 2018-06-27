@@ -24,6 +24,22 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       resource_type: "VERSION",
       label: "this version succeeds",
     },
+        {
+      trigger: "exceeds-duration",
+      resource_type: "VERSION",
+      label: "the runtime for this version exceeds some duration",
+      extraFields: [
+        {text: "Version duration (seconds)", key: "version-duration-secs", validator: validateDuration}
+      ]
+    },
+    {
+      trigger: "runtime-change",
+      resource_type: "VERSION",
+      label: "the runtime for this version changes by some percentage",
+      extraFields: [
+        {text: "Percent change", key: "version-percent-change", validator: validatePercentage}
+      ]
+    },
     {
       trigger: "outcome",
       resource_type: "BUILD",
