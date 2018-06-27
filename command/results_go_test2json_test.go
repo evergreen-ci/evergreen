@@ -215,13 +215,13 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 			StartTime: "2018-06-26T11:39:35.141056901-04:00",
 			EndTime:   "2018-06-26T11:39:35.141056901-04:00",
 			Status:    evergreen.TestSucceededStatus,
-			LineInLog: 0,
+			LineInLog: 7,
 		},
 		"BenchmarkSomethingElse-8": {
 			StartTime: "2018-06-26T11:39:55.144650126-04:00",
 			EndTime:   "2018-06-26T11:39:55.144650126-04:00",
 			Status:    evergreen.TestSucceededStatus,
-			LineInLog: 0,
+			LineInLog: 11,
 		},
 		"BenchmarkSomethingSkipped": {
 			StartTime: "2018-06-26T11:39:55.145230368-04:00",

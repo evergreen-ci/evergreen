@@ -293,6 +293,7 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 			m[key].Status = actionPass
 			m[key].StartTime = event.Time
 			m[key].EndTime = event.Time
+			m[key].StartLine = len(testLog) - 1
 
 		case actionPause, actionCont, actionOutput:
 			// test2json does not guarantee that all tests will
