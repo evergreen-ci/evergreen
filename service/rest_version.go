@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -120,7 +119,7 @@ func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
-	projectId := mux.Vars(r)["project_id"]
+	projectId := gimlet.GetVars(r)["project_id"]
 
 	versions, err := version.Find(
 		version.ByMostRecentForRequester(
@@ -232,7 +231,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 // Returns a JSON response with the marshaled output of the version
 // specified by its revision and project name in the request.
 func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	vars := gimlet.GetVars(r)
 	projectId := vars["project_id"]
 	revision := vars["revision"]
 
@@ -304,7 +303,7 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 // either grouped by the task names or the build variant names depending
 // on the "groupby" query parameter.
 func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request) {
-	versionId := mux.Vars(r)["version_id"]
+	versionId := gimlet.GetVars(r)["version_id"]
 	groupBy := r.FormValue("groupby")
 
 	switch groupBy {

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 )
 
 // restHostUtilizationBucket represents an aggregate view of the hosts and tasks Bucket for a given time frame.
@@ -136,7 +135,7 @@ func (restapi *restAPI) getAverageSchedulerStats(w http.ResponseWriter, r *http.
 		return
 	}
 
-	distroId := mux.Vars(r)["distro_id"]
+	distroId := gimlet.GetVars(r)["distro_id"]
 	if distroId == "" {
 		gimlet.WriteJSONError(w, responseError{Message: "invalid distro id"})
 		return

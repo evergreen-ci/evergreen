@@ -1,6 +1,6 @@
 mciModule.factory('PerfDiscoveryDataService', function(
-  $q, $window, ApiV1, ApiV2, ApiBuildBaron, ApiTaskdata, EVG,
-  MPA_UI, PERF_DISCOVERY
+  $q, $window, ApiV1, ApiV2, ApiTaskdata, BF, EVG, MPA_UI,
+  PERF_DISCOVERY, Stitch, STITCH_CONFIG,
 ) {
   var PD = PERF_DISCOVERY
 
@@ -144,6 +144,8 @@ mciModule.factory('PerfDiscoveryDataService', function(
         var extracted = extractStorageEngine(ctx.buildName, ctx.taskName)
         var data = {
           build: extracted.build,
+          buildId: ctx.buildId,
+          buildVariant: ctx.buildVariant,
           task: extracted.task,
           taskURL: MPA_UI.TASK_BY_ID({task_id: ctx.taskId}),
           buildURL: MPA_UI.BUILD_BY_ID({build_id: ctx.buildId}),
@@ -172,7 +174,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     _.each(data, function(d) {
       // Skip empty items
       if (d == null) return
-
       // TODO add group validation instead of individual
       // Process current (revision) data
       if (d.current) {
@@ -256,6 +257,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
           buildId: build.id,
           taskName: taskName,
           buildName: build.name,
+          buildVariant: build.variant,
         }
       }))
     }, [])
@@ -296,6 +298,41 @@ mciModule.factory('PerfDiscoveryDataService', function(
     })
   }
 
+  // * Group BFs by task, bv and test
+  // * Sort BFs in each group by status/date
+  // * Mark open BFs by setting `_isOpen` to true -
+  //   required for the next step
+  //            / GRP 1 \  / GRP 2 \ / GRP N \
+  // :returns: [[BF, ...], [BF, ...],  ...   ]
+  function postprocessBFs(bfs) {
+    return _.chain(bfs)
+      // Group all BFs by task, bv and test
+      .groupBy(function(bf) {
+        return [bf.tasks, bf.buildvariants, bf.tests && ''].join('|')
+      })
+      // In each group, sort by status/date and mark 'open' items
+      .map(function(bfsGroup) {
+        return _.chain(bfsGroup)
+          // Split Bfs into two category 'Open' and 'not open'
+          .partition(function(bf) {
+            return _.contains(BF.OPEN_STATUSES, bf.status)
+          })
+          // Sort BFs in each split by date created
+          .map(function(bfs) {
+            return _.sortBy(bfs, '-created')
+          })
+          // Kind of minor optimisation - sets _isOpen to true for
+          // each BF which was considered to be open on the first stage
+          .each(function(bfs, idx) {
+            idx == 0 && _.each(bfs, function(bf) { bf._isOpen = true })
+          })
+          // Merging two splits into single array of BFs
+          .flatten(true)
+          .value()
+      })
+      .value()
+  }
+
   /******************
    * PROMISE CHAINS *
    ******************/
@@ -303,31 +340,27 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // :param rows: list of grid rows
   // :rtype: $q.promise({taskId: {key, link}, ...})
   function getBFTicketsForRows(rows) {
-    var uniqueTaskIds = _.chain(rows)
+    var uniqueTasks = _.chain(rows)
       .uniq(false, function(d) {
-        return d.taskId
+        return d.task
       })
-      .pluck('taskId')
+      .pluck('task')
       .value()
 
-    // Execute all as {task_id: promise, ...}
-    return $q.all(
-      _.reduce(uniqueTaskIds, function(m, d) {
-        m[d] = ApiBuildBaron.getTicketsByTaskId(d)
-        return m
-      }, {})
-    )
-    .then(function(res) { // Then refine the results
-      return _.mapObject(res, function(d) {
-        if (d.data) {
-          return _.map(_.pluck(d.data, 'key'), function(key) {
-            return {key: key}
-          })
-        } else {
-          return []
-        }
-      })
-    })
+    return Stitch.use(STITCH_CONFIG.PERF).query(function(client) {
+      return client
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
+        .aggregate([
+          {$match: {tasks: {$in: uniqueTasks}}},
+          // Denormalization
+          {$unwind: {path: '$tasks', preserveNullAndEmptyArrays: true}},
+          {$unwind: {path: '$buildvariants', preserveNullAndEmptyArrays: true}},
+          {$unwind: {path: '$project', preserveNullAndEmptyArrays: true}},
+          {$unwind: {path: '$tests', preserveNullAndEmptyArrays: true}},
+          {$unwind: {path: '$first_failing_revision', preserveNullAndEmptyArrays: true}},
+        ])
+    }).then(postprocessBFs)
   }
 
   // Makes series of HTTP calls and loads curent, baseline and history data

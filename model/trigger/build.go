@@ -125,7 +125,7 @@ func (t *buildTriggers) Fetch(e *event.EventLogEntry) error {
 	var ok bool
 	t.data, ok = e.Data.(*event.BuildEventData)
 	if !ok {
-		return errors.Wrapf(err, "build '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+		return errors.Errorf("build '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
 	}
 	t.event = e
 

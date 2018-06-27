@@ -85,14 +85,9 @@ func MockConfig() *evergreen.Settings {
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
 				evergreen.ContainerPool{
-					Distro:        "archlinux-docker",
-					Id:            "test-pool-100",
-					MaxContainers: 100,
-				},
-				evergreen.ContainerPool{
-					Distro:        "archlinux-docker",
+					Distro:        "valid-distro",
 					Id:            "test-pool-1",
-					MaxContainers: 1,
+					MaxContainers: 100,
 				},
 			},
 		},

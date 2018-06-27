@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -53,7 +52,7 @@ func bbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronPr
 // saveNote reads a request containing a note's content along with the last seen
 // edit time and updates the note in the database.
 func bbSaveNote(w http.ResponseWriter, r *http.Request) {
-	taskId := mux.Vars(r)["task_id"]
+	taskId := gimlet.GetVars(r)["task_id"]
 	n := &model.Note{}
 	if err := util.ReadJSONInto(r.Body, n); err != nil {
 		gimlet.WriteJSONError(w, err.Error())
@@ -94,7 +93,7 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 
 // getNote retrieves the latest note from the database.
 func bbGetNote(w http.ResponseWriter, r *http.Request) {
-	taskId := mux.Vars(r)["task_id"]
+	taskId := gimlet.GetVars(r)["task_id"]
 	n, err := model.NoteForTask(taskId)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
@@ -108,7 +107,7 @@ func bbGetNote(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request) {
-	taskId := mux.Vars(r)["task_id"]
+	taskId := gimlet.GetVars(r)["task_id"]
 
 	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
 	if err != nil {
@@ -141,8 +140,9 @@ func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request)
 }
 
 func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
-	taskId := mux.Vars(r)["task_id"]
-	exec := mux.Vars(r)["execution"]
+	vars := gimlet.GetVars(r)
+	taskId := vars["task_id"]
+	exec := vars["execution"]
 	oldId := fmt.Sprintf("%v_%v", taskId, exec)
 	t, err := task.FindOneOld(task.ById(oldId))
 	if err != nil {

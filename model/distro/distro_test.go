@@ -100,35 +100,44 @@ func TestFindActive(t *testing.T) {
 	assert.Len(active, 2)
 }
 
-func TestComputeParentsToDecommission(t *testing.T) {
+func TestValidateContainerPoolDistros(t *testing.T) {
 	assert := assert.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert.NoError(db.Clear(Collection))
 
 	d1 := &Distro{
-		Id:            "d1",
-		MaxContainers: 100,
+		Id: "valid-distro",
 	}
-
 	d2 := &Distro{
-		Id:            "d2",
-		MaxContainers: 0,
+		Id:            "invalid-distro",
+		ContainerPool: "test-pool-1",
+	}
+	assert.NoError(d1.Insert())
+	assert.NoError(d2.Insert())
+
+	testSettings := &evergreen.Settings{
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro:        "valid-distro",
+					Id:            "test-pool-1",
+					MaxContainers: 100,
+				},
+				evergreen.ContainerPool{
+					Distro:        "invalid-distro",
+					Id:            "test-pool-2",
+					MaxContainers: 100,
+				},
+				evergreen.ContainerPool{
+					Distro:        "missing-distro",
+					Id:            "test-pool-3",
+					MaxContainers: 100,
+				},
+			},
+		},
 	}
 
-	// No containers --> decommission all parents
-	c1, err := d1.ComputeParentsToDecommission(5, 0)
-	assert.NoError(err)
-	assert.Equal(c1, 5)
-
-	// Max containers --> decommission no parents
-	c2, err := d1.ComputeParentsToDecommission(5, 500)
-	assert.NoError(err)
-	assert.Equal(c2, 0)
-
-	// Some containers --> decommission excess parents
-	c3, err := d1.ComputeParentsToDecommission(5, 250)
-	assert.NoError(err)
-	assert.Equal(c3, 2)
-
-	// MaxContainers is zero --> throw error (cannot divide by 0)
-	_, err = d2.ComputeParentsToDecommission(5, 10)
-	assert.EqualError(err, "Distro does not support containers")
+	err := ValidateContainerPoolDistros(testSettings)
+	assert.Contains(err.Error(), "container pool test-pool-2 has invalid distro")
+	assert.Contains(err.Error(), "error finding distro for container pool test-pool-3")
 }

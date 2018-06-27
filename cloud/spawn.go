@@ -1,4 +1,4 @@
-package spawn
+package cloud
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -32,13 +31,13 @@ var passwordRegexps = []*regexp.Regexp{
 }
 
 const (
-	MaxPerUser                 = 3
-	DefaultExpiration          = 24 * time.Hour
-	MaxExpirationDurationHours = 24 * time.Hour * 7 // 7 days
+	MaxSpawnHostsPerUser                = 3
+	DefaultSpawnHostExpiration          = 24 * time.Hour
+	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 7 // 7 days
 )
 
 // Options holds the required parameters for spawning a host.
-type Options struct {
+type SpawnOptions struct {
 	Distro    string
 	UserName  string
 	PublicKey string
@@ -49,7 +48,7 @@ type Options struct {
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
-func (so *Options) validate() error {
+func (so *SpawnOptions) validate() error {
 	if so.Owner == nil {
 		return errors.New("spawn options include nil user")
 	}
@@ -69,9 +68,9 @@ func (so *Options) validate() error {
 		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
-	if len(activeSpawnedHosts) >= MaxPerUser {
+	if len(activeSpawnedHosts) >= MaxSpawnHostsPerUser {
 		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
-			len(activeSpawnedHosts), MaxPerUser)
+			len(activeSpawnedHosts), MaxSpawnHostsPerUser)
 	}
 
 	// validate public key
@@ -101,7 +100,7 @@ func (so *Options) validate() error {
 }
 
 // CreateHost spawns a host with the given options.
-func CreateHost(so Options) (*host.Host, error) {
+func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	if err := so.validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -125,15 +124,15 @@ func CreateHost(so Options) (*host.Host, error) {
 		TaskId:  so.TaskId,
 		OwnerId: so.Owner.Id,
 	}
-	expiration := DefaultExpiration
-	hostOptions := cloud.HostOptions{
+	expiration := DefaultSpawnHostExpiration
+	hostOptions := HostOptions{
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
 		ExpirationDuration: &expiration,
 		UserHost:           true,
 	}
 
-	intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
+	intentHost := NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
@@ -178,7 +177,7 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
 func constructPwdUpdateCommand(ctx context.Context, settings *evergreen.Settings, hostObj *host.Host, password string) (subprocess.Command, error) {
-	cloudHost, err := cloud.GetCloudHost(ctx, hostObj, settings)
+	cloudHost, err := GetCloudHost(ctx, hostObj, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -211,14 +210,14 @@ func constructPwdUpdateCommand(ctx context.Context, settings *evergreen.Settings
 	return remoteCommand, nil
 }
 
-func TerminateHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
+func TerminateSpawnHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		return errors.New("Host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
 		return host.SetTerminated(user)
 	}
-	cloudHost, err := cloud.GetCloudHost(ctx, host, settings)
+	cloudHost, err := GetCloudHost(ctx, host, settings)
 	if err != nil {
 		return err
 	}
@@ -228,11 +227,11 @@ func TerminateHost(ctx context.Context, host *host.Host, settings *evergreen.Set
 	return nil
 }
 
-func MakeExtendedHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
+func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
 	newExp := host.ExpirationTime.Add(extendBy)
 	remainingDuration := newExp.Sub(time.Now()) //nolint
-	if remainingDuration > MaxExpirationDurationHours {
-		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), MaxExpirationDurationHours.String())
+	if remainingDuration > MaxSpawnHostExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), MaxSpawnHostExpirationDurationHours.String())
 	}
 
 	return newExp, nil

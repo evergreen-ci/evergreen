@@ -57,6 +57,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateProjectTaskIdsAndTags,
 	validateTaskGroups,
 	validateGenerateTasks,
+	validateCreateHosts,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -889,25 +890,65 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 }
 
 func validateGenerateTasks(p *model.Project) []ValidationError {
-	errs := []ValidationError{}
+	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
+	return validateTimesCalledPerBuildVariant(p, ts, evergreen.GenerateTasksCommandName, 1)
+}
 
-	// get all tasks that call `generate.tasks`
-	ts := p.GenerateTasksTasks()
+func validateCreateHosts(p *model.Project) []ValidationError {
+	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
+	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 10)...)
+	return errs
+}
 
-	// validate that no buildvariant calls `generate.tasks` more than once
+func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
 	for _, bv := range p.BuildVariants {
-		count := []string{}
 		for _, t := range bv.Tasks {
-			if _, ok := ts[t.Name]; ok {
-				count = append(count, t.Name)
+			if count, ok := ts[t.Name]; ok {
+				if count > times {
+					errs = append(errs, ValidationError{
+						Message: fmt.Sprintf("variant %s task %s may only call %s %d times but calls it %d times", bv.Name, t.Name, commandName, times, count),
+						Level:   Error,
+					})
+				}
 			}
 		}
-		if len(count) > 1 {
+	}
+	return errs
+}
+
+func validateTimesCalledPerBuildVariant(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+	for _, bv := range p.BuildVariants {
+		total := 0
+		for _, t := range bv.Tasks {
+			if count, ok := ts[t.Name]; ok {
+				total += count
+			}
+		}
+		if total > times {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, model.GenerateTasksCommandName, model.GenerateTasksCommandName),
+				Message: fmt.Sprintf("variant %s may only call %s %d times but calls it %d times", bv.Name, commandName, times, total),
 				Level:   Error,
 			})
 		}
+	}
+	return errs
+}
+
+func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+	total := 0
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			if count, ok := ts[t.Name]; ok {
+				total += count
+			}
+		}
+	}
+	if total > times {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("may only call %s %d times but it is called %d times", commandName, times, total),
+			Level:   Error,
+		})
 	}
 	return errs
 }

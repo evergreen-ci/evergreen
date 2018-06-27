@@ -186,3 +186,28 @@ func (j *JiraSuite) TestTruncate() {
 	sender.Send(m)
 	j.Len(mock.lastSummary, 254)
 }
+
+func (j *JiraSuite) TestCustomFields() {
+	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	j.NotNil(sender)
+	j.NoError(err)
+
+	mock, ok := j.opts.client.(*jiraClientMock)
+	j.True(ok)
+	j.Equal(mock.numSent, 0)
+
+	jiraIssue := message.JiraIssue{
+		Summary: "test",
+		Fields: map[string]interface{}{
+			"customfield_12345": []string{"hi", "bye"},
+		},
+	}
+
+	m := message.MakeJiraMessage(jiraIssue)
+	j.NoError(m.SetPriority(level.Warning))
+	j.True(m.Loggable())
+	sender.Send(m)
+
+	j.Equal([]string{"hi", "bye"}, mock.lastFields.Unknowns["customfield_12345"])
+	j.Equal("test", mock.lastFields.Summary)
+}

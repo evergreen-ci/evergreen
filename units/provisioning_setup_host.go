@@ -516,9 +516,13 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 	}
 
 	grip.Info(message.Fields{
-		"host":    h.Id,
-		"runner":  HostInit,
-		"message": "host successfully provisioned",
+		"host":                    h.Id,
+		"distro":                  h.Distro.Id,
+		"provider":                h.Provider,
+		"attempts":                h.ProvisionAttempts,
+		"runner":                  HostInit,
+		"message":                 "host successfully provisioned",
+		"provision_duration_secs": h.ProvisionTime.Sub(h.CreationTime).Seconds(),
 	})
 
 	return nil

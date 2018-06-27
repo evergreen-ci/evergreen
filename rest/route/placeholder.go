@@ -4,36 +4,30 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/gimlet"
 )
 
-func getPlaceHolderManger(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &placeHolderHandler{},
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
+func makePlaceHolderManger(sc data.Connector) gimlet.RouteHandler {
+	return &placeHolderHandler{
+		sc: sc,
 	}
 }
 
-type placeHolderHandler struct{}
-
-func (p *placeHolderHandler) Handler() RequestHandler {
-	return &placeHolderHandler{}
+type placeHolderHandler struct {
+	sc data.Connector
 }
 
-func (p *placeHolderHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	return nil
-}
-func (p *placeHolderHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	return ResponseData{}, rest.APIError{
-		StatusCode: 200,
-		Message:    "this is a placeholder for now",
+func (p *placeHolderHandler) Factory() gimlet.RouteHandler {
+	return &placeHolderHandler{
+		sc: p.sc,
 	}
+}
+
+func (p *placeHolderHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+	return ctx, nil
+}
+
+func (p *placeHolderHandler) Run(ctx context.Context) gimlet.Responder {
+	return gimlet.NewTextResponse("this is a placeholder for now")
 }

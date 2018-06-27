@@ -116,10 +116,25 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         return dataUtil.getBFTicketsForRows(vm.gridOptions.data)
       })
       // Apply BF tickets to rows data
-      .then(function(ticketsForTasks) {
-        _.each(ticketsForTasks, function(v, k) {
-          _.each(_.where(vm.gridOptions.data, {taskId: k}), function(task) {
-            task.buildFailures = v
+      .then(function(bfGroups) {
+
+        // Match grouped points (by task, bv, test) w/ rows
+        _.each(bfGroups, function(bfGroup) {
+          // Dedupe by 'key' (BFs might have different revisions or other fields)
+          var bfs = _.uniq(bfGroup, function(d) { return d.key })
+
+          var bf = bfs[0] // using the first element as characteristic
+
+          var matcher = {
+            task: bf.tasks,
+            buildVariant: bf.buildvariants,
+          }
+
+          // If BF has associated test
+          bf.tests && (matcher['test'] = bf.tests)
+
+          _.each(_.where(vm.gridOptions.data, matcher), function(task) {
+            task.buildFailures = bfs
           })
         })
       })

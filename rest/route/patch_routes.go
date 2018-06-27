@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -53,7 +53,7 @@ func (p *patchChangeStatusHandler) Handler() RequestHandler {
 }
 
 func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.patchId = mux.Vars(r)["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -117,8 +117,7 @@ func (p *patchByIdHandler) Handler() RequestHandler {
 }
 
 func (p *patchByIdHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	p.patchId = vars["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
@@ -184,7 +183,7 @@ func (p *patchesByUserHandler) Handler() RequestHandler {
 }
 
 func (p *patchesByUserHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = patchesByUserArgs{mux.Vars(r)["user_id"]}
+	p.Args = patchesByUserArgs{gimlet.GetVars(r)["user_id"]}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -305,7 +304,7 @@ func (p *patchesByProjectHandler) Handler() RequestHandler {
 }
 
 func (p *patchesByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = patchesByProjectArgs{projectId: mux.Vars(r)["project_id"]}
+	p.Args = patchesByProjectArgs{projectId: gimlet.GetVars(r)["project_id"]}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -417,8 +416,7 @@ func (p *patchAbortHandler) Handler() RequestHandler {
 }
 
 func (p *patchAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	p.patchId = vars["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
@@ -485,8 +483,7 @@ func (p *patchRestartHandler) Handler() RequestHandler {
 }
 
 func (p *patchRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	p.patchId = vars["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 

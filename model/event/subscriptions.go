@@ -41,6 +41,8 @@ const (
 	TaskPercentChangeKey                              = "task-percent-change"
 	BuildDurationKey                                  = "build-duration-secs"
 	BuildPercentChangeKey                             = "build-percent-change"
+	VersionDurationKey                                = "version-duration-secs"
+	VersionPercentChangeKey                           = "version-percent-change"
 	ImplicitSubscriptionPatchOutcome                  = "patch-outcome"
 	ImplicitSubscriptionBuildBreak                    = "build-break"
 	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
@@ -270,6 +272,12 @@ func (s *Subscription) runCustomValidation() error {
 	}
 	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
 		catcher.Add(validatePositiveFloat(taskPercentVal))
+	}
+	if versionDurationVal, ok := s.TriggerData[VersionDurationKey]; ok {
+		catcher.Add(validatePositiveInt(versionDurationVal))
+	}
+	if versionPercentVal, ok := s.TriggerData[VersionPercentChangeKey]; ok {
+		catcher.Add(validatePositiveFloat(versionPercentVal))
 	}
 	if buildDurationVal, ok := s.TriggerData[BuildDurationKey]; ok {
 		catcher.Add(validatePositiveInt(buildDurationVal))

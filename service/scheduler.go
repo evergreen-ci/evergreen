@@ -7,12 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) getSchedulerPage(w http.ResponseWriter, r *http.Request) {
-	distroId := mux.Vars(r)["distro_id"]
+	distroId := gimlet.GetVars(r)["distro_id"]
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		DistroId string
@@ -21,7 +20,7 @@ func (uis *UIServer) getSchedulerPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) getSchedulerLogs(w http.ResponseWriter, r *http.Request) {
-	distroId := mux.Vars(r)["distro_id"]
+	distroId := gimlet.GetVars(r)["distro_id"]
 
 	loggedEvents, err := event.Find(event.AllLogCollection, event.RecentSchedulerEvents(distroId, 500))
 	if err != nil {
@@ -90,7 +89,7 @@ func (uis *UIServer) averageSchedulerStats(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	distroId := mux.Vars(r)["distro_id"]
+	distroId := gimlet.GetVars(r)["distro_id"]
 
 	bounds := model.CalculateBounds(daysBack, granularity)
 

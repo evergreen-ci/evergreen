@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -161,8 +160,7 @@ func (h *versionsGetHandler) Handler() RequestHandler {
 
 func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	var err error
-	vars := mux.Vars(r)
-	h.project = vars["project_id"]
+	h.project = gimlet.GetVars(r)["project_id"]
 	limit := r.URL.Query().Get("limit")
 	if limit != "" {
 		h.limit, err = strconv.Atoi(limit)
