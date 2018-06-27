@@ -195,17 +195,14 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 }
 
 type APIAlertsConfig struct {
-	SMTP *APISMTPConfig `json:"smtp"`
+	SMTP APISMTPConfig `json:"smtp"`
 }
 
 func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AlertsConfig:
-		if v.SMTP != nil {
-			a.SMTP = &APISMTPConfig{}
-			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-				return err
-			}
+		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+			return err
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -214,16 +211,12 @@ func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAlertsConfig) ToService() (interface{}, error) {
-	var config *evergreen.SMTPConfig
 	smtp, err := a.SMTP.ToService()
 	if err != nil {
 		return nil, err
 	}
-	if smtp != nil {
-		config = smtp.(*evergreen.SMTPConfig)
-	}
 	return evergreen.AlertsConfig{
-		SMTP: config,
+		SMTP: smtp.(evergreen.SMTPConfig),
 	}, nil
 }
 
@@ -656,19 +649,17 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 }
 
 type APINotifyConfig struct {
-	BufferTargetPerInterval int            `json:"buffer_target_per_interval"`
-	BufferIntervalSeconds   int            `json:"buffer_interval_seconds"`
-	SMTP                    *APISMTPConfig `json:"smtp"`
+	BufferTargetPerInterval int           `json:"buffer_target_per_interval"`
+	BufferIntervalSeconds   int           `json:"buffer_interval_seconds"`
+	SMTP                    APISMTPConfig `json:"smtp"`
 }
 
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.NotifyConfig:
-		if v.SMTP != nil {
-			a.SMTP = &APISMTPConfig{}
-			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-				return err
-			}
+		a.SMTP = APISMTPConfig{}
+		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+			return err
 		}
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
 		a.BufferIntervalSeconds = v.BufferIntervalSeconds
@@ -679,18 +670,14 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APINotifyConfig) ToService() (interface{}, error) {
-	var config *evergreen.SMTPConfig
 	smtp, err := a.SMTP.ToService()
 	if err != nil {
 		return nil, err
 	}
-	if smtp != nil {
-		config = smtp.(*evergreen.SMTPConfig)
-	}
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		SMTP: config,
+		SMTP: smtp.(evergreen.SMTPConfig),
 	}, nil
 }
 

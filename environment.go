@@ -338,7 +338,7 @@ func (e *envState) initSenders() error {
 		Threshold: level.Notice,
 	}
 
-	if e.settings.Notify.SMTP != nil {
+	if e.settings.Notify.SMTP.From != "" {
 		smtp := e.settings.Notify.SMTP
 		opts := send.SMTPOptions{
 			Name:              "evergreen",

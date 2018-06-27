@@ -192,7 +192,7 @@ func (s *AdminSuite) TestServiceFlags() {
 
 func (s *AdminSuite) TestAlertsConfig() {
 	config := AlertsConfig{
-		SMTP: &SMTPConfig{
+		SMTP: SMTPConfig{
 			Server:     "server",
 			Port:       2285,
 			UseSSL:     true,
@@ -473,7 +473,7 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 
 func (s *AdminSuite) TestNotifyConfig() {
 	config := NotifyConfig{
-		SMTP: &SMTPConfig{
+		SMTP: SMTPConfig{
 			Server:     "server",
 			Port:       2285,
 			UseSSL:     true,
