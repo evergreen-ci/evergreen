@@ -232,10 +232,7 @@ type APISMTPConfig struct {
 
 func (a *APISMTPConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *evergreen.SMTPConfig:
-		if v == nil {
-			return nil
-		}
+	case evergreen.SMTPConfig:
 		a.Server = ToAPIString(v.Server)
 		a.Port = v.Port
 		a.UseSSL = v.UseSSL
@@ -266,7 +263,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 	for _, s := range a.AdminEmail {
 		config.AdminEmail = append(config.AdminEmail, FromAPIString(s))
 	}
-	return &config, nil
+	return config, nil
 }
 
 type APIAmboyConfig struct {
