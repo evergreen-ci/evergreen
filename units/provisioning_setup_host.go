@@ -767,7 +767,11 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 
 func (j *setupHostJob) tryRequeue() {
 	if shouldRetryProvisioning(j.host) && j.env.RemoteQueue().Started() {
-		err := j.env.RemoteQueue().Put(NewHostSetupJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.host.ProvisionAttempts)))
+		job := NewHostSetupJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.host.ProvisionAttempts))
+		job.UpdateTimeInfo(amboy.JobTimeInfo{
+			WaitUntil: time.Now().Add(time.Minute),
+		})
+		err := j.env.RemoteQueue().Put(job)
 		grip.Critical(message.WrapError(err, message.Fields{
 			"message":  "failed to requeue setup job",
 			"host":     j.host.Id,
