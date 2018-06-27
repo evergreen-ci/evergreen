@@ -47,21 +47,25 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
 
+	restv1 := GetRESTv1App(as)
+
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
-	rest := GetRESTv1App(as)
 
-	route.AttachHandler(rest, as.queue, as.Settings.Ui.Url, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
+	restv2 := gimlet.NewApp()
+	restv2.ResetMiddleware()
+	restv2.SetPrefix(evergreen.RestRoutePrefix)
+	route.AttachHandler(restv2, as.queue, as.Settings.Ui.Url, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
 
 	// Historically all rest interfaces were available in the API
 	// and UI endpoints. While there were no users of restv1 in
 	// with the "api" prefix, there are many users of restv2, so
 	// we will continue to publish these routes in these
 	// endpoints.
-	apiRestV2 := gimlet.NewApp()
-	apiRestV2.ResetMiddleware()
-	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
-	route.AttachHandler(apiRestV2, as.queue, as.Settings.Ui.Url, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
+	apiRestv2 := gimlet.NewApp()
+	apiRestv2.ResetMiddleware()
+	apiRestv2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
+	route.AttachHandler(apiRestv2, as.queue, as.Settings.Ui.Url, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
 
 	// in the future the following functions will be above this
 	// point, and we'll just have the app, but during the legacy
@@ -72,5 +76,5 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	uis.AttachRoutes(r)
 	as.AttachRoutes(r)
 
-	return gimlet.AssembleHandler(r, app, rest, apiRestV2)
+	return gimlet.AssembleHandler(r, app, restv1, restv2, apiRestv2)
 }
