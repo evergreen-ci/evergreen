@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -190,15 +188,11 @@ func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notifi
 	}
 	thisVersionDuration := float64(t.version.FinishTime.Sub(t.version.StartTime))
 	prevVersionDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
-	ratio := thisVersionDuration / prevVersionDuration
-	if !util.IsFiniteNumericFloat(ratio) {
+	shouldNotify, percentChange := runtimeExceedsThreshold(percent, prevVersionDuration, thisVersionDuration)
+	if !shouldNotify {
 		return nil, nil
 	}
-	percentChange := math.Abs(100*ratio - 100)
-	if percentChange < percent {
-		return nil, nil
-	}
-	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %.1f%%)", percentChange, percent))
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
 }
 
 func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {

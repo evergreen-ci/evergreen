@@ -20,22 +20,6 @@ import (
 const (
 	evergreenHeaderPrefix = "X-Evergreen-"
 
-	selectorID        = "id"
-	selectorObject    = "object"
-	selectorProject   = "project"
-	selectorOwner     = "owner"
-	selectorRequester = "requester"
-	selectorStatus    = "status"
-	selectorInVersion = "in-version"
-	selectorInBuild   = "in-build"
-
-	triggerOutcome                = "outcome"
-	triggerFailure                = "failure"
-	triggerSuccess                = "success"
-	triggerRegression             = "regression"
-	triggerExceedsDuration        = "exceeds-duration"
-	triggerRuntimeChangeByPercent = "runtime-change"
-
 	evergreenSuccessColor    = "#4ead4a"
 	evergreenFailColor       = "#ce3c3e"
 	evergreenSystemFailColor = "#ce3c3e"
