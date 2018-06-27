@@ -17,6 +17,7 @@ mciModule
       // Assets associated with this instance
       DB_PERF: 'perf',
       COLL_CHANGE_POINTS: 'change_points',
+      COLL_UNPROCESSED_POINTS: 'unprocessed_change_points',
       COLL_BUILD_FAILURES: 'build_failures',
     }
   })
