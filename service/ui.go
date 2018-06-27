@@ -258,9 +258,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) {
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
 	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
 
-	// Static Path handlers
-	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
-
 	// Plugin routes
 	r.HandleFunc("/plugin/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
 	r.HandleFunc("/plugin/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
