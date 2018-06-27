@@ -73,7 +73,6 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		"/versions/{version_id}/abort":                         getAbortVersionRouteManager,
 		"/versions/{version_id}/builds":                        getBuildsForVersionRouteManager,
 		"/versions/{version_id}/restart":                       getRestartVersionRouteManager,
-		"/waterfall/{project_id}":                              getWaterfallDataManager,
 	}
 
 	for path, getManager := range routes {
