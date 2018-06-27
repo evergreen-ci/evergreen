@@ -30,7 +30,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const setupHostJobName = "provisioning-setup-host"
+const (
+	provisionRetryLimit = 15
+	setupHostJobName    = "provisioning-setup-host"
+)
 
 const provisionFailurePreface = "[PROVISION-FAILURE]"
 
@@ -99,6 +102,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	defer j.tryRequeue()
 
 	settings := j.env.Settings()
 
@@ -398,7 +402,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 			"operation": "increment provisioning errors failed",
 		}))
 
-		if h.ProvisionAttempts <= 15 {
+		if shouldRetryProvisioning(h) {
 			grip.Debug(message.Fields{
 				"runner":   HostInit,
 				"host":     h.Id,
@@ -759,4 +763,21 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		return err
 	}
 	return nil
+}
+
+func (j *setupHostJob) tryRequeue() {
+	if shouldRetryProvisioning(j.host) && j.env.RemoteQueue().Started() {
+		err := j.env.RemoteQueue().Put(NewHostSetupJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.host.ProvisionAttempts)))
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message":  "failed to requeue setup job",
+			"host":     j.host.Id,
+			"runner":   HostInit,
+			"attempts": j.host.ProvisionAttempts,
+		}))
+		j.AddError(err)
+	}
+}
+
+func shouldRetryProvisioning(h *host.Host) bool {
+	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning
 }
