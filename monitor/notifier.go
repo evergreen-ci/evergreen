@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -58,25 +58,19 @@ func sendNotifications(notifications []Notification, settings *evergreen.Setting
 	// used to store any errors that occur
 	var errs []error
 
-	// ask for the mailer we'll use
-	mailer := notify.ConstructMailer(settings.Notify)
+	mailer, err := evergreen.GetEnvironment().GetSender(evergreen.SenderEmail)
+	if err != nil {
+		errs = append(errs, err)
+		return errs
+	}
 
 	for _, n := range notifications {
-
-		// send the notification
-		err := notify.TrySendNotificationToUser(
-			n.recipient,
-			n.subject,
-			n.message,
-			mailer,
-		)
-
-		// continue on error to allow further notifications to be sent
-		if err != nil {
-			errs = append(errs, errors.Wrapf(err,
-				"error sending notification to %s", n.recipient))
-			continue
-		}
+		mailer.Send(message.NewEmailMessage(level.Notice, message.Email{
+			From:       settings.Notify.SMTP.From,
+			Recipients: []string{n.recipient},
+			Subject:    n.subject,
+			Body:       n.message,
+		}))
 
 		// run the notification's callback, since it has been successfully sent
 		if n.callback != nil {

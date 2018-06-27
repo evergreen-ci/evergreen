@@ -160,7 +160,7 @@ func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 // slowProvisioningWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that are taking a long time to provision
 func SlowProvisioningWarnings(settings *evergreen.Settings) ([]Notification, error) {
-	if settings.Notify.SMTP == nil {
+	if len(settings.Notify.SMTP.AdminEmail) == 0 {
 		return []Notification{}, errors.New("no notification emails configured")
 	}
 
