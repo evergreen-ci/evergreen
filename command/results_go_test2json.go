@@ -25,14 +25,10 @@ import (
 )
 
 var (
-	testStartRegex = regexp.MustCompile(`^=== (RUN|BENCH)\s+.*$`)
-	// Match benchmark output like "BenchmarkSomethingSilent-8    	       1	10005034392 ns/op"
-	benchmarkRegex = regexp.MustCompile(fmt.Sprintf(`^(%s)(-\d+)?\s+\d+\s+\d+\s+`, identRegex))
+	testStartRegex = regexp.MustCompile(`^=== RUN\s+.*$`)
 )
 
 const (
-	// Golang ident (see grammar spec)
-	identRegex      = `\p{L}(\p{L}|\d)*`
 	benchFailPrefix = "--- FAIL: %s"
 	benchSkipPrefix = "--- SKIP: %s"
 
@@ -61,7 +57,7 @@ const (
 // 4. The file emitted by test2json on Windows uses Unix-style line endings
 // 5. Benchmarks do not provide Elapsed, even on fail, except in the package
 // level result
-// 6. Benchmark output will not necessarily match the Test. For example,
+// 6. Benchmark output will not match the Test. For example,
 // in the benchmark corpus, the output for BenchmarkSomethingSilent-8 is tagged
 // with Test name BenchmarkSomethingElse-8
 type goTest2JSONTestEvent struct {
@@ -291,7 +287,6 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 			} else if m[key].StartTime.IsZero() {
 				m[key].StartTime = startTimeFromEndTimeAndElapsed(event.Time, event.Elapsed)
 			}
-
 			iteration[event.Test] += 1
 
 		case actionBench:
@@ -301,9 +296,9 @@ func processTestEvents(data []*goTest2JSONTestEvent) ([]string, map[goTest2JSONK
 
 		case actionPause, actionCont, actionOutput:
 			// test2json does not guarantee that all tests will
-			// have a "pass" or "fail" event (ex: panics), so
-			// we assign the most recent event's time to the EndTime
-			// if the status hasn't been set yet
+			// have a "pass" or "fail" event (ex: panics,
+			// benchmarks), so we assign the most recent event's
+			// time to the EndTime if the status hasn't been set yet
 			if len(m[key].Status) == 0 {
 				m[key].EndTime = event.Time
 			}
@@ -340,7 +335,6 @@ func shouldTagLineNumber(line, packageName, testName string) bool {
 	if !strings.HasPrefix(testName, "Benchmark") {
 		return false
 	}
-
 	if strings.HasPrefix(line, fmt.Sprintf(benchFailPrefix, testName)) {
 		return true
 	}

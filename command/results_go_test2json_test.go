@@ -215,19 +215,13 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 			StartTime: "2018-06-26T11:39:35.141056901-04:00",
 			EndTime:   "2018-06-26T11:39:35.141056901-04:00",
 			Status:    evergreen.TestSucceededStatus,
-			LineInLog: 0, // TODO
+			LineInLog: 0,
 		},
 		"BenchmarkSomethingElse-8": {
 			StartTime: "2018-06-26T11:39:55.144650126-04:00",
 			EndTime:   "2018-06-26T11:39:55.144650126-04:00",
 			Status:    evergreen.TestSucceededStatus,
-			LineInLog: 0, // TODO
-		},
-		"BenchmarkSomethingSilent-8": {
-			StartTime: "2018-06-25T14:31:30.819257417-04:00",
-			EndTime:   "2018-06-25T14:31:30.819257417-04:00",
-			Status:    evergreen.TestSucceededStatus,
-			LineInLog: 15,
+			LineInLog: 0,
 		},
 		"BenchmarkSomethingSkipped": {
 			StartTime: "2018-06-26T11:39:55.145230368-04:00",
@@ -247,7 +241,7 @@ func (s *test2JSONSuite) TestExecuteWithBenchmarks() {
 	for _, result := range s.comm.LocalTestResults.Results {
 		// benchmark timings should be 0, except for the package level
 		// result
-		if strings.HasPrefix(result.TestFile, "package-") {
+		if result.TestFile == "package" {
 			s.NotEqual(result.StartTime, result.EndTime)
 			s.True((result.EndTime - result.StartTime) > 0)
 		} else {
@@ -316,6 +310,8 @@ func (s *test2JSONSuite) TestExecuteWithFileContainingPanic() {
 }
 
 func (s *test2JSONSuite) doTableTest(expectedResults map[string]testEventExpectation) {
+	usedResults := map[string]bool{}
+
 	for _, test := range s.comm.LocalTestResults.Results {
 		expected, ok := expectedResults[test.TestFile]
 		if !ok {
@@ -331,9 +327,11 @@ func (s *test2JSONSuite) doTableTest(expectedResults map[string]testEventExpecta
 		s.NoError(err)
 		s.Equal(float64(end.Unix()), test.EndTime, test.TestFile)
 
-		s.Equal(expected.Status, test.Status)
+		s.Equal(expected.Status, test.Status, test.TestFile)
 		s.Equal(expected.LineInLog, test.LineNum, test.TestFile)
+		usedResults[test.TestFile] = true
 	}
+	s.Len(usedResults, len(expectedResults))
 }
 
 func (s *test2JSONSuite) noErrorMessages(msgs []*send.InternalMessage) {
