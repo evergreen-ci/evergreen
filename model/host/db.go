@@ -389,8 +389,9 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 func NeedsNewAgent(currentTime time.Time) db.Q {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return db.Query(bson.M{
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
