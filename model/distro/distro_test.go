@@ -100,6 +100,42 @@ func TestFindActive(t *testing.T) {
 	assert.Len(active, 2)
 }
 
+func TestIsParent(t *testing.T) {
+	assert := assert.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert.NoError(db.Clear(Collection))
+
+	conf := &evergreen.Settings{
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro:        "distro-1",
+					Id:            "test-pool",
+					MaxContainers: 100,
+				},
+			},
+		},
+	}
+
+	d1 := &Distro{
+		Id: "distro-1",
+	}
+	d2 := &Distro{
+		Id: "distro-2",
+	}
+	d3 := &Distro{
+		Id:            "distro-3",
+		ContainerPool: "test-pool",
+	}
+	assert.NoError(d1.Insert())
+	assert.NoError(d2.Insert())
+	assert.NoError(d3.Insert())
+
+	assert.True(d1.IsParent(conf))
+	assert.False(d2.IsParent(conf))
+	assert.False(d3.IsParent(conf))
+}
+
 func TestValidateContainerPoolDistros(t *testing.T) {
 	assert := assert.New(t)
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())

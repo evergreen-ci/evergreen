@@ -23,7 +23,6 @@ var (
 	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
-	MaxContainersKey    = bsonutil.MustHaveTag(Distro{}, "MaxContainers")
 	ContainerPoolKey    = bsonutil.MustHaveTag(Distro{}, "ContainerPool")
 )
 
@@ -111,4 +110,9 @@ func ByProvider(p string) db.Q {
 // BySpawnAllowed returns a query that contains the SpawnAllowed selector.
 func BySpawnAllowed() db.Q {
 	return db.Query(bson.D{{SpawnAllowedKey, true}})
+}
+
+// ByActive returns a query that selects only active distros
+func ByActive() db.Q {
+	return db.Query(bson.M{DisabledKey: bson.M{"$exists": false}})
 }

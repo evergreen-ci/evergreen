@@ -33,8 +33,6 @@ type Distro struct {
 	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 
-	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
-
 	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
 
@@ -99,6 +97,16 @@ func (d *Distro) BinaryName() string {
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
+}
+
+// IsParent returns whether the distro is the parent distro for any container pool
+func (d *Distro) IsParent(s *evergreen.Settings) bool {
+	for _, p := range s.ContainerPools.Pools {
+		if d.Id == p.Distro {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidateContainerPoolDistros ensures that container pools have valid distros
