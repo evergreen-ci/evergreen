@@ -213,6 +213,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 					"host":       j.host.Id,
 					"subject":    subj,
 				})
+				continue
 			}
 
 			mailer.Send(message.NewEmailMessage(level.Error, message.Email{
