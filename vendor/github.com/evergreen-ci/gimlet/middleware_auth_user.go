@@ -121,8 +121,6 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 
 		if len(authDataAPIKey) > 0 {
 			usr, err := u.manager.GetUserByID(authDataName)
-
-			// only loggable if the err is non-nil
 			logger.Error(message.WrapError(err, message.Fields{
 				"message":   "problem getting user by id",
 				"operation": "header check",
@@ -130,7 +128,9 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 				"request":   reqID,
 			}))
 
-			if usr != nil {
+			// only loggable if the err is non-nil
+
+			if err == nil && usr != nil {
 				if usr.GetAPIKey() != authDataAPIKey {
 					WriteTextResponse(rw, http.StatusUnauthorized, "invalid API key")
 					return
