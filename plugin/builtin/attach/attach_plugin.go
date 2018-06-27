@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -36,7 +36,7 @@ func (self *AttachPlugin) Name() string                           { return Attac
 func (self *AttachPlugin) Configure(map[string]interface{}) error { return nil }
 
 // stripHiddenFiles is a helper for only showing users the files they are allowed to see.
-func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact.File {
+func stripHiddenFiles(files []artifact.File, pluginUser gimlet.User) []artifact.File {
 	publicFiles := []artifact.File{}
 	for _, file := range files {
 		switch {
@@ -84,7 +84,7 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 			{
 				Page:     plugin.TaskPage,
 				Position: plugin.PageLeft,
-				PanelHTML: "<div ng-include=\"'/plugin/attach/static/partials/task_files_panel.html'\" " +
+				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/task_files_panel.html'\" " +
 					"ng-init='files=plugins.attach' ng-show='plugins.attach.length'></div>",
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
 					if context.Task == nil {
@@ -123,7 +123,7 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 			{
 				Page:     plugin.BuildPage,
 				Position: plugin.PageLeft,
-				PanelHTML: "<div ng-include=\"'/plugin/attach/static/partials/build_files_panel.html'\" " +
+				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/build_files_panel.html'\" " +
 					"ng-init='filesByTask=plugins.attach' ng-show='plugins.attach.length'></div>",
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
 					if context.Build == nil {

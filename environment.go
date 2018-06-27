@@ -140,7 +140,6 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	catcher.Add(e.initSenders())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
-	catcher.Add(e.initClientConfig())
 	if confPath != "" {
 		catcher.Add(e.persistSettings())
 	}
@@ -240,8 +239,12 @@ func (e *envState) createQueues(ctx context.Context) error {
 	// duration of time in between calls to queue.Status() within
 	// the amboy.Wait* function.
 	const queueWaitInterval = 10 * time.Millisecond
+	const queueWaitTimeout = 10 * time.Second
 
 	e.closers["background-local-queue"] = func(ctx context.Context) error {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		defer cancel()
 		if !amboy.WaitCtxInterval(ctx, e.localQueue, queueWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
@@ -255,11 +258,10 @@ func (e *envState) createQueues(ctx context.Context) error {
 	}
 
 	e.closers["notification-queue"] = func(ctx context.Context) error {
+		var cancel context.CancelFunc
 		catcher := grip.NewBasicCatcher()
-		for _, s := range rootSenders {
-			catcher.Add(s.Close())
-		}
-
+		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		defer cancel()
 		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueWaitInterval) {
 			grip.Critical(message.Fields{
 				"message": "pending jobs failed to finish",
@@ -268,7 +270,24 @@ func (e *envState) createQueues(ctx context.Context) error {
 			})
 			catcher.Add(errors.New("failed to stop with running jobs"))
 		}
+
 		e.notificationsQueue.Runner().Close()
+
+		grip.Debug(message.Fields{
+			"message":     "closed notification queue",
+			"num_senders": len(rootSenders),
+			"errors":      catcher.HasErrors(),
+		})
+
+		for _, s := range rootSenders {
+			catcher.Add(s.Close())
+		}
+		grip.Debug(message.Fields{
+			"message":     "closed all root senders",
+			"num_senders": len(rootSenders),
+			"errors":      catcher.HasErrors(),
+		})
+
 		return catcher.Resolve()
 	}
 
@@ -289,15 +308,24 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	return catcher.Errors()
 }
 
-func (e *envState) initClientConfig() (err error) {
+func (e *envState) initClientConfig() {
 	if e.settings == nil {
-		return errors.New("no settings object, cannot build client configuration")
+		grip.Critical("no settings object, cannot build client configuration")
+		return
 	}
+	var err error
+
 	e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
-	if err == nil && len(e.clientConfig.ClientBinaries) == 0 {
-		grip.Warning("No clients are available for this server")
+
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "problem finding local clients",
+			"cause":   "infrastructure configuration issue",
+			"impact":  "agent deploys",
+		}))
+	} else if len(e.clientConfig.ClientBinaries) == 0 {
+		grip.Critical("No clients are available for this server")
 	}
-	return errors.WithStack(err)
 }
 
 func (e *envState) initSenders() error {
@@ -384,9 +412,14 @@ func (e *envState) initSenders() error {
 	}
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
+		// this sender is initialised with an invalid channel. Any
+		// messages sent with it that do not use message.SlackMessage
+		// will not be received
 		sender, err = send.NewSlackLogger(&send.SlackOptions{
-			Channel: "#",
-			Name:    "evergreen",
+			Channel:  "#",
+			Name:     "evergreen",
+			Username: "Evergreen",
+			IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
 		}, slack.Token, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup slack logger")
@@ -500,7 +533,10 @@ func (e *envState) ClientConfig() *ClientConfig {
 	defer e.mu.RUnlock()
 
 	if e.clientConfig == nil {
-		return nil
+		e.initClientConfig()
+		if e.clientConfig == nil {
+			return nil
+		}
 	}
 
 	config := *e.clientConfig

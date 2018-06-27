@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -24,10 +23,13 @@ type patchSuite struct {
 	patch patch.Patch
 	subs  []event.Subscription
 
+	t *patchTriggers
+
 	suite.Suite
 }
 
 func (s *patchSuite) SetupSuite() {
+	s.Require().Implements((*eventHandler)(nil), &patchTriggers{})
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
@@ -55,9 +57,12 @@ func (s *patchSuite) SetupTest() {
 	s.patch.Version = s.patch.Id.Hex()
 	s.NoError(s.patch.Insert())
 
-	s.data = &event.PatchEventData{}
+	s.data = &event.PatchEventData{
+		Status: evergreen.PatchCreated,
+	}
 	s.event = event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchStateChange,
 		ResourceId:   patchID.Hex(),
 		Data:         s.data,
 	}
@@ -130,6 +135,24 @@ func (s *patchSuite) SetupTest() {
 		Url: "https://evergreen.mongodb.com",
 	}
 	s.NoError(ui.Set())
+
+	s.t = makePatchTriggers().(*patchTriggers)
+	s.t.event = &s.event
+	s.t.data = s.data
+	s.t.patch = &s.patch
+	s.t.uiConfig = *ui
+}
+
+func (s *patchSuite) TestFetch() {
+	t, ok := makePatchTriggers().(*patchTriggers)
+	s.Require().True(ok)
+	s.NoError(t.Fetch(&s.event))
+	s.NotNil(t.event)
+	s.Equal(t.event, &s.event)
+	s.NotNil(t.data)
+	s.NotNil(t.patch)
+	s.NotZero(t.uiConfig)
+	s.NotEmpty(t.triggers)
 }
 
 func (s *patchSuite) TestAllTriggers() {
@@ -155,83 +178,62 @@ func (s *patchSuite) TestAllTriggers() {
 }
 
 func (s *patchSuite) TestPatchSuccess() {
-	gen, err := patchSuccess(s.data, &s.patch)
+	n, err := s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	gen, err = patchSuccess(s.data, &s.patch)
+	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.PatchSucceeded
-	gen, err = patchSuccess(s.data, &s.patch)
+	n, err = s.t.patchSuccess(&s.subs[1])
 	s.NoError(err)
-	s.NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("success", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "success",
-	})
+	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchFailure() {
-	s.data.Status = evergreen.PatchSucceeded
-	gen, err := patchFailure(s.data, &s.patch)
+	s.data.Status = evergreen.PatchCreated
+	n, err := s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
+
+	s.data.Status = evergreen.PatchSucceeded
+	n, err = s.t.patchFailure(&s.subs[2])
+	s.NoError(err)
+	s.Nil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	gen, err = patchFailure(s.data, &s.patch)
+	n, err = s.t.patchFailure(&s.subs[2])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("failure", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "failure",
-	})
+	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchOutcome() {
 	s.data.Status = evergreen.PatchCreated
-	gen, err := patchOutcome(s.data, &s.patch)
+	n, err := s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.PatchSucceeded
-	gen, err = patchOutcome(s.data, &s.patch)
+	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
+	s.NotNil(n)
 
 	s.data.Status = evergreen.PatchFailed
-	gen, err = patchOutcome(s.data, &s.patch)
+	n, err = s.t.patchOutcome(&s.subs[0])
 	s.NoError(err)
-	s.Require().NotNil(gen)
-	s.False(gen.isEmpty())
-	s.Equal("outcome", gen.triggerName)
-	s.Contains(gen.selectors, event.Selector{
-		Type: "trigger",
-		Data: "outcome",
-	})
+	s.NotNil(n)
 }
 
 func (s *patchSuite) TestPatchStarted() {
-	gen, err := patchStarted(s.data, &s.patch)
+	n, err := s.t.patchStarted(&s.subs[0])
 	s.Nil(err)
-	s.Nil(gen)
+	s.Nil(n)
 
 	s.data.Status = evergreen.PatchStarted
-	gen, err = patchStarted(s.data, &s.patch)
+	n, err = s.t.patchStarted(&s.subs[0])
 	s.Nil(err)
-	s.Require().NotNil(gen)
-	s.Require().NotNil(gen.githubStatusAPI)
-
-	s.Equal("started", gen.triggerName)
-	s.Equal("evergreen", gen.githubStatusAPI.Context)
-	s.Equal(message.GithubStatePending, gen.githubStatusAPI.State)
-	s.Equal("tasks are running", gen.githubStatusAPI.Description)
-	s.Equal("https://evergreen.mongodb.com/version/5aeb4514f27e4f9984646d97", gen.githubStatusAPI.URL)
+	s.NotNil(n)
 }

@@ -500,3 +500,63 @@ func (s *AdminSuite) TestNotifyConfig() {
 	s.NotNil(settings)
 	s.Equal(config, settings.Notify)
 }
+
+func (s *AdminSuite) TestContainerPoolsConfig() {
+
+	invalidConfig := ContainerPoolsConfig{
+		Pools: []ContainerPool{
+			ContainerPool{
+				Distro:        "d1",
+				Id:            "test-pool-1",
+				MaxContainers: -5,
+			},
+		},
+	}
+
+	err := invalidConfig.ValidateAndDefault()
+	s.EqualError(err, "container pool field max_containers must be positive integer")
+
+	validConfig := ContainerPoolsConfig{
+		Pools: []ContainerPool{
+			ContainerPool{
+				Distro:        "d1",
+				Id:            "test-pool-1",
+				MaxContainers: 100,
+			},
+			ContainerPool{
+				Distro:        "d2",
+				Id:            "test-pool-2",
+				MaxContainers: 1,
+			},
+		},
+	}
+
+	err = validConfig.Set()
+	s.NoError(err)
+
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(validConfig, settings.ContainerPools)
+
+	validConfig.Pools[0].MaxContainers = 50
+	s.NoError(validConfig.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(validConfig, settings.ContainerPools)
+
+	lookup, err := settings.ContainerPools.GetContainerPool("test-pool-1")
+	s.NoError(err)
+	s.NotNil(lookup)
+	s.Equal(lookup, validConfig.Pools[0])
+
+	lookup, err = settings.ContainerPools.GetContainerPool("test-pool-2")
+	s.NoError(err)
+	s.NotNil(lookup)
+	s.Equal(lookup, validConfig.Pools[1])
+
+	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
+	s.EqualError(err, "error retrieving container pool test-pool-3")
+}

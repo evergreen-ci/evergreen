@@ -7,11 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -1049,4 +1052,1037 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 			assert.Equal(2, count.Count)
 		}
 	}
+}
+
+func TestFindAllRunningContainers(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:          "host1",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task",
+		ParentID:    "parentId",
+	}
+	host2 := &Host{
+		Id:       "host2",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostStarting,
+		ParentID: "parentId",
+	}
+	host3 := &Host{
+		Id:       "host3",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostTerminated,
+		ParentID: "parentId",
+	}
+	host4 := &Host{
+		Id:          "host4",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task2",
+		ParentID:    "parentId",
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
+	}
+	host6 := &Host{
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
+	}
+	host7 := &Host{
+		Id:          "host7",
+		Distro:      distro.Distro{Id: d2},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task3",
+	}
+	host8 := &Host{
+		Id:     "host8",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostRunning,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	containers, err := FindAllRunningContainers()
+	assert.NoError(err)
+	assert.Equal(2, len(containers))
+}
+
+func TestFindAllRunningContainersEmpty(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:          "host1",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task",
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
+	}
+	host3 := &Host{
+		Id:     "host3",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostTerminated,
+	}
+	host4 := &Host{
+		Id:          "host4",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task2",
+	}
+	host5 := &Host{
+		Id:     "host5",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
+	}
+	host6 := &Host{
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
+	}
+	host7 := &Host{
+		Id:          "host7",
+		Distro:      distro.Distro{Id: d2},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task3",
+	}
+	host8 := &Host{
+		Id:     "host8",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostRunning,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	containers, err := FindAllRunningContainers()
+	assert.NoError(err)
+	assert.Empty(containers)
+}
+
+func TestFindAllRunningParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:            "host1",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
+	}
+	host3 := &Host{
+		Id:     "host3",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostTerminated,
+	}
+	host4 := &Host{
+		Id:            "host4",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
+	}
+	host6 := &Host{
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
+	}
+	host7 := &Host{
+		Id:            "host7",
+		Distro:        distro.Distro{Id: d2},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host8 := &Host{
+		Id:            "host8",
+		Distro:        distro.Distro{Id: d2},
+		Status:        evergreen.HostTerminated,
+		HasContainers: true,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	hosts, err := FindAllRunningParents()
+	assert.NoError(err)
+	assert.Equal(3, len(hosts))
+
+}
+
+func TestFindAllRunningParentsOrdered(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:                      "host1",
+		Distro:                  distro.Distro{Id: d1},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(10 * time.Minute),
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
+	}
+	host3 := &Host{
+		Id:     "host3",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostTerminated,
+	}
+	host4 := &Host{
+		Id:                      "host4",
+		Distro:                  distro.Distro{Id: d1},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(30 * time.Minute),
+	}
+	host5 := &Host{
+		Id:                      "host5",
+		Distro:                  distro.Distro{Id: d2},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(5 * time.Minute),
+	}
+	host6 := &Host{
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
+	}
+	host7 := &Host{
+		Id:                      "host7",
+		Distro:                  distro.Distro{Id: d2},
+		Status:                  evergreen.HostRunning,
+		HasContainers:           true,
+		LastContainerFinishTime: time.Now().Add(15 * time.Minute),
+	}
+
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+
+	hosts, err := FindAllRunningParentsOrdered()
+	assert.NoError(err)
+	assert.Equal(hosts[0].Id, host5.Id)
+	assert.Equal(hosts[1].Id, host1.Id)
+	assert.Equal(hosts[2].Id, host7.Id)
+	assert.Equal(hosts[3].Id, host4.Id)
+
+}
+
+func TestFindAllRunningParentsEmpty(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:     "host1",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostRunning,
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostStarting,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+
+	containers, err := FindAllRunningParents()
+	assert.NoError(err)
+	assert.Empty(containers)
+}
+
+func TestGetContainers(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:            "host1",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		RunningTask:   "task",
+		HasContainers: true,
+	}
+	host2 := &Host{
+		Id:       "host2",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostStarting,
+		ParentID: "parentId1",
+	}
+	host3 := &Host{
+		Id:       "host3",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostTerminated,
+		ParentID: "host1",
+	}
+	host4 := &Host{
+		Id:          "host4",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task2",
+		ParentID:    "parentId1",
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "host1",
+	}
+	host6 := &Host{
+		Id:       "host6",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "host1",
+	}
+	host7 := &Host{
+		Id:          "host7",
+		Distro:      distro.Distro{Id: d2},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task3",
+		ParentID:    "host1",
+	}
+	host8 := &Host{
+		Id:       "host8",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostRunning,
+		ParentID: "host1",
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	containers, err := host1.GetContainers()
+	assert.NoError(err)
+	assert.Equal(5, len(containers))
+}
+
+func TestGetContainersNotParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:          "host1",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task",
+	}
+	host2 := &Host{
+		Id:       "host2",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostStarting,
+		ParentID: "parentId1",
+	}
+	host3 := &Host{
+		Id:       "host3",
+		Distro:   distro.Distro{Id: d1},
+		Status:   evergreen.HostTerminated,
+		ParentID: "parentId",
+	}
+	host4 := &Host{
+		Id:          "host4",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task2",
+		ParentID:    "parentId1",
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
+	}
+	host6 := &Host{
+		Id:       "host6",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
+	}
+	host7 := &Host{
+		Id:          "host7",
+		Distro:      distro.Distro{Id: d2},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task3",
+		ParentID:    "parentId",
+	}
+	host8 := &Host{
+		Id:       "host8",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	containers, err := host1.GetContainers()
+	assert.EqualError(err, "Host does not host containers")
+	assert.Empty(containers)
+}
+
+func TestIsIdleParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	provisionTimeRecent := time.Now().Add(-5 * time.Minute)
+	provisionTimeOld := time.Now().Add(-1 * time.Hour)
+
+	host1 := &Host{
+		Id:            "host1",
+		Status:        evergreen.HostRunning,
+		ProvisionTime: provisionTimeOld,
+	}
+	host2 := &Host{
+		Id:            "host2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeRecent,
+	}
+	host3 := &Host{
+		Id:            "host3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
+	}
+	host4 := &Host{
+		Id:            "host4",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ProvisionTime: provisionTimeOld,
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Status:   evergreen.HostTerminated,
+		ParentID: "host3",
+	}
+	host6 := &Host{
+		Id:       "host6",
+		Status:   evergreen.HostDecommissioned,
+		ParentID: "host4",
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+
+	// does not have containers --> false
+	idle, err := host1.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	// recent provision time --> false
+	idle, err = host2.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	// old provision time --> true
+	idle, err = host3.IsIdleParent()
+	assert.True(idle)
+	assert.NoError(err)
+
+	// has decommissioned container --> false
+	idle, err = host4.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+	// ios a container --> false
+	idle, err = host5.IsIdleParent()
+	assert.False(idle)
+	assert.NoError(err)
+
+}
+
+func TestFindParentOfContainer(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	host1 := &Host{
+		Id:       "host1",
+		Host:     "host",
+		User:     "user",
+		Distro:   distro.Distro{Id: "distro"},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
+	}
+	host2 := &Host{
+		Id:            "parentId",
+		Distro:        distro.Distro{Id: "distro"},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+
+	parent, err := host1.GetParent()
+	assert.NoError(err)
+	assert.NotNil(parent)
+}
+
+func TestFindParentOfContainerNoParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	host := &Host{
+		Id:     "hostOne",
+		Host:   "host",
+		User:   "user",
+		Distro: distro.Distro{Id: "distro"},
+		Status: evergreen.HostRunning,
+	}
+
+	assert.NoError(host.Insert())
+
+	parent, err := host.GetParent()
+	assert.EqualError(err, "Host does not have a parent")
+	assert.Nil(parent)
+}
+
+func TestFindParentOfContainerCannotFindParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	host := &Host{
+		Id:       "hostOne",
+		Host:     "host",
+		User:     "user",
+		Distro:   distro.Distro{Id: "distro"},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
+	}
+
+	assert.NoError(host.Insert())
+
+	parent, err := host.GetParent()
+	assert.EqualError(err, "Parent not found")
+	assert.Nil(parent)
+}
+
+func TestFindParentOfContainerNotParent(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	host1 := &Host{
+		Id:       "hostOne",
+		Host:     "host",
+		User:     "user",
+		Distro:   distro.Distro{Id: "distro"},
+		Status:   evergreen.HostRunning,
+		ParentID: "parentId",
+	}
+
+	host2 := &Host{
+		Id:     "parentId",
+		Distro: distro.Distro{Id: "distro"},
+		Status: evergreen.HostRunning,
+	}
+
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+
+	parent, err := host1.GetParent()
+	assert.EqualError(err, "Host found is not a parent")
+	assert.Nil(parent)
+}
+
+func TestLastContainerFinishTimePipeline(t *testing.T) {
+
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing %v collections", Collection)
+	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing '%v' collection", task.Collection)
+	assert := assert.New(t)
+
+	startTimeOne := time.Now()
+	startTimeTwo := time.Now().Add(-10 * time.Minute)
+	startTimeThree := time.Now().Add(-1 * time.Hour)
+
+	durationOne := 5 * time.Minute
+	durationTwo := 30 * time.Minute
+	durationThree := 2 * time.Hour
+
+	h1 := Host{
+		Id:          "h1",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p1",
+		RunningTask: "t1",
+	}
+	assert.NoError(h1.Insert())
+	h2 := Host{
+		Id:          "h2",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p1",
+		RunningTask: "t2",
+	}
+	assert.NoError(h2.Insert())
+	h3 := Host{
+		Id:          "h3",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p1",
+		RunningTask: "t3",
+	}
+	assert.NoError(h3.Insert())
+	h4 := Host{
+		Id:          "h4",
+		Status:      evergreen.HostRunning,
+		RunningTask: "t4",
+	}
+	assert.NoError(h4.Insert())
+	h5 := Host{
+		Id:          "h5",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p2",
+		RunningTask: "t5",
+	}
+	assert.NoError(h5.Insert())
+	h6 := Host{
+		Id:          "h6",
+		Status:      evergreen.HostRunning,
+		ParentID:    "p2",
+		RunningTask: "t6",
+	}
+	assert.NoError(h6.Insert())
+	t1 := task.Task{
+		Id: "t1",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationOne,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t1.Insert())
+	t2 := task.Task{
+		Id: "t2",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationTwo,
+		},
+		StartTime: startTimeTwo,
+	}
+	assert.NoError(t2.Insert())
+	t3 := task.Task{
+		Id: "t3",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationThree,
+		},
+		StartTime: startTimeThree,
+	}
+	assert.NoError(t3.Insert())
+	t4 := task.Task{
+		Id: "t4",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationThree,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t4.Insert())
+	t5 := task.Task{
+		Id: "t5",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationThree,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t5.Insert())
+	t6 := task.Task{
+		Id: "t6",
+		DurationPrediction: util.CachedDurationValue{
+			Value: durationTwo,
+		},
+		StartTime: startTimeOne,
+	}
+	assert.NoError(t6.Insert())
+
+	var out []FinishTime
+	var results = make(map[string]time.Time)
+
+	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &out)
+	assert.NoError(err)
+
+	for _, doc := range out {
+		results[doc.Id] = doc.FinishTime
+	}
+
+	// checks if last container finish time for each parent is within millisecond of expected
+	// necessary because Go uses nanoseconds while MongoDB uses milliseconds
+	assert.WithinDuration(results["p1"], startTimeThree.Add(durationThree), time.Millisecond)
+	assert.WithinDuration(results["p2"], startTimeOne.Add(durationThree), time.Millisecond)
+}
+
+func TestFindHostsSpawnedByTasks(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(Collection))
+
+	hosts := []*Host{
+		{
+			Id:     "1",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_1",
+				BuildID: "build_1",
+			},
+		},
+		{
+			Id:     "2",
+			Status: evergreen.HostRunning,
+		},
+		{
+			Id:     "3",
+			Status: evergreen.HostRunning,
+		},
+		{
+			Id:     "4",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_2",
+				BuildID: "build_1",
+			},
+		},
+		{
+			Id:     "5",
+			Status: evergreen.HostDecommissioned,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_1",
+				BuildID: "build_1",
+			},
+		},
+		{
+			Id:     "6",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TaskID:  "task_2",
+				BuildID: "build_1",
+			},
+		},
+	}
+	for i := range hosts {
+		require.NoError(hosts[i].Insert())
+	}
+	found, err := FindAllHostsSpawnedByTasks()
+	assert.NoError(err)
+	assert.Len(found, 2)
+	assert.Equal(found[0].Id, "1")
+	assert.Equal(found[1].Id, "4")
+
+	found, err = FindHostsSpawnedByTask("task_1")
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal(found[0].Id, "1")
+
+	found, err = FindHostsSpawnedByBuild("build_1")
+	assert.NoError(err)
+	assert.Len(found, 2)
+	assert.Equal(found[0].Id, "1")
+	assert.Equal(found[1].Id, "4")
+}
+
+func TestCountContainersOnParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	h1 := Host{
+		Id:            "h1",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h2 := Host{
+		Id:            "h2",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h3 := Host{
+		Id:            "h3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h4 := Host{
+		Id:       "h4",
+		Status:   evergreen.HostRunning,
+		ParentID: "h1",
+	}
+	h5 := Host{
+		Id:       "h5",
+		Status:   evergreen.HostRunning,
+		ParentID: "h1",
+	}
+	h6 := Host{
+		Id:       "h6",
+		Status:   evergreen.HostRunning,
+		ParentID: "h2",
+	}
+	assert.NoError(h1.Insert())
+	assert.NoError(h2.Insert())
+	assert.NoError(h3.Insert())
+	assert.NoError(h4.Insert())
+	assert.NoError(h5.Insert())
+	assert.NoError(h6.Insert())
+
+	c1, err := HostGroup{h1, h2}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c1, 3)
+
+	c2, err := HostGroup{h1, h3}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c2, 2)
+
+	c3, err := HostGroup{h2, h3}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c3, 1)
+
+	// Parents have no containers
+	c4, err := HostGroup{h3}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c4, 0)
+
+	// Parents are actually containers
+	c5, err := HostGroup{h4, h5, h6}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c5, 0)
+
+	// Parents list is empty
+	c6, err := HostGroup{}.CountContainersOnParents()
+	assert.NoError(err)
+	assert.Equal(c6, 0)
+}
+
+func TestGetHostIds(t *testing.T) {
+	assert := assert.New(t)
+	hosts := HostGroup{
+		Host{
+			Id: "h1",
+		},
+		Host{
+			Id: "h2",
+		},
+		Host{
+			Id: "h3",
+		},
+	}
+	ids := hosts.GetHostIds()
+	assert.Equal([]string{"h1", "h2", "h3"}, ids)
+}
+
+func TestFindAllRunningParentsByDistro(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	host1 := &Host{
+		Id:            "host1",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
+	}
+	host3 := &Host{
+		Id:     "host3",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostTerminated,
+	}
+	host4 := &Host{
+		Id:            "host4",
+		Distro:        distro.Distro{Id: d1},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host5 := &Host{
+		Id:       "host5",
+		Distro:   distro.Distro{Id: d2},
+		Status:   evergreen.HostProvisioning,
+		ParentID: "parentId",
+	}
+	host6 := &Host{
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostProvisioning,
+	}
+	host7 := &Host{
+		Id:            "host7",
+		Distro:        distro.Distro{Id: d2},
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	host8 := &Host{
+		Id:            "host8",
+		Distro:        distro.Distro{Id: d2},
+		Status:        evergreen.HostTerminated,
+		HasContainers: true,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	parents, err := FindAllRunningParentsByDistro(d1)
+	assert.NoError(err)
+	assert.Equal(2, len(parents))
+}
+
+func TestHostsSpawnedByTasks(t *testing.T) {
+	assert := require.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(Collection, task.Collection, build.Collection))
+	finishedTask := &task.Task{
+		Id:     "running_task",
+		Status: evergreen.TaskSucceeded,
+	}
+	require.NoError(finishedTask.Insert())
+	finishedBuild := &build.Build{
+		Id:     "running_build",
+		Status: evergreen.BuildSucceeded,
+	}
+	require.NoError(finishedBuild.Insert())
+	hosts := []*Host{
+		{
+			Id:     "running_host_timeout",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "running_host_task",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "running_host_build",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "terminated_host_timeout",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "terminated_host_task",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "terminated_host_build",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "host_not_spawned_by_task",
+			Status: evergreen.HostRunning,
+		},
+	}
+	for i := range hosts {
+		require.NoError(hosts[i].Insert())
+	}
+
+	found, err := allHostsSpawnedByTasksTimedOut()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_timeout", found[0].Id)
+
+	found, err = allHostsSpawnedByFinishedTasks()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_task", found[0].Id)
+
+	found, err = allHostsSpawnedByFinishedBuilds()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_build", found[0].Id)
+
+	found, err = AllHostsSpawnedByTasksToTerminate()
+	assert.NoError(err)
+	assert.Len(found, 3)
 }

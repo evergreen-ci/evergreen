@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -32,7 +30,6 @@ import (
 )
 
 const (
-	githubAcceptDiff        = "application/vnd.github.v3.diff"
 	patchIntentJobName      = "patch-intent-processor"
 	errInvalidPatchedConfig = "invalid patched config"
 )
@@ -301,70 +298,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	return catcher.Resolve()
 }
 
-// buildPatchURL creates a URL to enable downloading patch files through the
-// Github API
-func buildPatchURL(gp *patch.GithubPatch) string {
-	url := &url.URL{
-		Scheme: "https",
-		Host:   "api.github.com",
-		Path: fmt.Sprintf("/repos/%s/%s/pulls/%d.diff", gp.BaseOwner,
-			gp.BaseRepo, gp.PRNumber),
-	}
-
-	return url.String()
-}
-
-func fetchDiffFromGithub(gh *patch.GithubPatch, token string) (string, []patch.Summary, error) {
-	client, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "error getting http client")
-	}
-	defer util.PutHTTPClient(client)
-
-	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to create github request")
-	}
-
-	diff, err := doGithubRequest(client, req, githubAcceptDiff)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
-	}
-
-	summaries, err := thirdparty.GetPatchSummaries(diff)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to get patch summary")
-	}
-
-	return diff, summaries, nil
-}
-
-func doGithubRequest(client *http.Client, req *http.Request, accept string) (string, error) {
-	req.Header.Del("Accept")
-	req.Header.Add("Accept", accept)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to fetch data from github")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("Expected 200 OK, got %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-
-	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
-		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
-			patch.SizeLimit, resp.ContentLength)
-	}
-
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to read response body from github response")
-	}
-
-	return string(bytes), nil
-}
-
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
 	defer j.intent.SetProcessed()
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
@@ -441,14 +374,6 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
-	projectVars, err := model.FindOneProjectVars(projectRef.Identifier)
-	if err != nil {
-		return false, errors.Wrapf(err, "Could not find project vars for project '%s'", projectRef.Identifier)
-	}
-	if projectVars == nil {
-		return false, errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
-	}
-
 	isMember, err := authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
@@ -466,7 +391,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, err
 	}
 
-	patchContent, summaries, err := fetchDiffFromGithub(&patchDoc.GithubPatchData, githubOauthToken)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, &patchDoc.GithubPatchData)
 	if err != nil {
 		return isMember, err
 	}

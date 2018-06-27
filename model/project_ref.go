@@ -102,6 +102,7 @@ var (
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
+	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 )
 
 const (
@@ -312,6 +313,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
+				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 			},
 		},
 	)

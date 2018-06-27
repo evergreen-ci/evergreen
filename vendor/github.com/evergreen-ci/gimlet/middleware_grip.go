@@ -35,8 +35,34 @@ func setServiceLogger(r *http.Request, logger grip.Journaler) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), loggerKey, logger))
 }
 
+type logAnnotation struct {
+	key   string
+	value interface{}
+}
+
+// AddLoggingAnnotation adds a key-value pair to be added to logging
+// messages used by the application logging information. There can be
+// only one annotation registered per-request.
+func AddLoggingAnnotation(r *http.Request, key string, data interface{}) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), loggingAnnotationsKey, &logAnnotation{key: key, value: data}))
+}
+
 func setStartAtTime(r *http.Request, startAt time.Time) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), startAtKey, startAt))
+}
+
+func getLogAnnotation(ctx context.Context) *logAnnotation {
+	if rv := ctx.Value(loggingAnnotationsKey); rv != nil {
+		switch a := rv.(type) {
+		case *logAnnotation:
+			return a
+		case logAnnotation:
+			return &a
+		default:
+			return nil
+		}
+	}
+	return nil
 }
 
 func getRequestStartAt(ctx context.Context) time.Time {
@@ -49,6 +75,9 @@ func getRequestStartAt(ctx context.Context) time.Time {
 	return time.Time{}
 }
 
+// GetLogger produces a special logger attached to the request. If no
+// request is attached, GetLogger returns a logger instance wrapping
+// the global sender.
 func GetLogger(ctx context.Context) grip.Journaler {
 	if rv := ctx.Value(loggerKey); rv != nil {
 		if l, ok := rv.(grip.Journaler); ok {
@@ -96,8 +125,8 @@ func finishLogger(logger grip.Journaler, r *http.Request, res negroni.ResponseWr
 	ctx := r.Context()
 	startAt := getRequestStartAt(ctx)
 	dur := time.Since(startAt)
-
-	logger.Info(message.Fields{
+	a := getLogAnnotation(ctx)
+	m := message.Fields{
 		"method":      r.Method,
 		"remote":      r.RemoteAddr,
 		"request":     GetRequestID(ctx),
@@ -106,7 +135,14 @@ func finishLogger(logger grip.Journaler, r *http.Request, res negroni.ResponseWr
 		"action":      "completed",
 		"status":      res.Status(),
 		"outcome":     http.StatusText(res.Status()),
-	})
+		"length":      r.ContentLength,
+	}
+
+	if a != nil {
+		m[a.key] = a.value
+	}
+
+	logger.Info(m)
 }
 
 // This is largely duplicated from the above, but lets us optionally
@@ -114,7 +150,17 @@ type appRecoveryLogger struct {
 	grip.Journaler
 }
 
-func NewRecoveryLogger() Middleware { return &appRecoveryLogger{} }
+// NewRecoveryLogger logs request start, end, and recovers from panics
+// (logging the panic as well).
+func NewRecoveryLogger(j grip.Journaler) Middleware { return &appRecoveryLogger{Journaler: j} }
+
+// MakeRecoveryLoger constructs a middleware layer that logs request
+// start, end, and recovers from panics (logging the panic as well).
+//
+// This logger uses the default grip logger.
+func MakeRecoveryLogger() Middleware {
+	return &appRecoveryLogger{Journaler: logging.MakeGrip(grip.GetSender())}
+}
 
 func (l *appRecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	r = setupLogger(l.Journaler, r)
@@ -129,15 +175,16 @@ func (l *appRecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 			rw.WriteHeader(http.StatusInternalServerError)
 
 			l.Critical(message.WrapStack(2, message.Fields{
-				"panic":   err,
-				"action":  "aborted",
-				"request": GetRequestID(ctx),
-				"path":    r.URL.Path,
-				"remote":  r.RemoteAddr,
+				"panic":    err,
+				"action":   "aborted",
+				"request":  GetRequestID(ctx),
+				"duration": time.Since(getRequestStartAt(ctx)),
+				"path":     r.URL.Path,
+				"remote":   r.RemoteAddr,
+				"length":   r.ContentLength,
 			}))
 		}
 	}()
-
 	next(rw, r)
 
 	res := rw.(negroni.ResponseWriter)

@@ -203,9 +203,9 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 				apiErr := &rest.APIError{}
 				if err := util.ReadJSONInto(resp.Body, err); err != nil {
-					return nil, errors.Wrapf(apiErr, "server returned %d", http.StatusBadRequest)
+					return nil, errors.Wrapf(apiErr, "server returned %d", resp.StatusCode)
 				}
-				return nil, errors.Errorf("server returned %d", http.StatusBadRequest)
+				return nil, errors.Errorf("server returned %d", resp.StatusCode)
 			} else if resp != nil {
 				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
 			}

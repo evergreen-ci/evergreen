@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +20,7 @@ type DBUserConnector struct{}
 
 // FindUserById uses the service layer's user type to query the backing database for
 // the user with the given Id.
-func (tc *DBUserConnector) FindUserById(userId string) (auth.APIUser, error) {
+func (tc *DBUserConnector) FindUserById(userId string) (gimlet.User, error) {
 	t, err := user.FindOne(user.ById(userId))
 	if err != nil {
 		return nil, err
@@ -55,43 +55,26 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		subscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
 
-	var subscription *event.Subscription
-	if dbUser.Settings.Notifications.PatchFinishID.Valid() {
-		var err error
-		subscription, err = event.FindSubscriptionByID(dbUser.Settings.Notifications.PatchFinishID)
-		if err != nil {
-			return err
-		}
-		if subscription != nil {
-			dbUser.Settings.Notifications.PatchFinishID = subscription.ID
-		}
-		// in the event the database has bad data, we proceed as if
-		// a new subscription is being created.
+	patchSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchOutcome,
+		dbUser.Settings.Notifications.PatchFinishID, subscriber, dbUser.Id)
+	if err != nil {
+		return err
 	}
-	if subscriber.Validate() == nil {
-		if subscription == nil {
-			temp := event.NewPatchOutcomeSubscriptionByOwner(dbUser.Id, subscriber)
-			subscription = &temp
-			settings.Notifications.PatchFinishID = subscription.ID
-
-		} else {
-			subscription.Subscriber = subscriber
-		}
-
-		subscription.OwnerType = event.OwnerTypePerson
-		subscription.Owner = dbUser.Id
-
-		if err := subscription.Upsert(); err != nil {
-			return errors.Wrap(err, "failed to update subscription")
-		}
-
+	if patchSubscription != nil {
+		settings.Notifications.PatchFinishID = patchSubscription.ID
 	} else {
-		if dbUser.Settings.Notifications.PatchFinishID.Valid() {
-			if err := event.RemoveSubscription(dbUser.Settings.Notifications.PatchFinishID); err != nil {
-				return err
-			}
-			settings.Notifications.PatchFinishID = ""
-		}
+		settings.Notifications.PatchFinishID = ""
+	}
+
+	buildBreakSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionBuildBreak,
+		dbUser.Settings.Notifications.BuildBreakID, subscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if buildBreakSubscription != nil {
+		settings.Notifications.BuildBreakID = buildBreakSubscription.ID
+	} else {
+		settings.Notifications.BuildBreakID = ""
 	}
 
 	return model.SaveUserSettings(dbUser.Id, settings)
@@ -106,7 +89,7 @@ type MockUserConnector struct {
 // FindUserById provides a mock implementation of the User functions
 // from the Connector that does not need to use a database.
 // It returns results based on the cached users in the MockUserConnector.
-func (muc *MockUserConnector) FindUserById(userId string) (auth.APIUser, error) {
+func (muc *MockUserConnector) FindUserById(userId string) (gimlet.User, error) {
 	u := muc.CachedUsers[userId]
 	return u, nil
 }

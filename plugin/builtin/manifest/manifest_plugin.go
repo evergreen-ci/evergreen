@@ -43,7 +43,7 @@ func (m *ManifestPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 			{
 				Page:      plugin.VersionPage,
 				Position:  plugin.PageRight,
-				PanelHTML: "<div ng-include=\"'/plugin/manifest/static/partials/version_manifest_panel.html'\"></div>",
+				PanelHTML: "<div ng-include=\"'/static/plugins/manifest/partials/version_manifest_panel.html'\"></div>",
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
 					if context.Version == nil {
 						return nil, nil

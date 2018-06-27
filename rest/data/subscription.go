@@ -45,6 +45,10 @@ func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType even
 	return apiSubs, nil
 }
 
+func (dc *DBSubscriptionConnector) DeleteSubscription(id string) error {
+	return event.RemoveSubscriptionID(id)
+}
+
 type MockSubscriptionConnector struct {
 	MockSubscriptions []event.Subscription
 }
@@ -54,5 +58,9 @@ func (mc *MockSubscriptionConnector) GetSubscriptions(user string, ownerType eve
 }
 
 func (mc *MockSubscriptionConnector) SaveSubscriptions(subscriptions []event.Subscription) error {
+	return errors.New("MockSubscriptionConnector unimplemented")
+}
+
+func (dc *MockSubscriptionConnector) DeleteSubscription(id string) error {
 	return errors.New("MockSubscriptionConnector unimplemented")
 }

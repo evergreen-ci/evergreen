@@ -5,6 +5,22 @@ mciModule
     PATCH_ID_LEN: 24,
   })
 
+  .constant('BF', {
+    OPEN_STATUSES: ['Open', 'In Progress', 'Waiting for bug fix'],
+  })
+
+  .constant('STITCH_CONFIG', {
+    PERF: {
+      serviceType: 'mongodb',
+      serviceName: 'mongodb-atlas',
+      appId: 'evergreen_perf_plugin-wwdoa',
+      // Assets associated with this instance
+      DB_PERF: 'perf',
+      COLL_CHANGE_POINTS: 'change_points',
+      COLL_BUILD_FAILURES: 'build_failures',
+    }
+  })
+
   .constant('API_V1', {
     BASE: '/rest/v1',
 

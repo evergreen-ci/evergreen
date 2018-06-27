@@ -403,7 +403,7 @@ func RefreshTasksCache(buildId string) error {
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
 
-//AddTasksToBuild creates the tasks for the given build of a project
+// AddTasksToBuild creates the tasks for the given build of a project
 func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	taskNames []string, displayNames []string, generatedBy string) (*build.Build, error) {
 
@@ -416,17 +416,13 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// create the new tasks for the build
 	taskIds := NewTaskIdTable(project, v)
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
-	// insert the tasks into the db
-	for _, t := range tasks {
-		t.GeneratedBy = generatedBy
-		if err := t.Insert(); err != nil {
-			return nil, errors.Wrapf(err, "error inserting task %s", t.Id)
-		}
+	if err = tasks.Insert(); err != nil {
+		return nil, errors.Wrapf(err, "error inserting tasks for build", b.Id)
 	}
 
 	// update the build to hold the new tasks
@@ -486,19 +482,13 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames)
+	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
-	// insert all of the build's tasks into the db
-	for _, t := range tasksForBuild {
-		t.GeneratedBy = generatedBy
-		err = t.Insert()
-		if err == nil || db.IsDuplicateKey(err) {
-			continue
-		}
-		return "", errors.Wrapf(err, "error inserting task %s", t.Id)
+	if err = tasksForBuild.InsertUnordered(); err != nil && !db.IsDuplicateKey(err) {
+		return "", errors.Wrapf(err, "error inserting task for build", buildId)
 	}
 
 	// create task caches for all of the tasks, and place them into the build
@@ -569,7 +559,8 @@ func shouldNotPatchBuild(t BuildVariantTaskUnit, requester string) bool {
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build,
-	v *version.Version, taskIds TaskIdConfig, taskNames []string, displayNames []string) ([]*task.Task, error) {
+	v *version.Version, taskIds TaskIdConfig, taskNames []string,
+	displayNames []string, generatedBy string) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -714,6 +705,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 		newTask.DisplayTask = displayTasks[newTask.DisplayName]
 
+		newTask.GeneratedBy = generatedBy
 		// append the task to the list of the created tasks
 		tasks = append(tasks, newTask)
 	}
@@ -876,6 +868,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		Version:             v.Id,
 		Revision:            v.Revision,
 		Project:             p.Identifier,
+		Requester:           v.Requester,
 		DisplayOnly:         true,
 		ExecutionTasks:      execTasks,
 		Status:              evergreen.TaskUndispatched,

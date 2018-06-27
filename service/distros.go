@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 )
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +36,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["distro_id"]
+	id := gimlet.GetVars(r)["distro_id"]
 	shouldDeco := r.FormValue("deco") == "true"
 
 	u := MustHaveUser(r)
@@ -116,7 +115,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["distro_id"]
+	id := gimlet.GetVars(r)["distro_id"]
 
 	u := MustHaveUser(r)
 
@@ -142,7 +141,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["distro_id"]
+	id := gimlet.GetVars(r)["distro_id"]
 
 	d, err := distro.FindOne(distro.ById(id))
 	if err != nil {
@@ -156,7 +155,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
-	id, hasId := mux.Vars(r)["distro_id"]
+	id, hasId := gimlet.GetVars(r)["distro_id"]
 
 	u := MustHaveUser(r)
 

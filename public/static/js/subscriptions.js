@@ -3,6 +3,29 @@ const SUBSCRIPTION_JIRA_ISSUE = 'jira-issue';
 const SUBSCRIPTION_SLACK = 'slack';
 const SUBSCRIPTION_EMAIL = 'email';
 const SUBSCRIPTION_EVERGREEN_WEBHOOK = 'evergreen-webhook';
+const DEFAULT_SUBSCRIPTION_METHODS = [
+    {
+        value: SUBSCRIPTION_EMAIL,
+        label: "sending an email",
+    },
+    {
+        value: SUBSCRIPTION_SLACK,
+        label: "sending a slack message",
+    },
+    {
+        value: SUBSCRIPTION_JIRA_COMMENT,
+        label: "making a comment on a JIRA issue",
+    },
+    {
+        value: SUBSCRIPTION_JIRA_ISSUE,
+        label: "making a JIRA issue",
+    },
+    {
+        value: SUBSCRIPTION_EVERGREEN_WEBHOOK,
+        label: "posting to an external server",
+    },
+    // Github status api is deliberately omitted here
+];
 
 // Return a human readable label for a given subscriber object
 function subscriberLabel(subscriber) {
@@ -33,17 +56,17 @@ function subscriberLabel(subscriber) {
 // }
 
 // Return a promise for the add subscription modal, with the list of triggers
-function addSubscriber($mdDialog, triggers) {
-    return subscriberPromise($mdDialog, "Add", triggers)
+function addSubscriber($mdDialog, triggers, omitMethods) {
+    return subscriberPromise($mdDialog, "Add", triggers, omitMethods)
 }
 
 // Return a promise for the edit subscription modal, with the list of triggers.
 // trigger and subscriber are the selected trigger and subscriber
-function editSubscriber($mdDialog, triggers, subscription) {
-    return subscriberPromise($mdDialog, "Edit", triggers, subscription)
+function editSubscriber($mdDialog, triggers, subscription, omitMethods) {
+    return subscriberPromise($mdDialog, "Edit", triggers, omitMethods, subscription)
 }
 
-function subscriberPromise($mdDialog, verb, triggers, subscription) {
+function subscriberPromise($mdDialog, verb, triggers, omitMethods, subscription) {
     return $mdDialog.confirm({
         title:"test",
         templateUrl: "/static/partials/subscription_modal.html",
@@ -53,41 +76,37 @@ function subscriberPromise($mdDialog, verb, triggers, subscription) {
         locals: {
             triggers: triggers,
             verb: verb,
-            subscription: subscription
+            subscription: subscription,
+            omit: omitMethods
         },
     });
 }
 
-function subCtrl($scope, $mdDialog) {
+function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     // labels should complete the following sentence fragments:
     // 'then notify by ...'
     // 'when ...'
-    $scope.subscription_methods = [
-        {
-            value: SUBSCRIPTION_EMAIL,
-            label: "sending an email",
-        },
-        {
-            value: SUBSCRIPTION_SLACK,
-            label: "sending a slack message",
-        },
-        {
-            value: SUBSCRIPTION_JIRA_COMMENT,
-            label: "making a comment on a JIRA issue",
-        },
-        {
-            value: SUBSCRIPTION_JIRA_ISSUE,
-            label: "making a JIRA issue",
-        },
-        {
-            value: SUBSCRIPTION_EVERGREEN_WEBHOOK,
-            label: "posting to an external server",
-        },
-        // Github status api is deliberately omitted here
-    ];
+
+    $scope.subscription_methods = DEFAULT_SUBSCRIPTION_METHODS;
+    if ($scope.c.omit) {
+      $scope.subscription_methods = _($scope.subscription_methods).filter(function(method){
+        return !$scope.c.omit[method.value];
+      });
+    };
+    $scope.extraData = {};
 
     $scope.closeDialog = function(save) {
         if(save === true) {
+            $scope.validationErrors = [];
+            for (var key in $scope.customValidation) {
+              var validationMsg = $scope.customValidation[key]($scope.extraData[key]);
+              if (validationMsg) {
+                $scope.validationErrors.push(validationMsg);
+              };
+            };
+            if ($scope.validationErrors.length > 0) {
+              return;
+            }
             subscriber = {
                 type: $scope.method.value,
                 target: $scope.targets[$scope.method.value],
@@ -99,6 +118,7 @@ function subCtrl($scope, $mdDialog) {
             d.resource_type = $scope.trigger.resource_type;
             d.trigger = $scope.trigger.trigger;
             d.trigger_label = $scope.trigger.label;
+            d.trigger_data = $scope.extraData;
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -113,6 +133,15 @@ function subCtrl($scope, $mdDialog) {
 
         return text;
     };
+
+    $scope.addCustomValidation = function(fields) {
+      $scope.customValidation = {};
+      if (fields) {
+        _.each(fields, function(field) {
+          $scope.customValidation[field.key] = field.validator;
+        });
+      };
+    }
 
     $scope.valid = function() {
         if (!$scope.trigger || !$scope.method) {
@@ -150,6 +179,17 @@ function subCtrl($scope, $mdDialog) {
         return false;
     };
 
+
+    $scope.bindTrigger = function() {
+      _.each($scope.c.triggers, function(trigger){
+        if (trigger.trigger === $scope.trigger.trigger) {
+          $scope.extraFields = trigger.extraFields;
+          $scope.addCustomValidation(trigger.extraFields);
+          return;
+        }
+      });
+    };
+
     $scope.method = {};
     $scope.targets = {};
     $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {
@@ -162,6 +202,15 @@ function subCtrl($scope, $mdDialog) {
             $scope.method = t[0];
         }
         $scope.trigger = lookupTrigger($scope.c.triggers, $scope.c.subscription.trigger, $scope.c.subscription.resource_type);
+
+    }else {
+        mciUserSettingsService.getUserSettings({success: function(resp) {
+            if (!$scope.targets[SUBSCRIPTION_SLACK]) {
+                $scope.targets[SUBSCRIPTION_SLACK] = "@" + resp.data.slack_username || "";
+            }
+        }, error: function(resp) {
+            console.log("failed to fetch user settings: ", resp);
+        }});
     }
 }
 
@@ -213,4 +262,23 @@ function addInSelectorsAndOwnerType(subscription, type, inType, id) {
     data: id
   });
   subscription.owner_type = "person";
+}
+
+function validateDuration(duration) {
+  if (!Number.isInteger(+duration)) {
+    return duration + " must be an integer";
+  }
+  if (+duration < 0) {
+    return duration + " cannot be negative";
+  }
+  return "";
+}
+function validatePercentage(percent) {
+  if (!isFinite(percent)) {
+    return percent + " must be a number";
+  }
+  if (+percent <= 0) {
+    return percent + " must be positive";
+  }
+  return "";
 }

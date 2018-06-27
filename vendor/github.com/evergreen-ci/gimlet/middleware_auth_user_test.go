@@ -50,9 +50,8 @@ func TestUserMiddleware(t *testing.T) {
 	m.ServeHTTP(rw, req, next)
 	assert.Equal(1, counter)
 	assert.Equal(http.StatusOK, rw.Code)
-	rusr, ok := GetUser(req.Context())
+	rusr := GetUser(req.Context())
 	assert.Nil(rusr)
-	assert.False(ok)
 
 	// now check if we enable one or the other or both and its not configured, there is no user attached:
 	for _, conf := range []UserMiddlewareConfiguration{
@@ -67,9 +66,8 @@ func TestUserMiddleware(t *testing.T) {
 		m.ServeHTTP(rw, req, next)
 		assert.Equal(http.StatusOK, rw.Code)
 
-		rusr, ok = GetUser(req.Context())
+		rusr = GetUser(req.Context())
 		assert.Nil(rusr)
-		assert.False(ok)
 	}
 	counter = 0
 
@@ -90,9 +88,8 @@ func TestUserMiddleware(t *testing.T) {
 	req.Header[conf.HeaderKeyName] = []string{user.APIKey}
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, req, func(rw http.ResponseWriter, r *http.Request) {
-		rusr, ok := GetUser(r.Context())
+		rusr := GetUser(r.Context())
 		assert.Equal(user, rusr)
-		assert.True(ok)
 	})
 	assert.Equal(http.StatusOK, rw.Code)
 
@@ -102,9 +99,8 @@ func TestUserMiddleware(t *testing.T) {
 	req.Header[conf.HeaderKeyName] = []string{"worse"}
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, req, func(rw http.ResponseWriter, r *http.Request) {
-		rusr, ok := GetUser(r.Context())
+		rusr := GetUser(r.Context())
 		assert.Nil(rusr)
-		assert.False(ok)
 	})
 	assert.Equal(http.StatusUnauthorized, rw.Code)
 
@@ -126,15 +122,13 @@ func TestUserMiddleware(t *testing.T) {
 	})
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, req, func(rw http.ResponseWriter, r *http.Request) {
-		rusr, ok := GetUser(r.Context())
+		rusr := GetUser(r.Context())
 		assert.Nil(rusr)
-		assert.False(ok)
 	})
 	assert.Equal(http.StatusOK, rw.Code)
 
 	// try with the right token but wrong value
 	req, err = http.NewRequest("GET", "http://localhost/bar", body)
-	rw = httptest.NewRecorder()
 	assert.NoError(err)
 	assert.NotNil(req)
 	req.AddCookie(&http.Cookie{
@@ -143,16 +137,14 @@ func TestUserMiddleware(t *testing.T) {
 	})
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, req, func(rw http.ResponseWriter, r *http.Request) {
-		rusr, ok := GetUser(r.Context())
+		rusr := GetUser(r.Context())
 		assert.Nil(rusr)
-		assert.False(ok)
 	})
 	assert.Equal(http.StatusOK, rw.Code)
 
 	// try with something that should work
 	usermanager.TokenToUsers["42"] = user
 	req, err = http.NewRequest("GET", "http://localhost/bar", body)
-	rw = httptest.NewRecorder()
 	assert.NoError(err)
 	assert.NotNil(req)
 	req.AddCookie(&http.Cookie{
@@ -161,8 +153,7 @@ func TestUserMiddleware(t *testing.T) {
 	})
 	rw = httptest.NewRecorder()
 	m.ServeHTTP(rw, req, func(rw http.ResponseWriter, r *http.Request) {
-		rusr, ok := GetUser(r.Context())
-		assert.True(ok)
+		rusr := GetUser(r.Context())
 		assert.Equal(user, rusr)
 	})
 	assert.Equal(http.StatusOK, rw.Code)
@@ -170,7 +161,6 @@ func TestUserMiddleware(t *testing.T) {
 	// test that if get-or-create fails that the op does
 	usermanager.CreateUserFails = true
 	req, err = http.NewRequest("GET", "http://localhost/bar", body)
-	rw = httptest.NewRecorder()
 	assert.NoError(err)
 	assert.NotNil(req)
 	req.AddCookie(&http.Cookie{
@@ -180,9 +170,8 @@ func TestUserMiddleware(t *testing.T) {
 	rw = httptest.NewRecorder()
 	counter = 0
 	m.ServeHTTP(rw, req, func(rw http.ResponseWriter, r *http.Request) {
-		rusr, ok := GetUser(r.Context())
+		rusr := GetUser(r.Context())
 		assert.Nil(rusr)
-		assert.False(ok)
 	})
 	assert.Equal(http.StatusOK, rw.Code)
 }

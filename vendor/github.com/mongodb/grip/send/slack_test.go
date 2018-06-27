@@ -327,3 +327,30 @@ func (s *SlackSuite) TestSendMethodDoesIncorrectlyAllowTooLowMessages() {
 	sender.Send(message.NewDefaultMessage(level.Alert, "hello"))
 	s.Equal(mock.numSent, 2)
 }
+
+func (s *SlackSuite) TestSettingBotIdentity() {
+	sender, err := NewSlackLogger(s.opts, "foo", LevelInfo{level.Trace, level.Info})
+	s.NoError(err)
+	s.NotNil(sender)
+
+	mock, ok := s.opts.client.(*slackClientMock)
+	s.True(ok)
+	s.Equal(mock.numSent, 0)
+	s.False(mock.failSendingMessage)
+
+	m := message.NewDefaultMessage(level.Alert, "world")
+	sender.Send(m)
+	s.Equal(1, mock.numSent)
+	s.Empty(mock.lastMsg.Username)
+	s.Empty(mock.lastMsg.IconUrl)
+
+	s.opts.Username = "Grip"
+	s.opts.IconURL = "https://example.com/icon.ico"
+	sender, err = NewSlackLogger(s.opts, "foo", LevelInfo{level.Trace, level.Info})
+	s.NoError(err)
+	sender.Send(m)
+	s.Equal(2, mock.numSent)
+	s.Equal("Grip", mock.lastMsg.Username)
+	s.Equal("https://example.com/icon.ico", mock.lastMsg.IconUrl)
+	s.False(mock.lastMsg.AsUser)
+}

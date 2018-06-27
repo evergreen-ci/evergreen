@@ -20,6 +20,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidSSHOptions,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
+	ensureValidContainerPool,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -169,5 +170,23 @@ func ensureHasNonZeroID(ctx context.Context, d *distro.Distro, s *evergreen.Sett
 		return []ValidationError{{Error, "distro must specify id"}}
 	}
 
+	return nil
+}
+
+// ensureValidContainerPool checks that a distro's container pool exists and
+// has a valid distro capable of hosting containers
+func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
+	if d.ContainerPool != "" {
+		// check if container pool exists
+		_, err := s.ContainerPools.GetContainerPool(d.ContainerPool)
+		if err != nil {
+			return []ValidationError{{Error, "distro container pool does not exist"}}
+		}
+		// warn if container pool exists without valid distro
+		err = distro.ValidateContainerPoolDistros(s)
+		if err != nil {
+			return []ValidationError{{Error, "error in container pool settings: " + err.Error()}}
+		}
+	}
 	return nil
 }

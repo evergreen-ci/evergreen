@@ -251,11 +251,22 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		hosts, err := host.FindHostsToTerminate()
 		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
+			"operation": "populate host termination jobs",
 			"cron":      hostTerminationJobName,
 			"impact":    "hosts termination interrupted",
 		}))
+		catcher.Add(err)
 
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+		}
+
+		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "populate hosts spawned by tasks termination jobs",
+			"cron":      hostTerminationJobName,
+			"impact":    "hosts termination interrupted",
+		}))
 		catcher.Add(err)
 
 		for _, h := range hosts {
@@ -303,6 +314,37 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 		for _, h := range hosts {
 			err := queue.Put(NewIdleHostTerminationJob(env, h, ts))
 			catcher.Add(err)
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateLastContainerFinishTimeJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		err := queue.Put(NewLastContainerFinishTimeJob(ts))
+		catcher.Add(err)
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateParentDecommissionJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+
+		settings, err := evergreen.GetConfig()
+		if err != nil {
+			return errors.Wrap(err, "Error finding evergreen settings")
+		}
+		containerPools := settings.ContainerPools.Pools
+
+		// Create ParentDecommissionJob for each distro
+		for _, c := range containerPools {
+			catcher.Add(queue.Put(NewParentDecommissionJob(ts, c.Distro, c.MaxContainers)))
 		}
 
 		return catcher.Resolve()

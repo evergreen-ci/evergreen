@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -107,8 +106,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 // Get the patch with the specified request it
 func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	// get id and secret from the request.
-	vars := mux.Vars(r)
-	patchIdStr := vars["patchId"]
+	patchIdStr := gimlet.GetVars(r)["patchId"]
 	if len(patchIdStr) == 0 {
 		return nil, errors.New("no patch id supplied")
 	}

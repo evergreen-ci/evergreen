@@ -23,7 +23,9 @@ import (
 // DescriptionTemplateString defines the content of the alert ticket.
 const DescriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id}}/{{.Task.Execution}}]
+{{if .Host}}
 Host: [{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]
+{{end}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
@@ -144,14 +146,14 @@ func getSummary(ctx AlertContext) string {
 	switch {
 	case ctx.Task.Details.TimedOut:
 		subj.WriteString("Timed Out: ")
+	case ctx.Task.Details.Type == model.SystemCommandType:
+		subj.WriteString("System Failure: ")
+	case ctx.Task.Details.Type == model.SetupCommandType:
+		subj.WriteString("Setup Failure: ")
 	case len(failed) == 1:
 		subj.WriteString("Failure: ")
 	case len(failed) > 1:
 		subj.WriteString("Failures: ")
-	case ctx.Task.Details.Description == task.AgentHeartbeat:
-		subj.WriteString("System Failure: ")
-	case ctx.Task.Details.Type == model.SystemCommandType:
-		subj.WriteString("System Failure: ")
 	default:
 		subj.WriteString("Failed: ")
 	}

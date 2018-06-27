@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -71,7 +72,11 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		grip.Errorf("Error logging host event: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeHost,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
 	}
 }
 

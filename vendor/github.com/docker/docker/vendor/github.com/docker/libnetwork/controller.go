@@ -48,6 +48,7 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -60,6 +61,7 @@ import (
 	"github.com/docker/libnetwork/cluster"
 	"github.com/docker/libnetwork/config"
 	"github.com/docker/libnetwork/datastore"
+	"github.com/docker/libnetwork/diagnostic"
 	"github.com/docker/libnetwork/discoverapi"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/drvregistry"
@@ -133,6 +135,13 @@ type NetworkController interface {
 
 	// SetKeys configures the encryption key for gossip and overlay data path
 	SetKeys(keys []*types.EncryptionKey) error
+
+	// StartDiagnostic start the network diagnostic mode
+	StartDiagnostic(port int)
+	// StopDiagnostic start the network diagnostic mode
+	StopDiagnostic()
+	// IsDiagnosticEnabled returns true if the diagnostic is enabled
+	IsDiagnosticEnabled() bool
 }
 
 // NetworkWalker is a client provided function which will be used to walk the Networks.
@@ -167,6 +176,7 @@ type controller struct {
 	agentStopDone          chan struct{}
 	keys                   []*types.EncryptionKey
 	clusterConfigAvailable bool
+	DiagnosticServer       *diagnostic.Server
 	sync.Mutex
 }
 
@@ -178,14 +188,16 @@ type initializer struct {
 // New creates a new instance of network controller.
 func New(cfgOptions ...config.Option) (NetworkController, error) {
 	c := &controller{
-		id:              stringid.GenerateRandomID(),
-		cfg:             config.ParseConfigOptions(cfgOptions...),
-		sandboxes:       sandboxTable{},
-		svcRecords:      make(map[string]svcInfo),
-		serviceBindings: make(map[serviceKey]*service),
-		agentInitDone:   make(chan struct{}),
-		networkLocker:   locker.New(),
+		id:               stringid.GenerateRandomID(),
+		cfg:              config.ParseConfigOptions(cfgOptions...),
+		sandboxes:        sandboxTable{},
+		svcRecords:       make(map[string]svcInfo),
+		serviceBindings:  make(map[serviceKey]*service),
+		agentInitDone:    make(chan struct{}),
+		networkLocker:    locker.New(),
+		DiagnosticServer: diagnostic.New(),
 	}
+	c.DiagnosticServer.Init()
 
 	if err := c.initStores(); err != nil {
 		return nil, err
@@ -210,7 +222,7 @@ func New(cfgOptions ...config.Option) (NetworkController, error) {
 		}
 	}
 
-	if err = initIPAMDrivers(drvRegistry, nil, c.getStore(datastore.GlobalScope)); err != nil {
+	if err = initIPAMDrivers(drvRegistry, nil, c.getStore(datastore.GlobalScope), c.cfg.Daemon.DefaultAddressPool); err != nil {
 		return nil, err
 	}
 
@@ -341,6 +353,7 @@ func (c *controller) clusterAgentInit() {
 			// should still be present when cleaning up
 			// service bindings
 			c.agentClose()
+			c.cleanupServiceDiscovery("")
 			c.cleanupServiceBindings("")
 
 			c.agentStopComplete()
@@ -836,20 +849,41 @@ addToStore:
 	if err = c.updateToStore(network); err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err != nil {
+			if e := c.deleteFromStore(network); e != nil {
+				logrus.Warnf("could not rollback from store, network %v on failure (%v): %v", network, err, e)
+			}
+		}
+	}()
+
 	if network.configOnly {
 		return network, nil
 	}
 
 	joinCluster(network)
+	defer func() {
+		if err != nil {
+			network.cancelDriverWatches()
+			if e := network.leaveCluster(); e != nil {
+				logrus.Warnf("Failed to leave agent cluster on network %s on failure (%v): %v", network.name, err, e)
+			}
+		}
+	}()
+
+	if len(network.loadBalancerIP) != 0 {
+		if err = network.createLoadBalancerSandbox(); err != nil {
+			return nil, err
+		}
+	}
+
 	if !c.isDistributedControl() {
 		c.Lock()
 		arrangeIngressFilterRule()
 		c.Unlock()
 	}
 
-	c.Lock()
-	arrangeUserFilterRule()
-	c.Unlock()
+	c.arrangeUserFilterRule()
 
 	return network, nil
 }
@@ -1041,10 +1075,15 @@ func (c *controller) NewSandbox(containerID string, options ...SandboxOption) (S
 	}
 	c.Unlock()
 
+	sandboxID := stringid.GenerateRandomID()
+	if runtime.GOOS == "windows" {
+		sandboxID = containerID
+	}
+
 	// Create sandbox and process options first. Key generation depends on an option
 	if sb == nil {
 		sb = &sandbox{
-			id:                 stringid.GenerateRandomID(),
+			id:                 sandboxID,
 			containerID:        containerID,
 			endpoints:          epHeap{},
 			epPriority:         map[string]int{},
@@ -1266,4 +1305,29 @@ func (c *controller) Stop() {
 	c.closeStores()
 	c.stopExternalKeyListener()
 	osl.GC()
+}
+
+// StartDiagnostic start the network dias mode
+func (c *controller) StartDiagnostic(port int) {
+	c.Lock()
+	if !c.DiagnosticServer.IsDiagnosticEnabled() {
+		c.DiagnosticServer.EnableDiagnostic("127.0.0.1", port)
+	}
+	c.Unlock()
+}
+
+// StopDiagnostic start the network dias mode
+func (c *controller) StopDiagnostic() {
+	c.Lock()
+	if c.DiagnosticServer.IsDiagnosticEnabled() {
+		c.DiagnosticServer.DisableDiagnostic()
+	}
+	c.Unlock()
+}
+
+// IsDiagnosticEnabled returns true if the dias is enabled
+func (c *controller) IsDiagnosticEnabled() bool {
+	c.Lock()
+	defer c.Unlock()
+	return c.DiagnosticServer.IsDiagnosticEnabled()
 }

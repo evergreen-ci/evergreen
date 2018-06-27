@@ -56,6 +56,10 @@ type subprocessExec struct {
 	// allows following commands to execute even if this shell command fails.
 	ContinueOnError bool `mapstructure:"continue_on_err"`
 
+	// KeepEmptyArgs will allow empty arguments in commands if set to true
+	// note that non-blank whitespace arguments are never stripped
+	KeepEmptyArgs bool `mapstructure:"keep_empty_args"`
+
 	base
 }
 
@@ -187,13 +191,20 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		return errors.WithStack(err)
 	}
 
+	if !c.KeepEmptyArgs {
+		for i, arg := range c.Args {
+			if arg == "" {
+				c.Args = append(c.Args[:i], c.Args[i+1:]...)
+			}
+		}
+	}
+
 	proc, closer, err := c.getProc(conf.Task.Id, logger)
 	if err != nil {
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
 	defer closer()
-	grip.Info(proc)
 
 	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, proc, logger))
 

@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -9,28 +10,30 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
 )
 
 func getSubscriptionRouteManager(route string, version int) *RouteManager {
 	h := &subscriptionPostHandler{}
 
 	postHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    h.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: h.Handler(),
+		MethodType:     http.MethodPost,
 	}
 	getHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    &subscriptionGetHandler{},
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: &subscriptionGetHandler{},
+		MethodType:     http.MethodGet,
+	}
+	deleteHandler := MethodHandler{
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: &subscriptionDeleteHandler{},
+		MethodType:     http.MethodDelete,
 	}
 
 	routeManager := RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{postHandler, getHandler},
+		Methods: []MethodHandler{postHandler, getHandler, deleteHandler},
 		Version: version,
 	}
 	return &routeManager
@@ -80,6 +83,13 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 			}
 		}
 
+		if ok, msg := isSubscriptionAllowed(dbSubscription); !ok {
+			return &rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    msg,
+			}
+		}
+
 		err = dbSubscription.Validate()
 		if err != nil {
 			return &rest.APIError{
@@ -92,6 +102,22 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 	}
 
 	return nil
+}
+
+func isSubscriptionAllowed(sub event.Subscription) (bool, string) {
+	for _, selector := range sub.Selectors {
+
+		if selector.Type == "object" {
+			if selector.Data == "build" || selector.Data == "version" || selector.Data == "task" {
+				if sub.Subscriber.Type == "jira-issue" || sub.Subscriber.Type == "evergreen-webhook" {
+					return false, fmt.Sprintf("Cannot notify by %s for %s", sub.Subscriber.Type, selector.Data)
+				}
+			}
+		}
+
+	}
+
+	return true, ""
 }
 
 func (s *subscriptionPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
@@ -114,9 +140,8 @@ func (s *subscriptionGetHandler) Handler() RequestHandler {
 
 func (s *subscriptionGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	u := MustHaveUser(ctx)
-	vars := mux.Vars(r)
-	s.owner = vars["owner"]
-	s.ownerType = vars["type"]
+	s.owner = r.FormValue("owner")
+	s.ownerType = r.FormValue("type")
 	if !event.IsValidOwnerType(s.ownerType) {
 		return rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -153,4 +178,54 @@ func (s *subscriptionGetHandler) Execute(_ context.Context, sc data.Connector) (
 	return ResponseData{
 		Result: model,
 	}, nil
+}
+
+type subscriptionDeleteHandler struct {
+	id string
+}
+
+func (s *subscriptionDeleteHandler) Handler() RequestHandler {
+	return &subscriptionDeleteHandler{}
+}
+
+func (s *subscriptionDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	u := MustHaveUser(ctx)
+	idString := r.FormValue("id")
+	if idString == "" {
+		return rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Must specify an ID to delete",
+		}
+	}
+	s.id = idString
+	subscription, err := event.FindSubscriptionByIDString(s.id)
+	if err != nil {
+		return rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		}
+	}
+	if subscription == nil {
+		return rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    "Subscription not found",
+		}
+	}
+	if subscription.Owner != u.Username() {
+		return rest.APIError{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Cannot delete subscriptions for someone other than yourself",
+		}
+	}
+
+	return nil
+}
+
+func (s *subscriptionDeleteHandler) Execute(_ context.Context, sc data.Connector) (ResponseData, error) {
+	err := sc.DeleteSubscription(s.id)
+	if err != nil {
+		return ResponseData{}, err
+	}
+
+	return ResponseData{}, nil
 }

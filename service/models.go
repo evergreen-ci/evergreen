@@ -101,8 +101,8 @@ func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 	}
 
 	uiBuilds := make([]uiBuild, len(dbBuilds))
-	for buildIdx, buildId := range buildIds {
-		b := buildsMap[buildId]
+	for buildIdx, build := range dbBuilds {
+		b := buildsMap[build.Id]
 		buildAsUI := uiBuild{Build: b}
 
 		//Use the build's task cache, instead of querying for each individual task.

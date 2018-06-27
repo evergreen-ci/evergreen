@@ -1792,3 +1792,128 @@ buildvariants:
 	assert.Len(semanticErrs, 0)
 	assert.NoError(err)
 }
+
+func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{Id: "example_distro"}
+	require.NoError(d.Insert())
+	exampleYml := `
+tasks:
+- name: one
+  commands:
+  - command: shell.exec
+- name: two
+  commands:
+  - command: shell.exec
+- name: display_three
+  commands:
+  - command: shell.exec
+buildvariants:
+- name: "bv"
+  run_on: "example_distro"
+  tasks:
+  - name: one
+  - name: two
+  display_tasks:
+  - name: display_ordinals
+    execution_tasks:
+    - one
+    - two
+`
+	proj := model.Project{}
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	assert.NotNil(proj)
+	assert.NoError(err)
+
+	proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks,
+		"display_three")
+
+	syntaxErrs, err := CheckProjectSyntax(&proj)
+	assert.Len(syntaxErrs, 1)
+	assert.NoError(err)
+	assert.Equal(syntaxErrs[0].Level, Error)
+	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
+		syntaxErrs[0].Message)
+	semanticErrs := CheckProjectSemantics(&proj)
+	assert.NoError(err)
+	assert.Len(semanticErrs, 0)
+}
+
+func TestValidateCreateHosts(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	// passing case
+	yml := `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	var p model.Project
+	err := model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs := validateCreateHosts(&p)
+	assert.Len(errs, 0)
+
+	// error: times called per task
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
+
+	// error: total times called
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_2
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_3
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_4
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+    - name: t_2
+    - name: t_3
+    - name: t_4
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
+}

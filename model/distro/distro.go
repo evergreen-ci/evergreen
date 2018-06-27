@@ -10,6 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Distro struct {
@@ -30,6 +32,10 @@ type Distro struct {
 	SpawnAllowed bool        `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
 	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+
+	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
+
+	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
 
 type ValidateFormat string
@@ -93,4 +99,20 @@ func (d *Distro) BinaryName() string {
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
+}
+
+// ValidateContainerPoolDistros ensures that container pools have valid distros
+func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+	catcher := grip.NewSimpleCatcher()
+
+	for _, pool := range s.ContainerPools.Pools {
+		d, err := FindOne(ById(pool.Distro))
+		if err != nil {
+			catcher.Add(fmt.Errorf("error finding distro for container pool %s", pool.Id))
+		}
+		if d.ContainerPool != "" {
+			catcher.Add(fmt.Errorf("container pool %s has invalid distro", pool.Id))
+		}
+	}
+	return errors.WithStack(catcher.Resolve())
 }

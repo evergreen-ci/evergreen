@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -47,7 +47,7 @@ func (s *TaskAbortSuite) SetupSuite() {
 
 func (s *TaskAbortSuite) TestAbort() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getTaskAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*taskAbortHandler).taskId = "task1"
@@ -73,7 +73,7 @@ func (s *TaskAbortSuite) TestAbort() {
 
 func (s *TaskAbortSuite) TestAbortFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getTaskAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*taskAbortHandler).taskId = "task1"

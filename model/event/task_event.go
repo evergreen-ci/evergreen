@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 func init() {
@@ -53,7 +54,11 @@ func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		grip.Errorf("Error logging task event: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeTask,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
 	}
 }
 
@@ -76,7 +81,11 @@ func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 	}
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogManyEvents(events); err != nil {
-		grip.Errorf("Error logging task events: %s", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeTask,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
 	}
 }
 
@@ -107,6 +116,10 @@ func LogTaskStarted(taskId string, execution int) {
 func LogTaskFinished(taskId string, execution int, hostId, status string) {
 	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
 	LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
+}
+
+func LogDisplayTaskFinished(taskId string, execution int, status string) {
+	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
 }
 
 func LogTaskRestarted(taskId string, execution int, userId string) {

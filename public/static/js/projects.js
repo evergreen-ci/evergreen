@@ -73,6 +73,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       resource_type: "TASK",
       label: "a previously passing task fails",
     },
+    {
+      trigger: "regression-by-test",
+      resource_type: "TASK",
+      label: "a previously passing test in a task fails",
+    },
   ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
@@ -276,6 +281,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           setup_github_hook: $scope.githubHookID != 0,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
+          notify_on_failure: $scope.projectRef.notify_on_failure,
           force_repotracker_run: false,
           delete_aliases: [],
           delete_subscriptions: [],

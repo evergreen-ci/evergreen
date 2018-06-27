@@ -9,7 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -61,13 +61,17 @@ func TestMakeRoute(t *testing.T) {
 		Convey("then adding and registering should result in a correct route", func() {
 			sc := &data.MockConnector{}
 			sc.SetPrefix("rest")
-			r := mux.NewRouter()
+			app := gimlet.NewApp()
+			app.SetPrefix(sc.GetPrefix())
 			route := &RouteManager{
 				Version: 2,
 				Route:   "/test_path",
 				Methods: []MethodHandler{mockGet, mockPost, mockDelete},
 			}
-			route.Register(r, sc)
+			route.Register(app, sc)
+			So(app.Resolve(), ShouldBeNil)
+			r, err := app.Router()
+			So(err, ShouldBeNil)
 
 			for _, method := range route.Methods {
 

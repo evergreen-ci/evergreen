@@ -6,10 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -63,6 +65,13 @@ var (
 	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
 	TotalCostKey               = bsonutil.MustHaveTag(Host{}, "TotalCost")
 	TotalIdleTimeKey           = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
+	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
+	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
+	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
+	SpawnOptionsKey            = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
+	SpawnOptionsTaskIDKey      = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
+	SpawnOptionsBuildIDKey     = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
+	SpawnOptionsTimeoutKey     = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 )
 
 // === Queries ===
@@ -99,15 +108,91 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	)
 }
 
+// AllIdleEphemeral finds all running ephemeral hosts without containers
+// that have no running tasks.
 func AllIdleEphemeral() ([]Host, error) {
 	query := db.Query(bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StartedByKey:   evergreen.User,
-		StatusKey:      evergreen.HostRunning,
-		ProviderKey:    bson.M{"$in": evergreen.ProviderSpawnable},
+		RunningTaskKey:   bson.M{"$exists": false},
+		StartedByKey:     evergreen.User,
+		StatusKey:        evergreen.HostRunning,
+		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+		HasContainersKey: bson.M{"$ne": true},
 	})
 
 	return Find(query)
+}
+
+// AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
+func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
+	catcher := grip.NewBasicCatcher()
+	var hosts []Host
+	timedOutHosts, err := allHostsSpawnedByTasksTimedOut()
+	hosts = append(hosts, timedOutHosts...)
+	catcher.Add(err)
+
+	taskHosts, err := allHostsSpawnedByFinishedTasks()
+	hosts = append(hosts, taskHosts...)
+	catcher.Add(err)
+
+	buildHosts, err := allHostsSpawnedByFinishedBuilds()
+	hosts = append(hosts, buildHosts...)
+	catcher.Add(err)
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return hosts, nil
+}
+
+// allHostsSpawnedByTasksTimedOut finds hosts spawned by tasks that should be terminated because they are past their timeout.
+func allHostsSpawnedByTasksTimedOut() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTimeoutKey): bson.M{"$lte": time.Now()},
+	})
+	return Find(query)
+}
+
+// allHostsSpawnedByFinishedTasks finds hosts spawned by tasks that should be terminated because their tasks have finished.
+func allHostsSpawnedByFinishedTasks() ([]Host, error) {
+	const runningTasks = "running_tasks"
+	pipeline := []bson.M{
+		{"$lookup": bson.M{
+			"from":         task.Collection,
+			"localField":   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey),
+			"foreignField": task.IdKey,
+			"as":           runningTasks,
+		}},
+		{"$unwind": "$" + runningTasks},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$project": bson.M{runningTasks: 0}},
+	}
+	var hosts []Host
+	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
+		return nil, errors.Wrap(err, "error getting hosts spawned by finished tasks")
+	}
+	return hosts, nil
+}
+
+// allHostsSpawnedByFinishedBuilds finds hosts spawned by tasks that should be terminated because their builds have finished.
+func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
+	const runningBuilds = "running_builds"
+	pipeline := []bson.M{
+		{"$lookup": bson.M{
+			"from":         build.Collection,
+			"localField":   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey),
+			"foreignField": build.IdKey,
+			"as":           runningBuilds,
+		}},
+		{"$unwind": "$" + runningBuilds},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$project": bson.M{runningBuilds: 0}},
+	}
+	var hosts []Host
+	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
+		return nil, errors.Wrap(err, "error getting hosts spawned by finished builds")
+	}
+	return hosts, nil
 }
 
 // ByUnprovisionedSince produces a query that returns all hosts
@@ -479,4 +564,70 @@ func inactiveHostCountPipeline() []bson.M {
 			},
 		},
 	}
+}
+
+// FinishTime is a struct for storing pairs of host IDs and last container finish times
+type FinishTime struct {
+	Id         string    `bson:"_id"`
+	FinishTime time.Time `bson:"finish_time"`
+}
+
+// aggregation pipeline to compute latest finish time for running hosts with child containers
+func lastContainerFinishTimePipeline() []bson.M {
+	const output string = "finish_time"
+	return []bson.M{
+		{
+			// matches all running containers
+			"$match": bson.M{
+				ParentIDKey: bson.M{"$exists": true},
+				StatusKey:   evergreen.HostRunning,
+			},
+		},
+		{
+			// joins hosts and tasks collections on task ID
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": IdKey,
+				"as":           "task",
+			},
+		},
+		{
+			// deconstructs $lookup array
+			"$unwind": "$task",
+		},
+		{
+			// groups containers by parent host ID
+			"$group": bson.M{
+				"_id": "$" + ParentIDKey,
+				output: bson.M{
+					// computes last container finish time for each host
+					"$max": bson.M{
+						"$add": []interface{}{bsonutil.GetDottedKeyName("$task", "start_time"),
+							// divide by 1000000 to treat duration as milliseconds rather than as nanoseconds
+							bson.M{"$divide": []interface{}{bsonutil.GetDottedKeyName("$task", "duration_prediction", "value"), 1000000}},
+						},
+					},
+				},
+			},
+		},
+		{
+			// projects only ID and finish time
+			"$project": bson.M{
+				output: 1,
+			},
+		},
+	}
+}
+
+// AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
+func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
+
+	var times []FinishTime
+	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
+	if err != nil {
+		return nil, errors.Wrap(err, "error aggregating parent finish times")
+	}
+	return times, nil
+
 }

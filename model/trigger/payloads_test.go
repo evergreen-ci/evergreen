@@ -30,6 +30,7 @@ func (s *payloadSuite) SetupTest() {
 
 	s.t = commonTemplateData{
 		ID:              "1234",
+		DisplayName:     "display-1234",
 		Object:          "patch",
 		Project:         "test",
 		URL:             s.url,
@@ -39,7 +40,7 @@ func (s *payloadSuite) SetupTest() {
 }
 
 func (s *payloadSuite) TestEmail() {
-	m, err := emailPayload(s.t)
+	m, err := emailPayload(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
@@ -63,28 +64,28 @@ func (s *payloadSuite) TestEvergreenWebhook() {
 }
 
 func (s *payloadSuite) TestJIRAComment() {
-	m, err := jiraComment(s.t)
+	m, err := jiraComment(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal("Evergreen patch [1234|https://example.com/patch/1234] in 'test' has failed!", *m)
+	s.Equal("Evergreen patch [display-1234|https://example.com/patch/1234] in 'test' has failed!", *m)
 }
 
 func (s *payloadSuite) TestJIRAIssue() {
-	m, err := jiraIssue(s.t)
+	m, err := jiraIssue(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal("Evergreen patch '1234' in 'test' has failed", m.Summary)
-	s.Equal("Evergreen patch [1234|https://example.com/patch/1234] in 'test' has failed!", m.Description)
+	s.Equal("Evergreen patch 'display-1234' in 'test' has failed", m.Summary)
+	s.Equal("Evergreen patch [display-1234|https://example.com/patch/1234] in 'test' has failed!", m.Description)
 }
 
 func (s *payloadSuite) TestSlack() {
-	m, err := slack(s.t)
+	m, err := slack(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
 
-	s.Equal("Evergreen patch <https://example.com/patch/1234|1234> in 'test' has failed!", m.Body)
+	s.Equal("The patch <https://example.com/patch/1234|display-1234> in 'test' has failed!", m.Body)
 	s.Empty(m.Attachments)
 }
 

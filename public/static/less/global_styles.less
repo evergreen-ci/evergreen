@@ -433,7 +433,7 @@ h3.section-heading {
     background-color: @successGreen;
     color: white;
 }
-.failed {
+.failed, .test-timed-out {
     background-color: @errorRed;
     color: white;
 }
@@ -738,4 +738,9 @@ md-radio-group.md-focused:not(:empty) .md-checked .md-container:before {
 }
 md-checkbox.md-checked .md-ink-ripple {
   color: rgba(0, 0, 0, 0.7) !important;
+}
+
+// Util - text decoration
+.strikethrough {
+  text-decoration: line-through;
 }

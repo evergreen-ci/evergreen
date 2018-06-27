@@ -155,8 +155,6 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
 	if nextTaskHasDifferentTaskGroupOrBuild(nextTask, tc) {
-		defer a.removeTaskDirectory(tc)
-		defer a.killProcs(tc, true)
 		setupGroup = true
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
@@ -358,6 +356,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 }
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
+	defer a.removeTaskDirectory(tc)
+	defer a.killProcs(tc, true)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -373,8 +373,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands")
-		a.killProcs(tc, false)
-		defer a.killProcs(tc, false)
+		a.killProcs(tc, true)
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()

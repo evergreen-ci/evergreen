@@ -8,6 +8,7 @@ import (
 	"net/http"
 	ttemplate "text/template"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -27,17 +28,38 @@ const (
 	selectorStatus    = "status"
 	selectorInVersion = "in-version"
 	selectorInBuild   = "in-build"
+
+	triggerOutcome                = "outcome"
+	triggerFailure                = "failure"
+	triggerSuccess                = "success"
+	triggerRegression             = "regression"
+	triggerExceedsDuration        = "exceeds-duration"
+	triggerRuntimeChangeByPercent = "runtime-change"
+
+	evergreenSuccessColor    = "#4ead4a"
+	evergreenFailColor       = "#ce3c3e"
+	evergreenSystemFailColor = "#ce3c3e"
+
+	// slackAttachmentsLimit is a limit to the number of extra entries to
+	// attach to a Slack message. It does not count the link to Evergreen,
+	// or the link back to Github Pull Requests.
+	// This number MUST NOT exceed 100, and Slack recommends a limit of 10
+	slackAttachmentsLimit = 10
 )
 
 type commonTemplateData struct {
 	ID              string
+	DisplayName     string
 	Object          string
 	Project         string
+	Description     string
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
 
-	apiModel          restModel.Model
+	apiModel restModel.Model
+	slack    []message.SlackAttachment
+
 	githubContext     string
 	githubState       message.GithubState
 	githubDescription string
@@ -50,7 +72,8 @@ const emailTemplate string = `<html>
 <body>
 <p>Hi,</p>
 
-<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .ID }}</a> has {{ .PastTenseStatus }}.</p>
+<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
+<p>{{ .Description }}</p>
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
@@ -64,11 +87,11 @@ const emailTemplate string = `<html>
 </html>
 `
 
-const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .ID }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .DisplayName }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
-const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .ID }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
+const jiraIssueTitle string = "Evergreen {{ .Object }} '{{ .DisplayName }}' in '{{ .Project }}' has {{ .PastTenseStatus }}"
 
-const slackTemplate string = `Evergreen {{ .Object }} <{{ .URL }}|{{ .ID }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const slackTemplate string = `The {{ .Object }} <{{ .URL }}|{{ .DisplayName }}> in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
 func makeHeaders(selectors []event.Selector) http.Header {
 	headers := http.Header{}
@@ -79,7 +102,7 @@ func makeHeaders(selectors []event.Selector) http.Header {
 	return headers
 }
 
-func emailPayload(t commonTemplateData) (*message.Email, error) {
+func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	bodyTmpl, err := template.New("emailBody").Parse(emailTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse body template")
@@ -127,7 +150,7 @@ func webhookPayload(api restModel.Model, headers http.Header) (*util.EvergreenWe
 	}, nil
 }
 
-func jiraComment(t commonTemplateData) (*string, error) {
+func jiraComment(t *commonTemplateData) (*string, error) {
 	commentTmpl, err := ttemplate.New("jira-comment").Parse(jiraCommentTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse jira comment template")
@@ -142,7 +165,7 @@ func jiraComment(t commonTemplateData) (*string, error) {
 	return &comment, nil
 }
 
-func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
+func jiraIssue(t *commonTemplateData) (*message.JiraIssue, error) {
 	const maxSummary = 254
 
 	comment, err := jiraComment(t)
@@ -173,7 +196,7 @@ func jiraIssue(t commonTemplateData) (*message.JiraIssue, error) {
 	return &issue, nil
 }
 
-func slack(t commonTemplateData) (*notification.SlackPayload, error) {
+func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	issueTmpl, err := ttemplate.New("slack").Parse(slackTemplate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse slack template")
@@ -186,7 +209,8 @@ func slack(t commonTemplateData) (*notification.SlackPayload, error) {
 	msg := buf.String()
 
 	return &notification.SlackPayload{
-		Body: msg,
+		Body:        msg,
+		Attachments: t.slack,
 	}, nil
 }
 
@@ -209,18 +233,12 @@ func truncateString(s string, capacity int) (string, string) {
 	return head, tail
 }
 
-// For patches, versions, builds, and tasks, the outcome, success and  failure
-// triggers all have the same structure. The common generator returned by this
-// function is suitable for creating payloads for all of these
-func makeCommonGenerator(triggerName string, selectors []event.Selector,
-	data commonTemplateData) (*notificationGenerator, error) {
-	gen := notificationGenerator{
-		triggerName: triggerName,
-		selectors:   selectors,
-	}
-	gen.selectors = append(gen.selectors, event.Selector{
+func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
+	data *commonTemplateData) (interface{}, error) {
+
+	selectors = append(selectors, event.Selector{
 		Type: "trigger",
-		Data: triggerName,
+		Data: sub.Trigger,
 	}, event.Selector{
 		Type: selectorStatus,
 		Data: data.PastTenseStatus,
@@ -228,43 +246,52 @@ func makeCommonGenerator(triggerName string, selectors []event.Selector,
 
 	data.Headers = makeHeaders(selectors)
 
-	var err error
-	gen.evergreenWebhook, err = webhookPayload(data.apiModel, data.Headers)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building webhook payload")
-	}
-
-	gen.email, err = emailPayload(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building email payload")
-	}
-
-	gen.jiraComment, err = jiraComment(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira comment")
-	}
-	gen.jiraIssue, err = jiraIssue(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building jira issue")
-	}
-
-	if len(data.githubDescription) != 0 {
-		gen.githubStatusAPI = &message.GithubStatus{
-			Context:     "evergreen",
+	switch sub.Subscriber.Type {
+	case event.GithubPullRequestSubscriberType:
+		if len(data.githubDescription) == 0 {
+			return nil, errors.Errorf("Github subscriber not supported for trigger: '%s'", sub.Trigger)
+		}
+		msg := &message.GithubStatus{
+			Context:     data.githubContext,
 			State:       data.githubState,
 			URL:         data.URL,
 			Description: data.githubDescription,
 		}
 		if len(data.githubContext) != 0 {
-			gen.githubStatusAPI.Context = data.githubContext
+			msg.Context = data.githubContext
 		}
+		return msg, nil
+
+	case event.JIRAIssueSubscriberType:
+		return jiraIssue(data)
+
+	case event.JIRACommentSubscriberType:
+		return jiraComment(data)
+
+	case event.EvergreenWebhookSubscriberType:
+		return webhookPayload(data.apiModel, data.Headers)
+
+	case event.EmailSubscriberType:
+		return emailPayload(data)
+
+	case event.SlackSubscriberType:
+		return slack(data)
 	}
 
-	// TODO improve slack body with additional info, like failing variants
-	gen.slack, err = slack(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "error building slack message")
-	}
+	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
+}
 
-	return &gen, nil
+func taskLink(ui *evergreen.UIConfig, taskID string, execution int) string {
+	if execution < 0 {
+		return fmt.Sprintf("%s/task/%s", ui.Url, taskID)
+	}
+	return fmt.Sprintf("%s/task/%s/%d", ui.Url, taskID, execution)
+}
+
+func buildLink(ui *evergreen.UIConfig, buildID string) string {
+	return fmt.Sprintf("%s/build/%s/", ui.Url, buildID)
+}
+
+func versionLink(ui *evergreen.UIConfig, versionID string) string {
+	return fmt.Sprintf("%s/version/%s/", ui.Url, versionID)
 }

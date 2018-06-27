@@ -267,6 +267,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         $scope.taskHost = $window.taskHost;
         $scope.jiraHost = $window.jiraHost;
         $scope.subscriptions = [];
+
         $scope.triggers = [
           {
             trigger: "outcome",
@@ -283,10 +284,29 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             resource_type: "TASK",
             label: "this task succeeds",
           },
+          {
+            trigger: "exceeds-duration",
+            resource_type: "TASK",
+            label: "the runtime for this task exceeds some duration",
+            extraFields: [
+              {text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration}
+            ]
+          },
+          {
+            trigger: "runtime-change",
+            resource_type: "TASK",
+            label: "the runtime for this task changes by some percentage",
+            extraFields: [
+              {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
+            ]
+          },
         ];
 
         $scope.addSubscription = function() {
-          promise = addSubscriber($mdDialog, $scope.triggers);
+          omitMethods = {};
+          omitMethods[SUBSCRIPTION_JIRA_ISSUE] = true;
+          omitMethods[SUBSCRIPTION_EVERGREEN_WEBHOOK] = true;
+          promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
 
           $mdDialog.show(promise).then(function(data){
             addSelectorsAndOwnerType(data, "task", $scope.task.id);

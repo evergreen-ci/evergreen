@@ -94,7 +94,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
 			Type:    "type2",
 			Trigger: "trigger2",
 			Selectors: []Selector{
@@ -110,6 +110,10 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 			Owner:     "me",
 			OwnerType: OwnerTypePerson,
+			TriggerData: map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+			},
 		},
 		{
 			ID:      bson.NewObjectId(),
@@ -148,7 +152,14 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 	for _, sub := range out {
 		if sub.ID == s.subscriptions[3].ID {
-			s.Equal(sub, s.subscriptions[3])
+			s.Equal(sub.Owner, s.subscriptions[3].Owner)
+			s.Equal(sub.OwnerType, s.subscriptions[3].OwnerType)
+			s.Equal(sub.Selectors, s.subscriptions[3].Selectors)
+			s.Equal(s.subscriptions[3].RegexSelectors, sub.RegexSelectors)
+			s.Equal(s.subscriptions[3].Subscriber, sub.Subscriber)
+		}
+		if sub.ID == bson.ObjectIdHex("5949645c9acd9604fdd202d8") {
+			s.Equal(s.subscriptions[3].TriggerData, sub.TriggerData)
 		}
 	}
 }
@@ -165,26 +176,32 @@ func (s *subscriptionsSuite) TestRemove() {
 
 func (s *subscriptionsSuite) TestFind() {
 	// Empty selectors should select nothing (because technically, they match everything)
-	subs, err := FindSubscriptions("type2", "trigger2", nil)
+	subs, err := FindSubscriptions("type2", nil)
 	s.NoError(err)
-	s.Nil(subs)
+	s.Empty(subs)
 
-	subs, err = FindSubscriptions("type2", "trigger2", []Selector{
+	subs, err = FindSubscriptions("type2", []Selector{
 		{
 			Type: "data",
 			Data: "somethingspecial",
 		},
 	})
 	s.NoError(err)
-	s.Len(subs, 2)
-	s.NotPanics(func() {
-		s.Len(subs[EmailSubscriberType], 1)
-		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Subscriber.Type)
-		s.Equal("someone4@example.com", *subs[EmailSubscriberType][0].Subscriber.Target.(*string))
-	})
+	s.Require().Len(subs, 2)
+	for i := range subs {
+		if subs[i].Subscriber.Type == EmailSubscriberType {
+			s.Equal("someone4@example.com", *subs[i].Subscriber.Target.(*string))
+
+		} else if subs[i].Subscriber.Type == SlackSubscriberType {
+			s.Equal("slack_user", *subs[i].Subscriber.Target.(*string))
+
+		} else {
+			s.T().Errorf("unknown subscriber type: %s", subs[i].Subscriber.Type)
+		}
+	}
 
 	// this query hits a subscriber with a regex selector
-	subs, err = FindSubscriptions("type1", "trigger1", []Selector{
+	subs, err = FindSubscriptions("type1", []Selector{
 		{
 			Type: "data1",
 			Data: "something",
@@ -195,10 +212,7 @@ func (s *subscriptionsSuite) TestFind() {
 		},
 	})
 	s.NoError(err)
-	s.Len(subs, 1)
-	s.NotPanics(func() {
-		s.Len(subs[EmailSubscriberType], 3)
-	})
+	s.Len(subs, 3)
 }
 
 func (s *subscriptionsSuite) TestFindSelectors() {

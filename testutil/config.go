@@ -78,10 +78,19 @@ func MockConfig() *evergreen.Settings {
 				Organization: "ghorg",
 			},
 		},
-		Banner:             "banner",
-		BannerTheme:        "important",
-		ClientBinariesDir:  "bin_dir",
-		ConfigDir:          "cfg_dir",
+		Banner:            "banner",
+		BannerTheme:       "important",
+		ClientBinariesDir: "bin_dir",
+		ConfigDir:         "cfg_dir",
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro:        "valid-distro",
+					Id:            "test-pool-1",
+					MaxContainers: 100,
+				},
+			},
+		},
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",

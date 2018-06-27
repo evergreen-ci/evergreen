@@ -37,6 +37,7 @@ window.JiraHost = {{.JiraHost}};
           <ul class="dropdown-menu">
             <li ng-repeat="plugin in appPlugins"> <a ng-href="/plugin/[[plugin]]/app"> [[plugin]] </a> </li>
             <li><a ng-href="/perfdiscovery/[[project]]">Performance Discovery</a></li>
+            <li><a ng-href="/signal-processing/[[project]]">Signal Processing</a></li>
           </ul>
           </li>
           {{end}}
@@ -81,6 +82,7 @@ window.JiraHost = {{.JiraHost}};
             {{if IsSuperUser .User.Id}}
             <li><a href="/admin">Admin Settings</a></li>
             {{end}}
+            <li><a href="/notifications">Notifications</a></li>
             <li><a href="/logout">Logout</a></li>
           </ul>
           </li>

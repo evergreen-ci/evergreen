@@ -20,7 +20,8 @@ function average (arr){
 
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $log, $q, PerfChartService
+  $scope, $window, $http, $location, $log, $q, PerfChartService,
+  Stitch, STITCH_CONFIG
 ) {
     /* for debugging
     $sce, $compile){
@@ -470,31 +471,23 @@ mciModule.controller('PerfController', function PerfController(
         setTimeout(function(){drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id)},0);
 
         // This code loads change points for current task from the mdb cloud
-        var changePointsQ = $q(function(resolve, reject) {
-          var db;
-          stitch.StitchClientFactory.create('evergreen_perf_plugin-wwdoa')
-          .then(function(client) {
-            db = client.service('mongodb', 'mongodb-atlas').db('perf')
-            return client.login()
-          }).then(function() {
-            return db
-              .collection('change_points')
-              .find({
-                project: $scope.task.branch,
-                task: $scope.task.display_name,
-                variant: $scope.task.build_variant,
-              })
-              .execute()
-          }).then(function(docs) {
-            resolve(_.groupBy(docs, 'test'))
+        var changePointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+          return db
+            .db(STITCH_CONFIG.PERF.DB_PERF)
+            .collection(STITCH_CONFIG.PERF.COLL_CHANGE_POINTS)
+            .find({
+              project: $scope.task.branch,
+              task: $scope.task.display_name,
+              variant: $scope.task.build_variant,
+            })
+            .execute()
+        }).then(
+          function(docs) {
+            return _.groupBy(docs, 'test')
           }, function(err) {
-            reject(err)
-          })
-        }).catch(function(err) {
-          $log.error('Cannot load change points!', err)
-          return {} // Try to recover an error
-        })
-        .then(function(data) {
+            $log.error('Cannot load change points!', err)
+            return {} // Try to recover an error
+        }).then(function(data) {
           $scope.changePoints = data
         })
 

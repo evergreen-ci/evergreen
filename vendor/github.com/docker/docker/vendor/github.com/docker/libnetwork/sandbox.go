@@ -674,24 +674,41 @@ func (sb *sandbox) SetKey(basePath string) error {
 	return nil
 }
 
-func (sb *sandbox) EnableService() error {
+func (sb *sandbox) EnableService() (err error) {
 	logrus.Debugf("EnableService %s START", sb.containerID)
+	defer func() {
+		if err != nil {
+			sb.DisableService()
+		}
+	}()
 	for _, ep := range sb.getConnectedEndpoints() {
-		if ep.enableService(true) {
+		if !ep.isServiceEnabled() {
 			if err := ep.addServiceInfoToCluster(sb); err != nil {
-				ep.enableService(false)
 				return fmt.Errorf("could not update state for endpoint %s into cluster: %v", ep.Name(), err)
 			}
+			ep.enableService()
 		}
 	}
 	logrus.Debugf("EnableService %s DONE", sb.containerID)
 	return nil
 }
 
-func (sb *sandbox) DisableService() error {
+func (sb *sandbox) DisableService() (err error) {
 	logrus.Debugf("DisableService %s START", sb.containerID)
+	failedEps := []string{}
+	defer func() {
+		if len(failedEps) > 0 {
+			err = fmt.Errorf("failed to disable service on sandbox:%s, for endpoints %s", sb.ID(), strings.Join(failedEps, ","))
+		}
+	}()
 	for _, ep := range sb.getConnectedEndpoints() {
-		ep.enableService(false)
+		if ep.isServiceEnabled() {
+			if err := ep.deleteServiceInfoFromCluster(sb, false, "DisableService"); err != nil {
+				failedEps = append(failedEps, ep.Name())
+				logrus.Warnf("failed update state for endpoint %s into cluster: %v", ep.Name(), err)
+			}
+			ep.disableService()
+		}
 	}
 	logrus.Debugf("DisableService %s DONE", sb.containerID)
 	return nil
@@ -709,7 +726,14 @@ func releaseOSSboxResources(osSbox osl.Sandbox, ep *endpoint) {
 
 	ep.Lock()
 	joinInfo := ep.joinInfo
+	vip := ep.virtualIP
 	ep.Unlock()
+
+	if len(vip) != 0 {
+		if err := osSbox.RemoveLoopbackAliasIP(&net.IPNet{IP: vip, Mask: net.CIDRMask(32, 32)}); err != nil {
+			logrus.Warnf("Remove virtual IP %v failed: %v", vip, err)
+		}
+	}
 
 	if joinInfo == nil {
 		return
@@ -767,10 +791,6 @@ func (sb *sandbox) restoreOslSandbox() error {
 		if len(i.llAddrs) != 0 {
 			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().LinkLocalAddresses(i.llAddrs))
 		}
-		if len(ep.virtualIP) != 0 {
-			vipAlias := &net.IPNet{IP: ep.virtualIP, Mask: net.CIDRMask(32, 32)}
-			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().IPAliases([]*net.IPNet{vipAlias}))
-		}
 		Ifaces[fmt.Sprintf("%s+%s", i.srcName, i.dstPrefix)] = ifaceOptions
 		if joinInfo != nil {
 			routes = append(routes, joinInfo.StaticRoutes...)
@@ -818,16 +838,19 @@ func (sb *sandbox) populateNetworkResources(ep *endpoint) error {
 		if len(i.llAddrs) != 0 {
 			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().LinkLocalAddresses(i.llAddrs))
 		}
-		if len(ep.virtualIP) != 0 {
-			vipAlias := &net.IPNet{IP: ep.virtualIP, Mask: net.CIDRMask(32, 32)}
-			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().IPAliases([]*net.IPNet{vipAlias}))
-		}
 		if i.mac != nil {
 			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().MacAddress(i.mac))
 		}
 
 		if err := sb.osSbox.AddInterface(i.srcName, i.dstPrefix, ifaceOptions...); err != nil {
 			return fmt.Errorf("failed to add interface %s to sandbox: %v", i.srcName, err)
+		}
+	}
+
+	if len(ep.virtualIP) != 0 {
+		err := sb.osSbox.AddLoopbackAliasIP(&net.IPNet{IP: ep.virtualIP, Mask: net.CIDRMask(32, 32)})
+		if err != nil {
+			return fmt.Errorf("failed to add virtual IP %v: %v", ep.virtualIP, err)
 		}
 	}
 
@@ -910,6 +933,13 @@ func (sb *sandbox) clearNetworkResources(origEp *endpoint) error {
 			break
 		}
 	}
+
+	if index == -1 {
+		logrus.Warnf("Endpoint %s has already been deleted", ep.Name())
+		sb.Unlock()
+		return nil
+	}
+
 	heap.Remove(&sb.endpoints, index)
 	for _, e := range sb.endpoints {
 		if len(e.Gateway()) > 0 {

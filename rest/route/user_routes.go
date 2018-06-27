@@ -15,42 +15,52 @@ import (
 	"github.com/pkg/errors"
 )
 
-type userSettingsHandler struct {
+type userSettingsPostHandler struct {
 	settings model.APIUserSettings
 }
 
 func getUserSettingsRouteManager(route string, version int) *RouteManager {
-	h := userSettingsHandler{}
+	h := userSettingsPostHandler{}
 	userSettingsPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    h.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: h.Handler(),
+		MethodType:     http.MethodPost,
+	}
+
+	i := userSettingsGetHandler{}
+	userSettingsGet := MethodHandler{
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: i.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	return &RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{userSettingsPost},
+		Methods: []MethodHandler{userSettingsGet, userSettingsPost},
 		Version: version,
 	}
 }
 
-func (h *userSettingsHandler) Handler() RequestHandler {
-	return &userSettingsHandler{}
+func (h *userSettingsPostHandler) Handler() RequestHandler {
+	return &userSettingsPostHandler{}
 }
 
-func (h *userSettingsHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *userSettingsPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	h.settings = model.APIUserSettings{}
 	return util.ReadJSONInto(r.Body, &h.settings)
 }
 
-func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *userSettingsPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
 		return ResponseData{}, errors.Wrap(err, "Error retrieving Evergreen settings")
 	}
-	userSettingsInterface, err := h.settings.ToService()
+	changedSettings, err := model.ApplyUserChanges(u.Settings, h.settings)
+	if err != nil {
+		return ResponseData{}, errors.Wrapf(err, "problem applying user settings")
+	}
+	userSettingsInterface, err := changedSettings.ToService()
 	if err != nil {
 		return ResponseData{}, errors.Wrap(err, "Error parsing user settings")
 	}
@@ -89,5 +99,27 @@ func (h *userSettingsHandler) Execute(ctx context.Context, sc data.Connector) (R
 
 	return ResponseData{
 		Result: []model.Model{},
+	}, nil
+}
+
+type userSettingsGetHandler struct{}
+
+func (h *userSettingsGetHandler) Handler() RequestHandler {
+	return &userSettingsGetHandler{}
+}
+
+func (h *userSettingsGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *userSettingsGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	u := MustHaveUser(ctx)
+	apiSettings := model.APIUserSettings{}
+	if err := apiSettings.BuildFromService(u.Settings); err != nil {
+		return ResponseData{}, errors.Wrap(err, "error formatting user settings")
+	}
+
+	return ResponseData{
+		Result: []model.Model{&apiSettings},
 	}, nil
 }

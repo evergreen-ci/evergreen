@@ -17,7 +17,7 @@ import (
 func getTestRouteManager(route string, version int) *RouteManager {
 	tgh := &testGetHandler{}
 	testGetMethodHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    tgh.Handler(),
 		MethodType:        http.MethodGet,

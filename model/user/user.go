@@ -22,6 +22,7 @@ type DBUser struct {
 	CreatedAt    time.Time    `bson:"created_at"`
 	Settings     UserSettings `bson:"settings"`
 	APIKey       string       `bson:"apikey"`
+	SystemRoles  []string     `bson:"roles"`
 }
 
 type GithubUser struct {
@@ -57,27 +58,18 @@ const (
 	PreferenceSlack UserSubscriptionPreference = event.SlackSubscriberType
 )
 
-func (u *DBUser) Username() string {
-	return u.Id
-}
+func (u *DBUser) Username() string     { return u.Id }
+func (u *DBUser) Roles() []string      { return u.SystemRoles }
+func (u *DBUser) PublicKeys() []PubKey { return u.PubKeys }
+func (u *DBUser) Email() string        { return u.EmailAddress }
+func (u *DBUser) GetAPIKey() string    { return u.APIKey }
+func (u *DBUser) IsNil() bool          { return u == nil }
 
 func (u *DBUser) DisplayName() string {
 	if u.DispName != "" {
 		return u.DispName
 	}
 	return u.Id
-}
-
-func (u *DBUser) Email() string {
-	return u.EmailAddress
-}
-
-func (u *DBUser) GetAPIKey() string {
-	return u.APIKey
-}
-
-func (u *DBUser) IsNil() bool {
-	return u == nil
 }
 
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {
@@ -140,10 +132,6 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 	return nil
 }
 
-func (u *DBUser) PublicKeys() []PubKey {
-	return u.PubKeys
-}
-
 func (u *DBUser) Insert() error {
 	u.CreatedAt = time.Now()
 	return db.Insert(Collection, u)
@@ -183,4 +171,11 @@ func IsValidSubscriptionPreference(in string) bool {
 	default:
 		return false
 	}
+}
+
+func FormatObjectID(id string) (bson.ObjectId, error) {
+	if !bson.IsObjectIdHex(id) {
+		return "", errors.Errorf("%s is not a valid ObjectId", id)
+	}
+	return bson.ObjectIdHex(id), nil
 }

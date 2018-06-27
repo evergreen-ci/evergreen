@@ -20,9 +20,9 @@ imports:
   - name: github.com/codegangsta/inject
     version: 37d7f8432a3e684eef9b2edece76bdfa6ac85b39
   - name: github.com/docker/docker
-    version: f7d09a0a9bd626782e63e7295ca87690f26a1fb4
+    version: ca25df3b54300e897d96029dcc4f86b8c4215a27
   - name: github.com/docker/go-connections
-    version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
+    version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
   - name: github.com/Microsoft/go-winio
     version: 7ff89941bcb93df2e962467fb073c6e997b13cf0
   - name: github.com/gorilla/context
@@ -84,6 +84,10 @@ imports:
   - name: github.com/aws/aws-sdk-go
     version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
 
+  - name: github.com/mholt/archiver
+    version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
+
+
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
   - name: github.com/jpillora/backoff
@@ -106,7 +110,7 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/mongodb/grip
-    version: 7ec499c3201dc7726da08f3f51e90386ec26a3d7
+    version: fd96dd8f02257a4f8e7eb50c989e88802c254d24
   - name: github.com/mongodb/anser
     version: a39cb2703e7f53a0d46f17a785d25f85fa19923a
   - name: github.com/mongodb/amboy
@@ -118,4 +122,4 @@ imports:
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/evergreen-ci/gimlet
-    version: 09d3af8aa8c67742f0857b0941cce4fee8231d8c
+    version: e8b89b2b975c5e12684fce8b022bd902edd03d57

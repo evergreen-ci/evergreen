@@ -1,57 +1,166 @@
 package trigger
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
+const (
+	objectVersion = "version"
+)
+
 func init() {
-	registry.AddTrigger(event.ResourceTypeVersion,
-		versionValidator(versionOutcome),
-		versionValidator(versionFailure),
-		versionValidator(versionSuccess),
-	)
-	registry.AddPrefetch(event.ResourceTypeVersion, versionFetch)
+	registry.registerEventHandler(event.ResourceTypeVersion, event.VersionStateChange, makeVersionTriggers)
 }
 
-func versionFetch(e *event.EventLogEntry) (interface{}, error) {
-	v, err := version.FindOne(version.ById(e.ResourceId))
+type versionTriggers struct {
+	event    *event.EventLogEntry
+	data     *event.VersionEventData
+	version  *version.Version
+	uiConfig evergreen.UIConfig
+
+	base
+}
+
+func makeVersionTriggers() eventHandler {
+	t := &versionTriggers{}
+	t.base.triggers = map[string]trigger{
+		triggerOutcome:    t.versionOutcome,
+		triggerFailure:    t.versionFailure,
+		triggerSuccess:    t.versionSuccess,
+		triggerRegression: t.versionRegression,
+	}
+	return t
+}
+
+func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
+	var err error
+	if err = t.uiConfig.Get(); err != nil {
+		return errors.Wrap(err, "Failed to fetch ui config")
+	}
+
+	t.version, err = version.FindOne(version.ById(e.ResourceId))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch version")
+		return errors.Wrap(err, "failed to fetch version")
 	}
-	if v == nil {
-		return nil, errors.New("couldn't find version")
+	if t.version == nil {
+		return errors.New("couldn't find version")
 	}
 
-	return v, nil
+	var ok bool
+	t.data, ok = e.Data.(*event.VersionEventData)
+	if !ok {
+		return errors.Errorf("version '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+	}
+	t.event = e
+
+	return nil
 }
 
-func versionValidator(t func(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error)) trigger {
-	return func(e *event.EventLogEntry, object interface{}) (*notificationGenerator, error) {
-		v, ok := object.(*version.Version)
-		if !ok {
-			return nil, errors.New("expected a version, received unknown type")
-		}
-		if v == nil {
-			return nil, errors.New("expected a version, received nil data")
-		}
-
-		data, ok := e.Data.(*event.VersionEventData)
-		if !ok {
-			return nil, errors.New("expected version event data")
-		}
-
-		return t(data, v)
-	}
+func (t *versionTriggers) Selectors() []event.Selector {
+	return MakeVersionSelectors(*t.version)
 }
 
-func versionSelectors(v *version.Version) []event.Selector {
-	return []event.Selector{
+func (t *versionTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
+	api := restModel.APIVersion{}
+	if err := api.BuildFromService(t.version); err != nil {
+		return nil, errors.Wrap(err, "error building json model")
+	}
+
+	data := commonTemplateData{
+		ID:              t.version.Id,
+		DisplayName:     t.version.Id,
+		Object:          objectVersion,
+		Project:         t.version.Identifier,
+		URL:             versionLink(&t.uiConfig, t.version.Id),
+		PastTenseStatus: t.data.Status,
+		apiModel:        &api,
+	}
+	slackColor := evergreenFailColor
+	if data.PastTenseStatus == evergreen.VersionSucceeded {
+		data.PastTenseStatus = "succeeded"
+		slackColor = evergreenSuccessColor
+	}
+	data.slack = []message.SlackAttachment{
+		{
+			Title:     "Evergreen Version",
+			TitleLink: data.URL,
+			Color:     slackColor,
+			Text:      t.version.Message,
+		},
+	}
+
+	return &data, nil
+}
+
+func (t *versionTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
+	data, err := t.makeData(sub)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to collect version data")
+	}
+
+	payload, err := makeCommonPayload(sub, t.Selectors(), data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build notification")
+	}
+
+	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+}
+
+func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.VersionSucceeded && t.data.Status != evergreen.VersionFailed {
+		return nil, nil
+	}
+
+	return t.generate(sub)
+}
+
+func (t *versionTriggers) versionFailure(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.VersionFailed {
+		return nil, nil
+	}
+
+	return t.generate(sub)
+}
+
+func (t *versionTriggers) versionSuccess(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.VersionSucceeded {
+		return nil, nil
+	}
+
+	return t.generate(sub)
+}
+
+func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {
+	if t.data.Status != evergreen.VersionFailed || t.version.Requester != evergreen.RepotrackerVersionRequester {
+		return nil, nil
+	}
+
+	versionTasks, err := task.FindWithDisplayTasks(task.ByVersion(t.version.Id))
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving tasks for version")
+	}
+	for i := range versionTasks {
+		task := &versionTasks[i]
+		isRegression, _, err := isTaskRegression(task)
+		if err != nil {
+			return nil, errors.Wrap(err, "error evaluating task regression")
+		}
+		if isRegression {
+			return t.generate(sub)
+		}
+	}
+	return nil, nil
+}
+
+func MakeVersionSelectors(v version.Version) []event.Selector {
+	selectors := []event.Selector{
 		{
 			Type: selectorID,
 			Data: v.Id,
@@ -62,74 +171,19 @@ func versionSelectors(v *version.Version) []event.Selector {
 		},
 		{
 			Type: selectorObject,
-			Data: "version",
+			Data: objectVersion,
 		},
 		{
 			Type: selectorRequester,
 			Data: v.Requester,
 		},
+		{
+			Type: selectorProject,
+			Data: v.Branch,
+		},
 	}
-}
-
-func generatorFromVersion(triggerName string, v *version.Version, status string) (*notificationGenerator, error) {
-	ui := evergreen.UIConfig{}
-	if err := ui.Get(); err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch ui config")
+	if v.AuthorID != "" {
+		selectors = append(selectors, event.Selector{Type: selectorOwner, Data: v.AuthorID})
 	}
-
-	api := restModel.APIVersion{}
-	if err := api.BuildFromService(v); err != nil {
-		return nil, errors.Wrap(err, "error building json model")
-	}
-
-	selectors := versionSelectors(v)
-
-	pastTenseStatus := status
-	if status == evergreen.VersionSucceeded {
-		pastTenseStatus = "succeeded"
-	}
-
-	data := commonTemplateData{
-		ID:              v.Id,
-		Object:          "version",
-		Project:         v.Identifier,
-		URL:             fmt.Sprintf("%s/version/%s", ui.Url, v.Id),
-		PastTenseStatus: pastTenseStatus,
-		apiModel:        &api,
-	}
-
-	return makeCommonGenerator(triggerName, selectors, data)
-}
-
-func versionOutcome(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error) {
-	const name = "outcome"
-
-	if e.Status != evergreen.VersionSucceeded && e.Status != evergreen.VersionFailed {
-		return nil, nil
-	}
-
-	gen, err := generatorFromVersion(name, v, e.Status)
-	return gen, err
-}
-
-func versionFailure(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error) {
-	const name = "failure"
-
-	if e.Status != evergreen.VersionFailed {
-		return nil, nil
-	}
-
-	gen, err := generatorFromVersion(name, v, e.Status)
-	return gen, err
-}
-
-func versionSuccess(e *event.VersionEventData, v *version.Version) (*notificationGenerator, error) {
-	const name = "success"
-
-	if e.Status != evergreen.VersionSucceeded {
-		return nil, nil
-	}
-
-	gen, err := generatorFromVersion(name, v, e.Status)
-	return gen, err
+	return selectors
 }

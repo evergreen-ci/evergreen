@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 )
 
@@ -36,9 +35,18 @@ type RestTestHistoryResult struct {
 }
 
 func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
-	taskName := mux.Vars(r)["task_name"]
-	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	taskName := gimlet.GetVars(r)["task_name"]
+	projectID := r.FormValue("project_id")
+	if projectID == "" {
+		gimlet.WriteJSONInternalError(w, responseError{Message: "project id must not be empty"})
+		return
+	}
+	projectRef, err := model.FindOneProjectRef(projectID)
+	if err != nil || projectRef == nil {
+		gimlet.WriteJSONInternalError(w, responseError{Message: "error loading project"})
+		return
+	}
+	project, err := model.FindProject("", projectRef)
 	if err != nil || project == nil {
 		gimlet.WriteJSONInternalError(w, responseError{Message: "error loading project"})
 		return
