@@ -30,6 +30,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const provisionRetryLimit = 15
+
 const setupHostJobName = "provisioning-setup-host"
 
 func init() {
@@ -771,5 +773,5 @@ func (j *setupHostJob) tryRequeue() {
 }
 
 func shouldRetryProvisioning(h *host.Host) bool {
-	return h.ProvisionAttempts <= 15 && h.Status == evergreen.HostProvisioning
+	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning
 }
