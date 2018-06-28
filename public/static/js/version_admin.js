@@ -38,9 +38,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
       },
       FAILURES: {
         name: 'Failures',
-        matches: function(task) {
-          return task.status != 'undispatched' && task.status == 'failed'
-        }
+        matches: function(task) { return task.status == 'failed' }
       },
       SYSTEM_FAILURES: {
         name: 'System Failures',
