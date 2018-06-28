@@ -282,7 +282,8 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	}
 
 	if tgh.fetchAllExecutions {
-		tasks, err := sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
+		var tasks []task.Task
+		tasks, err = sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "API model error")
 		}

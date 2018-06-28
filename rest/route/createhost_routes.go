@@ -56,5 +56,5 @@ func (h *listCreateHostHandler) Execute(ctx context.Context, c data.Connector) (
 	for i := range hosts {
 		results[i] = model.Model(&hosts[i])
 	}
-	return results, nil
+	return ResponseData{Result: results}, nil
 }
