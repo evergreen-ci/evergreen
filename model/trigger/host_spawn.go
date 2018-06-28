@@ -76,7 +76,7 @@ func (t *spawnHostTriggers) Selectors() []event.Selector {
 }
 
 func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if !t.host.User != evergreen.User {
+	if t.host.User == evergreen.User {
 		return nil, nil
 	}
 
