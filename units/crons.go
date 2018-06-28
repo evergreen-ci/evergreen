@@ -195,7 +195,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		if flags.AlertsDisabled || flags.EventProcessingDisabled {
+		if flags.EventProcessingDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "alerts disabled",
 				"impact":  "not processing alerts for notifications",
