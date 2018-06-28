@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -201,9 +199,8 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			} else if resp.StatusCode == http.StatusConflict {
 				return nil, HTTPConflictError
 			} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				apiErr := &rest.APIError{}
-				if err := util.ReadJSONInto(resp.Body, err); err != nil {
-					return nil, errors.Wrapf(apiErr, "server returned %d", resp.StatusCode)
+				if bytes, _ := ioutil.ReadAll(resp.Body); len(bytes) > 0 {
+					return nil, errors.Errorf("server returned %d (%s)", resp.StatusCode, string(bytes))
 				}
 				return nil, errors.Errorf("server returned %d", resp.StatusCode)
 			} else if resp != nil {
