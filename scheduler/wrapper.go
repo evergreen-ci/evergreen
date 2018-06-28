@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -20,7 +21,7 @@ type Configuration struct {
 	FreeHostFraction float64
 }
 
-func PlanDistro(ctx context.Context, conf Configuration) error {
+func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
 	startAt := time.Now()
 	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
@@ -82,8 +83,16 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		},
 		freeHostFraction: conf.FreeHostFraction,
 	}
-	if distroSpec.MaxContainers > 0 {
+
+	// retrieve container pool information for container distros
+	pool := &evergreen.ContainerPool{}
+	if distroSpec.ContainerPool != "" {
+		pool = s.ContainerPools.GetContainerPool(distroSpec.ContainerPool)
+		if pool == nil {
+			return errors.Wrap(err, "problem retrieving container pool")
+		}
 		allocatorArgs.usesContainers = true
+		allocatorArgs.containerPool = pool
 	}
 
 	allocator := GetHostAllocator(conf.HostAllocator)
@@ -92,7 +101,7 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		return errors.Wrap(err, "problem finding distro")
 	}
 
-	hostsSpawned, err := spawnHosts(ctx, newHosts)
+	hostsSpawned, err := spawnHosts(ctx, newHosts, pool)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
