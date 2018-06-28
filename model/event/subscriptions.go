@@ -394,7 +394,7 @@ func CreateOrUpdateImplicitSubscription(subscriptionType string, id bson.ObjectI
 			case ImplicitSubscriptionSpawnhostExpiration:
 				temp = NewSpawnhostExpirationSubscription(user, subscriber)
 			case ImplicitSubscriptionSpawnHostOutcome:
-				temp = NewSpawnhostExpirationSubscription(user, subscriber)
+				temp = NewSpawnHostOutcomeByOwner(user, subscriber)
 			default:
 				return nil, errors.Errorf("unknown subscription type: %s", subscriptionType)
 			}
