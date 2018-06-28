@@ -23,10 +23,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	ProjectCookieName string = "mci-project-cookie"
-)
-
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
 	render     gimlet.Renderer
