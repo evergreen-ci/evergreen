@@ -89,9 +89,9 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 	var attachment message.SlackAttachment
 	if t.event.EventType == event.EventHostProvisioned {
 		attachment = message.SlackAttachment{
-			Title:     "Evergreen Host",
+			Title:     fmt.Sprintf("Evergreen Host: %s", t.host.Id),
 			TitleLink: spawnHostURL(t.uiConfig.Url),
-			Color:     "good",
+			Color:     evergreenSuccessColor,
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
 					Title: "Distro",
@@ -110,7 +110,7 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 		attachment = message.SlackAttachment{
 			Title:     "Click here to spawn another host",
 			TitleLink: spawnHostURL(t.uiConfig.Url),
-			Color:     "danger",
+			Color:     evergreenFailColor,
 			Fields: []*message.SlackAttachmentField{
 				&message.SlackAttachmentField{
 					Title: "Distro",
@@ -134,7 +134,7 @@ const spawnHostEmailTemplate string = `<html>
 <body>
 <p>Hi,</p>
 
-<p>The Evergreen <a href="%s">Spawn Host</a> with distro '%s' has %s.</p>
+<p>The Evergreen Spawn Host <a href="%s">%s</a> with distro '%s' has %s.</p>
 <p>SSH Command: %s</p>
 
 
@@ -154,7 +154,7 @@ func (t *spawnHostTriggers) email() *message.Email {
 
 	return &message.Email{
 		Subject:           fmt.Sprintf(spawnHostEmailSubjectTemplate, t.host.Distro.Id, status),
-		Body:              fmt.Sprintf(spawnHostEmailTemplate, url, t.host.Distro.Id, status, cmd),
+		Body:              fmt.Sprintf(spawnHostEmailTemplate, url, t.host.Id, t.host.Distro.Id, status, cmd),
 		PlainTextContents: false,
 	}
 }
