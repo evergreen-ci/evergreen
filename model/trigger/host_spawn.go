@@ -76,7 +76,7 @@ func (t *spawnHostTriggers) Selectors() []event.Selector {
 }
 
 func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {
-	if t.host.User == evergreen.User {
+	if t.host.StartedBy == evergreen.User {
 		return nil, nil
 	}
 
@@ -105,7 +105,7 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 			},
 		}
 
-	} else if t.event.EventType == event.EventHostProvisionError {
+	} else if t.event.EventType == event.EventHostProvisionFailed {
 		text = fmt.Sprintf("Host with distro '%s' has failed to spawn", t.host.Distro)
 		attachment = message.SlackAttachment{
 			Title:     "Click here to spawn another host",
