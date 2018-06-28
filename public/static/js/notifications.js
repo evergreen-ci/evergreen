@@ -27,7 +27,6 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       });
     };
     var failure = function(resp) {
-        console.log(resp);
       notificationService.pushNotification("Failed to get subscriptions: " + resp.data.error, 'errorHeader');
     };
     mciSubscriptionsService.get(user, "person", {success: success, error: failure});
