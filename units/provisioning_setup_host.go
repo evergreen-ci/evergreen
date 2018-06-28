@@ -389,17 +389,17 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		"message": "setting up host",
 	})
 
+	incErr := h.IncProvisionAttempts()
+	grip.Critical(message.WrapError(incErr, message.Fields{
+		"job":           j.ID(),
+		"host":          h.Id,
+		"attempt_value": h.ProvisionAttempts,
+		"distro":        h.Distro.Id,
+		"operation":     "increment provisioning errors failed",
+	}))
+
 	output, err := j.runHostSetup(ctx, h, settings)
 	if err != nil {
-		incErr := h.IncProvisionAttempts()
-		grip.Critical(message.WrapError(incErr, message.Fields{
-			"job":           j.ID(),
-			"host":          h.Id,
-			"attempt_value": h.ProvisionAttempts,
-			"distro":        h.Distro.Id,
-			"operation":     "increment provisioning errors failed",
-		}))
-
 		if shouldRetryProvisioning(h) {
 			grip.Debug(message.Fields{
 				"host":     h.Id,
