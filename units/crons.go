@@ -378,7 +378,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
 			"runner":   "scheduler",
 			"previous": lastPlanned,
-			"distros":  distros,
+			"distros":  distro.DistroGroup(distros).GetDistroIds(),
 			"op":       "dispatcher",
 		})
 

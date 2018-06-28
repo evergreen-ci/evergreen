@@ -36,6 +36,8 @@ type Distro struct {
 	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
 
+type DistroGroup []Distro
+
 type ValidateFormat string
 
 type Expansion struct {
@@ -131,4 +133,13 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 		}
 	}
 	return errors.WithStack(catcher.Resolve())
+}
+
+// GetDistroIds returns a slice of distro IDs for the given group of distros
+func (distros DistroGroup) GetDistroIds() []string {
+	var ids []string
+	for _, d := range distros {
+		ids = append(ids, d.Id)
+	}
+	return ids
 }
