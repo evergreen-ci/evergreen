@@ -188,7 +188,9 @@ func (s *CostIntegrationSuite) SetupSuite() {
 }
 
 func (s *CostIntegrationSuite) TestSpotPriceHistory() {
-	cpf := cachingPriceFetcher{}
+	cpf := cachingPriceFetcher{
+		spotPrices: make(map[string]cachedSpotRate),
+	}
 	input := hourlySpotPriceHistoryInput{
 		iType: "m3.large",
 		zone:  "us-east-1a",
