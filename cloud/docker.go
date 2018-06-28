@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -93,11 +94,10 @@ func (*dockerManager) GetSettings() ProviderSettings {
 
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != evergreen.ProviderNameDocker {
+	if h.Distro.Provider != evergreen.ProviderNameDocker && h.Distro.Provider != evergreen.ProviderNameDockerDynamic && h.Distro.Provider != evergreen.ProviderNameDockerStatic {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
-
 	// Decode provider settings from distro settings
 	settings := &dockerSettings{}
 	if h.Distro.ProviderSettings != nil {
@@ -110,10 +110,16 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Wrapf(err, "Invalid Docker settings in distro '%s'", h.Distro.Id)
 	}
 
+	parent, err := distro.FindOne(distro.ById(h.ParentID))
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error finding parent of host %s", h.Id)
+	}
+
+	hostIP := "host_ip"
 	grip.Info(message.Fields{
 		"message":     "decoded Docker container settings",
 		"container":   h.Id,
-		"host_ip":     settings.HostIP,
+		"host_ip":     (*parent.ProviderSettings)[hostIP],
 		"image_id":    settings.ImageID,
 		"client_port": settings.ClientPort,
 		"min_port":    settings.PortRange.MinPort,
@@ -122,14 +128,14 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 
 	// Create container
 	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, settings); err != nil {
-		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
+		err = errors.Wrapf(err, "Failed to create container for host '%s'", (*parent.ProviderSettings)[hostIP])
 		grip.Error(err)
 		return nil, err
 	}
 
 	// Start container
 	if err := m.client.StartContainer(ctx, h); err != nil {
-		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", settings.HostIP)
+		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", (*parent.ProviderSettings)[hostIP])
 		// Clean up
 		if err2 := m.client.RemoveContainer(ctx, h); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
@@ -147,7 +153,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	// Retrieve container details
 	newContainer, err := m.client.GetContainer(ctx, h)
 	if err != nil {
-		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", settings.HostIP)
+		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", (*parent.ProviderSettings)[hostIP])
 		grip.Error(err)
 		return nil, err
 	}
@@ -158,12 +164,12 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		grip.Error(err)
 		return nil, err
 	}
-	h.Host = fmt.Sprintf("%s:%s", settings.HostIP, hostPort)
+	h.Host = fmt.Sprintf("%s:%s", (*parent.ProviderSettings)[hostIP], hostPort)
 
 	grip.Info(message.Fields{
 		"message":   "retrieved open port binding",
 		"container": h.Id,
-		"host_ip":   settings.HostIP,
+		"host_ip":   (*parent.ProviderSettings)[hostIP],
 		"host_port": hostPort,
 	})
 

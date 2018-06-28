@@ -41,6 +41,7 @@ func (s *DockerSuite) SetupTest() {
 		client: s.client,
 	}
 	s.distro = distro.Distro{
+		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
 			"host_ip":     "127.0.0.1",
@@ -52,7 +53,10 @@ func (s *DockerSuite) SetupTest() {
 			},
 		},
 	}
-	s.hostOpts = HostOptions{}
+	s.hostOpts = HostOptions{
+		ParentID: "d",
+	}
+	s.distro.Insert()
 }
 
 func (s *DockerSuite) TestValidateSettings() {
@@ -393,7 +397,6 @@ func (s *DockerSuite) TestGetDNSName() {
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
-
 	dns, err = s.manager.GetDNSName(ctx, host)
 	s.NoError(err)
 	s.NotEmpty(dns)
