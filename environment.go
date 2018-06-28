@@ -594,7 +594,7 @@ func (e *envState) Close(ctx context.Context) error {
 				"deadline":     deadline,
 			})
 			catcher.Add(close(ctx))
-		}(n, close)
+		}(n, closer)
 	}
 
 	wg.Wait()
