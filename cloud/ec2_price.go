@@ -3,6 +3,7 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
@@ -23,10 +24,24 @@ type timeRange struct {
 	end   time.Time
 }
 
+const spotPriceCacheTTL = 2 * time.Minute
+
 type cachingPriceFetcher struct {
-	ec2Prices map[odInfo]float64
-	ebsPrices map[string]float64
+	ec2Prices  map[odInfo]float64
+	ebsPrices  map[string]float64
+	spotPrices map[string]cachedSpotRate
 	sync.Mutex
+}
+
+type cachedSpotRate struct {
+	values      []spotRate
+	collectedAt time.Time
+}
+
+func (c *cachedSpotRate) getCopy() []spotRate {
+	out := []spotRate{}
+	copy(out, c.values)
+	return out
 }
 
 // spotRate is an internal type for simplifying Amazon's price history responses.
@@ -39,6 +54,7 @@ var pkgCachingPriceFetcher *cachingPriceFetcher
 
 func init() {
 	pkgCachingPriceFetcher = new(cachingPriceFetcher)
+	pkgCachingPriceFetcher.spotPrices = make(map[string]cachedSpotRate)
 }
 
 func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
@@ -453,10 +469,45 @@ type hourlySpotPriceHistoryInput struct {
 	end   time.Time
 }
 
+func (i hourlySpotPriceHistoryInput) String() string { return fmt.Sprintln(i.iType, i.zone, i.os) }
+
 // describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
 // simplifies that history into hourly billing rates starting from the supplied
 // start time. Returns a slice of hour-separated spot prices or any errors that occur.
 func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+	cpf.Lock()
+	defer cpf.Unlock()
+
+	cacheKey := input.String()
+	cachedValue, ok := cpf.spotPrices[cacheKey]
+	if ok {
+		staleFor := time.Since(cachedValue.collectedAt)
+		if staleFor < spotPriceCacheTTL && len(cachedValue.values) > 0 {
+			grip.Debug(message.Fields{
+				"message":     "found spot price in cache",
+				"cached_secs": staleFor.Seconds(),
+				"key":         cacheKey,
+				"cache_size":  len(cpf.spotPrices),
+			})
+
+			return cachedValue.getCopy(), nil
+		}
+	}
+
+	cleanedNum := 0
+	for k, v := range cpf.spotPrices {
+		if time.Since(v.collectedAt) > spotPriceCacheTTL {
+			cleanedNum++
+			delete(cpf.spotPrices, k)
+		}
+	}
+	grip.DebugWhen(cleanedNum > 0, message.Fields{
+		"message":   "cleaned cached spot prices",
+		"ttl_secs":  spotPriceCacheTTL.Seconds(),
+		"expired":   cleanedNum,
+		"remaining": len(cpf.spotPrices),
+	})
+
 	// expand times to contain the full runtime of the host
 	startFilter, endFilter := input.start.Add(-time.Hour), input.end.Add(time.Hour)
 	osStr := string(input.os)
@@ -517,7 +568,14 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 			i--
 		}
 	}
-	return prices, nil
+
+	cachedValue = cachedSpotRate{
+		collectedAt: time.Now(),
+		values:      prices,
+	}
+	cpf.spotPrices[cacheKey] = cachedValue
+
+	return cachedValue.getCopy(), nil
 }
 
 func getOsName(h *host.Host) osType {
