@@ -9,11 +9,11 @@ type CreateHost struct {
 
 func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case CreateHost:
+	case *CreateHost:
 		createHost.DNSName = v.DNSName
 		createHost.InstanceID = v.InstanceID
 	default:
-		return errors.New("Invalid type passed to *CreateHost.BuildFromService")
+		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)
 	}
 	return nil
 }
