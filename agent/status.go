@@ -20,9 +20,10 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.ResetMiddleware()
 	app.SetPort(port)
 	app.StrictSlash = false
+	app.NoVersions = true
 
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
-	app.AddRoute("/stats").Handler(agt.statusHandler()).Get()
+	app.AddRoute("/status").Handler(agt.statusHandler()).Get()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
 
 	handler, err := app.Handler()

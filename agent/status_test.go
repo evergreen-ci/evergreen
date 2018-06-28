@@ -70,6 +70,6 @@ func (s *StatusSuite) TestAgentStartsStatusServer() {
 	}()
 	time.Sleep(100 * time.Millisecond)
 	resp, err := http.Get("http://127.0.0.1:2286/status")
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal(200, resp.StatusCode)
 }
