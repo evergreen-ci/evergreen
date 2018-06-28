@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 	"github.com/urfave/negroni"
 )
 
@@ -47,13 +46,13 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
+	clients := negroni.NewStatic(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))
+	clients.Prefix = "/clients"
+	app.AddMiddleware(clients)
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
-	rest, err := GetRESTv1App(as)
-	if err != nil {
-		return nil, err
-	}
+	rest := GetRESTv1App(as)
 
 	route.AttachHandler(rest, as.queue, as.Settings.Ui.Url, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
 
@@ -72,10 +71,8 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// transition, we convert the app to a router and then attach
 	// legacy routes directly.
 	r := mux.NewRouter()
-	err = uis.AttachRoutes(r)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+
+	uis.AttachRoutes(r)
 	as.AttachRoutes(r)
 
 	return gimlet.AssembleHandler(r, app, rest, apiRestV2)

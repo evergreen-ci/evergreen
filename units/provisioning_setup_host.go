@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
@@ -26,11 +25,17 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-const setupHostJobName = "provisioning-setup-host"
+const (
+	provisionRetryLimit = 15
+	setupHostJobName    = "provisioning-setup-host"
+)
+
+const provisionFailurePreface = "[PROVISION-FAILURE]"
 
 func init() {
 	registry.AddJobType(setupHostJobName, func() amboy.Job {
@@ -97,6 +102,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+	defer j.tryRequeue()
 
 	settings := j.env.Settings()
 
@@ -144,16 +150,19 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 			"hostid":  h.Id,
 		}))
 
-		// notify the admins of the failure
-		subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
-			notify.ProvisionFailurePreface, h.Distro.Id)
-		hostLink := fmt.Sprintf("%v/host/%v", settings.Ui.Url, h.Id)
-		message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
-			h.Distro.Id, h.Id, hostLink)
-
-		if err := notify.NotifyAdmins(subject, message, settings); err != nil {
-			return errors.Wrap(err, "problem sending host init error email")
+		mailer, err := j.env.GetSender(evergreen.SenderEmail)
+		if err != nil {
+			return errors.Wrapf(err, "problem sending host init error email for host %s", h.Id)
 		}
+		mailer.Send(message.NewEmailMessage(level.Error, message.Email{
+			From:       settings.Notify.SMTP.From,
+			Recipients: settings.Notify.SMTP.AdminEmail,
+			Subject: fmt.Sprintf("%v Evergreen provisioning failure on %v",
+				provisionFailurePreface, h.Distro.Id),
+			Body: fmt.Sprintf("Provisioning failed on %s host -- %s: see %s/host/%s",
+				h.Distro.Id, h.Id, settings.Ui.Url, h.Id),
+		}))
+
 	}
 
 	// ProvisionHost allows hosts to fail provisioning a few
@@ -393,7 +402,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 			"operation": "increment provisioning errors failed",
 		}))
 
-		if h.ProvisionAttempts <= 15 {
+		if shouldRetryProvisioning(h) {
 			grip.Debug(message.Fields{
 				"runner":   HostInit,
 				"host":     h.Id,
@@ -754,4 +763,25 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		return err
 	}
 	return nil
+}
+
+func (j *setupHostJob) tryRequeue() {
+	if shouldRetryProvisioning(j.host) && j.env.RemoteQueue().Started() {
+		job := NewHostSetupJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.host.ProvisionAttempts))
+		job.UpdateTimeInfo(amboy.JobTimeInfo{
+			WaitUntil: time.Now().Add(time.Minute),
+		})
+		err := j.env.RemoteQueue().Put(job)
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message":  "failed to requeue setup job",
+			"host":     j.host.Id,
+			"runner":   HostInit,
+			"attempts": j.host.ProvisionAttempts,
+		}))
+		j.AddError(err)
+	}
+}
+
+func shouldRetryProvisioning(h *host.Host) bool {
+	return h.ProvisionAttempts <= provisionRetryLimit && h.Status == evergreen.HostProvisioning
 }

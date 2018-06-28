@@ -77,13 +77,13 @@ func (s *AdminEventSuite) TestEventLogging2() {
 
 func (s *AdminEventSuite) TestEventLogging3() {
 	before := evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
+		SMTP: evergreen.SMTPConfig{
 			Port:     10,
 			Password: "pass",
 		},
 	}
 	after := evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
+		SMTP: evergreen.SMTPConfig{
 			Port:     20,
 			Password: "nope",
 		},

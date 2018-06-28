@@ -26,6 +26,9 @@ func FindUserByID(id string) (*user.DBUser, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "db issue finding user '%s'", id)
 	}
+	if t == nil {
+		return nil, errors.Errorf("user %s not found", id)
+	}
 	return t, nil
 }
 

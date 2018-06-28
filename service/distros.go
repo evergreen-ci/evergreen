@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -27,11 +28,25 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 
 	sort.Sort(&sortableDistro{distros})
 
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		message := fmt.Sprintf("error fetching evergreen settings: %v", err)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
+
+	containerPoolDistros := make([]string, 0)
+	for _, p := range settings.ContainerPools.Pools {
+		containerPoolDistros = append(containerPoolDistros, p.Distro)
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distros []distro.Distro
 		Keys    map[string]string
 		ViewData
-	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true)},
+		ContainerPoolDistros []string
+	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPoolDistros},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 

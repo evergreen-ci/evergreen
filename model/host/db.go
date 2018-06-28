@@ -254,6 +254,13 @@ func Provisioning() db.Q {
 	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
 }
 
+func FindByFirstProvisioningAttempt() ([]Host, error) {
+	return Find(db.Query(bson.M{
+		ProvisionAttemptsKey: 0,
+		StatusKey:            evergreen.HostProvisioning,
+	}))
+}
+
 // IsRunningAndSpawned is a query that returns all running hosts
 // spawned by an Evergreen user.
 var IsRunningAndSpawned = db.Query(
@@ -389,8 +396,9 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 func NeedsNewAgent(currentTime time.Time) db.Q {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return db.Query(bson.M{
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},

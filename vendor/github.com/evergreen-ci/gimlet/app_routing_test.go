@@ -194,3 +194,12 @@ func (s *RoutingSuite) TestMethodMethodIsInvalid() {
 		s.NotNil(r)
 	}
 }
+
+func (s *RoutingSuite) TestRouteWrapperMutators() {
+	r := s.app.AddRoute("/foo")
+	s.Len(r.wrappers, 0)
+	r.Wrap(MakeRecoveryLogger())
+	s.Len(r.wrappers, 1)
+	r.ClearWrappers()
+	s.Len(r.wrappers, 0)
+}

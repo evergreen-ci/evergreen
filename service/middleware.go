@@ -49,9 +49,6 @@ const (
 	// These are private custom types to avoid key collisions.
 	RequestTask reqCtxKey = iota
 	RequestProjectContext
-	requestID
-
-	remoteAddrHeaderName = "X-Cluster-Client-Ip"
 )
 
 // MustHaveProjectContext gets the projectContext from the request,
@@ -321,14 +318,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 			Path:    "/",
 			Expires: time.Now().Add(7 * 24 * time.Hour),
 		})
-	}
-
-	if len(uis.GetAppPlugins()) > 0 {
-		pluginNames := []string{}
-		for _, p := range uis.GetAppPlugins() {
-			pluginNames = append(pluginNames, p.Name())
-		}
-		pc.PluginNames = pluginNames
 	}
 
 	return pc, nil
