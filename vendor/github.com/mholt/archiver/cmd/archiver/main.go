@@ -14,35 +14,35 @@ func main() {
 
 	cmd, filename := os.Args[1], os.Args[2]
 
-	for _, ff := range archiver.SupportedFormats {
-		if !ff.Match(filename) {
-			continue
-		}
-		var err error
-		switch cmd {
-		case "make":
-			if len(os.Args) < 4 {
-				fatal(usage)
-			}
-			err = ff.Make(filename, os.Args[3:])
-		case "open":
-			dest := ""
-			if len(os.Args) == 4 {
-				dest = os.Args[3]
-			} else if len(os.Args) > 4 {
-				fatal(usage)
-			}
-			err = ff.Open(filename, dest)
-		default:
-			fatal(usage)
-		}
-		if err != nil {
-			fatal(err)
-		}
-		return
+	ff := archiver.MatchingFormat(filename)
+	if ff == nil {
+		fatalf("%s: Unsupported file extension", filename)
 	}
 
-	fatalf("%s: Unsupported file extension", filename)
+	var err error
+	switch cmd {
+	case "make":
+		if len(os.Args) < 4 {
+			fatal(usage)
+		}
+		err = ff.Make(filename, os.Args[3:])
+	case "open":
+		dest, osErr := os.Getwd()
+		if osErr != nil {
+			fatal(err)
+		}
+		if len(os.Args) == 4 {
+			dest = os.Args[3]
+		} else if len(os.Args) > 4 {
+			fatal(usage)
+		}
+		err = ff.Open(filename, dest)
+	default:
+		fatal(usage)
+	}
+	if err != nil {
+		fatal(err)
+	}
 }
 
 func fatal(v ...interface{}) {
@@ -71,6 +71,13 @@ const usage = `Usage: archiver {make|open} <archive file> [files...]
       .tar.gz
       .tgz
       .tar.bz2
+      .tbz2
+      .tar.xz
+      .txz
+      .tar.lz4
+      .tlz4
+      .tar.sz
+      .tsz
       .rar (open only)
 
   Existing files:

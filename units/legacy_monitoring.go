@@ -3,11 +3,8 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -74,7 +71,6 @@ func (j *legacyMonitorJob) Run(ctx context.Context) {
 
 	notifier := &monitor.Notifier{
 		NotificationBuilders: []monitor.NotificationBuilder{
-			monitor.SpawnHostExpirationWarnings,
 			monitor.SlowProvisioningWarnings,
 		},
 	}
@@ -85,28 +81,5 @@ func (j *legacyMonitorJob) Run(ctx context.Context) {
 		"id":      j.ID(),
 		"message": "Error sending notifications",
 	}))
-
-	// Do alerts for spawnhosts - collect all hosts expiring in the next 12 hours.
-	// The trigger logic will filter out any hosts that aren't in a notification window, or have
-	// already have alerts sent.
-	now := time.Now()
-	thresholdTime := now.Add(12 * time.Hour)
-	expiringSoonHosts, err := host.Find(host.ByExpiringBetween(now, thresholdTime))
-	if err != nil {
-		j.AddError(errors.WithStack(err))
-		return
-	}
-
-	for _, h := range expiringSoonHosts {
-		if err = alerts.RunSpawnWarningTriggers(&h); err != nil {
-			j.AddError(err)
-			grip.Error(message.WrapError(err, message.Fields{
-				"runner":  "monitor",
-				"id":      j.ID(),
-				"message": "Error queuing alert",
-				"host":    h.Id,
-			}))
-		}
-	}
 
 }

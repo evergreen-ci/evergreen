@@ -251,11 +251,22 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 		catcher := grip.NewBasicCatcher()
 		hosts, err := host.FindHostsToTerminate()
 		grip.Error(message.WrapError(err, message.Fields{
-			"operation": "background task creation",
+			"operation": "populate host termination jobs",
 			"cron":      hostTerminationJobName,
 			"impact":    "hosts termination interrupted",
 		}))
+		catcher.Add(err)
 
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+		}
+
+		hosts, err = host.AllHostsSpawnedByTasksToTerminate()
+		grip.Error(message.WrapError(err, message.Fields{
+			"operation": "populate hosts spawned by tasks termination jobs",
+			"cron":      hostTerminationJobName,
+			"impact":    "hosts termination interrupted",
+		}))
 		catcher.Add(err)
 
 		for _, h := range hosts {
@@ -325,14 +336,15 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 
-		distros, err := distro.Find(distro.ByActiveWithContainers())
+		settings, err := evergreen.GetConfig()
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "Error finding evergreen settings")
 		}
+		containerPools := settings.ContainerPools.Pools
 
 		// Create ParentDecommissionJob for each distro
-		for _, d := range distros {
-			catcher.Add(queue.Put(NewParentDecommissionJob(ts, d)))
+		for _, c := range containerPools {
+			catcher.Add(queue.Put(NewParentDecommissionJob(ts, c.Distro, c.MaxContainers)))
 		}
 
 		return catcher.Resolve()
@@ -530,7 +542,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return nil
 		}
 
-		hosts, err := host.Find(host.Provisioning())
+		hosts, err := host.FindByFirstProvisioningAttempt()
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      setupHostJobName,
@@ -604,6 +616,23 @@ func PopulateLegacyRunnerJobs(env evergreen.Environment, part int) amboy.QueueOp
 			catcher.Add(queue.Put(NewLegacyMonitorRunnerJob(env, ts)))
 		}
 
+		return catcher.Resolve()
+	}
+}
+
+func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.AlertsDisabled {
+			return nil
+		}
+
+		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(queue.Put(NewSpawnhostExpirationWarningsJob(ts)))
 		return catcher.Resolve()
 	}
 }

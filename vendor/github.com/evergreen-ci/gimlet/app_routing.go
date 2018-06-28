@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	// "github.com/evergreen-ci/evergreen/model/patch"
+	_ "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 )
 
@@ -12,25 +14,26 @@ import (
 // and includes the route and associate internal metadata for the
 // route.
 type APIRoute struct {
-	route   string
-	prefix  string
-	methods []httpMethod
-	handler http.HandlerFunc
-	version int
+	route    string
+	prefix   string
+	methods  []httpMethod
+	handler  http.HandlerFunc
+	wrappers []Middleware
+	version  int
 }
 
-func (a *APIRoute) String() string {
+func (r *APIRoute) String() string {
 	var methods []string
-	for _, m := range a.methods {
+	for _, m := range r.methods {
 		methods = append(methods, m.String())
 	}
 
 	return fmt.Sprintf(
 		"r='%s', v='%d', methods=[%s], defined=%t",
-		a.route,
-		a.version,
+		r.route,
+		r.version,
 		strings.Join(methods, ", "),
-		a.handler != nil,
+		r.handler != nil,
 	)
 }
 
@@ -63,6 +66,15 @@ func (r *APIRoute) IsValid() bool {
 		return true
 	}
 }
+
+// ClearWrappers resets the routes middlware wrappers.
+func (r *APIRoute) ClearWrappers() { r.wrappers = []Middleware{} }
+
+// Wrap adds a middleware that is applied specifically to this
+// route. Route-specific middlware is applied after application specific
+// middleware (when there's a route or application prefix) and before
+// global application middleware (when merging applications without prefixes.)
+func (r *APIRoute) Wrap(m Middleware) *APIRoute { r.wrappers = append(r.wrappers, m); return r }
 
 // Prefix allows per-route prefixes, which will override the application's global prefix if set.
 func (r *APIRoute) Prefix(p string) *APIRoute { r.prefix = p; return r }
@@ -146,4 +158,31 @@ func (r *APIRoute) Delete() *APIRoute {
 func (r *APIRoute) Patch() *APIRoute {
 	r.methods = append(r.methods, patch)
 	return r
+}
+
+// Head is a chainable method to add a handler for the HEAD method
+// to the current route. Routes may specify multiple methods.
+func (r *APIRoute) Head() *APIRoute {
+	r.methods = append(r.methods, head)
+	return r
+}
+
+// Method makes it possible to specify an HTTP method pragmatically.
+func (r *APIRoute) Method(m string) *APIRoute {
+	switch m {
+	case get.String():
+		return r.Get()
+	case put.String():
+		return r.Put()
+	case post.String():
+		return r.Post()
+	case delete.String():
+		return r.Delete()
+	case patch.String():
+		return r.Patch()
+	case head.String():
+		return r.Head()
+	default:
+		return r
+	}
 }

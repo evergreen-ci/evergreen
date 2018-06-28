@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -26,16 +26,14 @@ func getKeysRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &keysGetHandler{},
-				MethodType:        http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &keysGetHandler{},
+				MethodType:     http.MethodGet,
 			},
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &keysPostHandler{},
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &keysPostHandler{},
+				MethodType:     http.MethodPost,
 			},
 		},
 		Version: version,
@@ -164,10 +162,9 @@ func getKeysDeleteRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &keysDeleteHandler{},
-				MethodType:        http.MethodDelete,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &keysDeleteHandler{},
+				MethodType:     http.MethodDelete,
 			},
 		},
 		Version: version,
@@ -179,8 +176,7 @@ func (h *keysDeleteHandler) Handler() RequestHandler {
 }
 
 func (h *keysDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	h.keyName = vars["key_name"]
+	h.keyName = gimlet.GetVars(r)["key_name"]
 	if strings.TrimSpace(h.keyName) == "" {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,

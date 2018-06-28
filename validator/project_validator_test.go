@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1839,4 +1839,81 @@ buildvariants:
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.NoError(err)
 	assert.Len(semanticErrs, 0)
+}
+
+func TestValidateCreateHosts(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	// passing case
+	yml := `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	var p model.Project
+	err := model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs := validateCreateHosts(&p)
+	assert.Len(errs, 0)
+
+	// error: times called per task
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
+
+	// error: total times called
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_2
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_3
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_4
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+    - name: t_2
+    - name: t_3
+    - name: t_4
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
 }

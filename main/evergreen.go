@@ -7,7 +7,7 @@ import (
 
 	// this *must* be included in the binary so that the legacy
 	// plugins are built into the binary.
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	_ "github.com/evergreen-ci/evergreen/plugin"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/operations"

@@ -37,7 +37,7 @@ type SuperUserAuthenticator struct{}
 // exist in the settings file, all users are considered super. It returns
 // 'NotFound' errors to prevent leaking sensitive information.
 func (s *SuperUserAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
-	u := GetUser(ctx)
+	u := gimlet.GetUser(ctx)
 	if u == nil {
 		return nil
 	}
@@ -60,8 +60,7 @@ type ProjectAdminAuthenticator struct{}
 // part of the project context's project admins.
 func (p *ProjectAdminAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
 	projCtx := MustHaveProjectContext(ctx)
-	u := GetUser(ctx)
-
+	u := gimlet.GetUser(ctx)
 	if u != nil {
 		// If either a superuser or admin, request is allowed to proceed.
 		if auth.IsSuperUser(sc.GetSuperUsers(), u) ||
@@ -83,7 +82,7 @@ type RequireUserAuthenticator struct{}
 // set, it is because PrefetchUser already set it, which checks the validity of
 // the APIKey, so that is no longer needed to be checked.
 func (rua *RequireUserAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
-	u := GetUser(ctx)
+	u := gimlet.GetUser(ctx)
 	if u == nil {
 		return rest.APIError{
 			StatusCode: http.StatusNotFound,

@@ -1,5 +1,7 @@
 package gimlet
 
+import "net/http"
+
 type httpMethod int
 
 // Typed constants for specifying HTTP method types on routes.
@@ -9,27 +11,33 @@ const (
 	post
 	delete
 	patch
+	head
 )
 
 func (m httpMethod) String() string {
 	switch m {
 	case get:
-		return "GET"
+		return http.MethodGet
 	case put:
-		return "PUT"
+		return http.MethodPut
 	case delete:
-		return "DELETE"
+		return http.MethodDelete
 	case patch:
-		return "PATCH"
+		return http.MethodPatch
 	case post:
-		return "POST"
+		return http.MethodPost
+	case head:
+		return http.MethodHead
 	default:
 		return ""
 	}
 }
 
+// OutputFormat enumerates output formats for response writers.
 type OutputFormat int
 
+// Enumerations of supported output formats used by gimlet rendering
+// facilities.
 const (
 	JSON OutputFormat = iota
 	TEXT
@@ -38,6 +46,7 @@ const (
 	BINARY
 )
 
+// IsValid provides a predicate to validate OutputFormat values.
 func (o OutputFormat) IsValid() bool {
 	switch o {
 	case JSON, TEXT, HTML, BINARY, YAML:
@@ -64,6 +73,8 @@ func (o OutputFormat) String() string {
 	}
 }
 
+// ContentType returns a mime content-type string for output formats
+// produced by gimlet's rendering.
 func (o OutputFormat) ContentType() string {
 	switch o {
 	case JSON:

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -72,6 +73,11 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
+		message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeAdmin,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		})
 		return errors.Wrap(err, "Error logging admin event")
 	}
 	return nil

@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
@@ -104,6 +105,8 @@ func startWebService() cli.Command {
 			<-gracefulWait
 
 			grip.Notice("waiting for background tasks to finish")
+			ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
 			catcher.Add(env.Close(ctx))
 
 			return catcher.Resolve()

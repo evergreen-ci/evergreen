@@ -85,6 +85,37 @@ func NewEventMetaJob(q amboy.Queue, ts string) amboy.Job {
 	return j
 }
 
+func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, err error) {
+	if e == nil {
+		return nil, errors.New("nil event")
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			n = nil
+			err = errors.Errorf("panicked while processing event %s", e.ID.Hex())
+			grip.Alert(message.WrapError(err, message.Fields{
+				"job":         eventMetaJobName,
+				"source":      "events-processing",
+				"event_id":    e.ID.Hex(),
+				"event_type":  e.ResourceType,
+				"panic_value": r,
+			}))
+		}
+	}()
+
+	n, err = trigger.NotificationsFromEvent(e)
+	grip.Error(message.WrapError(err, message.Fields{
+		"job":        eventMetaJobName,
+		"source":     "events-processing",
+		"message":    "errors processing triggers for event",
+		"event_id":   e.ID.Hex(),
+		"event_type": e.ResourceType,
+	}))
+
+	return n, err
+}
+
 func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	// TODO: if this is a perf problem, it could be multithreaded. For now,
 	// we just log time
@@ -99,17 +130,8 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	notifications := make([][]notification.Notification, len(j.events))
 
 	for i := range j.events {
-		notifications[i], err = trigger.NotificationsFromEvent(&j.events[i])
+		notifications[i], err = tryProcessOneEvent(&j.events[i])
 		catcher.Add(err)
-
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_id":     j.ID(),
-			"job":        eventMetaJobName,
-			"source":     "events-processing",
-			"message":    "errors processing triggers for event",
-			"event_id":   j.events[i].ID.Hex(),
-			"event_type": j.events[i].ResourceType,
-		}))
 
 		for _, n := range notifications[i] {
 			catcher.Add(bulk.Append(n))

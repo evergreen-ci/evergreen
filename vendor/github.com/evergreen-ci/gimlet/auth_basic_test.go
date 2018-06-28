@@ -6,33 +6,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBasicAuthenticator(t *testing.T) {
+func TestSimpleAuthenticator(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.Implements((*Authenticator)(nil), &basicAuthenticator{})
-	auth := NewBasicAuthenticator([]User{}, map[string][]string{})
+	assert.Implements((*Authenticator)(nil), &simpleAuthenticator{})
+	auth := NewSimpleAuthenticator([]User{}, map[string][]string{})
 	assert.NotNil(auth)
-	assert.NotNil(auth.(*basicAuthenticator).groups)
-	assert.NotNil(auth.(*basicAuthenticator).users)
-	assert.Len(auth.(*basicAuthenticator).groups, 0)
-	assert.Len(auth.(*basicAuthenticator).users, 0)
+	assert.NotNil(auth.(*simpleAuthenticator).groups)
+	assert.NotNil(auth.(*simpleAuthenticator).users)
+	assert.Len(auth.(*simpleAuthenticator).groups, 0)
+	assert.Len(auth.(*simpleAuthenticator).users, 0)
 
 	// constructor avoids nils
-	auth = NewBasicAuthenticator(nil, nil)
+	auth = NewSimpleAuthenticator(nil, nil)
 	assert.NotNil(auth)
-	assert.NotNil(auth.(*basicAuthenticator).groups)
-	assert.NotNil(auth.(*basicAuthenticator).users)
-	assert.Len(auth.(*basicAuthenticator).groups, 0)
-	assert.Len(auth.(*basicAuthenticator).users, 0)
+	assert.NotNil(auth.(*simpleAuthenticator).groups)
+	assert.NotNil(auth.(*simpleAuthenticator).users)
+	assert.Len(auth.(*simpleAuthenticator).groups, 0)
+	assert.Len(auth.(*simpleAuthenticator).users, 0)
 
 	// constructor avoids nils
 	usr := NewBasicUser("id", "email", "key", []string{})
-	auth = NewBasicAuthenticator([]User{usr}, nil)
+	auth = NewSimpleAuthenticator([]User{usr}, nil)
 	assert.NotNil(auth)
-	assert.NotNil(auth.(*basicAuthenticator).groups)
-	assert.NotNil(auth.(*basicAuthenticator).users)
-	assert.Len(auth.(*basicAuthenticator).groups, 0)
-	assert.Len(auth.(*basicAuthenticator).users, 1)
+	assert.NotNil(auth.(*simpleAuthenticator).groups)
+	assert.NotNil(auth.(*simpleAuthenticator).users)
+	assert.Len(auth.(*simpleAuthenticator).groups, 0)
+	assert.Len(auth.(*simpleAuthenticator).users, 1)
 
 	// if a user exists then it should work
 	assert.True(auth.CheckAuthenticated(usr))
@@ -43,12 +43,12 @@ func TestBasicAuthenticator(t *testing.T) {
 
 	usr3 := NewBasicUser("id3", "email", "key", []string{"admin"})
 	usr3broken := NewBasicUser("id3", "email", "yek", []string{"admin"})
-	auth = NewBasicAuthenticator([]User{usr3}, map[string][]string{
+	auth = NewSimpleAuthenticator([]User{usr3}, map[string][]string{
 		"none":  []string{"_"},
 		"admin": []string{"id3"}})
 	assert.NotNil(auth)
-	assert.Len(auth.(*basicAuthenticator).groups, 2)
-	assert.Len(auth.(*basicAuthenticator).users, 1)
+	assert.Len(auth.(*simpleAuthenticator).groups, 2)
+	assert.Len(auth.(*simpleAuthenticator).users, 1)
 	assert.False(auth.CheckGroupAccess(usr, "admin"))
 	assert.False(auth.CheckGroupAccess(usr3broken, "admin"))
 	assert.False(auth.CheckGroupAccess(usr3, "proj"))
@@ -58,8 +58,44 @@ func TestBasicAuthenticator(t *testing.T) {
 	// check user-based role access
 	usr.(*basicUser).AccessRoles = []string{"admin", "project", "one"}
 	assert.False(auth.CheckResourceAccess(usr, "admin")) // not currently authenticated
-	auth.(*basicAuthenticator).users[usr.Username()] = usr
+	auth.(*simpleAuthenticator).users[usr.Username()] = usr
 	assert.True(auth.CheckResourceAccess(usr, "admin")) // now it's defined
 	assert.True(auth.CheckResourceAccess(usr, "project"))
 	assert.False(auth.CheckResourceAccess(usr, "two")) // but not for this role
+}
+
+func TestBasicAuthenticator(t *testing.T) {
+	assert := assert.New(t)
+	// constructor avoids nils
+	auth := NewBasicAuthenticator(nil, nil)
+	assert.NotNil(auth)
+	assert.NotNil(auth.(*basicAuthenticator).groups)
+	assert.NotNil(auth.(*basicAuthenticator).resources)
+	assert.Len(auth.(*basicAuthenticator).groups, 0)
+	assert.Len(auth.(*basicAuthenticator).resources, 0)
+
+	// authenticated users are all non-nil users that have
+	// usernames
+	assert.False(auth.CheckAuthenticated(nil))
+	assert.False(auth.CheckAuthenticated(&basicUser{}))
+	usr := NewBasicUser("id", "email", "key", []string{})
+	assert.True(auth.CheckAuthenticated(usr))
+
+	auth = NewBasicAuthenticator(map[string][]string{"one": []string{"id"}}, nil)
+	assert.False(auth.CheckGroupAccess(usr, "two"))
+	assert.False(auth.CheckGroupAccess(usr, ""))
+	assert.True(auth.CheckGroupAccess(usr, "one"))
+	assert.False(auth.CheckGroupAccess(nil, "one"))
+	assert.False(auth.CheckGroupAccess(nil, ""))
+
+	auth = NewBasicAuthenticator(nil, map[string][]string{"/one": []string{"id"}})
+	assert.False(auth.CheckResourceAccess(usr, "two"))
+	assert.False(auth.CheckResourceAccess(usr, ""))
+	assert.False(auth.CheckResourceAccess(usr, "one"))
+	assert.False(auth.CheckResourceAccess(usr, "/two"))
+	assert.False(auth.CheckResourceAccess(usr, "/"))
+	assert.True(auth.CheckResourceAccess(usr, "/one"))
+	assert.False(auth.CheckResourceAccess(nil, "/one"))
+	assert.False(auth.CheckResourceAccess(nil, ""))
+
 }

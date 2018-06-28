@@ -7,14 +7,14 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
 // getVersionIdFromRequest is a helpfer function that fetches versionId from
 // request.
 func getVersionIdFromRequest(r *http.Request) string {
-	return mux.Vars(r)["version_id"]
+	return gimlet.GetVars(r)["version_id"]
 }
 
 type versionHandler struct {
@@ -158,10 +158,9 @@ func getAbortVersionRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &versionAbortHandler{},
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &versionAbortHandler{},
+				MethodType:     http.MethodPost,
 			},
 		},
 		Version: version,
@@ -187,8 +186,8 @@ func (h *versionAbortHandler) ParseAndValidate(ctx context.Context, r *http.Requ
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	var userId string
-	if u := GetUser(ctx); u != nil {
-		userId = u.Id
+	if u := gimlet.GetUser(ctx); u != nil {
+		userId = u.Username()
 	}
 	err := sc.AbortVersion(h.versionId, userId)
 	if err != nil {
@@ -231,10 +230,9 @@ func getRestartVersionRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &versionRestartHandler{},
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &versionRestartHandler{},
+				MethodType:     http.MethodPost,
 			},
 		},
 		Version: version,
@@ -260,7 +258,7 @@ func (h *versionRestartHandler) ParseAndValidate(ctx context.Context, r *http.Re
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
 func (h *versionRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	// Restart the version
-	err := sc.RestartVersion(h.versionId, GetUser(ctx).Id)
+	err := sc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error in restarting version:")

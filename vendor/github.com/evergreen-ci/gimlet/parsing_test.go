@@ -22,7 +22,7 @@ func TestReadingStructuredDataFromRequestBodies(t *testing.T) {
 		Count int    `json:"count" yaml:"count"`
 	}
 
-	for _, parserFunc := range []jsonishParser{GetYAML, GetJSON} {
+	for _, parserFunc := range []jsonishParser{GetYAML, GetJSON, GetJSONUnlimited, GetYAMLUnlimited} {
 
 		// case one: everything works
 
@@ -45,6 +45,8 @@ func TestReadingStructuredDataFromRequestBodies(t *testing.T) {
 
 		assert.Zero(out2.Count)
 		assert.Zero(out2.Name)
+
+		assert.Error(parserFunc(nil, map[string]string{}))
 	}
 }
 
@@ -56,13 +58,14 @@ func TestGetVarsInvocation(t *testing.T) {
 
 type erroringReadCloser struct{}
 
-func (_ *erroringReadCloser) Read(_ []byte) (int, error) { return 0, errors.New("test") }
-func (_ *erroringReadCloser) Close() error               { return nil }
+func (*erroringReadCloser) Read(_ []byte) (int, error) { return 0, errors.New("test") }
+func (*erroringReadCloser) Close() error               { return nil }
 
 func TestRequestReadingErrorPropogating(t *testing.T) {
 	errc := &erroringReadCloser{}
 
 	assert.Error(t, GetJSON(errc, "foo"))
 	assert.Error(t, GetYAML(errc, "foo"))
-
+	assert.Error(t, GetJSONUnlimited(errc, "foo"))
+	assert.Error(t, GetYAMLUnlimited(errc, "foo"))
 }

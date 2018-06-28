@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
@@ -72,18 +72,16 @@ func (h *legacyAdminGetHandler) Execute(ctx context.Context, sc data.Connector) 
 func getAdminSettingsManager(route string, version int) *RouteManager {
 	agh := &adminGetHandler{}
 	adminGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    agh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: agh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	aph := &adminPostHandler{}
 	adminPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    aph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: aph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	adminRoute := RouteManager{
@@ -153,6 +151,10 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	if err != nil {
 		return ResponseData{}, errors.Wrap(err, "Validation error")
 	}
+	err = distro.ValidateContainerPoolDistros(newSettings)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Validation error")
+	}
 
 	_, err = sc.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
@@ -174,18 +176,16 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 func getBannerRouteManager(route string, version int) *RouteManager {
 	bph := &bannerPostHandler{}
 	bannerPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    bph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: bph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	bgh := &bannerGetHandler{}
 	bannerGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    bgh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: bgh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	bannerRoute := RouteManager{
@@ -263,10 +263,9 @@ func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 func getServiceFlagsRouteManager(route string, version int) *RouteManager {
 	fph := &flagsPostHandler{}
 	flagsPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    fph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: fph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	flagsRoute := RouteManager{
@@ -319,10 +318,9 @@ func getRestartRouteManager(queue amboy.Queue) routeManagerFactory {
 		}
 
 		restartHandler := MethodHandler{
-			PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-			Authenticator:     &SuperUserAuthenticator{},
-			RequestHandler:    rh.Handler(),
-			MethodType:        http.MethodPost,
+			Authenticator:  &SuperUserAuthenticator{},
+			RequestHandler: rh.Handler(),
+			MethodType:     http.MethodPost,
 		}
 
 		restartRoute := RouteManager{
@@ -395,10 +393,9 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 func getRevertRouteManager(route string, version int) *RouteManager {
 	rh := revertHandler{}
 	handler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    rh.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: rh.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	return &RouteManager{
@@ -522,10 +519,9 @@ func getClearTaskQueueRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			MethodHandler{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &SuperUserAuthenticator{},
-				RequestHandler:    &clearTaskQueueHandler{},
-				MethodType:        http.MethodDelete,
+				Authenticator:  &SuperUserAuthenticator{},
+				RequestHandler: &clearTaskQueueHandler{},
+				MethodType:     http.MethodDelete,
 			},
 		},
 		Version: version,
@@ -537,7 +533,7 @@ func (h *clearTaskQueueHandler) Handler() RequestHandler {
 }
 
 func (h *clearTaskQueueHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
+	vars := gimlet.GetVars(r)
 	h.distro = vars["distro"]
 	_, err := distro.FindOne(distro.ById(h.distro))
 	if err != nil {

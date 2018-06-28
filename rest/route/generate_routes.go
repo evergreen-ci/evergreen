@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
@@ -48,8 +48,7 @@ func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 			Message:    fmt.Sprintf("error reading JSON from body (%s):\n%s", err, string(failedJson)),
 		}
 	}
-	vars := mux.Vars(r)
-	h.taskID = vars["task_id"]
+	h.taskID = gimlet.GetVars(r)["task_id"]
 	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
 		return &rest.APIError{
 			StatusCode: code,

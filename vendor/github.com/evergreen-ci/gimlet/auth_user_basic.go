@@ -2,6 +2,8 @@ package gimlet
 
 import "fmt"
 
+// NewBasicUser constructs a simple user. The underlying type has
+// serialization tags.
 func NewBasicUser(id, email, key string, roles []string) User {
 	return &basicUser{
 		ID:           id,
@@ -25,7 +27,6 @@ type basicUser struct {
 func (u *basicUser) Username() string    { return u.ID }
 func (u *basicUser) Email() string       { return u.EmailAddress }
 func (u *basicUser) DisplayName() string { return fmt.Sprintf("%s <%s>", u.ID, u.EmailAddress) }
-func (u *basicUser) IsNil() bool         { return u == nil }
 func (u *basicUser) GetAPIKey() string   { return u.Key }
 func (u *basicUser) Roles() []string {
 	out := make([]string, len(u.AccessRoles))
@@ -44,14 +45,14 @@ func userHasRole(u User, role string) bool {
 	return false
 }
 
-func userInGroup(u User, groups []string) bool {
-	if groups == nil || len(groups) == 0 {
+func userInSlice(u User, users []string) bool {
+	if len(users) == 0 {
 		return false
 	}
 
 	id := u.Username()
-	for _, g := range groups {
-		if id == g {
+	for _, u := range users {
+		if id == u {
 			return true
 		}
 	}

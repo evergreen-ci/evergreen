@@ -11,9 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // DBUserConnector is a struct that implements the User related interface
@@ -47,84 +45,82 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	}
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
 	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
-	settings.Notifications.SpawnHostID = dbUser.Settings.Notifications.SpawnHostID
+	settings.Notifications.SpawnHostOutcomeID = dbUser.Settings.Notifications.SpawnHostOutcomeID
+	settings.Notifications.SpawnHostExpirationID = dbUser.Settings.Notifications.SpawnHostExpirationID
 
-	var subscriber event.Subscriber
+	var patchSubscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
 	case user.PreferenceSlack:
-		subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
-
+		patchSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
-		subscriber = event.NewEmailSubscriber(dbUser.Email())
+		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-
-	var err error
-	settings.Notifications.PatchFinishID, err = updateSubscription(dbUser.Id, dbUser.Settings.Notifications.PatchFinishID, subscriber, event.NewPatchOutcomeSubscriptionByOwner)
+	patchSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchOutcome,
+		dbUser.Settings.Notifications.PatchFinishID, patchSubscriber, dbUser.Id)
 	if err != nil {
 		return err
 	}
+	if patchSubscription != nil {
+		settings.Notifications.PatchFinishID = patchSubscription.ID
+	} else {
+		settings.Notifications.PatchFinishID = ""
+	}
 
-	switch settings.Notifications.SpawnHost {
+	var buildBreakSubscriber event.Subscriber
+	switch settings.Notifications.BuildBreak {
 	case user.PreferenceSlack:
-		subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
-
+		buildBreakSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
-		subscriber = event.NewEmailSubscriber(dbUser.Email())
-
-	default:
-		subscriber = event.Subscriber{}
+		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-
-	settings.Notifications.SpawnHostID, err = updateSubscription(dbUser.Id, dbUser.Settings.Notifications.SpawnHostID, subscriber, event.NewSpawnHostOutcomeByOwner)
+	buildBreakSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionBuildBreak,
+		dbUser.Settings.Notifications.BuildBreakID, buildBreakSubscriber, dbUser.Id)
 	if err != nil {
 		return err
+	}
+	if buildBreakSubscription != nil {
+		settings.Notifications.BuildBreakID = buildBreakSubscription.ID
+	} else {
+		settings.Notifications.BuildBreakID = ""
+	}
+
+	var spawnhostSubscriber event.Subscriber
+	switch settings.Notifications.SpawnHostExpiration {
+	case user.PreferenceSlack:
+		spawnhostSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	spawnhostSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnhostExpiration,
+		dbUser.Settings.Notifications.SpawnHostExpirationID, spawnhostSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if spawnhostSubscription != nil {
+		settings.Notifications.SpawnHostExpirationID = spawnhostSubscription.ID
+	} else {
+		settings.Notifications.SpawnHostExpirationID = ""
+	}
+
+	var spawnHostOutcomeSubscriber event.Subscriber
+	switch settings.Notifications.SpawnHostOutcome {
+	case user.PreferenceSlack:
+		spawnHostOutcomeSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		spawnHostOutcomeSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	spawnHostOutcomeSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnHostOutcome,
+		dbUser.Settings.Notifications.SpawnHostOutcomeID, spawnHostOutcomeSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if spawnHostOutcomeSubscription != nil {
+		settings.Notifications.SpawnHostOutcomeID = spawnHostOutcomeSubscription.ID
+	} else {
+		settings.Notifications.SpawnHostOutcomeID = ""
 	}
 
 	return model.SaveUserSettings(dbUser.Id, settings)
-}
-
-func updateSubscription(user string, id bson.ObjectId, sub event.Subscriber, f func(string, event.Subscriber) event.Subscription) (bson.ObjectId, error) {
-	var subscription *event.Subscription
-	outID := id
-	if id.Valid() {
-		var err error
-		subscription, err = event.FindSubscriptionByID(id)
-		if err != nil {
-			return id, err
-		}
-		// in the event the database has bad data, we proceed as if
-		// a new subscription is being created.
-	}
-
-	if sub.Validate() == nil {
-		if subscription == nil {
-			temp := f(user, sub)
-			subscription = &temp
-			outID = subscription.ID
-
-		} else {
-			subscription.Subscriber = sub
-		}
-
-		subscription.OwnerType = event.OwnerTypePerson
-		subscription.Owner = user
-
-		if err := subscription.Upsert(); err != nil {
-			return outID, errors.Wrap(err, "failed to update subscription")
-		}
-		outID = subscription.ID
-
-	} else {
-		pp.Println("try out", outID.Hex(), id.Hex())
-		if id.Valid() {
-			if err := event.RemoveSubscription(outID); err != nil {
-				return outID, err
-			}
-			outID = ""
-		}
-	}
-
-	return outID, nil
 }
 
 // MockUserConnector stores a cached set of users that are queried against by the

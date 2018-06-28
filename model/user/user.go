@@ -45,12 +45,14 @@ type UserSettings struct {
 }
 
 type NotificationPreferences struct {
-	BuildBreak    UserSubscriptionPreference `bson:"build_break" json:"build_break"`
-	BuildBreakID  bson.ObjectId              `bson:"build_break_id,omitempty" json:"-"`
-	PatchFinish   UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
-	PatchFinishID bson.ObjectId              `bson:"patch_finish_id,omitempty" json:"-"`
-	SpawnHost     UserSubscriptionPreference `bson:"spawn_host" json:"spawn_host"`
-	SpawnHostID   bson.ObjectId              `bson:"spawn_host_id,omitempty" json:"-"`
+	BuildBreak            UserSubscriptionPreference `bson:"build_break" json:"build_break"`
+	BuildBreakID          bson.ObjectId              `bson:"build_break_id,omitempty" json:"-"`
+	PatchFinish           UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
+	PatchFinishID         bson.ObjectId              `bson:"patch_finish_id,omitempty" json:"-"`
+	SpawnHostOutcome      UserSubscriptionPreference `bson:"spawn_host_outcome" json:"spawn_host_outcome"`
+	SpawnHostOutcomeID    bson.ObjectId              `bson:"spawn_host_outcome_id,omitempty" json:"-"`
+	SpawnHostExpiration   UserSubscriptionPreference `bson:"spawn_host_expiration" json:"spawn_host_expiration"`
+	SpawnHostExpirationID bson.ObjectId              `bson:"spawn_host_expiration_id,omitempty" json:"-"`
 }
 
 type UserSubscriptionPreference string

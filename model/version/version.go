@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -24,7 +25,7 @@ type Version struct {
 	Ignored             bool          `bson:"ignored" json:"ignored"`
 	Owner               string        `bson:"owner_name" json:"owner_name,omitempty"`
 	Repo                string        `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string        `bson:"branch_name" json:"branch_name, omitempty"`
+	Branch              string        `bson:"branch_name" json:"branch_name,omitempty"`
 	RepoKind            string        `bson:"repo_kind" json:"repo_kind,omitempty"`
 	BuildVariants       []BuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 
@@ -49,6 +50,15 @@ type Version struct {
 	// AuthorID is an optional reference to the Evergreen user that authored
 	// this comment, if they can be identified
 	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
+}
+
+func (v *Version) LastSuccessful() (*Version, error) {
+	lastGreen, err := FindOne(BySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
+		[]string{"-" + RevisionOrderNumberKey}))
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving last successful version")
+	}
+	return lastGreen, nil
 }
 
 func (self *Version) UpdateBuildVariants() error {
