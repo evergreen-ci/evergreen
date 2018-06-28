@@ -1,8 +1,11 @@
 package data
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -15,10 +18,10 @@ type DBCreateHostConnector struct{}
 func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]model.CreateHost, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, errors.Wrap(err, "error finding task")
+		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: "error finding task"}
 	}
 	if t == nil {
-		return nil, errors.New("no task found")
+		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: "no task found"}
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -27,7 +30,7 @@ func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]model.CreateHos
 	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(t.BuildId)
 	catcher.Add(err)
 	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
+		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: catcher.String()}
 	}
 	hosts := []model.CreateHost{}
 	for _, h := range hostsSpawnedByBuild {
