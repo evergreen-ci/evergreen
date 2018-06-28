@@ -81,17 +81,11 @@ func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notifica
 		return nil, nil
 	}
 
-	grip.Info(message.Fields{
-		"look-here":   "dhfdsalufyairf3928r",
-		"e":           t.event.EventType,
-		"provisioned": t.host.Provisioned,
-	})
-
 	return t.generate(sub)
 }
 
 func (t *spawnHostTriggers) slack() *notification.SlackPayload {
-	text := fmt.Sprintf("Host with distro '%s' has failed to spawn", t.host.Distro)
+	text := fmt.Sprintf("Host with distro '%s' has failed to spawn", t.host.Distro.Id)
 	attachment := message.SlackAttachment{
 		Title:     "Click here to spawn another host",
 		TitleLink: spawnHostURL(t.uiConfig.Url),
@@ -104,30 +98,20 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 			},
 		},
 	}
+	if t.host.ProvisionOptions != nil && len(t.host.ProvisionOptions.TaskId) != 0 {
+		attachment.Fields = append(attachment.Fields,
+			&message.SlackAttachmentField{
+				Title: "With data from task",
+				Value: fmt.Sprintf("<%s|%s>", taskLink(&t.uiConfig, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
+				Short: true,
+			})
+	}
 
 	if t.host.Provisioned {
 		text = fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro.Id)
-		attachment = message.SlackAttachment{
-			Title:     fmt.Sprintf("Evergreen Host: %s", t.host.Id),
-			TitleLink: spawnHostURL(t.uiConfig.Url),
-			Color:     evergreenSuccessColor,
-			Fields: []*message.SlackAttachmentField{
-				&message.SlackAttachmentField{
-					Title: "Distro",
-					Value: t.host.Distro.Id,
-					Short: true,
-				},
-			},
-		}
-
-		if t.host.ProvisionOptions != nil && len(t.host.ProvisionOptions.TaskId) != 0 {
-			attachment.Fields = append(attachment.Fields,
-				&message.SlackAttachmentField{
-					Title: "With data from task",
-					Value: fmt.Sprintf("<%s|%s>", taskLink(&t.uiConfig, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
-					Short: true,
-				})
-		}
+		attachment.Title = fmt.Sprintf("Evergreen Host: %s", t.host.Id)
+		attachment.TitleLink = spawnHostURL(t.uiConfig.Url)
+		attachment.Color = evergreenSuccessColor
 
 		attachment.Fields = append(attachment.Fields,
 			&message.SlackAttachmentField{
@@ -188,6 +172,12 @@ func (t *spawnHostTriggers) makePayload(sub *event.Subscription) interface{} {
 
 func (t *spawnHostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	payload := t.makePayload(sub)
+	grip.Info(message.Fields{
+		"look-here":   "foidsjfhkafhaiwf",
+		"pl":          payload == nil,
+		"e":           t.event.EventType,
+		"provisioned": t.host.Provisioned,
+	})
 	if payload == nil {
 		return nil, nil
 	}
