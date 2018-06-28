@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -250,7 +249,7 @@ type goTest2JSONMergedTestEvent struct {
 }
 
 func startTimeFromEndTimeAndElapsed(endTime time.Time, elapsedSeconds float64) time.Time {
-	elapsedNano := math.Ceil(elapsedSeconds * float64(time.Second))
+	elapsedNano := elapsedSeconds * float64(time.Second)
 	return endTime.Add(-time.Duration(elapsedNano))
 }
 
