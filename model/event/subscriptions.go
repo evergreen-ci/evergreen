@@ -393,6 +393,8 @@ func CreateOrUpdateImplicitSubscription(subscriptionType string, id bson.ObjectI
 				temp = NewBuildBreakSubscriptionByOwner(user, subscriber)
 			case ImplicitSubscriptionSpawnhostExpiration:
 				temp = NewSpawnhostExpirationSubscription(user, subscriber)
+			case ImplicitSubscriptionSpawnHostOutcome:
+				temp = NewSpawnhostExpirationSubscription(user, subscriber)
 			}
 			sub = &temp
 		} else {
