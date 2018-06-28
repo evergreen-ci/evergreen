@@ -196,13 +196,11 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if j.flags.EventProcessingDisabled {
+	if j.flags.EventProcessingDisabled || j.flags.AlertsDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventMetaJobName,
-			"message": "events processing is disabled, all events will be marked processed",
+			"message": "events processing is disabled",
 		})
-
-		j.AddError(event.MarkAllEventsProcessed(event.AllLogCollection))
 		return
 	}
 
