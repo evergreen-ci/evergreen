@@ -909,7 +909,7 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if err != nil {
 		return 0, errors.Wrap(err, "problem getting region from host")
 	}
-	if err := m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
