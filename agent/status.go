@@ -21,7 +21,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app.SetPort(port)
 	app.StrictSlash = false
 
-	app.AddMiddleware(gimlet.NewRecoveryLogger())
+	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/stats").Handler(agt.statusHandler()).Get()
 	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
 
@@ -36,7 +36,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	grip.Infoln("starting status server on:", addr)
+	grip.Infoln("starting status server on:", srv.Addr)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {

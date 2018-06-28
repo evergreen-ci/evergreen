@@ -21,7 +21,7 @@ import (
 )
 
 // GetHandlerPprof returns a handler for pprof endpoints.
-func GetHandlerPprof(settings *evergreen.Settings) http.Handler {
+func GetHandlerPprof(settings *evergreen.Settings) (http.Handler, error) {
 	app := gimlet.NewApp()
 	app.ResetMiddleware()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
@@ -40,7 +40,7 @@ func GetHandlerPprof(settings *evergreen.Settings) http.Handler {
 	app.AddRoute("/symbol").Get().Handler(symbol)
 	app.AddRoute("/trace").Get().Handler(trace)
 
-	return app.Resolve()
+	return app.Handler()
 }
 
 // ******************************************************************************

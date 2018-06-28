@@ -52,6 +52,11 @@ func startWebService() cli.Command {
 				uiServer  *http.Server
 			)
 
+			pprof, err := service.GetHandlerPprof(settings)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
 			serviceHandler, err := getServiceRouter(settings, queue)
 			if err != nil {
 				return errors.WithStack(err)
@@ -81,8 +86,8 @@ func startWebService() cli.Command {
 				close(uiWait)
 			}()
 
+			pprofServer := service.GetServer(settings.PprofPort, pprof)
 			pprofWait := make(chan struct{})
-			pprofServer := service.GetServer(settings.PprofPort, service.GetHandlerPprof(settings))
 			go func() {
 				defer recovery.LogStackTraceAndContinue("proff server")
 
