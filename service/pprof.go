@@ -18,30 +18,29 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
-	"github.com/urfave/negroni"
 )
 
 // GetHandlerPprof returns a handler for pprof endpoints.
 func GetHandlerPprof(settings *evergreen.Settings) http.Handler {
-	router := mux.NewRouter()
+	app := gimlet.NewApp()
+	app.ResetMiddleware()
+	app.AddMiddleware(gimlet.MakeRecoveryLogger())
+	app.SetPrefix("/debug/pprof")
+	app.StrictSlash = false
+	app.NoVersions = true
 
-	root := router.PathPrefix("/debug/pprof").Subrouter()
-	root.HandleFunc("/", http.HandlerFunc(index))
-	root.HandleFunc("/heap", http.HandlerFunc(index))
-	root.HandleFunc("/block", http.HandlerFunc(index))
-	root.HandleFunc("/goroutine", http.HandlerFunc(index))
-	root.HandleFunc("/mutex", http.HandlerFunc(index))
-	root.HandleFunc("/threadcreate", http.HandlerFunc(index))
-	root.HandleFunc("/cmdline", http.HandlerFunc(cmdline))
-	root.HandleFunc("/profile", http.HandlerFunc(profile))
-	root.HandleFunc("/symbol", http.HandlerFunc(symbol))
-	root.HandleFunc("/trace", http.HandlerFunc(trace))
+	app.AddRoute("/").Get().Handler(index)
+	app.AddRoute("/heap").Get().Handler(index)
+	app.AddRoute("/block").Get().Handler(index)
+	app.AddRoute("/goroutine").Get().Handler(index)
+	app.AddRoute("/mutex").Get().Handler(index)
+	app.AddRoute("/threadcreate").Get().Handler(index)
+	app.AddRoute("/cmdline").Get().Handler(cmdline)
+	app.AddRoute("/profile").Get().Handler(profile)
+	app.AddRoute("/symbol").Get().Handler(symbol)
+	app.AddRoute("/trace").Get().Handler(trace)
 
-	n := negroni.New()
-	n.Use(gimlet.MakeRecoveryLogger())
-	n.UseHandler(router)
-	return n
+	return app.Resolve()
 }
 
 // ******************************************************************************
