@@ -2336,6 +2336,12 @@ md-card-title .md-button {
 .md-chip-input-container input {
   width: 500px;
 }
+.nav .pill-small {
+  cursor: pointer;
+}
+.nav .pill-small > a {
+  padding: 3px 8px;
+}
 .banner-container {
   height: 50px;
   margin: 8px;
