@@ -220,7 +220,7 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 	}
 	ps, err = cpf.describeHourlySpotPriceHistory(ctx, s.client, input)
 	s.NoError(err)
-	s.True(len(ps) > 240)
+	s.True(len(ps) > 240, "num_elems: %d", len(ps))
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
 	s.True(ps[len(ps)-1].Time.After(time.Now().Add(-30 * time.Minute)))
 	s.True(ps[0].Time.After(time.Now().Add(-242 * time.Hour)))

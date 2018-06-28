@@ -39,7 +39,7 @@ type cachedSpotRate struct {
 }
 
 func (c *cachedSpotRate) getCopy() []spotRate {
-	out := []spotRate{}
+	out := make([]spotRate, len(c.values))
 	copy(out, c.values)
 	return out
 }
@@ -469,7 +469,9 @@ type hourlySpotPriceHistoryInput struct {
 	end   time.Time
 }
 
-func (i hourlySpotPriceHistoryInput) String() string { return fmt.Sprintln(i.iType, i.zone, i.os) }
+func (i hourlySpotPriceHistoryInput) String() string {
+	return fmt.Sprintln(i.iType, i.zone, i.os, i.start.Round(spotPriceCacheTTL).Unix())
+}
 
 // describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
 // simplifies that history into hourly billing rates starting from the supplied
