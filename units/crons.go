@@ -390,6 +390,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		ts := util.RoundPartOfMinute(20)
 		settings := env.Settings()
+
 		for _, d := range distros {
 			// do not create scheduler jobs for parent distros
 			if d.IsParent(settings) {

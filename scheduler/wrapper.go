@@ -85,14 +85,14 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	// retrieve container pool information for container distros
-	pool := evergreen.ContainerPool{}
+	pool := &evergreen.ContainerPool{}
 	if distroSpec.ContainerPool != "" {
-		pool, err = s.ContainerPools.GetContainerPool(distroSpec.ContainerPool)
-		if err != nil {
+		pool = s.ContainerPools.GetContainerPool(distroSpec.ContainerPool)
+		if pool == nil {
 			return errors.Wrap(err, "problem retrieving container pool")
 		}
 		allocatorArgs.usesContainers = true
-		allocatorArgs.containerPool = &pool
+		allocatorArgs.containerPool = pool
 	}
 
 	allocator := GetHostAllocator(conf.HostAllocator)

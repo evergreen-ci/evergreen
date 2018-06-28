@@ -101,6 +101,14 @@ func (d *Distro) ExecutableSubPath() string {
 
 // IsParent returns whether the distro is the parent distro for any container pool
 func (d *Distro) IsParent(s *evergreen.Settings) bool {
+	if s == nil {
+		var err error
+		s, err = evergreen.GetConfig()
+		if err != nil {
+			grip.Critical("error retrieving settings object")
+			return false
+		}
+	}
 	for _, p := range s.ContainerPools.Pools {
 		if d.Id == p.Distro {
 			return true

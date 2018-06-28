@@ -52,7 +52,7 @@ func TestSpawnHosts(t *testing.T) {
 				distroIds[2]: 0,
 			}
 
-			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded, evergreen.ContainerPool{})
+			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded, nil)
 			So(err, ShouldBeNil)
 			So(len(newHostsSpawned[distroIds[0]]), ShouldEqual, 0)
 			So(len(newHostsSpawned[distroIds[1]]), ShouldEqual, 0)
@@ -74,7 +74,7 @@ func TestSpawnHosts(t *testing.T) {
 				So(d.Insert(), ShouldBeNil)
 			}
 
-			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded, evergreen.ContainerPool{})
+			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded, nil)
 			So(err, ShouldBeNil)
 			distroZeroHosts := newHostsSpawned[distroIds[0]]
 			distroOneHosts := newHostsSpawned[distroIds[1]]
@@ -98,7 +98,7 @@ func TestSpawnHosts(t *testing.T) {
 func (s *SchedulerSuite) TestNumNewParentsNeeded() {
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
+	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -106,7 +106,7 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded() {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
@@ -137,7 +137,7 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded() {
 func (s *SchedulerSuite) TestNumNewParentsNeeded2() {
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 
 	host1 := &host.Host{
 		Id:                    "host1",
@@ -146,7 +146,7 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded2() {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
@@ -180,7 +180,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -188,7 +188,7 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
@@ -230,7 +230,7 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 	host1 := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -238,7 +238,7 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
@@ -279,7 +279,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	defer cancel()
 
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 	host1 := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -287,7 +287,7 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
@@ -332,7 +332,7 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 
 	d := distro.Distro{Id: "distro", PoolSize: 1, Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
+	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
 		Id:                    "host1",
 		Host:                  "host",
@@ -340,7 +340,7 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
@@ -373,7 +373,7 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 func (s *SchedulerSuite) TestFindAvailableParent() {
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
 		ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
 
@@ -384,14 +384,14 @@ func (s *SchedulerSuite) TestFindAvailableParent() {
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:                    "host2",
 		Distro:                distro.Distro{Id: "parent-distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host3 := &host.Host{
 		Id:          "host3",
@@ -439,7 +439,7 @@ func (s *SchedulerSuite) TestFindAvailableParent() {
 
 func (s *SchedulerSuite) TestFindNoAvailableParent() {
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
-	pool := evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
+	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
 
@@ -450,14 +450,14 @@ func (s *SchedulerSuite) TestFindNoAvailableParent() {
 		Distro:                distro.Distro{Id: "distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:                    "host2",
 		Distro:                distro.Distro{Id: "distro"},
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host3 := &host.Host{
 		Id:          "host3",
@@ -507,7 +507,7 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	hosts := []cloud.StaticHost{{Name: "host1"}, {Name: "host2"}, {Name: "host3"}}
 	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerStatic,
 		ContainerPool: "test-pool"}
-	pool := evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
+	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
 
 	host1 := &host.Host{
 		Id:   "host1",
@@ -520,7 +520,7 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 		Provider:              evergreen.ProviderNameDockerStatic,
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id: "host2",
@@ -531,7 +531,7 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 		Provider:              evergreen.ProviderNameDockerStatic,
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 	host3 := &host.Host{
 		Id: "host3",
@@ -542,7 +542,7 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 		Provider:              evergreen.ProviderNameDockerStatic,
 		Status:                evergreen.HostRunning,
 		HasContainers:         true,
-		ContainerPoolSettings: &pool,
+		ContainerPoolSettings: pool,
 	}
 
 	s.NoError(d.Insert())

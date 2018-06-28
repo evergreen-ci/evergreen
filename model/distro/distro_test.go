@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateName(t *testing.T) {
@@ -54,68 +53,25 @@ func TestGenerateGceName(t *testing.T) {
 	assert.True(r.Match([]byte(tooManyChars)))
 }
 
-func TestFindActive(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	require.NoError(db.Clear(Collection))
-
-	active, err := FindActive()
-	assert.Error(err)
-	assert.Len(active, 0)
-
-	d := Distro{
-		Id: "foo",
-	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
-	assert.NoError(err)
-	assert.Len(active, 1)
-
-	d = Distro{
-		Id:       "bar",
-		Disabled: false,
-	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
-	assert.NoError(err)
-	assert.Len(active, 2)
-
-	d = Distro{
-		Id:       "baz",
-		Disabled: true,
-	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
-	assert.NoError(err)
-	assert.Len(active, 2)
-
-	d = Distro{
-		Id:       "qux",
-		Disabled: true,
-	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
-	assert.NoError(err)
-	assert.Len(active, 2)
-}
-
 func TestIsParent(t *testing.T) {
 	assert := assert.New(t)
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	assert.NoError(db.Clear(Collection))
+	assert.NoError(db.Clear(evergreen.ConfigCollection))
 
-	conf := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
-					Distro:        "distro-1",
-					Id:            "test-pool",
-					MaxContainers: 100,
-				},
+	conf := evergreen.ContainerPoolsConfig{
+		Pools: []evergreen.ContainerPool{
+			evergreen.ContainerPool{
+				Distro:        "distro-1",
+				Id:            "test-pool",
+				MaxContainers: 100,
 			},
 		},
 	}
+	assert.NoError(conf.Set())
+
+	settings, err := evergreen.GetConfig()
+	assert.NoError(err)
 
 	d1 := &Distro{
 		Id: "distro-1",
@@ -131,9 +87,12 @@ func TestIsParent(t *testing.T) {
 	assert.NoError(d2.Insert())
 	assert.NoError(d3.Insert())
 
-	assert.True(d1.IsParent(conf))
-	assert.False(d2.IsParent(conf))
-	assert.False(d3.IsParent(conf))
+	assert.True(d1.IsParent(settings))
+	assert.True(d1.IsParent(nil))
+	assert.False(d2.IsParent(settings))
+	assert.False(d2.IsParent(nil))
+	assert.False(d3.IsParent(settings))
+	assert.False(d3.IsParent(nil))
 }
 
 func TestValidateContainerPoolDistros(t *testing.T) {

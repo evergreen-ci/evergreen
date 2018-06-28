@@ -100,6 +100,7 @@ func (c *Settings) Set() error {
 			bannerThemeKey:        c.BannerTheme,
 			clientBinariesDirKey:  c.ClientBinariesDir,
 			configDirKey:          c.ConfigDir,
+			containerPoolsKey:     c.ContainerPools,
 			credentialsKey:        c.Credentials,
 			credentialsNewKey:     c.CredentialsNew,
 			expansionsKey:         c.Expansions,

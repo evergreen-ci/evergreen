@@ -121,13 +121,12 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 	}
 
 	return res
-
 }
 
 // Call out to the embedded Manager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func spawnHosts(ctx context.Context, newHostsNeeded map[string]int, pool evergreen.ContainerPool) (map[string][]host.Host, error) {
+func spawnHosts(ctx context.Context, newHostsNeeded map[string]int, pool *evergreen.ContainerPool) (map[string][]host.Host, error) {
 	startTime := time.Now()
 
 	// loop over the distros, spawning up the appropriate number of hosts
@@ -154,7 +153,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int, pool evergre
 
 		// if distro is container distro, check if there are enough parent hosts to
 		// support new containers
-		if pool != (evergreen.ContainerPool{}) {
+		if pool != nil {
 
 			// find all running parents with the specified container pool
 			currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
@@ -176,7 +175,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int, pool evergre
 			numNewParentsToSpawn := parentCapacity(d, numNewParents, len(currentParents))
 			// create parent host intent documents
 			if numNewParentsToSpawn > 0 {
-				parentIntentHosts, err := insertParents(d, numNewParentsToSpawn, &pool)
+				parentIntentHosts, err := insertParents(d, numNewParentsToSpawn, pool)
 				if err != nil {
 					return nil, err
 				}
