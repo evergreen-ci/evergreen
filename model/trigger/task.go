@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -440,15 +438,11 @@ func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification
 	}
 	thisTaskDuration := float64(t.task.FinishTime.Sub(t.task.StartTime))
 	prevTaskDuration := float64(lastGreen.FinishTime.Sub(lastGreen.StartTime))
-	ratio := thisTaskDuration / prevTaskDuration
-	if !util.IsFiniteNumericFloat(ratio) {
+	shouldNotify, percentChange := runtimeExceedsThreshold(percent, prevTaskDuration, thisTaskDuration)
+	if !shouldNotify {
 		return nil, nil
 	}
-	percentChange := math.Abs(100*ratio - 100)
-	if percentChange < percent {
-		return nil, nil
-	}
-	return t.generate(sub, fmt.Sprintf("changed in runtime by %f%% (over threshold of %f%%)", percentChange, percent))
+	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
 }
 
 func isFailedTaskStatus(status string) bool {

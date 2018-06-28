@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 )
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
@@ -28,16 +28,30 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 
 	sort.Sort(&sortableDistro{distros})
 
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		message := fmt.Sprintf("error fetching evergreen settings: %v", err)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
+
+	containerPoolDistros := make([]string, 0)
+	for _, p := range settings.ContainerPools.Pools {
+		containerPoolDistros = append(containerPoolDistros, p.Distro)
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distros []distro.Distro
 		Keys    map[string]string
 		ViewData
-	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true)},
+		ContainerPoolDistros []string
+	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPoolDistros},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["distro_id"]
+	id := gimlet.GetVars(r)["distro_id"]
 	shouldDeco := r.FormValue("deco") == "true"
 
 	u := MustHaveUser(r)
@@ -116,7 +130,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["distro_id"]
+	id := gimlet.GetVars(r)["distro_id"]
 
 	u := MustHaveUser(r)
 
@@ -142,7 +156,7 @@ func (uis *UIServer) removeDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["distro_id"]
+	id := gimlet.GetVars(r)["distro_id"]
 
 	d, err := distro.FindOne(distro.ById(id))
 	if err != nil {
@@ -156,7 +170,7 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
-	id, hasId := mux.Vars(r)["distro_id"]
+	id, hasId := gimlet.GetVars(r)["distro_id"]
 
 	u := MustHaveUser(r)
 

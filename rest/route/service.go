@@ -1,31 +1,27 @@
 package route
 
 import (
-	"net/http"
-
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 )
 
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a Connector then attaches each of the main functions for
 // the api to the router.
-func AttachHandler(root *mux.Router, queue amboy.Queue, URL, prefix string, superUsers []string, githubSecret []byte) http.Handler {
+func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers []string, githubSecret []byte) {
 	sc := &data.DBConnector{}
 
 	sc.SetURL(URL)
-	sc.SetPrefix(prefix)
 	sc.SetSuperUsers(superUsers)
-	return GetHandler(root, sc, queue, githubSecret)
+	GetHandler(app, sc, queue, githubSecret)
 }
 
 // GetHandler builds each of the functions that this api implements and then
 // registers them on the given router. It then returns the given router as an
 // http handler which can be given more functions.
-func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecret []byte) http.Handler {
+func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/":                                                    getPlaceHolderManger,
 		"/admin":                                               getLegacyAdminSettingsManager,
 		"/admin/banner":                                        getBannerRouteManager,
 		"/admin/events":                                        getAdminEventRouteManager,
@@ -81,8 +77,8 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 	}
 
 	for path, getManager := range routes {
-		getManager(path, 2).Register(r, sc)
+		getManager(path, 2).Register(app, sc)
 	}
 
-	return r
+	app.AddRoute("/").Version(2).RouteHandler(makePlaceHolderManger(sc)).Get()
 }

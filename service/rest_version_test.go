@@ -44,8 +44,8 @@ func TestGetRecentVersions(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, userManager)
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -249,8 +249,8 @@ func TestGetVersionInfo(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, uis.UserManager)
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -353,8 +353,8 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, userManager)
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -448,8 +448,8 @@ func TestActivateVersion(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, uis.UserManager)
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
@@ -590,8 +590,8 @@ func TestGetVersionStatus(t *testing.T) {
 		DisableCache: true,
 	})
 
-	app, err := GetRESTv1App(&uis, userManager)
-	testutil.HandleTestingErr(err, t, "error setting up router")
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 

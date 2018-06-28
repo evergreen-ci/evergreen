@@ -40,7 +40,7 @@ func loadConfig(path ...string) *evergreen.Settings {
 func MockConfig() *evergreen.Settings {
 	return &evergreen.Settings{
 		Alerts: evergreen.AlertsConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,
@@ -85,14 +85,9 @@ func MockConfig() *evergreen.Settings {
 		ContainerPools: evergreen.ContainerPoolsConfig{
 			Pools: []evergreen.ContainerPool{
 				evergreen.ContainerPool{
-					Distro:        "archlinux-docker",
-					Id:            "test-pool-100",
-					MaxContainers: 100,
-				},
-				evergreen.ContainerPool{
-					Distro:        "archlinux-docker",
+					Distro:        "valid-distro",
 					Id:            "test-pool-1",
-					MaxContainers: 1,
+					MaxContainers: 100,
 				},
 			},
 		},
@@ -112,7 +107,7 @@ func MockConfig() *evergreen.Settings {
 		Keys:    map[string]string{"k3": "v3"},
 		LogPath: "logpath",
 		Notify: evergreen.NotifyConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,

@@ -8,14 +8,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 )
 
 func (as *APIServer) getTaskJSONTagsForTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-
-	taskName := mux.Vars(r)["task_name"]
-	name := mux.Vars(r)["name"]
+	vars := gimlet.GetVars(r)
+	taskName := vars["task_name"]
+	name := vars["name"]
 
 	tagged, err := model.GetTaskJSONTagsForTask(t.Project, t.BuildVariant, taskName, name)
 	if err != nil {
@@ -29,7 +28,7 @@ func (as *APIServer) getTaskJSONTagsForTask(w http.ResponseWriter, r *http.Reque
 func (as *APIServer) getTaskJSONTaskHistory(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	history, err := model.GetTaskJSONHistory(t, mux.Vars(r)["name"])
+	history, err := model.GetTaskJSONHistory(t, gimlet.GetVars(r)["name"])
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -41,7 +40,7 @@ func (as *APIServer) getTaskJSONTaskHistory(w http.ResponseWriter, r *http.Reque
 func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	name := mux.Vars(r)["name"]
+	name := gimlet.GetVars(r)["name"]
 	rawData := map[string]interface{}{}
 
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &rawData); err != nil {
@@ -60,8 +59,9 @@ func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	name := mux.Vars(r)["name"]
-	taskName := mux.Vars(r)["task_name"]
+	vars := gimlet.GetVars(r)
+	name := vars["name"]
+	taskName := vars["task_name"]
 
 	jsonForTask, err := model.GetTaskJSONByName(t.Version, t.BuildId, taskName, name)
 	if err != nil {
@@ -89,10 +89,10 @@ func (as *APIServer) getTaskJSONForVariant(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
-
-	name := mux.Vars(r)["name"]
-	taskName := mux.Vars(r)["task_name"]
-	variantId := mux.Vars(r)["variant"]
+	vars := gimlet.GetVars(r)
+	name := vars["name"]
+	taskName := vars["task_name"]
+	variantId := vars["variant"]
 	// Find the task for the other variant, if it exists
 
 	jsonForTask, err := model.GetTaskJSONForVariant(t.Version, variantId, taskName, name)

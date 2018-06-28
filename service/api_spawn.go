@@ -3,21 +3,15 @@ package service
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -78,78 +72,9 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, "")
 }
 
-func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	instanceId := vars["instance_id"]
-	status := vars["status"]
-
-	// mark the host itself as provisioned
-	h, err := host.FindOne(host.ById(instanceId))
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	if h == nil {
-		http.Error(w, "host not found", http.StatusNotFound)
-		return
-	}
-
-	if status == evergreen.HostStatusSuccess {
-		if err = h.SetRunning(evergreen.User); err != nil {
-			grip.Errorf("Error marking host id %s as %s: %+v",
-				instanceId, evergreen.HostStatusSuccess, err)
-		}
-	} else {
-		grip.Warning(errors.WithStack(alerts.RunHostProvisionFailTriggers(h)))
-		if err = h.SetDecommissioned(evergreen.User, ""); err != nil {
-			grip.Errorf("Error marking host %s for user %s as decommissioned: %+v",
-				h.Host, h.StartedBy, err)
-		}
-		grip.Infof("Decommissioned %s for user %s because provisioning failed",
-			h.Host, h.StartedBy)
-
-		// send notification to the Evergreen team about this provisioning failure
-		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, h.Distro.Id)
-		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", h.Distro.Id, h.Host, h.StartedBy)
-		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			grip.Errorln("issue sending email:", err)
-		}
-
-		// get/store setup logs
-		body := util.NewRequestReader(r)
-		defer body.Close()
-
-		var setupLog []byte
-		setupLog, err = ioutil.ReadAll(body)
-		if err != nil {
-			grip.Errorln("problem reading request:", err)
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		event.LogProvisionFailed(instanceId, string(setupLog))
-	}
-
-	message := fmt.Sprintf(`
-		Host with id %v spawned.
-		The host's dns name is %v.
-		To ssh in: ssh -i <your private key> %v@%v`,
-		h.Id, h.Host, h.User, h.Host)
-
-	if status == evergreen.HostStatusFailed {
-		message += fmt.Sprintf("\nUnfortunately, the host's setup script did not run fully - check the setup.log " +
-			"file in the machine's home directory to see more details")
-	}
-	err = notify.TrySendNotificationToUser(h.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.Settings.Notify))
-	grip.ErrorWhenln(err != nil, "Error sending email", err)
-
-	gimlet.WriteJSON(w, spawnResponse{HostInfo: *h})
-}
-
 // returns info on the host specified
 func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	instanceId := vars["instance_id"]
+	instanceId := gimlet.GetVars(r)["instance_id"]
 
 	h, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
@@ -167,8 +92,7 @@ func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
 
 // returns info on all of the hosts spawned by a user
 func (as *APIServer) hostsInfoForUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	user := vars["user"]
+	user := gimlet.GetVars(r)["user"]
 
 	hosts, err := host.Find(host.ByUserWithUnterminatedStatus(user))
 	if err != nil {

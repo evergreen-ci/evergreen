@@ -192,7 +192,7 @@ func (s *AdminSuite) TestServiceFlags() {
 
 func (s *AdminSuite) TestAlertsConfig() {
 	config := AlertsConfig{
-		SMTP: &SMTPConfig{
+		SMTP: SMTPConfig{
 			Server:     "server",
 			Port:       2285,
 			UseSSL:     true,
@@ -473,7 +473,7 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 
 func (s *AdminSuite) TestNotifyConfig() {
 	config := NotifyConfig{
-		SMTP: &SMTPConfig{
+		SMTP: SMTPConfig{
 			Server:     "server",
 			Port:       2285,
 			UseSSL:     true,
@@ -502,7 +502,21 @@ func (s *AdminSuite) TestNotifyConfig() {
 }
 
 func (s *AdminSuite) TestContainerPoolsConfig() {
-	config := ContainerPoolsConfig{
+
+	invalidConfig := ContainerPoolsConfig{
+		Pools: []ContainerPool{
+			ContainerPool{
+				Distro:        "d1",
+				Id:            "test-pool-1",
+				MaxContainers: -5,
+			},
+		},
+	}
+
+	err := invalidConfig.ValidateAndDefault()
+	s.EqualError(err, "container pool field max_containers must be positive integer")
+
+	validConfig := ContainerPoolsConfig{
 		Pools: []ContainerPool{
 			ContainerPool{
 				Distro:        "d1",
@@ -517,31 +531,31 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 		},
 	}
 
-	err := config.Set()
+	err = validConfig.Set()
 	s.NoError(err)
 
 	settings, err := GetConfig()
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(config, settings.ContainerPools)
+	s.Equal(validConfig, settings.ContainerPools)
 
-	config.Pools[0].MaxContainers = 50
-	s.NoError(config.Set())
+	validConfig.Pools[0].MaxContainers = 50
+	s.NoError(validConfig.Set())
 
 	settings, err = GetConfig()
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(config, settings.ContainerPools)
+	s.Equal(validConfig, settings.ContainerPools)
 
 	lookup, err := settings.ContainerPools.GetContainerPool("test-pool-1")
 	s.NoError(err)
 	s.NotNil(lookup)
-	s.Equal(lookup, config.Pools[0])
+	s.Equal(lookup, validConfig.Pools[0])
 
 	lookup, err = settings.ContainerPools.GetContainerPool("test-pool-2")
 	s.NoError(err)
 	s.NotNil(lookup)
-	s.Equal(lookup, config.Pools[1])
+	s.Equal(lookup, validConfig.Pools[1])
 
 	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
 	s.EqualError(err, "error retrieving container pool test-pool-3")

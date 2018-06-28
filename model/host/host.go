@@ -327,6 +327,7 @@ func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
+	h.ProvisionTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -335,7 +336,7 @@ func (h *Host) MarkAsProvisioned() error {
 			"$set": bson.M{
 				StatusKey:        evergreen.HostRunning,
 				ProvisionedKey:   true,
-				ProvisionTimeKey: time.Now(),
+				ProvisionTimeKey: h.ProvisionTime,
 			},
 		},
 	)
@@ -561,20 +562,21 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				// If adding or removing fields here, make sure that all callers will work
 				// correctly after the change. Any fields defined here but not set by the
 				// caller will insert the zero value into the document
-				DNSKey:              h.Host,
-				UserKey:             h.User,
-				DistroKey:           h.Distro,
-				ProvisionedKey:      h.Provisioned,
-				StartedByKey:        h.StartedBy,
-				ExpirationTimeKey:   h.ExpirationTime,
-				ProviderKey:         h.Provider,
-				TagKey:              h.Tag,
-				InstanceTypeKey:     h.InstanceType,
-				ZoneKey:             h.Zone,
-				ProjectKey:          h.Project,
-				ProvisionOptionsKey: h.ProvisionOptions,
-				StartTimeKey:        h.StartTime,
-				HasContainersKey:    h.HasContainers,
+				DNSKey:               h.Host,
+				UserKey:              h.User,
+				DistroKey:            h.Distro,
+				ProvisionedKey:       h.Provisioned,
+				StartedByKey:         h.StartedBy,
+				ExpirationTimeKey:    h.ExpirationTime,
+				ProviderKey:          h.Provider,
+				TagKey:               h.Tag,
+				InstanceTypeKey:      h.InstanceType,
+				ZoneKey:              h.Zone,
+				ProjectKey:           h.Project,
+				ProvisionAttemptsKey: h.ProvisionAttempts,
+				ProvisionOptionsKey:  h.ProvisionOptions,
+				StartTimeKey:         h.StartTime,
+				HasContainersKey:     h.HasContainers,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,

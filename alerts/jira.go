@@ -23,7 +23,9 @@ import (
 // DescriptionTemplateString defines the content of the alert ticket.
 const DescriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id}}/{{.Task.Execution}}]
+{{if .Host}}
 Host: [{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]
+{{end}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]

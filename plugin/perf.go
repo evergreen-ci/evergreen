@@ -1,4 +1,4 @@
-package git
+package plugin
 
 import (
 	"fmt"
@@ -6,18 +6,17 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 )
 
 func init() {
-	plugin.Publish(&PerfPlugin{})
+	Publish(&PerfPlugin{})
 }
 
 var includes = []template.HTML{
-	`<script type="text/javascript" src="/plugin/perf/static/js/trend_chart.js"></script>`,
-	`<script type="text/javascript" src="/plugin/perf/static/js/perf.js"></script>`,
+	`<script type="text/javascript" src="/static/plugins/perf/js/trend_chart.js"></script>`,
+	`<script type="text/javascript" src="/static/plugins/perf/js/perf.js"></script>`,
 }
 
 // PerfPlugin displays performance statistics in the UI.
@@ -36,20 +35,20 @@ func (pp *PerfPlugin) Configure(params map[string]interface{}) error {
 	return nil
 }
 
-func (pp *PerfPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	panelHTML, err := ioutil.ReadFile(filepath.Join(plugin.TemplateRoot(pp.Name()), "task_perf_data.html"))
+func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
+	panelHTML, err := ioutil.ReadFile(filepath.Join(TemplateRoot(pp.Name()), "task_perf_data.html"))
 	if err != nil {
 		return nil, fmt.Errorf("Can't load panel html file: %v", err)
 	}
 
-	return &plugin.PanelConfig{
-		Panels: []plugin.UIPanel{
+	return &PanelConfig{
+		Panels: []UIPanel{
 			{
 				Includes:  includes,
-				Page:      plugin.TaskPage,
-				Position:  plugin.PageCenter,
+				Page:      TaskPage,
+				Position:  PageCenter,
 				PanelHTML: template.HTML(panelHTML),
-				DataFunc: func(context plugin.UIContext) (interface{}, error) {
+				DataFunc: func(context UIContext) (interface{}, error) {
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{util.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)}, nil

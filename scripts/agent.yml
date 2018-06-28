@@ -130,7 +130,7 @@ tasks:
           destination: "output"
       - command: archive.auto_extract
         params:
-          path: "archive.tar.gz"
+          path: "archive.tgz"
           destination: "output"
       - command: attach.results
         params:

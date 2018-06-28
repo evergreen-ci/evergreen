@@ -46,17 +46,15 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
 	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
 
-	var subscriber event.Subscriber
+	var patchSubscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
 	case user.PreferenceSlack:
-		subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
-
+		patchSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
-		subscriber = event.NewEmailSubscriber(dbUser.Email())
+		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-
 	patchSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchOutcome,
-		dbUser.Settings.Notifications.PatchFinishID, subscriber, dbUser.Id)
+		dbUser.Settings.Notifications.PatchFinishID, patchSubscriber, dbUser.Id)
 	if err != nil {
 		return err
 	}
@@ -66,8 +64,15 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		settings.Notifications.PatchFinishID = ""
 	}
 
+	var buildBreakSubscriber event.Subscriber
+	switch settings.Notifications.BuildBreak {
+	case user.PreferenceSlack:
+		buildBreakSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
 	buildBreakSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionBuildBreak,
-		dbUser.Settings.Notifications.BuildBreakID, subscriber, dbUser.Id)
+		dbUser.Settings.Notifications.BuildBreakID, buildBreakSubscriber, dbUser.Id)
 	if err != nil {
 		return err
 	}
@@ -75,6 +80,24 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		settings.Notifications.BuildBreakID = buildBreakSubscription.ID
 	} else {
 		settings.Notifications.BuildBreakID = ""
+	}
+
+	var spawnhostSubscriber event.Subscriber
+	switch settings.Notifications.SpawnHostExpiration {
+	case user.PreferenceSlack:
+		spawnhostSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	spawnhostSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnhostExpiration,
+		dbUser.Settings.Notifications.SpawnHostExpirationID, spawnhostSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if spawnhostSubscription != nil {
+		settings.Notifications.SpawnHostExpirationID = spawnhostSubscription.ID
+	} else {
+		settings.Notifications.SpawnHostExpirationID = ""
 	}
 
 	return model.SaveUserSettings(dbUser.Id, settings)

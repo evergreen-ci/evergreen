@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -126,9 +125,10 @@ type tasksByProjectArgs struct {
 // ParseAndValidate fetches the project context and task status from the request
 // and loads them into the arguments to be used by the execution.
 func (tph *tasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
 	args := tasksByProjectArgs{
-		projectId:  mux.Vars(r)["project_id"],
-		commitHash: mux.Vars(r)["commit_hash"],
+		projectId:  vars["project_id"],
+		commitHash: vars["commit_hash"],
 		status:     r.URL.Query().Get("status"),
 	}
 	if args.projectId == "" {
@@ -247,8 +247,7 @@ type taskGetHandler struct {
 
 // ParseAndValidate fetches the taskId from the http request.
 func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	tgh.taskID = vars["task_id"]
+	tgh.taskID = gimlet.GetVars(r)["task_id"]
 	_, tgh.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
 	return nil
 }
@@ -325,7 +324,7 @@ type tasksByBuildArgs struct {
 
 func (tbh *tasksByBuildHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	args := tasksByBuildArgs{
-		buildId: mux.Vars(r)["build_id"],
+		buildId: gimlet.GetVars(r)["build_id"],
 		status:  r.URL.Query().Get("status"),
 	}
 	if args.buildId == "" {
@@ -597,8 +596,7 @@ func (t *taskAbortHandler) Handler() RequestHandler {
 }
 
 func (t *taskAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	t.taskId = vars["task_id"]
+	t.taskId = gimlet.GetVars(r)["task_id"]
 	return nil
 }
 

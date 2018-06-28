@@ -150,6 +150,19 @@ func ByMostRecentNonIgnored(projectId string) db.Q {
 	).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
+func BySuccessfulBeforeRevision(project string, beforeRevision int) db.Q {
+	return db.Query(
+		bson.M{
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			IdentifierKey: project,
+			StatusKey:     evergreen.VersionSucceeded,
+			RevisionOrderNumberKey: bson.M{
+				"$lt": beforeRevision,
+			},
+		},
+	)
+}
+
 // BaseVersionFromPatch finds the base version for a patch version.
 func BaseVersionFromPatch(projectId, revision string) db.Q {
 	return db.Query(

@@ -7,12 +7,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 )
 
 func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
-	project := mux.Vars(r)["project_id"]
-	revision := mux.Vars(r)["revision"]
+	vars := gimlet.GetVars(r)
+	project := vars["project_id"]
+	revision := vars["revision"]
 
 	version, err := version.FindOne(version.ByProjectIdAndRevision(project, revision))
 	if err != nil {
