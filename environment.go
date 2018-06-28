@@ -578,20 +578,26 @@ func (e *envState) Close(ctx context.Context) error {
 
 	deadline, _ := ctx.Deadline()
 	catcher := grip.NewBasicCatcher()
-	for name, closer := range e.closers {
+	wg := &sync.WaitGroup{}
+	for n, closer := range e.closers {
 		if closer == nil {
 			continue
 		}
 
-		grip.Info(message.Fields{
-			"message":      "calling closer",
-			"closer":       name,
-			"timeout_secs": time.Until(deadline),
-			"deadline":     deadline,
-		})
-		catcher.Add(closer(ctx))
+		wg.Add(1)
+		go func(name string, close func(context.Context) error) {
+			defer wg.Done()
+			grip.Info(message.Fields{
+				"message":      "calling closer",
+				"closer":       name,
+				"timeout_secs": time.Until(deadline),
+				"deadline":     deadline,
+			})
+			catcher.Add(close(ctx))
+		}(n, closer)
 	}
 
+	wg.Wait()
 	return catcher.Resolve()
 }
 
