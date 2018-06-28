@@ -99,7 +99,7 @@ type revertHandler struct {
 	sc data.Connector
 }
 
-func (h *revertHandler) Factory() gimlet.RouteHandler { return &revertHandler{} }
+func (h *revertHandler) Factory() gimlet.RouteHandler { return &revertHandler{sc: h.sc} }
 
 func (h *revertHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
