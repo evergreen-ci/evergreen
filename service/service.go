@@ -46,6 +46,9 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
+	clients := negroni.NewStatic(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))
+	clients.Prefix = "/clients"
+	app.AddMiddleware(clients)
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
