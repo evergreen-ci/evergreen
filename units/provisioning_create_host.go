@@ -88,15 +88,15 @@ func (j *createHostJob) createHost(ctx context.Context, h *host.Host, settings *
 	grip.Info(message.Fields{
 		"message": "attempting to start host",
 		"hostid":  h.Id,
-		"runner":  HostInit,
+		"job":     j.ID(),
 	})
 
 	cloudManager, err := cloud.GetManager(ctx, h.Provider, settings)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",
-			"runner":  HostInit,
 			"host":    h.Id,
+			"job":     j.ID(),
 		}))
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
 	}
@@ -104,7 +104,7 @@ func (j *createHostJob) createHost(ctx context.Context, h *host.Host, settings *
 	if err = h.Remove(); err != nil {
 		grip.Notice(message.WrapError(err, message.Fields{
 			"message": "problem removing intent host",
-			"runner":  HostInit,
+			"job":     j.ID(),
 			"host":    h.Id,
 		}))
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
@@ -127,9 +127,9 @@ func (j *createHostJob) createHost(ctx context.Context, h *host.Host, settings *
 	}
 
 	grip.Info(message.Fields{
-		"runner":  HostInit,
 		"message": "successfully started host",
 		"hostid":  h.Id,
+		"job":     j.ID(),
 		"DNS":     h.Host,
 		"runtime": time.Since(hostStartTime),
 	})

@@ -836,6 +836,11 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 		query[task.RevisionOrderNumberKey] = *revisionQuery
 	}
 
+	grip.Debug(message.Fields{
+		"message":    "debugging test history",
+		"task_query": query,
+	})
+
 	return query, nil
 }
 
@@ -855,6 +860,11 @@ func formTestsQuery(params *TestHistoryParameters, taskIds []string) bson.M {
 			"$in": params.TestStatuses,
 		}
 	}
+
+	grip.Debug(message.Fields{
+		"message":     "debugging test history",
+		"tests_query": query,
+	})
 
 	return query
 }

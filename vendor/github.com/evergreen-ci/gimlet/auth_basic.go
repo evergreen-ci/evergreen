@@ -96,6 +96,9 @@ func (a *basicAuthenticator) CheckResourceAccess(u User, resource string) bool {
 		return false
 	}
 
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
 	return userInSlice(u, a.resources[resource])
 }
 
@@ -104,9 +107,12 @@ func (a *basicAuthenticator) CheckGroupAccess(u User, group string) bool {
 		return false
 	}
 
-	return userInSlice(u, a.groups[group])
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 
+	return userInSlice(u, a.groups[group])
 }
+
 func (a *basicAuthenticator) CheckAuthenticated(u User) bool {
 	return u != nil && u.Username() != ""
 }
