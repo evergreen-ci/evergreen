@@ -60,7 +60,7 @@ func (bfsc *bfSuggestionClient) request(ctx context.Context, req *http.Request) 
 		return nil, errors.Wrapf(err, "Failed to read HTTP response body (status: %s)", resp.Status)
 	}
 
-	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("HTTP request returned unexpected status: %s (body: %s)", resp.Status, string(body))
 	}
 	return body, nil
