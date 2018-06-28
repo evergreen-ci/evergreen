@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -80,14 +81,32 @@ func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notifica
 		return nil, nil
 	}
 
+	grip.Info(message.Fields{
+		"look-here":   "dhfdsalufyairf3928r",
+		"e":           t.event.EventType,
+		"provisioned": t.host.Provisioned,
+	})
+
 	return t.generate(sub)
 }
 
 func (t *spawnHostTriggers) slack() *notification.SlackPayload {
-	text := fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro.Id)
+	text := fmt.Sprintf("Host with distro '%s' has failed to spawn", t.host.Distro)
+	attachment := message.SlackAttachment{
+		Title:     "Click here to spawn another host",
+		TitleLink: spawnHostURL(t.uiConfig.Url),
+		Color:     evergreenFailColor,
+		Fields: []*message.SlackAttachmentField{
+			&message.SlackAttachmentField{
+				Title: "Distro",
+				Value: t.host.Distro.Id,
+				Short: true,
+			},
+		},
+	}
 
-	var attachment message.SlackAttachment
-	if t.event.EventType == event.EventHostProvisioned {
+	if t.host.Provisioned {
+		text = fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro.Id)
 		attachment = message.SlackAttachment{
 			Title:     fmt.Sprintf("Evergreen Host: %s", t.host.Id),
 			TitleLink: spawnHostURL(t.uiConfig.Url),
@@ -98,27 +117,23 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 					Value: t.host.Distro.Id,
 					Short: true,
 				},
-				&message.SlackAttachmentField{
-					Title: "SSH Command",
-					Value: sshCommand(t.host),
-				},
 			},
 		}
 
-	} else if t.event.EventType == event.EventHostProvisionFailed {
-		text = fmt.Sprintf("Host with distro '%s' has failed to spawn", t.host.Distro)
-		attachment = message.SlackAttachment{
-			Title:     "Click here to spawn another host",
-			TitleLink: spawnHostURL(t.uiConfig.Url),
-			Color:     evergreenFailColor,
-			Fields: []*message.SlackAttachmentField{
+		if t.host.ProvisionOptions != nil && len(t.host.ProvisionOptions.TaskId) != 0 {
+			attachment.Fields = append(attachment.Fields,
 				&message.SlackAttachmentField{
-					Title: "Distro",
-					Value: t.host.Distro.Id,
+					Title: "With data from task",
+					Value: fmt.Sprintf("<%s|%s>", taskLink(&t.uiConfig, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
 					Short: true,
-				},
-			},
+				})
 		}
+
+		attachment.Fields = append(attachment.Fields,
+			&message.SlackAttachmentField{
+				Title: "SSH Command",
+				Value: fmt.Sprintf("`%s`", sshCommand(t.host)),
+			})
 	}
 
 	return &notification.SlackPayload{
@@ -146,7 +161,7 @@ func (t *spawnHostTriggers) email() *message.Email {
 	status := "failed to spawn"
 	url := spawnHostURL(t.uiConfig.Url)
 	cmd := "N/A"
-	if t.event.EventType == event.EventHostProvisionError {
+	if t.host.Provisioned {
 		status = "spawned"
 		url = spawnHostURL(t.uiConfig.Url)
 		cmd = sshCommand(t.host)
