@@ -42,13 +42,21 @@ func (c *ContainerPoolsConfig) Set() error {
 
 // GetContainerPool retrieves the container pool with a given id from
 // a ContainerPoolsConfig struct
-func (c *ContainerPoolsConfig) GetContainerPool(id string) (ContainerPool, error) {
+func (c *ContainerPoolsConfig) GetContainerPool(id string) *ContainerPool {
 	for _, pool := range c.Pools {
 		if pool.Id == id {
-			return pool, nil
+			return &pool
 		}
 	}
-	return ContainerPool{}, errors.Errorf("error retrieving container pool %s", id)
+	return nil
 }
 
-func (c *ContainerPoolsConfig) ValidateAndDefault() error { return nil }
+func (c *ContainerPoolsConfig) ValidateAndDefault() error {
+	// ensure that max_containers is positive
+	for _, pool := range c.Pools {
+		if pool.MaxContainers <= 0 {
+			return errors.Errorf("container pool field max_containers must be positive integer")
+		}
+	}
+	return nil
+}

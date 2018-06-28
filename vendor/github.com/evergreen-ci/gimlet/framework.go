@@ -2,10 +2,7 @@ package gimlet
 
 import (
 	"context"
-	"errors"
 	"net/http"
-
-	"github.com/mongodb/grip"
 )
 
 // RouteHandler provides an alternate method for defining routes with
@@ -46,20 +43,24 @@ func handleHandler(h RouteHandler) http.HandlerFunc {
 
 		ctx, err = handler.Parse(ctx, r)
 		if err != nil {
-			grip.Error(err)
-			WriteTextResponse(w, http.StatusBadRequest, err)
+			e := getError(err, http.StatusBadRequest)
+			WriteJSONResponse(w, e.StatusCode, e)
 			return
 		}
 
 		resp := handler.Run(ctx)
 		if resp == nil {
-			WriteTextResponse(w, http.StatusInternalServerError, errors.New("undefined response"))
+			e := ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "undefined response",
+			}
+			WriteJSONResponse(w, e.StatusCode, e)
 			return
 		}
 
 		if err := resp.Validate(); err != nil {
-			grip.Error(err)
-			WriteTextResponse(w, http.StatusInternalServerError, err)
+			e := getError(err, http.StatusBadRequest)
+			WriteJSONResponse(w, e.StatusCode, e)
 			return
 		}
 
@@ -76,6 +77,8 @@ func handleHandler(h RouteHandler) http.HandlerFunc {
 			WriteTextResponse(w, resp.Status(), resp.Data())
 		case HTML:
 			WriteHTMLResponse(w, resp.Status(), resp.Data())
+		case YAML:
+			WriteYAMLResponse(w, resp.Status(), resp.Data())
 		case BINARY:
 			WriteBinaryResponse(w, resp.Status(), resp.Data())
 		}

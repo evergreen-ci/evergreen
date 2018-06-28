@@ -7,11 +7,6 @@ import (
 	"github.com/mongodb/grip"
 )
 
-type (
-	// custom type used to attach specific values to request contexts, to prevent collisions.
-	requestUserContextKey int
-)
-
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"

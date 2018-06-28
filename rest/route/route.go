@@ -1,12 +1,8 @@
 package route
 
 import (
-	"net/http"
-
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 )
 
 // routeManagerFactory is a function type used to create RouteManagers and used to register handlders.
@@ -30,22 +26,6 @@ type RouteManager struct {
 // these to the given router.
 func (rm *RouteManager) Register(app *gimlet.APIApp, sc data.Connector) {
 	for _, method := range rm.Methods {
-		api := app.AddRoute(rm.Route).Version(rm.Version).Handler(makeHandler(method, sc))
-		switch method.MethodType {
-		case http.MethodGet:
-			api.Get()
-		case http.MethodPost:
-			api.Post()
-		case http.MethodDelete:
-			api.Delete()
-		case http.MethodPatch:
-			api.Patch()
-		default:
-			grip.Alert(message.Fields{
-				"message": "problem registering rout",
-				"route":   rm.Route,
-				"cause":   "programmer error",
-			})
-		}
+		app.AddRoute(rm.Route).Version(rm.Version).Handler(makeHandler(method, sc)).Method(method.MethodType)
 	}
 }

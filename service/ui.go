@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
@@ -92,9 +91,21 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 			settings.Jira.Password),
 	}
 
+	plugins := plugin.GetPublished()
 	uis.PanelManager = &plugin.SimplePanelManager{}
-	if err := uis.PanelManager.RegisterPlugins(plugin.UIPlugins); err != nil {
+
+	if err := uis.PanelManager.RegisterPlugins(plugins); err != nil {
 		return nil, errors.Wrap(err, "problem initializing plugins")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, pl := range plugins {
+		// get the settings
+		catcher.Add(pl.Configure(uis.Settings.Plugins[pl.Name()]))
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
 	}
 
 	return uis, nil
@@ -102,7 +113,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 
 // NewRouter sets up a request router for the UI, installing
 // hard-coded routes as well as those belonging to plugins.
-func (uis *UIServer) AttachRoutes(r *mux.Router) error {
+func (uis *UIServer) AttachRoutes(r *mux.Router) {
 	r = r.StrictSlash(true)
 
 	// User login and logout
@@ -247,70 +258,27 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
 	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
 
-	// Static Path handlers
-	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
-
 	// Plugin routes
-	rootPluginRouter := r.PathPrefix("/plugin").Subrouter()
-	rootPluginRouter.HandleFunc("/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
-	rootPluginRouter.HandleFunc("/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
-	rootPluginRouter.HandleFunc("/buildbaron/note/{task_id}", bbGetNote).Methods("GET")
-	rootPluginRouter.HandleFunc("/buildbaron/note/{task_id}", bbSaveNote).Methods("PUT")
-	rootPluginRouter.HandleFunc("/buildbaron/file_ticket", uis.bbFileTicket).Methods("POST")
-	rootPluginRouter.HandleFunc("/buildbaron/feedback/{task_id}/{execution}", uis.bbGetFeedback).Methods("GET")
-	rootPluginRouter.HandleFunc("/buildbaron/feedback/{task_id}/{execution}/{feedback_type}", uis.bbRemoveFeedback).Methods("DELETE")
-	rootPluginRouter.HandleFunc("/buildbaron/feedback", uis.bbSendFeedback).Methods("POST")
-	rootPluginRouter.HandleFunc("/manifest/get/{project_id}/{revision}", uis.GetManifest)
-	rootPluginRouter.HandleFunc("/dashboard/tasks/project/{project_id}/version/{version_id}", perfDashGetTasksForVersion)
-	rootPluginRouter.HandleFunc("/json/version", perfGetVersion)
-	rootPluginRouter.HandleFunc("/json/version/{version_id}/{name}", perfGetTasksForVersion)
-	rootPluginRouter.HandleFunc("/json/version/latest/{project_id}/{name}", perfGetTasksForLatestVersion)
-	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/", perfGetTaskById)
-	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/tags", perfGetTags)
-	rootPluginRouter.HandleFunc("/json/task/{task_id}/{name}/tag", perfHandleTaskTag).Methods("POST", "DELETE")
-	rootPluginRouter.HandleFunc("/json/tags/", perfGetProjectTags)
-	rootPluginRouter.HandleFunc("/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
-	rootPluginRouter.HandleFunc("/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
-	rootPluginRouter.HandleFunc("/json/history/{task_id}/{name}", perfGetTaskHistory)
-
-	for _, pl := range plugin.UIPlugins {
-		// get the settings
-		pluginSettings := uis.Settings.Plugins[pl.Name()]
-		err := pl.Configure(pluginSettings)
-		if err != nil {
-			return errors.Wrapf(err, "Failed to configure plugin %v", pl.Name())
-		}
-
-		// check if a plugin is an app level plugin first
-		if appPlugin, ok := pl.(plugin.AppUIPlugin); ok {
-			// register the app level pa}rt of the plugin
-			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
-			rootPluginRouter.HandleFunc(fmt.Sprintf("/%v/app", pl.Name()), uis.loadCtx(appFunction))
-		}
-
-		// check if there are any errors getting the panel config
-		uiConf, err := pl.GetPanelConfig()
-		if err != nil {
-			return errors.Wrapf(err, "Error getting UI config for plugin %v: %v", pl.Name())
-		}
-		if uiConf == nil {
-			grip.Debugf("No UI config needed for plugin %s, skipping", pl.Name())
-			continue
-		}
-
-		plRouter := rootPluginRouter.PathPrefix(fmt.Sprintf("/%v/", pl.Name())).Subrouter()
-
-		// set up a fileserver in plugin's static root, if one is provided
-		pluginAssetsPath := filepath.Join(uis.Home, "public", "static", "plugins", pl.Name())
-
-		grip.Infof("Registering assets path for plugin '%s' in %s", pl.Name(), pluginAssetsPath)
-		plRouter.PathPrefix("/static/").Handler(
-			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
-				http.FileServer(http.Dir(pluginAssetsPath))),
-		)
-	}
-
-	return nil
+	r.HandleFunc("/plugin/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
+	r.HandleFunc("/plugin/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
+	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbGetNote).Methods("GET")
+	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbSaveNote).Methods("PUT")
+	r.HandleFunc("/plugin/buildbaron/file_ticket", uis.bbFileTicket).Methods("POST")
+	r.HandleFunc("/buildbaron/feedback/{task_id}/{execution}", uis.bbGetFeedback).Methods("GET")
+	r.HandleFunc("/buildbaron/feedback/{task_id}/{execution}/{feedback_type}", uis.bbRemoveFeedback).Methods("DELETE")
+	r.HandleFunc("/buildbaron/feedback", uis.bbSendFeedback).Methods("POST")
+	r.HandleFunc("/plugin/manifest/get/{project_id}/{revision}", uis.GetManifest)
+	r.HandleFunc("/plugin/dashboard/tasks/project/{project_id}/version/{version_id}", perfDashGetTasksForVersion)
+	r.HandleFunc("/plugin/json/version", perfGetVersion)
+	r.HandleFunc("/plugin/json/version/{version_id}/{name}", perfGetTasksForVersion)
+	r.HandleFunc("/plugin/json/version/latest/{project_id}/{name}", perfGetTasksForLatestVersion)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/", perfGetTaskById)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tags", perfGetTags)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tag", perfHandleTaskTag).Methods("POST", "DELETE")
+	r.HandleFunc("/plugin/json/tags/", perfGetProjectTags)
+	r.HandleFunc("/plugin/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
+	r.HandleFunc("/plugin/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
+	r.HandleFunc("/plugin/json/history/{task_id}/{name}", perfGetTaskHistory)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
@@ -324,7 +292,7 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		"method":  r.Method,
 		"url":     r.URL,
 		"code":    code,
-		"request": GetRequestID(r),
+		"request": gimlet.GetRequestID(r.Context()),
 		"stack":   string(debug.Stack()),
 	}))
 

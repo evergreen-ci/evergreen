@@ -62,7 +62,7 @@ mciModule.factory('Stitch', function(
     var slug = dbSlug(self.config)
 
     // return cached db value
-    if (dbCache[slug]) { return $q.resolve(dbCache[slug]).promise }
+    if (dbCache[slug]) { return $q.resolve(dbCache[slug]) }
 
     var client = stitch.StitchClientFactory.create(self.config.appId)
 

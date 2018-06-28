@@ -1,9 +1,7 @@
 package distro
 
 import (
-	"errors"
 	"fmt"
-	"math"
 	"math/rand"
 	"path/filepath"
 	"regexp"
@@ -12,6 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Distro struct {
@@ -33,10 +33,10 @@ type Distro struct {
 	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 
-	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
-
 	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
+
+type DistroGroup []Distro
 
 type ValidateFormat string
 
@@ -101,12 +101,45 @@ func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
 }
 
-// ComputeParentsToDecommission calculates how many excess parents to
-// decommission for the provided distro
-func (d *Distro) ComputeParentsToDecommission(nParents, nContainers int) (int, error) {
-	// Prevent division by zero MaxContainers value
-	if d.MaxContainers == 0 {
-		return 0, errors.New("Distro does not support containers")
+// IsParent returns whether the distro is the parent distro for any container pool
+func (d *Distro) IsParent(s *evergreen.Settings) bool {
+	if s == nil {
+		var err error
+		s, err = evergreen.GetConfig()
+		if err != nil {
+			grip.Critical("error retrieving settings object")
+			return false
+		}
 	}
-	return nParents - int(math.Ceil(float64(nContainers)/float64(d.MaxContainers))), nil
+	for _, p := range s.ContainerPools.Pools {
+		if d.Id == p.Distro {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateContainerPoolDistros ensures that container pools have valid distros
+func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+	catcher := grip.NewSimpleCatcher()
+
+	for _, pool := range s.ContainerPools.Pools {
+		d, err := FindOne(ById(pool.Distro))
+		if err != nil {
+			catcher.Add(fmt.Errorf("error finding distro for container pool %s", pool.Id))
+		}
+		if d.ContainerPool != "" {
+			catcher.Add(fmt.Errorf("container pool %s has invalid distro", pool.Id))
+		}
+	}
+	return errors.WithStack(catcher.Resolve())
+}
+
+// GetDistroIds returns a slice of distro IDs for the given group of distros
+func (distros DistroGroup) GetDistroIds() []string {
+	var ids []string
+	for _, d := range distros {
+		ids = append(ids, d.Id)
+	}
+	return ids
 }

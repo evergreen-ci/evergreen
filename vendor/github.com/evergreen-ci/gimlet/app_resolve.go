@@ -67,7 +67,7 @@ func (a *APIApp) attachRoutes(router *mux.Router, addPrefix bool) error {
 			methods = append(methods, strings.ToLower(m.String()))
 		}
 
-		handler := getRouteHandlerWithMiddlware(a.wrappers, route.handler)
+		handler := route.getHandlerWithMiddlware(a.wrappers)
 		if a.NoVersions {
 			router.Handle(route.resolveLegacyRoute(a, addPrefix), handler)
 		} else if route.version >= 0 {
@@ -131,15 +131,18 @@ func (r *APIRoute) resolveVersionedRoute(app *APIApp, addPrefix bool) string {
 	return fmt.Sprintf("%s/%s%d%s", prefix, versionPrefix, r.version, route)
 }
 
-func getRouteHandlerWithMiddlware(mws []Middleware, route http.Handler) http.Handler {
-	if len(mws) == 0 {
-		return route
+func (r *APIRoute) getHandlerWithMiddlware(mws []Middleware) http.Handler {
+	if len(mws) == 0 && len(r.wrappers) == 0 {
+		return r.handler
 	}
 
 	n := negroni.New()
 	for _, m := range mws {
 		n.Use(m)
 	}
-	n.UseHandler(route)
+	for _, m := range r.wrappers {
+		n.Use(m)
+	}
+	n.UseHandler(r.handler)
 	return n
 }

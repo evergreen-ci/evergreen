@@ -3,7 +3,6 @@ package distro
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -23,7 +22,6 @@ var (
 	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
-	MaxContainersKey    = bsonutil.MustHaveTag(Distro{}, "MaxContainers")
 	ContainerPoolKey    = bsonutil.MustHaveTag(Distro{}, "ContainerPool")
 )
 
@@ -36,44 +34,6 @@ var All = db.Query(nil).Sort([]string{IdKey})
 func FindOne(query db.Q) (Distro, error) {
 	d := Distro{}
 	return d, db.FindOneQ(Collection, query, &d)
-}
-
-func FindActive() ([]string, error) {
-	out := []struct {
-		Distros []string `bson:"distros"`
-	}{}
-	err := db.Aggregate(Collection, []bson.M{
-		{
-			"$match": bson.M{
-				DisabledKey: bson.M{
-					"$exists": false,
-				},
-			},
-		},
-		{
-			"$project": bson.M{
-				IdKey: 1,
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id": 0,
-				"distros": bson.M{
-					"$push": "$_id",
-				},
-			},
-		},
-	}, &out)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "problem building list of all distros")
-	}
-
-	if len(out) != 1 {
-		return nil, errors.New("produced invalid results")
-	}
-
-	return out[0].Distros, nil
 }
 
 // Find gets every Distro matching the given query.
@@ -113,15 +73,7 @@ func BySpawnAllowed() db.Q {
 	return db.Query(bson.D{{SpawnAllowedKey, true}})
 }
 
-// ByActiveWithContainers returns a query that finds active distros
-// supporting containers
-func ByActiveWithContainers() db.Q {
-	return db.Query(bson.M{
-		DisabledKey: bson.M{
-			"$exists": false,
-		},
-		MaxContainersKey: bson.M{
-			"$gt": 0,
-		},
-	})
+// ByActive returns a query that selects only active distros
+func ByActive() db.Q {
+	return db.Query(bson.M{DisabledKey: bson.M{"$exists": false}})
 }

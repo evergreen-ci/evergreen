@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateName(t *testing.T) {
@@ -54,81 +53,103 @@ func TestGenerateGceName(t *testing.T) {
 	assert.True(r.Match([]byte(tooManyChars)))
 }
 
-func TestFindActive(t *testing.T) {
+func TestIsParent(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	require.NoError(db.Clear(Collection))
+	assert.NoError(db.Clear(Collection))
+	assert.NoError(db.Clear(evergreen.ConfigCollection))
 
-	active, err := FindActive()
-	assert.Error(err)
-	assert.Len(active, 0)
-
-	d := Distro{
-		Id: "foo",
+	conf := evergreen.ContainerPoolsConfig{
+		Pools: []evergreen.ContainerPool{
+			evergreen.ContainerPool{
+				Distro:        "distro-1",
+				Id:            "test-pool",
+				MaxContainers: 100,
+			},
+		},
 	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
-	assert.NoError(err)
-	assert.Len(active, 1)
+	assert.NoError(conf.Set())
 
-	d = Distro{
-		Id:       "bar",
-		Disabled: false,
-	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
+	settings, err := evergreen.GetConfig()
 	assert.NoError(err)
-	assert.Len(active, 2)
-
-	d = Distro{
-		Id:       "baz",
-		Disabled: true,
-	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
-	assert.NoError(err)
-	assert.Len(active, 2)
-
-	d = Distro{
-		Id:       "qux",
-		Disabled: true,
-	}
-	require.NoError(d.Insert())
-	active, err = FindActive()
-	assert.NoError(err)
-	assert.Len(active, 2)
-}
-
-func TestComputeParentsToDecommission(t *testing.T) {
-	assert := assert.New(t)
 
 	d1 := &Distro{
-		Id:            "d1",
-		MaxContainers: 100,
+		Id: "distro-1",
 	}
-
 	d2 := &Distro{
-		Id:            "d2",
-		MaxContainers: 0,
+		Id: "distro-2",
+	}
+	d3 := &Distro{
+		Id:            "distro-3",
+		ContainerPool: "test-pool",
+	}
+	assert.NoError(d1.Insert())
+	assert.NoError(d2.Insert())
+	assert.NoError(d3.Insert())
+
+	assert.True(d1.IsParent(settings))
+	assert.True(d1.IsParent(nil))
+	assert.False(d2.IsParent(settings))
+	assert.False(d2.IsParent(nil))
+	assert.False(d3.IsParent(settings))
+	assert.False(d3.IsParent(nil))
+}
+
+func TestValidateContainerPoolDistros(t *testing.T) {
+	assert := assert.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	assert.NoError(db.Clear(Collection))
+
+	d1 := &Distro{
+		Id: "valid-distro",
+	}
+	d2 := &Distro{
+		Id:            "invalid-distro",
+		ContainerPool: "test-pool-1",
+	}
+	assert.NoError(d1.Insert())
+	assert.NoError(d2.Insert())
+
+	testSettings := &evergreen.Settings{
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro:        "valid-distro",
+					Id:            "test-pool-1",
+					MaxContainers: 100,
+				},
+				evergreen.ContainerPool{
+					Distro:        "invalid-distro",
+					Id:            "test-pool-2",
+					MaxContainers: 100,
+				},
+				evergreen.ContainerPool{
+					Distro:        "missing-distro",
+					Id:            "test-pool-3",
+					MaxContainers: 100,
+				},
+			},
+		},
 	}
 
-	// No containers --> decommission all parents
-	c1, err := d1.ComputeParentsToDecommission(5, 0)
-	assert.NoError(err)
-	assert.Equal(c1, 5)
+	err := ValidateContainerPoolDistros(testSettings)
+	assert.Contains(err.Error(), "container pool test-pool-2 has invalid distro")
+	assert.Contains(err.Error(), "error finding distro for container pool test-pool-3")
+}
 
-	// Max containers --> decommission no parents
-	c2, err := d1.ComputeParentsToDecommission(5, 500)
-	assert.NoError(err)
-	assert.Equal(c2, 0)
-
-	// Some containers --> decommission excess parents
-	c3, err := d1.ComputeParentsToDecommission(5, 250)
-	assert.NoError(err)
-	assert.Equal(c3, 2)
-
-	// MaxContainers is zero --> throw error (cannot divide by 0)
-	_, err = d2.ComputeParentsToDecommission(5, 10)
-	assert.EqualError(err, "Distro does not support containers")
+func TestGetDistroIds(t *testing.T) {
+	assert := assert.New(t)
+	hosts := DistroGroup{
+		Distro{
+			Id: "d1",
+		},
+		Distro{
+			Id: "d2",
+		},
+		Distro{
+			Id: "d3",
+		},
+	}
+	ids := hosts.GetDistroIds()
+	assert.Equal([]string{"d1", "d2", "d3"}, ids)
 }

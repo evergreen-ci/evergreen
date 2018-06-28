@@ -9,12 +9,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -54,7 +54,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		Task            *task.Task
 		MaxHostsPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, spawn.MaxPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, cloud.MaxSpawnHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -178,7 +178,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := spawn.TerminateHost(ctx, h, evergreen.GetEnvironment().Settings(), u.Id); err != nil {
+		if err := cloud.TerminateSpawnHost(ctx, h, evergreen.GetEnvironment().Settings(), u.Id); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -191,11 +191,11 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
 			return
 		}
-		if !spawn.ValidateRDPPassword(pwd) {
+		if !cloud.ValidateRDPPassword(pwd) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}
-		if err := spawn.SetHostRDPPassword(ctx, h, pwd); err != nil {
+		if err := cloud.SetHostRDPPassword(ctx, h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -210,7 +210,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var futureExpiration time.Time
-		futureExpiration, err = spawn.MakeExtendedHostExpiration(h, time.Duration(addtHours)*time.Hour)
+		futureExpiration, err = cloud.MakeExtendedSpawnHostExpiration(h, time.Duration(addtHours)*time.Hour)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return

@@ -22,30 +22,29 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/":                                  getPlaceHolderManger,
-		"/admin":                             getLegacyAdminSettingsManager,
-		"/admin/banner":                      getBannerRouteManager,
-		"/admin/events":                      getAdminEventRouteManager,
-		"/admin/restart":                     getRestartRouteManager(queue),
-		"/admin/revert":                      getRevertRouteManager,
-		"/admin/service_flags":               getServiceFlagsRouteManager,
-		"/admin/settings":                    getAdminSettingsManager,
-		"/admin/task_queue":                  getClearTaskQueueRouteManager,
-		"/alias/{name}":                      getAliasRouteManager,
-		"/builds/{build_id}":                 getBuildByIdRouteManager,
-		"/builds/{build_id}/abort":           getBuildAbortRouteManager,
-		"/builds/{build_id}/restart":         getBuildRestartManager,
-		"/builds/{build_id}/tasks":           getTasksByBuildRouteManager,
-		"/cost/distro/{distro_id}":           getCostByDistroIdRouteManager,
-		"/cost/project/{project_id}/tasks":   getCostTaskByProjectRouteManager,
-		"/cost/version/{version_id}":         getCostByVersionIdRouteManager,
-		"/distros":                           getDistroRouteManager,
-		"/hooks/github":                      getGithubHooksRouteManager(queue, githubSecret),
-		"/hosts":                             getHostRouteManager,
-		"/hosts/{host_id}":                   getHostIDRouteManager,
-		"/hosts/{host_id}/change_password":   getHostChangeRDPPasswordRouteManager,
-		"/hosts/{host_id}/extend_expiration": getHostExtendExpirationRouteManager,
-		"/hosts/{host_id}/terminate":         getHostTerminateRouteManager,
+		"/admin":                                               getLegacyAdminSettingsManager,
+		"/admin/banner":                                        getBannerRouteManager,
+		"/admin/events":                                        getAdminEventRouteManager,
+		"/admin/restart":                                       getRestartRouteManager(queue),
+		"/admin/service_flags":                                 getServiceFlagsRouteManager,
+		"/admin/settings":                                      getAdminSettingsManager,
+		"/admin/task_queue":                                    getClearTaskQueueRouteManager,
+		"/alias/{name}":                                        getAliasRouteManager,
+		"/builds/{build_id}":                                   getBuildByIdRouteManager,
+		"/builds/{build_id}/abort":                             getBuildAbortRouteManager,
+		"/builds/{build_id}/restart":                           getBuildRestartManager,
+		"/builds/{build_id}/tasks":                             getTasksByBuildRouteManager,
+		"/cost/distro/{distro_id}":                             getCostByDistroIdRouteManager,
+		"/cost/project/{project_id}/tasks":                     getCostTaskByProjectRouteManager,
+		"/cost/version/{version_id}":                           getCostByVersionIdRouteManager,
+		"/distros":                                             getDistroRouteManager,
+		"/hooks/github":                                        getGithubHooksRouteManager(queue, githubSecret),
+		"/hosts":                                               getHostRouteManager,
+		"/hosts/{host_id}":                                     getHostIDRouteManager,
+		"/hosts/{host_id}/change_password":                     getHostChangeRDPPasswordRouteManager,
+		"/hosts/{host_id}/extend_expiration":                   getHostExtendExpirationRouteManager,
+		"/hosts/{host_id}/terminate":                           getHostTerminateRouteManager,
+		"/hosts/list/{task_id}":                                getListCreateHostRouteManager,
 		"/keys":                                                getKeysRouteManager,
 		"/keys/{key_name}":                                     getKeysDeleteRouteManager,
 		"/patches/{patch_id}":                                  getPatchByIdManager,
@@ -79,4 +78,9 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 	for path, getManager := range routes {
 		getManager(path, 2).Register(app, sc)
 	}
+
+	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers())
+
+	app.AddRoute("/").Version(2).RouteHandler(makePlaceHolderManger(sc)).Get()
+	app.AddRoute("/admin/revert").Version(2).RouteHandler(makeRevertRouteManager(sc)).Post().Wrap(superUser)
 }

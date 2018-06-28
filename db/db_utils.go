@@ -42,6 +42,19 @@ func InsertMany(collection string, items ...interface{}) error {
 	return db.C(collection).Insert(items...)
 }
 
+func InsertManyUnordered(c string, items ...interface{}) error {
+	if len(items) == 0 {
+		return nil
+	}
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer session.Close()
+
+	return db.C(c).InsertUnordered(items...)
+}
+
 // Clear removes all documents from a specified collection.
 func Clear(collection string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()

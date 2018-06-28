@@ -114,13 +114,26 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	}
 	s.NoError(flags.Set())
 
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchStateChange,
+		ResourceId:   "12345",
+		Data: &event.PatchEventData{
+			Status: evergreen.PatchFailed,
+		},
+	}
+
+	// degraded mode shouldn't process events
+	logger := event.NewDBEventLogger(event.AllLogCollection)
+	s.NoError(logger.LogEvent(&e))
+
 	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1")
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
 	out, err := event.FindUnprocessedEvents()
 	s.NoError(err)
-	s.Empty(out)
+	s.Len(out, 1)
 }
 
 func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {

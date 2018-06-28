@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/urfave/negroni"
 )
 
@@ -152,7 +153,15 @@ type appRecoveryLogger struct {
 
 // NewRecoveryLogger logs request start, end, and recovers from panics
 // (logging the panic as well).
-func NewRecoveryLogger() Middleware { return &appRecoveryLogger{} }
+func NewRecoveryLogger(j grip.Journaler) Middleware { return &appRecoveryLogger{Journaler: j} }
+
+// MakeRecoveryLoger constructs a middleware layer that logs request
+// start, end, and recovers from panics (logging the panic as well).
+//
+// This logger uses the default grip logger.
+func MakeRecoveryLogger() Middleware {
+	return &appRecoveryLogger{Journaler: logging.MakeGrip(grip.GetSender())}
+}
 
 func (l *appRecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	r = setupLogger(l.Journaler, r)
@@ -163,18 +172,16 @@ func (l *appRecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 			if rw.Header().Get("Content-Type") == "" {
 				rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			}
-
 			rw.WriteHeader(http.StatusInternalServerError)
 
-			l.Critical(message.WrapStack(2, message.Fields{
-				"panic":    err,
+			_ = recovery.SendMessageWithPanicError(err, nil, l.Journaler, message.Fields{
 				"action":   "aborted",
 				"request":  GetRequestID(ctx),
 				"duration": time.Since(getRequestStartAt(ctx)),
 				"path":     r.URL.Path,
 				"remote":   r.RemoteAddr,
 				"length":   r.ContentLength,
-			}))
+			})
 		}
 	}()
 	next(rw, r)

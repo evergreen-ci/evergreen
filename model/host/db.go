@@ -69,6 +69,7 @@ var (
 	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
 	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey            = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
+	ContainerPoolSettingsKey   = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
 	SpawnOptionsTaskIDKey      = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey     = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey     = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
@@ -396,8 +397,9 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 func NeedsNewAgent(currentTime time.Time) db.Q {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return db.Query(bson.M{
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},

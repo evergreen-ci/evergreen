@@ -18,8 +18,9 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
     var success = function(resp) {
       var patchFinishId = $scope.settings.notifications.patch_finish_id;
       var buildBreakId = $scope.settings.notifications.build_break_id;
+      var spawnhostExpirationId = $scope.settings.notifications.spawn_host_expiration_id;
       $scope.subscriptions = _.filter(resp.data, function(subscription){
-        if (subscription.id === patchFinishId || subscription.id === buildBreakId) {
+        if (subscription.id === patchFinishId || subscription.id === buildBreakId || subscription.id === spawnhostExpirationId) {
           return false;
         }
         return true;

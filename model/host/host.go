@@ -101,6 +101,8 @@ type Host struct {
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
 	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
+	// ContainerPoolSettings
+	ContainerPoolSettings *evergreen.ContainerPool `bson:"container_pool_settings,omitempty" json:"container_pool_settings,omitempty"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
@@ -327,6 +329,7 @@ func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
+	h.ProvisionTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -335,7 +338,7 @@ func (h *Host) MarkAsProvisioned() error {
 			"$set": bson.M{
 				StatusKey:        evergreen.HostRunning,
 				ProvisionedKey:   true,
-				ProvisionTimeKey: time.Now(),
+				ProvisionTimeKey: h.ProvisionTime,
 			},
 		},
 	)
@@ -561,20 +564,21 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				// If adding or removing fields here, make sure that all callers will work
 				// correctly after the change. Any fields defined here but not set by the
 				// caller will insert the zero value into the document
-				DNSKey:              h.Host,
-				UserKey:             h.User,
-				DistroKey:           h.Distro,
-				ProvisionedKey:      h.Provisioned,
-				StartedByKey:        h.StartedBy,
-				ExpirationTimeKey:   h.ExpirationTime,
-				ProviderKey:         h.Provider,
-				TagKey:              h.Tag,
-				InstanceTypeKey:     h.InstanceType,
-				ZoneKey:             h.Zone,
-				ProjectKey:          h.Project,
-				ProvisionOptionsKey: h.ProvisionOptions,
-				StartTimeKey:        h.StartTime,
-				HasContainersKey:    h.HasContainers,
+				DNSKey:               h.Host,
+				UserKey:              h.User,
+				DistroKey:            h.Distro,
+				ProvisionedKey:       h.Provisioned,
+				StartedByKey:         h.StartedBy,
+				ExpirationTimeKey:    h.ExpirationTime,
+				ProviderKey:          h.Provider,
+				TagKey:               h.Tag,
+				InstanceTypeKey:      h.InstanceType,
+				ZoneKey:              h.Zone,
+				ProjectKey:           h.Project,
+				ProvisionAttemptsKey: h.ProvisionAttempts,
+				ProvisionOptionsKey:  h.ProvisionOptions,
+				StartTimeKey:         h.StartTime,
+				HasContainersKey:     h.HasContainers,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -957,6 +961,16 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	return Count(query)
 }
 
+// FindRunningContainersOnParents returns the containers that are children of the given hosts
+func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
+	ids := hosts.GetHostIds()
+	query := db.Query(bson.M{
+		StatusKey:   evergreen.HostRunning,
+		ParentIDKey: bson.M{"$in": ids},
+	})
+	return Find(query)
+}
+
 // GetHostIds returns a slice of host IDs for the given group of hosts
 func (hosts HostGroup) GetHostIds() []string {
 	var ids []string
@@ -964,4 +978,16 @@ func (hosts HostGroup) GetHostIds() []string {
 		ids = append(ids, h.Id)
 	}
 	return ids
+}
+
+// FindAllRunningParentsByContainerPool returns a slice of hosts that are parents
+// of the container pool specified by the given ID
+func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
+	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
+	query := db.Query(bson.M{
+		HasContainersKey:    true,
+		StatusKey:           evergreen.HostRunning,
+		hostContainerPoolId: poolId,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	return Find(query)
 }

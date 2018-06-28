@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -431,7 +431,7 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 	}
 
 	h.rdpPassword = model.FromAPIString(hostModify.RDPPwd)
-	if !spawn.ValidateRDPPassword(h.rdpPassword) {
+	if !cloud.ValidateRDPPassword(h.rdpPassword) {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid password",
@@ -461,7 +461,7 @@ func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Conn
 			Message:    "RDP passwords can only be set on running hosts",
 		}
 	}
-	if err := spawn.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
+	if err := cloud.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -521,10 +521,10 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 			Message:    "must add more than 0 hours to expiration",
 		}
 	}
-	if h.addHours > spawn.MaxExpirationDurationHours {
+	if h.addHours > cloud.MaxSpawnHostExpirationDurationHours {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot add more than %s", spawn.MaxExpirationDurationHours.String()),
+			Message:    fmt.Sprintf("cannot add more than %s", cloud.MaxSpawnHostExpirationDurationHours.String()),
 		}
 	}
 
@@ -546,7 +546,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	}
 
 	var newExp time.Time
-	newExp, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
+	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,

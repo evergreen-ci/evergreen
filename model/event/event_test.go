@@ -502,45 +502,6 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 	s.Equal(2, n)
 }
 
-func (s *eventSuite) TestMarkAllEventsProcessed() {
-	data := []bson.M{
-		{
-			resourceTypeKey: ResourceTypeHost,
-			processedAtKey:  time.Time{},
-			DataKey:         bson.M{},
-		},
-		{
-			resourceTypeKey: ResourceTypeHost,
-			processedAtKey:  time.Time{},
-			DataKey:         bson.M{},
-		},
-		{
-			idKey:           bson.ObjectIdHex("507f191e810c19729de860ea"),
-			processedAtKey:  time.Time{}.Add(time.Second),
-			resourceTypeKey: ResourceTypeHost,
-			DataKey:         bson.M{},
-		},
-	}
-	for i := range data {
-		s.NoError(db.Insert(AllLogCollection, data[i]))
-	}
-
-	s.NoError(MarkAllEventsProcessed(AllLogCollection))
-
-	events, err := Find(AllLogCollection, db.Q{})
-	s.NoError(err)
-	s.Len(events, 3)
-
-	for i := range events {
-		processed, ptime := events[i].Processed()
-		s.NotZero(ptime)
-		s.True(processed)
-		if events[i].ID.Hex() == "507f191e810c19729de860ea" {
-			s.True(events[i].ProcessedAt.Equal(time.Time{}.Add(time.Second)))
-		}
-	}
-}
-
 // findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
 // If found, this function returns true, and the value of that field
 // If not, this function returns false. If it the struct had "r_type" (without
