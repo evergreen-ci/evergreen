@@ -84,7 +84,7 @@ func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notifica
 }
 
 func (t *spawnHostTriggers) slack() *notification.SlackPayload {
-	text := fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro)
+	text := fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro.Id)
 
 	var attachment message.SlackAttachment
 	if t.event.EventType == event.EventHostProvisioned {
@@ -134,7 +134,7 @@ const spawnHostEmailTemplate string = `<html>
 <body>
 <p>Hi,</p>
 
-<p>The Evergreen <a href="%s">Spawn Host</a> in '%s' has %s.</p>
+<p>The Evergreen <a href="%s">Spawn Host</a> with distro '%s' has %s.</p>
 <p>SSH Command: %s</p>
 
 
