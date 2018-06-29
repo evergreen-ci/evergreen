@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -110,13 +109,13 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Wrapf(err, "Invalid Docker settings in distro '%s'", h.Distro.Id)
 	}
 
-	parent, err := distro.FindOne(distro.ById(h.ParentID))
+	parent, err := host.FindOne(host.ById(h.ParentID))
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error finding parent of host %s", h.Id)
 	}
+	hostIP := parent.Host
 
-	hostIP, err := parent.GetHostIP()
-	if err != nil {
+	if hostIP == "" {
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parent.Id)
 	}
 

@@ -18,10 +18,11 @@ import (
 )
 
 type DockerSuite struct {
-	client   dockerClient
-	manager  *dockerManager
-	distro   distro.Distro
-	hostOpts HostOptions
+	client     dockerClient
+	manager    *dockerManager
+	distro     distro.Distro
+	hostOpts   HostOptions
+	parentHost host.Host
 	suite.Suite
 }
 
@@ -53,9 +54,14 @@ func (s *DockerSuite) SetupTest() {
 			},
 		},
 	}
+	s.parentHost = host.Host{
+		Id:   "d",
+		Host: "host",
+	}
 	s.hostOpts = HostOptions{
 		ParentID: "d",
 	}
+	s.parentHost.Insert()
 	s.distro.Insert()
 }
 

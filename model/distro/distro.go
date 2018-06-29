@@ -143,10 +143,3 @@ func (distros DistroGroup) GetDistroIds() []string {
 	}
 	return ids
 }
-
-func (d *Distro) GetHostIP() (string, error) {
-	if d.ProviderSettings == nil {
-		return "", errors.Errorf("Error finding provider settings for distro %s", d.Id)
-	}
-	return (*d.ProviderSettings)["host_ip"].(string), nil
-}
