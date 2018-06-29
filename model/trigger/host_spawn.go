@@ -85,7 +85,7 @@ func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notifica
 }
 
 func (t *spawnHostTriggers) slack() *notification.SlackPayload {
-	text := fmt.Sprintf("Host with distro '%s' has failed to spawn", t.host.Distro.Id)
+	text := fmt.Sprintf("Host has failed to spawn", t.host.Distro.Id)
 	attachment := message.SlackAttachment{
 		Title:     "Click here to spawn another host",
 		TitleLink: spawnHostURL(t.uiConfig.Url),
@@ -108,7 +108,7 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 	}
 
 	if t.host.Provisioned {
-		text = fmt.Sprintf("Host with distro '%s' has spawned", t.host.Distro.Id)
+		text = fmt.Sprintf("Host has spawned", t.host.Distro.Id)
 		attachment.Title = fmt.Sprintf("Evergreen Host: %s", t.host.Id)
 		attachment.TitleLink = spawnHostURL(t.uiConfig.Url)
 		attachment.Color = evergreenSuccessColor
