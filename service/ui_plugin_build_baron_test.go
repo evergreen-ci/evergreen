@@ -207,9 +207,9 @@ func TestRaceSuggesters(t *testing.T) {
 
 	fallback = &mockSuggest{[]thirdparty.JiraTicket{ticket1}, nil}
 	altEndpoint = &mockSuggest{[]thirdparty.JiraTicket{ticket2, ticket3}, nil}
-	multiSource = multiSourceSuggest{fallback, altEndpoint}
+	multiSource1 := multiSourceSuggest{fallback, altEndpoint}
 
-	tickets, source, err = multiSource.Suggest(&task.Task{})
+	tickets, source, err = multiSource1.Suggest(&task.Task{})
 	assert.Nil(err)
 	assert.Equal(bfSuggestionSource, source)
 	assert.Equal([]thirdparty.JiraTicket{ticket2, ticket3}, tickets,
@@ -217,9 +217,9 @@ func TestRaceSuggesters(t *testing.T) {
 
 	fallback = &mockSuggest{nil, errors.New("Error from fallback")}
 	altEndpoint = &mockSuggest{nil, errors.New("Error from alternative endpoint")}
-	multiSource = multiSourceSuggest{fallback, altEndpoint}
+	multiSource2 := multiSourceSuggest{fallback, altEndpoint}
 
-	tickets, source, err = multiSource.Suggest(&task.Task{})
+	tickets, source, err = multiSource2.Suggest(&task.Task{})
 	assert.EqualError(err, "Error from fallback",
 		"expected error from fallback to be returned since both failed")
 	assert.Nil(tickets)
