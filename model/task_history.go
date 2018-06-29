@@ -288,10 +288,9 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			task.RequesterKey:    evergreen.RepotrackerVersionRequester,
-			task.ProjectKey:      iter.ProjectName,
-			task.DisplayNameKey:  iter.TaskName,
-			task.BuildVariantKey: bson.M{"$in": iter.BuildVariants},
+			task.RequesterKey:   evergreen.RepotrackerVersionRequester,
+			task.ProjectKey:     iter.ProjectName,
+			task.DisplayNameKey: iter.TaskName,
 			task.RevisionOrderNumberKey: bson.M{
 				"$gte": versionEndBoundary.RevisionOrderNumber,
 				"$lte": versionStartBoundary.RevisionOrderNumber,
@@ -322,6 +321,11 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 			},
 		}},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
+	}
+	if len(iter.BuildVariants) > 0 {
+		// only filter on bv if passed in - this handles scenarios where a task may have been removed
+		// from the project yaml but we want to know its history before that
+		pipeline[0][task.BuildVariantKey] = bson.M{"$in": iter.BuildVariants}
 	}
 	agg := database.C(task.Collection).Pipe(pipeline)
 	grip.Debug(message.Fields{
