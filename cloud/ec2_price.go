@@ -179,6 +179,13 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 		osName += " (Amazon VPC)"
 	}
 
+	grip.Debug(message.Fields{
+		"message":       "getting spot history",
+		"instance_type": settings.InstanceType,
+		"function":      "getLatestLowestSpotCostForInstance",
+		"start_time":    "future",
+	})
+
 	args := hourlySpotPriceHistoryInput{
 		iType: settings.InstanceType,
 		os:    osType(osName),
@@ -188,13 +195,6 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 		// passing empty zone to find the "best"
 		zone: "",
 	}
-
-	grip.ug(message.Fields{
-		"message":       "getting spot history",
-		"instance_type": settings.InstanceType,
-		"function":      "getLatestLowestSpotCostForInstance",
-		"start_time":    "future",
-	})
 
 	prices, err := cpf.describeHourlySpotPriceHistory(ctx, client, args)
 	if err != nil {
