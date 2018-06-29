@@ -45,14 +45,14 @@ func userHasRole(u User, role string) bool {
 	return false
 }
 
-func userInGroup(u User, groups []string) bool {
-	if len(groups) == 0 {
+func userInSlice(u User, users []string) bool {
+	if len(users) == 0 {
 		return false
 	}
 
 	id := u.Username()
-	for _, g := range groups {
-		if id == g {
+	for _, u := range users {
+		if id == u {
 			return true
 		}
 	}

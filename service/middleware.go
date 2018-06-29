@@ -20,36 +20,34 @@ import (
 )
 
 // Key used for storing variables in request context with type safety.
-type (
-	reqCtxKey int
-)
-
-type (
-	// projectContext defines the set of common fields required across most UI requests.
-	projectContext struct {
-		model.Context
-
-		// AllProjects is a list of all available projects, limited to only the set of fields
-		// necessary for display. If user is logged in, this will include private projects.
-		AllProjects []UIProjectFields
-
-		// AuthRedirect indicates whether or not redirecting during authentication is necessary.
-		AuthRedirect bool
-
-		// IsAdmin indicates if the user is an admin for at least one of the projects
-		// listed in AllProjects.
-		IsAdmin bool
-
-		PluginNames []string
-	}
-)
+type reqCtxKey int
 
 const (
+	ProjectCookieName string = "mci-project-cookie"
+
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
 	RequestTask reqCtxKey = iota
 	RequestProjectContext
 )
+
+// projectContext defines the set of common fields required across most UI requests.
+type projectContext struct {
+	model.Context
+
+	// AllProjects is a list of all available projects, limited to only the set of fields
+	// necessary for display. If user is logged in, this will include private projects.
+	AllProjects []UIProjectFields
+
+	// AuthRedirect indicates whether or not redirecting during authentication is necessary.
+	AuthRedirect bool
+
+	// IsAdmin indicates if the user is an admin for at least one of the projects
+	// listed in AllProjects.
+	IsAdmin bool
+
+	PluginNames []string
+}
 
 // MustHaveProjectContext gets the projectContext from the request,
 // or panics if it does not exist.

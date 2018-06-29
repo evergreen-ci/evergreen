@@ -1,4 +1,4 @@
-package buildbaron
+package plugin
 
 import (
 	"fmt"
@@ -6,18 +6,13 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
 
 func init() {
-	plugin.Publish(&BuildBaronPlugin{})
+	Publish(&BuildBaronPlugin{})
 }
-
-const (
-	PluginName = "buildbaron"
-)
 
 type bbPluginOptions struct {
 	Projects map[string]evergreen.BuildBaronProject
@@ -27,7 +22,7 @@ type BuildBaronPlugin struct {
 	opts *bbPluginOptions
 }
 
-func (bbp *BuildBaronPlugin) Name() string { return PluginName }
+func (bbp *BuildBaronPlugin) Name() string { return "buildbaron" }
 
 func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	// pull out options needed from config file (JIRA authentication info, and list of projects)
@@ -38,9 +33,6 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 		return err
 	}
 
-	if len(bbpOptions.Projects) == 0 {
-		return fmt.Errorf("Must specify at least 1 Evergreen project")
-	}
 	for projName, proj := range bbpOptions.Projects {
 		if proj.TicketCreateProject == "" {
 			return fmt.Errorf("ticket_create_project cannot be blank")
@@ -73,18 +65,18 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	return nil
 }
 
-func (bbp *BuildBaronPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return &plugin.PanelConfig{
-		Panels: []plugin.UIPanel{
+func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
+	return &PanelConfig{
+		Panels: []UIPanel{
 			{
-				Page:      plugin.TaskPage,
-				Position:  plugin.PageRight,
+				Page:      TaskPage,
+				Position:  PageRight,
 				PanelHTML: template.HTML(`<div ng-include="'/static/plugins/buildbaron/partials/task_build_baron.html'"></div>`),
 				Includes: []template.HTML{
 					template.HTML(`<link href="/static/plugins/buildbaron/css/task_build_baron.css" rel="stylesheet"/>`),
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
-				DataFunc: func(context plugin.UIContext) (interface{}, error) {
+				DataFunc: func(context UIContext) (interface{}, error) {
 					_, enabled := bbp.opts.Projects[context.ProjectRef.Identifier]
 					return struct {
 						Enabled bool `json:"enabled"`

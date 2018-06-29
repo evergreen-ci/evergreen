@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	// "github.com/evergreen-ci/evergreen/model/patch"
+	_ "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 )
 
@@ -12,11 +14,12 @@ import (
 // and includes the route and associate internal metadata for the
 // route.
 type APIRoute struct {
-	route   string
-	prefix  string
-	methods []httpMethod
-	handler http.HandlerFunc
-	version int
+	route    string
+	prefix   string
+	methods  []httpMethod
+	handler  http.HandlerFunc
+	wrappers []Middleware
+	version  int
 }
 
 func (r *APIRoute) String() string {
@@ -63,6 +66,15 @@ func (r *APIRoute) IsValid() bool {
 		return true
 	}
 }
+
+// ClearWrappers resets the routes middlware wrappers.
+func (r *APIRoute) ClearWrappers() { r.wrappers = []Middleware{} }
+
+// Wrap adds a middleware that is applied specifically to this
+// route. Route-specific middlware is applied after application specific
+// middleware (when there's a route or application prefix) and before
+// global application middleware (when merging applications without prefixes.)
+func (r *APIRoute) Wrap(m Middleware) *APIRoute { r.wrappers = append(r.wrappers, m); return r }
 
 // Prefix allows per-route prefixes, which will override the application's global prefix if set.
 func (r *APIRoute) Prefix(p string) *APIRoute { r.prefix = p; return r }

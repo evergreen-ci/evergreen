@@ -83,7 +83,8 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateEventAlertProcessing(1),
 		units.PopulateBackgroundStatsJobs(env, 0),
 		units.PopulateLastContainerFinishTimeJobs(),
-		units.PopulateParentDecommissionJobs()))
+		units.PopulateParentDecommissionJobs(),
+		units.PopulatePeriodicNotificationJobs(1)))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateHostSetupJobs(env, 0),

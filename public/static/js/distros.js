@@ -3,6 +3,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.readOnly = !$window.isSuperUser;
 
   $scope.distros = $window.distros;
+  $scope.containerPoolDistros = $window.containerPoolDistros;
+
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
   }

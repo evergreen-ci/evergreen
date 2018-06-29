@@ -16,7 +16,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
-        .collection(STITCH_CONFIG.PERF.COLL_CHANGE_POINTS)
+        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
         .aggregate(getAggChain(state))
     }).then(function(docs) {
       vm.gridOptions.data = docs

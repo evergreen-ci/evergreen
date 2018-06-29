@@ -9,29 +9,37 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/urfave/negroni"
+	"github.com/pkg/errors"
 )
 
-func (agt *Agent) startStatusServer(ctx context.Context, port int) {
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	r := mux.NewRouter().StrictSlash(false)
-	r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
-	r.HandleFunc("/terminate", terminateAgentHandler).Methods("DELETE")
+func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
+	app := gimlet.NewApp()
+	app.ResetMiddleware()
+	if err := app.SetPort(port); err != nil {
+		return errors.WithStack(err)
+	}
+	app.StrictSlash = false
+	app.NoVersions = true
 
-	n := negroni.New()
-	n.Use(negroni.NewRecovery())
-	n.UseHandler(r)
+	app.AddMiddleware(gimlet.MakeRecoveryLogger())
+	app.AddRoute("/status").Handler(agt.statusHandler()).Get()
+	app.AddRoute("/terminate").Handler(terminateAgentHandler).Delete()
+
+	handler, err := app.Handler()
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      n,
+		Addr:         fmt.Sprintf("127.0.0.1:%d", port),
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	grip.Infoln("starting status server on:", addr)
+	grip.Infoln("starting status server on:", srv.Addr)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -48,6 +56,8 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 		grip.Info("shutting down status server")
 		grip.Critical(srv.Shutdown(ctx))
 	}()
+
+	return nil
 }
 
 // statusResponse is the structure of the response objects produced by

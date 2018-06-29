@@ -2,12 +2,12 @@ package gimlet
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -105,7 +105,7 @@ func (s *HandlerSuite) TestValidationReturnsErrors() {
 
 	s.NotPanics(func() { handler(s.rw, s.r) })
 	s.Contains(s.rw.Body.String(), "validation error")
-	s.Equal(http.StatusInternalServerError, s.rw.Code)
+	s.Equal(http.StatusBadRequest, s.rw.Code)
 }
 
 func (s *HandlerSuite) TestPaginationPopulatesHeaders() {
@@ -131,7 +131,7 @@ func (s *HandlerSuite) TestPaginationPopulatesHeaders() {
 
 }
 
-func (s HandlerSuite) TestJSONOutputFormatCorrectlyPropogated() {
+func (s *HandlerSuite) TestJSONOutputFormatCorrectlyPropogated() {
 	handler := handleHandler(&mockHandler{
 		responder: &mockResponder{
 			responderImpl: responderImpl{
@@ -146,7 +146,22 @@ func (s HandlerSuite) TestJSONOutputFormatCorrectlyPropogated() {
 	s.Contains(s.rw.HeaderMap["Content-Type"][0], JSON.ContentType())
 }
 
-func (s HandlerSuite) TestTextOutputFormatCorrectlyPropogated() {
+func (s *HandlerSuite) TestYAMLOutputFormatCorrectlyPropogated() {
+	handler := handleHandler(&mockHandler{
+		responder: &mockResponder{
+			responderImpl: responderImpl{
+				format: YAML,
+				status: http.StatusTeapot,
+			},
+		},
+	})
+
+	s.NotPanics(func() { handler(s.rw, s.r) })
+	s.Equal(http.StatusTeapot, s.rw.Code)
+	s.Contains(s.rw.HeaderMap["Content-Type"][0], YAML.ContentType())
+}
+
+func (s *HandlerSuite) TestTextOutputFormatCorrectlyPropogated() {
 	handler := handleHandler(&mockHandler{
 		responder: &mockResponder{
 			responderImpl: responderImpl{
@@ -161,7 +176,7 @@ func (s HandlerSuite) TestTextOutputFormatCorrectlyPropogated() {
 	s.Contains(s.rw.HeaderMap["Content-Type"][0], TEXT.ContentType())
 }
 
-func (s HandlerSuite) TestHTMLOutputFormatCorrectlyPropogated() {
+func (s *HandlerSuite) TestHTMLOutputFormatCorrectlyPropogated() {
 	handler := handleHandler(&mockHandler{
 		responder: &mockResponder{
 			responderImpl: responderImpl{
@@ -176,7 +191,7 @@ func (s HandlerSuite) TestHTMLOutputFormatCorrectlyPropogated() {
 	s.Contains(s.rw.HeaderMap["Content-Type"][0], HTML.ContentType())
 }
 
-func (s HandlerSuite) TestBinOutputFormatCorrectlyPropogated() {
+func (s *HandlerSuite) TestBinOutputFormatCorrectlyPropogated() {
 	handler := handleHandler(&mockHandler{
 		responder: &mockResponder{
 			responderImpl: responderImpl{
@@ -189,4 +204,26 @@ func (s HandlerSuite) TestBinOutputFormatCorrectlyPropogated() {
 	s.NotPanics(func() { handler(s.rw, s.r) })
 	s.Equal(http.StatusTeapot, s.rw.Code)
 	s.Contains(s.rw.HeaderMap["Content-Type"][0], BINARY.ContentType())
+}
+
+func (s *HandlerSuite) TestGetErrorHelper() {
+	in := ErrorResponse{100, "foo"}
+	out := getError(in, 8998)
+	s.Equal(100, out.StatusCode)
+	s.Equal("foo", out.Message)
+
+	in2 := &ErrorResponse{101, "foo0"}
+	out = getError(in2, 8999)
+	s.Equal(101, out.StatusCode)
+	s.Equal("foo0", out.Message)
+
+	in3 := errors.WithStack(in2)
+	out = getError(in3, 9000)
+	s.Equal(101, out.StatusCode)
+	s.Equal("foo0", out.Message)
+
+	in4 := errors.New("wtf")
+	out = getError(in4, 9001)
+	s.Equal(9001, out.StatusCode)
+	s.Equal("wtf", out.Message)
 }

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -12,14 +11,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -430,99 +427,6 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Get the host with the id specified in the request
-func getHostFromRequest(r *http.Request) (*host.Host, error) {
-	// get id and secret from the request.
-	tag := gimlet.GetVars(r)["tag"]
-	if len(tag) == 0 {
-		return nil, errors.New("no host tag supplied")
-	}
-	// find the host
-	h, err := host.FindOne(host.ById(tag))
-	if h == nil {
-		return nil, errors.Errorf("no host with tag: %v", tag)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return h, nil
-}
-
-func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
-	hostObj, err := getHostFromRequest(r)
-	if err != nil {
-		grip.Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// if the host failed
-	setupSuccess := gimlet.GetVars(r)["status"]
-	if setupSuccess == evergreen.HostStatusFailed {
-		grip.Infof("Initializing host %s failed", hostObj.Id)
-		// send notification to the Evergreen team about this provisioning failure
-		subject := fmt.Sprintf("%v Evergreen provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
-
-		hostLink := fmt.Sprintf("%v/host/%v", as.Settings.Ui.Url, hostObj.Id)
-		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
-			hostObj.Distro.Id, hostObj.Id, hostObj.Host, hostLink)
-		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			grip.Errorln("Error sending email:", err)
-		}
-
-		// get/store setup logs
-		var setupLog []byte
-		body := util.NewRequestReader(r)
-		defer body.Close()
-
-		setupLog, err = ioutil.ReadAll(body)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		event.LogProvisionFailed(hostObj.Id, string(setupLog))
-
-		err = hostObj.SetUnprovisioned()
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		gimlet.WriteJSON(w, fmt.Sprintf("Initializing host %v failed", hostObj.Id))
-		return
-	}
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-
-	cloudManager, err := cloud.GetManager(ctx, hostObj.Provider, &as.Settings)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",
-			notify.ProvisionFailurePreface, hostObj.Distro.Id)
-		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
-			hostObj.Id, hostObj.Provider, err)
-		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			grip.Errorln("Error sending email:", err)
-		}
-		return
-	}
-
-	dns, err := cloudManager.GetDNSName(ctx, hostObj)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	// mark host as provisioned
-	if err := hostObj.MarkAsProvisioned(); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	grip.Infof("Successfully marked host '%s' with dns '%s' as provisioned", hostObj.Id, dns)
-}
-
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["identifier"]
@@ -662,7 +566,6 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	// SpawnHosts
 	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.hostInfo, nil)).Methods("GET")
 	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.modifyHost, nil)).Methods("POST")
-	root.HandleFunc("/api/spawn/ready/{instance_id:[\\w_\\-\\@]+}/{status}", requireUser(as.spawnHostReady, nil)).Methods("POST")
 	root.HandleFunc("/api/spawns/", requireUser(as.requestHost, nil)).Methods("PUT")
 	root.HandleFunc("/api/spawns/{user}/", requireUser(as.hostsInfoForUser, nil)).Methods("GET")
 	root.HandleFunc("/api/spawns/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
@@ -675,9 +578,6 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	root.HandleFunc("/api/status/stuck_hosts", as.getStuckHosts).Methods("GET")
 	root.HandleFunc("/api/task_queue", as.getTaskQueueSizes).Methods("GET")
 	root.HandleFunc("/api/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
-
-	// Hosts callback
-	root.HandleFunc("/api/2/host/{tag:[\\w_\\-\\@]+}/ready/{status}", as.hostReady).Methods("POST")
 
 	// Agent routes
 	root.HandleFunc("/api/2/agent/next_task", as.checkHost(as.NextTask)).Methods("GET")

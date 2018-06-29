@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
@@ -52,6 +53,11 @@ func startWebService() cli.Command {
 				uiServer  *http.Server
 			)
 
+			pprof, err := service.GetHandlerPprof(settings)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
 			serviceHandler, err := getServiceRouter(settings, queue)
 			if err != nil {
 				return errors.WithStack(err)
@@ -81,8 +87,8 @@ func startWebService() cli.Command {
 				close(uiWait)
 			}()
 
+			pprofServer := service.GetServer(settings.PprofPort, pprof)
 			pprofWait := make(chan struct{})
-			pprofServer := service.GetServer(settings.PprofPort, service.GetHandlerPprof(settings))
 			go func() {
 				defer recovery.LogStackTraceAndContinue("proff server")
 
@@ -104,6 +110,8 @@ func startWebService() cli.Command {
 			<-gracefulWait
 
 			grip.Notice("waiting for background tasks to finish")
+			ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
 			catcher.Add(env.Close(ctx))
 
 			return catcher.Resolve()

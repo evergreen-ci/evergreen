@@ -9,18 +9,20 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 const hostTerminationJobName = "host-termination-job"
+
+const teardownFailurePreface = "[TEARDOWN-FAILURE]"
 
 func init() {
 	registry.AddJobType(hostTerminationJobName, func() amboy.Job {
@@ -199,17 +201,26 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}))
 
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
-				notify.TeardownFailurePreface, j.host.Id)
+				teardownFailurePreface, j.host.Id)
 
-			grip.Error(message.WrapError(notify.NotifyAdmins(subj, err.Error(), settings),
-				message.Fields{
-					"message":  "problem sending email",
-					"host":     j.host.Id,
-					"subject":  subj,
-					"error":    err.Error(),
-					"job_type": j.Type().Name,
-					"job":      j.ID(),
+			mailer, serr := j.env.GetSender(evergreen.SenderEmail)
+			if serr != nil {
+				grip.Alert(message.Fields{
+					"message":    "problem getting sender",
+					"operation":  "host termination issue",
+					"sender_err": serr,
+					"error":      err,
+					"host":       j.host.Id,
+					"subject":    subj,
+				})
+			} else {
+				mailer.Send(message.NewEmailMessage(level.Error, message.Email{
+					From:       settings.Notify.SMTP.From,
+					Recipients: settings.Notify.SMTP.AdminEmail,
+					Subject:    subj,
+					Body:       err.Error(),
 				}))
+			}
 		}
 	}
 
