@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -332,20 +331,11 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
 	agg := database.C(task.Collection).Pipe(pipeline)
-	grip.Debug(message.Fields{
-		"message":       "debugging task history",
-		"task_pipeline": pipeline,
-	})
-
 	var aggregatedTasks []bson.M
 	if err = agg.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
 	}
 	chunk.Tasks = aggregatedTasks
-	grip.Debug(message.Fields{
-		"message":      "debugging task history",
-		"task_results": aggregatedTasks,
-	})
 
 	failedTests, err := iter.GetFailedTests(agg)
 	if err != nil {
@@ -844,11 +834,6 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 		query[task.RevisionOrderNumberKey] = *revisionQuery
 	}
 
-	grip.Debug(message.Fields{
-		"message":    "debugging test history",
-		"task_query": query,
-	})
-
 	return query, nil
 }
 
@@ -868,11 +853,6 @@ func formTestsQuery(params *TestHistoryParameters, taskIds []string) bson.M {
 			"$in": params.TestStatuses,
 		}
 	}
-
-	grip.Debug(message.Fields{
-		"message":     "debugging test history",
-		"tests_query": query,
-	})
 
 	return query
 }
