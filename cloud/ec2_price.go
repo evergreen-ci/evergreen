@@ -561,8 +561,8 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 				return nil, errors.Wrap(err, "parsing spot price")
 			}
 			var zone string
-			if history[i].Zone != nil {
-				zone = *history[i].Zone
+			if history[i].AvailabilityZone != nil {
+				zone = *history[i].AvailabilityZone
 			}
 
 			prices = append(prices, spotRate{Time: input.start, Price: price, Zone: zone})
