@@ -130,17 +130,17 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, settings); err != nil {
-		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
+	if err := m.client.CreateContainer(ctx, parent, h.Id, settings); err != nil {
+		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
 		grip.Error(err)
 		return nil, err
 	}
 
 	// Start container
-	if err := m.client.StartContainer(ctx, h); err != nil {
-		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", hostIP)
+	if err := m.client.StartContainer(ctx, parent, h.Id); err != nil {
+		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", settings.HostIP)
 		// Clean up
-		if err2 := m.client.RemoveContainer(ctx, h); err2 != nil {
+		if err2 := m.client.RemoveContainer(ctx, parent, h.Id); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
 		}
 		grip.Error(err)
@@ -154,7 +154,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	event.LogHostStarted(h.Id)
 
 	// Retrieve container details
-	newContainer, err := m.client.GetContainer(ctx, h)
+	newContainer, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", hostIP)
 		grip.Error(err)
@@ -182,7 +182,13 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	container, err := m.client.GetContainer(ctx, h)
+	// get parent from host
+	parent, err := h.GetParent()
+	if err != nil {
+		return nil, errors.Wrap("Error retrieving parent for host '%s'", h.Id)
+	}
+
+	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
@@ -269,4 +275,18 @@ func (m *dockerManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, e
 // for the host. For Docker this is not relevant.
 func (m *dockerManager) TimeTilNextPayment(_ *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]string, error) {
+	containers, err := m.client.ListContainers(ctx, h)
+	if err != nil {
+		return nil, errors.Wrap(err, "error listing containers")
+	}
+
+	ids := []string{}
+	for _, container := range containers {
+		ids = append(ids, container.ID)
+	}
+
+	return ids, nil
 }

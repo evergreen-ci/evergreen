@@ -423,7 +423,7 @@ func (s *DockerSuite) TestMakeHostConfig() {
 			MaxPort: 5001,
 		},
 	}
-	conf, err := makeHostConfig(s.distro, settingsNoOpenPorts, containers)
+	conf, err := makeHostConfig(settingsNoOpenPorts, containers)
 	s.Error(err)
 	s.Nil(conf)
 
@@ -433,7 +433,7 @@ func (s *DockerSuite) TestMakeHostConfig() {
 			MaxPort: 5010,
 		},
 	}
-	conf, err = makeHostConfig(s.distro, settingsOpenPorts, containers)
+	conf, err = makeHostConfig(settingsOpenPorts, containers)
 	s.NoError(err)
 	s.NotNil(conf)
 }

@@ -54,6 +54,13 @@ type Manager interface {
 	TimeTilNextPayment(*host.Host) time.Duration
 }
 
+type ContainerManager interface {
+	Manager
+
+	// GetContainers returns the IDs of all containers on a specified host
+	GetContainers(context.Context, *host.Host) ([]string, error)
+}
+
 // CostCalculator is an interface for cloud providers that can estimate what a span of time on a
 // given host costs.
 type CostCalculator interface {
@@ -96,6 +103,23 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 
 	if err := provider.Configure(ctx, settings); err != nil {
 		return nil, errors.Wrap(err, "Failed to configure cloud provider")
+	}
+
+	return provider, nil
+}
+
+func GetContainerManager(ctx context.Context, providerName string, settings *evergreen.Settings) (ContainerManager, error) {
+
+	var provider ContainerManager
+	switch providerName {
+	case evergreen.ProviderNameDocker:
+		provider = &dockerManager{}
+	default:
+		return nil, errors.Errorf("No known container provider for '%v'", providerName)
+	}
+
+	if err := provider.Configure(ctx, settings); err != nil {
+		return nil, errors.Wrap(err, "Failed to configure container provider")
 	}
 
 	return provider, nil
