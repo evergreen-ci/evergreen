@@ -11,8 +11,63 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+func TestGroupByTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+
+	// no task groups
+	hosts := []host.Host{
+		{Id: "h1"},
+		{Id: "h2"},
+	}
+	tasks := []model.TaskQueueItem{
+		{Id: "t1"},
+		{Id: "t2"},
+	}
+	groups := groupByTaskGroup(hosts, tasks)
+	assert.Len(groups, 1)
+	assert.Len(groups[""].hosts, 2)
+	assert.Len(groups[""].tasks, 2)
+
+	// some running task groups
+	hosts = []host.Host{
+		{Id: "h1", RunningTaskGroup: "g1", RunningTask: "foo"},
+		{Id: "h2", RunningTaskGroup: "g1", RunningTask: "bar"},
+	}
+	tasks = []model.TaskQueueItem{
+		{Id: "t1", Group: "g2"},
+		{Id: "t2"},
+	}
+	groups = groupByTaskGroup(hosts, tasks)
+	assert.Len(groups, 3)
+	assert.Len(groups[makeTaskGroupString("g1", "", "", "")].hosts, 2)
+	assert.Len(groups[makeTaskGroupString("g1", "", "", "")].tasks, 0)
+	assert.Len(groups[makeTaskGroupString("g2", "", "", "")].hosts, 0)
+	assert.Len(groups[makeTaskGroupString("g2", "", "", "")].tasks, 1)
+	assert.Equal("h1", groups[makeTaskGroupString("g1", "", "", "")].hosts[0].Id)
+	assert.Equal("h2", groups[makeTaskGroupString("g1", "", "", "")].hosts[1].Id)
+	assert.Len(groups[""].hosts, 0)
+	assert.Len(groups[""].tasks, 1)
+
+	// some finished task groups
+	hosts = []host.Host{
+		{Id: "h1", RunningTaskGroup: "g1"},
+		{Id: "h2", RunningTaskGroup: "g1"},
+	}
+	tasks = []model.TaskQueueItem{
+		{Id: "t1", Group: "g2"},
+		{Id: "t2"},
+	}
+	groups = groupByTaskGroup(hosts, tasks)
+	assert.Len(groups, 2)
+	assert.Len(groups[makeTaskGroupString("g2", "", "", "")].hosts, 0)
+	assert.Len(groups[makeTaskGroupString("g2", "", "", "")].tasks, 1)
+	assert.Len(groups[""].hosts, 2)
+	assert.Len(groups[""].tasks, 1)
+}
 
 type UtilizationAllocatorSuite struct {
 	ctx              context.Context
@@ -1141,4 +1196,342 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
 	s.Equal(1, hosts[s.distroName])
+}
+
+func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
+	data := HostAllocatorData{
+		distros: map[string]distro.Distro{
+			s.distroName: s.distro,
+		},
+		existingDistroHosts: map[string][]host.Host{
+			s.distroName: []host.Host{},
+		},
+		freeHostFraction: 1,
+		taskQueueItems: map[string][]model.TaskQueueItem{
+			s.distroName: []model.TaskQueueItem{
+				// a long queue of task group tasks with max hosts=2 should request 2
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "tg1",
+					GroupMaxHosts:    2,
+				},
+			},
+		},
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
+	s.NoError(err)
+	s.Equal(2, hosts[s.distroName])
+}
+
+func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
+	h1 := host.Host{
+		Id:                      "h1",
+		RunningTask:             "t1",
+		RunningTaskGroup:        "g1",
+		RunningTaskProject:      s.projectName,
+		RunningTaskVersion:      "v1",
+		RunningTaskBuildVariant: "bv1",
+	}
+	h2 := host.Host{
+		Id:                      "h2",
+		RunningTask:             "t2",
+		RunningTaskGroup:        "g1",
+		RunningTaskProject:      s.projectName,
+		RunningTaskVersion:      "v1",
+		RunningTaskBuildVariant: "bv1",
+	}
+	h3 := host.Host{
+		Id:                      "h3",
+		RunningTask:             "t3",
+		RunningTaskGroup:        "g2",
+		RunningTaskProject:      s.projectName,
+		RunningTaskVersion:      "v1",
+		RunningTaskBuildVariant: "bv1",
+	}
+	t1 := task.Task{
+		Id:                "t1",
+		Project:           s.projectName,
+		ExpectedDuration:  15 * time.Minute,
+		BuildVariant:      "bv1",
+		TaskGroup:         "g1",
+		TaskGroupMaxHosts: 3,
+		StartTime:         time.Now(),
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:                "t2",
+		Project:           s.projectName,
+		ExpectedDuration:  15 * time.Minute,
+		BuildVariant:      "bv1",
+		TaskGroup:         "g1",
+		TaskGroupMaxHosts: 3,
+		StartTime:         time.Now(),
+	}
+	s.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:                "t3",
+		Project:           s.projectName,
+		ExpectedDuration:  15 * time.Minute,
+		BuildVariant:      "bv1",
+		TaskGroup:         "g2",
+		TaskGroupMaxHosts: 1,
+		StartTime:         time.Now(),
+	}
+	s.NoError(t3.Insert())
+
+	data := HostAllocatorData{
+		distros: map[string]distro.Distro{
+			s.distroName: s.distro,
+		},
+		existingDistroHosts: map[string][]host.Host{
+			s.distroName: []host.Host{h1, h2, h3},
+		},
+		freeHostFraction: 1,
+		taskQueueItems: map[string][]model.TaskQueueItem{
+			s.distroName: []model.TaskQueueItem{
+				{
+					ExpectedDuration: 15 * time.Minute,
+					Group:            "g1",
+					GroupMaxHosts:    3,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g2",
+					GroupMaxHosts:    1,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g2",
+					GroupMaxHosts:    1,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g2",
+					GroupMaxHosts:    1,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g2",
+					GroupMaxHosts:    1,
+				},
+			},
+		},
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
+	s.NoError(err)
+	s.Equal(0, hosts[s.distroName])
+}
+
+func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
+	h1 := host.Host{
+		Id:                      "h1",
+		RunningTask:             "t1",
+		RunningTaskGroup:        "g1",
+		RunningTaskProject:      s.projectName,
+		RunningTaskVersion:      "v1",
+		RunningTaskBuildVariant: "bv1",
+	}
+	h2 := host.Host{
+		Id:                      "h2",
+		RunningTask:             "t2",
+		RunningTaskGroup:        "g1",
+		RunningTaskProject:      s.projectName,
+		RunningTaskVersion:      "v1",
+		RunningTaskBuildVariant: "bv1",
+	}
+	h3 := host.Host{
+		Id:                      "h3",
+		RunningTask:             "t3",
+		RunningTaskGroup:        "g2",
+		RunningTaskProject:      s.projectName,
+		RunningTaskVersion:      "v1",
+		RunningTaskBuildVariant: "bv1",
+	}
+	h4 := host.Host{
+		Id:          "h4",
+		RunningTask: "t4",
+	}
+	h5 := host.Host{
+		Id:          "h5",
+		RunningTask: "t5",
+	}
+	h6 := host.Host{
+		Id:          "h6",
+		RunningTask: "t6",
+	}
+	h7 := host.Host{
+		Id:                      "h7",
+		RunningTask:             "t7",
+		RunningTaskGroup:        "g3",
+		RunningTaskProject:      s.projectName,
+		RunningTaskVersion:      "v1",
+		RunningTaskBuildVariant: "bv1",
+	}
+	t1 := task.Task{
+		Id:                "t1",
+		Project:           s.projectName,
+		ExpectedDuration:  15 * time.Minute,
+		BuildVariant:      "bv1",
+		TaskGroup:         "g1",
+		TaskGroupMaxHosts: 3,
+		StartTime:         time.Now(),
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:                "t2",
+		Project:           s.projectName,
+		ExpectedDuration:  15 * time.Minute,
+		BuildVariant:      "bv1",
+		TaskGroup:         "g1",
+		TaskGroupMaxHosts: 3,
+		StartTime:         time.Now(),
+	}
+	s.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:                "t3",
+		Project:           s.projectName,
+		ExpectedDuration:  15 * time.Minute,
+		BuildVariant:      "bv1",
+		TaskGroup:         "g2",
+		TaskGroupMaxHosts: 1,
+		StartTime:         time.Now(),
+	}
+	s.NoError(t3.Insert())
+	t4 := task.Task{
+		Id:               "t4",
+		Project:          s.projectName,
+		ExpectedDuration: 5 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-5 * time.Minute),
+	}
+	s.NoError(t4.Insert())
+	t5 := task.Task{
+		Id:               "t5",
+		Project:          s.projectName,
+		ExpectedDuration: 30 * time.Minute,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-10 * time.Minute),
+	}
+	s.NoError(t5.Insert())
+	t6 := task.Task{
+		Id:               "t6",
+		Project:          s.projectName,
+		ExpectedDuration: 2 * time.Hour,
+		BuildVariant:     "bv1",
+		StartTime:        time.Now().Add(-10 * time.Minute),
+	}
+	s.NoError(t6.Insert())
+	t7 := task.Task{
+		Id:                "t7",
+		Project:           s.projectName,
+		ExpectedDuration:  15 * time.Minute,
+		BuildVariant:      "bv1",
+		TaskGroup:         "g3",
+		TaskGroupMaxHosts: 1,
+		StartTime:         time.Now(),
+	}
+	s.NoError(t7.Insert())
+
+	data := HostAllocatorData{
+		distros: map[string]distro.Distro{
+			s.distroName: s.distro,
+		},
+		existingDistroHosts: map[string][]host.Host{
+			s.distroName: []host.Host{h1, h2, h3, h4, h5, h6, h7},
+		},
+		freeHostFraction: 1,
+		taskQueueItems: map[string][]model.TaskQueueItem{
+			s.distroName: []model.TaskQueueItem{
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g1",
+					GroupMaxHosts:    3,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g1",
+					GroupMaxHosts:    3,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g2",
+					GroupMaxHosts:    1,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g2",
+					GroupMaxHosts:    1,
+				},
+				{
+					ExpectedDuration: 15 * time.Minute,
+				},
+				{
+					ExpectedDuration: 5 * time.Minute,
+				},
+				{
+					ExpectedDuration: 20 * time.Minute,
+				},
+				{
+					ExpectedDuration: 15 * time.Minute,
+				},
+				{
+					ExpectedDuration: 15 * time.Minute,
+				},
+				{
+					ExpectedDuration: 5 * time.Minute,
+				},
+			},
+		},
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
+	s.NoError(err)
+	s.Equal(2, hosts[s.distroName])
 }
