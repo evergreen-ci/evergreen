@@ -23,11 +23,6 @@ type goTest2JSONCommand struct {
 	base
 }
 
-type goTest2JSONKey struct {
-	name      string
-	iteration int
-}
-
 func goTest2JSONFactory() Command          { return &goTest2JSONCommand{} }
 func (c *goTest2JSONCommand) Name() string { return "gotest.parse_json" }
 

@@ -14,10 +14,7 @@ import (
 )
 
 const (
-	test2JSONFile                = "command/testdata/test2json.json"
-	test2JSONPanicFile           = "command/testdata/test2json_panic.json"
-	test2JSONBenchmarkFile       = "command/testdata/test2json_benchmark.json"
-	test2JSONSilentBenchmarkFile = "command/testdata/test2json_benchmark_silent.json"
+	test2JSONFile = "command/testdata/test2json.json"
 )
 
 type test2JSONSuite struct {
