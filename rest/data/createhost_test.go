@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,6 +70,6 @@ func TestListHostsForTask(t *testing.T) {
 	found, err := c.ListHostsForTask("task_1")
 	assert.NoError(err)
 	assert.Len(found, 2)
-	assert.Equal(model.CreateHost{DNSName: "4.com", InstanceID: "4"}, found[0])
-	assert.Equal(model.CreateHost{DNSName: "1.com", InstanceID: "1"}, found[1])
+	assert.Equal("4.com", found[0].Host)
+	assert.Equal("1.com", found[1].Host)
 }

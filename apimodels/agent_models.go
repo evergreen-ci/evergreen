@@ -58,3 +58,35 @@ type NextTaskResponse struct {
 type EndTaskResponse struct {
 	ShouldExit bool `json:"should_exit,omitempty"`
 }
+
+type CreateHost struct {
+	// EC2-related settings
+	AMI            string      `mapstructure:"ami"`
+	Distro         string      `mapstructure:"distro"`
+	EBSDevices     []EbsDevice `mapstructure:"ebs_block_device"`
+	InstanceType   string      `mapstructure:"instance_type"`
+	Region         string      `mapstructure:"region"`
+	SecurityGroups []string    `mapstructure:"security_group_ids"`
+	Spot           bool        `mapstructure:"spot"`
+	Subnet         string      `mapstructure:"subnet_id"`
+	UserdataFile   string      `mapstructure:"userdata_file"`
+	VPC            string      `mapstructure:"vpc_id"`
+
+	// authentication settings
+	AWSKeyID  string `mapstructure:"aws_access_key_id"`
+	AWSSecret string `mapstructure:"aws_secret_access_key"`
+	KeyName   string `mapstructure:"key_name"`
+
+	// agent-controlled settings
+	CloudProvider       string `mapstructure:"provider"`
+	NumHosts            int    `mapstructure:"num_hosts"`
+	Scope               string `mapstructure:"scope"`
+	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs"`
+	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs"`
+}
+
+type EbsDevice struct {
+	IOPS       int    `mapstructure:"ebs_iops"`
+	SizeGB     int    `mapstructure:"ebs_size"`
+	SnapshotID string `mapstructure:"ebs_snapshot_id"`
+}

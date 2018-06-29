@@ -44,6 +44,7 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		"/hosts/{host_id}/change_password":                     getHostChangeRDPPasswordRouteManager,
 		"/hosts/{host_id}/extend_expiration":                   getHostExtendExpirationRouteManager,
 		"/hosts/{host_id}/terminate":                           getHostTerminateRouteManager,
+		"/hosts/create/{task_id}":                              getCreateHostRouteManager,
 		"/hosts/list/{task_id}":                                getListCreateHostRouteManager,
 		"/keys":                                                getKeysRouteManager,
 		"/keys/{key_name}":                                     getKeysDeleteRouteManager,

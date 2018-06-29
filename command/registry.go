@@ -25,7 +25,7 @@ func init() {
 		"attach.results":        attachResultsFactory,
 		"attach.xunit_results":  xunitResultsFactory,
 		"attach.artifacts":      attachArtifactsFactory,
-		"create.host":           createHostFactory,
+		"host.create":           createHostFactory,
 		"expansions.fetch_vars": fetchVarsFactory,
 		"expansions.update":     updateExpansionsFactory,
 		"expansions.write":      writeExpansionsFactory,
