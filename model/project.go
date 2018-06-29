@@ -625,8 +625,8 @@ func (p *Project) GetVariantMappings() map[string]string {
 	return mappings
 }
 
-// GetVariantsWithTask returns the names of all buildvariants that contain a certain task
-// searches tasks, task groups, and display tasks
+// GetVariantsWithTask returns the names of all buildvariants that contain a certain task.
+// Searches tasks, task groups, and display tasks
 func (p *Project) GetVariantsWithTask(taskName string) []string {
 	variantsMap := map[string]bool{}
 bvLoop:
