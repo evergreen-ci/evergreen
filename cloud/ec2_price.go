@@ -174,8 +174,6 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 }
 
 func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
-	cpf.Lock()
-	defer cpf.Unlock()
 	osName := string(os)
 	if settings.IsVpc {
 		osName += " (Amazon VPC)"
@@ -191,7 +189,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 		zone: "",
 	}
 
-	grip.Debug(message.Fields{
+	grip.ug(message.Fields{
 		"message":       "getting spot history",
 		"instance_type": settings.InstanceType,
 		"function":      "getLatestLowestSpotCostForInstance",
