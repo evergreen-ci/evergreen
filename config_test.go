@@ -547,14 +547,16 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	s.NotNil(settings)
 	s.Equal(validConfig, settings.ContainerPools)
 
-	lookup := settings.ContainerPools.GetContainerPool("test-pool-1")
+	lookup, err := settings.ContainerPools.GetContainerPool("test-pool-1")
+	s.NoError(err)
 	s.NotNil(lookup)
-	s.Equal(*lookup, validConfig.Pools[0])
+	s.Equal(lookup, validConfig.Pools[0])
 
-	lookup = settings.ContainerPools.GetContainerPool("test-pool-2")
+	lookup, err = settings.ContainerPools.GetContainerPool("test-pool-2")
+	s.NoError(err)
 	s.NotNil(lookup)
-	s.Equal(*lookup, validConfig.Pools[1])
+	s.Equal(lookup, validConfig.Pools[1])
 
-	lookup = settings.ContainerPools.GetContainerPool("test-pool-3")
-	s.Nil(lookup)
+	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
+	s.EqualError(err, "error retrieving container pool test-pool-3")
 }

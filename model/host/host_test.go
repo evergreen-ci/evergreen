@@ -1928,63 +1928,6 @@ func TestCountContainersOnParents(t *testing.T) {
 	assert.Equal(c6, 0)
 }
 
-func TestFindRunningContainersOnParents(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-
-	h1 := Host{
-		Id:            "h1",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-	}
-	h2 := Host{
-		Id:            "h2",
-		Status:        evergreen.HostTerminated,
-		HasContainers: true,
-	}
-	h3 := Host{
-		Id:            "h3",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-	}
-	h4 := Host{
-		Id:       "h4",
-		Status:   evergreen.HostRunning,
-		ParentID: "h1",
-	}
-	h5 := Host{
-		Id:       "h5",
-		Status:   evergreen.HostRunning,
-		ParentID: "h1",
-	}
-	h6 := Host{
-		Id:       "h6",
-		Status:   evergreen.HostTerminated,
-		ParentID: "h2",
-	}
-	assert.NoError(h1.Insert())
-	assert.NoError(h2.Insert())
-	assert.NoError(h3.Insert())
-	assert.NoError(h4.Insert())
-	assert.NoError(h5.Insert())
-	assert.NoError(h6.Insert())
-
-	hosts1, err := HostGroup{h1, h2, h3}.FindRunningContainersOnParents()
-	assert.NoError(err)
-	assert.Equal([]Host{h4, h5}, hosts1)
-
-	// Parents have no containers
-	hosts2, err := HostGroup{h3}.FindRunningContainersOnParents()
-	assert.NoError(err)
-	assert.Empty(hosts2)
-
-	// Parents are actually containers
-	hosts3, err := HostGroup{h4, h5, h6}.FindRunningContainersOnParents()
-	assert.NoError(err)
-	assert.Empty(hosts3)
-
-}
-
 func TestGetHostIds(t *testing.T) {
 	assert := assert.New(t)
 	hosts := HostGroup{
@@ -2066,48 +2009,6 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 	parents, err := FindAllRunningParentsByDistro(d1)
 	assert.NoError(err)
 	assert.Equal(2, len(parents))
-}
-
-func TestFindAllRunningParentsByContainerPool(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-
-	host1 := &Host{
-		Id:            "host1",
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
-		ContainerPoolSettings: &evergreen.ContainerPool{
-			Distro:        "d1",
-			Id:            "test-pool",
-			MaxContainers: 100,
-		},
-	}
-	host2 := &Host{
-		Id:            "host2",
-		Status:        evergreen.HostTerminated,
-		HasContainers: true,
-		ContainerPoolSettings: &evergreen.ContainerPool{
-			Distro:        "d1",
-			Id:            "test-pool",
-			MaxContainers: 10,
-		},
-	}
-	host3 := &Host{
-		Id:     "host3",
-		Status: evergreen.HostRunning,
-	}
-	assert.NoError(host1.Insert())
-	assert.NoError(host2.Insert())
-	assert.NoError(host3.Insert())
-
-	hosts, err := FindAllRunningParentsByContainerPool("test-pool")
-	assert.NoError(err)
-	assert.Equal([]Host{*host1}, hosts)
-
-	hosts, err = FindAllRunningParentsByContainerPool("missing-test-pool")
-	assert.NoError(err)
-	assert.Empty(hosts)
-
 }
 
 func TestHostsSpawnedByTasks(t *testing.T) {

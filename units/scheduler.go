@@ -73,5 +73,5 @@ func (j *distroSchedulerJob) Run(ctx context.Context) {
 		FreeHostFraction: settings.Scheduler.FreeHostFraction,
 	}
 
-	j.AddError(scheduler.PlanDistro(ctx, conf, settings))
+	j.AddError(scheduler.PlanDistro(ctx, conf))
 }

@@ -33,10 +33,10 @@ type Distro struct {
 	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 
+	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
+
 	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
-
-type DistroGroup []Distro
 
 type ValidateFormat string
 
@@ -101,24 +101,6 @@ func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
 }
 
-// IsParent returns whether the distro is the parent distro for any container pool
-func (d *Distro) IsParent(s *evergreen.Settings) bool {
-	if s == nil {
-		var err error
-		s, err = evergreen.GetConfig()
-		if err != nil {
-			grip.Critical("error retrieving settings object")
-			return false
-		}
-	}
-	for _, p := range s.ContainerPools.Pools {
-		if d.Id == p.Distro {
-			return true
-		}
-	}
-	return false
-}
-
 // ValidateContainerPoolDistros ensures that container pools have valid distros
 func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	catcher := grip.NewSimpleCatcher()
@@ -133,13 +115,4 @@ func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 		}
 	}
 	return errors.WithStack(catcher.Resolve())
-}
-
-// GetDistroIds returns a slice of distro IDs for the given group of distros
-func (distros DistroGroup) GetDistroIds() []string {
-	var ids []string
-	for _, d := range distros {
-		ids = append(ids, d.Id)
-	}
-	return ids
 }

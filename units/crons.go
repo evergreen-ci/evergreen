@@ -371,14 +371,13 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		lastPlanned, err := model.FindTaskQueueGenerationTimes()
 		catcher.Add(err)
 
-		// find all active distros
-		distros, err := distro.Find(distro.ByActive())
+		names, err := distro.FindActive()
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
 			"runner":   "scheduler",
 			"previous": lastPlanned,
-			"distros":  distro.DistroGroup(distros).GetDistroIds(),
+			"distros":  names,
 			"op":       "dispatcher",
 		})
 
@@ -389,20 +388,13 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}))
 
 		ts := util.RoundPartOfMinute(20)
-		settings := env.Settings()
-
-		for _, d := range distros {
-			// do not create scheduler jobs for parent distros
-			if d.IsParent(settings) {
-				continue
-			}
-
-			lastRun, ok := lastPlanned[d.Id]
+		for _, id := range names {
+			lastRun, ok := lastPlanned[id]
 			if ok && time.Since(lastRun) < 40*time.Second {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewDistroSchedulerJob(env, d.Id, ts)))
+			catcher.Add(queue.Put(NewDistroSchedulerJob(env, id, ts)))
 		}
 
 		return catcher.Resolve()

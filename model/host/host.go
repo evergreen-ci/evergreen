@@ -101,8 +101,6 @@ type Host struct {
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
 	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
-	// ContainerPoolSettings
-	ContainerPoolSettings *evergreen.ContainerPool `bson:"container_pool_settings,omitempty" json:"container_pool_settings,omitempty"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
@@ -961,16 +959,6 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	return Count(query)
 }
 
-// FindRunningContainersOnParents returns the containers that are children of the given hosts
-func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
-	ids := hosts.GetHostIds()
-	query := db.Query(bson.M{
-		StatusKey:   evergreen.HostRunning,
-		ParentIDKey: bson.M{"$in": ids},
-	})
-	return Find(query)
-}
-
 // GetHostIds returns a slice of host IDs for the given group of hosts
 func (hosts HostGroup) GetHostIds() []string {
 	var ids []string
@@ -978,16 +966,4 @@ func (hosts HostGroup) GetHostIds() []string {
 		ids = append(ids, h.Id)
 	}
 	return ids
-}
-
-// FindAllRunningParentsByContainerPool returns a slice of hosts that are parents
-// of the container pool specified by the given ID
-func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
-	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
-	query := db.Query(bson.M{
-		HasContainersKey:    true,
-		StatusKey:           evergreen.HostRunning,
-		hostContainerPoolId: poolId,
-	}).Sort([]string{LastContainerFinishTimeKey})
-	return Find(query)
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -35,8 +34,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 
 		// actual calculation logic is here
 		newHosts, err := evalHostUtilization(ctx, d, hostAllocatorData.taskQueueItems[name],
-			hostAllocatorData.existingDistroHosts[name], hostAllocatorData.freeHostFraction,
-			hostAllocatorData.usesContainers, hostAllocatorData.containerPool)
+			hostAllocatorData.existingDistroHosts[name], hostAllocatorData.freeHostFraction, hostAllocatorData.usesContainers)
 
 		if err != nil {
 			return nil, errors.Wrapf(err, "error calculating hosts for distro %s", name)
@@ -58,7 +56,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
 func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model.TaskQueueItem,
-	existingHosts []host.Host, freeHostFraction float64, usesContainers bool, containerPool *evergreen.ContainerPool) (int, error) {
+	existingHosts []host.Host, freeHostFraction float64, usesContainers bool) (int, error) {
 
 	if !d.IsEphemeral() {
 		return 0, nil
@@ -101,9 +99,8 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	if numNewHosts > len(taskQueue) {
 		numNewHosts = len(taskQueue)
 	}
-
 	// enforce the max hosts cap
-	if isMaxHostsCapacity(d, containerPool, numNewHosts, len(existingHosts)) {
+	if isMaxHostsCapacity(d, numNewHosts, len(existingHosts)) {
 		numNewHosts = d.PoolSize - len(existingHosts)
 	}
 
@@ -277,14 +274,12 @@ func calcHostsForLongTasks(queue []model.TaskQueueItem, maxDurationPerHost time.
 }
 
 // isMaxHostsCapacity returns true if the max number of containers are already running
-func isMaxHostsCapacity(d distro.Distro, pool *evergreen.ContainerPool, numNewHosts, numExistingHosts int) bool {
-
-	if pool != nil {
-		if numNewHosts > (d.PoolSize*pool.MaxContainers)-numExistingHosts {
+func isMaxHostsCapacity(d distro.Distro, numNewHosts, numExistingHosts int) bool {
+	if d.MaxContainers > 0 {
+		if numNewHosts > (d.PoolSize*d.MaxContainers)-numExistingHosts {
 			return true
 		}
 	}
-
 	if numNewHosts+numExistingHosts > d.PoolSize {
 		return true
 	}

@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -27,7 +26,6 @@ type HostAllocatorData struct {
 	distros             map[string]distro.Distro
 	freeHostFraction    float64
 	usesContainers      bool
-	containerPool       *evergreen.ContainerPool
 }
 
 func GetHostAllocator(name string) HostAllocator {

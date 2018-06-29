@@ -42,13 +42,13 @@ func (c *ContainerPoolsConfig) Set() error {
 
 // GetContainerPool retrieves the container pool with a given id from
 // a ContainerPoolsConfig struct
-func (c *ContainerPoolsConfig) GetContainerPool(id string) *ContainerPool {
+func (c *ContainerPoolsConfig) GetContainerPool(id string) (ContainerPool, error) {
 	for _, pool := range c.Pools {
 		if pool.Id == id {
-			return &pool
+			return pool, nil
 		}
 	}
-	return nil
+	return ContainerPool{}, errors.Errorf("error retrieving container pool %s", id)
 }
 
 func (c *ContainerPoolsConfig) ValidateAndDefault() error {
