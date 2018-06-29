@@ -18,7 +18,9 @@ import (
 func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 	app := gimlet.NewApp()
 	app.ResetMiddleware()
-	app.SetPort(port)
+	if err := app.SetPort(port); err != nil {
+		return errors.WithStack(err)
+	}
 	app.StrictSlash = false
 	app.NoVersions = true
 
