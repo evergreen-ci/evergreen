@@ -69,7 +69,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
 		"num_new_hosts": newHostsNeeded[distroName],
-		"message":       "requsting new hosts",
+		"message":       "requesting new hosts",
 	})
 
 	return newHostsNeeded, nil

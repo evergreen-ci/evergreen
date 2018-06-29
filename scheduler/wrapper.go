@@ -85,7 +85,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	// retrieve container pool information for container distros
-	pool := &evergreen.ContainerPool{}
+	var pool *evergreen.ContainerPool
 	if distroSpec.ContainerPool != "" {
 		pool = s.ContainerPools.GetContainerPool(distroSpec.ContainerPool)
 		if pool == nil {
@@ -125,7 +125,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"runner":                 RunnerName,
 		"distro":                 conf.DistroID,
 		"provider":               distroSpec.Provider,
-		"max_hsots":              distroSpec.PoolSize,
+		"max_hosts":              distroSpec.PoolSize,
 		"new_hosts":              hostList,
 		"num_hosts":              len(hostList),
 		"queue":                  res.schedulerEvent,
