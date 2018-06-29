@@ -23,6 +23,8 @@ imports:
     version: ca25df3b54300e897d96029dcc4f86b8c4215a27
   - name: github.com/docker/go-connections
     version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
+  - name: github.com/evergreen-ci/go-test2json
+    version: 53bbb70f381f55c09e437eae92122a1d07fb28ce
   - name: github.com/Microsoft/go-winio
     version: 7ff89941bcb93df2e962467fb073c6e997b13cf0
   - name: github.com/gorilla/context
