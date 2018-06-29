@@ -20,19 +20,20 @@ func NewIntent(d distro.Distro, instanceName, provider string, options HostOptio
 	// to start it or record its instance id, we have a way of knowing
 	// something went wrong - and what
 	intentHost := &host.Host{
-		Id:               instanceName,
-		User:             d.User,
-		Distro:           d,
-		Tag:              instanceName,
-		CreationTime:     creationTime,
-		Status:           evergreen.HostUninitialized,
-		TerminationTime:  util.ZeroTime,
-		TaskDispatchTime: util.ZeroTime,
-		Provider:         provider,
-		StartedBy:        options.UserName,
-		UserHost:         options.UserHost,
-		HasContainers:    options.HasContainers,
-		ParentID:         options.ParentID,
+		Id:                    instanceName,
+		User:                  d.User,
+		Distro:                d,
+		Tag:                   instanceName,
+		CreationTime:          creationTime,
+		Status:                evergreen.HostUninitialized,
+		TerminationTime:       util.ZeroTime,
+		TaskDispatchTime:      util.ZeroTime,
+		Provider:              provider,
+		StartedBy:             options.UserName,
+		UserHost:              options.UserHost,
+		HasContainers:         options.HasContainers,
+		ParentID:              options.ParentID,
+		ContainerPoolSettings: options.ContainerPoolSettings,
 	}
 
 	if options.ExpirationDuration != nil {
