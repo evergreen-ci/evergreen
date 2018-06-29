@@ -199,10 +199,8 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 	if j.flags.EventProcessingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventMetaJobName,
-			"message": "events processing is disabled, all events will be marked processed",
+			"message": "events processing is disabled",
 		})
-
-		j.AddError(event.MarkAllEventsProcessed(event.AllLogCollection))
 		return
 	}
 
