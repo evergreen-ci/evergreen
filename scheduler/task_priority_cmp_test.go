@@ -422,6 +422,76 @@ task_groups:
 	assert.Equal("task_3", sorted[3].Id)
 }
 
+func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(version.Collection))
+	yml := `
+task_groups:
+- name: example_task_group
+  tasks:
+  - earlier_task
+  - later_task
+`
+	v := version.Version{
+		Id:     "version_1",
+		Config: yml,
+	}
+	versions := map[string]version.Version{"version_1": v}
+	require.NoError(v.Insert())
+	v = version.Version{
+		Id:     "version_2",
+		Config: yml,
+	}
+	versions["version_2"] = v
+	require.NoError(v.Insert())
+
+	tasks := []task.Task{
+		{
+			Id:          "task_1",
+			BuildId:     "build_1",
+			DisplayName: "later_task",
+			Version:     "version_1",
+			Requester:   evergreen.PatchVersionRequester,
+			TaskGroup:   "example_task_group",
+			Priority:    4,
+		},
+		{
+			Id:          "task_3",
+			BuildId:     "build_1",
+			DisplayName: "third_task",
+			Version:     "version_1",
+			Requester:   evergreen.PatchVersionRequester,
+			Priority:    1,
+		},
+		{
+			Id:          "task_2",
+			BuildId:     "build_1",
+			DisplayName: "earlier_task",
+			Version:     "version_1",
+			Requester:   evergreen.PatchVersionRequester,
+			TaskGroup:   "example_task_group",
+			Priority:    0,
+		},
+	}
+
+	prioritizer := &CmpBasedTaskPrioritizer{}
+	sorted, err := prioritizer.PrioritizeTasks("distro", tasks, versions)
+	assert.NoError(err)
+	list := []string{}
+	for _, t := range sorted {
+		list = append(list, t.DisplayName)
+	}
+	for _, d := range list {
+		if d == "earlier_task" {
+			break
+		}
+		if d == "later_task" {
+			assert.Fail("later_task appeared before earlier_task")
+		}
+	}
+}
+
 func TestByGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	tasks := []task.Task{
