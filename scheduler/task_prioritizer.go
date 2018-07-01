@@ -139,6 +139,25 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 		"high priority tasks": len(prioritizedTaskQueues.HighPriorityTasks),
 	})
 
+	var repotrackerTasks []string
+	for _, t := range prioritizedTaskQueues.RepotrackerTasks {
+		repotrackerTasks = append(repotrackerTasks, t.Id)
+	}
+	var patchTasks []string
+	for _, t := range prioritizedTaskQueues.PatchTasks {
+		patchTasks = append(patchTasks, t.Id)
+	}
+	grip.Debug(message.Fields{
+		"message":           "finished sorting repotracker tasks",
+		"distro":            distroId,
+		"repotracker tasks": repotrackerTasks,
+	})
+	grip.Debug(message.Fields{
+		"message":           "finished sorting patch tasks",
+		"distro":            distroId,
+		"repotracker tasks": patchTasks,
+	})
+
 	comparator.tasks = comparator.mergeTasks(&prioritizedTaskQueues)
 
 	return comparator.tasks, nil
