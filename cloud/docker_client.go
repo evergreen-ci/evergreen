@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+//
 const ClientPort = 3389
 
 // The dockerClient interface wraps the Docker dockerClient interaction.
@@ -39,9 +40,9 @@ type dockerClientImpl struct {
 }
 
 // TODO: REWRITE THIS
-// generateClient generates a Docker client that can talk to the host machine
-// specified in the distro. The Docker client must be exposed and available for
-// requests at the distro-specified client port on the host machine.
+// generateClient generates a Docker client that can talk to the specified host
+// machine. The Docker client must be exposed and available for requests at the
+// client port 3369 on the host machine.
 func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) {
 
 	if h.Host == "" {

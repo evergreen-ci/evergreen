@@ -29,6 +29,7 @@ type hostMonitorContainerStateJob struct {
 	// cache
 	host     *host.Host
 	env      evergreen.Environment
+	provider string
 	settings *evergreen.Settings
 }
 
@@ -46,7 +47,7 @@ func makeHostMonitorContainerStateJob() *hostMonitorContainerStateJob {
 	return j
 }
 
-func NewHostMonitorContainerStateJob(env *evergreen.Environment, h *host.Host, providerName string) amboy.Job {
+func NewHostMonitorContainerStateJob(env evergreen.Environment, h *host.Host, providerName, id string) amboy.Job {
 	job := makeHostMonitorContainerStateJob()
 
 	job.host = h
@@ -84,7 +85,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	// get containers on parent
 	containersFromDB, err := j.host.GetContainers()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting containers on parent %s from DB", j.HostID))
+		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from DB", j.HostID))
 	}
 
 	// list containers using Docker provider
@@ -92,9 +93,9 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 	}
-	containersFromDocker, err := m.GetContainers(ctx, j.host, j.settings)
+	containersFromDocker, err := m.GetContainers(ctx, j.host)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error getting containers on parent %s from Docker", j.HostID))
+		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from Docker", j.HostID))
 	}
 
 	// for each non-terminated container in containersDB that is not running in
@@ -102,14 +103,14 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	var found bool
 	for _, container := range containersFromDB {
 		found = false
-		for _, id := range ids {
+		for _, id := range containersFromDocker {
 			if container.Id == id {
 				found = true
 				break
 			}
 		}
 		if !found {
-			j.AddError(container.SetTerminated(evergreen.User, ""))
+			j.AddError(container.SetTerminated(evergreen.User))
 		}
 	}
 }

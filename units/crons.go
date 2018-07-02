@@ -351,7 +351,7 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 	}
 }
 
-func PopulateContainerStateJobs(env) amboy.QueueOperation {
+func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
@@ -363,7 +363,7 @@ func PopulateContainerStateJobs(env) amboy.QueueOperation {
 
 		// create job to check container state consistency for each parent
 		for _, p := range parents {
-			catcher.Add(queue.Put(NewHostMonitorContainerStateJob(env, p, evergreen.ProviderNameDocker)))
+			catcher.Add(queue.Put(NewHostMonitorContainerStateJob(env, &p, evergreen.ProviderNameDocker, ts)))
 		}
 
 		return catcher.Resolve()

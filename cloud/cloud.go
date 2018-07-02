@@ -108,13 +108,14 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 }
 
 func GetContainerManager(ctx context.Context, providerName string, settings *evergreen.Settings) (ContainerManager, error) {
-
 	var provider ContainerManager
 	switch providerName {
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
 	case evergreen.ProviderNameDockerMock:
-		provider = &dockerManagerMock{}
+		provider = &dockerManager{
+			client: &dockerClientMock{},
+		}
 	default:
 		return nil, errors.Errorf("No known container provider for '%v'", providerName)
 	}

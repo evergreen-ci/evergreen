@@ -2,54 +2,104 @@ package cloud
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/pkg/errors"
 )
 
-type dockerManagerMock struct {
-	client dockerClientMock
+type dockerClientMock struct {
+	// API call options
+	failInit   bool
+	failCreate bool
+	failGet    bool
+	failList   bool
+	failRemove bool
+	failStart  bool
+
+	// Other options
+	hasOpenPorts bool
 }
 
-func (m *dockerManagerMock) GetSettings() ProviderSettings {
-	return &dockerSettings{}
+// TODO: change all these functions to match new signatures
+func (c *dockerClientMock) generateContainerID() string {
+	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
-func (m *dockerManagerMock) Configure(ctx context.Context, s *evergreen.Settings) {
-
-}
-
-func (m *dockerManagerMock) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
-
-}
-
-func (m *dockerManagerMock) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-
-}
-
-func (m *dockerManagerMock) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
-
-}
-
-func (m *dockerManagerMock) IsUp(ctx context.Context, h *host.Host) (bool, error) {
-
-}
-
-func (m *dockerManagerMock) OnUp(ctx context.Context, h *host.Host) error {
+func (c *dockerClientMock) Init(string) error {
+	if c.failInit {
+		return errors.New("failed to initialize client")
+	}
 	return nil
 }
 
-func (m *dockerManagerMock) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
-
+func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, string, *dockerSettings) error {
+	if c.failCreate {
+		return errors.New("failed to create container")
+	}
+	return nil
 }
 
-// TimeTilNextPayment returns the amount of time until the next payment is due
-// for the host. For Docker this is not relevant.
-func (m *dockerManagerMock) TimeTilNextPayment(_ *host.Host) time.Duration {
-	return time.Duration(0)
+func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error) {
+	if c.failGet {
+		return nil, errors.New("failed to inspect container")
+	}
+
+	container := &types.ContainerJSON{
+		ContainerJSONBase: &types.ContainerJSONBase{
+			ID:    c.generateContainerID(),
+			State: &types.ContainerState{Running: true},
+		},
+		Config: &container.Config{
+			ExposedPorts: nat.PortSet{"22/tcp": {}},
+		},
+		NetworkSettings: &types.NetworkSettings{
+			NetworkSettingsBase: types.NetworkSettingsBase{
+				Ports: nat.PortMap{
+					"22/tcp": []nat.PortBinding{
+						{"0.0.0.0", "5000"},
+					},
+				},
+			},
+		},
+	}
+
+	if !c.hasOpenPorts {
+		container.NetworkSettings = &types.NetworkSettings{}
+	}
+
+	return container, nil
 }
 
-func (m *dockerManagerMock) GetContainers(ctx context.Context, h *host.Host) ([]string, error) {
+func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.Container, error) {
+	if c.failList {
+		return nil, errors.New("failed to list containers")
+	}
+	container := types.Container{
+		ID: "container-1",
+		Ports: []types.Port{
+			{PublicPort: 5000},
+			{PublicPort: 5001},
+		},
+	}
+	return []types.Container{container}, nil
+}
 
+func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) error {
+	if c.failRemove {
+		return errors.New("failed to remove container")
+	}
+	return nil
+}
+
+func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) error {
+	if c.failStart {
+		return errors.New("failed to start container")
+	}
+	return nil
 }
