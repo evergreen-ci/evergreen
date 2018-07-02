@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -8,9 +9,42 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestConfigModelHasMatchingFieldNames(t *testing.T) {
+	assert := assert.New(t)
+	config := evergreen.Settings{}
+
+	matched := map[string]bool{}
+
+	configRef := reflect.TypeOf(&config).Elem()
+	for i := 0; i < configRef.NumField(); i++ {
+		configFieldName := configRef.Field(i).Name
+		matched[configFieldName] = true
+	}
+
+	apiConfig := APIAdminSettings{}
+	apiConfigRef := reflect.TypeOf(&apiConfig).Elem()
+	for i := 0; i < apiConfigRef.NumField(); i++ {
+		configFieldName := apiConfigRef.Field(i).Name
+		v, ok := matched[configFieldName]
+		assert.True(v)
+		assert.True(ok, fmt.Sprintf("%s is missing from evergreen.Settings", configFieldName))
+		if ok {
+			matched[configFieldName] = false
+		}
+	}
+
+	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
+	for k, v := range matched {
+		if !util.StringSliceContains(exclude, k) {
+			assert.False(v, fmt.Sprintf("%s is missing from APIAdminSettings", k))
+		}
+	}
+}
 
 func TestModelConversion(t *testing.T) {
 	assert := assert.New(t)
@@ -201,7 +235,7 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	api := APIJIRANotificationsConfig{}
 	dbModelIface, err := api.ToService()
 	assert.NoError(err)
-	dbModel, ok := dbModelIface.(evergreen.JIRANotificationConfig)
+	dbModel, ok := dbModelIface.(evergreen.JIRANotificationsConfig)
 	assert.True(ok)
 	assert.Nil(dbModel.CustomFields)
 
@@ -220,7 +254,7 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 
 	dbModelIface, err = api.ToService()
 	assert.NoError(err)
-	dbModel, ok = dbModelIface.(evergreen.JIRANotificationConfig)
+	dbModel, ok = dbModelIface.(evergreen.JIRANotificationsConfig)
 	assert.True(ok)
 	assert.Len(dbModel.CustomFields, 2)
 
