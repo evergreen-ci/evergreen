@@ -1,6 +1,8 @@
 package trigger
 
 import (
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -31,25 +33,37 @@ const (
 	hostDNS = "h1.net"
 )
 
+var (
+	githashRegex = regexp.MustCompile(`@ ([a-z0-9]+)\]`)
+	urlRegex     = regexp.MustCompile(`\|(.*)\]`)
+	loglineRegex = regexp.MustCompile(`\*(.*)\* - \[Logs\|(.*?)\]`)
+)
+
 func TestJIRASummary(t *testing.T) {
 	Convey("With failed task alert types:", t, func() {
 		j := jiraBuilder{
 			project: "ABC",
-			uiRoot:  "http://domain.invalid",
-			ProjectRef: &model.ProjectRef{
-				DisplayName: projectName,
-				Owner:       projectOwner,
+			data: jiraTemplateData{
+				UIRoot: "http://domain.invalid",
+				Project: &model.ProjectRef{
+					DisplayName: projectName,
+					Owner:       projectOwner,
+				},
+				Task: &task.Task{
+					DisplayName: taskName,
+					Details:     apimodels.TaskEndDetail{},
+				},
+				Build:   &build.Build{DisplayName: buildName},
+				Version: &version.Version{Revision: versionRevision},
+				Host: &host.Host{
+					Id:   hostId,
+					Host: hostDNS,
+				},
 			},
-			Task: &task.Task{
-				DisplayName: taskName,
-				Details:     apimodels.TaskEndDetail{},
-			},
-			Build:   &build.Build{DisplayName: buildName},
-			Version: &version.Version{Revision: versionRevision},
 		}
 
 		Convey("a task that timed out should return a subject", func() {
-			j.Task.Details.TimedOut = true
+			j.data.Task.Details.TimedOut = true
 			subj := j.getSummary()
 			So(subj, ShouldNotEqual, "")
 			Convey("denoting the time out and showing the task name", func() {
@@ -62,7 +76,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task that failed on a system command should return a subject", func() {
-			j.Task.Details.Type = model.SystemCommandType
+			j.data.Task.Details.Type = model.SystemCommandType
 			subj := j.getSummary()
 			So(subj, ShouldNotEqual, "")
 			Convey("denoting the system failure and showing the task name", func() {
@@ -85,7 +99,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task with two failed tests should return a subject", func() {
-			j.Task.LocalTestResults = []task.TestResult{
+			j.data.Task.LocalTestResults = []task.TestResult{
 				{TestFile: testName1, Status: evergreen.TestFailedStatus},
 				{TestFile: testName2, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
@@ -111,7 +125,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task with failing tests should return a subject omitting any silently failing tests", func() {
-			j.Task.LocalTestResults = []task.TestResult{
+			j.data.Task.LocalTestResults = []task.TestResult{
 				{TestFile: testName1, Status: evergreen.TestFailedStatus},
 				{TestFile: testName2, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestSilentlyFailedStatus},
@@ -138,7 +152,7 @@ func TestJIRASummary(t *testing.T) {
 			for i := 0; i < 300; i++ {
 				reallyLongTestName = reallyLongTestName + "a"
 			}
-			j.Task.LocalTestResults = []task.TestResult{
+			j.data.Task.LocalTestResults = []task.TestResult{
 				{TestFile: testName1, Status: evergreen.TestFailedStatus},
 				{TestFile: testName2, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestFailedStatus},
@@ -162,7 +176,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a failed task with passing tests should return a subject", func() {
-			j.Task.LocalTestResults = []task.TestResult{
+			j.data.Task.LocalTestResults = []task.TestResult{
 				{TestFile: testName1, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
@@ -183,7 +197,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a failed task with only passing or silently failing tests should return a subject", func() {
-			j.Task.LocalTestResults = []task.TestResult{
+			j.data.Task.LocalTestResults = []task.TestResult{
 				{TestFile: testName1, Status: evergreen.TestSilentlyFailedStatus},
 				{TestFile: testName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName3, Status: evergreen.TestSilentlyFailedStatus},
@@ -203,34 +217,42 @@ func TestJIRASummary(t *testing.T) {
 				So(subj, ShouldNotContainSubstring, ")")
 			})
 		})
+		Convey("a failed task should match hash regex", func() {
+			matches := githashRegex.FindAllStringSubmatch(j.getSummary(), -1)
+			So(len(matches), ShouldEqual, 1)
+			So(len(matches[0]), ShouldEqual, 2)
+			So(matches[0][1], ShouldEqual, "aaaaaaaa")
+		})
 	})
 }
 
 func TestJIRADescription(t *testing.T) {
 	Convey("With a failed task context", t, func() {
 		j := jiraBuilder{
-			uiRoot: "http://evergreen.ui",
-			ProjectRef: &model.ProjectRef{
-				DisplayName: projectName,
-				Identifier:  projectId,
-				Owner:       projectOwner,
-			},
-			Task: &task.Task{
-				Id:          taskId,
-				DisplayName: taskName,
-				Details:     apimodels.TaskEndDetail{},
-				Project:     projectId,
-				LocalTestResults: []task.TestResult{
-					{TestFile: testName1, Status: evergreen.TestFailedStatus, URL: "direct_link"},
-					{TestFile: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
-					{TestFile: testName3, Status: evergreen.TestSucceededStatus},
+			data: jiraTemplateData{
+				UIRoot: "http://evergreen.ui",
+				Project: &model.ProjectRef{
+					DisplayName: projectName,
+					Identifier:  projectId,
+					Owner:       projectOwner,
 				},
-			},
-			Host:  &host.Host{Id: hostId, Host: hostDNS},
-			Build: &build.Build{DisplayName: buildName, Id: buildId},
-			Version: &version.Version{
-				Revision: versionRevision,
-				Message:  versionMessage,
+				Task: &task.Task{
+					Id:          taskId,
+					DisplayName: taskName,
+					Details:     apimodels.TaskEndDetail{},
+					Project:     projectId,
+					LocalTestResults: []task.TestResult{
+						{TestFile: testName1, Status: evergreen.TestFailedStatus, URL: "direct_link"},
+						{TestFile: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
+						{TestFile: testName3, Status: evergreen.TestSucceededStatus},
+					},
+				},
+				Host:  &host.Host{Id: hostId, Host: hostDNS},
+				Build: &build.Build{DisplayName: buildName, Id: buildId},
+				Version: &version.Version{
+					Revision: versionRevision,
+					Message:  versionMessage,
+				},
 			},
 		}
 		Convey("the description should be successfully generated", func() {
@@ -262,6 +284,43 @@ func TestJIRADescription(t *testing.T) {
 					So(d, ShouldNotContainSubstring, cleanTestName(testName3))
 				})
 			})
+		})
+		Convey("the description should match the URL and logline regexes", func() {
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(len(desc), ShouldEqual, 523)
+
+			split := strings.Split(desc, "\n")
+
+			tests := []string{}
+			logfiles := []string{}
+			taskURLs := []string{}
+			for _, line := range split {
+				if strings.Contains(line, "[Logs|") {
+					matches := loglineRegex.FindAllStringSubmatch(line, -1)
+					So(len(matches), ShouldEqual, 1)
+					So(len(matches[0]), ShouldEqual, 3)
+					tests = append(tests, matches[0][1])
+					logfiles = append(logfiles, matches[0][2])
+				} else if strings.HasPrefix(line, "h2. [") {
+					matches := urlRegex.FindAllStringSubmatch(line, -1)
+					So(len(matches), ShouldEqual, 1)
+					So(len(matches[0]), ShouldEqual, 2)
+					taskURLs = append(taskURLs, matches[0][1])
+
+				}
+			}
+
+			So(len(tests), ShouldEqual, 2)
+			So(tests, ShouldContain, "big_test.js")
+			So(tests, ShouldContain, "FunUnitTest")
+
+			So(len(logfiles), ShouldEqual, 2)
+			So(logfiles, ShouldContain, "direct_link")
+			So(logfiles, ShouldContain, "http://evergreen.ui/test_log/123")
+
+			So(len(taskURLs), ShouldEqual, 1)
+			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1/0")
 		})
 	})
 }

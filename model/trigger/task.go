@@ -6,10 +6,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -578,6 +582,54 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	return n, catcher.Resolve()
+}
+
+func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, error) {
+	buildDoc, err := build.FindOne(build.ById(j.task.BuildId))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
+	}
+
+	hostDoc, err := host.FindOneId(j.task.HostId)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
+	}
+
+	versionDoc, err := version.FindOneId(j.task.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
+	}
+
+	projectRef, err := model.FindOneProjectRef(j.task.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
+	}
+
+	builder := jiraBuilder{
+		project:    project,
+		jiraConfig: &evergreen.JiraConfig{},
+
+		data: jiraTemplateData{
+			UIRoot:  j.uiConfig.Url,
+			Task:    j.task,
+			Version: versionDoc,
+			Project: projectRef,
+			Build:   buildDoc,
+			Host:    hostDoc,
+		},
+	}
+
+	if err = builder.jiraConfig.Get(); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch jira settings while building jira task payload")
+	}
+
+	for i := range builder.data.Task.LocalTestResults {
+		if builder.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
+			builder.data.FailedTests = append(builder.data.FailedTests, builder.data.Task.LocalTestResults[i])
+		}
+	}
+
+	return builder.build()
 }
 
 // mapTestResultsByTestFile creates map of test file to TestResult struct. If

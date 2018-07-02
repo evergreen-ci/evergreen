@@ -54,15 +54,20 @@ type jiraTestFailure struct {
 type jiraBuilder struct {
 	project    string
 	issueType  string
-	uiRoot     string
 	jiraConfig *evergreen.JiraConfig
 
+	data jiraTemplateData
+}
+
+type jiraTemplateData struct {
+	UIRoot      string
 	Task        *task.Task
 	Build       *build.Build
 	Host        *host.Host
-	ProjectRef  *model.ProjectRef
+	Project     *model.ProjectRef
 	Version     *version.Version
 	FailedTests []task.TestResult
+	Tests       []jiraTestFailure
 }
 
 // isXgenProjBF is a gross function to figure out if the jira instance
@@ -93,15 +98,15 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 
 	if isXgenProjBF(j.jiraConfig.Host, j.project) {
 		failedTests := []string{}
-		for _, t := range j.FailedTests {
+		for _, t := range j.data.FailedTests {
 			failedTests = append(failedTests, t.TestFile)
 		}
 		issue.Fields = map[string]interface{}{}
-		issue.Fields[jiraFailingTasksField] = []string{j.Task.DisplayName}
+		issue.Fields[jiraFailingTasksField] = []string{j.data.Task.DisplayName}
 		issue.Fields[jiraFailingTestsField] = failedTests
-		issue.Fields[jiraFailingVariantField] = []string{j.Task.BuildVariant}
-		issue.Fields[jiraEvergreenProjectField] = []string{j.ProjectRef.Identifier}
-		issue.Fields[jiraFailingRevisionField] = []string{j.Task.Revision}
+		issue.Fields[jiraFailingVariantField] = []string{j.data.Task.BuildVariant}
+		issue.Fields[jiraEvergreenProjectField] = []string{j.data.Project.Identifier}
+		issue.Fields[jiraFailingRevisionField] = []string{j.data.Task.Revision}
 	}
 
 	if err != nil {
@@ -111,11 +116,11 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 		"message":      "creating jira ticket for failure",
 		"type":         j.issueType,
 		"jira_project": j.project,
-		"task":         j.Task.Id,
-		"project":      j.ProjectRef.Identifier,
+		"task":         j.data.Task.Id,
+		"project":      j.data.Project.Identifier,
 	})
 
-	event.LogJiraIssueCreated(j.Task.Id, j.Task.Execution, j.project)
+	event.LogJiraIssueCreated(j.data.Task.Id, j.data.Task.Execution, j.project)
 
 	return &issue, nil
 }
@@ -127,18 +132,18 @@ func (j *jiraBuilder) getSummary() string {
 	subj := &bytes.Buffer{}
 	failed := []string{}
 
-	for _, test := range j.Task.LocalTestResults {
+	for _, test := range j.data.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			failed = append(failed, cleanTestName(test.TestFile))
 		}
 	}
 
 	switch {
-	case j.Task.Details.TimedOut:
+	case j.data.Task.Details.TimedOut:
 		subj.WriteString("Timed Out: ")
-	case j.Task.Details.Type == model.SystemCommandType:
+	case j.data.Task.Details.Type == model.SystemCommandType:
 		subj.WriteString("System Failure: ")
-	case j.Task.Details.Type == model.SetupCommandType:
+	case j.data.Task.Details.Type == model.SetupCommandType:
 		subj.WriteString("Setup Failure: ")
 	case len(failed) == 1:
 		subj.WriteString("Failure: ")
@@ -148,8 +153,8 @@ func (j *jiraBuilder) getSummary() string {
 		subj.WriteString("Failed: ")
 	}
 
-	fmt.Fprintf(subj, "%s on %s ", j.Task.DisplayName, j.Build.DisplayName)
-	fmt.Fprintf(subj, "[%s @ %s] ", j.ProjectRef.DisplayName, j.Version.Revision[0:8])
+	fmt.Fprintf(subj, "%s on %s ", j.data.Task.DisplayName, j.data.Build.DisplayName)
+	fmt.Fprintf(subj, "[%s @ %s] ", j.data.Project.DisplayName, j.data.Version.Revision[0:8])
 
 	if len(failed) > 0 {
 		// Include an additional 10 characters for overhead, like the
@@ -200,27 +205,19 @@ func logURL(test task.TestResult, root string) string {
 func (j *jiraBuilder) getDescription() (string, error) {
 	// build a list of all failed tests to include
 	tests := []jiraTestFailure{}
-	for _, test := range j.Task.LocalTestResults {
+	for _, test := range j.data.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.TestFile),
-				URL:        logURL(test, j.uiRoot),
-				HistoryURL: historyURL(j.Task, cleanTestName(test.TestFile), j.uiRoot),
+				URL:        logURL(test, j.data.UIRoot),
+				HistoryURL: historyURL(j.data.Task, cleanTestName(test.TestFile), j.data.UIRoot),
 			})
 		}
 	}
 
-	args := struct {
-		Task    *task.Task
-		Build   *build.Build
-		Host    *host.Host
-		Project *model.ProjectRef
-		Version *version.Version
-		Tests   []jiraTestFailure
-		UIRoot  string
-	}{j.Task, j.Build, j.Host, j.ProjectRef, j.Version, tests, j.uiRoot}
 	buf := &bytes.Buffer{}
-	if err := descriptionTemplate.Execute(buf, args); err != nil {
+	j.data.Tests = tests
+	if err := descriptionTemplate.Execute(buf, &j.data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -244,49 +241,4 @@ func cleanTestName(path string) string {
 		return path[windowsIdx+1:]
 	}
 	return path
-}
-
-func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, error) {
-	buildDoc, err := build.FindOne(build.ById(j.task.BuildId))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
-	}
-
-	hostDoc, err := host.FindOneId(j.task.HostId)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
-	}
-
-	versionDoc, err := version.FindOneId(j.task.Version)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
-	}
-
-	projectRef, err := model.FindOneProjectRef(j.task.Project)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
-	}
-
-	b := jiraBuilder{
-		project:    project,
-		uiRoot:     j.uiConfig.Url,
-		Task:       j.task,
-		Version:    versionDoc,
-		ProjectRef: projectRef,
-		Build:      buildDoc,
-		Host:       hostDoc,
-		jiraConfig: &evergreen.JiraConfig{},
-	}
-
-	if err = b.jiraConfig.Get(); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch jira settings while building jira task payload")
-	}
-
-	for i := range j.task.LocalTestResults {
-		if j.task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
-			b.FailedTests = append(b.FailedTests, j.task.LocalTestResults[i])
-		}
-	}
-
-	return b.build()
 }
