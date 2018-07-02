@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 )
 
 type listCreateHostHandler struct {
@@ -33,7 +33,7 @@ func (h *listCreateHostHandler) Handler() RequestHandler {
 }
 
 func (h *listCreateHostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	taskID := mux.Vars(r)["task_id"]
+	taskID := gimlet.GetVars(r)["task_id"]
 	if taskID == "" {
 		return rest.APIError{
 			StatusCode: http.StatusBadRequest,
