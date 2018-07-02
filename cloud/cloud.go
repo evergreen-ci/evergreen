@@ -100,7 +100,6 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	default:
 		return nil, errors.Errorf("No known provider for '%v'", providerName)
 	}
-
 	if err := provider.Configure(ctx, settings); err != nil {
 		return nil, errors.Wrap(err, "Failed to configure cloud provider")
 	}
@@ -114,6 +113,8 @@ func GetContainerManager(ctx context.Context, providerName string, settings *eve
 	switch providerName {
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
+	case evergreen.ProviderNameDockerMock:
+		provider = &dockerManagerMock{}
 	default:
 		return nil, errors.Errorf("No known container provider for '%v'", providerName)
 	}

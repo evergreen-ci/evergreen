@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -26,9 +27,9 @@ type hostMonitorContainerStateJob struct {
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
 	// cache
-	host *host.Host
-	env  evergreen.Environment
-  settings *evergreen.Settings
+	host     *host.Host
+	env      evergreen.Environment
+	settings *evergreen.Settings
 }
 
 func makeHostMonitorContainerStateJob() *hostMonitorContainerStateJob {
@@ -45,10 +46,11 @@ func makeHostMonitorContainerStateJob() *hostMonitorContainerStateJob {
 	return j
 }
 
-func NewHostMonitorContainerStateJob(env, *evergreen.Environment, h *host.Host) amboy.Job {
+func NewHostMonitorContainerStateJob(env *evergreen.Environment, h *host.Host, providerName string) amboy.Job {
 	job := makeHostMonitorContainerStateJob()
 
 	job.host = h
+	job.provider = providerName
 	job.HostID = h.Id
 
 	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitorContainerStateJobName, job.HostID, id))
@@ -63,51 +65,51 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
-  var err error
-  if j.host == nil {
-    j.host, err = host.FindOneId(j.HostID)
-    j.AddError(err)
-  }
-  if j.env == nil {
-    j.env = evergreen.GetEnvironment()
-  }
-  if j.settings == nil {
-    j.settings = j.env.Settings()
-  }
+	var err error
+	if j.host == nil {
+		j.host, err = host.FindOneId(j.HostID)
+		j.AddError(err)
+	}
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+	if j.settings == nil {
+		j.settings = j.env.Settings()
+	}
 
-  if j.HasErrors() {
-    return
-  }
+	if j.HasErrors() {
+		return
+	}
 
 	// get containers on parent
-	dbContainers, err := j.host.GetContainers()
+	containersFromDB, err := j.host.GetContainers()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error"))
+		j.AddError(errors.Wrap(err, "error getting containers on parent %s from DB", j.HostID))
 	}
 
 	// list containers using Docker provider
-  m, err := cloud.GetManager(ctx, evergreen.ProviderNameDocker, j.settings)
-  if err != nil {
-    j.AddError(errors.Wrap(err, "error"))
-  }
-  ids, err := m.GetContainers(ctx, j.host, j.settings)
-  if err != nil {
-    j.AddError(errors.Wrap(err, "error"))
-  }
+	m, err := cloud.GetContainerManager(ctx, j.provider, j.settings)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+	}
+	containersFromDocker, err := m.GetContainers(ctx, j.host, j.settings)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error getting containers on parent %s from Docker", j.HostID))
+	}
 
-  // for each non-terminated container in containersDB that is not running in
-  // containersDB, mark it as terminated
-  var found bool
-  for _, container := range dbContainers {
-    found = false
-    for _, id := range ids {
-      if container.Id == id {
-        found = true
-        break
-      }
-    }
-    if !found {
-      j.AddError(container.SetTerminated(evergreen.User, ""))
-    }
-  }
+	// for each non-terminated container in containersDB that is not running in
+	// containersDB, mark it as terminated
+	var found bool
+	for _, container := range containersFromDB {
+		found = false
+		for _, id := range ids {
+			if container.Id == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			j.AddError(container.SetTerminated(evergreen.User, ""))
+		}
+	}
 }

@@ -132,6 +132,7 @@ const (
 	ProviderNameDocker        = "docker"
 	ProviderNameDockerStatic  = "docker-static"
 	ProviderNameDockerDynamic = "docker-dynamic"
+	ProviderNameDockerMock    = "docker-mock"
 	ProviderNameGce           = "gce"
 	ProviderNameStatic        = "static"
 	ProviderNameOpenstack     = "openstack"

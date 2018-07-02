@@ -91,14 +91,14 @@ func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.
 	return []types.Container{container}, nil
 }
 
-func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host) error {
+func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) error {
 	if c.failRemove {
 		return errors.New("failed to remove container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) StartContainer(context.Context, *host.Host) error {
+func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) error {
 	if c.failStart {
 		return errors.New("failed to start container")
 	}

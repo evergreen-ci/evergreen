@@ -32,6 +32,14 @@ func TestDockerSuite(t *testing.T) {
 
 func (s *DockerSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	db.Clear(host.Collection)
+
+	parent := &host.Host{
+		Id:            "parent",
+		Host:          "127.0.0.1",
+		HasContainers: true,
+	}
+	parent.Insert()
 }
 
 func (s *DockerSuite) SetupTest() {
@@ -45,7 +53,6 @@ func (s *DockerSuite) SetupTest() {
 		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"host_ip":     "127.0.0.1",
 			"image_name":  "docker_image",
 			"client_port": 4243,
 			"port_range": map[string]interface{}{
@@ -176,7 +183,7 @@ func (s *DockerSuite) TestIsUpFailAPICall() {
 }
 
 func (s *DockerSuite) TestIsUpStatuses() {
-	host := &host.Host{}
+	host := &host.Host{ParentID: "parent"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

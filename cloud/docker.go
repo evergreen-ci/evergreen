@@ -1,5 +1,3 @@
-// +build go1.7
-
 package cloud
 
 import (
@@ -97,6 +95,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
+
 	// Decode provider settings from distro settings
 	settings := &dockerSettings{}
 	if h.Distro.ProviderSettings != nil {
@@ -105,8 +104,18 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		}
 	}
 
+	// get parent of host
+	parent, err := h.GetParent()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+	}
+	if parent.Host == "" {
+		return nil, errors.Errorf("Error retrieving DNS name for parent host '%s'", parent.Id)
+	}
+	settings.HostIP = parent.Host
+
 	if err := settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid Docker settings in distro '%s'", h.Distro.Id)
+		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
 	}
 
 	parent, err := host.FindOne(host.ById(h.ParentID))
@@ -160,6 +169,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		grip.Error(err)
 		return nil, err
 	}
+	// TODO: set container host ID to Docker container ID
 
 	hostPort, err := retrieveOpenPortBinding(newContainer)
 	if err != nil {
@@ -182,10 +192,10 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	// get parent from host
+	// get parent of container host
 	parent, err := h.GetParent()
 	if err != nil {
-		return nil, errors.Wrap("Error retrieving parent for host '%s'", h.Id)
+		return StatusUnknown, errors.Wrapf(err, "Error retrieving parent of host '%s'", h.Id)
 	}
 
 	container, err := m.client.GetContainer(ctx, parent, h.Id)
@@ -207,13 +217,19 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 
 //TerminateInstance destroys a container.
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
+	// get parent of container host
+	parent, err := h.GetParent()
+	if err != nil {
+		return errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+	}
+
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 		grip.Error(err)
 		return err
 	}
 
-	if err := m.client.RemoveContainer(ctx, h); err != nil {
+	if err := m.client.RemoveContainer(ctx, parent, h.Id); err != nil {
 		return errors.Wrap(err, "API call to remove container failed")
 	}
 

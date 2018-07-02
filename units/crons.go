@@ -363,7 +363,7 @@ func PopulateContainerStateJobs(env) amboy.QueueOperation {
 
 		// create job to check container state consistency for each parent
 		for _, p := range parents {
-			catcher.Add(queue.Put(NewHostMonitorContainerStateJob(env, p)))
+			catcher.Add(queue.Put(NewHostMonitorContainerStateJob(env, p, evergreen.ProviderNameDocker)))
 		}
 
 		return catcher.Resolve()

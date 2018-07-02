@@ -14,11 +14,12 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+const ClientPort = 3389
 
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
@@ -42,21 +43,14 @@ type dockerClientImpl struct {
 // specified in the distro. The Docker client must be exposed and available for
 // requests at the distro-specified client port on the host machine.
 func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) {
-	// Populate and validate settings
-	settings := &dockerSettings{} // Instantiate global settings
-	if d.ProviderSettings != nil {
-		if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for host '%s'", h.Id)
-		}
-	}
 
-	if err := settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
+	if h.Host == "" {
+		return nil, errors.New("HostIP must not be blank")
 	}
 
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
-	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, settings.ClientPort)
+	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, ClientPort)
 	client, err := docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
 	if err != nil {
 		grip.Error(message.Fields{

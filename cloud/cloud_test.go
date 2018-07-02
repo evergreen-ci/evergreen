@@ -57,3 +57,25 @@ func TestGetManager(t *testing.T) {
 	})
 
 }
+
+func TestGetContainerManager(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	Convey("GetContainerManager() should return non-nil for all valid container provider names", t, func() {
+
+		Convey("Docker should be returned for docker provider name", func() {
+			cloudMgr, err := GetContainerManager(ctx, "docker", testutil.TestConfig())
+			So(cloudMgr, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(cloudMgr, ShouldHaveSameTypeAs, &dockerManager{})
+		})
+
+		Convey("Invalid provider names should return nil with err", func() {
+			cloudMgr, err := GetContainerManager(ctx, "bogus", testutil.TestConfig())
+			So(cloudMgr, ShouldBeNil)
+			So(err, ShouldNotBeNil)
+		})
+
+	})
+
+}
