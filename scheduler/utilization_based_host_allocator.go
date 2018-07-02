@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"time"
 
@@ -17,20 +16,15 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-type taskGroupData struct {
-	hosts []host.Host
-	tasks []model.TaskQueueItem
-}
-
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (map[string]int, error) {
-	distroCount := 0
+	count := 0
 	var distroName string
 	newHostsNeeded := make(map[string]int)
 
 	// once the input format changes this loop can be removed - should only have 1 distro
 	for name, d := range hostAllocatorData.distros {
 		distroName = name
-		if distroCount > 0 {
+		if count > 0 {
 			msg := "more than 1 distro sent to UtilizationBasedHostAllocator"
 			grip.Emergency(message.Fields{
 				"message": msg,
@@ -39,31 +33,16 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 			return nil, errors.New(msg)
 		}
 
-		// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
-		hostsNeeded := 0
-		groupedData := groupByTaskGroup(hostAllocatorData.existingDistroHosts[name], hostAllocatorData.taskQueueItems[name])
-		for tg, data := range groupedData {
-			var maxHosts int
-			if tg == "" {
-				maxHosts = d.PoolSize
-			} else {
-				if len(data.tasks) == 0 {
-					continue // skip this group if there are no tasks in the queue for it
-				}
-				maxHosts = data.tasks[0].GroupMaxHosts
-			}
-			// calculate number of hosts needed for this group
-			newHosts, err := evalHostUtilization(ctx, d, data.tasks, data.hosts, hostAllocatorData.freeHostFraction,
-				hostAllocatorData.usesContainers, hostAllocatorData.containerPool, maxHosts)
-			if err != nil {
-				return nil, errors.Wrapf(err, "error calculating hosts for distro %s", name)
-			}
+		// actual calculation logic is here
+		newHosts, err := evalHostUtilization(ctx, d, hostAllocatorData.taskQueueItems[name],
+			hostAllocatorData.existingDistroHosts[name], hostAllocatorData.freeHostFraction,
+			hostAllocatorData.usesContainers, hostAllocatorData.containerPool)
 
-			// add up total number of hosts needed for all groups
-			hostsNeeded += newHosts
+		if err != nil {
+			return nil, errors.Wrapf(err, "error calculating hosts for distro %s", name)
 		}
-		newHostsNeeded[name] = hostsNeeded
-		distroCount++
+		newHostsNeeded[name] = newHosts
+		count++
 	}
 
 	grip.Info(message.Fields{
@@ -75,59 +54,14 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 	return newHostsNeeded, nil
 }
 
-// groupByTaskGroup takes a list of hosts and tasks and returns them grouped by task group
-func groupByTaskGroup(runningHosts []host.Host, taskQueue []model.TaskQueueItem) map[string]taskGroupData {
-	tgs := map[string]taskGroupData{}
-	for _, h := range runningHosts {
-		groupString := ""
-		if h.RunningTask != "" && h.RunningTaskGroup != "" {
-			groupString = makeTaskGroupString(h.RunningTaskGroup, h.LastBuildVariant, h.LastProject, h.LastVersion)
-		}
-		if data, exists := tgs[groupString]; exists {
-			data.hosts = append(data.hosts, h)
-			tgs[groupString] = data
-		} else {
-			tgs[groupString] = taskGroupData{
-				hosts: []host.Host{h},
-				tasks: []model.TaskQueueItem{},
-			}
-		}
-	}
-	for _, t := range taskQueue {
-		groupString := ""
-		if t.Group != "" {
-			groupString = makeTaskGroupString(t.Group, t.BuildVariant, t.Project, t.Version)
-
-		}
-		if data, exists := tgs[groupString]; exists {
-			data.tasks = append(data.tasks, t)
-			tgs[groupString] = data
-		} else {
-			tgs[groupString] = taskGroupData{
-				hosts: []host.Host{},
-				tasks: []model.TaskQueueItem{t},
-			}
-		}
-	}
-
-	return tgs
-}
-
-func makeTaskGroupString(group, bv, project, version string) string {
-	return fmt.Sprintf("%s_%s_%s_%s", group, bv, project, version)
-}
-
 // Calculate the number of hosts needed by taking the total task scheduled task time
 // and dividing it by the target duration. Request however many hosts are needed to
 // achieve that minus the number of free hosts
-func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model.TaskQueueItem, existingHosts []host.Host,
-	freeHostFraction float64, usesContainers bool, containerPool *evergreen.ContainerPool, maxHosts int) (int, error) {
+func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model.TaskQueueItem,
+	existingHosts []host.Host, freeHostFraction float64, usesContainers bool, containerPool *evergreen.ContainerPool) (int, error) {
 
 	if !d.IsEphemeral() {
 		return 0, nil
-	}
-	if ctx.Err() != nil {
-		return 0, errors.New("context canceled, not evaluating host utilization")
 	}
 
 	maxDuration := MaxDurationPerDistroHost
@@ -169,8 +103,8 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	}
 
 	// enforce the max hosts cap
-	if isMaxHostsCapacity(maxHosts, containerPool, numNewHosts, len(existingHosts)) {
-		numNewHosts = maxHosts - len(existingHosts)
+	if isMaxHostsCapacity(d, containerPool, numNewHosts, len(existingHosts)) {
+		numNewHosts = d.PoolSize - len(existingHosts)
 	}
 
 	// don't return negatives - can get here if over max hosts
@@ -179,7 +113,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	}
 
 	// alert if the distro is underwater
-	if maxHosts < 1 {
+	if d.PoolSize < 1 {
 		return 0, errors.Errorf("unable to plan hosts for distro %s due to pool size of %d", d.Id, d.PoolSize)
 	}
 	underWaterAlert := message.Fields{
@@ -191,7 +125,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 		"num_hosts": len(existingHosts),
 		"max_hosts": d.PoolSize,
 	}
-	avgMakespan := scheduledTasksDuration / time.Duration(maxHosts)
+	avgMakespan := scheduledTasksDuration / time.Duration(d.PoolSize)
 	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
 
 	// log scheduler stats
@@ -343,15 +277,15 @@ func calcHostsForLongTasks(queue []model.TaskQueueItem, maxDurationPerHost time.
 }
 
 // isMaxHostsCapacity returns true if the max number of containers are already running
-func isMaxHostsCapacity(maxHosts int, pool *evergreen.ContainerPool, numNewHosts, numExistingHosts int) bool {
+func isMaxHostsCapacity(d distro.Distro, pool *evergreen.ContainerPool, numNewHosts, numExistingHosts int) bool {
 
 	if pool != nil {
-		if numNewHosts > (maxHosts*pool.MaxContainers)-numExistingHosts {
+		if numNewHosts > (d.PoolSize*pool.MaxContainers)-numExistingHosts {
 			return true
 		}
 	}
 
-	if numNewHosts+numExistingHosts > maxHosts {
+	if numNewHosts+numExistingHosts > d.PoolSize {
 		return true
 	}
 	return false
