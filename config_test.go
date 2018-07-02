@@ -560,3 +560,44 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
 	s.EqualError(err, "error retrieving container pool test-pool-3")
 }
+
+func (s *AdminSuite) TestJIRANotificationsConfig() {
+	c := JIRANotificationConfig{
+		CustomFields: map[string]JIRAProjectFields{
+			"this": JIRAProjectFields{
+				"should": "disappear",
+			},
+		},
+	}
+	s.NoError(c.Get())
+	s.NotNil(c)
+	s.Nil(c.CustomFields)
+	s.NotPanics(func() {
+		s.NoError(c.ValidateAndDefault())
+	})
+
+	c.CustomFields = map[string]JIRAProjectFields{
+		"EVG": JIRAProjectFields{
+			"customfield_12345": "magical{{.Template.Expansion}}",
+		},
+	}
+	s.NoError(c.Set())
+
+	c = JIRANotificationConfig{}
+	s.NoError(c.Get())
+	s.NoError(c.ValidateAndDefault())
+	s.Require().Len(c.CustomFields, 1)
+	s.Require().Len(c.CustomFields["EVG"], 1)
+	s.Equal("magical{{.Template.Expansion}}", c.CustomFields["EVG"]["customfield_12345"])
+	s.NoError(c.ValidateAndDefault())
+
+	c = JIRANotificationConfig{}
+	s.NoError(c.Set())
+	s.NoError(c.ValidateAndDefault())
+	c.CustomFields = map[string]JIRAProjectFields{
+		"this": JIRAProjectFields{
+			"is": "{{.Invalid}",
+		},
+	}
+	s.EqualError(c.ValidateAndDefault(), "template: jira_notification:1: unexpected \"}\" in operand")
+}
