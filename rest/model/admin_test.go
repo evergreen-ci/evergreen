@@ -195,3 +195,46 @@ func allStructFieldsTrue(t *testing.T, s interface{}) {
 		}
 	}
 }
+
+func TestAPIJIRANotificationsConfig(t *testing.T) {
+	assert := assert.New(t)
+	api := APIJIRANotificationsConfig{}
+	dbModelIface, err := api.ToService()
+	assert.NoError(err)
+	dbModel, ok := dbModelIface.(evergreen.JIRANotificationConfig)
+	assert.True(ok)
+	assert.Nil(dbModel.CustomFields)
+
+	api = APIJIRANotificationsConfig{
+		CustomFields: map[string]apiJIRAProjectFields{
+			"EVG": apiJIRAProjectFields{
+				"customfield_12345": "{{.Something}}",
+				"customfield_12346": "{{.SomethingElse}}",
+			},
+			"GVE": apiJIRAProjectFields{
+				"customfield_54321": "{{.SomethingElser}}",
+				"customfield_54322": "{{.SomethingEvenElser}}",
+			},
+		},
+	}
+
+	dbModelIface, err = api.ToService()
+	assert.NoError(err)
+	dbModel, ok = dbModelIface.(evergreen.JIRANotificationConfig)
+	assert.True(ok)
+	assert.Len(dbModel.CustomFields, 2)
+
+	evg := dbModel.CustomFields["EVG"]
+	assert.Len(evg, 2)
+	assert.Equal("{{.Something}}", evg["customfield_12345"])
+	assert.Equal("{{.SomethingElse}}", evg["customfield_12346"])
+
+	gve := dbModel.CustomFields["GVE"]
+	assert.Len(gve, 2)
+	assert.Equal("{{.SomethingElser}}", gve["customfield_54321"])
+	assert.Equal("{{.SomethingEvenElser}}", gve["customfield_54322"])
+
+	newAPI := APIJIRANotificationsConfig{}
+	assert.NoError(newAPI.BuildFromService(&dbModel))
+	assert.Equal(api, newAPI)
+}
