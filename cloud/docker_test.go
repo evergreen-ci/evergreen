@@ -18,10 +18,11 @@ import (
 )
 
 type DockerSuite struct {
-	client   dockerClient
-	manager  *dockerManager
-	distro   distro.Distro
-	hostOpts HostOptions
+	client     dockerClient
+	manager    *dockerManager
+	distro     distro.Distro
+	hostOpts   HostOptions
+	parentHost host.Host
 	suite.Suite
 }
 
@@ -41,6 +42,7 @@ func (s *DockerSuite) SetupTest() {
 		client: s.client,
 	}
 	s.distro = distro.Distro{
+		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
 			"host_ip":     "127.0.0.1",
@@ -52,7 +54,15 @@ func (s *DockerSuite) SetupTest() {
 			},
 		},
 	}
-	s.hostOpts = HostOptions{}
+	s.parentHost = host.Host{
+		Id:   "d",
+		Host: "host",
+	}
+	s.hostOpts = HostOptions{
+		ParentID: "d",
+	}
+	s.parentHost.Insert()
+	s.distro.Insert()
 }
 
 func (s *DockerSuite) TestValidateSettings() {
@@ -393,7 +403,6 @@ func (s *DockerSuite) TestGetDNSName() {
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
-
 	dns, err = s.manager.GetDNSName(ctx, host)
 	s.NoError(err)
 	s.NotEmpty(dns)
