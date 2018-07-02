@@ -1306,12 +1306,17 @@ type APIJIRANotificationsConfig struct {
 type apiJIRAProjectFields map[string]string
 
 func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
-	v, ok := h.(*evergreen.JIRANotificationConfig)
-	if !ok {
+	var config *evergreen.JIRANotificationsConfig
+	switch v := h.(type) {
+	case *evergreen.JIRANotificationsConfig:
+		config = v
+	case evergreen.JIRANotificationsConfig:
+		config = &v
+	default:
 		return errors.Errorf("expected *evergreen.APIJIRANotificationsConfig, but got %T instead", h)
 	}
 
-	if len(v.CustomFields) == 0 {
+	if len(config.CustomFields) == 0 {
 		return nil
 	}
 
@@ -1319,7 +1324,7 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 		j.CustomFields = map[string]apiJIRAProjectFields{}
 	}
 
-	for k, v := range v.CustomFields {
+	for k, v := range config.CustomFields {
 		j.CustomFields[k] = apiJIRAProjectFields(v)
 	}
 
@@ -1327,9 +1332,9 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 }
 func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	if j.CustomFields == nil || len(j.CustomFields) == 0 {
-		return evergreen.JIRANotificationConfig{}, nil
+		return evergreen.JIRANotificationsConfig{}, nil
 	}
-	config := evergreen.JIRANotificationConfig{
+	config := evergreen.JIRANotificationsConfig{
 		CustomFields: map[string]evergreen.JIRAProjectFields{},
 	}
 

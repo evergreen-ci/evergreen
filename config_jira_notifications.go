@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type JIRANotificationConfig struct {
+type JIRANotificationsConfig struct {
 	CustomFields map[string]JIRAProjectFields `bson:"custom_fields"`
 }
 
@@ -17,24 +17,24 @@ type JIRANotificationConfig struct {
 // JIRA without any manipulation
 type JIRAProjectFields map[string]string
 
-func (c *JIRANotificationConfig) SectionId() string { return "jira_notifications" }
+func (c *JIRANotificationsConfig) SectionId() string { return "jira_notifications" }
 
-func (c *JIRANotificationConfig) Get() error {
+func (c *JIRANotificationsConfig) Get() error {
 	err := db.FindOneQ(ConfigCollection, db.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
-		*c = JIRANotificationConfig{}
+		*c = JIRANotificationsConfig{}
 		return nil
 	}
 
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
 }
 
-func (c *JIRANotificationConfig) Set() error {
+func (c *JIRANotificationsConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), c)
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 
-func (c *JIRANotificationConfig) ValidateAndDefault() error {
+func (c *JIRANotificationsConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	for _, project := range c.CustomFields {
 		for _, tmpl := range project {

@@ -79,7 +79,7 @@ type Settings struct {
 	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
 	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
 	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
-	JIRANotification   JIRANotificationConfig    `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
+	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 }
 
 func (c *Settings) SectionId() string { return ConfigDocID }
