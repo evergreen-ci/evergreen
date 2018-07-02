@@ -1,4 +1,4 @@
-mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, mciAdminRestService, notificationService) {
+mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, mciAdminRestService, notificationService) {
   $scope.load = function() {
     $scope.Settings = {};
     $scope.getSettings();
@@ -39,6 +39,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
       $scope.Settings = resp.data;
+      $scope.Settings.jira_notifications = $scope.Settings.jira_notifications || {};
+      console.log(resp.data);
     }
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error loading settings: " + resp.data.error, "errorHeader");
@@ -261,6 +263,38 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     $scope.Settings[property][key] = pieces[1];
     return obj;
   }
+
+  $scope.deleteJIRAProject = function(key) {
+    if (!key) {
+      return;
+    }
+    delete $scope.Settings.jira_notifications[key];
+  }
+  $scope.addJIRAProject = function() {
+    var value = $scope.jiraMapping.newProject;
+    if (!value) {
+      return;
+    }
+    if (!$scope.Settings.jira_notifications[value]) {
+      $scope.Settings.jira_notifications[value] = {};
+    }
+    delete $scope.jiraMapping.newProject;
+  }
+  $scope.addJIRAFieldToProject = function(project) {
+    var field = $scope.jiraMapping.newField[project];
+    if (!field || $scope.Settings.jira_notifications[project][field]) {
+        return;
+    }
+    $scope.Settings.jira_notifications[project][field] = "{FIXME}";
+  }
+  $scope.deleteJIRAFieldFromProject = function(project, field) {
+    if (!field) {
+        return;
+    }
+    delete $scope.Settings.jira_notifications[project][field];
+  }
+
+  $scope.jiraMapping = {};
 
   $scope.load();
 }]);
