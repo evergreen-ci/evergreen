@@ -112,12 +112,6 @@ func (j *createHostJob) createHost(ctx context.Context, h *host.Host, settings *
 
 	_, err = cloudManager.SpawnHost(ctx, h)
 	if err != nil {
-		// we should maybe try and continue-on-error
-		// here, if we get many errors, but the chance
-		// is that if one fails, the chances of others
-		// failing is quite high (at least while all
-		// cloud providers are typically the same
-		// service provider.)
 		return errors.Wrapf(err, "error spawning host %s", h.Id)
 	}
 

@@ -53,12 +53,12 @@ func (t *patchTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrapf(err, "failed to fetch patch '%s'", e.ResourceId)
 	}
 	if t.patch == nil {
-		return errors.Wrapf(err, "can't find patch '%s'", e.ResourceId)
+		return errors.Errorf("can't find patch '%s'", e.ResourceId)
 	}
 	var ok bool
 	t.data, ok = e.Data.(*event.PatchEventData)
 	if !ok {
-		return errors.Wrapf(err, "patch '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
+		return errors.Errorf("patch '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
 	}
 	t.event = e
 

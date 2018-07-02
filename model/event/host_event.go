@@ -8,11 +8,13 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
 	registry.AddType(ResourceTypeHost, hostEventDataFactory)
+	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
 }
 
 const (
@@ -20,22 +22,23 @@ const (
 	ResourceTypeHost = "HOST"
 
 	// event types
-	EventHostCreated              = "HOST_CREATED"
-	EventHostStarted              = "HOST_STARTED"
-	EventHostAgentDeployed        = "HOST_AGENT_DEPLOYED"
-	EventHostAgentDeployFailed    = "HOST_AGENT_DEPLOY_FAILED"
-	EventHostStatusChanged        = "HOST_STATUS_CHANGED"
-	EventHostDNSNameSet           = "HOST_DNS_NAME_SET"
-	EventHostProvisionError       = "HOST_PROVISION_ERROR"
-	EventHostProvisionFailed      = "HOST_PROVISION_FAILED"
-	EventHostProvisioned          = "HOST_PROVISIONED"
-	EventHostRunningTaskSet       = "HOST_RUNNING_TASK_SET"
-	EventHostRunningTaskCleared   = "HOST_RUNNING_TASK_CLEARED"
-	EventHostTaskPidSet           = "HOST_TASK_PID_SET"
-	EventHostMonitorFlag          = "HOST_MONITOR_FLAG"
-	EventTaskFinished             = "HOST_TASK_FINISHED"
-	EventHostTeardown             = "HOST_TEARDOWN"
-	EventHostTerminatedExternally = "HOST_TERMINATED_EXTERNALLY"
+	EventHostCreated               = "HOST_CREATED"
+	EventHostStarted               = "HOST_STARTED"
+	EventHostAgentDeployed         = "HOST_AGENT_DEPLOYED"
+	EventHostAgentDeployFailed     = "HOST_AGENT_DEPLOY_FAILED"
+	EventHostStatusChanged         = "HOST_STATUS_CHANGED"
+	EventHostDNSNameSet            = "HOST_DNS_NAME_SET"
+	EventHostProvisionError        = "HOST_PROVISION_ERROR"
+	EventHostProvisionFailed       = "HOST_PROVISION_FAILED"
+	EventHostProvisioned           = "HOST_PROVISIONED"
+	EventHostRunningTaskSet        = "HOST_RUNNING_TASK_SET"
+	EventHostRunningTaskCleared    = "HOST_RUNNING_TASK_CLEARED"
+	EventHostTaskPidSet            = "HOST_TASK_PID_SET"
+	EventHostMonitorFlag           = "HOST_MONITOR_FLAG"
+	EventTaskFinished              = "HOST_TASK_FINISHED"
+	EventHostTeardown              = "HOST_TEARDOWN"
+	EventHostTerminatedExternally  = "HOST_TERMINATED_EXTERNALLY"
+	EventHostExpirationWarningSent = "HOST_EXPIRATION_WARNING_SENT"
 )
 
 // implements EventData
@@ -71,7 +74,11 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		grip.Errorf("Error logging host event: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeHost,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
 	}
 }
 
@@ -145,6 +152,10 @@ func LogHostTeardown(hostId, teardownLogs string, success bool, duration time.Du
 
 func LogMonitorOperation(hostId string, op string) {
 	LogHostEvent(hostId, EventHostMonitorFlag, HostEventData{MonitorOp: op})
+}
+
+func LogExpirationWarningSent(hostID string) {
+	LogHostEvent(hostID, EventHostExpirationWarningSent, HostEventData{})
 }
 
 // UpdateExecutions updates host events to track multiple executions of the same task

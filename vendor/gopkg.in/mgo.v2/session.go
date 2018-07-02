@@ -2535,6 +2535,13 @@ func (c *Collection) Insert(docs ...interface{}) error {
 	return err
 }
 
+// InsertUnordered is the same as Inesrt but has the "unordered" or
+// continue on error semantics in the context of bulk operations.
+func (c *Collection) InsertUnordered(docs ...interface{}) error {
+	_, err := c.writeOp(&insertOp{c.FullName, docs, 0}, false)
+	return err
+}
+
 // Update finds a single document matching the provided selector document
 // and modifies it according to the update document.
 // If the session is in safe mode (see SetSafe) a ErrNotFound error is

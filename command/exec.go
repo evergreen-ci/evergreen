@@ -205,7 +205,6 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		return errors.WithStack(err)
 	}
 	defer closer()
-	grip.Info(proc)
 
 	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, proc, logger))
 

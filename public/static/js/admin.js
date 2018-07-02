@@ -35,7 +35,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
         $scope.tempExpansions.push(obj);
       });
 
-      $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : "";
+      $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : ""
+      $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
       $scope.Settings = resp.data;
     }
@@ -83,9 +84,41 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     try {
       $scope.Settings.plugins = jsyaml.safeLoad($scope.tempPlugins);
     } catch(e) {
-      alert("Error parsing plugin yaml: " + e);
+      notificationService.pushNotification("Error parsing plugin yaml: " + e, "errorHeader");
       return;
     }
+
+    try {
+      var parsedContainerPools = jsyaml.safeLoad($scope.tempContainerPools);
+    } catch(e) {
+      notificationService.pushNotification("Error parsing container pools yaml: " + e, "errorHeader");
+      return;
+    }
+
+    if (!$scope.tempContainerPools) {
+      parsedContainerPools = [];
+    }
+
+    // do not save settings if any container pool field is null
+    // or if duplicate container pool IDs found
+    var uniqueIds = {}
+    for (var i = 0; i < parsedContainerPools.length; i++) {
+      var p = parsedContainerPools[i]
+      // check fields
+      if (!p.distro || !p.id || !p.max_containers) {
+        notificationService.pushNotification("Error saving settings: container pool field cannot be null", "errorHeader");
+        return
+      }
+
+      // check uniqueness
+      if (p.id in uniqueIds) {
+        notificationService.pushNotification("Error saving settings: found duplicate container pool ID: " + p.id , "errorHeader");
+        return;
+      }
+      uniqueIds[p.id] = true
+    }
+
+    $scope.Settings.container_pools.pools = parsedContainerPools;
 
     if ($scope.tempPlugins === null || $scope.tempPlugins === undefined || $scope.tempPlugins == "") {
       $scope.Settings.plugins = {};

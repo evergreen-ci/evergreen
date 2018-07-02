@@ -14,76 +14,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TarContentsFile represents a tar file on disk.
-type TarContentsFile struct {
-	path string
-	info os.FileInfo
-}
-
 // BuildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
 // Returns the number of files that were added to the archive
 func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, logger grip.Journaler) (int, error) {
 
-	pathsToAdd := make(chan TarContentsFile)
+	pathsToAdd := streamArchiveContents(ctx, rootPath, includes, []string{})
+
+	numFilesArchived := 0
 	done := make(chan bool)
 	errChan := make(chan error)
-	numFilesArchived := 0
-	go func(outputChan chan TarContentsFile) {
-		for _, includePattern := range includes {
-			dir, filematch := filepath.Split(includePattern)
-			dir = filepath.Join(rootPath, dir)
-			exists, err := FileExists(dir)
-			if err != nil {
-				errChan <- err
-			}
-			if !exists {
-				continue
-			}
-
-			if ctx.Err() != nil {
-				errChan <- errors.New("archive creation operation canceled")
-			}
-
-			var walk filepath.WalkFunc
-
-			if filematch == "**" {
-				walk = func(path string, info os.FileInfo, err error) error {
-					outputChan <- TarContentsFile{path, info}
-					return nil
-				}
-				logger.Warning(filepath.Walk(dir, walk))
-			} else if strings.Contains(filematch, "**") {
-				globSuffix := filematch[2:]
-				walk = func(path string, info os.FileInfo, err error) error {
-					if strings.HasSuffix(filepath.Base(path), globSuffix) {
-						outputChan <- TarContentsFile{path, info}
-					}
-					return nil
-				}
-				logger.Warning(filepath.Walk(dir, walk))
-			} else {
-				walk = func(path string, info os.FileInfo, err error) error {
-					a, b := filepath.Split(path)
-					if filepath.Clean(a) == filepath.Clean(dir) {
-						match, err := filepath.Match(filematch, b)
-						if err != nil {
-							errChan <- err
-						}
-						if match {
-							outputChan <- TarContentsFile{path, info}
-						}
-					}
-					return nil
-				}
-				logger.Warning(filepath.Walk(rootPath, walk))
-			}
-		}
-		close(outputChan)
-	}(pathsToAdd)
-
-	go func(inputChan chan TarContentsFile) {
+	go func(inputChan <-chan ArchiveContentFile) {
 		processed := map[string]bool{}
 	FileChanLoop:
 		for file := range inputChan {
@@ -95,25 +37,25 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 			// Tarring symlinks doesn't work reliably right now, so if the file is
 			// a symlink, leave intarball path intact but write from the file
 			// underlying the symlink.
-			if file.info.Mode()&os.ModeSymlink > 0 {
-				symlinkPath, err := filepath.EvalSymlinks(file.path)
+			if file.Info.Mode()&os.ModeSymlink > 0 {
+				symlinkPath, err := filepath.EvalSymlinks(file.Path)
 				if err != nil {
-					logger.Warningf("Could not follow symlink %s, ignoring", file.path)
+					logger.Warningf("Could not follow symlink %s, ignoring", file.Path)
 					continue
 				} else {
-					logger.Infof("Following symlink in %s, got: %s", file.path, symlinkPath)
+					logger.Infof("Following symlink in %s, got: %s", file.Path, symlinkPath)
 					symlinkFileInfo, err := os.Stat(symlinkPath)
 					if err != nil {
-						logger.Warningf("Failed to get underlying file '%s' for symlink '%s', ignoring", symlinkPath, file.path)
+						logger.Warningf("Failed to get underlying file '%s' for symlink '%s', ignoring", symlinkPath, file.Path)
 						continue
 					}
 
-					intarball = strings.Replace(file.path, "\\", "/", -1)
-					file.path = symlinkPath
-					file.info = symlinkFileInfo
+					intarball = strings.Replace(file.Path, "\\", "/", -1)
+					file.Path = symlinkPath
+					file.Info = symlinkFileInfo
 				}
 			} else {
-				intarball = strings.Replace(file.path, "\\", "/", -1)
+				intarball = strings.Replace(file.Path, "\\", "/", -1)
 			}
 			rootPathPrefix := strings.Replace(rootPath, "\\", "/", -1)
 			intarball = strings.Replace(intarball, "\\", "/", -1)
@@ -130,11 +72,11 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 			} else {
 				processed[intarball] = true
 			}
-			if file.info.IsDir() {
+			if file.Info.IsDir() {
 				continue
 			}
 
-			_, fileName := filepath.Split(file.path)
+			_, fileName := filepath.Split(file.Path)
 			for _, ignore := range excludes {
 				if match, _ := filepath.Match(ignore, fileName); match {
 					continue FileChanLoop
@@ -143,9 +85,9 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 
 			hdr := new(tar.Header)
 			hdr.Name = strings.TrimPrefix(intarball, rootPathPrefix)
-			hdr.Mode = int64(file.info.Mode())
-			hdr.Size = file.info.Size()
-			hdr.ModTime = file.info.ModTime()
+			hdr.Mode = int64(file.Info.Mode())
+			hdr.Size = file.Info.Size()
+			hdr.ModTime = file.Info.ModTime()
 
 			numFilesArchived++
 			err := tarWriter.WriteHeader(hdr)
@@ -154,16 +96,16 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 				return
 			}
 
-			in, err := os.Open(file.path)
+			in, err := os.Open(file.Path)
 			if err != nil {
-				errChan <- errors.Wrapf(err, "Error opening %v", file.path)
+				errChan <- errors.Wrapf(err, "Error opening %v", file.Path)
 				return
 			}
 
 			amountWrote, err := io.Copy(tarWriter, in)
 			if err != nil {
 				logger.Debug(in.Close())
-				errChan <- errors.Wrapf(err, "Error writing into tar for %v", file.path)
+				errChan <- errors.Wrapf(err, "Error writing into tar for %v", file.Path)
 				return
 			}
 

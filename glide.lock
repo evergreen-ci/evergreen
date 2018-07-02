@@ -76,13 +76,17 @@ imports:
   - name: github.com/dustin/go-humanize
     version: f3565c9525600a911af3bd34f8b535ea81b2a9e0
   - name: github.com/mitchellh/go-homedir
-    version: 981ab348d865cf048eb7d17e78ac7192632d8415y
+    version: 981ab348d865cf048eb7d17e78ac7192632d8415g
   - name: github.com/jmespath/go-jmespath
     version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
   - name: github.com/go-ini/ini
     version: 6e4869b434bd001f6983749881c7ead3545887d8
   - name: github.com/aws/aws-sdk-go
     version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
+
+  - name: github.com/mholt/archiver
+    version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
+
 
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
@@ -106,7 +110,7 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/mongodb/grip
-    version: 1bfc97cef645bcad97f92c0a61afaa30a4d86ca6
+    version: 5d6dffc047e01c5553d48459d68a2d4f6c11a6ff
   - name: github.com/mongodb/anser
     version: a39cb2703e7f53a0d46f17a785d25f85fa19923a
   - name: github.com/mongodb/amboy
@@ -118,4 +122,4 @@ imports:
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/evergreen-ci/gimlet
-    version: e4f8d7888ebe829a47f343cd51ecb77a68538e60
+    version: 9daf3e203253a64724a51d1cc67c967dd8d8cb91

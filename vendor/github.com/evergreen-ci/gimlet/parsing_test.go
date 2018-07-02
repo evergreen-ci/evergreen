@@ -22,7 +22,7 @@ func TestReadingStructuredDataFromRequestBodies(t *testing.T) {
 		Count int    `json:"count" yaml:"count"`
 	}
 
-	for _, parserFunc := range []jsonishParser{GetYAML, GetJSON} {
+	for _, parserFunc := range []jsonishParser{GetYAML, GetJSON, GetJSONUnlimited, GetYAMLUnlimited} {
 
 		// case one: everything works
 
@@ -45,6 +45,8 @@ func TestReadingStructuredDataFromRequestBodies(t *testing.T) {
 
 		assert.Zero(out2.Count)
 		assert.Zero(out2.Name)
+
+		assert.Error(parserFunc(nil, map[string]string{}))
 	}
 }
 
@@ -64,5 +66,6 @@ func TestRequestReadingErrorPropogating(t *testing.T) {
 
 	assert.Error(t, GetJSON(errc, "foo"))
 	assert.Error(t, GetYAML(errc, "foo"))
-
+	assert.Error(t, GetJSONUnlimited(errc, "foo"))
+	assert.Error(t, GetYAMLUnlimited(errc, "foo"))
 }

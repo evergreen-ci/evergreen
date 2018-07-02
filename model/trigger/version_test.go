@@ -41,12 +41,13 @@ func (s *VersionSuite) SetupTest() {
 	versionID := "5aeb4514f27e4f9984646d97"
 
 	s.version = version.Version{
-		Id:         versionID,
-		Identifier: "test",
-		StartTime:  startTime,
-		FinishTime: startTime.Add(10 * time.Minute),
-		Branch:     "mci",
-		Requester:  evergreen.RepotrackerVersionRequester,
+		Id:                  versionID,
+		Identifier:          "test",
+		StartTime:           startTime,
+		FinishTime:          startTime.Add(10 * time.Minute),
+		Branch:              "mci",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 2,
 	}
 	s.NoError(s.version.Insert())
 
@@ -137,6 +138,44 @@ func (s *VersionSuite) SetupTest() {
 			},
 			Owner: "someone",
 		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeVersion,
+			Trigger: triggerExceedsDuration,
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				event.VersionDurationKey: "300",
+			},
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    event.ResourceTypeVersion,
+			Trigger: triggerRuntimeChangeByPercent,
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: s.event.ResourceId,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.JIRACommentSubscriberType,
+				Target: "A-1",
+			},
+			Owner: "someone",
+			TriggerData: map[string]string{
+				event.VersionPercentChangeKey: "50",
+			},
+		},
 	}
 
 	for i := range s.subs {
@@ -166,7 +205,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 2)
+	s.Len(n, 3)
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
@@ -174,7 +213,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 2)
+	s.Len(n, 3)
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionCreated
@@ -288,4 +327,69 @@ func (s *VersionSuite) TestVersionRegression() {
 	n, err = s.t.versionRegression(&s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
+}
+
+func (s *VersionSuite) TestVersionExceedsTime() {
+	// version that exceeds time should generate
+	s.t.event = &event.EventLogEntry{
+		EventType: event.VersionStateChange,
+	}
+	s.t.data.Status = evergreen.VersionSucceeded
+	s.t.version.FinishTime = time.Now()
+	s.t.version.StartTime = s.t.version.FinishTime.Add(-20 * time.Minute)
+	n, err := s.t.versionExceedsDuration(&s.subs[4])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// build that does not exceed should not generate
+	s.t.version.StartTime = s.t.version.FinishTime.Add(-4 * time.Minute)
+	n, err = s.t.versionExceedsDuration(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
+
+	// unfinished build should not generate
+	s.t.data.Status = evergreen.VersionStarted
+	s.t.version.StartTime = s.t.version.FinishTime.Add(-20 * time.Minute)
+	n, err = s.t.versionExceedsDuration(&s.subs[4])
+	s.NoError(err)
+	s.Nil(n)
+}
+
+func (s *VersionSuite) TestVersionRuntimeChange() {
+	// no previous version should not generate
+	s.t.version.FinishTime = time.Now()
+	s.t.version.StartTime = s.t.version.FinishTime.Add(-20 * time.Minute)
+	s.t.event = &event.EventLogEntry{
+		EventType: event.VersionStateChange,
+	}
+	s.t.data.Status = evergreen.VersionSucceeded
+	n, err := s.t.versionRuntimeChange(&s.subs[5])
+	s.NoError(err)
+	s.Nil(n)
+
+	// version that exceeds threshold should generate
+	lastGreen := version.Version{
+		RevisionOrderNumber: 1,
+		Identifier:          s.version.Identifier,
+		StartTime:           time.Now().Add(-10 * time.Minute),
+		FinishTime:          time.Now(),
+		Status:              evergreen.VersionSucceeded,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	s.NoError(lastGreen.Insert())
+	n, err = s.t.versionRuntimeChange(&s.subs[5])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// version that does not exceed threshold should not generate
+	s.t.version.StartTime = s.t.version.FinishTime.Add(-11 * time.Minute)
+	n, err = s.t.versionRuntimeChange(&s.subs[5])
+	s.NoError(err)
+	s.Nil(n)
+
+	// build that finished too quickly should generate
+	s.t.version.StartTime = s.t.version.FinishTime.Add(-4 * time.Minute)
+	n, err = s.t.versionRuntimeChange(&s.subs[5])
+	s.NoError(err)
+	s.NotNil(n)
 }

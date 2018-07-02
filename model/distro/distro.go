@@ -1,9 +1,7 @@
 package distro
 
 import (
-	"errors"
 	"fmt"
-	"math"
 	"math/rand"
 	"path/filepath"
 	"regexp"
@@ -12,6 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Distro struct {
@@ -34,6 +34,8 @@ type Distro struct {
 	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 
 	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
+
+	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
 
 type ValidateFormat string
@@ -99,12 +101,18 @@ func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
 }
 
-// ComputeParentsToDecommission calculates how many excess parents to
-// decommission for the provided distro
-func (d *Distro) ComputeParentsToDecommission(nParents, nContainers int) (int, error) {
-	// Prevent division by zero MaxContainers value
-	if d.MaxContainers == 0 {
-		return 0, errors.New("Distro does not support containers")
+// ValidateContainerPoolDistros ensures that container pools have valid distros
+func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+	catcher := grip.NewSimpleCatcher()
+
+	for _, pool := range s.ContainerPools.Pools {
+		d, err := FindOne(ById(pool.Distro))
+		if err != nil {
+			catcher.Add(fmt.Errorf("error finding distro for container pool %s", pool.Id))
+		}
+		if d.ContainerPool != "" {
+			catcher.Add(fmt.Errorf("container pool %s has invalid distro", pool.Id))
+		}
 	}
-	return nParents - int(math.Ceil(float64(nContainers)/float64(d.MaxContainers))), nil
+	return errors.WithStack(catcher.Resolve())
 }

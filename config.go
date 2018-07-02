@@ -53,6 +53,7 @@ type Settings struct {
 	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
+	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database           DBSettings                `yaml:"database"`

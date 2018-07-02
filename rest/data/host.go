@@ -8,10 +8,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -66,7 +66,7 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, 
 		return nil, errors.New("invalid key")
 	}
 
-	spawnOptions := spawn.Options{
+	spawnOptions := cloud.SpawnOptions{
 		Distro:    distroID,
 		UserName:  user.Username(),
 		PublicKey: keyVal,
@@ -74,7 +74,7 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, 
 		Owner:     user,
 	}
 
-	intentHost, err := spawn.CreateHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 }
 
 func (hc *DBHostConnector) TerminateHost(ctx context.Context, host *host.Host, user string) error {
-	return errors.WithStack(spawn.TerminateHost(ctx, host, evergreen.GetEnvironment().Settings(), user))
+	return errors.WithStack(cloud.TerminateSpawnHost(ctx, host, evergreen.GetEnvironment().Settings(), user))
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -201,7 +201,7 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string
 		return nil, errors.New("invalid key")
 	}
 
-	spawnOptions := spawn.Options{
+	spawnOptions := cloud.SpawnOptions{
 		Distro:    distroID,
 		UserName:  user.Username(),
 		PublicKey: keyVal,
@@ -209,7 +209,7 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string
 		Owner:     user,
 	}
 
-	intentHost, err := spawn.CreateHost(spawnOptions)
+	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
 	if err != nil {
 		return nil, err
 	}

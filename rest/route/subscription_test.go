@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -50,7 +50,7 @@ func (s *SubscriptionRouteSuite) SetupTest() {
 
 func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
 		"resource_type": "atype",
 		"trigger":       "atrigger",
@@ -120,7 +120,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 
 func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
 		"resource_type": "atype",
 		"trigger":       "atrigger",
@@ -203,7 +203,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 
 func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
 		"resource_type": "atype",
 		"trigger":       "atrigger",
@@ -228,7 +228,7 @@ func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 
 func (s *SubscriptionRouteSuite) TestGet() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 
 	h := &subscriptionGetHandler{}
 	h.owner = "me"
@@ -249,7 +249,7 @@ func (s *SubscriptionRouteSuite) TestGet() {
 func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	s.NoError(db.Clear(event.SubscriptionsCollection))
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "thanos"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "thanos"})
 	d := &subscriptionDeleteHandler{}
 
 	r, err := http.NewRequest(http.MethodDelete, "/subscriptions", nil)
@@ -287,7 +287,7 @@ func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
 
 func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
 		"resource_type": "atype",
 		"trigger":       "atrigger",
@@ -334,7 +334,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 
 func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
 		"resource_type": "atype",
 		"trigger":       "atrigger",

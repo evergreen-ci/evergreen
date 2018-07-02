@@ -35,12 +35,17 @@ var (
 type OwnerType string
 
 const (
-	OwnerTypePerson       OwnerType = "person"
-	OwnerTypeProject      OwnerType = "project"
-	TaskDurationKey                 = "task-duration-secs"
-	TaskPercentChangeKey            = "task-percent-change"
-	BuildDurationKey                = "build-duration-secs"
-	BuildPercentChangeKey           = "build-percent-change"
+	OwnerTypePerson                         OwnerType = "person"
+	OwnerTypeProject                        OwnerType = "project"
+	TaskDurationKey                                   = "task-duration-secs"
+	TaskPercentChangeKey                              = "task-percent-change"
+	BuildDurationKey                                  = "build-duration-secs"
+	BuildPercentChangeKey                             = "build-percent-change"
+	VersionDurationKey                                = "version-duration-secs"
+	VersionPercentChangeKey                           = "version-percent-change"
+	ImplicitSubscriptionPatchOutcome                  = "patch-outcome"
+	ImplicitSubscriptionBuildBreak                    = "build-break"
+	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
 )
 
 type Subscription struct {
@@ -268,6 +273,12 @@ func (s *Subscription) runCustomValidation() error {
 	if taskPercentVal, ok := s.TriggerData[TaskPercentChangeKey]; ok {
 		catcher.Add(validatePositiveFloat(taskPercentVal))
 	}
+	if versionDurationVal, ok := s.TriggerData[VersionDurationKey]; ok {
+		catcher.Add(validatePositiveInt(versionDurationVal))
+	}
+	if versionPercentVal, ok := s.TriggerData[VersionPercentChangeKey]; ok {
+		catcher.Add(validatePositiveFloat(versionPercentVal))
+	}
 	if buildDurationVal, ok := s.TriggerData[BuildDurationKey]; ok {
 		catcher.Add(validatePositiveInt(buildDurationVal))
 	}
@@ -361,6 +372,49 @@ const (
 	triggerOutcome = "outcome"
 )
 
+func CreateOrUpdateImplicitSubscription(subscriptionType string, id bson.ObjectId,
+	subscriber Subscriber, user string) (*Subscription, error) {
+	var err error
+	var sub *Subscription
+	if id.Valid() {
+		sub, err = FindSubscriptionByID(id)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding subscription")
+		}
+	}
+	if subscriber.Validate() == nil {
+		if sub == nil {
+			var temp Subscription
+			switch subscriptionType {
+			case ImplicitSubscriptionPatchOutcome:
+				temp = NewPatchOutcomeSubscriptionByOwner(user, subscriber)
+			case ImplicitSubscriptionBuildBreak:
+				temp = NewBuildBreakSubscriptionByOwner(user, subscriber)
+			case ImplicitSubscriptionSpawnhostExpiration:
+				temp = NewSpawnhostExpirationSubscription(user, subscriber)
+			}
+			sub = &temp
+		} else {
+			sub.Subscriber = subscriber
+		}
+
+		sub.OwnerType = OwnerTypePerson
+		sub.Owner = user
+		if err := sub.Upsert(); err != nil {
+			return nil, errors.Wrap(err, "failed to update subscription")
+		}
+	} else {
+		if id.Valid() {
+			if err := RemoveSubscription(id); err != nil {
+				return nil, errors.Wrap(err, "error removing subscription")
+			}
+			sub = nil
+		}
+	}
+
+	return sub, nil
+}
+
 func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 	return Subscription{
 		Type:    ResourceTypePatch,
@@ -376,10 +430,22 @@ func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 }
 
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
+	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, triggerOutcome)
+}
+
+func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeVersion, "regression")
+}
+
+func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {
+	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, "expiration")
+}
+
+func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
 	return Subscription{
 		ID:      bson.NewObjectId(),
-		Type:    ResourceTypePatch,
-		Trigger: triggerOutcome,
+		Type:    resourceType,
+		Trigger: trigger,
 		Selectors: []Selector{
 			{
 				Type: "owner",

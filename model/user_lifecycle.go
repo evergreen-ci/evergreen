@@ -12,19 +12,22 @@ import (
 // SaveUserSettings updates the settings stored for the given user id.
 func SaveUserSettings(userId string, settings user.UserSettings) error {
 	update := bson.M{"$set": bson.M{user.SettingsKey: settings}}
-	return user.UpdateOne(bson.M{user.IdKey: userId}, update)
+	return errors.Wrapf(user.UpdateOne(bson.M{user.IdKey: userId}, update), "problem saving user settings for %s", userId)
 }
 
 // SetUserAPIKey updates the API key stored with a user.
 func SetUserAPIKey(userId, newKey string) error {
 	update := bson.M{"$set": bson.M{user.APIKeyKey: newKey}}
-	return user.UpdateOne(bson.M{user.IdKey: userId}, update)
+	return errors.Wrapf(user.UpdateOne(bson.M{user.IdKey: userId}, update), "problem setting api key for user %s", userId)
 }
 
 func FindUserByID(id string) (*user.DBUser, error) {
 	t, err := user.FindOne(user.ById(id))
 	if err != nil {
 		return nil, errors.Wrapf(err, "db issue finding user '%s'", id)
+	}
+	if t == nil {
+		return nil, errors.Errorf("user %s not found", id)
 	}
 	return t, nil
 }

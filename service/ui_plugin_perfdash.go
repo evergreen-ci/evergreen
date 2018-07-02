@@ -7,12 +7,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 )
 
 func perfDashGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
-	projectId := mux.Vars(r)["project_id"]
-	versionId := mux.Vars(r)["version_id"]
+	vars := gimlet.GetVars(r)
+	projectId := vars["project_id"]
+	versionId := vars["version_id"]
 
 	if projectId == "" {
 		http.Error(w, "empty project id", http.StatusBadRequest)

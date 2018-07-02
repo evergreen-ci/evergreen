@@ -112,10 +112,12 @@ func (g *APIGithubUser) ToService() (interface{}, error) {
 }
 
 type APINotificationPreferences struct {
-	BuildBreak    APIString `json:"build_break"`
-	BuildBreakID  APIString `json:"build_break_id,omitempty"`
-	PatchFinish   APIString `json:"patch_finish"`
-	PatchFinishID APIString `json:"patch_finish_id,omitempty"`
+	BuildBreak            APIString `json:"build_break"`
+	BuildBreakID          APIString `json:"build_break_id,omitempty"`
+	PatchFinish           APIString `json:"patch_finish"`
+	PatchFinishID         APIString `json:"patch_finish_id,omitempty"`
+	SpawnHostExpiration   APIString `json:"spawn_host_expiration"`
+	SpawnHostExpirationID APIString `json:"spawn_host_expiration_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
@@ -126,11 +128,15 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	case user.NotificationPreferences:
 		n.BuildBreak = ToAPIString(string(v.BuildBreak))
 		n.PatchFinish = ToAPIString(string(v.PatchFinish))
+		n.SpawnHostExpiration = ToAPIString(string(v.SpawnHostExpiration))
 		if v.BuildBreakID != "" {
 			n.BuildBreakID = ToAPIString(v.BuildBreakID.Hex())
 		}
 		if v.PatchFinishID != "" {
 			n.PatchFinishID = ToAPIString(v.PatchFinishID.Hex())
+		}
+		if v.SpawnHostExpirationID != "" {
+			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID.Hex())
 		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
@@ -144,6 +150,7 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	}
 	buildbreak := FromAPIString(n.BuildBreak)
 	patchFinish := FromAPIString(n.PatchFinish)
+	spawnHostExpiration := FromAPIString(n.SpawnHostExpiration)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
 		return nil, errors.New("Build break preference is not a valid type")
 	}
@@ -151,8 +158,9 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		return nil, errors.New("Patch finish preference is not a valid type")
 	}
 	preferences := user.NotificationPreferences{
-		BuildBreak:  user.UserSubscriptionPreference(buildbreak),
-		PatchFinish: user.UserSubscriptionPreference(patchFinish),
+		BuildBreak:          user.UserSubscriptionPreference(buildbreak),
+		PatchFinish:         user.UserSubscriptionPreference(patchFinish),
+		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
 	}
 	var err error
 	if n.BuildBreakID != nil {
@@ -167,14 +175,19 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 			return nil, err
 		}
 	}
+	if n.SpawnHostExpirationID != nil {
+		preferences.SpawnHostExpirationID, err = user.FormatObjectID(FromAPIString(n.SpawnHostExpirationID))
+		if err != nil {
+			return nil, err
+		}
+	}
 	return preferences, nil
 }
 
 func ApplyUserChanges(current user.UserSettings, changes APIUserSettings) (APIUserSettings, error) {
 	oldSettings := APIUserSettings{}
-	err := oldSettings.BuildFromService(current)
-	if err != nil {
-		return oldSettings, err
+	if err := oldSettings.BuildFromService(current); err != nil {
+		return oldSettings, errors.Wrap(err, "problem applying update to user settings")
 	}
 
 	reflectOldSettings := reflect.ValueOf(&oldSettings)

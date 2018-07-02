@@ -46,52 +46,58 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
 	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
 
-	var subscriber event.Subscriber
+	var patchSubscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
 	case user.PreferenceSlack:
-		subscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
-
+		patchSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
 	case user.PreferenceEmail:
-		subscriber = event.NewEmailSubscriber(dbUser.Email())
+		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-
-	var subscription *event.Subscription
-	if dbUser.Settings.Notifications.PatchFinishID.Valid() {
-		var err error
-		subscription, err = event.FindSubscriptionByID(dbUser.Settings.Notifications.PatchFinishID)
-		if err != nil {
-			return err
-		}
-		if subscription != nil {
-			dbUser.Settings.Notifications.PatchFinishID = subscription.ID
-		}
-		// in the event the database has bad data, we proceed as if
-		// a new subscription is being created.
+	patchSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchOutcome,
+		dbUser.Settings.Notifications.PatchFinishID, patchSubscriber, dbUser.Id)
+	if err != nil {
+		return err
 	}
-	if subscriber.Validate() == nil {
-		if subscription == nil {
-			temp := event.NewPatchOutcomeSubscriptionByOwner(dbUser.Id, subscriber)
-			subscription = &temp
-			settings.Notifications.PatchFinishID = subscription.ID
-
-		} else {
-			subscription.Subscriber = subscriber
-		}
-
-		subscription.OwnerType = event.OwnerTypePerson
-		subscription.Owner = dbUser.Id
-
-		if err := subscription.Upsert(); err != nil {
-			return errors.Wrap(err, "failed to update subscription")
-		}
-
+	if patchSubscription != nil {
+		settings.Notifications.PatchFinishID = patchSubscription.ID
 	} else {
-		if dbUser.Settings.Notifications.PatchFinishID.Valid() {
-			if err := event.RemoveSubscription(dbUser.Settings.Notifications.PatchFinishID); err != nil {
-				return err
-			}
-			settings.Notifications.PatchFinishID = ""
-		}
+		settings.Notifications.PatchFinishID = ""
+	}
+
+	var buildBreakSubscriber event.Subscriber
+	switch settings.Notifications.BuildBreak {
+	case user.PreferenceSlack:
+		buildBreakSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	buildBreakSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionBuildBreak,
+		dbUser.Settings.Notifications.BuildBreakID, buildBreakSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if buildBreakSubscription != nil {
+		settings.Notifications.BuildBreakID = buildBreakSubscription.ID
+	} else {
+		settings.Notifications.BuildBreakID = ""
+	}
+
+	var spawnhostSubscriber event.Subscriber
+	switch settings.Notifications.SpawnHostExpiration {
+	case user.PreferenceSlack:
+		spawnhostSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	spawnhostSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnhostExpiration,
+		dbUser.Settings.Notifications.SpawnHostExpirationID, spawnhostSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if spawnhostSubscription != nil {
+		settings.Notifications.SpawnHostExpirationID = spawnhostSubscription.ID
+	} else {
+		settings.Notifications.SpawnHostExpirationID = ""
 	}
 
 	return model.SaveUserSettings(dbUser.Id, settings)

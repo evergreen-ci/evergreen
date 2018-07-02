@@ -40,7 +40,7 @@ func loadConfig(path ...string) *evergreen.Settings {
 func MockConfig() *evergreen.Settings {
 	return &evergreen.Settings{
 		Alerts: evergreen.AlertsConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,
@@ -78,10 +78,19 @@ func MockConfig() *evergreen.Settings {
 				Organization: "ghorg",
 			},
 		},
-		Banner:             "banner",
-		BannerTheme:        "important",
-		ClientBinariesDir:  "bin_dir",
-		ConfigDir:          "cfg_dir",
+		Banner:            "banner",
+		BannerTheme:       "important",
+		ClientBinariesDir: "bin_dir",
+		ConfigDir:         "cfg_dir",
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro:        "valid-distro",
+					Id:            "test-pool-1",
+					MaxContainers: 100,
+				},
+			},
+		},
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
@@ -98,7 +107,7 @@ func MockConfig() *evergreen.Settings {
 		Keys:    map[string]string{"k3": "v3"},
 		LogPath: "logpath",
 		Notify: evergreen.NotifyConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,

@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -39,7 +39,7 @@ func (cbvh *costByVersionHandler) Handler() RequestHandler {
 }
 
 func (cbvh *costByVersionHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	cbvh.versionId = mux.Vars(r)["version_id"]
+	cbvh.versionId = gimlet.GetVars(r)["version_id"]
 
 	if cbvh.versionId == "" {
 		return errors.New("request data incomplete")
@@ -128,7 +128,7 @@ func parseTime(r *http.Request) (time.Time, time.Duration, error) {
 }
 
 func (cbvh *costByDistroHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	cbvh.distroId = mux.Vars(r)["distro_id"]
+	cbvh.distroId = gimlet.GetVars(r)["distro_id"]
 	if cbvh.distroId == "" {
 		return errors.New("request data incomplete")
 	}
@@ -182,10 +182,9 @@ func getCostTaskByProjectRouteManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    c.Handler(),
-				MethodType:        http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: c.Handler(),
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,
@@ -201,8 +200,9 @@ func (h *costTasksByProjectHandler) Handler() RequestHandler {
 }
 
 func (h *costTasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	args := costTasksByProjectArgs{User: GetUser(ctx)}
-	args.projectID = mux.Vars(r)["project_id"]
+	usr := MustHaveUser(ctx)
+	args := costTasksByProjectArgs{User: usr}
+	args.projectID = gimlet.GetVars(r)["project_id"]
 	if args.projectID == "" {
 		return errors.New("request data incomplete")
 	}

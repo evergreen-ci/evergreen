@@ -1,23 +1,25 @@
 package gimlet
 
-import "sync"
+import (
+	"sync"
+)
 
-type basicAuthenticator struct {
+type simpleAuthenticator struct {
 	mu     sync.RWMutex
 	users  map[string]User
 	groups map[string][]string
 }
 
-// NewBasicAuthenticator constructs a minimum viable authenticate
+// NewSimpleAuthenticator constructs a minimum viable authenticate
 // implementation, backed by access lists and user tables passed to
 // the constructor. The Authenicator is, therefore, functionally
 // immutable after construction.
-func NewBasicAuthenticator(users []User, groups map[string][]string) Authenticator {
+func NewSimpleAuthenticator(users []User, groups map[string][]string) Authenticator {
 	if groups == nil {
 		groups = map[string][]string{}
 	}
 
-	a := &basicAuthenticator{
+	a := &simpleAuthenticator{
 		groups: groups,
 		users:  map[string]User{},
 	}
@@ -31,7 +33,7 @@ func NewBasicAuthenticator(users []User, groups map[string][]string) Authenticat
 	return a
 }
 
-func (a *basicAuthenticator) CheckResourceAccess(u User, resource string) bool {
+func (a *simpleAuthenticator) CheckResourceAccess(u User, resource string) bool {
 	if !a.CheckAuthenticated(u) {
 		return false
 	}
@@ -39,7 +41,7 @@ func (a *basicAuthenticator) CheckResourceAccess(u User, resource string) bool {
 	return userHasRole(u, resource)
 }
 
-func (a *basicAuthenticator) CheckGroupAccess(u User, group string) bool {
+func (a *simpleAuthenticator) CheckGroupAccess(u User, group string) bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
@@ -53,10 +55,10 @@ func (a *basicAuthenticator) CheckGroupAccess(u User, group string) bool {
 		return false
 	}
 
-	return userInGroup(u, a.groups[group])
+	return userInSlice(u, a.groups[group])
 }
 
-func (a *basicAuthenticator) CheckAuthenticated(u User) bool {
+func (a *simpleAuthenticator) CheckAuthenticated(u User) bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
@@ -67,4 +69,44 @@ func (a *basicAuthenticator) CheckAuthenticated(u User) bool {
 	}
 
 	return u.GetAPIKey() == ur.GetAPIKey()
+}
+
+type basicAuthenticator struct {
+	mu        sync.RWMutex
+	groups    map[string][]string
+	resources map[string][]string
+}
+
+func NewBasicAuthenticator(groups, resources map[string][]string) Authenticator {
+	if groups == nil {
+		groups = map[string][]string{}
+	}
+	if resources == nil {
+		resources = map[string][]string{}
+	}
+
+	return &basicAuthenticator{
+		groups:    groups,
+		resources: resources,
+	}
+}
+
+func (a *basicAuthenticator) CheckResourceAccess(u User, resource string) bool {
+	if !a.CheckAuthenticated(u) {
+		return false
+	}
+
+	return userInSlice(u, a.resources[resource])
+}
+
+func (a *basicAuthenticator) CheckGroupAccess(u User, group string) bool {
+	if !a.CheckAuthenticated(u) {
+		return false
+	}
+
+	return userInSlice(u, a.groups[group])
+
+}
+func (a *basicAuthenticator) CheckAuthenticated(u User) bool {
+	return u != nil && u.Username() != ""
 }

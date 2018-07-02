@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/crowd"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 )
 
 // CrowdUserManager handles authentication with Atlassian Crowd.
@@ -29,7 +30,7 @@ func NewCrowdUserManager(conf *evergreen.CrowdConfig) (gimlet.UserManager, error
 func (c *CrowdUserManager) GetUserByToken(_ context.Context, token string) (gimlet.User, error) {
 	user, err := c.GetUserFromToken(token)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "problem getting user by token from crowd")
 	}
 	return &simpleUser{
 		UserId:       user.Name,         //UserId

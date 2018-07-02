@@ -19,7 +19,13 @@ type UserMiddlewareConfiguration struct {
 }
 
 func setUserForRequest(r *http.Request, u User) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), userKey, u))
+	return r.WithContext(AttachUser(r.Context(), u))
+}
+
+// AttachUser adds a user to a context. This function is public to
+// support teasing workflows.
+func AttachUser(ctx context.Context, u User) context.Context {
+	return context.WithValue(ctx, userKey, u)
 }
 
 // GetUser returns the user attached to the request. The User object
@@ -89,9 +95,11 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 						"message": "error looking up user",
 						"request": reqID,
 					}))
-				} else {
-					r = setUserForRequest(r, usr)
 				}
+			}
+
+			if usr != nil {
+				r = setUserForRequest(r, usr)
 			}
 		}
 
@@ -113,16 +121,15 @@ func (u *userMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 
 		if len(authDataAPIKey) > 0 {
 			usr, err := u.manager.GetUserByID(authDataName)
-
-			// only loggable if the err is non-nil
-			logger.Error(message.WrapError(err, message.Fields{
+			logger.Debug(message.WrapError(err, message.Fields{
 				"message":   "problem getting user by id",
 				"operation": "header check",
 				"name":      authDataName,
 				"request":   reqID,
 			}))
 
-			if usr != nil {
+			// only loggable if the err is non-nil
+			if err == nil && usr != nil {
 				if usr.GetAPIKey() != authDataAPIKey {
 					WriteTextResponse(rw, http.StatusUnauthorized, "invalid API key")
 					return

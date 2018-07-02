@@ -65,36 +65,34 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 
 // AttachRESTHandler attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
-func GetRESTv1App(evgService restAPIService, um gimlet.UserManager) (*gimlet.APIApp, error) {
+func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
+	middleware := &restV1middleware{rest}
 	app.ResetMiddleware()
 	app.SetPrefix(evergreen.RestRoutePrefix)
-	app.AddMiddleware(NewRecoveryLogger())
-	app.AddMiddleware(gimlet.UserMiddleware(um, GetUserMiddlewareConf()))
-	app.AddWrapper(&restV1middleware{rest})
 
 	// REST routes
-	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo)
-	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus)
-	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch)
-	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig)
-	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds)
-	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProject)
-	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen)
-	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision)
-	app.AddRoute("/projects/{project_id}/test_history").Version(1).Get().Handler(rest.GetTestHistory)
-	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions)
-	app.AddRoute("/scheduler/distro/{distro_id}/stats").Version(1).Get().Handler(rest.getAverageSchedulerStats)
-	app.AddRoute("/scheduler/host_utilization").Version(1).Get().Handler(rest.getHostUtilizationStats)
-	app.AddRoute("/scheduler/makespans").Version(1).Get().Handler(rest.getOptimalAndActualMakespans)
-	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo)
-	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus)
-	app.AddRoute("/tasks/{task_name}/history").Version(1).Get().Handler(rest.getTaskHistory)
-	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo)
-	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(requireUser(rest.modifyVersionInfo, nil))
-	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig)
-	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus)
+	app.AddRoute("/builds/{build_id}").Version(1).Get().Handler(rest.getBuildInfo).Wrap(middleware)
+	app.AddRoute("/builds/{build_id}/status").Version(1).Get().Handler(rest.getBuildStatus).Wrap(middleware)
+	app.AddRoute("/patches/{patch_id}").Version(1).Get().Handler(rest.getPatch).Wrap(middleware)
+	app.AddRoute("/patches/{patch_id}/config").Version(1).Get().Handler(rest.getPatchConfig).Wrap(middleware)
+	app.AddRoute("/projects").Version(1).Get().Handler(rest.getProjectIds).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}").Version(1).Get().Handler(rest.getProject).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/last_green").Version(1).Get().Handler(rest.lastGreen).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/revisions/{revision}").Version(1).Get().Handler(rest.getVersionInfoViaRevision).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/test_history").Version(1).Get().Handler(rest.GetTestHistory).Wrap(middleware)
+	app.AddRoute("/projects/{project_id}/versions").Version(1).Get().Handler(rest.getRecentVersions).Wrap(middleware)
+	app.AddRoute("/scheduler/distro/{distro_id}/stats").Version(1).Get().Handler(rest.getAverageSchedulerStats).Wrap(middleware)
+	app.AddRoute("/scheduler/host_utilization").Version(1).Get().Handler(rest.getHostUtilizationStats).Wrap(middleware)
+	app.AddRoute("/scheduler/makespans").Version(1).Get().Handler(rest.getOptimalAndActualMakespans).Wrap(middleware)
+	app.AddRoute("/tasks/{task_id}").Version(1).Get().Handler(rest.getTaskInfo).Wrap(middleware)
+	app.AddRoute("/tasks/{task_id}/status").Version(1).Get().Handler(rest.getTaskStatus).Wrap(middleware)
+	app.AddRoute("/tasks/{task_name}/history").Version(1).Get().Handler(rest.getTaskHistory).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Get().Handler(rest.getVersionInfo).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}").Version(1).Patch().Handler(requireUser(rest.modifyVersionInfo, nil)).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
+	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
 
-	return app, nil
+	return app
 }

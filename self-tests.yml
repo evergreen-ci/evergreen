@@ -332,9 +332,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-spawn
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-monitor
@@ -400,12 +397,6 @@ tasks:
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-plugin-builtin-buildbaron
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-plugin-builtin-manifest
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-migrations
 
   # race detector tests
@@ -451,9 +442,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-service
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
-    name: race-spawn
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-monitor
@@ -508,15 +496,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-plugin
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-plugin-builtin-buildbaron
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-plugin-builtin-attach
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations

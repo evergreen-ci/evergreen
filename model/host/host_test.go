@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -626,6 +627,20 @@ func TestUpsert(t *testing.T) {
 				So(host.Host, ShouldEqual, "host2")
 
 			})
+
+		Convey("Upserting a host with new ID should set priv_atttempts", func() {
+			So(host.Insert(), ShouldBeNil)
+			So(host.Remove(), ShouldBeNil)
+			host.Id = "s-12345"
+			_, err := host.Upsert()
+			So(err, ShouldBeNil)
+
+			out := bson.M{}
+			So(db.FindOneQ(Collection, db.Query(bson.M{}), &out), ShouldBeNil)
+			val, ok := out[ProvisionAttemptsKey]
+			So(ok, ShouldBeTrue)
+			So(val, ShouldEqual, 0)
+		})
 	})
 }
 
@@ -1994,4 +2009,137 @@ func TestFindAllRunningParentsByDistro(t *testing.T) {
 	parents, err := FindAllRunningParentsByDistro(d1)
 	assert.NoError(err)
 	assert.Equal(2, len(parents))
+}
+
+func TestHostsSpawnedByTasks(t *testing.T) {
+	assert := require.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(Collection, task.Collection, build.Collection))
+	finishedTask := &task.Task{
+		Id:     "running_task",
+		Status: evergreen.TaskSucceeded,
+	}
+	require.NoError(finishedTask.Insert())
+	finishedBuild := &build.Build{
+		Id:     "running_build",
+		Status: evergreen.BuildSucceeded,
+	}
+	require.NoError(finishedBuild.Insert())
+	hosts := []*Host{
+		{
+			Id:     "running_host_timeout",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "running_host_task",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "running_host_build",
+			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "terminated_host_timeout",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(-time.Minute),
+			},
+		},
+		{
+			Id:     "terminated_host_task",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
+			Id:     "terminated_host_build",
+			Status: evergreen.HostTerminated,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "host_not_spawned_by_task",
+			Status: evergreen.HostRunning,
+		},
+	}
+	for i := range hosts {
+		require.NoError(hosts[i].Insert())
+	}
+
+	found, err := allHostsSpawnedByTasksTimedOut()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_timeout", found[0].Id)
+
+	found, err = allHostsSpawnedByFinishedTasks()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_task", found[0].Id)
+
+	found, err = allHostsSpawnedByFinishedBuilds()
+	assert.NoError(err)
+	assert.Len(found, 1)
+	assert.Equal("running_host_build", found[0].Id)
+
+	found, err = AllHostsSpawnedByTasksToTerminate()
+	assert.NoError(err)
+	assert.Len(found, 3)
+}
+
+func TestFindByFirstProvisioningAttempt(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	hosts := []Host{
+		{
+			Id:          "host1",
+			Status:      evergreen.HostRunning,
+			RunningTask: "task",
+		},
+		{
+			Id:     "host2",
+			Status: evergreen.HostStarting,
+		},
+		{
+			Id:     "host3",
+			Status: evergreen.HostProvisioning,
+		},
+		{
+			Id:                "host4",
+			ProvisionAttempts: 3,
+			Status:            evergreen.HostProvisioning,
+		},
+	}
+	for i := range hosts {
+		assert.NoError(hosts[i].Insert())
+	}
+
+	hosts, err := FindByFirstProvisioningAttempt()
+	assert.NoError(err)
+	assert.Len(hosts, 1)
+	assert.Equal("host3", hosts[0].Id)
+
+	assert.NoError(db.ClearCollections(Collection))
+	assert.NoError(db.Insert(Collection, bson.M{
+		"_id":    "host5",
+		"status": evergreen.HostProvisioning,
+	}))
+	hosts, err = FindByFirstProvisioningAttempt()
+	assert.NoError(err)
+	assert.Empty(hosts)
 }

@@ -224,6 +224,10 @@ func LogTaskProcessData(taskId string, procs []*message.ProcessInfo) {
 		Data:         data,
 	}
 
-	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(&event),
-		"problem logging task process info event"))
+	err := NewDBEventLogger(TaskLogCollection).LogEvent(&event)
+	grip.Error(message.WrapError(err, message.Fields{
+		"resource_type": EventTaskProcessInfo,
+		"message":       "error logging event",
+		"source":        "event-log-fail",
+	}))
 }

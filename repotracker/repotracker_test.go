@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -16,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -508,4 +510,90 @@ func createTestProject(override1, override2 *int) *model.Project {
 			},
 		},
 	}
+}
+
+func TestBuildBreakSubscriptions(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(user.Collection))
+	u := user.DBUser{
+		Id:           "me",
+		EmailAddress: "toki@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				BuildBreak: user.PreferenceEmail,
+			},
+		},
+	}
+	assert.NoError(u.Insert())
+
+	// no notifications in project or user
+	subs := []event.Subscription{}
+	assert.NoError(db.Clear(event.SubscriptionsCollection))
+	proj1 := model.ProjectRef{
+		Identifier:           "proj1",
+		NotifyOnBuildFailure: false,
+	}
+	v1 := version.Version{
+		Id:         "v1",
+		Identifier: proj1.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Branch:     "branch",
+	}
+	assert.NoError(addBuildBreakSubscriptions(&v1, &proj1))
+	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.Len(subs, 0)
+
+	// just a project
+	subs = []event.Subscription{}
+	assert.NoError(db.Clear(event.SubscriptionsCollection))
+	proj2 := model.ProjectRef{
+		Identifier:           "proj2",
+		NotifyOnBuildFailure: true,
+		Admins:               []string{"u2", "u3"},
+	}
+	u2 := user.DBUser{
+		Id:           "u2",
+		EmailAddress: "shaw@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				BuildBreak: user.PreferenceEmail,
+			},
+		},
+	}
+	assert.NoError(u2.Insert())
+	u3 := user.DBUser{
+		Id:           "u3",
+		EmailAddress: "tess@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				BuildBreak: user.PreferenceEmail,
+			},
+		},
+	}
+	assert.NoError(u3.Insert())
+	assert.NoError(addBuildBreakSubscriptions(&v1, &proj2))
+	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.Len(subs, 2)
+
+	// project has it enabled, but user doesn't want notifications
+	subs = []event.Subscription{}
+	assert.NoError(db.Clear(event.SubscriptionsCollection))
+	u4 := user.DBUser{
+		Id:           "u4",
+		EmailAddress: "rehgar@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{},
+		},
+	}
+	assert.NoError(u4.Insert())
+	v3 := version.Version{
+		Id:         "v3",
+		Identifier: proj1.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Branch:     "branch",
+		AuthorID:   u4.Id,
+	}
+	assert.NoError(addBuildBreakSubscriptions(&v3, &proj2))
+	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.Len(subs, 2)
 }

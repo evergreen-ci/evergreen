@@ -563,6 +563,9 @@ md-radio-group.md-focused:not(:empty) .md-checked .md-container:before {
 md-checkbox.md-checked .md-ink-ripple {
   color: rgba(0, 0, 0, 0.7) !important;
 }
+.strikethrough {
+  text-decoration: line-through;
+}
 .remove-version {
   margin: 10px;
 }
@@ -2332,6 +2335,12 @@ md-card-title .md-button {
 .md-chip-input-container,
 .md-chip-input-container input {
   width: 500px;
+}
+.nav .pill-small {
+  cursor: pointer;
+}
+.nav .pill-small > a {
+  padding: 3px 8px;
 }
 .banner-container {
   height: 50px;

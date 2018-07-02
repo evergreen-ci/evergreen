@@ -12,25 +12,26 @@ import (
 
 func NewConfigModel() *APIAdminSettings {
 	return &APIAdminSettings{
-		Alerts:       &APIAlertsConfig{},
-		Amboy:        &APIAmboyConfig{},
-		Api:          &APIapiConfig{},
-		AuthConfig:   &APIAuthConfig{},
-		Credentials:  map[string]string{},
-		Expansions:   map[string]string{},
-		HostInit:     &APIHostInitConfig{},
-		Jira:         &APIJiraConfig{},
-		Keys:         map[string]string{},
-		LoggerConfig: &APILoggerConfig{},
-		Notify:       &APINotifyConfig{},
-		Plugins:      map[string]map[string]interface{}{},
-		Providers:    &APICloudProviders{},
-		RepoTracker:  &APIRepoTrackerConfig{},
-		Scheduler:    &APISchedulerConfig{},
-		ServiceFlags: &APIServiceFlags{},
-		Slack:        &APISlackConfig{},
-		Splunk:       &APISplunkConnectionInfo{},
-		Ui:           &APIUIConfig{},
+		Alerts:         &APIAlertsConfig{},
+		Amboy:          &APIAmboyConfig{},
+		Api:            &APIapiConfig{},
+		AuthConfig:     &APIAuthConfig{},
+		ContainerPools: &APIContainerPoolsConfig{},
+		Credentials:    map[string]string{},
+		Expansions:     map[string]string{},
+		HostInit:       &APIHostInitConfig{},
+		Jira:           &APIJiraConfig{},
+		Keys:           map[string]string{},
+		LoggerConfig:   &APILoggerConfig{},
+		Notify:         &APINotifyConfig{},
+		Plugins:        map[string]map[string]interface{}{},
+		Providers:      &APICloudProviders{},
+		RepoTracker:    &APIRepoTrackerConfig{},
+		Scheduler:      &APISchedulerConfig{},
+		ServiceFlags:   &APIServiceFlags{},
+		Slack:          &APISlackConfig{},
+		Splunk:         &APISplunkConnectionInfo{},
+		Ui:             &APIUIConfig{},
 	}
 }
 
@@ -46,6 +47,7 @@ type APIAdminSettings struct {
 	ClientBinariesDir  APIString                         `json:"client_binaries_dir,omitempty"`
 	ConfigDir          APIString                         `json:"configdir,omitempty"`
 	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	ContainerPools     *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
@@ -193,17 +195,14 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 }
 
 type APIAlertsConfig struct {
-	SMTP *APISMTPConfig `json:"smtp"`
+	SMTP APISMTPConfig `json:"smtp"`
 }
 
 func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AlertsConfig:
-		if v.SMTP != nil {
-			a.SMTP = &APISMTPConfig{}
-			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-				return err
-			}
+		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+			return err
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -212,16 +211,12 @@ func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAlertsConfig) ToService() (interface{}, error) {
-	var config *evergreen.SMTPConfig
 	smtp, err := a.SMTP.ToService()
 	if err != nil {
 		return nil, err
 	}
-	if smtp != nil {
-		config = smtp.(*evergreen.SMTPConfig)
-	}
 	return evergreen.AlertsConfig{
-		SMTP: config,
+		SMTP: smtp.(evergreen.SMTPConfig),
 	}, nil
 }
 
@@ -237,10 +232,7 @@ type APISMTPConfig struct {
 
 func (a *APISMTPConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *evergreen.SMTPConfig:
-		if v == nil {
-			return nil
-		}
+	case evergreen.SMTPConfig:
 		a.Server = ToAPIString(v.Server)
 		a.Port = v.Port
 		a.UseSSL = v.UseSSL
@@ -271,7 +263,7 @@ func (a *APISMTPConfig) ToService() (interface{}, error) {
 	for _, s := range a.AdminEmail {
 		config.AdminEmail = append(config.AdminEmail, FromAPIString(s))
 	}
-	return &config, nil
+	return config, nil
 }
 
 type APIAmboyConfig struct {
@@ -654,19 +646,17 @@ func (a *APILogBuffering) ToService() (interface{}, error) {
 }
 
 type APINotifyConfig struct {
-	BufferTargetPerInterval int            `json:"buffer_target_per_interval"`
-	BufferIntervalSeconds   int            `json:"buffer_interval_seconds"`
-	SMTP                    *APISMTPConfig `json:"smtp"`
+	BufferTargetPerInterval int           `json:"buffer_target_per_interval"`
+	BufferIntervalSeconds   int           `json:"buffer_interval_seconds"`
+	SMTP                    APISMTPConfig `json:"smtp"`
 }
 
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.NotifyConfig:
-		if v.SMTP != nil {
-			a.SMTP = &APISMTPConfig{}
-			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-				return err
-			}
+		a.SMTP = APISMTPConfig{}
+		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+			return err
 		}
 		a.BufferTargetPerInterval = v.BufferTargetPerInterval
 		a.BufferIntervalSeconds = v.BufferIntervalSeconds
@@ -677,18 +667,14 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APINotifyConfig) ToService() (interface{}, error) {
-	var config *evergreen.SMTPConfig
 	smtp, err := a.SMTP.ToService()
 	if err != nil {
 		return nil, err
 	}
-	if smtp != nil {
-		config = smtp.(*evergreen.SMTPConfig)
-	}
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		SMTP: config,
+		SMTP: smtp.(evergreen.SMTPConfig),
 	}, nil
 }
 
@@ -756,6 +742,68 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 		GCE:       gce.(evergreen.GCEConfig),
 		OpenStack: openstack.(evergreen.OpenStackConfig),
 		VSphere:   vsphere.(evergreen.VSphereConfig),
+	}, nil
+}
+
+type APIContainerPoolsConfig struct {
+	Pools []APIContainerPool `json:"pools"`
+}
+
+func (a *APIContainerPoolsConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ContainerPoolsConfig:
+		for _, pool := range v.Pools {
+			APIpool := APIContainerPool{}
+			if err := APIpool.BuildFromService(pool); err != nil {
+				return err
+			}
+			a.Pools = append(a.Pools, APIpool)
+		}
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIContainerPoolsConfig) ToService() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	config := evergreen.ContainerPoolsConfig{}
+	for _, p := range a.Pools {
+		i, err := p.ToService()
+		if err != nil {
+			return nil, err
+		}
+		pool := i.(evergreen.ContainerPool)
+		config.Pools = append(config.Pools, pool)
+	}
+	return config, nil
+}
+
+type APIContainerPool struct {
+	Distro        APIString `json:"distro"`
+	Id            APIString `json:"id"`
+	MaxContainers int       `json:"max_containers"`
+}
+
+func (a *APIContainerPool) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.ContainerPool:
+		a.Distro = ToAPIString(v.Distro)
+		a.Id = ToAPIString(v.Id)
+		a.MaxContainers = v.MaxContainers
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+
+func (a *APIContainerPool) ToService() (interface{}, error) {
+	return evergreen.ContainerPool{
+		Distro:        FromAPIString(a.Distro),
+		Id:            FromAPIString(a.Id),
+		MaxContainers: a.MaxContainers,
 	}, nil
 }
 

@@ -7,11 +7,6 @@ import (
 	"github.com/mongodb/grip"
 )
 
-type (
-	// custom type used to attach specific values to request contexts, to prevent collisions.
-	requestUserContextKey int
-)
-
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
@@ -105,9 +100,6 @@ const (
 
 	DegradedLoggingPercent = 10
 
-	// Key used to store user information in request contexts
-	RequestUser requestUserContextKey = 0
-
 	SetupScriptName    = "setup.sh"
 	TeardownScriptName = "teardown.sh"
 
@@ -177,6 +169,11 @@ const (
 	PatchVersionRequester       = "patch_request"
 	GithubPRRequester           = "github_pull_request"
 	RepotrackerVersionRequester = "gitter_request"
+)
+
+const (
+	GenerateTasksCommandName = "generate.tasks"
+	CreateHostCommandName    = "create.host"
 )
 
 type SenderKey int
