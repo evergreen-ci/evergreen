@@ -375,7 +375,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.validSecurityGroup = function(){
     if ($scope.activeDistro){
       if ($scope.activeDistro.settings.is_vpc){
-       return $scope.activeDistro.settings.security_group.substring(0,3) == 'sg-';
+        for (var i = 0; i < $scope.activeDistro.settings.security_group_ids.length; i++) {
+          if ($scope.activeDistro.settings.security_group_ids[i].substring(0,3) !== "sg-") {
+            return false
+          }
+        }
      }
    }
    return true
