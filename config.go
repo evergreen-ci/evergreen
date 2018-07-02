@@ -478,17 +478,6 @@ func GetServiceFlags() (*ServiceFlags, error) {
 	return flags, nil
 }
 
-type ClientBinary struct {
-	Arch string `yaml:"arch" json:"arch"`
-	OS   string `yaml:"os" json:"os"`
-	URL  string `yaml:"url" json:"url"`
-}
-
-type ClientConfig struct {
-	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"ClientBinaries"`
-	LatestRevision string         `yaml:"latest_revision" json:"LatestRevision"`
-}
-
 // PluginConfig holds plugin-specific settings, which are handled.
 // manually by their respective plugins
 type PluginConfig map[string]map[string]interface{}

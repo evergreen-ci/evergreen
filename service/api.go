@@ -522,12 +522,6 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 }
 
-// Returns information about available updates for client binaries.
-// Replies 404 if this data is not configured.
-func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(w, as.clientConfig)
-}
-
 // GetSettings returns the global evergreen settings.
 func (as *APIServer) GetSettings() evergreen.Settings {
 	return as.Settings
