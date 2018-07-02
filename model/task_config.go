@@ -3,6 +3,7 @@ package model
 import (
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -20,14 +21,47 @@ type TaskConfig struct {
 	Task            *task.Task
 	BuildVariant    *BuildVariant
 	Expansions      *util.Expansions
+	Redacted        map[string]bool
 	WorkDir         string
 	GithubPatchData patch.GithubPatch
+	Timeout         *Timeout
+
+	mu sync.RWMutex
+}
+
+type Timeout struct {
+	IdleTimeoutSecs int
+	ExecTimeoutSecs int
+}
+
+func (t *TaskConfig) SetIdleTimeout(timeout int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.Timeout.IdleTimeoutSecs = timeout
+}
+
+func (t *TaskConfig) SetExecTimeout(timeout int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.Timeout.ExecTimeoutSecs = timeout
+}
+
+func (t *TaskConfig) GetIdleTimeout() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.Timeout.IdleTimeoutSecs
+}
+
+func (t *TaskConfig) GetExecTimeout() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.Timeout.ExecTimeoutSecs
 }
 
 func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
-		return nil, errors.Errorf("project for task with branch %v is empty", t.Project)
+		return nil, errors.Errorf("project for task with project_id %v is empty", t.Project)
 	}
 
 	// check on if the project ref is empty
@@ -54,6 +88,8 @@ func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Tas
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
 	}
+
+	taskConfig.Timeout = &Timeout{}
 
 	return taskConfig, nil
 }

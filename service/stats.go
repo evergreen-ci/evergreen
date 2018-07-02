@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -88,7 +88,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{currentProject, uis.GetCommonViewData(w, r, false, true)}
 
-	uis.WriteHTML(w, http.StatusOK, data, "base", "task_timing.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", "task_timing.html", "base_angular.html", "menu.html")
 }
 
 // taskTimingJSON sends over the task data for a certain task of a certain build variant
@@ -103,9 +103,10 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buildVariant := mux.Vars(r)["build_variant"]
-	taskName := mux.Vars(r)["task_name"]
-	request := mux.Vars(r)["request"]
+	vars := gimlet.GetVars(r)
+	buildVariant := vars["build_variant"]
+	taskName := vars["task_name"]
+	request := vars["request"]
 
 	project, err := projCtx.GetProject()
 	if err != nil || project == nil {
@@ -130,7 +131,9 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	// if its all tasks find the build
 	if taskName == "" || taskName == "All Tasks" {
 		// TODO: switch this to be a query on the builds TaskCache
-		builds, err := build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
+		var builds []build.Build
+
+		builds, err = build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.RevisionOrderNumberKey}).
@@ -183,7 +186,8 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			task.DistroIdKey}
 
 		if beforeTaskId != "" {
-			t, err := task.FindOne(task.ById(beforeTaskId))
+			var t *task.Task
+			t, err = task.FindOne(task.ById(beforeTaskId))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
@@ -254,5 +258,5 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		data.Patches = patches
 	}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }

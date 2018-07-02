@@ -1,12 +1,11 @@
 package watchapi
 
 import (
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Watch starts a stream that returns any changes to objects that match
@@ -17,9 +16,16 @@ import (
 func (s *Server) Watch(request *api.WatchRequest, stream api.Watch_WatchServer) error {
 	ctx := stream.Context()
 
+	s.mu.Lock()
+	pctx := s.pctx
+	s.mu.Unlock()
+	if pctx == nil {
+		return errNotRunning
+	}
+
 	watchArgs, err := api.ConvertWatchArgs(request.Entries)
 	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "%s", err.Error())
+		return status.Errorf(codes.InvalidArgument, "%s", err.Error())
 	}
 
 	watchArgs = append(watchArgs, state.EventCommit{})
@@ -39,6 +45,8 @@ func (s *Server) Watch(request *api.WatchRequest, stream api.Watch_WatchServer) 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-pctx.Done():
+			return pctx.Err()
 		case event := <-watch:
 			if commitEvent, ok := event.(state.EventCommit); ok && len(events) > 0 {
 				if err := stream.Send(&api.WatchMessage{Events: events, Version: commitEvent.Version}); err != nil {

@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -25,7 +25,7 @@ const (
 func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	trh := &taskRestartHandler{}
 	taskRestart := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    trh.Handler(),
 		MethodType:        http.MethodPost,
@@ -42,10 +42,9 @@ func getTaskRestartRouteManager(route string, version int) *RouteManager {
 func getTasksByBuildRouteManager(route string, version int) *RouteManager {
 	tbh := &tasksByBuildHandler{}
 	tasksByBuild := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    tbh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: tbh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -59,7 +58,7 @@ func getTasksByBuildRouteManager(route string, version int) *RouteManager {
 func getTaskRouteManager(route string, version int) *RouteManager {
 	tep := &TaskExecutionPatchHandler{}
 	taskExecutionPatch := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext, PrefetchUser},
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
 		Authenticator:     &NoAuthAuthenticator{},
 		RequestHandler:    tep.Handler(),
 		MethodType:        http.MethodPatch,
@@ -67,10 +66,9 @@ func getTaskRouteManager(route string, version int) *RouteManager {
 
 	tgh := &taskGetHandler{}
 	taskGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    tgh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: tgh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -84,10 +82,9 @@ func getTaskRouteManager(route string, version int) *RouteManager {
 func getTasksByProjectAndCommitRouteManager(route string, version int) *RouteManager {
 	tph := &tasksByProjectHandler{}
 	tasksByProj := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    tph.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: tph.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -105,10 +102,9 @@ func getTaskAbortManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    t.Handler(),
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: t.Handler(),
 			},
 		},
 	}
@@ -129,9 +125,10 @@ type tasksByProjectArgs struct {
 // ParseAndValidate fetches the project context and task status from the request
 // and loads them into the arguments to be used by the execution.
 func (tph *tasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
 	args := tasksByProjectArgs{
-		projectId:  mux.Vars(r)["project_id"],
-		commitHash: mux.Vars(r)["commit_hash"],
+		projectId:  vars["project_id"],
+		commitHash: vars["commit_hash"],
 		status:     r.URL.Query().Get("status"),
 	}
 	if args.projectId == "" {
@@ -250,8 +247,7 @@ type taskGetHandler struct {
 
 // ParseAndValidate fetches the taskId from the http request.
 func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	tgh.taskID = vars["task_id"]
+	tgh.taskID = gimlet.GetVars(r)["task_id"]
 	_, tgh.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
 	return nil
 }
@@ -285,7 +281,7 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	}
 
 	if tgh.fetchAllExecutions {
-		tasks, err := sc.FindOldTasksByID(tgh.taskID)
+		tasks, err := sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "API model error")
 		}
@@ -293,6 +289,17 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
 			return ResponseData{}, errors.Wrap(err, "API model error")
 		}
+
+		for i := range taskModel.PreviousExecutions {
+			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
+				return ResponseData{}, errors.Wrap(err, "failed to fetch artifacts for previous executions")
+			}
+		}
+	}
+
+	err = taskModel.GetArtifacts()
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "error retrieving artifacts")
 	}
 
 	return ResponseData{
@@ -316,7 +323,7 @@ type tasksByBuildArgs struct {
 
 func (tbh *tasksByBuildHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	args := tasksByBuildArgs{
-		buildId: mux.Vars(r)["build_id"],
+		buildId: gimlet.GetVars(r)["build_id"],
 		status:  r.URL.Query().Get("status"),
 	}
 	if args.buildId == "" {
@@ -385,7 +392,7 @@ func tasksByBuildPaginator(key string, limit int, args interface{}, sc data.Conn
 		}
 
 		if btArgs.fetchAllExecutions {
-			oldTasks, err := sc.FindOldTasksByID(st.Id)
+			oldTasks, err := sc.FindOldTasksByIDWithDisplayTasks(st.Id)
 			if err != nil {
 				return []model.Model{}, nil, errors.Wrap(err, "error fetching old tasks")
 			}
@@ -483,7 +490,7 @@ type TaskExecutionPatchHandler struct {
 	Activated *bool  `json:"activated"`
 	Priority  *int64 `json:"priority"`
 
-	user auth.User
+	user gimlet.User
 	task *task.Task
 }
 
@@ -588,13 +595,12 @@ func (t *taskAbortHandler) Handler() RequestHandler {
 }
 
 func (t *taskAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	t.taskId = vars["task_id"]
+	t.taskId = gimlet.GetVars(r)["task_id"]
 	return nil
 }
 
 func (t *taskAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.AbortTask(t.taskId, GetUser(ctx).Id)
+	err := sc.AbortTask(t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Abort error")

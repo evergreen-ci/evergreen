@@ -50,12 +50,14 @@ var projectSyntaxValidators = []projectValidator{
 	verifyTaskDependencies,
 	verifyTaskRequirements,
 	validateBVNames,
+	validateDisplayTaskNames,
 	validateBVTaskNames,
 	checkAllDependenciesSpec,
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
 	validateTaskGroups,
 	validateGenerateTasks,
+	validateCreateHosts,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -560,6 +562,32 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 	return errs
 }
 
+func validateDisplayTaskNames(project *model.Project) []ValidationError {
+	errs := []ValidationError{}
+
+	// build a map of task names
+	tn := map[string]struct{}{}
+	for _, t := range project.Tasks {
+		tn[t.Name] = struct{}{}
+	}
+
+	// check display tasks
+	for _, bv := range project.BuildVariants {
+		for _, dp := range bv.DisplayTasks {
+			for _, etn := range dp.ExecutionTasks {
+				if strings.HasPrefix(etn, "display_") {
+					errs = append(errs,
+						ValidationError{
+							Level:   Error,
+							Message: fmt.Sprintf("execution task '%s' has prefix 'display_' which is invalid", etn),
+						})
+				}
+			}
+		}
+	}
+	return errs
+}
+
 // Helper for validating a set of plugin commands given a project/registry
 func validateCommands(section string, project *model.Project,
 	commands []model.PluginCommandConf) []ValidationError {
@@ -827,11 +855,34 @@ func validateTaskGroups(p *model.Project) []ValidationError {
 
 func checkTaskGroups(p *model.Project) []ValidationError {
 	errs := []ValidationError{}
+	tasksInTaskGroups := map[string]string{}
 	for _, tg := range p.TaskGroups {
+		if tg.MaxHosts < 1 {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group %s has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
+				Level:   Warning,
+			})
+		}
+		if len(tg.Tasks) == 1 {
+			continue
+		}
 		if tg.MaxHosts > (len(tg.Tasks) / 2) {
 			errs = append(errs, ValidationError{
 				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than half the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
+			})
+		}
+		for _, t := range tg.Tasks {
+			tasksInTaskGroups[t] = tg.Name
+		}
+	}
+	for t, tg := range tasksInTaskGroups {
+		spec := p.GetSpecForTask(t)
+		if len(spec.DependsOn) > 0 {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task %s in task group %s has a dependency on a task outside the task group, "+
+					"which can cause task group tasks to be scheduled out of order", t, tg),
+				Level: Error,
 			})
 		}
 	}
@@ -839,48 +890,65 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 }
 
 func validateGenerateTasks(p *model.Project) []ValidationError {
-	errs := []ValidationError{}
-	generateTasksCommand := "generate.tasks"
+	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
+	return validateTimesCalledPerBuildVariant(p, ts, evergreen.GenerateTasksCommandName, 1)
+}
 
-	// get all functions that call `generate.tasks`
-	fs := map[string]struct{}{}
-	for f, cmds := range p.Functions {
-		for _, c := range cmds.List() {
-			if c.Command == generateTasksCommand {
-				fs[f] = struct{}{}
-			}
-		}
-	}
+func validateCreateHosts(p *model.Project) []ValidationError {
+	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
+	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 10)...)
+	return errs
+}
 
-	// get all tasks that call `generate.tasks`
-	ts := map[string]struct{}{}
-	for _, t := range p.Tasks {
-		for _, c := range t.Commands {
-			if c.Function != "" {
-				if _, ok := fs[c.Function]; ok {
-					ts[t.Name] = struct{}{}
+func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			if count, ok := ts[t.Name]; ok {
+				if count > times {
+					errs = append(errs, ValidationError{
+						Message: fmt.Sprintf("variant %s task %s may only call %s %d times but calls it %d times", bv.Name, t.Name, commandName, times, count),
+						Level:   Error,
+					})
 				}
 			}
-			if c.Command == generateTasksCommand {
-				ts[t.Name] = struct{}{}
-			}
 		}
 	}
+	return errs
+}
 
-	// validate that no buildvariant calls `generate.tasks` more than once
+func validateTimesCalledPerBuildVariant(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
 	for _, bv := range p.BuildVariants {
-		count := []string{}
+		total := 0
 		for _, t := range bv.Tasks {
-			if _, ok := ts[t.Name]; ok {
-				count = append(count, t.Name)
+			if count, ok := ts[t.Name]; ok {
+				total += count
 			}
 		}
-		if len(count) > 1 {
+		if total > times {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("buildvariant %s calls tasks %s which call `%s`, but buildvariants may only call `%s` once", bv.Name, count, generateTasksCommand, generateTasksCommand),
+				Message: fmt.Sprintf("variant %s may only call %s %d times but calls it %d times", bv.Name, commandName, times, total),
 				Level:   Error,
 			})
 		}
+	}
+	return errs
+}
+
+func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+	total := 0
+	for _, bv := range p.BuildVariants {
+		for _, t := range bv.Tasks {
+			if count, ok := ts[t.Name]; ok {
+				total += count
+			}
+		}
+	}
+	if total > times {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("may only call %s %d times but it is called %d times", commandName, times, total),
+			Level:   Error,
+		})
 	}
 	return errs
 }

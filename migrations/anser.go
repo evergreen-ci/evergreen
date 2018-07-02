@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
@@ -70,6 +69,7 @@ type migrationGeneratorFactory func(anser.Environment, migrationGeneratorFactory
 // execution. See the anser documentation and the
 // anser/example_test.go for an example.
 func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environment) (*anser.Application, error) {
+	const allLogCollection = "event_log"
 	app := &anser.Application{
 		Options: model.ApplicationOptions{
 			Limit:  opts.Limit,
@@ -89,12 +89,14 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		// migrationTestResultsOldTasks: oldTestResultsGenerator,
 		// migrationTestResultstasks: testResultsGenerator,
 
-		migrationProjectAliasesToCollection:   projectAliasesToCollectionGenerator,
-		migrationGithubHooksToCollection:      githubHooksToCollectionGenerator,
-		migrationZeroDateFix:                  zeroDateFixGenerator(githubToken),
-		migrationAdminEventRestructure:        adminEventRestructureGenerator,
-		migrationEventRtypeRestructureAllLogs: makeEventRTypeMigration(event.AllLogCollection),
-		migrationSetDefaultBranch:             setDefaultBranchMigrationGenerator,
+		migrationProjectAliasesToCollection:    projectAliasesToCollectionGenerator,
+		migrationGithubHooksToCollection:       githubHooksToCollectionGenerator,
+		migrationZeroDateFix:                   zeroDateFixGenerator(githubToken),
+		migrationAdminEventRestructure:         adminEventRestructureGenerator,
+		migrationEventRtypeRestructureAllLogs:  makeEventRTypeMigration(allLogCollection),
+		migrationSetDefaultBranch:              setDefaultBranchMigrationGenerator,
+		migrationAdminMapRestructure:           adminMapRestructureGenerator,
+		migrationSpawnhostExpirationPreference: setSpawnhostPreferenceGenerator,
 	}
 	catcher := grip.NewBasicCatcher()
 

@@ -2,10 +2,15 @@ package data
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +20,7 @@ type DBUserConnector struct{}
 
 // FindUserById uses the service layer's user type to query the backing database for
 // the user with the given Id.
-func (tc *DBUserConnector) FindUserById(userId string) (auth.APIUser, error) {
+func (tc *DBUserConnector) FindUserById(userId string) (gimlet.User, error) {
 	t, err := user.FindOne(user.ById(userId))
 	if err != nil {
 		return nil, err
@@ -31,6 +36,73 @@ func (u *DBUserConnector) DeletePublicKey(user *user.DBUser, keyName string) err
 	return user.DeletePublicKey(keyName)
 }
 
+func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
+	if strings.HasPrefix(settings.SlackUsername, "#") {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "expected a Slack username, but got a channel",
+		}
+	}
+	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
+	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
+
+	var patchSubscriber event.Subscriber
+	switch settings.Notifications.PatchFinish {
+	case user.PreferenceSlack:
+		patchSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	patchSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionPatchOutcome,
+		dbUser.Settings.Notifications.PatchFinishID, patchSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if patchSubscription != nil {
+		settings.Notifications.PatchFinishID = patchSubscription.ID
+	} else {
+		settings.Notifications.PatchFinishID = ""
+	}
+
+	var buildBreakSubscriber event.Subscriber
+	switch settings.Notifications.BuildBreak {
+	case user.PreferenceSlack:
+		buildBreakSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	buildBreakSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionBuildBreak,
+		dbUser.Settings.Notifications.BuildBreakID, buildBreakSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if buildBreakSubscription != nil {
+		settings.Notifications.BuildBreakID = buildBreakSubscription.ID
+	} else {
+		settings.Notifications.BuildBreakID = ""
+	}
+
+	var spawnhostSubscriber event.Subscriber
+	switch settings.Notifications.SpawnHostExpiration {
+	case user.PreferenceSlack:
+		spawnhostSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	spawnhostSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnhostExpiration,
+		dbUser.Settings.Notifications.SpawnHostExpirationID, spawnhostSubscriber, dbUser.Id)
+	if err != nil {
+		return err
+	}
+	if spawnhostSubscription != nil {
+		settings.Notifications.SpawnHostExpirationID = spawnhostSubscription.ID
+	} else {
+		settings.Notifications.SpawnHostExpirationID = ""
+	}
+
+	return model.SaveUserSettings(dbUser.Id, settings)
+}
+
 // MockUserConnector stores a cached set of users that are queried against by the
 // implementations of the UserConnector interface's functions.
 type MockUserConnector struct {
@@ -40,7 +112,7 @@ type MockUserConnector struct {
 // FindUserById provides a mock implementation of the User functions
 // from the Connector that does not need to use a database.
 // It returns results based on the cached users in the MockUserConnector.
-func (muc *MockUserConnector) FindUserById(userId string) (auth.APIUser, error) {
+func (muc *MockUserConnector) FindUserById(userId string) (gimlet.User, error) {
 	u := muc.CachedUsers[userId]
 	return u, nil
 }
@@ -85,4 +157,8 @@ func (muc *MockUserConnector) DeletePublicKey(u *user.DBUser, keyName string) er
 	}
 	cu.PubKeys = newKeys
 	return nil
+}
+
+func (muc *MockUserConnector) UpdateSettings(user *user.DBUser, settings user.UserSettings) error {
+	return errors.New("UpdateSettings not implemented for mock connector")
 }

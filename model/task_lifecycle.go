@@ -46,6 +46,25 @@ func SetActiveState(taskId string, caller string, active bool) error {
 				return errors.Wrap(err, "error while activating task")
 			}
 		}
+
+		if t.DistroId == "" {
+			var project *Project
+			project, err = FindProjectFromTask(t)
+			if err != nil {
+				return errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
+			}
+
+			var distro string
+			distro, err = project.FindDistroNameForTask(t)
+			if err != nil {
+				return errors.Wrapf(err, "problem finding distro for activating task '%s'", taskId)
+			}
+			err = t.SetDistro(distro)
+			if err != nil {
+				return errors.Wrapf(err, "problem setting distro for activating task '%s'", taskId)
+			}
+		}
+
 		// If the task was not activated by step back, and either the caller is not evergreen
 		// or the task was originally activated by evergreen, deactivate the task
 	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
@@ -64,9 +83,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	}
 
 	if active {
-		event.LogTaskActivated(taskId, caller)
+		event.LogTaskActivated(taskId, t.Execution, caller)
 	} else {
-		event.LogTaskDeactivated(taskId, caller)
+		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	}
 
 	if t.IsPartOfDisplay() {
@@ -92,7 +111,7 @@ func ActivatePreviousTask(taskId, caller string) error {
 	}
 
 	// if this is the first time we're running the task, or it's finished or it is blacklisted
-	if prevTask == nil || task.IsFinished(*prevTask) || prevTask.Priority < 0 {
+	if prevTask == nil || prevTask.IsFinished() || prevTask.Priority < 0 {
 		return nil
 	}
 
@@ -149,6 +168,17 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			grip.Debugln(message, "marking as failed")
 			if detail != nil {
 				updates := StatusChanges{}
+				if t.DisplayOnly {
+					for _, etId := range t.ExecutionTasks {
+						execTask, err := task.FindOne(task.ById(etId))
+						if err != nil {
+							return errors.Wrap(err, "error finding execution task")
+						}
+						if err = MarkEnd(execTask, origin, time.Now(), detail, false, &updates); err != nil {
+							return errors.Wrap(err, "error marking execution task as ended")
+						}
+					}
+				}
 				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false, &updates))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
@@ -157,11 +187,27 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	// only allow re-execution for failed or successful tasks
-	if !task.IsFinished(*t) {
+	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
 				user, t.Id, t.Status)
+			if t.DisplayOnly {
+				execTasks := map[string]string{}
+				for _, et := range t.ExecutionTasks {
+					execTask, err := task.FindOne(task.ById(et))
+					if err != nil {
+						continue
+					}
+					execTasks[execTask.Id] = execTask.Status
+				}
+				grip.Error(message.Fields{
+					"message":    "attempt to restart unfinished display task",
+					"task":       t.Id,
+					"status":     t.Status,
+					"exec_tasks": execTasks,
+				})
+			}
 			return errors.Errorf("Task '%v' is currently '%v' - cannot reset task in this status",
 				t.Id, t.Status)
 		}
@@ -177,9 +223,9 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		return err
 	}
 	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
-		event.LogTaskRestarted(t.Id, user)
+		event.LogTaskRestarted(t.Id, t.Execution, user)
 	} else {
-		event.LogTaskRestarted(t.Id, origin)
+		event.LogTaskRestarted(t.Id, t.Execution, origin)
 	}
 
 	if t.DisplayOnly {
@@ -204,7 +250,7 @@ func AbortTask(taskId, caller string) error {
 	if err = SetActiveState(t.Id, caller, false); err != nil {
 		return err
 	}
-	event.LogTaskAbortRequest(t.Id, caller)
+	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
 	return t.SetAborted()
 }
 
@@ -237,7 +283,7 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 			}
 			canDeactivate := true
 			for _, et := range execTasks {
-				if task.IsFinished(et) || task.IsAbortable(et) {
+				if et.IsFinished() || task.IsAbortable(et) {
 					canDeactivate = false
 					break
 				}
@@ -263,7 +309,7 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		if err != nil {
 			return err
 		}
-		event.LogTaskDeactivated(t.Id, caller)
+		event.LogTaskDeactivated(t.Id, t.Execution, caller)
 		// update the cached version of the task, in its build document to be deactivated
 		if !t.IsPartOfDisplay() {
 			if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
@@ -346,7 +392,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
-		detail.Type = TestCommandType
 	}
 
 	t.Details = *detail
@@ -361,7 +406,7 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return err
 	}
 	status := t.ResultStatus()
-	event.LogTaskFinished(t.Id, t.HostId, status)
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, status)
 
 	if t.IsPartOfDisplay() {
 		if err = t.DisplayTask.UpdateDisplayTask(); err != nil {
@@ -377,23 +422,21 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		}
 	}
 
-	// no need to activate/deactivate other task if this is a patch request's task
-	if evergreen.IsPatchRequester(t.Requester) {
-		return errors.Wrap(UpdateBuildAndVersionStatusForTask(t.Id, updates),
-			"Error updating build status (1)")
-	}
-	if t.IsPartOfDisplay() {
-		err = evalStepback(t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
-	} else {
-		err = evalStepback(t, caller, status, deactivatePrevious)
-	}
-	if err != nil {
-		return err
+	// activate/deactivate other task if this is not a patch request's task
+	if !evergreen.IsPatchRequester(t.Requester) {
+		if t.IsPartOfDisplay() {
+			err = evalStepback(t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
+		} else {
+			err = evalStepback(t, caller, status, deactivatePrevious)
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	// update the build
 	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
-		return errors.Wrap(err, "Error updating build status (2)")
+		return errors.Wrap(err, "Error updating build status")
 	}
 
 	return nil
@@ -465,7 +508,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
-		if task.IsFinished(t) {
+		if t.IsFinished() {
 			var displayTask *task.Task
 			status := ""
 			finishedTasks++
@@ -481,7 +524,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				}
 				t = *displayTask
 				status = t.Status
-				if !task.IsFinished(t) {
+				if t.IsFinished() {
 					continue
 				}
 			}
@@ -513,8 +556,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 	}
 
-	// if there are no failed tasks, mark the build as started
-	if !failedTask {
+	if b.Status == evergreen.BuildCreated {
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
 			err = errors.Wrap(err, "Error updating build status")
 			grip.Error(err)
@@ -596,7 +638,7 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 	if err = t.MarkStart(startTime); err != nil {
 		return errors.WithStack(err)
 	}
-	event.LogTaskStarted(t.Id)
+	event.LogTaskStarted(t.Id, t.Execution)
 
 	// ensure the appropriate build is marked as started if necessary
 	if err = build.TryMarkStarted(t.BuildId, startTime); err != nil {
@@ -633,7 +675,7 @@ func MarkTaskUndispatched(t *task.Task) error {
 		return errors.WithStack(err)
 	}
 	// the task was successfully dispatched, log the event
-	event.LogTaskUndispatched(t.Id, t.HostId)
+	event.LogTaskUndispatched(t.Id, t.Execution, t.HostId)
 
 	if t.IsPartOfDisplay() {
 		return updateDisplayTask(t)
@@ -653,7 +695,7 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 			"on host %s", t.Id, hostId)
 	}
 	// the task was successfully dispatched, log the event
-	event.LogTaskDispatched(t.Id, hostId)
+	event.LogTaskDispatched(t.Id, t.Execution, hostId)
 
 	if t.IsPartOfDisplay() {
 		return updateDisplayTask(t)

@@ -70,39 +70,9 @@ type uiBuild struct {
 	Tasks           []uiTask
 	Elapsed         time.Duration
 	CurrentTime     int64
-	RepoOwner       string          `json:"repo_owner"`
-	Repo            string          `json:"repo_name"`
-	TaskStatusCount taskStatusCount `json:"taskStatusCount"`
-}
-
-// taskStatusCount holds all the counts for task statuses for a given build.
-type taskStatusCount struct {
-	Succeeded    int `json:"succeeded"`
-	Failed       int `json:"failed"`
-	Started      int `json:"started"`
-	Undispatched int `json:"undispatched"`
-	Inactive     int `json:"inactive"`
-	Dispatched   int `json:"dispatched"`
-	TimedOut     int `json:"timed_out"`
-}
-
-func (tsc *taskStatusCount) incrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
-	switch status {
-	case evergreen.TaskSucceeded:
-		tsc.Succeeded++
-	case evergreen.TaskFailed, evergreen.TaskSetupFailed:
-		if statusDetails.TimedOut && statusDetails.Description == "heartbeat" {
-			tsc.TimedOut++
-		} else {
-			tsc.Failed++
-		}
-	case evergreen.TaskStarted, evergreen.TaskDispatched:
-		tsc.Started++
-	case evergreen.TaskUndispatched:
-		tsc.Undispatched++
-	case evergreen.TaskInactive:
-		tsc.Inactive++
-	}
+	RepoOwner       string               `json:"repo_owner"`
+	Repo            string               `json:"repo_name"`
+	TaskStatusCount task.TaskStatusCount `json:"taskStatusCount"`
 }
 
 type uiTask struct {
@@ -131,8 +101,8 @@ func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 	}
 
 	uiBuilds := make([]uiBuild, len(dbBuilds))
-	for buildIdx, buildId := range buildIds {
-		b := buildsMap[buildId]
+	for buildIdx, build := range dbBuilds {
+		b := buildsMap[build.Id]
 		buildAsUI := uiBuild{Build: b}
 
 		//Use the build's task cache, instead of querying for each individual task.

@@ -1,5 +1,5 @@
 <div>
-  <span>
+  <div>
     <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="status">
       <span>
         <i class="fa fa-desktop" style="margin-right:10px"></i>
@@ -17,8 +17,13 @@
         </a>
       </li>
     </ul>
-    <button type="button" class="btn btn-info host-button" style="float: right;" ng-disabled="hostCount==0" ng-click="updateStatus()">
-    Update
-    </button>
-  </span>
+  </div>
+  <div>
+    <span>
+      <input type="text" placeholder="Notes" ng-model="notes.text" style="margin-left:10px"/>
+      <button type="button" class="btn btn-info host-button" style="float: right;" ng-disabled="hostCount==0" ng-click="updateStatus()">
+      Update
+      </button>
+    </span>
+  </div>
 </div>

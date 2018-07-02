@@ -10,10 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 func getGenerateManager(route string, version int) *RouteManager {
@@ -49,8 +48,7 @@ func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 			Message:    fmt.Sprintf("error reading JSON from body (%s):\n%s", err, string(failedJson)),
 		}
 	}
-	vars := mux.Vars(r)
-	h.taskID = vars["task_id"]
+	h.taskID = gimlet.GetVars(r)["task_id"]
 	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
 		return &rest.APIError{
 			StatusCode: code,
@@ -74,12 +72,11 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 
 func (h *generateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	if err := sc.GenerateTasks(h.taskID, h.files); err != nil {
-		grip.Error(message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
-			"error":   err,
 			"task_id": h.taskID,
-		})
-		return ResponseData{}, errors.Wrap(err, "error generating tasks")
+		}))
+		return ResponseData{}, err
 	}
 	return ResponseData{}, nil
 }

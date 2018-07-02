@@ -64,19 +64,99 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
       function(resp) {
         console.log("Error getting build history: " + JSON.stringify(resp.data));
       });
-  };
-});
+    };
+  });
 
 
-mciModule.controller('BuildViewController', function($scope, $http, $timeout, $rootScope, mciTime, $window) {
+mciModule.controller('BuildViewController', function($scope, $http, $timeout, $rootScope, mciTime, $window, $mdDialog, mciSubscriptionsService, notificationService, $mdToast) {
   $scope.build = {};
   $scope.computed = {};
   $scope.loading = false;
   $scope.lastUpdate = null;
   $scope.jiraHost = $window.jiraHost;
+  $scope.subscriptions = [];
+  $scope.hide_add_subscription = true;
+  $scope.triggers = [
+    {
+      trigger: "outcome",
+      resource_type: "BUILD",
+      label: "this build finishes"
+    },
+    {
+      trigger: "failure",
+      resource_type: "BUILD",
+      label: "this build fails"
+    },
+    {
+      trigger: "success",
+      resource_type: "BUILD",
+      label: "this build succeeds"
+    },
+    {
+      trigger: "exceeds-duration",
+      resource_type: "BUILD",
+      label: "the runtime for this build exceeds some duration",
+      extraFields: [
+        {text: "Build duration (seconds)", key: "build-duration-secs", validator: validateDuration}
+      ]
+    },
+    {
+      trigger: "runtime-change",
+      resource_type: "BUILD",
+      label: "the runtime for this build changes by some percentage",
+      extraFields: [
+        {text: "Percent change", key: "build-percent-change", validator: validatePercentage}
+      ]
+    },
+    {
+      trigger: "outcome",
+      resource_type: "TASK",
+      label: "a task in this build finishes"
+    },
+    {
+      trigger: "failure",
+      resource_type: "TASK",
+      label: "a task in this build fails"
+    },
+    {
+      trigger: "succeeds",
+      resource_type: "TASK",
+      label: "a task in this build succeeds"
+    },
+  ];
 
   var dateSorter = function(a, b){ return (+a) - (+b) }
 
+  $scope.addSubscription = function() {
+    omitMethods = {};
+    omitMethods[SUBSCRIPTION_JIRA_ISSUE] = true;
+    omitMethods[SUBSCRIPTION_EVERGREEN_WEBHOOK] = true;
+    promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
+
+    $mdDialog.show(promise).then(function(data){
+      if (data.resource_type === "BUILD") {
+        addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
+
+      }else {
+        addInSelectorsAndOwnerType(data, "build", data.resource_type.toLowerCase(), $scope.build.Build._id);
+      }
+      $scope.subscriptions.push(data);
+      $scope.saveSubscriptions();
+    });
+  };
+
+  $scope.saveSubscriptions = function() {
+    var success = function() {
+      $mdToast.show({
+        templateUrl: "/static/partials/subscription_confirmation_toast.html",
+        position: "bottom right"
+      });
+    };
+    var failure = function(resp) {
+      notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'notifyHeader');
+    };
+    mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
+  }
 
   $scope.setBuild = function(build) {
     $scope.build = build;
@@ -138,6 +218,9 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
         if (build.CurrentTime && d) {
           build.Tasks[i].Task.time_taken = (build.CurrentTime - d) * 1000 * 1000;
         }
+      } else {
+        // use the start/end time rather than time taken so that display tasks display the wall clock time
+        build.Tasks[i].Task.time_taken = 1000 * 1000 * (Date.parse(build.Tasks[i].Task.finish_time) - Date.parse(build.Tasks[i].Task.start_time));
       }
       if (build.Tasks[i].Task.time_taken > $scope.computed.maxTaskTime) {
         $scope.computed.maxTaskTime = build.Tasks[i].Task.time_taken;
@@ -169,19 +252,19 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     )
     $scope.totalTimeMS = _.reduce(
       _.map(finishedOnly,
-            function(x){return new Date(x.Task.finish_time) - new Date(x.Task.start_time)}),
-            function(sum, el){return sum+el},
-            0)
-  };
+        function(x){return new Date(x.Task.finish_time) - new Date(x.Task.start_time)}),
+        function(sum, el){return sum+el},
+        0)
+    };
 
-  $rootScope.$on("build_updated", function(e, newBuild){
-    newBuild.PatchInfo = $scope.build.PatchInfo
-    $scope.setBuild(newBuild);
+    $rootScope.$on("build_updated", function(e, newBuild){
+      newBuild.PatchInfo = $scope.build.PatchInfo
+      $scope.setBuild(newBuild);
+    });
+
+
+    $scope.setBuild($window.build);
+
+    $scope.plugins = $window.plugins
+
   });
-
-
-  $scope.setBuild($window.build);
-
-  $scope.plugins = $window.plugins
-
-});

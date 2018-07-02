@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -67,6 +68,11 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
 	return &dc, nil
 }
 
+// ClearTaskQueue deletes all tasks from the task queue for a distro
+func (tc *DBDistroConnector) ClearTaskQueue(distroId string) error {
+	return model.ClearTaskQueue(distroId)
+}
+
 // MockDistroConnector is a struct that implements mock versions of
 // Distro-related methods for testing.
 type MockDistroConnector struct {
@@ -115,4 +121,8 @@ func (mdc *MockDistroConnector) FindCostByDistroId(distroId string,
 	}
 
 	return &dc, nil
+}
+
+func (mdc *MockDistroConnector) ClearTaskQueue(distroId string) error {
+	return errors.New("ClearTaskQueue unimplemented for mock")
 }

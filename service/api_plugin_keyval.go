@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -24,5 +25,5 @@ func (as *APIServer) keyValPluginInc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, keyVal)
+	gimlet.WriteJSON(w, keyVal)
 }

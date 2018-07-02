@@ -40,7 +40,7 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
-func (c *dockerClientMock) CreateContainer(context.Context, string, *distro.Distro, *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, string, distro.Distro, *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}
@@ -78,7 +78,7 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host) (*types.Con
 	return container, nil
 }
 
-func (c *dockerClientMock) ListContainers(context.Context, *distro.Distro) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(context.Context, distro.Distro) ([]types.Container, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}

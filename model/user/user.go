@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
@@ -21,6 +22,7 @@ type DBUser struct {
 	CreatedAt    time.Time    `bson:"created_at"`
 	Settings     UserSettings `bson:"settings"`
 	APIKey       string       `bson:"apikey"`
+	SystemRoles  []string     `bson:"roles"`
 }
 
 type GithubUser struct {
@@ -35,32 +37,41 @@ type PubKey struct {
 }
 
 type UserSettings struct {
-	Timezone     string     `json:"timezone" bson:"timezone"`
-	NewWaterfall bool       `json:"new_waterfall" bson:"new_waterfall"`
-	GithubUser   GithubUser `json:"github_user" bson:"github_user,omitempty"`
+	Timezone      string                  `json:"timezone" bson:"timezone"`
+	NewWaterfall  bool                    `json:"new_waterfall" bson:"new_waterfall"`
+	GithubUser    GithubUser              `json:"github_user" bson:"github_user,omitempty"`
+	SlackUsername string                  `bson:"slack_username,omitempty" json:"slack_username,omitempty"`
+	Notifications NotificationPreferences `bson:"notifications,omitempty" json:"notifications,omitempty"`
 }
 
-func (u *DBUser) Username() string {
-	return u.Id
+type NotificationPreferences struct {
+	BuildBreak            UserSubscriptionPreference `bson:"build_break" json:"build_break"`
+	BuildBreakID          bson.ObjectId              `bson:"build_break_id,omitempty" json:"-"`
+	PatchFinish           UserSubscriptionPreference `bson:"patch_finish" json:"patch_finish"`
+	PatchFinishID         bson.ObjectId              `bson:"patch_finish_id,omitempty" json:"-"`
+	SpawnHostExpiration   UserSubscriptionPreference `bson:"spawn_host_expiration" json:"spawn_host_expiration"`
+	SpawnHostExpirationID bson.ObjectId              `bson:"spawn_host_expiration_id,omitempty" json:"-"`
 }
+
+type UserSubscriptionPreference string
+
+const (
+	PreferenceEmail UserSubscriptionPreference = event.EmailSubscriberType
+	PreferenceSlack UserSubscriptionPreference = event.SlackSubscriberType
+)
+
+func (u *DBUser) Username() string     { return u.Id }
+func (u *DBUser) Roles() []string      { return u.SystemRoles }
+func (u *DBUser) PublicKeys() []PubKey { return u.PubKeys }
+func (u *DBUser) Email() string        { return u.EmailAddress }
+func (u *DBUser) GetAPIKey() string    { return u.APIKey }
+func (u *DBUser) IsNil() bool          { return u == nil }
 
 func (u *DBUser) DisplayName() string {
 	if u.DispName != "" {
 		return u.DispName
 	}
 	return u.Id
-}
-
-func (u *DBUser) Email() string {
-	return u.EmailAddress
-}
-
-func (u *DBUser) GetAPIKey() string {
-	return u.APIKey
-}
-
-func (u *DBUser) IsNil() bool {
-	return u == nil
 }
 
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {
@@ -123,10 +134,6 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 	return nil
 }
 
-func (u *DBUser) PublicKeys() []PubKey {
-	return u.PubKeys
-}
-
 func (u *DBUser) Insert() error {
 	u.CreatedAt = time.Now()
 	return db.Insert(Collection, u)
@@ -157,5 +164,20 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 		return 0, err
 	}
 	return dbUser.PatchNumber, nil
+}
 
+func IsValidSubscriptionPreference(in string) bool {
+	switch in {
+	case event.EmailSubscriberType, event.SlackSubscriberType, "":
+		return true
+	default:
+		return false
+	}
+}
+
+func FormatObjectID(id string) (bson.ObjectId, error) {
+	if !bson.IsObjectIdHex(id) {
+		return "", errors.Errorf("%s is not a valid ObjectId", id)
+	}
+	return bson.ObjectIdHex(id), nil
 }

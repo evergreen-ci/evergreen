@@ -7,11 +7,6 @@ import (
 	"github.com/mongodb/grip"
 )
 
-type (
-	// custom type used to attach specific values to request contexts, to prevent collisions.
-	requestUserContextKey int
-)
-
 const (
 	User            = "mci"
 	GithubPatchUser = "github_pull_request"
@@ -20,29 +15,34 @@ const (
 	HostTerminated      = "terminated"
 	HostUninitialized   = "initializing"
 	HostStarting        = "starting"
-	HostInitializing    = "provisioning"
+	HostProvisioning    = "provisioning"
 	HostProvisionFailed = "provision failed"
-	HostUnreachable     = "unreachable"
 	HostQuarantined     = "quarantined"
 	HostDecommissioned  = "decommissioned"
 
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 
-	TaskStarted          = "started"
-	TaskUnstarted        = "unstarted"
-	TaskUndispatched     = "undispatched"
-	TaskDispatched       = "dispatched"
-	TaskFailed           = "failed"
-	TaskSucceeded        = "success"
-	TaskInactive         = "inactive"
-	TaskSystemFailed     = "system-failed"
+	// Task Statuses used in the database models
+	TaskStarted      = "started"
+	TaskUnstarted    = "unstarted"
+	TaskUndispatched = "undispatched"
+	TaskDispatched   = "dispatched"
+	TaskFailed       = "failed"
+	TaskSucceeded    = "success"
+	TaskInactive     = "inactive"
+	TaskSystemFailed = "system-failed"
+	TaskTestTimedOut = "test-timed-out"
+
+	// Task Statuses used only in TaskEndDetails
+	// TaskFailed and TaskSucceeded are also used here
 	TaskSetupFailed      = "setup-failed"
 	TaskTimedOut         = "task-timed-out"
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
-	TaskTestTimedOut     = "test-timed-out"
-	TaskConflict         = "task-conflict"
+
+	// TaskConflict is used only in communication with the Agent
+	TaskConflict = "task-conflict"
 
 	TestFailedStatus         = "fail"
 	TestSilentlyFailedStatus = "silentfail"
@@ -100,9 +100,6 @@ const (
 
 	DegradedLoggingPercent = 10
 
-	// Key used to store user information in request contexts
-	RequestUser requestUserContextKey = 0
-
 	SetupScriptName    = "setup.sh"
 	TeardownScriptName = "teardown.sh"
 
@@ -129,18 +126,34 @@ const (
 
 // cloud provider related constants
 const (
-	ProviderNameEc2Auto     = "ec2-auto"
-	ProviderNameEc2OnDemand = "ec2-ondemand"
-	ProviderNameEc2Spot     = "ec2-spot"
-	ProviderNameDocker      = "docker"
-	ProviderNameGce         = "gce"
-	ProviderNameStatic      = "static"
-	ProviderNameOpenstack   = "openstack"
-	ProviderNameVsphere     = "vsphere"
-	ProviderNameMock        = "mock"
+	ProviderNameEc2Auto       = "ec2-auto"
+	ProviderNameEc2OnDemand   = "ec2-ondemand"
+	ProviderNameEc2Spot       = "ec2-spot"
+	ProviderNameDocker        = "docker"
+	ProviderNameDockerStatic  = "docker-static"
+	ProviderNameDockerDynamic = "docker-dynamic"
+	ProviderNameGce           = "gce"
+	ProviderNameStatic        = "static"
+	ProviderNameOpenstack     = "openstack"
+	ProviderNameVsphere       = "vsphere"
+	ProviderNameMock          = "mock"
 
 	// TODO: This can be removed when no more hosts with provider ec2 are running.
 	ProviderNameEc2Legacy = "ec2"
+)
+
+var (
+	// Providers where hosts can be created and terminated automatically.
+	ProviderSpawnable = []string{
+		ProviderNameDocker,
+		ProviderNameEc2Legacy,
+		ProviderNameEc2OnDemand,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Auto,
+		ProviderNameGce,
+		ProviderNameOpenstack,
+		ProviderNameVsphere,
+	}
 )
 
 const (
@@ -159,25 +172,47 @@ const (
 )
 
 const (
+	GenerateTasksCommandName = "generate.tasks"
+	CreateHostCommandName    = "create.host"
+)
+
+type SenderKey int
+
+const (
+	SenderGithubStatus = SenderKey(iota)
+	SenderEvergreenWebhook
+	SenderSlack
+	SenderJIRAIssue
+	SenderJIRAComment
+	SenderEmail
+)
+
+const (
 	defaultLogBufferingDuration  = 20
 	defaultMgoDialTimeout        = 5 * time.Second
 	defaultAmboyPoolSize         = 2
 	defaultAmboyLocalStorageSize = 1024
 	defaultAmboyQueueName        = "evg.service"
 	defaultAmboyDBName           = "amboy"
+	maxNotificationsPerSecond    = 100
 )
 
 // NameTimeFormat is the format in which to log times like instance start time.
 const NameTimeFormat = "20060102150405"
 
 var (
+	PatchRequesters = []string{
+		PatchVersionRequester,
+		GithubPRRequester,
+	}
+
 	// UphostStatus is a list of all host statuses that are considered "up."
 	// This is used for query building.
 	UphostStatus = []string{
 		HostRunning,
 		HostUninitialized,
 		HostStarting,
-		HostInitializing,
+		HostProvisioning,
 		HostProvisionFailed,
 	}
 
@@ -186,7 +221,7 @@ var (
 	ActiveStatus = []string{
 		HostRunning,
 		HostStarting,
-		HostInitializing,
+		HostProvisioning,
 		HostProvisionFailed,
 	}
 

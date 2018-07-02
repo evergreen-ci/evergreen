@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 	"github.com/mongodb/grip"
@@ -112,5 +113,5 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, "S3 copy Successful")
+	gimlet.WriteJSON(w, "S3 copy Successful")
 }

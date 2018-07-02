@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -87,11 +87,14 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
 	}
 
+	ctx := r.Context()
+	user := gimlet.GetUser(ctx)
+
 	// set data for plugin data function injection
-	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
+	pluginContext := projCtx.ToPluginContext(uis.Settings, user)
 	pluginContent := getPluginDataAndHTML(uis, plugin.BuildPage, pluginContext)
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Build         *uiBuild
 		PluginContent pluginData
 		JiraHost      string
@@ -132,11 +135,11 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "abort":
-		if err := model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
+		if err = model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
-		if err := model.RefreshTasksCache(projCtx.Build.Id); err != nil {
+		if err = model.RefreshTasksCache(projCtx.Build.Id); err != nil {
 			http.Error(w, fmt.Sprintf("problem refreshing tasks cache %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
@@ -161,25 +164,25 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "set_active":
-		err := model.SetBuildActivation(projCtx.Build.Id, putParams.Active, user.Id)
+		err = model.SetBuildActivation(projCtx.Build.Id, putParams.Active, user.Id)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error marking build %v as activated=%v", projCtx.Build.Id, putParams.Active),
 				http.StatusInternalServerError)
 			return
 		}
 		if !putParams.Active && putParams.Abort {
-			if err = task.AbortBuild(projCtx.Build.Id); err != nil {
+			if err = task.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
 				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
 				return
 			}
 		}
 	case "restart":
-		if err := model.RestartBuild(projCtx.Build.Id, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
+		if err = model.RestartBuild(projCtx.Build.Id, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
 	default:
-		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action")
+		gimlet.WriteJSONError(w, "Unrecognized action")
 		return
 	}
 
@@ -204,11 +207,11 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updatedBuild.Tasks = uiTasks
-	uis.WriteJSON(w, http.StatusOK, updatedBuild)
+	gimlet.WriteJSON(w, updatedBuild)
 }
 
 func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
-	buildId := mux.Vars(r)["build_id"]
+	buildId := gimlet.GetVars(r)["build_id"]
 
 	before, err := getIntValue(r, "before", 3)
 	if err != nil {
@@ -235,7 +238,8 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 
 	history.Builds = make([]*uiBuild, len(builds))
 	for i := 0; i < len(builds); i++ {
-		v, err := version.FindOne(version.ById(builds[i].Version))
+		var v *version.Version
+		v, err = version.FindOne(version.ById(builds[i].Version))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error getting version for build %v: %v", builds[i].Id, err), http.StatusInternalServerError)
 			return
@@ -277,5 +281,5 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteJSON(w, http.StatusOK, history)
+	gimlet.WriteJSON(w, history)
 }

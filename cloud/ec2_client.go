@@ -24,7 +24,7 @@ const defaultRegion = "us-east-1"
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(*credentials.Credentials) error
+	Create(*credentials.Credentials, string) error
 
 	// Close an aws-sdk-client or mock.
 	Close()
@@ -44,10 +44,13 @@ type AWSClient interface {
 	// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
 	RequestSpotInstances(context.Context, *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error)
 
-	// DescribeSpotRequestsAndSave is a wrapper for DescribeSpotInstanceRequests that also saves instance IDs to the db
+	// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
+	DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error)
+
+	// DescribeSpotRequestsAndSave is a wrapper for DescribeSpotInstanceRequests that also saves instance IDs to the db.
 	DescribeSpotRequestsAndSave(context.Context, []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error)
 
-	// GetSpotInstanceId returns the instance ID if already saved, otherwise looks it up
+	// GetSpotInstanceId returns the instance ID if already saved, otherwise looks it up.
 	GetSpotInstanceId(context.Context, *host.Host) (string, error)
 
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
@@ -81,15 +84,18 @@ const (
 )
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
+func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) error {
 	if creds == nil {
 		return errors.New("creds must not be nil")
+	}
+	if region == "" {
+		return errors.New("region must not be empty")
 	}
 	if c.session == nil {
 		c.httpClient = util.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
-			Region:      makeStringPtr(defaultRegion),
+			Region:      makeStringPtr(region),
 			Credentials: creds,
 		})
 		if err != nil {
@@ -112,24 +118,17 @@ func (c *awsClientImpl) Close() {
 func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	var output *ec2.Reservation
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running RunInstances",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.RunInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running RunInstances",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -142,24 +141,17 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	var output *ec2.DescribeInstancesOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running DescribeInstances",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running DescribeInstances",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -172,24 +164,17 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	var output *ec2.CreateTagsOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running CreateTags",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.CreateTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running CreateTags",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -202,11 +187,7 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	var output *ec2.TerminateInstancesOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running TerminateInstances",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.TerminateInstancesWithContext(ctx, input)
@@ -223,14 +204,11 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 						return false, nil
 					}
 
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running TerminateInstances",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -243,24 +221,17 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	var output *ec2.RequestSpotInstancesOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running RequestSpotInstances",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("RequestSpotInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.RequestSpotInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running RequestSpotInstances",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -269,28 +240,21 @@ func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	return output, nil
 }
 
-// describeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientImpl) describeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
+func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	var output *ec2.DescribeSpotInstanceRequestsOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running DescribeSpotInstanceRequests",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("DescribeSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running DescribeSpotInstanceRequests",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -312,7 +276,7 @@ func (c *awsClientImpl) DescribeSpotRequestsAndSave(ctx context.Context, hosts [
 		SpotInstanceRequestIds: spotRequestIds,
 	}
 
-	instances, err := c.describeSpotInstanceRequests(ctx, apiInput)
+	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
 	if err != nil {
 		return nil, errors.Wrap(err, "error describing spot requests")
 	}
@@ -356,24 +320,20 @@ func (c *awsClientImpl) GetSpotInstanceId(ctx context.Context, h *host.Host) (st
 func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
 	var output *ec2.CancelSpotInstanceRequestsOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running CancelSpotInstanceRequests",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("CancelSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.CancelSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running CancelSpotInstanceRequests",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
+					if ec2err.Code() == EC2ErrorSpotRequestNotFound {
+						return false, err
+					}
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -386,24 +346,17 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	var output *ec2.DescribeVolumesOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running DescribeVolumes",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVolumesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running DescribeVolumes",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -416,24 +369,17 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	var output *ec2.DescribeSpotPriceHistoryOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running DescribeSpotPriceHistory",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("DescribeSpotPriceHistory", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotPriceHistoryWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running DescribeSpotPriceHistory",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -446,24 +392,17 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
 	var output *ec2.DescribeSubnetsOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running DescribeSubnets",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running DescribeSubnets",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -476,24 +415,17 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
 	var output *ec2.DescribeVpcsOutput
 	var err error
-	grip.Debug(message.Fields{
-		"client":  fmt.Sprintf("%T", c),
-		"message": "running DescribeVpcs",
-		"args":    input,
-	})
+	msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
-					grip.Error(message.WrapError(ec2err, message.Fields{
-						"client":  fmt.Sprintf("%T", c),
-						"message": "error running DescribeVpcs",
-						"args":    input,
-					}))
+					grip.Error(message.WrapError(ec2err, msg))
 				}
 				return true, err
 			}
+			grip.Info(msg)
 			return false, nil
 		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
@@ -542,10 +474,13 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeSpotPriceHistoryInput
 	*ec2.DescribeSubnetsInput
 	*ec2.DescribeVpcsInput
+
+	*ec2.DescribeSpotInstanceRequestsOutput
+	*ec2.DescribeInstancesOutput
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(creds *credentials.Credentials) error {
+func (c *awsClientMock) Create(creds *credentials.Credentials, region string) error {
 	c.Credentials = creds
 	return nil
 }
@@ -568,6 +503,9 @@ func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstance
 // DescribeInstances is a mock for ec2.DescribeInstances
 func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	c.DescribeInstancesInput = input
+	if c.DescribeInstancesOutput != nil {
+		return c.DescribeInstancesOutput, nil
+	}
 	return &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
 			&ec2.Reservation{
@@ -612,9 +550,12 @@ func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	}, nil
 }
 
-// describeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientMock) describeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+// DescribeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
+func (c *awsClientMock) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	c.DescribeSpotInstanceRequestsInput = input
+	if c.DescribeSpotInstanceRequestsOutput != nil {
+		return c.DescribeSpotInstanceRequestsOutput, nil
+	}
 	return &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
@@ -636,7 +577,7 @@ func (c *awsClientMock) DescribeSpotRequestsAndSave(ctx context.Context, hosts [
 		SpotInstanceRequestIds: spotRequestIds,
 	}
 
-	instances, err := c.describeSpotInstanceRequests(ctx, apiInput)
+	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
 	if err != nil {
 		return nil, err
 	}
@@ -726,4 +667,13 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	instance.State = &ec2.InstanceState{}
 	instance.State.Name = makeStringPtr("running")
 	return instance, nil
+}
+
+func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
+	return message.Fields{
+		"message":  "AWS API call",
+		"api_name": name,
+		"client":   client,
+		"args":     args,
+	}
 }

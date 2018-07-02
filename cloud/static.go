@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/anser/bsonutil"
@@ -53,14 +52,6 @@ func (staticMgr *staticManager) GetInstanceStatus(ctx context.Context, host *hos
 // get instance DNS
 func (staticMgr *staticManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	return host.Id, nil
-}
-
-func (*staticManager) GetInstanceName(d *distro.Distro) string {
-	return "static"
-}
-
-func (staticMgr *staticManager) CanSpawn() (bool, error) {
-	return false, nil
 }
 
 // terminate an instance

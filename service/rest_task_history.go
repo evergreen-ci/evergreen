@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 )
 
@@ -35,11 +35,20 @@ type RestTestHistoryResult struct {
 }
 
 func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
-	taskName := mux.Vars(r)["task_name"]
-	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	taskName := gimlet.GetVars(r)["task_name"]
+	projectID := r.FormValue("project_id")
+	if projectID == "" {
+		gimlet.WriteJSONInternalError(w, responseError{Message: "project id must not be empty"})
+		return
+	}
+	projectRef, err := model.FindOneProjectRef(projectID)
+	if err != nil || projectRef == nil {
+		gimlet.WriteJSONInternalError(w, responseError{Message: "error loading project"})
+		return
+	}
+	project, err := model.FindProject("", projectRef)
 	if err != nil || project == nil {
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: "error loading project"})
+		gimlet.WriteJSONInternalError(w, responseError{Message: "error loading project"})
 		return
 	}
 
@@ -50,11 +59,11 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding history for task '%v'", taskName)
 		grip.Errorf("%v: %+v", msg, err)
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
 		return
 	}
 
-	restapi.WriteJSON(w, http.StatusOK, chunk)
+	gimlet.WriteJSON(w, chunk)
 }
 
 // logURL returns the full URL for linking to a test's logs.
@@ -69,9 +78,9 @@ func logURL(url, logId, root string) string {
 // getTestHistory retrieves the test history query parameters from the request
 // and passes them to the function that gets the test results.
 func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
-	projectId := mux.Vars(r)["project_id"]
+	projectId := gimlet.GetVars(r)["project_id"]
 	if projectId == "" {
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: "invalid project id"})
+		gimlet.WriteJSONInternalError(w, responseError{Message: "invalid project id"})
 		return
 	}
 	params := model.TestHistoryParameters{}
@@ -85,7 +94,7 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	var err error
 	params.Limit, err = util.GetIntValue(r, "limit", 0)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, "invalid value for field 'limit'")
+		gimlet.WriteJSONError(w, "invalid value for field 'limit'")
 		return
 	}
 
@@ -103,7 +112,7 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	if beforeDate != "" {
 		params.BeforeDate, err = time.Parse(time.RFC3339, beforeDate)
 		if err != nil {
-			restapi.WriteJSON(w, http.StatusBadRequest, "invalid format for field 'before date'")
+			gimlet.WriteJSONError(w, "invalid format for field 'before date'")
 			return
 		}
 	}
@@ -112,7 +121,7 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	if afterDate != "" {
 		params.AfterDate, err = time.Parse(time.RFC3339, afterDate)
 		if err != nil {
-			restapi.WriteJSON(w, http.StatusBadRequest, "invalid format for field 'after date'")
+			gimlet.WriteJSONError(w, "invalid format for field 'after date'")
 			return
 		}
 	}
@@ -125,7 +134,7 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	case "all", "both", "any":
 		params.TaskRequestType = ""
 	default:
-		restapi.WriteJSON(w, http.StatusBadRequest,
+		gimlet.WriteJSONError(w,
 			fmt.Sprintf("invalid request type '%s', should be 'patch' or 'commit'",
 				r.FormValue("requestSource")))
 		return
@@ -138,25 +147,25 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	case "", "latest":
 		params.Sort = -1
 	default:
-		restapi.WriteJSON(w, http.StatusBadRequest, "invalid sort, must be earliest or latest")
+		gimlet.WriteJSONError(w, "invalid sort, must be earliest or latest")
 		return
 	}
 
 	// export format
 	isCSV, err := util.GetBoolValue(r, "csv", false)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, err.Error())
+		gimlet.WriteJSONError(w, err.Error())
 		return
 	}
 
 	err = params.SetDefaultsAndValidate()
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, err.Error())
+		gimlet.WriteJSONError(w, err.Error())
 		return
 	}
 	results, err := model.GetTestHistoryV2(&params)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, err.Error())
+		gimlet.WriteJSONError(w, err.Error())
 		return
 	}
 	restHistoryResults := []RestTestHistoryResult{}
@@ -196,6 +205,6 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 		util.WriteCSVResponse(w, http.StatusOK, restHistoryResults)
 		return
 	}
-	restapi.WriteJSON(w, http.StatusOK, restHistoryResults)
+	gimlet.WriteJSON(w, restHistoryResults)
 
 }

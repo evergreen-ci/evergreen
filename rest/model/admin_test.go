@@ -1,6 +1,7 @@
 package model
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestModelConversion(t *testing.T) {
@@ -46,36 +48,38 @@ func TestModelConversion(t *testing.T) {
 		}
 	}
 
-	assert.EqualValues(testSettings.Alerts.SMTP.From, apiSettings.Alerts.SMTP.From)
+	assert.EqualValues(testSettings.Alerts.SMTP.From, FromAPIString(apiSettings.Alerts.SMTP.From))
 	assert.EqualValues(testSettings.Alerts.SMTP.Port, apiSettings.Alerts.SMTP.Port)
 	assert.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(apiSettings.Alerts.SMTP.AdminEmail))
-	assert.EqualValues(testSettings.Amboy.Name, apiSettings.Amboy.Name)
+	assert.EqualValues(testSettings.Amboy.Name, FromAPIString(apiSettings.Amboy.Name))
 	assert.EqualValues(testSettings.Amboy.LocalStorage, apiSettings.Amboy.LocalStorage)
-	assert.EqualValues(testSettings.Api.HttpListenAddr, apiSettings.Api.HttpListenAddr)
-	assert.EqualValues(testSettings.AuthConfig.Crowd.Username, apiSettings.AuthConfig.Crowd.Username)
-	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, apiSettings.AuthConfig.Naive.Users[0].Username)
-	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, apiSettings.AuthConfig.Github.ClientId)
+	assert.EqualValues(testSettings.Api.HttpListenAddr, FromAPIString(apiSettings.Api.HttpListenAddr))
+	assert.EqualValues(testSettings.AuthConfig.Crowd.Username, FromAPIString(apiSettings.AuthConfig.Crowd.Username))
+	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, FromAPIString(apiSettings.AuthConfig.Naive.Users[0].Username))
+	assert.EqualValues(testSettings.ContainerPools.Pools[0].Distro, FromAPIString(apiSettings.ContainerPools.Pools[0].Distro))
+	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, FromAPIString(apiSettings.ContainerPools.Pools[0].Id))
+	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, apiSettings.ContainerPools.Pools[0].MaxContainers)
+	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, FromAPIString(apiSettings.AuthConfig.Github.ClientId))
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(apiSettings.AuthConfig.Github.Users))
 	assert.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, apiSettings.HostInit.SSHTimeoutSeconds)
-	assert.EqualValues(testSettings.Jira.Username, apiSettings.Jira.Username)
-	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, apiSettings.LoggerConfig.DefaultLevel)
+	assert.EqualValues(testSettings.Jira.Username, FromAPIString(apiSettings.Jira.Username))
+	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, FromAPIString(apiSettings.LoggerConfig.DefaultLevel))
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, apiSettings.LoggerConfig.Buffer.Count)
-	assert.EqualValues(testSettings.NewRelic.ApplicationName, apiSettings.NewRelic.ApplicationName)
-	assert.EqualValues(testSettings.Notify.SMTP.From, apiSettings.Notify.SMTP.From)
+	assert.EqualValues(testSettings.Notify.SMTP.From, FromAPIString(apiSettings.Notify.SMTP.From))
 	assert.EqualValues(testSettings.Notify.SMTP.Port, apiSettings.Notify.SMTP.Port)
 	assert.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(apiSettings.Notify.SMTP.AdminEmail))
-	assert.EqualValues(testSettings.Providers.AWS.Id, apiSettings.Providers.AWS.Id)
-	assert.EqualValues(testSettings.Providers.Docker.APIVersion, apiSettings.Providers.Docker.APIVersion)
-	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, apiSettings.Providers.GCE.ClientEmail)
-	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, apiSettings.Providers.OpenStack.IdentityEndpoint)
-	assert.EqualValues(testSettings.Providers.VSphere.Host, apiSettings.Providers.VSphere.Host)
+	assert.EqualValues(testSettings.Providers.AWS.Id, FromAPIString(apiSettings.Providers.AWS.Id))
+	assert.EqualValues(testSettings.Providers.Docker.APIVersion, FromAPIString(apiSettings.Providers.Docker.APIVersion))
+	assert.EqualValues(testSettings.Providers.GCE.ClientEmail, FromAPIString(apiSettings.Providers.GCE.ClientEmail))
+	assert.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, FromAPIString(apiSettings.Providers.OpenStack.IdentityEndpoint))
+	assert.EqualValues(testSettings.Providers.VSphere.Host, FromAPIString(apiSettings.Providers.VSphere.Host))
 	assert.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, apiSettings.RepoTracker.MaxConcurrentRequests)
-	assert.EqualValues(testSettings.Scheduler.TaskFinder, apiSettings.Scheduler.TaskFinder)
+	assert.EqualValues(testSettings.Scheduler.TaskFinder, FromAPIString(apiSettings.Scheduler.TaskFinder))
 	assert.EqualValues(testSettings.ServiceFlags.HostinitDisabled, apiSettings.ServiceFlags.HostinitDisabled)
-	assert.EqualValues(testSettings.Slack.Level, apiSettings.Slack.Level)
-	assert.EqualValues(testSettings.Slack.Options.Channel, apiSettings.Slack.Options.Channel)
-	assert.EqualValues(testSettings.Splunk.Channel, apiSettings.Splunk.Channel)
-	assert.EqualValues(testSettings.Ui.HttpListenAddr, apiSettings.Ui.HttpListenAddr)
+	assert.EqualValues(testSettings.Slack.Level, FromAPIString(apiSettings.Slack.Level))
+	assert.EqualValues(testSettings.Slack.Options.Channel, FromAPIString(apiSettings.Slack.Options.Channel))
+	assert.EqualValues(testSettings.Splunk.Channel, FromAPIString(apiSettings.Splunk.Channel))
+	assert.EqualValues(testSettings.Ui.HttpListenAddr, FromAPIString(apiSettings.Ui.HttpListenAddr))
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
@@ -91,11 +95,13 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, dbSettings.AuthConfig.Naive.Users[0].Username)
 	assert.EqualValues(testSettings.AuthConfig.Github.ClientId, dbSettings.AuthConfig.Github.ClientId)
 	assert.Equal(len(testSettings.AuthConfig.Github.Users), len(dbSettings.AuthConfig.Github.Users))
+	assert.EqualValues(testSettings.ContainerPools.Pools[0].Distro, dbSettings.ContainerPools.Pools[0].Distro)
+	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, dbSettings.ContainerPools.Pools[0].Id)
+	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, dbSettings.ContainerPools.Pools[0].MaxContainers)
 	assert.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, dbSettings.HostInit.SSHTimeoutSeconds)
 	assert.EqualValues(testSettings.Jira.Username, dbSettings.Jira.Username)
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, dbSettings.LoggerConfig.DefaultLevel)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, dbSettings.LoggerConfig.Buffer.Count)
-	assert.EqualValues(testSettings.NewRelic.ApplicationName, dbSettings.NewRelic.ApplicationName)
 	assert.EqualValues(testSettings.Notify.SMTP.From, dbSettings.Notify.SMTP.From)
 	assert.EqualValues(testSettings.Notify.SMTP.Port, dbSettings.Notify.SMTP.Port)
 	assert.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(dbSettings.Notify.SMTP.AdminEmail))
@@ -150,4 +156,42 @@ func TestEventConversion(t *testing.T) {
 	after := apiEvent.After.(*APIAdminSettings)
 	assert.EqualValues("", *before.Banner)
 	assert.EqualValues("banner", *after.Banner)
+}
+
+func TestAPIServiceFlagsModelInterface(t *testing.T) {
+	assert := assert.New(t)
+
+	flags := evergreen.ServiceFlags{}
+	assert.NotPanics(func() {
+		v := reflect.ValueOf(&flags).Elem()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			if f.Kind() == reflect.Bool {
+				f.SetBool(true)
+				assert.True(f.Bool())
+			}
+		}
+	}, "error setting all fields to true")
+
+	apiFlags := APIServiceFlags{}
+	assert.NoError(apiFlags.BuildFromService(flags))
+	allStructFieldsTrue(t, &apiFlags)
+
+	newFlagsI, err := apiFlags.ToService()
+	assert.NoError(err)
+	newFlags, ok := newFlagsI.(evergreen.ServiceFlags)
+	require.True(t, ok)
+	allStructFieldsTrue(t, &newFlags)
+}
+
+func allStructFieldsTrue(t *testing.T, s interface{}) {
+	elem := reflect.ValueOf(s).Elem()
+	for i := 0; i < elem.NumField(); i++ {
+		f := elem.Field(i)
+		if f.Kind() == reflect.Bool {
+			if !f.Bool() {
+				t.Errorf("all fields should be true, but '%s' was false", reflect.TypeOf(s).Elem().Field(i).Name)
+			}
+		}
+	}
 }

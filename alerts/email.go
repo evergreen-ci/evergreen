@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -35,7 +35,7 @@ type SMTPSettings struct {
 // EmailDeliverer is an implementation of Deliverer that sends notifications to an SMTP server
 type EmailDeliverer struct {
 	SMTPSettings
-	render *render.Render
+	render gimlet.Renderer
 }
 
 func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertConfig) error {
@@ -162,7 +162,7 @@ func getTemplate(alertCtx AlertContext) string {
 func (es *EmailDeliverer) getBody(alertCtx AlertContext) (string, error) {
 	out := &bytes.Buffer{}
 	template := getTemplate(alertCtx)
-	err := es.render.HTML(out, alertCtx, "content", template)
+	err := es.render.Render(out, alertCtx, "content", template)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
@@ -192,6 +192,8 @@ func taskFailureSubject(ctx AlertContext) string {
 		subj.WriteString("Task System Failure: ")
 	case ctx.Task.Details.Type == model.SystemCommandType:
 		subj.WriteString("Task System Failure: ")
+	case ctx.Task.Details.Type == model.SetupCommandType:
+		subj.WriteString("Task Setup Failure: ")
 	default:
 		subj.WriteString("Task Failed: ")
 	}

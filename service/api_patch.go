@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -50,10 +50,21 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(data.Patch) > patch.SizeLimit {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large."))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large"))
 		return
 	}
 	variants := strings.Split(data.Variants, ",")
+
+	pref, err := model.FindOneProjectRef(data.Project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project %s is not specified", data.Project))
+		return
+	}
+
+	if pref.PatchingDisabled || !pref.Enabled {
+		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("patching is disabled"))
+		return
+	}
 
 	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
 	if err != nil {
@@ -89,14 +100,13 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
+	gimlet.WriteJSONResponse(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
 }
 
 // Get the patch with the specified request it
 func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	// get id and secret from the request.
-	vars := mux.Vars(r)
-	patchIdStr := vars["patchId"]
+	patchIdStr := gimlet.GetVars(r)["patchId"]
 	if len(patchIdStr) == 0 {
 		return nil, errors.New("no patch id supplied")
 	}
@@ -119,13 +129,13 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	p, err := getPatchFromRequest(r)
 	if err != nil {
-		as.WriteJSON(w, http.StatusBadRequest, err.Error())
+		gimlet.WriteJSONError(w, err.Error())
 		return
 	}
 
 	githubOauthToken, err := as.Settings.GetGithubOauthToken()
 	if err != nil {
-		as.WriteJSON(w, http.StatusBadRequest, err)
+		gimlet.WriteJSONError(w, err)
 		return
 	}
 
@@ -139,7 +149,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			Patch   string `json:"patch"`
 			Githash string `json:"githash"`
 		}{}
-		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
@@ -170,6 +180,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	summaries, err := thirdparty.GetPatchSummaries(patchContent)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
@@ -204,7 +215,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, "Patch module updated")
+	gimlet.WriteJSON(w, "Patch module updated")
 }
 
 // listPatches returns a user's "n" most recent patches.
@@ -225,7 +236,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 			errors.Wrapf(err, "error finding patches for user %s", dbUser.Id))
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, patches)
+	gimlet.WriteJSON(w, patches)
 }
 
 func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request) {
@@ -263,12 +274,12 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		as.WriteJSON(w, http.StatusOK, "patch updated")
+		gimlet.WriteJSON(w, "patch updated")
 	case "finalize":
 		var githubOauthToken string
 		githubOauthToken, err = as.Settings.GetGithubOauthToken()
 		if err != nil {
-			as.WriteJSON(w, http.StatusInternalServerError, err)
+			gimlet.WriteJSONInternalError(w, err)
 			return
 		}
 
@@ -276,12 +287,14 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		patchedProject, err := validator.GetPatchedProject(ctx, p, githubOauthToken)
+		var patchedProject *model.Project
+		patchedProject, err = validator.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		projectYamlBytes, err := yaml.Marshal(patchedProject)
+		var projectYamlBytes []byte
+		projectYamlBytes, err = yaml.Marshal(patchedProject)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error marshaling patched config"))
 			return
@@ -293,14 +306,14 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		as.WriteJSON(w, http.StatusOK, "patch finalized")
+		gimlet.WriteJSON(w, "patch finalized")
 	case "cancel":
 		err = model.CancelPatch(p, dbUser.Id)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		as.WriteJSON(w, http.StatusOK, "patch deleted")
+		gimlet.WriteJSON(w, "patch deleted")
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", action), http.StatusBadRequest)
 	}
@@ -312,7 +325,7 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, PatchAPIResponse{Patch: p})
+	gimlet.WriteJSON(w, PatchAPIResponse{Patch: p})
 }
 
 func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
@@ -348,7 +361,7 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 		data.Modules = append(data.Modules, m)
 	}
 
-	as.WriteJSON(w, http.StatusOK, &data)
+	gimlet.WriteJSON(w, &data)
 }
 
 func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
@@ -359,14 +372,14 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	moduleName := r.FormValue("module")
 	if moduleName == "" {
-		as.WriteJSON(w, http.StatusBadRequest, "You must specify a module to delete")
+		gimlet.WriteJSONError(w, "You must specify a module to delete")
 		return
 	}
 
 	// don't mess with already finalized requests
 	if p.Activated {
 		response := fmt.Sprintf("Can't delete module - path already finalized")
-		as.WriteJSON(w, http.StatusBadRequest, response)
+		gimlet.WriteJSONError(w, response)
 		return
 	}
 
@@ -376,5 +389,5 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, PatchAPIResponse{Message: "module removed from patch."})
+	gimlet.WriteJSON(w, PatchAPIResponse{Message: "module removed from patch."})
 }

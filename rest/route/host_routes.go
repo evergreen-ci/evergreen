@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -38,10 +38,9 @@ func getHostRouteManager(route string, version int) *RouteManager {
 	}
 
 	hostPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    &hostPostHandler{},
-		MethodType:        http.MethodPost,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: &hostPostHandler{},
+		MethodType:     http.MethodPost,
 	}
 
 	hostRoute := RouteManager{
@@ -76,10 +75,9 @@ func getHostsByUserManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodGet,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    h.Handler(),
+				MethodType:     http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: h.Handler(),
 			},
 		},
 	}
@@ -99,8 +97,7 @@ func (high *hostIDGetHandler) Handler() RequestHandler {
 
 // ParseAndValidate fetches the hostId from the http request.
 func (high *hostIDGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	high.hostId = vars["host_id"]
+	high.hostId = gimlet.GetVars(r)["host_id"]
 	return nil
 }
 
@@ -297,7 +294,7 @@ func (h *hostsByUserHandler) Handler() RequestHandler {
 func (h *hostsByUserHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	h.Args = hostGetArgs{
 		status: r.URL.Query().Get("status"),
-		user:   mux.Vars(r)["user_id"],
+		user:   gimlet.GetVars(r)["user_id"],
 	}
 	return h.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -341,10 +338,9 @@ func getHostTerminateRouteManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &hostTerminateHandler{},
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &hostTerminateHandler{},
 			},
 		},
 	}
@@ -360,7 +356,7 @@ func (h *hostTerminateHandler) Handler() RequestHandler {
 
 func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	var err error
-	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
+	h.hostID, err = validateHostID(gimlet.GetVars(r)["host_id"])
 
 	return err
 }
@@ -405,10 +401,9 @@ func getHostChangeRDPPasswordRouteManager(route string, version int) *RouteManag
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &hostChangeRDPPasswordHandler{},
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &hostChangeRDPPasswordHandler{},
 			},
 		},
 	}
@@ -430,13 +425,13 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 	}
 
 	var err error
-	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
+	h.hostID, err = validateHostID(gimlet.GetVars(r)["host_id"])
 	if err != nil {
 		return err
 	}
 
-	h.rdpPassword = string(hostModify.RDPPwd)
-	if !spawn.ValidateRDPPassword(h.rdpPassword) {
+	h.rdpPassword = model.FromAPIString(hostModify.RDPPwd)
+	if !cloud.ValidateRDPPassword(h.rdpPassword) {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid password",
@@ -466,7 +461,7 @@ func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Conn
 			Message:    "RDP passwords can only be set on running hosts",
 		}
 	}
-	if err := spawn.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
+	if err := cloud.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -482,10 +477,9 @@ func getHostExtendExpirationRouteManager(route string, version int) *RouteManage
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &hostExtendExpirationHandler{},
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &hostExtendExpirationHandler{},
 			},
 		},
 	}
@@ -507,12 +501,12 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 	}
 
 	var err error
-	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
+	h.hostID, err = validateHostID(gimlet.GetVars(r)["host_id"])
 	if err != nil {
 		return err
 	}
 
-	addHours, err := strconv.Atoi(string(hostModify.AddHours))
+	addHours, err := strconv.Atoi(model.FromAPIString(hostModify.AddHours))
 	if err != nil {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -527,10 +521,10 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 			Message:    "must add more than 0 hours to expiration",
 		}
 	}
-	if h.addHours > spawn.MaxExpirationDurationHours {
+	if h.addHours > cloud.MaxSpawnHostExpirationDurationHours {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot add more than %s", spawn.MaxExpirationDurationHours.String()),
+			Message:    fmt.Sprintf("cannot add more than %s", cloud.MaxSpawnHostExpirationDurationHours.String()),
 		}
 	}
 
@@ -552,7 +546,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	}
 
 	var newExp time.Time
-	newExp, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
+	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,

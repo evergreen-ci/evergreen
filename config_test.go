@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -163,19 +164,14 @@ func (s *AdminSuite) TestBaseConfig() {
 }
 
 func (s *AdminSuite) TestServiceFlags() {
-	testFlags := ServiceFlags{
-		TaskDispatchDisabled:         true,
-		HostinitDisabled:             true,
-		MonitorDisabled:              true,
-		AlertsDisabled:               true,
-		TaskrunnerDisabled:           true,
-		RepotrackerDisabled:          true,
-		SchedulerDisabled:            true,
-		GithubPRTestingDisabled:      true,
-		RepotrackerPushEventDisabled: true,
-		CLIUpdatesDisabled:           true,
-		GithubStatusAPIDisabled:      true,
-	}
+	testFlags := ServiceFlags{}
+	s.NotPanics(func() {
+		v := reflect.ValueOf(&testFlags).Elem()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			f.SetBool(true)
+		}
+	}, "error setting all fields to true")
 
 	err := testFlags.Set()
 	s.NoError(err)
@@ -183,11 +179,20 @@ func (s *AdminSuite) TestServiceFlags() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(testFlags, settings.ServiceFlags)
+
+	s.NotPanics(func() {
+		t := reflect.TypeOf(&settings.ServiceFlags).Elem()
+		v := reflect.ValueOf(&settings.ServiceFlags).Elem()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			s.True(f.Bool(), "all fields should be true, but '%s' was false", t.Field(i).Name)
+		}
+	})
 }
 
 func (s *AdminSuite) TestAlertsConfig() {
 	config := AlertsConfig{
-		SMTP: &SMTPConfig{
+		SMTP: SMTPConfig{
 			Server:     "server",
 			Port:       2285,
 			UseSSL:     true,
@@ -292,20 +297,6 @@ func (s *AdminSuite) TestJiraConfig() {
 	s.Equal(config, settings.Jira)
 }
 
-func (s *AdminSuite) TestNewRelicConfig() {
-	config := NewRelicConfig{
-		ApplicationName: "new_relic",
-		LicenseKey:      "key",
-	}
-
-	err := config.Set()
-	s.NoError(err)
-	settings, err := GetConfig()
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.NewRelic)
-}
-
 func (s *AdminSuite) TestProvidersConfig() {
 	config := CloudProviders{
 		AWS: AWSConfig{
@@ -362,8 +353,7 @@ func (s *AdminSuite) TestRepotrackerConfig() {
 
 func (s *AdminSuite) TestSchedulerConfig() {
 	config := SchedulerConfig{
-		MergeToggle: 10,
-		TaskFinder:  "task_finder",
+		TaskFinder: "task_finder",
 	}
 
 	err := config.Set()
@@ -479,4 +469,94 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	pluginMap := dbConfig.Plugins[config.PluginsNew[0].Key]
 	s.NotNil(pluginMap)
 	s.Equal("pluginVal", pluginMap["pluginKey"])
+}
+
+func (s *AdminSuite) TestNotifyConfig() {
+	config := NotifyConfig{
+		SMTP: SMTPConfig{
+			Server:     "server",
+			Port:       2285,
+			UseSSL:     true,
+			Username:   "username",
+			Password:   "password",
+			From:       "from",
+			AdminEmail: []string{"email"},
+		},
+	}
+
+	err := config.Set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Notify)
+
+	config.BufferIntervalSeconds = 1
+	config.BufferTargetPerInterval = 2
+	s.NoError(config.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Notify)
+}
+
+func (s *AdminSuite) TestContainerPoolsConfig() {
+
+	invalidConfig := ContainerPoolsConfig{
+		Pools: []ContainerPool{
+			ContainerPool{
+				Distro:        "d1",
+				Id:            "test-pool-1",
+				MaxContainers: -5,
+			},
+		},
+	}
+
+	err := invalidConfig.ValidateAndDefault()
+	s.EqualError(err, "container pool field max_containers must be positive integer")
+
+	validConfig := ContainerPoolsConfig{
+		Pools: []ContainerPool{
+			ContainerPool{
+				Distro:        "d1",
+				Id:            "test-pool-1",
+				MaxContainers: 100,
+			},
+			ContainerPool{
+				Distro:        "d2",
+				Id:            "test-pool-2",
+				MaxContainers: 1,
+			},
+		},
+	}
+
+	err = validConfig.Set()
+	s.NoError(err)
+
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(validConfig, settings.ContainerPools)
+
+	validConfig.Pools[0].MaxContainers = 50
+	s.NoError(validConfig.Set())
+
+	settings, err = GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(validConfig, settings.ContainerPools)
+
+	lookup, err := settings.ContainerPools.GetContainerPool("test-pool-1")
+	s.NoError(err)
+	s.NotNil(lookup)
+	s.Equal(lookup, validConfig.Pools[0])
+
+	lookup, err = settings.ContainerPools.GetContainerPool("test-pool-2")
+	s.NoError(err)
+	s.NotNil(lookup)
+	s.Equal(lookup, validConfig.Pools[1])
+
+	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
+	s.EqualError(err, "error retrieving container pool test-pool-3")
 }

@@ -5,11 +5,9 @@ package cloud
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -19,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// dockerManager implements the CloudManager interface for Docker.
+// dockerManager implements the Manager interface for Docker.
 type dockerManager struct {
 	client dockerClient
 }
@@ -70,13 +68,19 @@ func (settings *dockerSettings) Validate() error {
 		return errors.New("Port must not be blank")
 	}
 
-	if settings.PortRange != nil {
-		min := settings.PortRange.MinPort
-		max := settings.PortRange.MaxPort
+	if settings.PortRange == nil {
+		return errors.New("Container port range must not be blank. Include min and max values.")
+	}
 
-		if max < min {
-			return errors.New("Container port range must be valid")
-		}
+	min := settings.PortRange.MinPort
+	max := settings.PortRange.MaxPort
+
+	if min == 0 && max == 0 {
+		return errors.New("Container port range must be valid")
+	}
+
+	if max < min {
+		return errors.New("Container port range must be valid")
 	}
 
 	return nil
@@ -85,11 +89,6 @@ func (settings *dockerSettings) Validate() error {
 // GetSettings returns an empty ProviderSettings struct.
 func (*dockerManager) GetSettings() ProviderSettings {
 	return &dockerSettings{}
-}
-
-//GetInstanceName returns a name to be used for an instance
-func (*dockerManager) GetInstanceName(_ *distro.Distro) string {
-	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
 // SpawnHost creates and starts a new Docker container
@@ -122,7 +121,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, h.Id, &h.Distro, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
 		grip.Error(err)
 		return nil, err
@@ -189,12 +188,6 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 		return "", errors.New("DNS name is empty")
 	}
 	return h.Host, nil
-}
-
-//CanSpawn returns if a given cloud provider supports spawning a new host
-//dynamically. Always returns true for Docker.
-func (m *dockerManager) CanSpawn() (bool, error) {
-	return true, nil
 }
 
 //TerminateInstance destroys a container.

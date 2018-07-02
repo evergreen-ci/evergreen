@@ -148,6 +148,13 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
 
+	// This test should fail, but it triggers the retry logic which in turn
+	// causes the context to expire, so we reset the context with a longer
+	// deadline here
+	s.cancel()
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	s.Require().NotNil(s.ctx)
+	s.Require().NotNil(s.cancel)
 	data.BaseRepo = "conifer"
 	hash, err = GetPullRequestMergeBase(s.ctx, s.token, data)
 	s.Error(err)
@@ -159,9 +166,27 @@ func (s *githubSuite) TestGithubUserInOrganization() {
 	s.NoError(err)
 	s.True(isMember)
 
-	isMember, err = GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "ocotocat")
+	isMember, err = GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "octocat")
 	s.NoError(err)
 	s.False(isMember)
+}
+
+func (s *githubSuite) TestGetGithubPullRequestDiff() {
+	p := patch.GithubPatch{
+		PRNumber:   448,
+		BaseOwner:  "evergreen-ci",
+		BaseRepo:   "evergreen",
+		BaseBranch: "master",
+		HeadOwner:  "richardsamuels",
+		HeadRepo:   "evergreen",
+		HeadHash:   "something",
+		Author:     "richardsamuels",
+	}
+
+	diff, summaries, err := GetGithubPullRequestDiff(s.ctx, s.token, &p)
+	s.NoError(err)
+	s.Len(summaries, 2)
+	s.Len(diff, 1470)
 }
 
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
@@ -235,4 +260,19 @@ func TestGithubShouldRetryDoesntPanic(t *testing.T) {
 		a.Error = nil
 		assert.False(githubShouldRetry(a))
 	})
+}
+
+func TestBuildPatchURL(t *testing.T) {
+	assert := assert.New(t)
+	p := patch.GithubPatch{
+		PRNumber:   448,
+		BaseOwner:  "evergreen-ci",
+		BaseRepo:   "evergreen",
+		BaseBranch: "master",
+		HeadOwner:  "richardsamuels",
+		HeadRepo:   "evergreen",
+		HeadHash:   "something",
+		Author:     "richardsamuels",
+	}
+	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(&p))
 }

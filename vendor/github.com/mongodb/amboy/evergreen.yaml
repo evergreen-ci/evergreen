@@ -18,8 +18,6 @@ variables:
     # evergreen. The test name should correspond to a make target for
     # that suite
     name: test
-    depends_on:
-      - name: build
     commands:
       - command: git.get_project
         type: system
@@ -32,8 +30,6 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
-    depends_on:
-      - name: build
     commands:
       - command: git.get_project
         type: system
@@ -260,6 +256,7 @@ buildvariants:
     display_name: Race Detector (Arch Linux)
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
+      build_env: "RUN_COUNT=5"
     run_on:
       - archlinux-test
     tasks:

@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -56,7 +56,7 @@ func (s *PatchByIdSuite) TestFindById() {
 
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
 	rm := getPatchByIdManager("", 2)
@@ -210,7 +210,7 @@ func (s *PatchAbortSuite) SetupSuite() {
 
 func (s *PatchAbortSuite) TestAbort() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getPatchAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[0].Hex()
@@ -222,7 +222,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
@@ -231,7 +231,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok = (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
 	rm = getPatchAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[1].Hex()
@@ -243,7 +243,7 @@ func (s *PatchAbortSuite) TestAbort() {
 
 func (s *PatchAbortSuite) TestAbortFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getPatchAbortManager("", 2)
 	new_id := bson.NewObjectId()
@@ -291,7 +291,7 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 
 func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getPatchByIdManager("", 2)
 	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).patchId = s.objIds[0].Hex()
@@ -352,7 +352,7 @@ func (s *PatchRestartSuite) SetupSuite() {
 
 func (s *PatchRestartSuite) TestRestart() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getPatchRestartManager("", 2)
 	(rm.Methods[0].RequestHandler).(*patchRestartHandler).patchId = s.objIds[0].Hex()

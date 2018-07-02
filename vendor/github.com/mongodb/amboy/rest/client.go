@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/tychoish/gimlet"
 )
 
 const (

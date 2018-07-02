@@ -23,17 +23,15 @@ func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
 
 		assert.Equal(id, job.Type().Name)
 
-		var dbjob *registry.JobInterchange
-
 		for _, f := range []amboy.Format{amboy.JSON, amboy.YAML, amboy.JSON} {
 			assert.NotPanics(func() {
-				dbjob, err = registry.MakeJobInterchange(job, f)
-			}, id)
+				dbjob, err := registry.MakeJobInterchange(job, f)
 
-			assert.NoError(err)
-			assert.NotNil(dbjob)
-			assert.NotNil(dbjob.Dependency)
-			assert.Equal(id, dbjob.Type)
+				assert.NoError(err)
+				assert.NotNil(dbjob)
+				assert.NotNil(dbjob.Dependency)
+				assert.Equal(id, dbjob.Type)
+			}, id)
 		}
 	}
 

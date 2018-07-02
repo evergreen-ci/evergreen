@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -186,7 +187,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
-	activeHosts, err := host.Find(host.IsLive)
+	activeHosts, err := host.Find(db.Query(host.IsLive()))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding active hosts: %v", err)
 		grip.Error(msg)
@@ -212,7 +213,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		IdleStaticHosts:   idleStaticHostsCount,
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data uiResourceInfo
 		ViewData
 	}{uiResourceInfo{uiTaskQueues, hostStats, distroIds}, uis.GetCommonViewData(w, r, false, true)},

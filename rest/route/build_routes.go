@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -35,10 +35,9 @@ func getBuildByIdRouteManager(route string, version int) *RouteManager {
 				MethodType:     http.MethodGet,
 			},
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &buildChangeStatusHandler{},
-				MethodType:        http.MethodPatch,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &buildChangeStatusHandler{},
+				MethodType:     http.MethodPatch,
 			},
 		},
 	}
@@ -49,8 +48,7 @@ func (b *buildGetHandler) Handler() RequestHandler {
 }
 
 func (b *buildGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	b.buildId = vars["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	return nil
 }
 
@@ -72,7 +70,7 @@ func (b *buildGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 	if ref != nil {
 		proj = ref.Repo
 	}
-	buildModel.ProjectId = model.APIString(proj)
+	buildModel.ProjectId = model.ToAPIString(proj)
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
@@ -98,7 +96,7 @@ func (b *buildChangeStatusHandler) Handler() RequestHandler {
 }
 
 func (b *buildChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	b.buildId = mux.Vars(r)["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -116,7 +114,7 @@ func (b *buildChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 }
 
 func (b *buildChangeStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	user := GetUser(ctx)
+	user := gimlet.GetUser(ctx)
 	if b.Priority != nil {
 		priority := *b.Priority
 		if ok := validPriority(priority, user, sc); !ok {
@@ -169,10 +167,9 @@ func getBuildAbortRouteManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    (&buildAbortHandler{}).Handler(),
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: (&buildAbortHandler{}).Handler(),
+				MethodType:     http.MethodPost,
 			},
 		},
 	}
@@ -183,13 +180,13 @@ func (b *buildAbortHandler) Handler() RequestHandler {
 }
 
 func (b *buildAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	b.buildId = vars["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	return nil
 }
 
 func (b *buildAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.AbortBuild(b.buildId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.AbortBuild(b.buildId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Abort error")
@@ -234,10 +231,9 @@ func getBuildRestartManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    (&buildRestartHandler{}).Handler(),
-				MethodType:        http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: (&buildRestartHandler{}).Handler(),
+				MethodType:     http.MethodPost,
 			},
 		},
 	}
@@ -248,13 +244,13 @@ func (b *buildRestartHandler) Handler() RequestHandler {
 }
 
 func (b *buildRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	b.buildId = vars["build_id"]
+	b.buildId = gimlet.GetVars(r)["build_id"]
 	return nil
 }
 
 func (b *buildRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.RestartBuild(b.buildId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.RestartBuild(b.buildId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Restart error")

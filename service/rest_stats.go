@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 )
 
 // restHostUtilizationBucket represents an aggregate view of the hosts and tasks Bucket for a given time frame.
@@ -58,33 +58,33 @@ func (restapi *restAPI) getHostUtilizationStats(w http.ResponseWriter, r *http.R
 	// get granularity (in seconds)
 	granularity, err := util.GetIntValue(r, "granularity", 0)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 	if granularity == 0 {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: "invalid granularity"})
+		gimlet.WriteJSONError(w, responseError{Message: "invalid granularity"})
 		return
 	}
 
 	// get number of days back
 	daysBack, err := util.GetIntValue(r, "numberDays", 0)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 	if daysBack == 0 {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: "invalid days back"})
+		gimlet.WriteJSONError(w, responseError{Message: "invalid days back"})
 		return
 	}
 
 	isCSV, err := util.GetBoolValue(r, "csv", true)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 	buckets, err := model.CreateAllHostUtilizationBuckets(daysBack, granularity)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: fmt.Sprintf("error getting buckets: %v", err.Error())})
+		gimlet.WriteJSONInternalError(w, responseError{Message: fmt.Sprintf("error getting buckets: %v", err.Error())})
 		return
 	}
 	restBuckets := []restHostUtilizationBucket{}
@@ -104,40 +104,40 @@ func (restapi *restAPI) getHostUtilizationStats(w http.ResponseWriter, r *http.R
 		util.WriteCSVResponse(w, http.StatusOK, restBuckets)
 		return
 	}
-	restapi.WriteJSON(w, http.StatusOK, buckets)
+	gimlet.WriteJSON(w, buckets)
 }
 
 func (restapi *restAPI) getAverageSchedulerStats(w http.ResponseWriter, r *http.Request) {
 	// get granularity (in seconds)
 	granularity, err := util.GetIntValue(r, "granularity", 0)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 	if granularity == 0 {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: "invalid granularity"})
+		gimlet.WriteJSONError(w, responseError{Message: "invalid granularity"})
 		return
 	}
 
 	// get number of days back
 	daysBack, err := util.GetIntValue(r, "numberDays", 0)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 	if daysBack == 0 {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: "invalid days back"})
+		gimlet.WriteJSONError(w, responseError{Message: "invalid days back"})
 		return
 	}
 	isCSV, err := util.GetBoolValue(r, "csv", true)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 
-	distroId := mux.Vars(r)["distro_id"]
+	distroId := gimlet.GetVars(r)["distro_id"]
 	if distroId == "" {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: "invalid distro id"})
+		gimlet.WriteJSONError(w, responseError{Message: "invalid distro id"})
 		return
 	}
 
@@ -145,7 +145,7 @@ func (restapi *restAPI) getAverageSchedulerStats(w http.ResponseWriter, r *http.
 
 	buckets, err := model.AverageStatistics(distroId, bounds)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: fmt.Sprintf("error getting buckets: %v", err.Error())})
+		gimlet.WriteJSONInternalError(w, responseError{Message: fmt.Sprintf("error getting buckets: %v", err.Error())})
 		return
 	}
 	restBuckets := []restAvgBucket{}
@@ -165,7 +165,7 @@ func (restapi *restAPI) getAverageSchedulerStats(w http.ResponseWriter, r *http.
 		util.WriteCSVResponse(w, http.StatusOK, restBuckets)
 		return
 	}
-	restapi.WriteJSON(w, http.StatusOK, buckets)
+	gimlet.WriteJSON(w, buckets)
 
 }
 
@@ -173,23 +173,23 @@ func (restapi *restAPI) getOptimalAndActualMakespans(w http.ResponseWriter, r *h
 	// get number of days back
 	numberBuilds, err := util.GetIntValue(r, "number", 0)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 	if numberBuilds == 0 {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: "invalid number builds"})
+		gimlet.WriteJSONError(w, responseError{Message: "invalid number builds"})
 		return
 	}
 
 	isCSV, err := util.GetBoolValue(r, "csv", true)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 
 	makespanData, err := getMakespanRatios(numberBuilds)
 	if err != nil {
-		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: err.Error()})
+		gimlet.WriteJSONError(w, responseError{Message: err.Error()})
 		return
 	}
 
@@ -197,6 +197,6 @@ func (restapi *restAPI) getOptimalAndActualMakespans(w http.ResponseWriter, r *h
 		util.WriteCSVResponse(w, http.StatusOK, makespanData)
 		return
 	}
-	restapi.WriteJSON(w, http.StatusOK, makespanData)
+	gimlet.WriteJSON(w, makespanData)
 
 }

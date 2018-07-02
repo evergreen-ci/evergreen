@@ -31,16 +31,12 @@ func (t *Task) ResultStatus() string {
 			if t.Details.TimedOut {
 				if t.Details.Description == "heartbeat" {
 					status = evergreen.TaskSystemUnresponse
-				} else if t.HasFailedTests() {
-					status = evergreen.TaskFailed
 				} else {
 					status = evergreen.TaskSystemTimedOut
 				}
 			}
-
 		} else if t.Details.Type == "setup" {
 			status = evergreen.TaskSetupFailed
-
 		} else if t.Details.TimedOut {
 			status = evergreen.TaskTestTimedOut
 		}

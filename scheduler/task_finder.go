@@ -5,22 +5,38 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-type TaskFinder func() ([]task.Task, error)
+type TaskFinder func(string) ([]task.Task, error)
 
-func RunnableTasksPipeline() ([]task.Task, error) {
-	return task.FindRunnable()
+func GetTaskFinder(name string) TaskFinder {
+	switch name {
+	case "parallel":
+		return ParallelTaskFinder
+	case "legacy":
+		return LegacyFindRunnableTasks
+	case "pipeline":
+		return RunnableTasksPipeline
+	case "alternate":
+		return AlternateTaskFinder
+	default:
+		return LegacyFindRunnableTasks
+	}
+}
+
+func RunnableTasksPipeline(distroID string) ([]task.Task, error) {
+	return task.FindRunnable(distroID)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
 // instead of using $graphLookup
-func LegacyFindRunnableTasks() ([]task.Task, error) {
+func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.FindSchedulable()
+	undispatchedTasks, err := task.FindSchedulable(distroID)
 	if err != nil {
 		return nil, err
 	}
@@ -33,15 +49,15 @@ func LegacyFindRunnableTasks() ([]task.Task, error) {
 	// filter out any tasks whose dependencies are not met
 	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
 	dependencyCaches := make(map[string]task.Task)
-	for _, task := range undispatchedTasks {
-		ref, ok := projectRefCache[task.Project]
+	for _, t := range undispatchedTasks {
+		ref, ok := projectRefCache[t.Project]
 		if !ok {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
 				"outcome": "skipping",
-				"task":    task.Id,
-				"project": task.Project,
+				"task":    t.Id,
+				"project": t.Project,
 			})
 			continue
 		}
@@ -51,19 +67,30 @@ func LegacyFindRunnableTasks() ([]task.Task, error) {
 				"runner":  RunnerName,
 				"message": "project disabled",
 				"outcome": "skipping",
-				"task":    task.Id,
-				"project": task.Project,
+				"task":    t.Id,
+				"project": t.Project,
 			})
 			continue
 		}
 
-		depsMet, err := task.DependenciesMet(dependencyCaches)
+		if t.IsPatchRequest() && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		depsMet, err := t.DependenciesMet(dependencyCaches)
 		if err != nil {
 			grip.Warning(message.Fields{
 				"runner":  RunnerName,
 				"message": "error checking dependencies for task",
 				"outcome": "skipping",
-				"task":    task.Id,
+				"task":    t.Id,
 				"error":   err.Error(),
 			})
 			continue
@@ -72,14 +99,14 @@ func LegacyFindRunnableTasks() ([]task.Task, error) {
 			continue
 		}
 
-		runnableTasks = append(runnableTasks, task)
+		runnableTasks = append(runnableTasks, t)
 	}
 
 	return runnableTasks, nil
 }
 
-func AlternateTaskFinder() ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable()
+func AlternateTaskFinder(distroID string) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindSchedulable(distroID)
 	if err != nil {
 		return nil, err
 	}
@@ -142,6 +169,17 @@ func AlternateTaskFinder() ([]task.Task, error) {
 			continue
 		}
 
+		if t.IsPatchRequest() && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
 		depsMet, err := t.AllDependenciesSatisfied(cache)
 		catcher.Add(err)
 		if !depsMet {
@@ -158,8 +196,8 @@ func AlternateTaskFinder() ([]task.Task, error) {
 	return runnabletasks, nil
 }
 
-func ParallelTaskFinder() ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable()
+func ParallelTaskFinder(distroID string) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindSchedulable(distroID)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +274,17 @@ func ParallelTaskFinder() ([]task.Task, error) {
 			continue
 		}
 
+		if t.IsPatchRequest() && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
 		depsMet, err := t.AllDependenciesSatisfied(cache)
 		if err != nil {
 			catcher.Add(err)
@@ -268,4 +317,38 @@ func getProjectRefCache() (map[string]model.ProjectRef, error) {
 	}
 
 	return out, nil
+}
+
+// GetRunnableTasksAndVersions finds tasks whose versions have already been
+// created, and returns those tasks, as well as a map of version IDs to versions.
+func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]version.Version, error) {
+	ids := make(map[string]struct{})
+
+	for _, t := range tasks {
+		ids[t.Version] = struct{}{}
+	}
+
+	idlist := []string{}
+	for id := range ids {
+		idlist = append(idlist, id)
+	}
+
+	vs, err := version.FindByIds(idlist)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "problem resolving version cache")
+	}
+
+	versions := make(map[string]version.Version)
+	for _, v := range vs {
+		versions[v.Id] = v
+	}
+
+	filteredTasks := []task.Task{}
+	for _, t := range tasks {
+		if _, ok := versions[t.Version]; ok {
+			filteredTasks = append(filteredTasks, t)
+		}
+	}
+
+	return filteredTasks, versions, nil
 }

@@ -151,8 +151,8 @@ func (s *eventSuite) TestEventWithNilData() {
 	})
 }
 
-func (s *eventSuite) TestEventRegistryItemsAreSane() {
-	for k, _ := range eventRegistry {
+func (s *eventSuite) TestGlobalEventRegistryItemsAreSane() {
+	for k, _ := range registry.types {
 		event := NewEventFromType(k)
 		s.NotNil(event)
 		found, rTypeTag := findResourceTypeIn(event)
@@ -269,13 +269,13 @@ func (s *eventSuite) TestMarkProcessed() {
 
 	s.EqualError(logger.MarkProcessed(&event), "event has no ID")
 	event.ID = bson.NewObjectId()
-	s.EqualError(logger.MarkProcessed(&event), "failed to update process time: not found")
+	s.EqualError(logger.MarkProcessed(&event), "failed to update 'processed at' time: not found")
 
 	s.NoError(logger.LogEvent(&event))
 
 	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{
-		"$unset": bson.M{
-			"processed_at": 1,
+		"$set": bson.M{
+			"processed_at": time.Time{},
 		},
 	}))
 
@@ -316,22 +316,23 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		{
 			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
-		},
-		{
 			processedAtKey:  time.Time{},
-			resourceTypeKey: ResourceTypeHost,
-			DataKey:         bson.M{},
 		},
 		{
-			processedAtKey:  time.Now(),
 			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
+			processedAtKey:  time.Time{}.Add(time.Second),
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+			processedAtKey:  time.Now(),
 		},
 	}
 	for i := range data {
 		s.NoError(db.Insert(AllLogCollection, data[i]))
 	}
-	events, err := Find(AllLogCollection, db.Query(UnprocessedEvents()))
+	events, err := FindUnprocessedEvents()
 	s.NoError(err)
 	s.Len(events, 1)
 
@@ -405,4 +406,214 @@ func (s *eventSuite) TestTaskEventLogLegacyEvents() {
 	for i := range out {
 		s.NotEmpty(out[i].ResourceType)
 	}
+}
+
+func (s *eventSuite) TestFindLastProcessedEvent() {
+	events := []EventLogEntry{
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-2 * time.Hour),
+			ResourceId:   "macos.example.com",
+			EventType:    "HOST_TASK_FINISHED",
+			ProcessedAt:  time.Now().Add(-time.Hour),
+			ResourceType: "HOST",
+			Data: &HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com2",
+			EventType:    "HOST_TASK_FINISHED",
+			ProcessedAt:  time.Now().Add(-30 * time.Minute),
+			ResourceType: "HOST",
+			Data: &HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com3",
+			EventType:    "HOST_TASK_FINISHED",
+			ResourceType: "HOST",
+			Data: &HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+	}
+	for i := range events {
+		s.NoError(db.Insert(AllLogCollection, events[i]))
+	}
+
+	e, err := FindLastProcessedEvent()
+	s.NoError(err)
+	s.Require().NotNil(e)
+	s.Equal("macos.example.com2", e.ResourceId)
+}
+
+func (s *eventSuite) TestCountUnprocessedEvents() {
+	events := []EventLogEntry{
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-2 * time.Hour),
+			ResourceId:   "macos.example.com",
+			EventType:    "HOST_TASK_FINISHED",
+			ResourceType: "HOST",
+			Data: HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com2",
+			EventType:    "HOST_TASK_FINISHED",
+			ProcessedAt:  time.Now().Add(-30 * time.Minute),
+			ResourceType: "HOST",
+			Data: HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+		{
+			ID:           bson.NewObjectId(),
+			Timestamp:    time.Now().Add(-1 * time.Hour),
+			ResourceId:   "macos.example.com3",
+			EventType:    "HOST_TASK_FINISHED",
+			ResourceType: "HOST",
+			Data: HostEventData{
+				TaskId:     "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus: "success",
+			},
+		},
+	}
+	for i := range events {
+		s.NoError(db.Insert(AllLogCollection, events[i]))
+	}
+
+	n, err := CountUnprocessedEvents()
+	s.NoError(err)
+	s.Equal(2, n)
+}
+
+func (s *eventSuite) TestMarkAllEventsProcessed() {
+	data := []bson.M{
+		{
+			resourceTypeKey: ResourceTypeHost,
+			processedAtKey:  time.Time{},
+			DataKey:         bson.M{},
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			processedAtKey:  time.Time{},
+			DataKey:         bson.M{},
+		},
+		{
+			idKey:           bson.ObjectIdHex("507f191e810c19729de860ea"),
+			processedAtKey:  time.Time{}.Add(time.Second),
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+		},
+	}
+	for i := range data {
+		s.NoError(db.Insert(AllLogCollection, data[i]))
+	}
+
+	s.NoError(MarkAllEventsProcessed(AllLogCollection))
+
+	events, err := Find(AllLogCollection, db.Q{})
+	s.NoError(err)
+	s.Len(events, 3)
+
+	for i := range events {
+		processed, ptime := events[i].Processed()
+		s.NotZero(ptime)
+		s.True(processed)
+		if events[i].ID.Hex() == "507f191e810c19729de860ea" {
+			s.True(events[i].ProcessedAt.Equal(time.Time{}.Add(time.Second)))
+		}
+	}
+}
+
+// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
+// If found, this function returns true, and the value of that field
+// If not, this function returns false. If it the struct had "r_type" (without
+// omitempty), it will return that field's value, otherwise it returns an
+// empty string
+func findResourceTypeIn(data interface{}) (bool, string) {
+	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
+
+	if data == nil {
+		return false, ""
+	}
+
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+
+	if t.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false, ""
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := t.Field(i)
+		bsonTag := fieldType.Tag.Get("bson")
+		if len(bsonTag) == 0 {
+			continue
+		}
+
+		if fieldType.Type.Kind() != reflect.String {
+			return false, ""
+		}
+
+		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
+			continue
+		}
+
+		structData := v.Field(i).String()
+		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
+	}
+
+	return false, ""
+}
+
+func (s *eventSuite) TestLogManyEvents() {
+	logger := NewDBEventLogger(AllLogCollection)
+	event1 := EventLogEntry{
+		ID:           bson.NewObjectId(),
+		ResourceId:   "resource_id_1",
+		EventType:    "some_type",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeTask),
+		ResourceType: "TASK",
+	}
+	event2 := EventLogEntry{
+		ID:           bson.NewObjectId(),
+		ResourceId:   "resource_id_1",
+		EventType:    "some_type",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeTask),
+		ResourceType: "TASK",
+	}
+	s.NoError(logger.LogManyEvents([]EventLogEntry{event1, event2}))
+	events := []EventLogEntry{}
+	s.NoError(db.FindAllQ(AllLogCollection, db.Query(bson.M{}), &events))
+	s.Len(events, 2)
+	s.Equal(events[0].ResourceId, "resource_id_1")
+	s.Equal(events[0].EventType, "some_type")
+	_, ok := events[0].Data.(*TaskEventData)
+	s.True(ok)
+	s.Equal(events[1].ResourceId, "resource_id_1")
+	s.Equal(events[1].EventType, "some_type")
+	_, ok = events[1].Data.(*TaskEventData)
+	s.True(ok)
 }

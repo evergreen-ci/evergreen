@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 )
 
 // Authenticator is an interface which defines how requests can authenticate
@@ -36,7 +37,10 @@ type SuperUserAuthenticator struct{}
 // exist in the settings file, all users are considered super. It returns
 // 'NotFound' errors to prevent leaking sensitive information.
 func (s *SuperUserAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
-	u := GetUser(ctx)
+	u := gimlet.GetUser(ctx)
+	if u == nil {
+		return nil
+	}
 
 	if auth.IsSuperUser(sc.GetSuperUsers(), u) {
 		return nil
@@ -56,12 +60,13 @@ type ProjectAdminAuthenticator struct{}
 // part of the project context's project admins.
 func (p *ProjectAdminAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
 	projCtx := MustHaveProjectContext(ctx)
-	u := GetUser(ctx)
-
-	// If either a superuser or admin, request is allowed to proceed.
-	if auth.IsSuperUser(sc.GetSuperUsers(), u) ||
-		util.StringSliceContains(projCtx.ProjectRef.Admins, u.Username()) {
-		return nil
+	u := gimlet.GetUser(ctx)
+	if u != nil {
+		// If either a superuser or admin, request is allowed to proceed.
+		if auth.IsSuperUser(sc.GetSuperUsers(), u) ||
+			util.StringSliceContains(projCtx.ProjectRef.Admins, u.Username()) {
+			return nil
+		}
 	}
 
 	return rest.APIError{
@@ -77,7 +82,7 @@ type RequireUserAuthenticator struct{}
 // set, it is because PrefetchUser already set it, which checks the validity of
 // the APIKey, so that is no longer needed to be checked.
 func (rua *RequireUserAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
-	u := GetUser(ctx)
+	u := gimlet.GetUser(ctx)
 	if u == nil {
 		return rest.APIError{
 			StatusCode: http.StatusNotFound,
@@ -88,7 +93,7 @@ func (rua *RequireUserAuthenticator) Authenticate(ctx context.Context, sc data.C
 	return nil
 }
 
-func validPriority(priority int64, user auth.User, sc data.Connector) bool {
+func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
 	if priority > evergreen.MaxTaskPriority {
 		return auth.IsSuperUser(sc.GetSuperUsers(), user)
 	}

@@ -1,8 +1,6 @@
 package event
 
 import (
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
@@ -13,7 +11,6 @@ import (
 )
 
 const (
-	// db constants
 	AllLogCollection  = "event_log"
 	TaskLogCollection = "task_event_log"
 )
@@ -21,7 +18,7 @@ const (
 type EventLogEntry struct {
 	ID           bson.ObjectId `bson:"_id" json:"-"`
 	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
+	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
@@ -42,7 +39,7 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 type unmarshalEventLogEntry struct {
 	ID           bson.ObjectId `bson:"_id" json:"-"`
 	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
+	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
@@ -118,47 +115,23 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
-// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
-// If found, this function returns true, and the value of that field
-// If not, this function returns false. If it the struct had "r_type" (without
-// omitempty), it will return that field's value, otherwise it returns an
-// empty string
-func findResourceTypeIn(data interface{}) (bool, string) {
-	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
-
-	if data == nil {
-		return false, ""
+func (e *EventLogEntry) validateEvent() error {
+	if e.Data == nil {
+		return errors.New("event log entry cannot have nil Data")
 	}
-
-	v := reflect.ValueOf(data)
-	t := reflect.TypeOf(data)
-
-	if t.Kind() == reflect.Ptr {
-		v = v.Elem()
-		t = t.Elem()
+	if len(e.ResourceType) == 0 {
+		return errors.New("event log entry has no r_type")
 	}
-	if t.Kind() != reflect.Struct {
-		return false, ""
+	if !e.ID.Valid() {
+		e.ID = bson.NewObjectId()
 	}
-
-	for i := 0; i < v.NumField(); i++ {
-		fieldType := t.Field(i)
-		bsonTag := fieldType.Tag.Get("bson")
-		if len(bsonTag) == 0 {
-			continue
+	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
+		loc, _ := time.LoadLocation("UTC")
+		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
+		if err != nil {
+			return errors.Wrap(err, "failed to set processed time")
 		}
-
-		if fieldType.Type.Kind() != reflect.String {
-			return false, ""
-		}
-
-		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
-			continue
-		}
-
-		structData := v.Field(i).String()
-		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
+		e.ProcessedAt = notSubscribableTime
 	}
-
-	return false, ""
+	return nil
 }

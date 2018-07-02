@@ -28,11 +28,6 @@ mciModule.factory('ApiV1', function($http, ApiUtil, API_V1) {
     // VERSIONS API
     getVersionById: function(versionId) {
       return get(API_V1.VERSIONS_BY_ID, {version_id: versionId})
-    },
-
-    // WATERFALL API
-    getWaterfallVersionsRows: function(projectId, getParms) {
-      return get(API_V1.WATERFALL_VERSIONS_ROWS, {project_id: projectId}, getParms)
-    },
+    }
   }
 })

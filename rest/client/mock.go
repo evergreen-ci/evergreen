@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -39,6 +41,7 @@ type Mock struct {
 
 	// mock behavior
 	NextTaskShouldFail     bool
+	NextTaskShouldConflict bool
 	GetPatchFileShouldFail bool
 	loggingShouldFail      bool
 	NextTaskResponse       *apimodels.NextTaskResponse
@@ -51,6 +54,7 @@ type Mock struct {
 	HeartbeatShouldAbort   bool
 	HeartbeatShouldErr     bool
 	TaskExecution          int
+	GetSubscriptionsFail   bool
 
 	AttachedFiles map[string][]*artifact.File
 
@@ -171,21 +175,7 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, error) {
 	var err error
 	var data []byte
-
-	switch td.ID {
-	case "shellexec":
-		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "shellexec.yaml"))
-	case "s3copy":
-		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "s3copy.yaml"))
-	case "exec_timeout_project":
-		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "exec_timeout_project.yaml"))
-	case "exec_timeout_task":
-		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "exec_timeout_task.yaml"))
-	case "idle_timeout_func":
-		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "idle_timeout_func.yaml"))
-	case "idle_timeout_task":
-		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "idle_timeout_task.yaml"))
-	}
+	data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
 	if err != nil {
 		panic(err)
 	}
@@ -210,8 +200,11 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (bool, error) {
 // FetchExpansionVars returns a mock ExpansionVars.
 func (c *Mock) FetchExpansionVars(ctx context.Context, td TaskData) (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{
-		"shellexec_fn": c.ShellExecFilename,
-		"timeout_fn":   c.TimeoutFilename,
+		Vars: map[string]string{
+			"shellexec_fn":   c.ShellExecFilename,
+			"timeout_fn":     c.TimeoutFilename,
+			"my_new_timeout": "2",
+		},
 	}, nil
 }
 
@@ -225,6 +218,9 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 	}
 	if c.NextTaskShouldFail {
 		return nil, errors.New("NextTaskShouldFail is true")
+	}
+	if c.NextTaskShouldConflict {
+		return nil, errors.WithStack(HTTPConflictError)
 	}
 	if c.NextTaskResponse != nil {
 		return c.NextTaskResponse, nil
@@ -308,15 +304,15 @@ func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHos
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
-		Id:      model.APIString("mock_host_id"),
-		HostURL: model.APIString("mock_url"),
+		Id:      model.ToAPIString("mock_host_id"),
+		HostURL: model.ToAPIString("mock_url"),
 		Distro: model.DistroInfo{
-			Id:       model.APIString(distroID),
-			Provider: evergreen.ProviderNameMock,
+			Id:       model.ToAPIString(distroID),
+			Provider: model.ToAPIString(evergreen.ProviderNameMock),
 		},
-		Type:        model.APIString("mock_type"),
-		Status:      model.APIString(evergreen.HostUninitialized),
-		StartedBy:   model.APIString("mock_user"),
+		Type:        model.ToAPIString("mock_type"),
+		Status:      model.ToAPIString(evergreen.HostUninitialized),
+		StartedBy:   model.ToAPIString("mock_user"),
 		UserHost:    true,
 		Provisioned: false,
 	}
@@ -445,11 +441,11 @@ func (c *Mock) GetSystemInfoLength() int {
 func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	mockDistros := []model.APIDistro{
 		{
-			Name:             model.APIString("archlinux-build"),
+			Name:             model.ToAPIString("archlinux-build"),
 			UserSpawnAllowed: true,
 		},
 		{
-			Name:             model.APIString("baas-linux"),
+			Name:             model.ToAPIString("baas-linux"),
 			UserSpawnAllowed: false,
 		},
 	}
@@ -459,12 +455,12 @@ func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 func (c *Mock) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
 	return []model.APIPubKey{
 		{
-			Name: "key0",
-			Key:  "ssh-fake 12345",
+			Name: model.ToAPIString("key0"),
+			Key:  model.ToAPIString("ssh-fake 12345"),
 		},
 		{
-			Name: "key1",
-			Key:  "ssh-fake 67890",
+			Name: model.ToAPIString("key1"),
+			Key:  model.ToAPIString("ssh-fake 67890"),
 		},
 	}, nil
 }
@@ -503,4 +499,28 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 		return errors.New("mock failed, wrong secret")
 	}
 	return nil
+}
+
+func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error) {
+	if c.GetSubscriptionsFail {
+		return nil, errors.New("failed to fetch subscriptions")
+	}
+
+	return []event.Subscription{
+		{
+			Type:    "type",
+			Trigger: "trigger",
+			Owner:   "owner",
+			Selectors: []event.Selector{
+				{
+					Type: "id",
+					Data: "data",
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   "email",
+				Target: "a@domain.invalid",
+			},
+		},
+	}, nil
 }

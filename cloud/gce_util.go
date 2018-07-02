@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
@@ -31,8 +30,6 @@ const (
 	// statusTerminated means the instance was shut down or encountered a
 	// failure, either through the API or from inside the guest.
 	statusTerminated = "TERMINATED"
-	// maxNameLength is the maximum length of an instance name permitted by GCE.
-	maxNameLength = 63
 )
 
 // SSHKey is the ssh key information to add to a VM instance.
@@ -96,22 +93,6 @@ func makeImageFromFamily(family string) string {
 // Returns an image source URL for a private image.
 func makeImage(name string) string {
 	return fmt.Sprintf("global/images/%s", name)
-}
-
-// Generates a unique instance name for an instance based on the distro ID.
-// Must be a match of regex '(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)'
-func generateName(d *distro.Distro) string {
-	name := d.GenerateName()
-
-	// Ensure all characters in tags are on the whitelist
-	r, _ := regexp.Compile("[^a-z0-9_-]+")
-	name = string(r.ReplaceAll([]byte(strings.ToLower(name)), []byte("")))
-
-	// Ensure the new name's is no longer than maxNameLength
-	if len(name) > maxNameLength {
-		return name[:maxNameLength]
-	}
-	return name
 }
 
 // Makes labels to attach to the VM instance. Only hyphens (-),

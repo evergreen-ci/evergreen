@@ -17,7 +17,7 @@ import (
 func getTestRouteManager(route string, version int) *RouteManager {
 	tgh := &testGetHandler{}
 	testGetMethodHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    tgh.Handler(),
 		MethodType:        http.MethodGet,
@@ -149,7 +149,7 @@ func makeNextTestsPage(tests []testresult.TestResult, limit int) *Page {
 		nextLimit := len(tests) - limit
 		nextPage = &Page{
 			Relation: "next",
-			Key:      tests[limit].TestFile,
+			Key:      string(tests[limit].ID),
 			Limit:    nextLimit,
 		}
 	}
@@ -161,7 +161,7 @@ func makePrevTestsPage(tests []testresult.TestResult) *Page {
 	if len(tests) > 1 {
 		prevPage = &Page{
 			Relation: "prev",
-			Key:      tests[0].TestFile,
+			Key:      string(tests[0].ID),
 			Limit:    len(tests),
 		}
 	}

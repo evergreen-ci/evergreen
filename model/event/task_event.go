@@ -4,7 +4,13 @@ import (
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
+
+func init() {
+	registry.AddType(ResourceTypeTask, taskEventDataFactory)
+	registry.AllowSubscription(ResourceTypeTask, TaskFinished)
+}
 
 const (
 	// resource type
@@ -27,6 +33,7 @@ const (
 
 // implements Data
 type TaskEventData struct {
+	Execution int    `bson:"execution" json:"execution"`
 	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
 	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status    string `bson:"s,omitempty" json:"status,omitempty"`
@@ -36,7 +43,7 @@ type TaskEventData struct {
 	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
-func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
+func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	event := EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   taskId,
@@ -47,57 +54,97 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(&event); err != nil {
-		grip.Errorf("Error logging task event: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeTask,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
 	}
 }
 
-func LogJiraIssueCreated(taskId, jiraIssue string) {
-	LogTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{JiraIssue: jiraIssue})
+func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventData) {
+	if len(taskIds) == 0 {
+		grip.Error("logManyTaskEvents called with empty taskIds")
+		return
+	}
+	events := []EventLogEntry{}
+	now := time.Now()
+	for _, id := range taskIds {
+		event := EventLogEntry{
+			Timestamp:    now,
+			ResourceId:   id,
+			EventType:    eventType,
+			Data:         eventData,
+			ResourceType: ResourceTypeTask,
+		}
+		events = append(events, event)
+	}
+	logger := NewDBEventLogger(AllLogCollection)
+	if err := logger.LogManyEvents(events); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"resource_type": ResourceTypeTask,
+			"message":       "error logging event",
+			"source":        "event-log-fail",
+		}))
+	}
 }
 
-func LogTaskPriority(taskId, user string, priority int64) {
-	LogTaskEvent(taskId, TaskPriorityChanged, TaskEventData{UserId: user, Priority: priority})
+func LogJiraIssueCreated(taskId string, execution int, jiraIssue string) {
+	logTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{Execution: execution, JiraIssue: jiraIssue})
 }
 
-func LogTaskCreated(taskId string) {
-	LogTaskEvent(taskId, TaskCreated, TaskEventData{})
+func LogTaskPriority(taskId string, execution int, user string, priority int64) {
+	logTaskEvent(taskId, TaskPriorityChanged, TaskEventData{Execution: execution, UserId: user, Priority: priority})
 }
 
-func LogTaskDispatched(taskId, hostId string) {
-	LogTaskEvent(taskId, TaskDispatched, TaskEventData{HostId: hostId})
+func LogTaskCreated(taskId string, execution int) {
+	logTaskEvent(taskId, TaskCreated, TaskEventData{Execution: execution})
 }
 
-func LogTaskUndispatched(taskId, hostId string) {
-	LogTaskEvent(taskId, TaskUndispatched, TaskEventData{HostId: hostId})
+func LogTaskDispatched(taskId string, execution int, hostId string) {
+	logTaskEvent(taskId, TaskDispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-func LogTaskStarted(taskId string) {
-	LogTaskEvent(taskId, TaskStarted, TaskEventData{})
+func LogTaskUndispatched(taskId string, execution int, hostId string) {
+	logTaskEvent(taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-func LogTaskFinished(taskId string, hostId, status string) {
-	LogTaskEvent(taskId, TaskFinished, TaskEventData{Status: status})
-	LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskStatus: status, TaskId: taskId})
+func LogTaskStarted(taskId string, execution int) {
+	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution})
 }
 
-func LogTaskRestarted(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskRestarted, TaskEventData{UserId: userId})
+func LogTaskFinished(taskId string, execution int, hostId, status string) {
+	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
+	LogHostEvent(hostId, EventTaskFinished, HostEventData{TaskExecution: execution, TaskStatus: status, TaskId: taskId})
 }
 
-func LogTaskActivated(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskActivated, TaskEventData{UserId: userId})
+func LogDisplayTaskFinished(taskId string, execution int, status string) {
+	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
 }
 
-func LogTaskDeactivated(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskDeactivated, TaskEventData{UserId: userId})
+func LogTaskRestarted(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
-func LogTaskAbortRequest(taskId string, userId string) {
-	LogTaskEvent(taskId, TaskAbortRequest,
+func LogTaskActivated(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
+}
+
+func LogTaskDeactivated(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskDeactivated, TaskEventData{Execution: execution, UserId: userId})
+}
+
+func LogTaskAbortRequest(taskId string, execution int, userId string) {
+	logTaskEvent(taskId, TaskAbortRequest,
+		TaskEventData{Execution: execution, UserId: userId})
+}
+
+func LogManyTaskAbortRequests(taskIds []string, userId string) {
+	logManyTaskEvents(taskIds, TaskAbortRequest,
 		TaskEventData{UserId: userId})
 }
 
-func LogTaskScheduled(taskId string, scheduledTime time.Time) {
-	LogTaskEvent(taskId, TaskScheduled,
-		TaskEventData{Timestamp: scheduledTime})
+func LogTaskScheduled(taskId string, execution int, scheduledTime time.Time) {
+	logTaskEvent(taskId, TaskScheduled,
+		TaskEventData{Execution: execution, Timestamp: scheduledTime})
 }

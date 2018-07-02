@@ -12,10 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -62,7 +64,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, event.SubscriptionsCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -70,6 +72,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Repo:             "evergreen",
 		Identifier:       "mci",
 		Enabled:          true,
+		PatchingDisabled: false,
 		Branch:           "master",
 		RemotePath:       "self-tests.yml",
 		RepoKind:         "github",
@@ -189,7 +192,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
-	patchContent, summaries, err := fetchDiffFromGithub(&s.githubPatchData, githubOauthToken)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(context.Background(), githubOauthToken, &s.githubPatchData)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 	s.NotEqual("{", patchContent[0])
@@ -215,17 +218,22 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
+	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.GithubPatchData)
 
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.Require().Empty(out)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
 
-	user := user.DBUser{
+	dbUser := user.DBUser{
 		Id: "testuser",
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -234,10 +242,11 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 			},
 		},
 	}
-	s.NoError(user.Insert())
-	s.user = user.Id
-
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
+	s.NoError(dbUser.Insert())
+	s.user = dbUser.Id
+	patchEvent := testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", "")
+	intent, err := patch.NewGithubIntent("1", patchEvent)
+	tempPatch := intent.NewPatch()
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -250,9 +259,10 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 
+	s.True(patchDoc.CreateTime.Equal(tempPatch.CreateTime))
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
-	s.Equal(user.Id, patchDoc.Author)
+	s.Equal(dbUser.Id, patchDoc.Author)
 
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
@@ -263,12 +273,12 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", patchDoc.Githash)
 
 	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester)
-
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+	s.verifyGithubSubscriptions(patchDoc)
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
-	user := user.DBUser{
+	dbUser := user.DBUser{
 		Id: "testuser",
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -277,7 +287,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 			},
 		},
 	}
-	s.NoError(user.Insert())
+	s.NoError(dbUser.Insert())
 
 	u, err := findEvergreenUserForPR(1234)
 	s.NoError(err)
@@ -296,7 +306,6 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.NotEmpty(patchDoc.Patches)
 	s.True(patchDoc.Activated)
 	s.NotEmpty(patchDoc.PatchedConfig)
-	s.NotZero(patchDoc.CreateTime)
 	s.Zero(patchDoc.StartTime)
 	s.Zero(patchDoc.FinishTime)
 	s.NotEqual(0, patchDoc.PatchNumber)
@@ -317,6 +326,7 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Len(patchDoc.Tasks, 2)
 	s.Contains(patchDoc.Tasks, "dist")
 	s.Contains(patchDoc.Tasks, "dist-test")
+	s.NotZero(patchDoc.CreateTime)
 }
 
 func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester string) {
@@ -424,8 +434,9 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	s.NoError(err)
-	s.NotNil(patchDoc)
-	s.Empty(patchDoc.Version)
+	if s.NotNil(patchDoc) {
+		s.Empty(patchDoc.Version)
+	}
 
 	versionDoc, err := version.FindOne(version.ById(patchID.Hex()))
 	s.NoError(err)
@@ -434,8 +445,43 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
 	s.NoError(err)
 	s.Empty(unprocessedIntents)
+
+	// third party patches should still create subscriptions
+	s.verifyGithubSubscriptions(patchDoc)
 }
 
-func (s *PatchIntentUnitsSuite) TestBuildPatchURL() {
-	s.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(&s.githubPatchData))
+func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch) {
+	out := []event.Subscription{}
+	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.Require().Len(out, 2)
+
+	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+		Owner:    patchDoc.GithubPatchData.BaseOwner,
+		Repo:     patchDoc.GithubPatchData.BaseRepo,
+		PRNumber: patchDoc.GithubPatchData.PRNumber,
+		Ref:      patchDoc.GithubPatchData.HeadHash,
+	})
+
+	foundPatch := false
+	foundBuild := false
+	for i := range out {
+		target, ok := out[i].Subscriber.Target.(*event.GithubPullRequestSubscriber)
+		s.Require().True(ok)
+
+		s.EqualValues(ghSub.Target, *target)
+		if out[i].Type == event.ResourceTypePatch {
+			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
+			foundPatch = true
+
+		} else if out[i].Type == event.ResourceTypeBuild {
+			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
+			foundBuild = true
+
+		} else {
+			s.T().Errorf("unexpected resource type %s", event.ResourceTypeBuild)
+		}
+	}
+
+	s.True(foundPatch)
+	s.True(foundBuild)
 }

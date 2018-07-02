@@ -54,7 +54,7 @@ var (
 				Name: "another_variant",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
-						Name: "another_task",
+						Name: "example_task_group",
 					},
 				},
 				DisplayTasks: []displayTask{

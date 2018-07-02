@@ -2,19 +2,19 @@ package scheduler
 
 import (
 	"context"
-	"runtime"
-	"sync"
+	"math"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -28,318 +28,14 @@ type Scheduler struct {
 	TaskQueuePersister
 	HostAllocator
 
-	GetExpectedDurations TaskDurationEstimator
-	FindRunnableTasks    TaskFinder
+	FindRunnableTasks TaskFinder
 }
 
-const underwaterPruningEnabled = true
+const (
+	RunnerName = "scheduler"
 
-// versionBuildVariant is used to keep track of the version/buildvariant fields
-// for tasks that are to be split by distro
-type versionBuildVariant struct {
-	Version, BuildVariant string
-}
-
-// Schedule all of the tasks to be run.  Works by finding all of the tasks that
-// are ready to be run, splitting them by distro, prioritizing them, and saving
-// the per-distro queues.  Then determines the number of new hosts to spin up
-// for each distro, and spins them up.
-func (s *Scheduler) Schedule(ctx context.Context) error {
-	if err := model.UpdateStaticHosts(); err != nil {
-		return errors.Wrap(err, "error updating static hosts")
-	}
-
-	if underwaterPruningEnabled {
-		num, err := task.UnscheduleStaleUnderwaterTasks()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		grip.InfoWhen(num > 0, message.Fields{
-			"message": "unscheduled stale tasks",
-			"runner":  RunnerName,
-			"count":   num,
-		})
-	}
-
-	startAt := time.Now()
-	runnableTasks, err := s.FindRunnableTasks()
-	if err != nil {
-		return errors.Wrap(err, "Error finding runnable tasks")
-	}
-
-	grip.Info(message.Fields{
-		"message":  "found runnable tasks",
-		"runner":   RunnerName,
-		"count":    len(runnableTasks),
-		"duration": time.Since(startAt),
-		"span":     time.Since(startAt).String(),
-	})
-
-	// split the tasks by distro
-	tasksByDistro, taskRunDistros, err := s.splitTasksByDistro(runnableTasks)
-	if err != nil {
-		return errors.Wrap(err, "Error splitting tasks by distro to run on")
-	}
-
-	// load in all of the distros
-	distros, err := distro.Find(distro.All)
-	if err != nil {
-		return errors.Wrap(err, "Error finding distros")
-	}
-
-	// get the expected run duration of all runnable tasks
-	taskExpectedDuration, err := s.GetExpectedDurations(runnableTasks)
-
-	if err != nil {
-		return errors.Wrap(err, "Error getting expected task durations")
-	}
-
-	distroInputChan := make(chan distroSchedulerInput, len(distros))
-
-	// put all of the needed input for the distro scheduler into a channel to be read by the
-	// distro scheduling loop.
-	for _, d := range distros {
-		runnableTasksForDistro := tasksByDistro[d.Id]
-		if len(runnableTasksForDistro) == 0 {
-			continue
-		}
-		distroInputChan <- distroSchedulerInput{
-			distroId:               d.Id,
-			runnableTasksForDistro: runnableTasksForDistro,
-		}
-
-	}
-
-	if ctx.Err() != nil {
-		return errors.New("scheduling run canceled.")
-	}
-
-	// close the channel to signal that the loop reading from it can terminate
-	close(distroInputChan)
-	workers := runtime.NumCPU()
-
-	wg := sync.WaitGroup{}
-	wg.Add(workers)
-
-	// make a channel to collect all of function results from scheduling the distros
-	distroSchedulerResultChan := make(chan distroSchedulerResult)
-
-	// for each worker, create a new goroutine
-	for i := 0; i < workers; i++ {
-		go func() {
-			defer wg.Done()
-			// read the inputs for scheduling this distro
-			for d := range distroInputChan {
-				distroStartTime := time.Now()
-				// schedule the distro
-				res := s.scheduleDistro(d.distroId, d.runnableTasksForDistro, taskExpectedDuration)
-				if res.err != nil {
-					grip.Error(message.Fields{
-						"operation": "scheduling distro",
-						"distro":    d.distroId,
-						"runner":    RunnerName,
-						"error":     res.err.Error(),
-					})
-				}
-
-				if ctx.Err() != nil {
-					return
-				}
-				// write the results out to a results channel
-				distroSchedulerResultChan <- res
-				grip.Info(message.Fields{
-					"runner":                 RunnerName,
-					"distro":                 d.distroId,
-					"operation":              "scheduling distro",
-					"queue_size":             len(d.runnableTasksForDistro),
-					"expected_duration":      res.schedulerEvent.ExpectedDuration,
-					"expected_duration_span": res.schedulerEvent.ExpectedDuration.String(),
-					"span":     time.Since(distroStartTime).String(),
-					"duration": time.Since(distroStartTime),
-				})
-				if len(d.runnableTasksForDistro) != len(res.taskQueueItem) {
-					delta := make(map[string]string)
-					for _, t := range res.taskQueueItem {
-						delta[t.Id] = "res.taskQueueItem"
-					}
-					for _, i := range d.runnableTasksForDistro {
-						if delta[i.Id] == "res.taskQueueItem" {
-							delete(delta, i.Id)
-						} else {
-							delta[i.Id] = "d.runnableTasksForDistro"
-						}
-					}
-					grip.Alert(message.Fields{
-						"runner":             RunnerName,
-						"distro":             d.distroId,
-						"message":            "inconsistency with scheduler input and output",
-						"inconsistent_tasks": delta,
-					})
-				}
-			}
-		}()
-	}
-
-	// intialize a map of scheduler events
-	schedulerEvents := map[string]event.TaskQueueInfo{}
-
-	// prioritize the tasks, one distro at a time
-	taskQueueItems := make(map[string][]model.TaskQueueItem)
-
-	resDoneChan := make(chan struct{})
-	catcher := grip.NewSimpleCatcher()
-	go func() {
-		defer close(resDoneChan)
-		for res := range distroSchedulerResultChan {
-			if res.err != nil {
-				catcher.Add(errors.Wrapf(res.err, "error scheduling tasks on distro %v", res.distroId))
-				continue
-			}
-			schedulerEvents[res.distroId] = res.schedulerEvent
-			taskQueueItems[res.distroId] = res.taskQueueItem
-		}
-	}()
-
-	if ctx.Err() != nil {
-		return errors.New("scheduling operations canceled")
-	}
-	// wait for the distro scheduler goroutines to complete to complete
-	wg.Wait()
-
-	// wait group has terminated so scheduler channel can be closed
-	close(distroSchedulerResultChan)
-
-	// wait for the results to be collected
-	<-resDoneChan
-
-	if catcher.HasErrors() {
-		return catcher.Resolve()
-	}
-
-	totalQueueSize := 0
-	for _, queue := range taskQueueItems {
-		totalQueueSize += len(queue)
-	}
-
-	grip.Info(message.Fields{
-		"runner": RunnerName,
-		"stat":   "total-queue-size",
-		"size":   totalQueueSize,
-	})
-
-	// split distros by name
-	distrosByName := make(map[string]distro.Distro)
-	for _, d := range distros {
-		distrosByName[d.Id] = d
-	}
-
-	hostPlanningStart := time.Now()
-
-	grip.Notice(message.Fields{
-		"runner":    RunnerName,
-		"operation": "removing stale intent hosts older than 3 minutes",
-	})
-
-	if err = host.RemoveAllStaleInitializing(); err != nil {
-		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
-	}
-
-	// get hosts that we can use
-	hostsByDistro, err := s.findUsableHosts()
-	if err != nil {
-		return err
-	}
-
-	// add the length of the host lists of hosts that are running to the event log.
-	for distroId, hosts := range hostsByDistro {
-		taskQueueInfo := schedulerEvents[distroId]
-		taskQueueInfo.NumHostsRunning = len(hosts)
-		schedulerEvents[distroId] = taskQueueInfo
-	}
-	grip.Info(message.Fields{
-		"runner":    RunnerName,
-		"operation": "host query and processing",
-		"span":      time.Since(hostPlanningStart).String(),
-		"duration":  time.Since(hostPlanningStart),
-	})
-
-	// construct the data that will be needed by the host allocator
-	hostAllocatorData := HostAllocatorData{
-		existingDistroHosts:  hostsByDistro,
-		distros:              distrosByName,
-		taskQueueItems:       taskQueueItems,
-		taskRunDistros:       taskRunDistros,
-		projectTaskDurations: taskExpectedDuration,
-	}
-
-	// figure out how many new hosts we need
-	newHostsNeeded, err := s.NewHostsNeeded(ctx, hostAllocatorData, s.Settings)
-	if err != nil {
-		return errors.Wrap(err, "Error determining how many new hosts are needed")
-	}
-
-	// spawn up the hosts
-	hostsSpawned, err := s.spawnHosts(ctx, newHostsNeeded)
-	if err != nil {
-		return errors.Wrap(err, "Error spawning new hosts")
-	}
-
-	grip.Info(message.Fields{
-		"message":     "hosts spawned",
-		"num_distros": len(hostsSpawned),
-		"runner":      RunnerName,
-		"allocations": newHostsNeeded,
-	})
-
-	for distro, hosts := range hostsSpawned {
-		taskQueueInfo := schedulerEvents[distro]
-		taskQueueInfo.NumHostsRunning += len(hosts)
-		schedulerEvents[distro] = taskQueueInfo
-
-		hostList := make([]string, len(hosts))
-		for idx, host := range hosts {
-			hostList[idx] = host.Id
-		}
-
-		if ctx.Err() != nil {
-			return errors.New("scheduling run canceled")
-		}
-
-		makespan := taskQueueInfo.ExpectedDuration / time.Duration(len(hostsByDistro)+len(hostsSpawned))
-		grip.Info(message.Fields{
-			"runner":             RunnerName,
-			"distro":             distro,
-			"new_hosts":          hostList,
-			"num":                len(hostList),
-			"queue":              taskQueueInfo,
-			"total_runtime":      taskQueueInfo.ExpectedDuration.String(),
-			"predicted_makespan": makespan.String(),
-			"event":              taskQueueInfo,
-		})
-	}
-
-	for d, t := range schedulerEvents {
-		event.LogSchedulerEvent(event.SchedulerEventData{
-			TaskQueueInfo: t,
-			DistroId:      d,
-		})
-	}
-
-	grip.Info(message.Fields{
-		"runner":    RunnerName,
-		"operation": "total host planning",
-		"span":      time.Since(hostPlanningStart).String(),
-		"duration":  time.Since(hostPlanningStart),
-	})
-
-	return nil
-}
-
-type distroSchedulerInput struct {
-	distroId               string
-	runnableTasksForDistro []task.Task
-}
+	underwaterPruningEnabled = true
+)
 
 type distroSchedulerResult struct {
 	distroId       string
@@ -348,9 +44,12 @@ type distroSchedulerResult struct {
 	err            error
 }
 
-func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
-	taskExpectedDuration model.ProjectTaskDurations) distroSchedulerResult {
+type distroSchedueler struct {
+	TaskPrioritizer
+	TaskQueuePersister
+}
 
+func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]version.Version) distroSchedulerResult {
 	res := distroSchedulerResult{
 		distroId: distroId,
 	}
@@ -360,8 +59,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		"num_tasks": len(runnableTasksForDistro),
 	})
 
-	prioritizedTasks, err := s.PrioritizeTasks(distroId, s.Settings,
-		runnableTasksForDistro)
+	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro, versions)
 	if err != nil {
 		res.err = errors.Wrap(err, "Error prioritizing tasks")
 		return res
@@ -374,8 +72,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		"operation": "saving task queue for distro",
 	})
 
-	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks,
-		taskExpectedDuration)
+	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks)
 	if err != nil {
 		res.err = errors.Wrapf(err, "Error processing distro %s saving task queue", distroId)
 		return res
@@ -401,157 +98,42 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		NumHostsRunning:  0,
 		ExpectedDuration: totalDuration,
 	}
+
+	// final sanity check
+	if len(runnableTasksForDistro) != len(res.taskQueueItem) {
+		delta := make(map[string]string)
+		for _, t := range res.taskQueueItem {
+			delta[t.Id] = "res.taskQueueItem"
+		}
+		for _, i := range runnableTasksForDistro {
+			if delta[i.Id] == "res.taskQueueItem" {
+				delete(delta, i.Id)
+			} else {
+				delta[i.Id] = "d.runnableTasksForDistro"
+			}
+		}
+		grip.Alert(message.Fields{
+			"runner":             RunnerName,
+			"distro":             distroId,
+			"message":            "inconsistency with scheduler input and output",
+			"inconsistent_tasks": delta,
+		})
+	}
+
 	return res
 
 }
 
-// Takes in a version id and a map of "key -> buildvariant" (where "key" is of
-// type "versionBuildVariant") and updates the map with an entry for the
-// buildvariants associated with "versionStr"
-func (s *Scheduler) getProject(versionStr string) (*model.Project, error) {
-	version, err := version.FindOne(version.ById(versionStr))
-	if err != nil {
-		return nil, err
-	}
-	if version == nil {
-		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
-	}
-
-	project := &model.Project{}
-	err = model.LoadProjectInto([]byte(version.Config), version.Identifier, project)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
-	}
-	return project, nil
-}
-
-func updateVersionBuildVarMap(versionStr string, p *model.Project, versionBuildVarMap map[versionBuildVariant]model.BuildVariant) {
-	for _, buildVariant := range p.BuildVariants {
-		key := versionBuildVariant{versionStr, buildVariant.Name}
-		versionBuildVarMap[key] = buildVariant
-	}
-}
-
-// Takes in a list of tasks, and splits them by distro.
-// Returns a map of distro name -> tasks that can be run on that distro
-// and a map of task id -> distros that the task can be run on (for tasks
-// that can be run on multiple distro)
-func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
-	map[string][]task.Task, map[string][]string, error) {
-	tasksByDistro := make(map[string][]task.Task)
-	taskRunDistros := make(map[string][]string)
-
-	// map of versionBuildVariant -> build variant
-	versionBuildVarMap := make(map[versionBuildVariant]model.BuildVariant)
-
-	// insert the tasks into the appropriate distro's queue in our map
-	for _, task := range tasksToSplit {
-		key := versionBuildVariant{task.Version, task.BuildVariant}
-		var p *model.Project
-		var err error
-		if _, exists := versionBuildVarMap[key]; !exists {
-			p, err = s.getProject(task.Version)
-			if err != nil {
-				grip.Info(message.WrapError(err, message.Fields{
-					"runner":  RunnerName,
-					"version": task.Version,
-					"task":    task.Id,
-					"message": "skipping version after problem getting project for task",
-					"err":     errors.WithStack(err),
-				}))
-				continue
-			}
-			updateVersionBuildVarMap(task.Version, p, versionBuildVarMap)
-		}
-
-		// get the build variant for the task
-		buildVariant, ok := versionBuildVarMap[key]
-		if !ok {
-			grip.Info(message.Fields{
-				"runner":  RunnerName,
-				"variant": task.BuildVariant,
-				"project": task.Project,
-				"task":    task.Id,
-				"message": "buildvariant not defined",
-			})
-			continue
-		}
-
-		distros, err := s.getDistrosForBuildVariant(task, buildVariant, p)
-		// If no matching spec was found, log it and continue.
-		if err != nil {
-			grip.Info(message.Fields{
-				"runner":  RunnerName,
-				"variant": task.BuildVariant,
-				"project": task.Project,
-				"task":    task.Id,
-				"message": "task has no matching spec for buildvariant",
-			})
-			continue
-		}
-
-		// use the specified distros for the task, or, if none are specified,
-		// the default distros for the build variant
-		distrosToUse := buildVariant.RunOn
-		if len(distros) != 0 {
-			distrosToUse = distros
-		}
-		// remove duplicates to avoid scheduling twice
-		distrosToUse = util.UniqueStrings(distrosToUse)
-		for _, d := range distrosToUse {
-			tasksByDistro[d] = append(tasksByDistro[d], task)
-		}
-
-		// for tasks that can run on multiple distros, keep track of which
-		// distros they will be scheduled on
-		if len(distrosToUse) > 1 {
-			taskRunDistros[task.Id] = distrosToUse
-		}
-	}
-
-	return tasksByDistro, taskRunDistros, nil
-}
-
-func (s *Scheduler) getDistrosForBuildVariant(task task.Task, bv model.BuildVariant, p *model.Project) ([]string, error) {
-	for _, bvTask := range bv.Tasks {
-		if bvTask.Name == task.DisplayName { // task is listed in buildvariant
-			return bvTask.Distros, nil
-		}
-	}
-
-	if p == nil {
-		var err error
-		p, err = s.getProject(task.Version)
-		if err != nil {
-			return []string{}, errors.New("error finding project for task")
-		}
-	}
-	taskGroups := map[string][]string{}
-	for _, tg := range p.TaskGroups {
-		taskGroups[tg.Name] = tg.Tasks
-	}
-	for _, bvTask := range bv.Tasks {
-		if tasksInTaskGroup, ok := taskGroups[bvTask.Name]; ok {
-			for _, t := range tasksInTaskGroup {
-				if t == task.DisplayName { // task is listed in task group
-					return bvTask.Distros, nil
-				}
-			}
-		}
-	}
-
-	return []string{}, errors.New("no matching task found for buildvariant")
-}
-
-// Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
+// Call out to the embedded Manager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {
+func spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {
 	startTime := time.Now()
 
 	// loop over the distros, spawning up the appropriate number of hosts
 	// for each distro
 	hostsSpawnedPerDistro := make(map[string][]host.Host)
+
 	for distroId, numHostsToSpawn := range newHostsNeeded {
 		distroStartTime := time.Now()
 
@@ -559,75 +141,61 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 			continue
 		}
 
+		if ctx.Err() != nil {
+			return nil, errors.New("scheduling run canceled.")
+		}
+
+		d, err := distro.FindOne(distro.ById(distroId))
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to find distro %s", distroId)
+		}
+
 		hostsSpawnedPerDistro[distroId] = make([]host.Host, 0, numHostsToSpawn)
-		for i := 0; i < numHostsToSpawn; i++ {
-			if ctx.Err() != nil {
-				return nil, errors.New("scheduling run canceled.")
-			}
-
-			d, err := distro.FindOne(distro.ById(distroId))
+		// if distro can have containers, check if there are enough parents to hold
+		// new containers
+		if d.MaxContainers > 0 {
+			currentParents, err := host.FindAllRunningParentsByDistro(distroId)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":  distroId,
-					"runner":  RunnerName,
-					"message": "failed to find distro",
-				}))
-				continue
+				return nil, errors.Wrap(err, "could not find running parents")
 			}
-
-			allDistroHosts, err := host.Find(host.ByDistroId(distroId))
+			existingContainers, err := host.FindAllRunningContainers()
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":  distroId,
-					"runner":  RunnerName,
-					"message": "problem getting hosts for distro",
-				}))
-
-				continue
+				return nil, errors.Wrap(err, "could not find running containers")
 			}
 
-			if len(allDistroHosts) >= d.PoolSize {
+			numNewParents := numNewParentsNeeded(len(currentParents), numHostsToSpawn,
+				len(existingContainers), d)
+
+			// only want to spawn amount of parents allowed based on pool size
+			numNewParentsToSpawn := parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), numHostsToSpawn)
+
+			if numNewParentsToSpawn > 0 {
+				parentIntentHosts, err := insertParents(d, numNewParentsToSpawn)
+				if err != nil {
+					return nil, err
+				}
+				hostsSpawnedPerDistro[distroId] = append(hostsSpawnedPerDistro[distroId], parentIntentHosts...)
+
 				grip.Info(message.Fields{
-					"distro":    distroId,
-					"runner":    RunnerName,
-					"pool_size": d.PoolSize,
-					"message":   "max hosts running",
+					"runner":      RunnerName,
+					"distro":      distroId,
+					"num_parents": numNewParentsToSpawn,
+					"operation":   "spawning new parents",
+					"span":        time.Since(distroStartTime).String(),
+					"duration":    time.Since(distroStartTime),
 				})
-
-				continue
 			}
 
-			cloudManager, err := cloud.GetCloudManager(ctx, d.Provider, s.Settings)
+			// only want to spawn amount of containers we can fit on currently running parents
+			numHostsToSpawn = containerCapacity(d, len(currentParents), len(existingContainers), numHostsToSpawn)
+		}
+
+		for i := 0; i < numHostsToSpawn; i++ {
+			intentHost, err := insertIntent(d)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":  distroId,
-					"runner":  RunnerName,
-					"message": "problem getting cloud manager for distro",
-				}))
-				continue
-			}
-
-			hostOptions := cloud.HostOptions{
-				UserName: evergreen.User,
-				UserHost: false,
-			}
-
-			intentHost := cloud.NewIntent(*d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
-			if err := intentHost.Insert(); err != nil {
-				err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
-
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":   distroId,
-					"runner":   RunnerName,
-					"host":     intentHost.Id,
-					"provider": d.Provider,
-				}))
-
 				return nil, err
 			}
-
-			hostsSpawnedPerDistro[distroId] =
-				append(hostsSpawnedPerDistro[distroId], *intentHost)
+			hostsSpawnedPerDistro[distroId] = append(hostsSpawnedPerDistro[distroId], *intentHost)
 
 		}
 		// if none were spawned successfully
@@ -651,14 +219,155 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 		"span":      time.Since(startTime).String(),
 		"duration":  time.Since(startTime),
 	})
-
 	return hostsSpawnedPerDistro, nil
 }
 
-// Finds live hosts in the DB and organizes them by distro
-func (s *Scheduler) findUsableHosts() (map[string][]host.Host, error) {
+// generateHostOptions generates host options based on what kind of host it is:
+// regular host or container
+func generateHostOptions(d distro.Distro) (cloud.HostOptions, error) {
+	if d.MaxContainers > 0 {
+		parent, err := findAvailableParent(d)
+		if err != nil {
+			err = errors.Wrap(err, "Could not find available parent host")
+			return cloud.HostOptions{}, err
+		}
+		hostOptions := cloud.HostOptions{
+			ParentID: parent.Id,
+			UserName: evergreen.User,
+		}
+		return hostOptions, nil
+	}
+
+	hostOptions := cloud.HostOptions{
+		UserName: evergreen.User,
+	}
+	return hostOptions, nil
+}
+
+// generateParentHostOptions generates host options for a parent host
+func generateParentHostOptions() cloud.HostOptions {
+	return cloud.HostOptions{
+		HasContainers: true,
+		UserName:      evergreen.User,
+	}
+}
+
+// FindAvailableParent finds a parent host that can accommodate container,
+// packing on parent that has task with longest expected finish time
+func findAvailableParent(d distro.Distro) (host.Host, error) {
+	allParents, err := host.FindAllRunningParentsOrdered()
+	if err != nil {
+		return host.Host{}, errors.Wrap(err, "Could not find running parent hosts")
+	}
+
+	// parents come in sorted order from soonest to latest expected finish time
+	for i := len(allParents) - 1; i >= 0; i-- {
+		parent := allParents[i]
+		currentContainers, err := parent.GetContainers()
+		if err != nil {
+			return host.Host{}, errors.Wrapf(err, "Could not find containers for parent %s", parent.Id)
+		}
+		if len(currentContainers) < d.MaxContainers {
+			return parent, nil
+		}
+	}
+	return host.Host{}, errors.New("No available parent found for container")
+}
+
+// numNewParentsNeeded returns the number of additional parents needed to
+// accommodate new containers
+func numNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingContainers int, d distro.Distro) int {
+	if numCurrentParents*d.MaxContainers < numExistingContainers+numContainersNeeded {
+		return int(math.Ceil(float64(numContainersNeeded) / float64(d.MaxContainers)))
+	}
+	return 0
+}
+
+// parentCapacity calculates number of new parents to create
+// checks to make sure we do not create more parents than allowed
+func parentCapacity(d distro.Distro, numNewParents, numCurrentParents, numCurrentContainers, numContainersToSpawn int) int {
+	// if looking at a static docker provider, do not spawn any more parents
+	if d.Provider == evergreen.ProviderNameDockerStatic {
+		return 0
+	}
+	// if there are already maximum numbers of parents running, do not spawn
+	// any more parents
+	if numCurrentParents >= d.PoolSize {
+		numNewParents = 0
+	}
+	// if adding all new parents results in more parents than allowed, only add
+	// enough parents to fill to capacity
+	if numNewParents+numCurrentParents > d.PoolSize {
+		numNewParents = d.MaxContainers - numCurrentParents
+	}
+
+	return numNewParents
+}
+
+// containerCapacity calculates how many containers to make
+// checks to make sure we do not create more containers than can fit currently
+func containerCapacity(d distro.Distro, numCurrentParents, numCurrentContainers, numContainersToSpawn int) int {
+	if numContainersToSpawn > 0 {
+		numAvailableContainers := numCurrentParents*d.MaxContainers - numCurrentContainers
+		if numContainersToSpawn > numAvailableContainers {
+			numContainersToSpawn = numAvailableContainers
+		}
+	}
+	return numContainersToSpawn
+}
+
+// insertParents creates host intent documents for each parent
+func insertParents(d distro.Distro, numNewParents int) ([]host.Host, error) {
+	hostsSpawned := make([]host.Host, 0)
+	for j := 0; j < numNewParents; j++ {
+		parentHostOptions := generateParentHostOptions()
+
+		intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, parentHostOptions)
+		if err := intentHost.Insert(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":   RunnerName,
+				"host":     intentHost.Id,
+				"provider": d.Provider,
+			}))
+			return nil, errors.Wrapf(err, "Could not insert parent '%s'", intentHost.Id)
+		}
+		hostsSpawned = append(hostsSpawned, *intentHost)
+	}
+	return hostsSpawned, nil
+}
+
+// insertIntent creates a host intent document for a regular host or container
+func insertIntent(d distro.Distro) (*host.Host, error) {
+	hostOptions, err := generateHostOptions(d)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Could not generate host options for distro %s", d.Id)
+	}
+
+	intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
+	if err := intentHost.Insert(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"distro":   d.Id,
+			"runner":   RunnerName,
+			"host":     intentHost.Id,
+			"provider": d.Provider,
+		}))
+
+		return nil, errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
+	}
+	return intentHost, nil
+}
+
+// Finds live hosts in the DB and organizes them by distro. Pass the
+// empty string to retrieve all distros
+func findUsableHosts(distroID string) (map[string][]host.Host, error) {
 	// fetch all hosts, split by distro
-	allHosts, err := host.Find(host.IsLive)
+	query := host.IsLive()
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	allHosts, err := host.Find(db.Query(query))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding live hosts")
 	}
@@ -671,4 +380,22 @@ func (s *Scheduler) findUsableHosts() (map[string][]host.Host, error) {
 	}
 
 	return hostsByDistro, nil
+}
+
+// pass 'allDistros' or the empty string to unchedule all distros.
+func underwaterUnschedule(distroID string) error {
+	if underwaterPruningEnabled {
+		num, err := task.UnscheduleStaleUnderwaterTasks(distroID)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		grip.InfoWhen(num > 0, message.Fields{
+			"message": "unscheduled stale tasks",
+			"runner":  RunnerName,
+			"count":   num,
+		})
+	}
+
+	return nil
 }

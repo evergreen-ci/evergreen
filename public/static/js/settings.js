@@ -1,4 +1,4 @@
-mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificationService', function($scope, $http, $window, notifier) {
+mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificationService', 'mciUserSettingsService', function($scope, $http, $window, notifier, mciUserSettingsService) {
   $scope.timezones = [
     {str: "American Samoa, Niue", value: "Pacific/Niue"},
     {str: "Hawaii", value: "Pacific/Tahiti"},
@@ -48,6 +48,8 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.new_waterfall = $window.new_waterfall;
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
+  $scope.notifications = $window.notifications;
+  $scope.slack_username = $window.slack_username;
 
   $scope.newKey = function(){
     if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
@@ -72,12 +74,12 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
             last_known_as: $scope.github_user,
         }
     };
-    $http.put('/settings/', data).then(
-      function(resp) {
-        window.location.reload()
-      },
-      function(resp) {
-        notifier.pushNotification("Failed to save changes: " + resp.data.error,'errorHeader');
-      });
+    var success = function() {
+      window.location.reload();
+    };
+    var failure = function(resp) {
+      notifier.pushNotification("Failed to save changes: " + resp.data.error,'errorHeader');
+    };
+    mciUserSettingsService.saveUserSettings(data, {success: success, error: failure});
    };
 }]);

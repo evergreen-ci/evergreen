@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,13 +18,13 @@ var (
 
 type AdminEventSuite struct {
 	suite.Suite
-	u *user.DBUser
+	username string
 }
 
 func TestAdminEventSuite(t *testing.T) {
 	s := new(AdminEventSuite)
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	s.u = &user.DBUser{Id: "user"}
+	s.username = "user"
 	suite.Run(t, s)
 }
 
@@ -39,7 +38,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 		MonitorDisabled:     true,
 		RepotrackerDisabled: true,
 	}
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
@@ -60,7 +59,7 @@ func (s *AdminEventSuite) TestEventLogging2() {
 		SuperUsers: []string{"a", "b", "c"},
 	}
 	after := evergreen.Settings{}
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
@@ -78,18 +77,18 @@ func (s *AdminEventSuite) TestEventLogging2() {
 
 func (s *AdminEventSuite) TestEventLogging3() {
 	before := evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
+		SMTP: evergreen.SMTPConfig{
 			Port:     10,
 			Password: "pass",
 		},
 	}
 	after := evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
+		SMTP: evergreen.SMTPConfig{
 			Port:     20,
 			Password: "nope",
 		},
 	}
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
@@ -116,7 +115,7 @@ func (s *AdminEventSuite) TestNoSpuriousLogging() {
 			SSHTimeoutSeconds: 15,
 		},
 	}
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(5))
 	s.NoError(err)
 	s.Len(dbEvents, 0)
@@ -124,14 +123,12 @@ func (s *AdminEventSuite) TestNoSpuriousLogging() {
 
 func (s *AdminEventSuite) TestNoChanges() {
 	before := evergreen.SchedulerConfig{
-		MergeToggle: 5,
-		TaskFinder:  "legacy",
+		TaskFinder: "legacy",
 	}
 	after := evergreen.SchedulerConfig{
-		MergeToggle: 5,
-		TaskFinder:  "legacy",
+		TaskFinder: "legacy",
 	}
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
 	s.Len(dbEvents, 0)
@@ -139,15 +136,13 @@ func (s *AdminEventSuite) TestNoChanges() {
 
 func (s *AdminEventSuite) TestReverting() {
 	before := evergreen.SchedulerConfig{
-		TaskFinder:  "legacy",
-		MergeToggle: 5,
+		TaskFinder: "legacy",
 	}
 	after := evergreen.SchedulerConfig{
-		TaskFinder:  "alternate",
-		MergeToggle: 10,
+		TaskFinder: "alternate",
 	}
 	s.NoError(after.Set())
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
@@ -192,7 +187,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 		},
 	}
 	s.NoError(evergreen.UpdateConfig(&after))
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.username))
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)

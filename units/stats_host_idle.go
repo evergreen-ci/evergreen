@@ -37,7 +37,7 @@ type collectHostIdleDataJob struct {
 	host     *host.Host
 	task     *task.Task
 	settings *evergreen.Settings
-	manager  cloud.CloudManager
+	manager  cloud.Manager
 	env      evergreen.Environment
 }
 
@@ -54,7 +54,7 @@ func newHostIdleJob() *collectHostIdleDataJob {
 	return j
 }
 
-func newHostIdleJobForTermination(env evergreen.Environment, settings *evergreen.Settings, manager cloud.CloudManager,
+func newHostIdleJobForTermination(env evergreen.Environment, settings *evergreen.Settings, manager cloud.Manager,
 	h *host.Host, startTime, finishTime time.Time) amboy.Job {
 
 	j := NewCollectHostIdleDataJob(h, nil, startTime, finishTime).(*collectHostIdleDataJob)
@@ -119,7 +119,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 
 	var cost float64
 	if j.manager == nil {
-		j.manager, err = cloud.GetCloudManager(ctx, j.host.Provider, j.settings)
+		j.manager, err = cloud.GetManager(ctx, j.host.Provider, j.settings)
 
 		if err != nil {
 			j.AddError(err)
@@ -127,7 +127,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 		}
 	}
 
-	if calc, ok := j.manager.(cloud.CloudCostCalculator); ok {
+	if calc, ok := j.manager.(cloud.CostCalculator); ok {
 		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
 		if err != nil {
 			j.AddError(err)
@@ -137,7 +137,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 		}
 	}
 
-	if j.host.Provider != evergreen.ProviderNameStatic {
+	if j.TaskID != "" && j.host.Provider != evergreen.ProviderNameStatic {
 		if err = j.host.IncTaskCount(); err != nil {
 			j.AddError(err)
 		}

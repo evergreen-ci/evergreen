@@ -37,8 +37,7 @@ const maxLevels = 1024
 
 type stackMessage struct {
 	Composer
-	tagged bool
-	trace  stackFrames
+	trace stackFrames
 }
 
 // StackFrame captures a single item in a stack trace, and is used
@@ -55,7 +54,7 @@ type StackTrace struct {
 	Frames  stackFrames `bson:"frames" json:"frames" yaml:"frames"`
 }
 
-func (s StackTrace) String() string { return stackFrames(s.Frames).String() }
+func (s StackTrace) String() string { return s.Frames.String() }
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -110,7 +109,7 @@ func NewStackFormatted(skip int, message string, args ...interface{}) Composer {
 ////////////////////////////////////////////////////////////////////////
 
 func (m *stackMessage) String() string {
-	return strings.Trim(strings.Join([]string{m.getTag(), m.Composer.String()}, " "), " \n\t")
+	return strings.Trim(strings.Join([]string{m.trace.String(), m.Composer.String()}, " "), " \n\t")
 }
 
 func (m *stackMessage) Raw() interface{} {
@@ -200,13 +199,4 @@ func captureStack(skip int) []StackFrame {
 	}
 
 	return trace
-}
-
-func (m *stackMessage) getTag() string {
-	if len(m.trace) >= 1 {
-		m.tagged = true
-		return m.trace[0].String()
-	}
-
-	return ""
 }

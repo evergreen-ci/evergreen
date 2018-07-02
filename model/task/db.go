@@ -52,12 +52,15 @@ var (
 	AbortedKey             = bsonutil.MustHaveTag(Task{}, "Aborted")
 	TimeTakenKey           = bsonutil.MustHaveTag(Task{}, "TimeTaken")
 	ExpectedDurationKey    = bsonutil.MustHaveTag(Task{}, "ExpectedDuration")
+	DurationPredictionKey  = bsonutil.MustHaveTag(Task{}, "DurationPrediction")
 	PriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey         = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	CostKey                = bsonutil.MustHaveTag(Task{}, "Cost")
 	ExecutionTasksKey      = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey         = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey           = bsonutil.MustHaveTag(Task{}, "TaskGroup")
+	GenerateTaskKey        = bsonutil.MustHaveTag(Task{}, "GenerateTask")
+	GeneratedByKey         = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -663,6 +666,34 @@ func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
 	return task, nil
 }
 
+func findAllTaskIDs(q db.Q) ([]string, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, q, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task ids for versions")
+	}
+
+	ids := []string{}
+	for _, t := range tasks {
+		ids = append(ids, t.Id)
+	}
+
+	return ids, nil
+}
+
+func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
+	q := db.Query(bson.M{VersionKey: versionId}).WithFields(IdKey)
+	return findAllTaskIDs(q)
+}
+
+func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
+	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
+	return findAllTaskIDs(q)
+}
+
 // FindOneOld returns one task from the old tasks collection that satisfies the query.
 func FindOneOld(query db.Q) (*Task, error) {
 	task, err := FindOneOldNoMerge(query)
@@ -721,8 +752,8 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 
 // FindOneIdOldOrNew attempts to find a given task ID by first looking in the
 // old collection, then the tasks collection
-func FindOneIdOldOrNew(id string, execution string) (*Task, error) {
-	task, err := FindOneOld(ById(fmt.Sprintf("%s_%s", id, execution)))
+func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
+	task, err := FindOneOld(ById(fmt.Sprintf("%s_%d", id, execution)))
 	if task == nil || err != nil {
 		return FindOne(ById(id))
 	}

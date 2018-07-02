@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -34,8 +35,9 @@ type Host struct {
 	Zone    string `bson:"zone" json:"zone"`
 
 	// true if the host has been set up properly
-	Provisioned       bool `bson:"provisioned" json:"provisioned"`
-	ProvisionAttempts int  `bson:"priv_attempts" json:"provision_attempts"`
+	Provisioned       bool      `bson:"provisioned" json:"provisioned"`
+	ProvisionAttempts int       `bson:"priv_attempts" json:"provision_attempts"`
+	ProvisionTime     time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
 
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
@@ -46,11 +48,15 @@ type Host struct {
 	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
 
+	// the task the most recently finished running on the host
+	LastTask         string `bson:"last_task" json:"last_task"`
+	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
+	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
+	LastVersion      string `bson:"last_version,omitempty" json:"last_version,omitempty"`
+	LastProject      string `bson:"last_project,omitempty" json:"last_project,omitempty"`
+
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
-
-	// the pid of the task that is currently running on the host
-	Pid string `bson:"pid" json:"pid"`
 
 	// duplicate of the DispatchTime field in the above task
 	TaskDispatchTime time.Time `bson:"task_dispatch_time" json:"task_dispatch_time"`
@@ -63,7 +69,6 @@ type Host struct {
 	TaskCount       int       `bson:"task_count" json:"task_count"`
 
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
-	LastTaskCompleted     string    `bson:"last_task" json:"last_task"`
 	LastCommunicationTime time.Time `bson:"last_communication" json:"last_communication"`
 
 	Status    string `bson:"status" json:"status"`
@@ -72,8 +77,12 @@ type Host struct {
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
 	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
+
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
+	// for ec2 dynamic hosts, the total size of the volumes requested, in GiB
+	VolumeTotalSize int64 `bson:"volume_total_size" json:"volume_total_size,omitempty"`
+
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
 
@@ -84,7 +93,20 @@ type Host struct {
 
 	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
+
+	// managed containers require different information based on host type
+	// True if this host is a parent of containers
+	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
+	// stores the ID of the host a container is on
+	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
+	// stores last expected finish time among all containers on the host
+	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
+
+	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
+	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
 }
+
+type HostGroup []Host
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
 type ProvisionOptions struct {
@@ -98,6 +120,22 @@ type ProvisionOptions struct {
 
 	// Owner is the user associated with the host used to populate any necessary metadata.
 	OwnerId string `bson:"owner_id" json:"owner_id"`
+}
+
+// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
+type SpawnOptions struct {
+	// TimeoutTeardown is the time that this host should be torn down. In most cases, a host
+	// should be torn down due to its task or build. TimeoutTeardown is a backstop to ensure that Evergreen
+	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
+	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
+
+	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
+	// this host should be torn down. Only one of TaskID or BuildID should be set.
+	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
+
+	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
+	// this host should be torn down. Only one of TaskID or BuildID should be set.
+	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
 }
 
 const (
@@ -114,13 +152,22 @@ func (h *Host) IdleTime() time.Duration {
 
 	// if the host has run a task before, then the idle time is just the time
 	// passed since the last task finished
-	if h.LastTaskCompleted != "" {
+	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
+	}
+
+	// if the host has been provisioned, the idle time is how long it has been provisioned
+	if !util.IsZeroTime(h.ProvisionTime) {
+		return time.Since(h.ProvisionTime)
 	}
 
 	// if the host has not run a task before, the idle time is just
 	// how long is has been since the host was created
 	return time.Since(h.CreationTime)
+}
+
+func (h *Host) IsEphemeral() bool {
+	return util.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
 }
 
 func (h *Host) SetStatus(status, user string, logs string) error {
@@ -146,9 +193,9 @@ func (h *Host) SetStatus(status, user string, logs string) error {
 	)
 }
 
-// SetInitializing marks the host as initializing. Only allow this
+// SetProvisioning marks the host as initializing. Only allow this
 // if the host is uninitialized.
-func (h *Host) SetInitializing() error {
+func (h *Host) SetProvisioning() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
@@ -156,21 +203,7 @@ func (h *Host) SetInitializing() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.HostInitializing,
-			},
-		},
-	)
-}
-
-func (h *Host) SetStarting() error {
-	return UpdateOne(
-		bson.M{
-			IdKey:     h.Id,
-			StatusKey: evergreen.HostUninitialized,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey: evergreen.HostStarting,
+				StatusKey: evergreen.HostProvisioning,
 			},
 		},
 	)
@@ -192,7 +225,7 @@ func (h *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
-			StatusKey: evergreen.HostInitializing,
+			StatusKey: evergreen.HostProvisioning,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -294,31 +327,36 @@ func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
+	h.ProvisionTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:      evergreen.HostRunning,
-				ProvisionedKey: true,
+				StatusKey:        evergreen.HostRunning,
+				ProvisionedKey:   true,
+				ProvisionTimeKey: h.ProvisionTime,
 			},
 		},
 	)
 }
 
-// ClearRunningTask unsets the running task key on the host and updates the last task
-// completed fields.
-func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) error {
+// ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
+func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	err := UpdateOne(
 		bson.M{
-			IdKey:          host.Id,
-			RunningTaskKey: host.RunningTask,
+			IdKey:          h.Id,
+			RunningTaskKey: h.RunningTask,
 		},
 		bson.M{
 			"$set": bson.M{
-				LTCKey:     prevTaskId,
-				LTCTimeKey: finishTime,
+				LTCTimeKey:    time.Now(),
+				LTCTaskKey:    t.Id,
+				LTCGroupKey:   t.TaskGroup,
+				LTCBVKey:      t.BuildVariant,
+				LTCVersionKey: t.Version,
+				LTCProjectKey: t.Project,
 			},
 			"$unset": bson.M{
 				RunningTaskKey:             1,
@@ -333,19 +371,26 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(host.Id, prevTaskId)
-	host.RunningTask = ""
-	host.LastTaskCompleted = prevTaskId
-	host.LastTaskCompletedTime = finishTime
+	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	h.RunningTask = ""
+	h.RunningTaskGroup = ""
+	h.RunningTaskBuildVariant = ""
+	h.RunningTaskVersion = ""
+	h.RunningTaskProject = ""
+	h.LastTask = t.Id
+	h.LastGroup = t.TaskGroup
+	h.LastBuildVariant = t.BuildVariant
+	h.LastVersion = t.Version
+	h.LastProject = t.Version
 
 	return nil
 }
 
-// UnsetRunningTask unsets the running task fields. It does NOT set last task completed fields.
-func (host *Host) UnsetRunningTask() error {
-	return UpdateOne(
+// ClearRunningTask unsets the running task on the host.
+func (h *Host) ClearRunningTask() error {
+	err := UpdateOne(
 		bson.M{
-			IdKey: host.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$unset": bson.M{
@@ -356,46 +401,60 @@ func (host *Host) UnsetRunningTask() error {
 				RunningTaskProjectKey:      1,
 			},
 		})
+
+	if err != nil {
+		return err
+	}
+
+	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	h.RunningTask = ""
+	h.RunningTaskGroup = ""
+	h.RunningTaskBuildVariant = ""
+	h.RunningTaskVersion = ""
+	h.RunningTaskProject = ""
+
+	return nil
 }
 
-// UpdateRunningTask takes two id strings - an old task and a new one - finds
-// the host running the task with Id, 'prevTaskId' and updates its running task
-// to 'newTaskId'; also setting the completion time of 'prevTaskId'
-// Returns true for success and error if it exists
-func (host *Host) UpdateRunningTask(prevTaskId string, newTask *task.Task,
-	finishTime time.Time) (bool, error) {
-
-	// we should never be calling update running task with an empty new task id.
-	if newTask.Id == "" {
-		return false, fmt.Errorf("cannot set a running task id to be an empty string")
+// UpdateRunningTask updates the running task in the host document, returns
+// - true, nil on success
+// - false, nil on duplicate key error, task is already assigned to another host
+// - false, error on all other errors
+func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
+	if t == nil {
+		return false, errors.New("received nil task, cannot update")
+	}
+	if t.Id == "" {
+		return false, errors.New("task has empty task ID, cannot update")
 	}
 
 	selector := bson.M{
-		IdKey: host.Id,
+		IdKey: h.Id,
 	}
 
 	update := bson.M{
 		"$set": bson.M{
-			RunningTaskKey:             newTask.Id,
-			RunningTaskGroupKey:        newTask.TaskGroup,
-			RunningTaskBuildVariantKey: newTask.BuildVariant,
-			RunningTaskVersionKey:      newTask.Version,
-			RunningTaskProjectKey:      newTask.Project,
-			LTCKey:                     prevTaskId,
-			LTCTimeKey:                 finishTime,
-			PidKey:                     "",
+			RunningTaskKey:             t.Id,
+			RunningTaskGroupKey:        t.TaskGroup,
+			RunningTaskBuildVariantKey: t.BuildVariant,
+			RunningTaskVersionKey:      t.Version,
+			RunningTaskProjectKey:      t.Project,
 		},
 	}
 
 	err := UpdateOne(selector, update)
 	if err != nil {
-		// if its a duplicate key error, don't log the error.
 		if mgo.IsDup(err) {
+			grip.Debug(message.Fields{
+				"message": "found duplicate running task",
+				"task":    t.Id,
+				"host":    h.Id,
+			})
 			return false, nil
 		}
-		return false, err
+		return false, errors.Wrapf(err, "error updating running task %s for host %s", t.Id, h.Id)
 	}
-	event.LogHostRunningTaskSet(host.Id, newTask.Id)
+	event.LogHostRunningTaskSet(h.Id, t.Id)
 
 	return true, nil
 }
@@ -479,20 +538,6 @@ func (h *Host) SetExpirationNotification(thresholdKey string) error {
 	)
 }
 
-func (h *Host) SetTaskPid(pid string) error {
-	event.LogHostTaskPidSet(h.Id, pid)
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				PidKey: pid,
-			},
-		},
-	)
-}
-
 func (h *Host) MarkReachable() error {
 	if h.Status == evergreen.HostRunning {
 		return nil
@@ -517,19 +562,21 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				// If adding or removing fields here, make sure that all callers will work
 				// correctly after the change. Any fields defined here but not set by the
 				// caller will insert the zero value into the document
-				DNSKey:              h.Host,
-				UserKey:             h.User,
-				DistroKey:           h.Distro,
-				ProvisionedKey:      h.Provisioned,
-				StartedByKey:        h.StartedBy,
-				ExpirationTimeKey:   h.ExpirationTime,
-				ProviderKey:         h.Provider,
-				TagKey:              h.Tag,
-				InstanceTypeKey:     h.InstanceType,
-				ZoneKey:             h.Zone,
-				ProjectKey:          h.Project,
-				ProvisionOptionsKey: h.ProvisionOptions,
-				StartTimeKey:        h.StartTime,
+				DNSKey:               h.Host,
+				UserKey:              h.User,
+				DistroKey:            h.Distro,
+				ProvisionedKey:       h.Provisioned,
+				StartedByKey:         h.StartedBy,
+				ExpirationTimeKey:    h.ExpirationTime,
+				ProviderKey:          h.Provider,
+				TagKey:               h.Tag,
+				InstanceTypeKey:      h.InstanceType,
+				ZoneKey:              h.Zone,
+				ProjectKey:           h.Project,
+				ProvisionAttemptsKey: h.ProvisionAttempts,
+				ProvisionOptionsKey:  h.ProvisionOptions,
+				StartTimeKey:         h.StartTime,
+				HasContainersKey:     h.HasContainers,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -537,6 +584,22 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 			},
 		},
 	)
+}
+
+func (h *Host) CacheHostData() error {
+	_, err := UpsertOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				ZoneKey:       h.Zone,
+				StartTimeKey:  h.StartTime,
+				VolumeSizeKey: h.VolumeTotalSize,
+			},
+		},
+	)
+	return err
 }
 
 func (h *Host) Insert() error {
@@ -643,4 +706,264 @@ func (h *Host) SetExtId() error {
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
 	)
+}
+
+func FindHostsToTerminate() ([]Host, error) {
+	const (
+		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
+		provisioningCutoff = 25 * time.Minute
+
+		// unreachableCutoff is the threshold to wait for an decommissioned host to become marked
+		// as reachable again before giving up and terminating it.
+		unreachableCutoff = 5 * time.Minute
+	)
+
+	now := time.Now()
+
+	query := bson.M{
+		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
+		"$or": []bson.M{
+			{ // host.ByExpiredSince(time.Now())
+				StartedByKey: bson.M{"$ne": evergreen.User},
+				StatusKey: bson.M{
+					"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
+				},
+				ExpirationTimeKey: bson.M{"$lte": now},
+			},
+			{ // host.IsProvisioningFailure
+				StatusKey: evergreen.HostProvisionFailed,
+			},
+			{ // host.ByUnprovisonedSince
+				ProvisionedKey: false,
+				CreateTimeKey:  bson.M{"$lte": now.Add(-provisioningCutoff)},
+				StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
+				StartedByKey:   evergreen.User,
+			},
+			{ // host.IsDecommissioned
+				RunningTaskKey: bson.M{"$exists": false},
+				StatusKey:      evergreen.HostDecommissioned,
+			},
+			{ // decommissioned hosts that have not checked in recently
+				StatusKey:                evergreen.HostDecommissioned,
+				LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)},
+			},
+		},
+	}
+	hosts, err := Find(db.Query(query))
+
+	fmt.Println(len(hosts), query)
+
+	if db.ResultsNotFound(err) {
+		return []Host{}, nil
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "database error")
+	}
+
+	return hosts, nil
+}
+
+func CountInactiveHostsByProvider() ([]InactiveHostCounts, error) {
+	var counts []InactiveHostCounts
+	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &counts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error aggregating inactive hosts")
+	}
+	return counts, nil
+}
+
+// FindAllRunningContainers finds all the containers that are currently running
+func FindAllRunningContainers() ([]Host, error) {
+	query := db.Query(bson.M{
+		ParentIDKey: bson.M{"$exists": true},
+		StatusKey:   evergreen.HostRunning,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding running containers")
+	}
+
+	return hosts, nil
+}
+
+// FindAllRunningParents finds all running hosts that have child containers
+func FindAllRunningParents() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
+		HasContainersKey: true,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding running parents")
+	}
+
+	return hosts, nil
+}
+
+// FindAllRunningParentsOrdered finds all running hosts with child containers,
+// sorted in order of soonest  to latest LastContainerFinishTime
+func FindAllRunningParentsOrdered() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey:        evergreen.HostRunning,
+		HasContainersKey: true,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding ordered running parents")
+	}
+
+	return hosts, nil
+}
+
+// FindAllRunningParentsOnDistro finds all running hosts of a given distro with child containers
+func FindAllRunningParentsByDistro(distroId string) ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey:                                          evergreen.HostRunning,
+		HasContainersKey:                                   true,
+		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroId,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	return Find(query)
+}
+
+// GetContainers finds all the containers belonging to this host
+// errors if this host is not a parent
+func (h *Host) GetContainers() ([]Host, error) {
+	if !h.HasContainers {
+		return nil, errors.New("Host does not host containers")
+	}
+	query := db.Query(bson.M{
+		ParentIDKey: h.Id,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding containers")
+	}
+
+	return hosts, nil
+}
+
+// GetParent finds the parent of this container
+// errors if host is not a container or if parent cannot be found
+func (h *Host) GetParent() (*Host, error) {
+	if h.ParentID == "" {
+		return nil, errors.New("Host does not have a parent")
+	}
+
+	host, err := FindOneId(h.ParentID)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding parent")
+	}
+	if host == nil {
+		return nil, errors.New("Parent not found")
+	}
+	if !host.HasContainers {
+		return nil, errors.New("Host found is not a parent")
+	}
+
+	return host, nil
+}
+
+// IsIdleParent determines whether a host with containers has exclusively
+// terminated containers
+func (h *Host) IsIdleParent() (bool, error) {
+	const idleTimeCutoff = 10 * time.Minute
+	if !h.HasContainers {
+		return false, nil
+	}
+	// sanity check so that hosts not immediately decommissioned
+	if h.IdleTime() < idleTimeCutoff {
+		return false, nil
+	}
+	query := db.Query(bson.M{
+		ParentIDKey: h.Id,
+		StatusKey:   bson.M{"$ne": evergreen.HostTerminated},
+	})
+	num, err := Count(query)
+	if err != nil {
+		return false, errors.Wrap(err, "Error counting non-terminated containers")
+	}
+
+	return num == 0, nil
+}
+
+// UpdateLastContainerFinishTime updates latest finish time for a host with containers
+func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
+	selector := bson.M{
+		IdKey: h.Id,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			LastContainerFinishTimeKey: t,
+		},
+	}
+
+	if err := UpdateOne(selector, update); err != nil {
+		return errors.Wrapf(err, "error updating finish time for host %s", h.Id)
+	}
+
+	return nil
+}
+
+// FindAllHostsSpawnedByTasks finds all running hosts spawned by the `createhost` command.
+func FindAllHostsSpawnedByTasks() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		SpawnOptionsKey: bson.M{
+			"$exists": true,
+		},
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks")
+	}
+	return hosts, nil
+}
+
+// FindHostsSpawnedByTask finds hosts spawned by the `createhost` command scoped to a given task.
+func FindHostsSpawnedByTask(taskID string) ([]Host, error) {
+	taskIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey)
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		taskIDKey: taskID,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by tasks by task ID")
+	}
+	return hosts, nil
+}
+
+// FindHostsSpawnedByBuild finds hosts spawned by the `createhost` command scoped to a given build.
+func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
+	buildIDKey := bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey)
+	query := db.Query(bson.M{
+		StatusKey:  evergreen.HostRunning,
+		buildIDKey: buildID,
+	})
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding hosts spawned by builds by build ID")
+	}
+	return hosts, nil
+}
+
+// CountContainersOnParents counts how many containers are children of the given group of hosts
+func (hosts HostGroup) CountContainersOnParents() (int, error) {
+	ids := hosts.GetHostIds()
+	query := db.Query(bson.M{
+		StatusKey:   bson.M{"$in": evergreen.UphostStatus},
+		ParentIDKey: bson.M{"$in": ids},
+	})
+	return Count(query)
+}
+
+// GetHostIds returns a slice of host IDs for the given group of hosts
+func (hosts HostGroup) GetHostIds() []string {
+	var ids []string
+	for _, h := range hosts {
+		ids = append(ids, h.Id)
+	}
+	return ids
 }

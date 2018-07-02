@@ -64,7 +64,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	tc.logger.Execution().Info("Execution logger initialized.")
 	tc.logger.System().Info("System logger initialized.")
 
-	taskConfig, err := a.getTaskConfig(ctx, tc)
+	taskConfig, err := a.makeTaskConfig(ctx, tc)
 	if err != nil {
 		tc.logger.Execution().Errorf("Error fetching task configuration: %s", err)
 		complete <- evergreen.TaskFailed
@@ -81,7 +81,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	innerCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig), cancel)
+	go a.startMaxExecTimeoutWatch(ctx, tc, cancel)
 
 	tc.logger.Execution().Infof("Fetching expansions for project %s", taskConfig.Task.Project)
 	expVars, err := a.comm.FetchExpansionVars(innerCtx, tc.task)
@@ -90,8 +90,9 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		complete <- evergreen.TaskFailed
 		return
 	}
-	taskConfig.Expansions.Update(*expVars)
-	tc.taskConfig = taskConfig
+	taskConfig.Expansions.Update(expVars.Vars)
+	taskConfig.Redacted = expVars.PrivateVars
+	tc.setTaskConfig(taskConfig)
 
 	// set up the system stats collector
 	tc.statsCollector = NewSimpleStatsCollector(
@@ -181,13 +182,24 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 	return tc.currentCommand
 }
 
-func (tc *taskContext) setCurrentTimeout(dur time.Duration) {
+func (tc *taskContext) setCurrentTimeout(cmd command.Command) {
 	tc.Lock()
 	defer tc.Unlock()
 
-	tc.timeout = dur
+	var timeout time.Duration
+	if cmd == nil {
+		timeout = defaultIdleTimeout
+	} else if dynamicTimeout := tc.taskConfig.GetIdleTimeout(); dynamicTimeout != 0 {
+		timeout = time.Duration(dynamicTimeout) * time.Second
+	} else if cmd.IdleTimeout() > 0 {
+		timeout = cmd.IdleTimeout()
+	} else {
+		timeout = defaultIdleTimeout
+	}
+
+	tc.timeout = timeout
 	tc.logger.Execution().Debugf("Set command timeout for '%s' (%s) to %s",
-		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), dur)
+		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), timeout)
 }
 
 func (tc *taskContext) getCurrentTimeout() time.Duration {
@@ -214,8 +226,8 @@ func (tc *taskContext) hadTimedOut() bool {
 	return tc.timedOut
 }
 
-// getTaskConfig fetches task configuration data required to run the task from the API server.
-func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
+// makeTaskConfig fetches task configuration data required to run the task from the API server.
+func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
 	tc.logger.Execution().Info("Fetching distro configuration.")
 	confDistro, err := a.comm.GetDistro(ctx, tc.task)
 	if err != nil {
@@ -264,15 +276,32 @@ func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.Task
 	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef, confPatch)
 }
 
-func (a *Agent) getExecTimeoutSecs(taskConfig *model.TaskConfig) time.Duration {
-	pt := taskConfig.Project.FindProjectTask(taskConfig.Task.DisplayName)
-	if pt.ExecTimeoutSecs == 0 {
-		// if unspecified in the project task and the project, use the default value
-		if taskConfig.Project.ExecTimeoutSecs != 0 {
-			pt.ExecTimeoutSecs = taskConfig.Project.ExecTimeoutSecs
-		} else {
-			pt.ExecTimeoutSecs = defaultExecTimeoutSecs
-		}
+func (tc *taskContext) getExecTimeout() time.Duration {
+	tc.RLock()
+	defer tc.RUnlock()
+	if tc.taskConfig == nil {
+		return defaultExecTimeout
 	}
-	return time.Duration(pt.ExecTimeoutSecs) * time.Second
+	if dynamicTimeout := tc.taskConfig.GetExecTimeout(); dynamicTimeout > 0 {
+		return time.Duration(dynamicTimeout) * time.Second
+	}
+	if pt := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName); pt.ExecTimeoutSecs > 0 {
+		return time.Duration(pt.ExecTimeoutSecs) * time.Second
+	}
+	if tc.taskConfig.Project.ExecTimeoutSecs > 0 {
+		return time.Duration(tc.taskConfig.Project.ExecTimeoutSecs) * time.Second
+	}
+	return defaultExecTimeout
+}
+
+func (tc *taskContext) setTaskConfig(taskConfig *model.TaskConfig) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.taskConfig = taskConfig
+}
+
+func (tc *taskContext) getTaskConfig() *model.TaskConfig {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.taskConfig
 }

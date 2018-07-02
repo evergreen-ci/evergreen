@@ -18,11 +18,17 @@ func init() {
 
 	cmds := map[string]CommandFactory{
 		"archive.targz_pack":    tarballCreateFactory,
+		"archive.targz_extract": tarballExtractFactory,
+		"archive.zip_pack":      zipArchiveCreateFactory,
+		"archive.zip_extract":   zipExtractFactory,
+		"archive.auto_extract":  autoExtractFactory,
 		"attach.results":        attachResultsFactory,
 		"attach.xunit_results":  xunitResultsFactory,
 		"attach.artifacts":      attachArtifactsFactory,
+		"create.host":           createHostFactory,
 		"expansions.fetch_vars": fetchVarsFactory,
 		"expansions.update":     updateExpansionsFactory,
+		"expansions.write":      writeExpansionsFactory,
 		"generate.tasks":        generateTaskFactory,
 		"git.apply_patch":       gitApplyPatchFactory,
 		"git.get_project":       gitFetchProjectFactory,
@@ -40,6 +46,7 @@ func init() {
 		"shell.track":           shellTrackFactory,
 		"subprocess.exec":       subprocessExecFactory,
 		"setup.initial":         initialSetupFactory,
+		"timeout.update":        timeoutUpdateFactory,
 	}
 
 	for name, factory := range cmds {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ const (
 	GithubAPIStatusMinor = "minor"
 	GithubAPIStatusMajor = "major"
 	GithubAPIStatusGood  = "good"
+
+	githubAcceptDiff = "application/vnd.github.v3.diff"
 )
 
 func githubShouldRetry(attempt rehttp.Attempt) bool {
@@ -58,6 +61,25 @@ func githubShouldRetry(attempt rehttp.Attempt) bool {
 	grip.Debugf("Github API response: %s. %s", attempt.Response.Status, rateMessage)
 
 	return false
+}
+
+// githubShouldRetryWith404s allows HTTP requests to respond event when 404s
+// are returned.
+func githubShouldRetryWith404s(attempt rehttp.Attempt) bool {
+	if attempt.Response == nil {
+		return true
+	}
+
+	limit := parseGithubRateLimit(attempt.Response.Header)
+	if limit.Remaining == 0 {
+		return false
+	}
+
+	if attempt.Response.StatusCode == http.StatusNotFound {
+		return true
+	}
+
+	return githubShouldRetry(attempt)
 }
 
 func getGithubClient(token string) (*http.Client, error) {
@@ -154,16 +176,16 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash stri
 	if resp != nil {
 		defer resp.Body.Close()
 	}
+	if resp == nil {
+		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s'", owner, repo, path)
+		grip.Error(errMsg)
+		return nil, APIResponseError{errMsg}
+	}
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, FileNotFoundError{filepath: path}
 	}
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying '%s/%s' for '%s': %v", owner, repo, path, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
-	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s'", owner, repo, path)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
@@ -596,7 +618,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
 func GetPullRequestMergeBase(ctx context.Context, token string, data patch.GithubPatch) (string, error) {
-	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetry)
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
 	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 
 	if err != nil {
@@ -632,4 +654,71 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data patch.Githu
 	}
 
 	return *commit.Parents[0].SHA, nil
+}
+
+// GetGithubDiff downloads a diff from a Github Pull Request diff. This function
+// does not use go-github because this operation is not supported
+func GetGithubPullRequestDiff(ctx context.Context, token string, gh *patch.GithubPatch) (string, []patch.Summary, error) {
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
+	client, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	if err != nil {
+		return "", nil, errors.Wrap(err, "error getting http client")
+	}
+	defer util.PutHTTPClient(client)
+
+	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to create github request")
+	}
+
+	diff, err := doGithubRequest(client, req, githubAcceptDiff)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
+	}
+
+	summaries, err := GetPatchSummaries(diff)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to get patch summary")
+	}
+
+	return diff, summaries, nil
+}
+
+func doGithubRequest(client *http.Client, req *http.Request, accept string) (string, error) {
+	req.Header.Del("Accept")
+	req.Header.Add("Accept", accept)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to fetch data from github")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf("Expected 200 OK, got %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
+		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
+			patch.SizeLimit, resp.ContentLength)
+	}
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read response body from github response")
+	}
+
+	return string(bytes), nil
+}
+
+// buildPatchURL creates a URL to enable downloading patch files through the
+// Github API
+func buildPatchURL(gp *patch.GithubPatch) string {
+	url := &url.URL{
+		Scheme: "https",
+		Host:   "api.github.com",
+		Path: fmt.Sprintf("/repos/%s/%s/pulls/%d.diff", gp.BaseOwner,
+			gp.BaseRepo, gp.PRNumber),
+	}
+
+	return url.String()
 }

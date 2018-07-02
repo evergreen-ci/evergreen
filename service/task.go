@@ -15,11 +15,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -93,6 +92,7 @@ type uiTaskData struct {
 	DisplayOnly    bool         `json:"display_only"`
 	ExecutionTasks []uiExecTask `json:"execution_tasks"`
 	PartOfDisplay  bool         `json:"in_display"`
+	DisplayTaskID  string       `json:"display_task,omitempty"`
 }
 
 type uiDep struct {
@@ -143,7 +143,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	executionStr := mux.Vars(r)["execution"]
+	executionStr := gimlet.GetVars(r)["execution"]
 	archived := false
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
@@ -282,7 +282,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
 		for _, t := range projCtx.Task.ExecutionTasks {
-			et, err := task.FindOneIdOldOrNew(t, executionStr)
+			et, err := task.FindOneIdOldOrNew(t, totalExecutions)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -296,12 +296,17 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		for _, tr := range projCtx.Context.Task.LocalTestResults {
 			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
 		}
+		if uiTask.PartOfDisplay {
+			uiTask.DisplayTaskID = projCtx.Task.DisplayTask.Id
+		}
 	}
 
-	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
+	ctx := r.Context()
+	usr := gimlet.GetUser(ctx)
+	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task          uiTaskData
 		Host          *host.Host
 		PluginContent pluginData
@@ -508,7 +513,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	execution, err := strconv.Atoi(mux.Vars(r)["execution"])
+	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
 	if err != nil {
 		http.Error(w, "Invalid execution number", http.StatusBadRequest)
 		return
@@ -517,22 +522,25 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	wrapper := &taskLogsWrapper{}
 	if logType == "EV" {
-		loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		var loggedEvents []event.EventLogEntry
+		loggedEvents, err = event.Find(event.AllLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		uis.WriteJSON(w, http.StatusOK, loggedEvents)
+		gimlet.WriteJSON(w, loggedEvents)
 		return
-	} else {
-		taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, GetUser(r) != nil)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		wrapper.LogMessages = taskLogs
-		uis.WriteJSON(w, http.StatusOK, wrapper)
 	}
+
+	ctx := r.Context()
+	usr := gimlet.GetUser(ctx)
+	taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, usr != nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	wrapper.LogMessages = taskLogs
+	gimlet.WriteJSON(w, wrapper)
 }
 
 func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
@@ -543,7 +551,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	execution, err := strconv.Atoi(mux.Vars(r)["execution"])
+	execution, err := strconv.Atoi(gimlet.GetVars(r)["execution"])
 	grip.Warning(err)
 	logType := r.FormValue("type")
 
@@ -557,7 +565,9 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// restrict access if the user is not logged in
-	if GetUser(r) == nil {
+	ctx := r.Context()
+	usr := gimlet.GetUser(ctx)
+	if usr == nil {
 		if logType == AllLogsType {
 			logTypeFilter = []string{apimodels.TaskLogPrefix}
 		}
@@ -575,15 +585,14 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	type logTemplateData struct {
 		Data chan apimodels.LogMessage
-		User *user.DBUser
+		User gimlet.User
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		err = errors.WithStack(uis.StreamText(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html"))
-		grip.Error(err)
+		uis.renderText.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log_raw.html")
 		return
 	}
-	grip.CatchError(errors.WithStack(uis.StreamHTML(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")))
+	uis.render.Stream(w, http.StatusOK, logTemplateData{channel, usr}, "base", "task_log.html")
 }
 
 // avoids type-checking json params for the below function
@@ -618,7 +627,8 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authUser := GetUser(r)
+	ctx := r.Context()
+	authUser := gimlet.GetUser(ctx)
 	authName := authUser.DisplayName()
 
 	// determine what action needs to be taken
@@ -634,7 +644,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "abort":
 		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
@@ -647,7 +657,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "set_active":
 		active := putParams.Active
@@ -662,7 +672,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "set_priority":
 		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
@@ -676,9 +686,6 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 					http.StatusBadRequest)
 				return
 			}
-		} else if priority < 0 {
-			http.Error(w, "Cannot set a negative priority. If this task should not run, it should be unscheduled.", http.StatusBadRequest)
-			return
 		}
 		if err = projCtx.Task.SetPriority(priority, authUser.Username()); err != nil {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
@@ -690,15 +697,16 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	default:
-		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action: "+putParams.Action)
+		gimlet.WriteJSONError(w, "Unrecognized action: "+putParams.Action)
 	}
 }
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
-	logId := mux.Vars(r)["log_id"]
+	vars := gimlet.GetVars(r)
+	logId := vars["log_id"]
 	var (
 		testLog  *model.TestLog
 		err      error
@@ -712,9 +720,9 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		taskID := mux.Vars(r)["task_id"]
-		testName := mux.Vars(r)["test_name"]
-		taskExecutionsAsString := mux.Vars(r)["task_execution"]
+		taskID := vars["task_id"]
+		testName := vars["test_name"]
+		taskExecutionsAsString := vars["task_execution"]
 		taskExec, err = strconv.Atoi(taskExecutionsAsString)
 		if err != nil {
 			http.Error(w, "task execution num must be an int", http.StatusBadRequest)
@@ -751,19 +759,17 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-
+	usr := gimlet.GetUser(ctx)
 	template := "task_log.html"
 	data := struct {
 		Data chan apimodels.LogMessage
-		User *user.DBUser
-	}{displayLogs, GetUser(r)}
+		User gimlet.User
+	}{displayLogs, usr}
 
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
-		if err = uis.StreamText(w, http.StatusOK, data, "base", template); err != nil {
-			grip.Error(errors.Wrapf(err, "error streaming log data for log %s", logId))
-		}
+		uis.renderText.Stream(w, http.StatusOK, data, "base", template)
 	} else {
-		uis.WriteHTML(w, http.StatusOK, data, "base", template)
+		uis.render.WriteResponse(w, http.StatusOK, data, "base", template)
 	}
 }

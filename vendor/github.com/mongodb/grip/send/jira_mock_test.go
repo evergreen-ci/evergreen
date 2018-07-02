@@ -12,6 +12,10 @@ type jiraClientMock struct {
 	failAuth   bool
 	failSend   bool
 	numSent    int
+
+	lastIssue   string
+	lastSummary string
+	lastFields  *jira.IssueFields
 }
 
 func (j *jiraClientMock) CreateClient(_ *http.Client, _ string) error {
@@ -28,12 +32,14 @@ func (j *jiraClientMock) Authenticate(_ string, _ string) error {
 	return nil
 }
 
-func (j *jiraClientMock) PostIssue(_ *jira.IssueFields) error {
+func (j *jiraClientMock) PostIssue(fields *jira.IssueFields) error {
 	if j.failSend {
 		return errors.New("mock failed to post issue")
 	}
 
 	j.numSent++
+	j.lastSummary = fields.Summary
+	j.lastFields = fields
 
 	return nil
 }
@@ -44,6 +50,7 @@ func (j *jiraClientMock) PostComment(issueID string, comment string) error {
 	}
 
 	j.numSent++
+	j.lastIssue = issueID
 
 	return nil
 }

@@ -11,19 +11,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 )
 
-const (
-	EnvAll      = "EVERGREEN_ALL"
-	envOverride = "SETTINGS_OVERRIDE"
-)
+const EnvOverride = "SETTINGS_OVERRIDE"
 
-var (
-	// RunAllTests is a booloean flag to set in order to run the integration tests.
-	RunAllTests = flag.Bool("evergreen.all", false, "Run integration tests")
-	// path to an mci settings file containing sensitive information
-	settingsOverride = flag.String("evergreen.settingsOverride", "", "Settings file"+
-		" to be used to override sensitive info in the testing mci settings"+
-		" file")
-)
+// path to an mci settings file containing sensitive information
+var settingsOverride = flag.String("evergreen.settingsOverride", "", "Settings file"+
+	" to be used to override sensitive info in the testing mci settings"+
+	" file")
 
 // HandleTestingErr catches errors that we do not want to treat
 // as relevant a goconvey statement. HandleTestingErr is used
@@ -50,29 +43,23 @@ func GetDirectoryOfFile() string {
 	return filepath.Dir(file)
 }
 
-// SkipTestUnlessAll skips the current test.
-func SkipTestUnlessAll(t *testing.T, testName string) {
+// SkipWindows
+func SkipWindows(t *testing.T, testName string) {
 	// Note: in the future we could/should be able to eliminate
 	// the testName arg by using runtime.Caller(1)
-
-	if !(*RunAllTests) && os.Getenv(EnvAll) == "" {
-		t.Skip(fmt.Sprintf("skipping %v because 'evergreen.all' is not specified...",
-			testName))
+	if runtime.GOOS == "windows" {
+		t.Skip(fmt.Sprintf("skipping test '%s' on windows", testName))
 	}
 }
 
-func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
-	testName string) {
-
-	SkipTestUnlessAll(t, testName)
-
+func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, testName string) {
 	// make sure an override file is provided
 	if (*settingsOverride) == "" {
 		msg := "Integration tests need a settings override file to be provided"
-		if os.Getenv(envOverride) == "" {
+		if os.Getenv(EnvOverride) == "" {
 			panic(msg)
 		} else {
-			*settingsOverride = os.Getenv(envOverride)
+			*settingsOverride = os.Getenv(EnvOverride)
 		}
 	}
 
@@ -89,4 +76,5 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	testSettings.Plugins = integrationSettings.Plugins
 	testSettings.Jira = integrationSettings.Jira
 	testSettings.GithubPRCreatorOrg = integrationSettings.GithubPRCreatorOrg
+	testSettings.Slack = integrationSettings.Slack
 }

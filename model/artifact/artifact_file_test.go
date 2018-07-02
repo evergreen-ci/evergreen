@@ -150,3 +150,19 @@ func (s *TestArtifactFileSuite) TestFindByTaskIdWithoutExecution() {
 	s.Equal(0, entries[0].Execution)
 	s.Equal("task2", entries[0].TaskId)
 }
+
+func (s *TestArtifactFileSuite) TestFindByIdsAndExecutions() {
+	tasks := []TaskIDAndExecution{
+		{TaskID: "task1", Execution: 1},
+		{TaskID: "task2", Execution: 5},
+	}
+	entries, err := FindAll(ByTaskIdsAndExecutions(tasks))
+	s.NoError(err)
+	s.Len(entries, 2)
+}
+
+func (s *TestArtifactFileSuite) TestFindByIds() {
+	entries, err := FindAll(ByTaskIds([]string{"task1", "task2"}))
+	s.NoError(err)
+	s.Len(entries, 3)
+}

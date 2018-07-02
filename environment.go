@@ -1,7 +1,6 @@
 package evergreen
 
 import (
-	"bytes"
 	"context"
 	"encoding/gob"
 	"fmt"
@@ -9,14 +8,20 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/logger"
+	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -39,7 +44,12 @@ func init() {
 // implementation for use in testing.
 func GetEnvironment() Environment { return globalEnvState }
 
-func ResetEnvironment() { globalEnvState = &envState{} }
+func ResetEnvironment() {
+	globalEnvState = &envState{
+		senders: map[SenderKey]send.Sender{},
+		closers: map[string]func(context.Context) error{},
+	}
+}
 
 // Environment provides application-level services (e.g. databases,
 // configuration, queues.
@@ -72,6 +82,20 @@ type Environment interface {
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
 	ClientConfig() *ClientConfig
+
+	// GetSender provides a grip Sender configured with the environment's
+	// settings. These Grip senders must be used with Composers that specify
+	// all message details.
+	GetSender(SenderKey) (send.Sender, error)
+
+	// RegisterCloser adds a function object to an internal
+	// tracker to be called by the Close method before process
+	// termination. The ID is used in reporting, but must be
+	// unique or a new closer could overwrite an existing closer
+	// in some implementations.
+	RegisterCloser(string, func(context.Context) error)
+	// Close calls all registered closers in the environment.
+	Close(context.Context) error
 }
 
 type ClientBinary struct {
@@ -86,12 +110,15 @@ type ClientConfig struct {
 }
 
 type envState struct {
-	remoteQueue  amboy.Queue
-	localQueue   amboy.Queue
-	settings     *Settings
-	session      *mgo.Session
-	mu           sync.RWMutex
-	clientConfig *ClientConfig
+	remoteQueue        amboy.Queue
+	localQueue         amboy.Queue
+	notificationsQueue amboy.Queue
+	settings           *Settings
+	session            *mgo.Session
+	mu                 sync.RWMutex
+	clientConfig       *ClientConfig
+	closers            map[string]func(context.Context) error
+	senders            map[SenderKey]send.Sender
 }
 
 // Configure requires that either the path or DB is sent so that it can construct the
@@ -121,9 +148,9 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if e.session == nil {
 		catcher.Add(e.initDB(e.settings.Database))
 	}
+	catcher.Add(e.initSenders())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
-	catcher.Add(e.initClientConfig())
 	if confPath != "" {
 		catcher.Add(e.persistSettings())
 	}
@@ -202,6 +229,83 @@ func (e *envState) createQueues(ctx context.Context) error {
 	}
 	e.remoteQueue = rq
 
+	// Notifications queue w/ moving weight avg pool
+	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
+
+	runner, err := pool.NewMovingAverageRateLimitedWorkers(e.settings.Amboy.PoolSizeLocal,
+		e.settings.Notify.BufferTargetPerInterval,
+		time.Duration(e.settings.Notify.BufferIntervalSeconds)*time.Second,
+		e.notificationsQueue)
+	if err != nil {
+		return errors.Wrap(err, "Failed to make notifications queue runner")
+	}
+	if err = e.notificationsQueue.SetRunner(runner); err != nil {
+		return errors.Wrap(err, "failed to set notifications queue runner")
+	}
+	rootSenders := []send.Sender{}
+	for _, s := range e.senders {
+		rootSenders = append(rootSenders, s)
+	}
+
+	// duration of time in between calls to queue.Status() within
+	// the amboy.Wait* function.
+	const queueWaitInterval = 10 * time.Millisecond
+	const queueWaitTimeout = 10 * time.Second
+
+	e.closers["background-local-queue"] = func(ctx context.Context) error {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		defer cancel()
+		if !amboy.WaitCtxInterval(ctx, e.localQueue, queueWaitInterval) {
+			grip.Critical(message.Fields{
+				"message": "pending jobs failed to finish",
+				"queue":   "system",
+				"status":  e.notificationsQueue.Stats(),
+			})
+			return errors.New("failed to stop with running jobs")
+		}
+		e.localQueue.Runner().Close()
+		return nil
+	}
+
+	e.closers["notification-queue"] = func(ctx context.Context) error {
+		var cancel context.CancelFunc
+		catcher := grip.NewBasicCatcher()
+		ctx, cancel = context.WithTimeout(ctx, queueWaitTimeout)
+		defer cancel()
+		if !amboy.WaitCtxInterval(ctx, e.notificationsQueue, queueWaitInterval) {
+			grip.Critical(message.Fields{
+				"message": "pending jobs failed to finish",
+				"queue":   "notifications",
+				"status":  e.notificationsQueue.Stats(),
+			})
+			catcher.Add(errors.New("failed to stop with running jobs"))
+		}
+
+		e.notificationsQueue.Runner().Close()
+
+		grip.Debug(message.Fields{
+			"message":     "closed notification queue",
+			"num_senders": len(rootSenders),
+			"errors":      catcher.HasErrors(),
+		})
+
+		for _, s := range rootSenders {
+			catcher.Add(s.Close())
+		}
+		grip.Debug(message.Fields{
+			"message":     "closed all root senders",
+			"num_senders": len(rootSenders),
+			"errors":      catcher.HasErrors(),
+		})
+
+		return catcher.Resolve()
+	}
+
+	for k := range e.senders {
+		e.senders[k] = logger.MakeQueueSender(e.notificationsQueue, e.senders[k])
+	}
+
 	return nil
 }
 
@@ -210,24 +314,153 @@ func (e *envState) initQueues(ctx context.Context) []error {
 
 	catcher.Add(e.localQueue.Start(ctx))
 	catcher.Add(e.remoteQueue.Start(ctx))
+	catcher.Add(e.notificationsQueue.Start(ctx))
 
 	return catcher.Errors()
 }
 
-func (e *envState) initClientConfig() (err error) {
+func (e *envState) initClientConfig() {
 	if e.settings == nil {
-		return errors.New("no settings object, cannot build client configuration")
+		grip.Critical("no settings object, cannot build client configuration")
+		return
 	}
+	var err error
+
 	e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
-	if err == nil && len(e.clientConfig.ClientBinaries) == 0 {
-		grip.Warning("No clients are available for this server")
+
+	if err != nil {
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message": "problem finding local clients",
+			"cause":   "infrastructure configuration issue",
+			"impact":  "agent deploys",
+		}))
+	} else if len(e.clientConfig.ClientBinaries) == 0 {
+		grip.Critical("No clients are available for this server")
 	}
-	return errors.WithStack(err)
 }
 
-type bbProject struct {
+func (e *envState) initSenders() error {
+	if e.settings == nil {
+		return errors.New("no settings object, cannot build senders")
+	}
+
+	levelInfo := send.LevelInfo{
+		Default:   level.Notice,
+		Threshold: level.Notice,
+	}
+
+	if e.settings.Notify.SMTP.From != "" {
+		smtp := e.settings.Notify.SMTP
+		opts := send.SMTPOptions{
+			Name:              "evergreen",
+			Server:            smtp.Server,
+			Port:              smtp.Port,
+			UseSSL:            smtp.UseSSL,
+			Username:          smtp.Username,
+			Password:          smtp.Password,
+			From:              smtp.From,
+			PlainTextContents: false,
+			NameAsSubject:     true,
+		}
+		if len(smtp.AdminEmail) == 0 {
+			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
+				return errors.Wrap(err, "failed to setup email logger")
+			}
+
+		} else {
+			for i := range smtp.AdminEmail {
+				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
+					return errors.Wrap(err, "failed to setup email logger")
+				}
+			}
+		}
+		sender, err := send.NewSMTPLogger(&opts, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup email logger")
+		}
+		e.senders[SenderEmail] = sender
+	}
+
+	var sender send.Sender
+
+	githubToken, err := e.settings.GetGithubOauthToken()
+	if err == nil && len(githubToken) > 0 {
+		splitToken := strings.Split(githubToken, " ")
+		if len(splitToken) != 2 {
+			return errors.New("token format should be 'token ...'")
+		}
+		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+			Token: splitToken[1],
+		}, "")
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup github status logger")
+		}
+		e.senders[SenderGithubStatus] = sender
+	}
+
+	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
+		sender, err = send.NewJiraLogger(&send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup jira issue logger")
+		}
+		e.senders[SenderJIRAIssue] = sender
+
+		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup jira comment logger")
+		}
+		e.senders[SenderJIRAComment] = sender
+	}
+
+	if slack := &e.settings.Slack; len(slack.Token) != 0 {
+		// this sender is initialised with an invalid channel. Any
+		// messages sent with it that do not use message.SlackMessage
+		// will not be received
+		sender, err = send.NewSlackLogger(&send.SlackOptions{
+			Channel:  "#",
+			Name:     "evergreen",
+			Username: "Evergreen",
+			IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
+		}, slack.Token, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup slack logger")
+		}
+		e.senders[SenderSlack] = sender
+	}
+
+	sender, err = util.NewEvergreenWebhookLogger()
+	if err != nil {
+		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
+	}
+	e.senders[SenderEvergreenWebhook] = sender
+
+	catcher := grip.NewBasicCatcher()
+	for _, s := range e.senders {
+		catcher.Add(s.SetLevel(levelInfo))
+	}
+
+	return catcher.Resolve()
+}
+
+type BuildBaronProject struct {
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
+
+	// The alternative endpoint is only enabled for projects where AlternativeEndpointURL isn't the empty string.
+	AlternativeEndpointURL         string `mapstructure:"alt_endpoint_url" bson:"alt_endpoint_url"`
+	AlternativeEndpointUsername    string `mapstructure:"alt_endpoint_username" bson:"alt_endpoint_username"`
+	AlternativeEndpointPassword    string `mapstructure:"alt_endpoint_password" bson:"alt_endpoint_password"`
+	AlternativeEndpointTimeoutSecs int    `mapstructure:"alt_endpoint_timeout_secs" bson:"alt_endpoint_timeout_secs"`
 }
 
 func (e *envState) persistSettings() error {
@@ -244,7 +477,7 @@ func (e *envState) persistSettings() error {
 		[]interface{}{},
 		[]util.KeyValuePair{},
 	}
-	err := deepCopy(*e.settings, &copy, registeredTypes)
+	err := util.DeepCopy(*e.settings, &copy, registeredTypes)
 	if err != nil {
 		return errors.Wrap(err, "problem copying settings")
 	}
@@ -254,7 +487,7 @@ func (e *envState) persistSettings() error {
 		if pluginName == "buildbaron" {
 			for fieldName, field := range plugin {
 				if fieldName == "projects" {
-					var projects map[string]bbProject
+					var projects map[string]BuildBaronProject
 					err := mapstructure.Decode(field, &projects)
 					if err != nil {
 						return errors.Wrap(err, "problem decoding buildbaron projects")
@@ -311,11 +544,72 @@ func (e *envState) ClientConfig() *ClientConfig {
 	defer e.mu.RUnlock()
 
 	if e.clientConfig == nil {
-		return nil
+		e.initClientConfig()
+		if e.clientConfig == nil {
+			return nil
+		}
 	}
 
 	config := *e.clientConfig
 	return &config
+}
+
+func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	sender, ok := e.senders[key]
+	if !ok {
+		return nil, errors.Errorf("unknown sender key %v", key)
+	}
+
+	return sender, nil
+}
+
+func (e *envState) RegisterCloser(name string, closer func(context.Context) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, ok := e.closers[name]; ok {
+		grip.Critical(message.Fields{
+			"closer":  name,
+			"message": "duplicate closer registered",
+			"cause":   "programmer error",
+		})
+	}
+	e.closers[name] = closer
+}
+
+func (e *envState) Close(ctx context.Context) error {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	// TODO we could, in the future call all closers in but that
+	// would require more complex waiting and timeout logic
+
+	deadline, _ := ctx.Deadline()
+	catcher := grip.NewBasicCatcher()
+	wg := &sync.WaitGroup{}
+	for n, closer := range e.closers {
+		if closer == nil {
+			continue
+		}
+
+		wg.Add(1)
+		go func(name string, close func(context.Context) error) {
+			defer wg.Done()
+			grip.Info(message.Fields{
+				"message":      "calling closer",
+				"closer":       name,
+				"timeout_secs": time.Until(deadline),
+				"deadline":     deadline,
+			})
+			catcher.Add(close(ctx))
+		}(n, closer)
+	}
+
+	wg.Wait()
+	return catcher.Resolve()
 }
 
 // getClientConfig should be called once at startup and looks at the
@@ -327,7 +621,6 @@ func (e *envState) ClientConfig() *ClientConfig {
 func getClientConfig(baseURL string) (*ClientConfig, error) {
 	c := &ClientConfig{}
 	c.LatestRevision = ClientVersion
-
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
 
 	if _, err := os.Stat(root); os.IsNotExist(err) {
@@ -362,19 +655,4 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 	}
 
 	return c, nil
-}
-
-// copy of deepCopy in util package
-func deepCopy(src, copy interface{}, registeredTypes []interface{}) error {
-	for _, t := range registeredTypes {
-		gob.Register(t)
-	}
-	var buff bytes.Buffer
-	enc := gob.NewEncoder(&buff)
-	dec := gob.NewDecoder(&buff)
-	err := enc.Encode(src)
-	if err != nil {
-		return errors.Wrap(err, "error encoding source")
-	}
-	return errors.Wrap(dec.Decode(copy), "error decoding copy")
 }

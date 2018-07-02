@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
@@ -10,13 +9,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/rest/route"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -27,19 +24,13 @@ import (
 )
 
 const (
-	ProjectKey        string = "projectKey"
 	ProjectCookieName string = "mci-project-cookie"
-
-	ProjectUnknown string = "Unknown Project"
-
-	// Format string for when a project is not found
-	ProjectNotFoundFormat string = "Project '%v' not found"
 )
 
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
-	*render.Render
-
+	render     gimlet.Renderer
+	renderText gimlet.Renderer
 	// Home is the root path on disk from which relative urls are constructed for loading
 	// plugins or other assets.
 	Home string
@@ -48,14 +39,16 @@ type UIServer struct {
 	RootURL string
 
 	//authManager
-	UserManager     auth.UserManager
-	Settings        evergreen.Settings
-	CookieStore     *sessions.CookieStore
-	PluginTemplates map[string]*htmlTemplate.Template
-	clientConfig    *evergreen.ClientConfig
-	plugin.PanelManager
+	UserManager        gimlet.UserManager
+	Settings           evergreen.Settings
+	CookieStore        *sessions.CookieStore
+	clientConfig       *evergreen.ClientConfig
+	jiraHandler        thirdparty.JiraHandler
+	buildBaronProjects map[string]evergreen.BuildBaronProject
 
 	queue amboy.Queue
+
+	plugin.PanelManager
 }
 
 // ViewData contains common data that is provided to all Evergreen pages
@@ -70,55 +63,65 @@ type ViewData struct {
 	JiraHost    string
 }
 
-func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (*UIServer, error) {
-	uis := &UIServer{}
-	db.SetGlobalSessionProvider(settings.SessionFactory())
-
-	if err := settings.Validate(); err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	uis.Settings = *settings
-	uis.Home = home
-	uis.queue = queue
-
+func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, err
 	}
-	uis.UserManager = userManager
 
-	uis.clientConfig = evergreen.GetEnvironment().ClientConfig()
+	ropts := gimlet.RendererOptions{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: !settings.Ui.CacheTemplates,
+		Functions:    MakeTemplateFuncs(fo, settings.SuperUsers),
+	}
 
-	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
+	uis := &UIServer{
+		Settings:           *settings,
+		queue:              queue,
+		Home:               home,
+		UserManager:        userManager,
+		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
+		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
+		buildBaronProjects: bbGetConfig(settings),
+		render:             gimlet.NewHTMLRenderer(ropts),
+		renderText:         gimlet.NewTextRenderer(ropts),
+		jiraHandler: thirdparty.NewJiraHandler(
+			settings.Jira.GetHostURL(),
+			settings.Jira.Username,
+			settings.Jira.Password),
+	}
 
-	uis.PluginTemplates = map[string]*htmlTemplate.Template{}
+	plugins := plugin.GetPublished()
+	uis.PanelManager = &plugin.SimplePanelManager{}
+
+	if err := uis.PanelManager.RegisterPlugins(plugins); err != nil {
+		return nil, errors.Wrap(err, "problem initializing plugins")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, pl := range plugins {
+		// get the settings
+		catcher.Add(pl.Configure(uis.Settings.Plugins[pl.Name()]))
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
 
 	return uis, nil
 }
 
-// InitPlugins registers all installed plugins with the UI Server.
-func (uis *UIServer) InitPlugins() error {
-	uis.PanelManager = &plugin.SimplePanelManager{}
-	return uis.PanelManager.RegisterPlugins(plugin.UIPlugins)
-}
-
 // NewRouter sets up a request router for the UI, installing
 // hard-coded routes as well as those belonging to plugins.
-func (uis *UIServer) AttachRoutes(r *mux.Router) error {
+func (uis *UIServer) AttachRoutes(r *mux.Router) {
 	r = r.StrictSlash(true)
 
 	// User login and logout
 	r.HandleFunc("/login", uis.loginPage).Methods("GET")
 	r.HandleFunc("/login", uis.login).Methods("POST")
-
 	// User login with redirect to external site and redirect back
-	if uis.UserManager.GetLoginHandler != nil {
-		r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
-	}
-	if uis.UserManager.GetLoginCallbackHandler != nil {
-		r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
-	}
+	r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
+	r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
 	r.HandleFunc("/logout", uis.logout)
 
 	requireLogin := func(next http.HandlerFunc) http.HandlerFunc {
@@ -151,8 +154,13 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/json/task_log/{task_id}/{execution}", uis.loadCtx(uis.taskLog))
 	r.HandleFunc("/task_log_raw/{task_id}/{execution}", uis.loadCtx(uis.taskLogRaw))
 
-	// Performance discovery pages
+	// Performance Discovery pages
 	r.HandleFunc("/perfdiscovery/", requireLogin(uis.loadCtx(uis.perfdiscoveryPage))).Methods("GET")
+	r.HandleFunc("/perfdiscovery/{project_id}", requireLogin(uis.loadCtx(uis.perfdiscoveryPage))).Methods("GET")
+
+	// Signal Processing page
+	r.HandleFunc("/signal-processing/", requireLogin(uis.loadCtx(uis.signalProcessingPage))).Methods("GET")
+	r.HandleFunc("/signal-processing/{project_id}", requireLogin(uis.loadCtx(uis.signalProcessingPage))).Methods("GET")
 
 	// Test Logs
 	r.HandleFunc("/test_log/{task_id}/{task_execution}/{test_name}", uis.loadCtx(uis.testLog))
@@ -173,7 +181,7 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.hostsPage))).Methods("GET")
 	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.modifyHosts))).Methods("PUT")
 	r.HandleFunc("/host/{host_id}", requireLogin(uis.loadCtx(uis.hostPage))).Methods("GET")
-	r.HandleFunc("/host/{host_id}", requireLogin(uis.loadCtx(uis.modifyHost))).Methods("PUT")
+	r.HandleFunc("/host/{host_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyHost))).Methods("PUT")
 
 	// Distros
 	r.HandleFunc("/distros", requireLogin(uis.loadCtx(uis.distrosPage))).Methods("GET")
@@ -230,8 +238,8 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 
 	// User settings
 	r.HandleFunc("/settings", requireLogin(uis.loadCtx(uis.userSettingsPage))).Methods("GET")
-	r.HandleFunc("/settings", requireLogin(uis.loadCtx(uis.userSettingsModify))).Methods("PUT")
 	r.HandleFunc("/settings/newkey", requireLogin(uis.loadCtx(uis.newAPIKey))).Methods("POST")
+	r.HandleFunc("/notifications", requireLogin(uis.loadCtx(uis.notificationsPage))).Methods("GET")
 
 	// Task stats
 	r.HandleFunc("/task_timing", requireLogin(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
@@ -250,76 +258,44 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
 	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
 
-	// REST API V1
-	AttachRESTHandler(r, uis)
-
-	// attaches /rest/v2 routes
-	route.AttachHandler(r, uis.queue, uis.Settings.Ui.Url, evergreen.RestRoutePrefix, uis.Settings.SuperUsers, []byte(uis.Settings.Api.GithubWebhookSecret))
-
-	// Static Path handlers
-	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
-
 	// Plugin routes
-	rootPluginRouter := r.PathPrefix("/plugin").Subrouter()
-	for _, pl := range plugin.UIPlugins {
-		// get the settings
-		pluginSettings := uis.Settings.Plugins[pl.Name()]
-		err := pl.Configure(pluginSettings)
-		if err != nil {
-			return errors.Wrapf(err, "Failed to configure plugin %v", pl.Name())
-		}
-
-		// check if a plugin is an app level plugin first
-		if appPlugin, ok := pl.(plugin.AppUIPlugin); ok {
-			// register the app level pa}rt of the plugin
-			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
-			rootPluginRouter.HandleFunc(fmt.Sprintf("/%v/app", pl.Name()), uis.loadCtx(appFunction))
-		}
-
-		// check if there are any errors getting the panel config
-		uiConf, err := pl.GetPanelConfig()
-		if err != nil {
-			return errors.Wrapf(err, "Error getting UI config for plugin %v: %v", pl.Name())
-		}
-		if uiConf == nil {
-			grip.Debugf("No UI config needed for plugin %s, skipping", pl.Name())
-			continue
-		}
-
-		// create a root path for the plugin based on its name
-		plRouter := rootPluginRouter.PathPrefix(fmt.Sprintf("/%v/", pl.Name())).Subrouter()
-
-		// set up a fileserver in plugin's static root, if one is provided
-		pluginAssetsPath := filepath.Join(uis.Home, "public", "static", "plugins", pl.Name())
-
-		grip.Infof("Registering assets path for plugin '%s' in %s", pl.Name(), pluginAssetsPath)
-		plRouter.PathPrefix("/static/").Handler(
-			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
-				http.FileServer(http.Dir(pluginAssetsPath))),
-		)
-
-		pluginUIhandler := pl.GetUIHandler()
-
-		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), withPluginUser(pluginUIhandler))
-	}
-
-	return nil
+	r.HandleFunc("/plugin/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
+	r.HandleFunc("/plugin/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
+	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbGetNote).Methods("GET")
+	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbSaveNote).Methods("PUT")
+	r.HandleFunc("/plugin/buildbaron/file_ticket", uis.bbFileTicket).Methods("POST")
+	r.HandleFunc("/plugin/manifest/get/{project_id}/{revision}", uis.GetManifest)
+	r.HandleFunc("/plugin/dashboard/tasks/project/{project_id}/version/{version_id}", perfDashGetTasksForVersion)
+	r.HandleFunc("/plugin/json/version", perfGetVersion)
+	r.HandleFunc("/plugin/json/version/{version_id}/{name}", perfGetTasksForVersion)
+	r.HandleFunc("/plugin/json/version/latest/{project_id}/{name}", perfGetTasksForLatestVersion)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/", perfGetTaskById)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tags", perfGetTags)
+	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tag", perfHandleTaskTag).Methods("POST", "DELETE")
+	r.HandleFunc("/plugin/json/tags/", perfGetProjectTags)
+	r.HandleFunc("/plugin/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
+	r.HandleFunc("/plugin/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
+	r.HandleFunc("/plugin/json/history/{task_id}/{name}", perfGetTaskHistory)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	grip.Error(message.Fields{
-		"method": r.Method,
-		"url":    r.URL,
-		"error":  err,
-		"code":   code,
-		"stack":  string(debug.Stack()),
-	})
+	if err == nil {
+		return
+	}
+
+	grip.Error(message.WrapError(err, message.Fields{
+		"method":  r.Method,
+		"url":     r.URL,
+		"code":    code,
+		"request": gimlet.GetRequestID(r.Context()),
+		"stack":   string(debug.Stack()),
+	}))
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		uis.WriteJSON(w, code, struct {
+		gimlet.WriteJSONResponse(w, code, struct {
 			Error string `json:"error"`
 		}{err.Error()})
 	} else {
@@ -334,7 +310,8 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // user/project, but other data will still be returned
 func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
 	viewData := ViewData{}
-	userCtx := GetUser(r)
+	ctx := r.Context()
+	userCtx := gimlet.GetUser(ctx)
 	if needsUser && userCtx == nil {
 		grip.Error("no user attached to request")
 	}
@@ -345,7 +322,8 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		return ViewData{}
 	}
 	if needsProject {
-		project, err := projectCtx.GetProject()
+		var project *model.Project
+		project, err = projectCtx.GetProject()
 		if err != nil || project == nil {
 			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
 			uis.ProjectNotFound(projectCtx, w, r)
@@ -357,9 +335,15 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	if err != nil {
 		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
 	}
+
+	if u, ok := userCtx.(*user.DBUser); ok {
+		viewData.User = u
+	} else if userCtx != nil {
+		grip.Criticalf("user [%s] is not of the correct type: %T", userCtx.Username(), userCtx)
+	}
+
 	viewData.Banner = settings.Banner
 	viewData.BannerTheme = string(settings.BannerTheme)
-	viewData.User = userCtx
 	viewData.ProjectData = projectCtx
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
 	viewData.Csrf = csrf.TemplateField(r)

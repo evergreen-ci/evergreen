@@ -1,13 +1,11 @@
 package plugin
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -15,24 +13,24 @@ import (
 // ===== Mock UI Plugin =====
 
 // simple plugin type that has a name and ui config
-type MockUIPlugin struct {
+type MockPlugin struct {
 	NickName string
 	Conf     *PanelConfig
 }
 
-func (self *MockUIPlugin) Name() string {
+func (self *MockPlugin) Name() string {
 	return self.NickName
 }
 
-func (self *MockUIPlugin) GetUIHandler() http.Handler {
+func (self *MockPlugin) GetUIHandler() http.Handler {
 	return nil
 }
 
-func (self *MockUIPlugin) Configure(conf map[string]interface{}) error {
+func (self *MockPlugin) Configure(conf map[string]interface{}) error {
 	return nil
 }
 
-func (self *MockUIPlugin) GetPanelConfig() (*PanelConfig, error) {
+func (self *MockPlugin) GetPanelConfig() (*PanelConfig, error) {
 	return self.Conf, nil
 }
 
@@ -44,12 +42,12 @@ func TestPanelManagerRegistration(t *testing.T) {
 		ppm = &SimplePanelManager{}
 
 		Convey("and a registered set of test plugins without panels", func() {
-			uselessPlugins := []UIPlugin{
-				&MockUIPlugin{
+			uselessPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "no_ui_config",
 					Conf:     nil,
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "config_with_no_panels",
 					Conf:     &PanelConfig{},
 				},
@@ -74,8 +72,8 @@ func TestPanelManagerRegistration(t *testing.T) {
 		})
 
 		Convey("registering a plugin panel with no page should fail", func() {
-			badPanelPlugins := []UIPlugin{
-				&MockUIPlugin{
+			badPanelPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "bad_panel",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -90,12 +88,12 @@ func TestPanelManagerRegistration(t *testing.T) {
 		})
 
 		Convey("registering the same plugin name twice should fail", func() {
-			conflictingPlugins := []UIPlugin{
-				&MockUIPlugin{
+			conflictingPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "a",
 					Conf:     nil,
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "a",
 					Conf:     &PanelConfig{},
 				},
@@ -107,8 +105,8 @@ func TestPanelManagerRegistration(t *testing.T) {
 
 		Convey("registering more than one data function to the same page "+
 			"for the same plugin should fail", func() {
-			dataPlugins := []UIPlugin{
-				&MockUIPlugin{
+			dataPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "data_function_fan",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -145,8 +143,8 @@ func TestPanelManagerRetrieval(t *testing.T) {
 			// and then by the order of their declaration in the Panels array.
 			// This test asserts that the panels in A come before B which come
 			// before C, even though they are not in the plugin array in that order.
-			testPlugins := []UIPlugin{
-				&MockUIPlugin{
+			testPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "A_the_first_letter",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -182,7 +180,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 						},
 					},
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "C_the_third_letter",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -201,7 +199,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 						},
 					},
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "B_the_middle_letter",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -278,8 +276,8 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 		ppm = &SimplePanelManager{}
 
 		Convey("and a set of plugins, some with erroring data functions", func() {
-			errorPlugins := []UIPlugin{
-				&MockUIPlugin{
+			errorPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "error1",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -293,7 +291,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 						},
 					},
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "error2",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -307,7 +305,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 						},
 					},
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "error3 not found",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -321,7 +319,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 						},
 					},
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "good",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -354,8 +352,8 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 			})
 		})
 		Convey("and a plugin that panics", func() {
-			errorPlugins := []UIPlugin{
-				&MockUIPlugin{
+			errorPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "busted",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -369,7 +367,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 						},
 					},
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "good",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -406,8 +404,8 @@ func TestUIDataInjection(t *testing.T) {
 		ppm = &SimplePanelManager{}
 
 		Convey("and a registered set of test plugins with injection needs", func() {
-			funcPlugins := []UIPlugin{
-				&MockUIPlugin{
+			funcPlugins := []Plugin{
+				&MockPlugin{
 					NickName: "combine",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -421,7 +419,7 @@ func TestUIDataInjection(t *testing.T) {
 						},
 					},
 				},
-				&MockUIPlugin{
+				&MockPlugin{
 					NickName: "userhttpapiserver",
 					Conf: &PanelConfig{
 						Panels: []UIPanel{
@@ -438,19 +436,6 @@ func TestUIDataInjection(t *testing.T) {
 			}
 			err := ppm.RegisterPlugins(funcPlugins)
 			So(err, ShouldBeNil)
-		})
-	})
-}
-
-func TestUserInjection(t *testing.T) {
-	Convey("With a dbUser and a request", t, func() {
-		u := &user.DBUser{Id: "name1"}
-		r, err := http.NewRequest("GET", "/", bytes.NewBufferString("{}"))
-		So(err, ShouldBeNil)
-
-		Convey("the user should possible to set and retrieve", func() {
-			r = SetUser(u, r)
-			So(GetUser(r), ShouldResemble, u)
 		})
 	})
 }

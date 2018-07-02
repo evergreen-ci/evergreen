@@ -3,7 +3,7 @@
   window.userTz = {{GetTimezone $.User}};
   window.distro = {{.DistroId}};
 </script>
-<script type="text/javascript" src="{{Static "js" "scheduler_events.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "scheduler_events.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 
 {{define "title"}}

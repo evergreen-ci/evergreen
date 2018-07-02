@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -72,7 +72,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	taskName := mux.Vars(r)["task_name"]
+	taskName := gimlet.GetVars(r)["task_name"]
 
 	var chunk model.TaskHistoryChunk
 	var v *version.Version
@@ -127,10 +127,10 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 
 	switch r.FormValue("format") {
 	case "json":
-		uis.WriteJSON(w, http.StatusOK, data)
+		gimlet.WriteJSON(w, data)
 		return
 	default:
-		uis.WriteHTML(w, http.StatusOK, struct {
+		uis.render.WriteResponse(w, http.StatusOK, struct {
 			Data taskHistoryPageData
 			ViewData
 		}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
@@ -140,7 +140,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	variant := mux.Vars(r)["variant"]
+	variant := gimlet.GetVars(r)["variant"]
 	beforeCommitId := r.FormValue("before")
 	isJson := (r.FormValue("format") == "json")
 
@@ -190,10 +190,10 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		Project   string
 	}{variant, tasks, suites, versions, project.Identifier}
 	if isJson {
-		uis.WriteJSON(w, http.StatusOK, data)
+		gimlet.WriteJSON(w, data)
 		return
 	}
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data interface{}
 		ViewData
 	}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
@@ -209,7 +209,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	taskName := mux.Vars(r)["task_name"]
+	taskName := gimlet.GetVars(r)["task_name"]
 
 	highOrder, err := strconv.ParseInt(r.FormValue("high"), 10, 64)
 	if err != nil {
@@ -250,11 +250,11 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, tasks)
+	gimlet.WriteJSON(w, tasks)
 }
 
 func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request) {
-	taskName := mux.Vars(r)["task_name"]
+	taskName := gimlet.GetVars(r)["task_name"]
 
 	projCtx := MustHaveProjectContext(r)
 
@@ -276,7 +276,7 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, results)
+	gimlet.WriteJSON(w, results)
 }
 
 // drawerParams contains the parameters from a request to populate a task or version history drawer.
@@ -287,7 +287,7 @@ type drawerParams struct {
 }
 
 func validateDrawerParams(r *http.Request) (drawerParams, error) {
-	requestVars := mux.Vars(r)
+	requestVars := gimlet.GetVars(r)
 	anchorId := requestVars["anchor"] // id of the item serving as reference point in history
 	window := requestVars["window"]
 
@@ -340,7 +340,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	uis.WriteJSON(w, http.StatusOK, struct {
+	gimlet.WriteJSON(w, struct {
 		Revisions []versionDrawerItem `json:"revisions"`
 	}{versionDrawerItems})
 }
@@ -375,7 +375,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, struct {
+	gimlet.WriteJSON(w, struct {
 		Revisions []taskDrawerItem `json:"revisions"`
 	}{taskGroups})
 }

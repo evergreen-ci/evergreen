@@ -1,5 +1,5 @@
 {{define "scripts"}}
-<script src="{{Static "js" "build_variant_history.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "js" "build_variant_history.js"}}?hash={{ BuildRevision }}"></script>
 
 <script type="text/javascript">
   window.buildVariant = '{{.Data.Variant}}';

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -27,8 +28,9 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	as.AttachRoutes(router)
 
 	n := negroni.New()
-	n.Use(NewRecoveryLogger())
-	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
+	n.Use(gimlet.MakeRecoveryLogger())
+	n.Use(gimlet.UserMiddleware(as.UserManager, GetUserMiddlewareConf()))
+
 	n.UseHandler(router)
 	return n, nil
 }
@@ -67,7 +69,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
-				as.WriteJSON(w, http.StatusOK, nil)
+				gimlet.WriteJSON(w, nil)
 			}),
 		)))
 
@@ -121,7 +123,7 @@ func TestCheckHostWrapper(t *testing.T) {
 				r.Header.Add(evergreen.HostHeader, h1.Id)
 				r.Header.Add(evergreen.HostSecretHeader, "bad thing!!!")
 				root.ServeHTTP(w, r)
-				So(w.Code, ShouldEqual, http.StatusConflict)
+				So(w.Code, ShouldEqual, http.StatusUnauthorized)
 				msg, _ := ioutil.ReadAll(w.Body)
 				So(string(msg), ShouldContainSubstring, "secret")
 
@@ -188,7 +190,7 @@ func TestCheckHostWrapper(t *testing.T) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
 
-				as.WriteJSON(w, http.StatusOK, nil)
+				gimlet.WriteJSON(w, nil)
 			}),
 		)))
 
@@ -222,7 +224,7 @@ func TestCheckHostWrapper(t *testing.T) {
 				r.Header.Add(evergreen.TaskSecretHeader, t1.Secret)
 				r.Header.Add(evergreen.HostSecretHeader, "bad thing!!!")
 				root.ServeHTTP(w, r)
-				So(w.Code, ShouldEqual, http.StatusConflict)
+				So(w.Code, ShouldEqual, http.StatusUnauthorized)
 				msg, _ := ioutil.ReadAll(w.Body)
 				So(string(msg), ShouldContainSubstring, "secret")
 

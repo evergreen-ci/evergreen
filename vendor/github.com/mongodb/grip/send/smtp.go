@@ -49,10 +49,6 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 		return nil, err
 	}
 
-	if err := opts.client.Create(opts); err != nil {
-		return nil, err
-	}
-
 	s := &smtpLogger{
 		Base: NewBase(opts.Name),
 		opts: opts,
@@ -291,27 +287,63 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
-	if len(o.toAddrs) == 0 {
+	if err := o.client.Create(o); err != nil {
+		return err
+	}
+	defer o.client.Close()
+
+	var subject, body string
+	toAddrs := o.toAddrs
+	fromAddr := o.fromAddr
+	isPlainText := o.PlainTextContents
+	var headers map[string][]string
+
+	if emailMsg, ok := m.Raw().(*message.Email); ok {
+		var err error
+		if len(emailMsg.From) != 0 {
+			fromAddr, err = mail.ParseAddress(emailMsg.From)
+			if err != nil {
+				return fmt.Errorf("invalid from address: %+v", err)
+			}
+		}
+
+		toAddrs = make([]*mail.Address, len(emailMsg.Recipients))
+
+		for i := range emailMsg.Recipients {
+			toAddrs[i], err = mail.ParseAddress(emailMsg.Recipients[i])
+			if err != nil {
+				return fmt.Errorf("invalid recipient: %+v", err)
+			}
+		}
+
+		subject = emailMsg.Subject
+		body = emailMsg.Body
+		isPlainText = emailMsg.PlainTextContents
+		headers = emailMsg.Headers
+	}
+	if fromAddr == nil {
+		return fmt.Errorf("no from address specified, cannot send mail")
+	}
+	if len(toAddrs) == 0 {
 		return fmt.Errorf("no recipients specified, cannot send mail")
 	}
 
-	if err := o.client.Mail(o.From); err != nil {
-		return fmt.Errorf("Error establishing mail sender (%s): %+v", o.From, err)
+	if err := o.client.Mail(fromAddr.Address); err != nil {
+		return fmt.Errorf("Error establishing mail sender (%s): %+v", fromAddr, err)
 	}
 
 	var err error
 	var errs []string
-	var recpients []string
+	var recipients []string
 
 	// Set the recipients
-	for _, target := range o.toAddrs {
-		addr := target.String()
-		if err = o.client.Rcpt(addr); err != nil {
+	for _, target := range toAddrs {
+		if err = o.client.Rcpt(target.Address); err != nil {
 			errs = append(errs,
-				fmt.Sprintf("Error establishing mail recipient (%s): %+v", addr, err))
+				fmt.Sprintf("Error establishing mail recipient (%s): %+v", target.String(), err))
 			continue
 		}
-		recpients = append(recpients, addr)
+		recipients = append(recipients, target.String())
 	}
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "; "))
@@ -324,19 +356,36 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 	}
 	defer wc.Close()
 
-	subject, body := o.GetContents(o, m)
+	if len(subject) == 0 && len(body) == 0 {
+		subject, body = o.GetContents(o, m)
+	}
 
 	contents := []string{
-		fmt.Sprintf("From: %s", o.fromAddr.String()),
-		fmt.Sprintf("To: %s", strings.Join(recpients, ", ")),
+		fmt.Sprintf("From: %s", fromAddr.String()),
+		fmt.Sprintf("To: %s", strings.Join(recipients, ", ")),
 		fmt.Sprintf("Subject: %s", subject),
 		"MIME-Version: 1.0",
 	}
 
-	if o.PlainTextContents {
-		contents = append(contents, "Content-Type: text/plain; charset=\"utf-8\"")
-	} else {
-		contents = append(contents, "Content-Type: text/html; charset=\"utf-8\"")
+	skipContentType := false
+	for k, v := range headers {
+		if k == "To" || k == "From" || k == "Subject" || k == "Content-Transfer-Encoding" {
+			continue
+		}
+		if k == "Content-Type" {
+			skipContentType = true
+		}
+		for i := range v {
+			contents = append(contents, fmt.Sprintf("%s: %s", k, v[i]))
+		}
+	}
+
+	if !skipContentType {
+		if isPlainText {
+			contents = append(contents, "Content-Type: text/plain; charset=\"utf-8\"")
+		} else {
+			contents = append(contents, "Content-Type: text/html; charset=\"utf-8\"")
+		}
 	}
 
 	contents = append(contents,
@@ -359,6 +408,7 @@ type smtpClient interface {
 	Mail(string) error
 	Rcpt(string) error
 	Data() (io.WriteCloser, error)
+	Close() error
 }
 
 type smtpClientImpl struct {
@@ -367,18 +417,24 @@ type smtpClientImpl struct {
 
 func (c *smtpClientImpl) Create(opts *SMTPOptions) error {
 	var err error
+	c.Client, err = smtp.Dial(fmt.Sprintf("%v:%v", opts.Server, opts.Port))
+	if err != nil {
+		return err
+	}
 
 	if opts.UseSSL {
-		var tlsCon *tls.Conn
-		tlsCon, err = tls.Dial("tcp", fmt.Sprintf("%v:%v", opts.Server, opts.Port), &tls.Config{})
+		config := &tls.Config{ServerName: opts.Server}
+		err = c.Client.StartTLS(config)
+
+	} else {
+		var hostname string
+		hostname, err = os.Hostname()
 		if err != nil {
 			return err
 		}
-		c.Client, err = smtp.NewClient(tlsCon, opts.Server)
-	} else {
-		c.Client, err = smtp.Dial(fmt.Sprintf("%v:%v", opts.Server, opts.Port))
-	}
 
+		err = c.Hello(hostname)
+	}
 	if err != nil {
 		return err
 	}
@@ -390,4 +446,8 @@ func (c *smtpClientImpl) Create(opts *SMTPOptions) error {
 	}
 
 	return nil
+}
+
+func (c *smtpClientImpl) Close() error {
+	return c.Client.Close()
 }

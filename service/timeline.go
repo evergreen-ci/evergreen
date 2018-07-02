@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -27,11 +27,11 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }
 
 func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) patchTimeline(w http.ResponseWriter, r *http.Request) {
@@ -44,12 +44,12 @@ func (uis *UIServer) myPatchesTimeline(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request) {
-	author := mux.Vars(r)["user_id"]
+	author := gimlet.GetVars(r)["user_id"]
 	uis.patchTimelineWrapper(author, w, r)
 }
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
-	uis.WriteHTML(w, http.StatusOK, struct {
+	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Author string
 		ViewData
 	}{author, uis.GetCommonViewData(w, r, false, true)}, "base", "patches.html", "base_angular.html", "menu.html")
@@ -70,7 +70,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	}
 	skip := pageNum * DefaultLimit
 
-	user := mux.Vars(r)["user_id"]
+	user := gimlet.GetVars(r)["user_id"]
 	var patches []patch.Patch
 	if len(user) > 0 {
 		patches, err = patch.Find(patch.ByUser(user).
@@ -130,5 +130,5 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		PageNum     int
 	}{versionsMap, uiPatches, pageNum}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	gimlet.WriteJSON(w, data)
 }

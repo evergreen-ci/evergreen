@@ -18,7 +18,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
-	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -83,6 +82,17 @@ type BuildVariantTaskUnit struct {
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
+func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
+	for idx := range b.Tasks {
+		if b.Tasks[idx].Name == name {
+			return b.Tasks[idx], nil
+		}
+	}
+
+	return BuildVariantTaskUnit{}, errors.Errorf("could not find task %s in build variant %s",
+		name, b.Name)
+}
+
 type DisplayTask struct {
 	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
 	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
@@ -93,6 +103,15 @@ type BuildVariants []BuildVariant
 func (b BuildVariants) Len() int           { return len(b) }
 func (b BuildVariants) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 func (b BuildVariants) Less(i, j int) bool { return b[i].DisplayName < b[j].DisplayName }
+func (b BuildVariants) Get(name string) (BuildVariant, error) {
+	for idx := range b {
+		if b[idx].Name == name {
+			return b[idx], nil
+		}
+	}
+
+	return BuildVariant{}, errors.Errorf("could not find build variant named %s", name)
+}
 
 // Populate updates the base fields of the BuildVariantTaskUnit with
 // fields from the project task definition.
@@ -700,54 +719,6 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	return tg, nil
 }
 
-// EarlierInTaskGroup returns true if t1 occurs earlier in the taskGroup, false
-// if t2 occurs earlier. If neither is present in the task group, it returns an
-// error. For efficiency it does not call LoadProjectInto but instead only
-// unmarshals the task group portion of the project's YAML.
-func EarlierInTaskGroup(t1, t2 *task.Task, taskGroup string) (bool, error) {
-	// validate input
-	if taskGroup == "" {
-		return false, errors.New("taskGroup is empty")
-	}
-	if t1.Version != t2.Version || t1.Version == "" || t2.Version == "" {
-		return false, errors.New("versions must match")
-	}
-	if t1.BuildId != t2.BuildId || t1.BuildId == "" || t2.BuildId == "" {
-		return false, errors.New("builds must match")
-	}
-	if t1.TaskGroup != t2.TaskGroup || t1.TaskGroup == "" || t2.TaskGroup == "" {
-		return false, errors.New("task groups must match")
-	}
-
-	// get config
-	v, err := version.FindOneId(t1.Version)
-	if err != nil {
-		return false, errors.Wrap(err, "error finding version")
-	}
-	p := struct {
-		TaskGroups []TaskGroup `yaml:"task_groups"`
-	}{}
-	if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
-		return false, errors.Wrap(err, "error unmarshalling task groups")
-	}
-
-	// find earlier task
-	for _, tg := range p.TaskGroups {
-		if tg.Name == taskGroup {
-			for _, t := range tg.Tasks {
-				if t == t1.DisplayName {
-					return true, nil
-				}
-				if t == t2.DisplayName {
-					return false, nil
-				}
-			}
-			return false, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, tg.Name)
-		}
-	}
-	return false, errors.Errorf("did not find task group %s", taskGroup)
-}
-
 func FindProjectFromTask(t *task.Task) (*Project, error) {
 	ref, err := FindOneProjectRef(t.Project)
 	if err != nil {
@@ -757,12 +728,53 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 		return nil, errors.Errorf("problem finding project: %s", t.Project)
 	}
 
-	p, err := FindProject("", ref)
+	p, err := FindProject(t.Revision, ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
 	}
 
 	return p, nil
+}
+
+func FindProjectFromVersionID(versionStr string) (*Project, error) {
+	ver, err := version.FindOne(version.ById(versionStr))
+	if err != nil {
+		return nil, err
+	}
+	if ver == nil {
+		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
+	}
+
+	project := &Project{}
+	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+	}
+	return project, nil
+}
+
+func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
+	bv, err := p.BuildVariants.Get(t.BuildVariant)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding buildvariant for task '%s'", t.Id)
+	}
+
+	bvt, err := bv.Get(t.DisplayName)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding buildvarianttask for task '%s'", t.Id)
+	}
+
+	var distro string
+
+	if len(bvt.Distros) > 0 {
+		distro = bvt.Distros[0]
+	} else if len(bv.RunOn) > 0 {
+		distro = bv.RunOn[0]
+	} else {
+		return "", errors.Errorf("cannot find the distro for %s", t.Id)
+	}
+
+	return distro, nil
 }
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
@@ -1018,6 +1030,43 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
 }
 
+// TasksThatCallCommand returns a map of tasks that call a given command.
+func (p *Project) TasksThatCallCommand(find string) map[string]int {
+	// get all functions that call `generate.tasks`
+	fs := map[string]int{}
+	for f, cmds := range p.Functions {
+		for _, c := range cmds.List() {
+			if c.Command == find {
+				fs[f] = fs[f] + 1
+			}
+		}
+	}
+
+	// get all tasks that call `generate.tasks`
+	ts := map[string]int{}
+	for _, t := range p.Tasks {
+		for _, c := range t.Commands {
+			if c.Function != "" {
+				if times, ok := fs[c.Function]; ok {
+					ts[t.Name] = ts[t.Name] + times
+				}
+			}
+			if c.Command == find {
+				ts[t.Name] = ts[t.Name] + 1
+			}
+		}
+	}
+	return ts
+
+}
+
+// IsGenerateTask indicates that the task generates other tasks, which the
+// scheduler will use to prioritize this task.
+func (p *Project) IsGenerateTask(taskName string) bool {
+	_, ok := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)[taskName]
+	return ok
+}
+
 func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
 	displayTasks := []TVPair{}
 	alreadyAdded := map[string]bool{}
@@ -1097,4 +1146,49 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 	}
 
 	return pairs, displayTaskPairs, err
+}
+
+// FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.
+// Returns the versions themselves, as well as a map of version id -> the
+// builds that are a part of the version (unsorted).
+func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int) ([]version.Version, map[string][]build.Build, error) {
+
+	// fetch the versions from the db
+	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
+		WithFields(
+			version.RevisionKey,
+			version.ErrorsKey,
+			version.WarningsKey,
+			version.IgnoredKey,
+			version.MessageKey,
+			version.AuthorKey,
+			version.RevisionOrderNumberKey,
+			version.CreateTimeKey,
+		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
+
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error fetching versions from database")
+	}
+
+	// create a slice of the version ids (used to fetch the builds)
+	versionIds := make([]string, 0, len(versionsFromDB))
+	for _, v := range versionsFromDB {
+		versionIds = append(versionIds, v.Id)
+	}
+
+	// fetch all of the builds (with only relevant fields)
+	buildsFromDb, err := build.Find(
+		build.ByVersions(versionIds).
+			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error fetching builds from database")
+	}
+
+	// group the builds by version
+	buildsByVersion := map[string][]build.Build{}
+	for _, build := range buildsFromDb {
+		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
+	}
+
+	return versionsFromDB, buildsByVersion, nil
 }

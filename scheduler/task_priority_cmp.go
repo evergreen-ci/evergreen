@@ -2,8 +2,9 @@ package scheduler
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -176,18 +177,74 @@ func tasksAreCommitBuilds(t1, t2 task.Task) bool {
 // and considers one more important if it appears earlier in the task group task
 // list. This is to ensure that task groups are dispatched in the order that
 // they are defined.
-func byTaskGroupOrder(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
-	if t1.TaskGroup == "" ||
-		t2.TaskGroup == "" ||
-		t1.TaskGroup != t2.TaskGroup ||
-		t1.BuildId != t2.BuildId {
+func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
+	if differentBuildOrTaskGroup(t1, t2) {
 		return 0, nil
 	}
-	earlier, err := model.EarlierInTaskGroup(&t1, &t2, t1.TaskGroup)
-	if err != nil {
-		return 0, errors.Wrapf(err, "error finding out which task is earlier (%s, %s)", t1.Id, t2.Id)
+
+	// find earlier task
+	for _, tg := range comparator.projects[t1.Version].TaskGroups {
+		if tg.Name == t1.TaskGroup {
+			for _, t := range tg.Tasks {
+				if t == t1.DisplayName {
+					return 1, nil
+				}
+				if t == t2.DisplayName {
+					return -1, nil
+				}
+			}
+		}
 	}
-	if earlier {
+
+	// TODO: EVG-3305 Remove this logging
+	tasksFromTaskGroup := []string{}
+	foundTaskGroup := false
+	_, ok := comparator.projects[t1.Version]
+	foundVersion := ok
+	for _, tg := range comparator.projects[t1.Version].TaskGroups {
+		if tg.Name == t1.TaskGroup {
+			tasksFromTaskGroup = append(tasksFromTaskGroup, tg.Tasks...)
+			foundTaskGroup = true
+		}
+	}
+	grip.Error(message.Fields{
+		"message":                 "something went wrong sorting by task group order",
+		"ticket":                  "EVG-3305",
+		"t1_id":                   t1.Id,
+		"t1_display_name":         t1.DisplayName,
+		"t1_version":              t1.Version,
+		"t1_group":                t1.TaskGroup,
+		"t2_id":                   t2.Id,
+		"t2_display_name":         t2.DisplayName,
+		"t2_version":              t2.Version,
+		"t2_group":                t2.TaskGroup,
+		"comparator_projects_len": len(comparator.projects),
+		"tasks_from_task_group":   tasksFromTaskGroup,
+		"found_version":           foundVersion,
+		"found_task_group":        foundTaskGroup,
+		"task_groups_in_version":  len(comparator.projects[t1.Version].TaskGroups),
+	})
+
+	return 0, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, t1.TaskGroup)
+}
+
+// differentBuildOrTaskGroup returns true iff two tasks have different builds
+// or task groups, or empty task groups.
+func differentBuildOrTaskGroup(t1, t2 task.Task) bool {
+	if t1.TaskGroup == "" || t2.TaskGroup == "" ||
+		t1.TaskGroup != t2.TaskGroup ||
+		t1.BuildId != t2.BuildId {
+		return true
+	}
+	return false
+}
+
+// byGenerateTasks schedules tasks that generate tasks ahead of tasks that do not.
+func byGenerateTasks(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
+	if t1.GenerateTask == t2.GenerateTask {
+		return 0, nil
+	}
+	if t1.GenerateTask {
 		return 1, nil
 	}
 	return -1, nil

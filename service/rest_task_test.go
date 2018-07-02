@@ -18,14 +18,16 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var taskTestConfig = testutil.TestConfig()
 
-func insertTaskForTesting(taskId, versionId, projectName string, testResult testresult.TestResult) (*task.Task, error) {
+func insertTaskForTesting(taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -42,7 +44,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResult test
 		BuildId:             "some-build-id",
 		DistroId:            "some-distro-id",
 		BuildVariant:        "some-build-variant",
-		DependsOn:           []task.Dependency{{"some-other-task", ""}},
+		DependsOn:           []task.Dependency{{TaskId: "some-other-task", Status: ""}},
 		DisplayName:         "My task",
 		HostId:              "some-host-id",
 		Restarts:            0,
@@ -64,7 +66,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResult test
 	if err != nil {
 		return nil, err
 	}
-	return task, testresult.InsertMany([]testresult.TestResult{testResult})
+	return task, testresult.InsertMany(testResults)
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -80,14 +82,15 @@ func TestGetTaskInfo(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
-	router := mux.NewRouter()
-	err = uis.AttachRoutes(router)
-	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
+
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	Convey("When finding info on a particular task", t, func() {
 		testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t,
@@ -106,7 +109,7 @@ func TestGetTaskInfo(t *testing.T) {
 			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		testTask, err := insertTaskForTesting(taskId, versionId, projectName, testResult)
+		testTask, err := insertTaskForTesting(taskId, versionId, projectName, []testresult.TestResult{testResult})
 		So(err, ShouldBeNil)
 
 		file := artifact.File{
@@ -119,10 +122,9 @@ func TestGetTaskInfo(t *testing.T) {
 		}
 		So(a.Upsert(), ShouldBeNil)
 
-		url, err := router.Get("task_info").URL("task_id", taskId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/tasks/" + taskId
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -136,7 +138,6 @@ func TestGetTaskInfo(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-			fmt.Println(response.Body.String())
 
 			rawJSONBody := map[string]*json.RawMessage{}
 			err = json.Unmarshal(response.Body.Bytes(), &rawJSONBody)
@@ -246,10 +247,9 @@ func TestGetTaskInfo(t *testing.T) {
 	Convey("When finding info on a nonexistent task", t, func() {
 		taskId := "not-present"
 
-		url, err := router.Get("task_info").URL("task_id", taskId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/tasks/" + taskId
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -281,15 +281,15 @@ func TestGetTaskStatus(t *testing.T) {
 
 	home := evergreen.FindEvergreenHome()
 
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router := mux.NewRouter()
-	err = uis.AttachRoutes(router)
-	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	Convey("When finding the status of a particular task", t, func() {
 		testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t,
@@ -318,10 +318,9 @@ func TestGetTaskStatus(t *testing.T) {
 		So(testTask.Insert(), ShouldBeNil)
 		So(testresult.InsertMany([]testresult.TestResult{testResult}), ShouldBeNil)
 
-		url, err := router.Get("task_status").URL("task_id", taskId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/tasks/" + taskId + "/status"
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -378,10 +377,9 @@ func TestGetTaskStatus(t *testing.T) {
 	Convey("When finding the status of a nonexistent task", t, func() {
 		taskId := "not-present"
 
-		url, err := router.Get("task_status").URL("task_id", taskId)
-		So(err, ShouldBeNil)
+		url := "/rest/v1/tasks/" + taskId + "/status"
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -398,4 +396,77 @@ func TestGetTaskStatus(t *testing.T) {
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
+}
+
+func TestGetDisplayTaskInfo(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	require.NoError(err)
+
+	uis := UIServer{
+		RootURL:     taskTestConfig.Ui.Url,
+		Settings:    *taskTestConfig,
+		UserManager: userManager,
+	}
+
+	home := evergreen.FindEvergreenHome()
+
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+	})
+
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	router, err := app.Handler()
+	testutil.HandleTestingErr(err, t, "error setting up router")
+
+	require.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+
+	executionTaskId := "execution-task"
+	displayTaskId := "display-task"
+	versionId := "my-version"
+	projectName := "project_test"
+
+	testResult := testresult.TestResult{
+		Status:    "success",
+		TaskID:    executionTaskId,
+		Execution: 0,
+		TestFile:  "some-test",
+		URL:       "some-url",
+		StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
+		EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
+	}
+	_, err = insertTaskForTesting(executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
+	assert.NoError(err)
+	displayTask, err := insertTaskForTesting(displayTaskId, versionId, projectName, []testresult.TestResult{})
+	assert.NoError(err)
+	displayTask.ExecutionTasks = []string{executionTaskId}
+	err = db.Update(task.Collection,
+		bson.M{task.IdKey: displayTaskId},
+		bson.M{"$set": bson.M{
+			task.ExecutionTasksKey: []string{executionTaskId},
+			task.DisplayOnlyKey:    true,
+		}})
+	require.NoError(err)
+
+	url := "/rest/v1/tasks/" + displayTaskId
+
+	request, err := http.NewRequest("GET", url, nil)
+	require.NoError(err)
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	assert.Equal(http.StatusOK, response.Code)
+
+	var jsonBody map[string]interface{}
+	err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
+
+	assert.NoError(err)
+	assert.Equal(displayTask.Id, jsonBody["id"])
+	found, ok := jsonBody["test_results"].(map[string]interface{})
+	assert.True(ok)
+	assert.Contains(found, "some-test")
 }

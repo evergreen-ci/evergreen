@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -456,7 +457,7 @@ func TestProject(t *testing.T) {
 }
 
 func (s *projectSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(ProjectVarsCollection, ProjectAliasCollection))
+	s.Require().NoError(db.ClearCollections(ProjectVarsCollection, ProjectAliasCollection, version.Collection, build.Collection))
 	s.vars = ProjectVars{
 		Id: "project",
 	}
@@ -611,10 +612,26 @@ func (s *projectSuite) SetupTest() {
 			{
 				Name: "a_task_2",
 				Tags: []string{"a", "2"},
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+					{
+						Command: "generate.tasks",
+					},
+				},
 			},
 			{
 				Name: "b_task_1",
 				Tags: []string{"b", "1"},
+				Commands: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+					{
+						Function: "go generate a thing",
+					},
+				},
 			},
 			{
 				Name: "b_task_2",
@@ -636,6 +653,21 @@ func (s *projectSuite) SetupTest() {
 			{
 				Name:      "another_disabled_task",
 				Patchable: boolPtr(false),
+			},
+		},
+		Functions: map[string]*YAMLCommandSet{
+			"go generate a thing": &YAMLCommandSet{
+				MultiCommand: []PluginCommandConf{
+					{
+						Command: "shell.exec",
+					},
+					{
+						Command: "generate.tasks",
+					},
+					{
+						Command: "shell.exec",
+					},
+				},
 			},
 		},
 	}
@@ -1039,4 +1071,65 @@ tasks:
 	s.NoError(err)
 	unmarshaled := parserProject{}
 	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
+}
+
+func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
+	v1 := version.Version{
+		Id:                  "v1",
+		Identifier:          s.project.Identifier,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 1,
+	}
+	s.NoError(v1.Insert())
+	v2 := version.Version{
+		Id:                  "v2",
+		Identifier:          s.project.Identifier,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(v2.Insert())
+	v3 := version.Version{
+		Id:                  "v3",
+		Identifier:          s.project.Identifier,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 3,
+	}
+	s.NoError(v3.Insert())
+	b1 := build.Build{
+		Id:      "b1",
+		Version: v1.Id,
+	}
+	s.NoError(b1.Insert())
+	b2 := build.Build{
+		Id:      "b2",
+		Version: v2.Id,
+	}
+	s.NoError(b2.Insert())
+	b3 := build.Build{
+		Id:      "b3",
+		Version: v3.Id,
+	}
+	s.NoError(b3.Insert())
+
+	versions, builds, err := FetchVersionsAndAssociatedBuilds(s.project, 0, 10)
+	s.NoError(err)
+	s.Equal(v3.Id, versions[0].Id)
+	s.Equal(v2.Id, versions[1].Id)
+	s.Equal(v1.Id, versions[2].Id)
+	s.Equal(b1.Id, builds[v1.Id][0].Id)
+	s.Equal(b2.Id, builds[v2.Id][0].Id)
+	s.Equal(b3.Id, builds[v3.Id][0].Id)
+}
+
+func (s *projectSuite) TestIsGenerateTask() {
+	s.False(s.project.IsGenerateTask("a_task_1"))
+	s.True(s.project.IsGenerateTask("a_task_2"))
+	s.True(s.project.IsGenerateTask("b_task_1"))
+	s.False(s.project.IsGenerateTask("b_task_2"))
+	s.False(s.project.IsGenerateTask("wow_task"))
+	s.False(s.project.IsGenerateTask("9001_task"))
+	s.False(s.project.IsGenerateTask("very_task"))
+	s.False(s.project.IsGenerateTask("disabled_task"))
+	s.False(s.project.IsGenerateTask("another_disabled_task"))
+	s.False(s.project.IsGenerateTask("task_does_not_exist"))
 }

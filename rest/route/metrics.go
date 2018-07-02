@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -51,7 +51,7 @@ func (p *taskSystemMetricsHandler) Handler() RequestHandler {
 }
 
 func (p *taskSystemMetricsHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = taskMetricsArgs{task: mux.Vars(r)["task_id"]}
+	p.Args = taskMetricsArgs{task: gimlet.GetVars(r)["task_id"]}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -156,7 +156,7 @@ func (p *taskProcessMetricsHandler) Handler() RequestHandler {
 }
 
 func (p *taskProcessMetricsHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = taskMetricsArgs{task: mux.Vars(r)["task_id"]}
+	p.Args = taskMetricsArgs{task: gimlet.GetVars(r)["task_id"]}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }

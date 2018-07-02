@@ -372,3 +372,43 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
 
     return service;
 }]);
+
+mciServices.rest.factory('mciUserSettingsService', ['mciBaseRestService', function(baseSvc) {
+    var resource = mciServices.rest.RestV2Resource("user/settings");
+
+    var service = {};
+
+    service.getUserSettings = function(callbacks) {
+      baseSvc.getResource(resource, [], {}, callbacks);
+    }
+
+    service.saveUserSettings = function(settings, callbacks) {
+      var config = {
+          data: settings
+      };
+      baseSvc.postResource(resource, [], config, callbacks);
+    }
+    return service;
+}]);
+
+mciServices.rest.factory('mciSubscriptionsService', ['mciBaseRestService', function(baseSvc) {
+    var resource = mciServices.rest.RestV2Resource("subscriptions");
+
+    var service = {};
+
+    service.get = function(owner, type, callbacks) {
+      var queryString = "?owner="+owner+"&type="+type
+      baseSvc.getResource(resource+queryString, [], {}, callbacks);
+    }
+
+    service.post = function(subscriptions, callbacks) {
+      baseSvc.postResource(resource, [], {data: subscriptions}, callbacks);
+    }
+
+    service.delete = function(id, callbacks) {
+      var queryString = "?id="+id;
+      baseSvc.deleteResource(resource+queryString, [], {}, callbacks);
+    }
+
+    return service;
+}]);

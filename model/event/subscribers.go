@@ -1,7 +1,11 @@
 package event
 
 import (
+	"fmt"
+
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -14,6 +18,15 @@ const (
 	EmailSubscriberType             = "email"
 	SlackSubscriberType             = "slack"
 )
+
+var SubscriberTypes = []string{
+	GithubPullRequestSubscriberType,
+	JIRAIssueSubscriberType,
+	JIRACommentSubscriberType,
+	EvergreenWebhookSubscriberType,
+	EmailSubscriberType,
+	SlackSubscriberType,
+}
 
 //nolint: deadcode, megacheck
 var (
@@ -64,9 +77,50 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
+func (s *Subscriber) String() string {
+	subscriberStr := "NIL_SUBSCRIBER"
+
+	switch v := s.Target.(type) {
+	case GithubPullRequestSubscriber:
+		subscriberStr = v.String()
+	case *GithubPullRequestSubscriber:
+		subscriberStr = v.String()
+
+	case WebhookSubscriber:
+		subscriberStr = v.String()
+	case *WebhookSubscriber:
+		subscriberStr = v.String()
+
+	case string:
+		subscriberStr = v
+	case *string:
+		subscriberStr = *v
+	}
+
+	return fmt.Sprintf("%s-%s", s.Type, subscriberStr)
+}
+
+func (s *Subscriber) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if !util.StringSliceContains(SubscriberTypes, s.Type) {
+		catcher.Add(errors.Errorf("%s is not a valid subscriber type", s.Type))
+	}
+	if s.Target == nil {
+		catcher.Add(errors.New("type is required for subscriber"))
+	}
+	return catcher.Resolve()
+}
+
 type WebhookSubscriber struct {
 	URL    string `bson:"url"`
 	Secret []byte `bson:"secret"`
+}
+
+func (s *WebhookSubscriber) String() string {
+	if len(s.URL) == 0 {
+		return "NIL_URL"
+	}
+	return s.URL
 }
 
 type GithubPullRequestSubscriber struct {
@@ -74,4 +128,29 @@ type GithubPullRequestSubscriber struct {
 	Repo     string `bson:"repo"`
 	PRNumber int    `bson:"pr_number"`
 	Ref      string `bson:"ref"`
+}
+
+func (s *GithubPullRequestSubscriber) String() string {
+	return fmt.Sprintf("%s-%s-%d-%s", s.Owner, s.Repo, s.PRNumber, s.Ref)
+}
+
+func NewGithubStatusAPISubscriber(s GithubPullRequestSubscriber) Subscriber {
+	return Subscriber{
+		Type:   GithubPullRequestSubscriberType,
+		Target: s,
+	}
+}
+
+func NewEmailSubscriber(t string) Subscriber {
+	return Subscriber{
+		Type:   EmailSubscriberType,
+		Target: t,
+	}
+}
+
+func NewSlackSubscriber(t string) Subscriber {
+	return Subscriber{
+		Type:   SlackSubscriberType,
+		Target: t,
+	}
 }

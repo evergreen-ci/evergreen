@@ -7,14 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 )
 
 func (as *APIServer) getTaskJSONTagsForTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-
-	taskName := mux.Vars(r)["task_name"]
-	name := mux.Vars(r)["name"]
+	vars := gimlet.GetVars(r)
+	taskName := vars["task_name"]
+	name := vars["name"]
 
 	tagged, err := model.GetTaskJSONTagsForTask(t.Project, t.BuildVariant, taskName, name)
 	if err != nil {
@@ -22,25 +22,25 @@ func (as *APIServer) getTaskJSONTagsForTask(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, tagged)
+	gimlet.WriteJSON(w, tagged)
 }
 
 func (as *APIServer) getTaskJSONTaskHistory(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	history, err := model.GetTaskJSONHistory(t, mux.Vars(r)["name"])
+	history, err := model.GetTaskJSONHistory(t, gimlet.GetVars(r)["name"])
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, history)
+	gimlet.WriteJSON(w, history)
 }
 
 func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	name := mux.Vars(r)["name"]
+	name := gimlet.GetVars(r)["name"]
 	rawData := map[string]interface{}{}
 
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &rawData); err != nil {
@@ -53,19 +53,20 @@ func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, "ok")
+	gimlet.WriteJSON(w, "ok")
 }
 
 func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	name := mux.Vars(r)["name"]
-	taskName := mux.Vars(r)["task_name"]
+	vars := gimlet.GetVars(r)
+	name := vars["name"]
+	taskName := vars["task_name"]
 
 	jsonForTask, err := model.GetTaskJSONByName(t.Version, t.BuildId, taskName, name)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			as.WriteJSON(w, http.StatusNotFound, nil)
+			gimlet.WriteJSONResponse(w, http.StatusNotFound, nil)
 			return
 		}
 
@@ -73,11 +74,11 @@ func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		as.WriteJSON(w, http.StatusOK, jsonForTask)
+		gimlet.WriteJSON(w, jsonForTask)
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, jsonForTask.Data)
+	gimlet.WriteJSON(w, jsonForTask.Data)
 }
 
 // apiGetTaskForVariant finds a task by name and variant and finds
@@ -88,25 +89,25 @@ func (as *APIServer) getTaskJSONForVariant(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
-
-	name := mux.Vars(r)["name"]
-	taskName := mux.Vars(r)["task_name"]
-	variantId := mux.Vars(r)["variant"]
+	vars := gimlet.GetVars(r)
+	name := vars["name"]
+	taskName := vars["task_name"]
+	variantId := vars["variant"]
 	// Find the task for the other variant, if it exists
 
 	jsonForTask, err := model.GetTaskJSONForVariant(t.Version, variantId, taskName, name)
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			as.WriteJSON(w, http.StatusNotFound, nil)
+			gimlet.WriteJSONResponse(w, http.StatusNotFound, nil)
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		as.WriteJSON(w, http.StatusOK, jsonForTask)
+		gimlet.WriteJSON(w, jsonForTask)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, jsonForTask.Data)
+	gimlet.WriteJSON(w, jsonForTask.Data)
 }

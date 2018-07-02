@@ -35,7 +35,8 @@ type ProjectRef struct {
 	PRTestingEnabled bool `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
-	Tracked bool `bson:"tracked" json:"tracked"`
+	Tracked          bool `bson:"tracked" json:"tracked"`
+	PatchingDisabled bool `bson:"patching_disabled" json:"patching_disabled"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
@@ -43,6 +44,9 @@ type ProjectRef struct {
 	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
 	// the set of alert deliveries to be processed for that trigger.
 	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
+
+	// TODO: remove the alerts field above
+	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
@@ -97,6 +101,8 @@ var (
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
+	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 )
 
 const (
@@ -306,6 +312,8 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
+				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
+				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
 			},
 		},
 	)

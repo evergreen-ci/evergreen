@@ -6,10 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -29,24 +31,29 @@ var (
 	DistroKey                  = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                = bsonutil.MustHaveTag(Host{}, "Provider")
 	ProvisionedKey             = bsonutil.MustHaveTag(Host{}, "Provisioned")
+	ProvisionTimeKey           = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                   = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
 	RunningTaskKey             = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskBuildVariantKey = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
 	RunningTaskVersionKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
 	RunningTaskProjectKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
-	PidKey                     = bsonutil.MustHaveTag(Host{}, "Pid")
 	TaskDispatchTimeKey        = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
 	CreateTimeKey              = bsonutil.MustHaveTag(Host{}, "CreationTime")
 	ExpirationTimeKey          = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
 	TerminationTimeKey         = bsonutil.MustHaveTag(Host{}, "TerminationTime")
 	LTCTimeKey                 = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
-	LTCKey                     = bsonutil.MustHaveTag(Host{}, "LastTaskCompleted")
+	LTCTaskKey                 = bsonutil.MustHaveTag(Host{}, "LastTask")
+	LTCGroupKey                = bsonutil.MustHaveTag(Host{}, "LastGroup")
+	LTCBVKey                   = bsonutil.MustHaveTag(Host{}, "LastBuildVariant")
+	LTCVersionKey              = bsonutil.MustHaveTag(Host{}, "LastVersion")
+	LTCProjectKey              = bsonutil.MustHaveTag(Host{}, "LastProject")
 	StatusKey                  = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey           = bsonutil.MustHaveTag(Host{}, "AgentRevision")
 	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
+	VolumeSizeKey              = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
 	NotificationsKey           = bsonutil.MustHaveTag(Host{}, "Notifications")
 	LastCommunicationTimeKey   = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -58,6 +65,13 @@ var (
 	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
 	TotalCostKey               = bsonutil.MustHaveTag(Host{}, "TotalCost")
 	TotalIdleTimeKey           = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
+	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
+	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
+	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
+	SpawnOptionsKey            = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
+	SpawnOptionsTaskIDKey      = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
+	SpawnOptionsBuildIDKey     = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
+	SpawnOptionsTimeoutKey     = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
 )
 
 // === Queries ===
@@ -75,17 +89,13 @@ func ByUserWithRunningStatus(user string) db.Q {
 		})
 }
 
-// IsRunning is a query that returns all hosts that are running
-// (i.e. status != terminated).
-var IsRunning = db.Query(bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}})
-
 // IsLive is a query that returns all working hosts started by Evergreen
-var IsLive = db.Query(
-	bson.M{
+func IsLive() bson.M {
+	return bson.M{
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": evergreen.UphostStatus},
-	},
-)
+	}
+}
 
 // ByUserWithUnterminatedStatus produces a query that returns all running hosts
 // for the given user id.
@@ -98,37 +108,92 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	)
 }
 
-// IsAvailableAndFree is a query that returns all running
-// Evergreen hosts without an assigned task.
-var IsAvailableAndFree = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostRunning,
-		StartedByKey:   evergreen.User,
-	},
-).Sort([]string{"-" + LTCTimeKey})
+// AllIdleEphemeral finds all running ephemeral hosts without containers
+// that have no running tasks.
+func AllIdleEphemeral() ([]Host, error) {
+	query := db.Query(bson.M{
+		RunningTaskKey:   bson.M{"$exists": false},
+		StartedByKey:     evergreen.User,
+		StatusKey:        evergreen.HostRunning,
+		ProviderKey:      bson.M{"$in": evergreen.ProviderSpawnable},
+		HasContainersKey: bson.M{"$ne": true},
+	})
 
-// ByAvailableForDistro returns all running Evergreen hosts with
-// no running task of a certain distro Id.
-func ByAvailableForDistro(d string) db.Q {
-	distroIdKey := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
-	return db.Query(bson.M{
-		distroIdKey:    d,
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostRunning,
-		StartedByKey:   evergreen.User,
-	}).Sort([]string{"-" + LTCTimeKey})
+	return Find(query)
 }
 
-// IsFree is a query that returns all running
-// Evergreen hosts without an assigned task.
-var IsFree = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StartedByKey:   evergreen.User,
-		StatusKey:      evergreen.HostRunning,
-	},
-)
+// AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
+func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
+	catcher := grip.NewBasicCatcher()
+	var hosts []Host
+	timedOutHosts, err := allHostsSpawnedByTasksTimedOut()
+	hosts = append(hosts, timedOutHosts...)
+	catcher.Add(err)
+
+	taskHosts, err := allHostsSpawnedByFinishedTasks()
+	hosts = append(hosts, taskHosts...)
+	catcher.Add(err)
+
+	buildHosts, err := allHostsSpawnedByFinishedBuilds()
+	hosts = append(hosts, buildHosts...)
+	catcher.Add(err)
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return hosts, nil
+}
+
+// allHostsSpawnedByTasksTimedOut finds hosts spawned by tasks that should be terminated because they are past their timeout.
+func allHostsSpawnedByTasksTimedOut() ([]Host, error) {
+	query := db.Query(bson.M{
+		StatusKey: evergreen.HostRunning,
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTimeoutKey): bson.M{"$lte": time.Now()},
+	})
+	return Find(query)
+}
+
+// allHostsSpawnedByFinishedTasks finds hosts spawned by tasks that should be terminated because their tasks have finished.
+func allHostsSpawnedByFinishedTasks() ([]Host, error) {
+	const runningTasks = "running_tasks"
+	pipeline := []bson.M{
+		{"$lookup": bson.M{
+			"from":         task.Collection,
+			"localField":   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey),
+			"foreignField": task.IdKey,
+			"as":           runningTasks,
+		}},
+		{"$unwind": "$" + runningTasks},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$project": bson.M{runningTasks: 0}},
+	}
+	var hosts []Host
+	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
+		return nil, errors.Wrap(err, "error getting hosts spawned by finished tasks")
+	}
+	return hosts, nil
+}
+
+// allHostsSpawnedByFinishedBuilds finds hosts spawned by tasks that should be terminated because their builds have finished.
+func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
+	const runningBuilds = "running_builds"
+	pipeline := []bson.M{
+		{"$lookup": bson.M{
+			"from":         build.Collection,
+			"localField":   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey),
+			"foreignField": build.IdKey,
+			"as":           runningBuilds,
+		}},
+		{"$unwind": "$" + runningBuilds},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$project": bson.M{runningBuilds: 0}},
+	}
+	var hosts []Host
+	if err := db.Aggregate(Collection, pipeline, &hosts); err != nil {
+		return nil, errors.Wrap(err, "error getting hosts spawned by finished builds")
+	}
+	return hosts, nil
+}
 
 // ByUnprovisionedSince produces a query that returns all hosts
 // Evergreen never finished setting up that were created before
@@ -145,14 +210,27 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
-	q := db.Query(bson.M{
-		StatusKey:                  evergreen.HostRunning,
-		RunningTaskKey:             bson.M{"$exists": "true"},
-		RunningTaskGroupKey:        group,
-		RunningTaskBuildVariantKey: bv,
-		RunningTaskProjectKey:      project,
-		RunningTaskVersionKey:      version,
-	})
+	q := db.Query(
+		bson.M{
+			StatusKey: evergreen.HostRunning,
+			"$or": []bson.M{
+				{
+					RunningTaskKey:             bson.M{"$exists": "true"},
+					RunningTaskGroupKey:        group,
+					RunningTaskBuildVariantKey: bv,
+					RunningTaskProjectKey:      project,
+					RunningTaskVersionKey:      version,
+				},
+				{
+					LTCTaskKey:    bson.M{"$exists": "true"},
+					LTCGroupKey:   group,
+					LTCBVKey:      bv,
+					LTCProjectKey: project,
+					LTCVersionKey: version,
+				},
+			},
+		},
+	)
 	hosts, err := Find(q)
 	if err != nil {
 		return 0, errors.Wrap(err, "error querying database for hosts")
@@ -165,33 +243,22 @@ var IsUninitialized = db.Query(
 	bson.M{StatusKey: evergreen.HostUninitialized},
 )
 
-// IsStarting is a query that returns all Evergreen hosts that are starting.
-var IsStarting = db.Query(
-	bson.M{StatusKey: evergreen.HostStarting},
-)
-
-// NeedsProvisioning returns a query used by the hostinit process to
-// determine hosts that have been started, but need additional provisioning.
-//
-// It's likely true that Starting and Initializing are redundant, and
-// EVG-2754 will address this issue.
-func NeedsProvisioning() db.Q {
-	return db.Query(bson.M{StatusKey: bson.M{"$in": []string{
-		evergreen.HostStarting,
-		evergreen.HostInitializing,
-	}}})
+// Starting returns a query that finds hosts that we do not yet know to be running.
+func Starting() db.Q {
+	return db.Query(bson.M{StatusKey: evergreen.HostStarting})
 }
 
-// ByUnproductiveSince produces a query that returns all hosts that
-// are not doing work and were created before the given time.
-func ByUnproductiveSince(threshold time.Time) db.Q {
-	return db.Query(bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		LTCKey:         "",
-		CreateTimeKey:  bson.M{"$lte": threshold},
-		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:   evergreen.User,
-	})
+// Provisioning returns a query used by the hostinit process to determine hosts that are
+// started according to the cloud provider, but have not yet been provisioned by Evergreen.
+func Provisioning() db.Q {
+	return db.Query(bson.M{StatusKey: evergreen.HostProvisioning})
+}
+
+func FindByFirstProvisioningAttempt() ([]Host, error) {
+	return Find(db.Query(bson.M{
+		ProvisionAttemptsKey: 0,
+		StatusKey:            evergreen.HostProvisioning,
+	}))
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
@@ -207,15 +274,10 @@ var IsRunningAndSpawned = db.Query(
 var IsRunningTask = db.Query(
 	bson.M{
 		RunningTaskKey: bson.M{"$exists": true},
+		StatusKey: bson.M{
+			"$ne": evergreen.HostTerminated,
+		},
 	},
-)
-
-// IsDecommissioned is a query that returns all hosts without a
-// running task that are marked for decommissioning.
-var IsDecommissioned = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostDecommissioned},
 )
 
 // IsTerminated is a query that returns all hosts that are terminated
@@ -300,19 +362,6 @@ var IsIdle = db.Query(
 	},
 )
 
-// IsActive is a query that returns all Evergreen hosts that are working or
-// capable of being assigned work to do.
-var IsActive = db.Query(
-	bson.M{
-		StartedByKey: evergreen.User,
-		StatusKey: bson.M{
-			"$nin": []string{
-				evergreen.HostTerminated, evergreen.HostDecommissioned, evergreen.HostInitializing,
-			},
-		},
-	},
-)
-
 // ByNotMonitoredSince produces a query that returns all hosts whose
 // last reachability check was before the specified threshold,
 // filtering out user-spawned hosts and hosts currently running tasks.
@@ -320,9 +369,7 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": false}},
-			{StatusKey: bson.M{
-				"$in": []string{evergreen.HostRunning, evergreen.HostUnreachable},
-			}},
+			{StatusKey: evergreen.HostRunning},
 			{StartedByKey: evergreen.User},
 			{"$or": []bson.M{
 				{LastCommunicationTimeKey: bson.M{"$lte": threshold}},
@@ -344,45 +391,14 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 	})
 }
 
-// ByUnreachableBefore produces a query that returns a list of all
-// hosts that are still unreachable, and have been in that state since before the
-// given time threshold.
-func ByUnreachableBefore(threshold time.Time) db.Q {
-	return db.Query(bson.M{
-		StatusKey: evergreen.HostUnreachable,
-		"$or": []bson.M{
-			{LastCommunicationTimeKey: bson.M{"$lt": threshold}},
-			{
-				NeedsNewAgentKey:         false,
-				LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
-			},
-		},
-	})
-}
-
-// ByExpiredSicne produces a query that returns any user-spawned hosts
-// that will expired after the given time.
-func ByExpiredSince(time time.Time) db.Q {
-	return db.Query(bson.M{
-		StartedByKey: bson.M{"$ne": evergreen.User},
-		StatusKey: bson.M{
-			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
-		},
-		ExpirationTimeKey: bson.M{"$lte": time},
-	})
-}
-
-// IsProvisioningFailure is a query that returns all hosts that
-// failed to provision.
-var IsProvisioningFailure = db.Query(bson.D{{Name: StatusKey, Value: evergreen.HostProvisionFailed}})
-
 // NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
 // or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
 func NeedsNewAgent(currentTime time.Time) db.Q {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return db.Query(bson.M{
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
+		StatusKey:        evergreen.HostRunning,
+		StartedByKey:     evergreen.User,
+		HasContainersKey: bson.M{"$ne": true},
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
@@ -392,13 +408,25 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
-func RemoveAllStaleInitializing() error {
-	return db.RemoveAll(Collection,
-		bson.M{
-			StatusKey:     evergreen.HostUninitialized,
-			UserHostKey:   false,
-			CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-		})
+// Removes host intents that have been been pending for more than 3
+// minutes for the specified distro.
+//
+// If you pass the empty string as a distroID, it will remove stale
+// host intents for *all* distros.
+func RemoveStaleInitializing(distroID string) error {
+	query := bson.M{
+		StatusKey:     evergreen.HostUninitialized,
+		UserHostKey:   false,
+		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
+	}
+
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	return db.RemoveAll(Collection, query)
 }
 
 // === DB Logic ===
@@ -512,4 +540,102 @@ func QueryWithFullTaskPipeline(match bson.M) []bson.M {
 			},
 		},
 	}
+}
+
+type InactiveHostCounts struct {
+	HostType string `bson:"_id"`
+	Count    int    `bson:"count"`
+}
+
+func inactiveHostCountPipeline() []bson.M {
+	return []bson.M{
+		{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": []string{evergreen.HostDecommissioned, evergreen.HostQuarantined},
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				IdKey:       0,
+				StatusKey:   1,
+				ProviderKey: 1,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + ProviderKey,
+				"count": bson.M{
+					"$sum": 1,
+				},
+			},
+		},
+	}
+}
+
+// FinishTime is a struct for storing pairs of host IDs and last container finish times
+type FinishTime struct {
+	Id         string    `bson:"_id"`
+	FinishTime time.Time `bson:"finish_time"`
+}
+
+// aggregation pipeline to compute latest finish time for running hosts with child containers
+func lastContainerFinishTimePipeline() []bson.M {
+	const output string = "finish_time"
+	return []bson.M{
+		{
+			// matches all running containers
+			"$match": bson.M{
+				ParentIDKey: bson.M{"$exists": true},
+				StatusKey:   evergreen.HostRunning,
+			},
+		},
+		{
+			// joins hosts and tasks collections on task ID
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": IdKey,
+				"as":           "task",
+			},
+		},
+		{
+			// deconstructs $lookup array
+			"$unwind": "$task",
+		},
+		{
+			// groups containers by parent host ID
+			"$group": bson.M{
+				"_id": "$" + ParentIDKey,
+				output: bson.M{
+					// computes last container finish time for each host
+					"$max": bson.M{
+						"$add": []interface{}{bsonutil.GetDottedKeyName("$task", "start_time"),
+							// divide by 1000000 to treat duration as milliseconds rather than as nanoseconds
+							bson.M{"$divide": []interface{}{bsonutil.GetDottedKeyName("$task", "duration_prediction", "value"), 1000000}},
+						},
+					},
+				},
+			},
+		},
+		{
+			// projects only ID and finish time
+			"$project": bson.M{
+				output: 1,
+			},
+		},
+	}
+}
+
+// AggregateLastContainerFinishTimes returns the latest finish time for each host with containers
+func AggregateLastContainerFinishTimes() ([]FinishTime, error) {
+
+	var times []FinishTime
+	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &times)
+	if err != nil {
+		return nil, errors.Wrap(err, "error aggregating parent finish times")
+	}
+	return times, nil
+
 }

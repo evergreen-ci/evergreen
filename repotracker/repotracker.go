@@ -8,10 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -75,7 +75,7 @@ func (p projectConfigError) Error() string {
 // The FetchRevisions method is used by a RepoTracker to run the pipeline for
 // tracking repositories. It performs everything from polling the repository to
 // persisting any changes retrieved from the repository reference.
-func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRevisionsToFetch int) error {
+func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
@@ -105,15 +105,19 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRe
 	}
 
 	if lastRevision == "" {
+		numRevisions := settings.RepoTracker.NumNewRepoRevisionsToFetch
+		if numRevisions <= 0 {
+			numRevisions = DefaultNumNewRepoRevisionsToFetch
+		}
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
 		grip.Debug(message.Fields{
 			"runner":  RunnerName,
 			"project": projectRef,
 			"message": "no last recorded revision, using most recent revisions",
-			"number":  numNewRepoRevisionsToFetch,
+			"number":  numRevisions,
 		})
-		revisions, err = repoTracker.GetRecentRevisions(numNewRepoRevisionsToFetch)
+		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
 	} else {
 		grip.Debug(message.Fields{
 			"message":  "found last recorded revision",
@@ -171,7 +175,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRe
 		}
 	}
 
-	if err := repoTracker.activationForProject(projectIdentifier); err != nil {
+	if err := model.DoProjectActivation(projectIdentifier); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem activating recent commit for project",
 			"project": projectIdentifier,
@@ -183,120 +187,6 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRe
 	}
 
 	return nil
-}
-
-func (repoTracker *RepoTracker) activationForProject(projectId string) error {
-	// fetch the most recent, non-ignored version version to activate
-	activateVersion, err := version.FindOne(version.ByMostRecentNonignored(projectId))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if activateVersion == nil {
-		grip.Info(message.Fields{
-			"message": "no version to activate for repository",
-			"project": projectId,
-			"runner":  RunnerName,
-		})
-		return nil
-	}
-
-	if err = repoTracker.activateElapsedBuilds(activateVersion); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
-}
-
-// Activates any builds if their BatchTimes have elapsed.
-func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err error) {
-	projectId := repoTracker.ProjectRef.Identifier
-	hasActivated := false
-	now := time.Now()
-	for i, status := range v.BuildVariants {
-		// last comparison is to check that ActivateAt is actually set
-		if !status.Activated && now.After(status.ActivateAt) && !status.ActivateAt.IsZero() {
-			grip.Info(message.Fields{
-				"message":  "activating revision",
-				"variant":  status.BuildVariant,
-				"project":  projectId,
-				"revision": v.Revision,
-				"runner":   RunnerName,
-			})
-
-			// Go copies the slice value, we want to modify the actual value
-			status.Activated = true
-			status.ActivateAt = now
-			v.BuildVariants[i] = status
-
-			b, err := build.FindOne(build.ById(status.BuildId))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "problem retrieving build",
-					"runner":  RunnerName,
-					"variant": status.BuildVariant,
-					"build":   status.BuildId,
-					"project": projectId,
-				}))
-				continue
-			}
-
-			grip.Info(message.Fields{
-				"message": "activating build",
-				"runner":  RunnerName,
-				"variant": status.BuildVariant,
-				"build":   status.BuildId,
-				"project": projectId,
-			})
-
-			// Don't need to set the version in here since we do it ourselves in a single update
-			if err = model.SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"runner":  RunnerName,
-					"message": "problem activating build",
-					"variant": status.BuildVariant,
-					"build":   status.BuildId,
-					"project": projectId,
-				}))
-				continue
-			}
-			hasActivated = true
-		}
-	}
-
-	// If any variants were activated, update the stored version so that we don't
-	// attempt to activate them again
-	if hasActivated {
-		return v.UpdateBuildVariants()
-	}
-	return nil
-}
-
-// sendFailureNotification sends a notification to the MCI Team when the
-// repotracker is unable to fetch revisions from a given project ref
-func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string, err error) {
-	// Send a notification to the MCI team
-	settings := repoTracker.Settings
-	max := settings.RepoTracker.MaxRepoRevisionsToSearch
-	if max <= 0 {
-		max = DefaultMaxRepoRevisionsToSearch
-	}
-	projectRef := repoTracker.ProjectRef
-	subject := fmt.Sprintf(notify.RepotrackerFailurePreface,
-		projectRef.Identifier, lastRevision)
-	url := fmt.Sprintf("https://api.github.com/%v/%v/commits/%v",
-		projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	msg := fmt.Sprintf("Could not find last known revision '%v' "+
-		"within the most recent %v revisions at %v: %v", lastRevision, max, url, err)
-	nErr := notify.NotifyAdmins(subject, msg, settings)
-	if nErr != nil {
-		grip.Error(message.WrapError(nErr, message.Fields{
-			"message":  "error sending email",
-			"runner":   RunnerName,
-			"revision": lastRevision,
-			"content":  msg,
-			"subject":  subject,
-		}))
-	}
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
@@ -452,6 +342,10 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			return nil, err
 		}
+		if err = addBuildBreakSubscriptions(v, ref); err != nil {
+			return nil, err
+		}
+
 		newestVersion = v
 	}
 	return newestVersion, nil
@@ -511,7 +405,16 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		} else {
 			lastRevision = repository.LastRevision
 		}
-		repoTracker.sendFailureNotification(lastRevision, err)
+
+		// this used to send email, but it happens so
+		// infrequently, and mail is a bad format for this.
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message":      "repotracker configuration problem",
+			"project":      projectRef.Identifier,
+			"runner":       RunnerName,
+			"lastRevision": lastRevision,
+		}))
+
 		return nil, err
 	}
 
@@ -600,7 +503,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 			continue
 		}
 
-		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil)
+		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil, "")
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -671,4 +574,72 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
+	if !projectRef.NotifyOnBuildFailure {
+		return nil
+	}
+	subscriptionBase := event.Subscription{
+		Type:      event.ResourceTypeVersion,
+		Trigger:   "regression",
+		Selectors: trigger.MakeVersionSelectors(*v),
+	}
+	subscribers := []event.Subscriber{}
+
+	// if the commit author wants build break notifications, don't send to admins
+	if v.AuthorID != "" {
+		author, err := user.FindOne(user.ById(v.AuthorID))
+		if err != nil {
+			return errors.Wrap(err, "unable to retrieve user")
+		}
+		if author.Settings.Notifications.BuildBreakID.Valid() {
+			return nil
+		}
+	}
+	// if the project has build break notifications, subscribe admins if no one subscribed
+	catcher := grip.NewSimpleCatcher()
+	for _, admin := range projectRef.Admins {
+		subscriber, err := makeBuildBreakSubscriber(admin)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		if subscriber != nil {
+			subscribers = append(subscribers, *subscriber)
+		}
+	}
+
+	for _, subscriber := range subscribers {
+		newSubscription := subscriptionBase
+		newSubscription.Subscriber = subscriber
+		catcher.Add(newSubscription.Upsert())
+	}
+	return catcher.Resolve()
+}
+
+func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
+	u, err := user.FindOne(user.ById(userID))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find user")
+	}
+	if u == nil {
+		return nil, errors.Errorf("user %s does not exist", userID)
+	}
+	var subscriber *event.Subscriber
+	preference := u.Settings.Notifications.BuildBreak
+	if preference != "" {
+		subscriber = &event.Subscriber{
+			Type: string(preference),
+		}
+		if preference == user.PreferenceEmail {
+			subscriber.Target = u.Email()
+		} else if preference == user.PreferenceSlack {
+			subscriber.Target = u.Settings.SlackUsername
+		} else {
+			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
+		}
+	}
+
+	return subscriber, nil
 }

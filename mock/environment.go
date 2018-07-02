@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	edb "github.com/evergreen-ci/evergreen/db"
@@ -12,6 +13,9 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	anserMock "github.com/mongodb/anser/mock"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -22,9 +26,12 @@ type Environment struct {
 	Remote            amboy.Queue
 	Driver            queue.Driver
 	Local             amboy.Queue
+	Closers           map[string]func(context.Context) error
 	DBSession         *anserMock.Session
 	EvergreenSettings *evergreen.Settings
 	mu                sync.RWMutex
+
+	InternalSender *send.InternalSender
 }
 
 func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.DBSettings) error {
@@ -43,11 +50,15 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 	}
 
 	rq := queue.NewRemoteUnordered(2)
-	rq.SetDriver(e.Driver)
+	if err := rq.SetDriver(e.Driver); err != nil {
+		return err
+	}
 	e.Remote = rq
 	e.Local = queue.NewLocalUnordered(2)
 
 	edb.SetGlobalSessionProvider(e.EvergreenSettings.SessionFactory())
+
+	e.InternalSender = send.MakeInternalLogger()
 
 	return nil
 }
@@ -87,4 +98,43 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 			},
 		},
 	}
+}
+
+func (e *Environment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.InternalSender, nil
+}
+
+func (e *Environment) RegisterCloser(name string, closer func(context.Context) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.Closers[name] = closer
+}
+
+func (e *Environment) Close(ctx context.Context) error {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	// TODO we could, in the future call all closers in but that
+	// would require more complex waiting and timeout logic
+
+	deadline, _ := ctx.Deadline()
+	catcher := grip.NewBasicCatcher()
+	for name, closer := range e.Closers {
+		if closer == nil {
+			continue
+		}
+
+		grip.Info(message.Fields{
+			"message":      "calling closer",
+			"closer":       name,
+			"timeout_secs": time.Since(deadline),
+			"deadline":     deadline,
+		})
+		catcher.Add(closer(ctx))
+	}
+
+	return catcher.Resolve()
 }

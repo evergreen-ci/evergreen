@@ -12,10 +12,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/render"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/urfave/negroni"
 )
 
 var projectTestConfig = testutil.TestConfig()
@@ -27,17 +25,15 @@ func TestProjectRoutes(t *testing.T) {
 		UserManager: serviceutil.MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
-	uis.Render = render.New(render.Options{
+	uis.render = gimlet.NewHTMLRenderer(gimlet.RendererOptions{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	testutil.HandleTestingErr(uis.InitPlugins(), t, "error installing plugins")
-	router := mux.NewRouter()
-	err := uis.AttachRoutes(router)
+
+	app := GetRESTv1App(&uis)
+	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
+	n, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
-	n := negroni.New()
-	n.Use(negroni.HandlerFunc(UserMiddleware(uis.UserManager)))
-	n.UseHandler(router)
 
 	Convey("When loading a public project, it should be found", t, func() {
 		testutil.HandleTestingErr(db.Clear(model.ProjectRefCollection), t,
@@ -53,9 +49,9 @@ func TestProjectRoutes(t *testing.T) {
 		}
 		So(public.Insert(), ShouldBeNil)
 
-		url, err := router.Get("project_info").URL("project_id", publicId)
-		So(err, ShouldBeNil)
-		request, err := http.NewRequest("GET", url.String(), nil)
+		url := "/rest/v1/projects/" + publicId
+
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
@@ -76,9 +72,10 @@ func TestProjectRoutes(t *testing.T) {
 			So(outRef, ShouldResemble, public)
 		})
 		Convey("and be visible to the project_list route", func() {
-			url, err := router.Get("project_list").URL()
+			url := "/rest/v1/projects"
+
 			So(err, ShouldBeNil)
-			request, err := http.NewRequest("GET", url.String(), nil)
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 			n.ServeHTTP(response, request)
 			out := struct {
@@ -101,15 +98,15 @@ func TestProjectRoutes(t *testing.T) {
 			Enabled:    true,
 			Private:    true,
 			Repo:       "repo1",
-			Admins:     []string{},
+			Admins:     []string{"testuser"},
 		}
 		So(private.Insert(), ShouldBeNil)
 		response := httptest.NewRecorder()
 
 		Convey("users who are not logged in should be denied with a 401", func() {
-			url, err := router.Get("project_info").URL("project_id", privateId)
-			So(err, ShouldBeNil)
-			request, err := http.NewRequest("GET", url.String(), nil)
+			url := "/rest/v1/projects/" + privateId
+
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 			n.ServeHTTP(response, request)
 
@@ -117,9 +114,8 @@ func TestProjectRoutes(t *testing.T) {
 		})
 
 		Convey("users who are logged in should be able to access the project", func() {
-			url, err := router.Get("project_info").URL("project_id", privateId)
-			So(err, ShouldBeNil)
-			request, err := http.NewRequest("GET", url.String(), nil)
+			url := "/rest/v1/projects/" + privateId
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 			// add auth cookie--this can be anything if we are using a MockUserManager
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
@@ -131,9 +127,9 @@ func TestProjectRoutes(t *testing.T) {
 			So(outRef, ShouldResemble, private)
 		})
 		Convey("and it should be visible to the project_list route", func() {
-			url, err := router.Get("project_list").URL()
-			So(err, ShouldBeNil)
-			request, err := http.NewRequest("GET", url.String(), nil)
+			url := "/rest/v1/projects"
+
+			request, err := http.NewRequest("GET", url, nil)
 			So(err, ShouldBeNil)
 			Convey("for credentialed users", func() {
 				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
@@ -159,10 +155,9 @@ func TestProjectRoutes(t *testing.T) {
 	})
 
 	Convey("When finding info on a nonexistent project", t, func() {
-		url, err := router.Get("project_info").URL("project_id", "nope")
-		So(err, ShouldBeNil)
+		url := "/rest/v1/projects/nope"
 
-		request, err := http.NewRequest("GET", url.String(), nil)
+		request, err := http.NewRequest("GET", url, nil)
 		So(err, ShouldBeNil)
 		response := httptest.NewRecorder()
 

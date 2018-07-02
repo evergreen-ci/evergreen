@@ -64,3 +64,4 @@ fabfile.py
 .idea
 evergreen
 test-endpoints.pid
+source-patch-1*

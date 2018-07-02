@@ -9,13 +9,15 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -62,7 +64,20 @@ func (s *AdminRouteSuite) SetupSuite() {
 
 func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	s.NoError(db.Clear(distro.Collection))
+	d1 := &distro.Distro{
+		Id: "valid-distro",
+	}
+	d2 := &distro.Distro{
+		Id:            "invalid-distro",
+		ContainerPool: "test-pool-1",
+	}
+	s.NoError(d1.Insert())
+	s.NoError(d2.Insert())
+
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
 	s.NoError(err)
@@ -85,6 +100,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NoError(err)
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
+
 	s.EqualValues(testSettings.Alerts.SMTP.From, settings.Alerts.SMTP.From)
 	s.EqualValues(testSettings.Alerts.SMTP.Port, settings.Alerts.SMTP.Port)
 	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settings.Alerts.SMTP.AdminEmail))
@@ -95,11 +111,13 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settings.AuthConfig.Github.Users))
+	s.EqualValues(testSettings.ContainerPools.Pools[0].Distro, settings.ContainerPools.Pools[0].Distro)
+	s.EqualValues(testSettings.ContainerPools.Pools[0].Id, settings.ContainerPools.Pools[0].Id)
+	s.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, settings.ContainerPools.Pools[0].MaxContainers)
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settings.HostInit.SSHTimeoutSeconds)
 	s.EqualValues(testSettings.Jira.Username, settings.Jira.Username)
 	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settings.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
-	s.EqualValues(testSettings.NewRelic.ApplicationName, settings.NewRelic.ApplicationName)
 	s.EqualValues(testSettings.Notify.SMTP.From, settings.Notify.SMTP.From)
 	s.EqualValues(testSettings.Notify.SMTP.Port, settings.Notify.SMTP.Port)
 	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settings.Notify.SMTP.AdminEmail))
@@ -117,9 +135,10 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settings.Ui.HttpListenAddr)
 
 	// test that invalid input errors
-	testSettings.ApiUrl = ""
-	testSettings.Ui.CsrfKey = "12345"
-	jsonBody, err = json.Marshal(testSettings)
+	badSettingsOne := testutil.MockConfig()
+	badSettingsOne.ApiUrl = ""
+	badSettingsOne.Ui.CsrfKey = "12345"
+	jsonBody, err = json.Marshal(badSettingsOne)
 	s.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin", buffer)
@@ -128,6 +147,36 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
 	s.Contains(err.Error(), "API hostname must not be empty")
 	s.Contains(err.Error(), "CSRF key must be 32 characters long")
+	s.NotNil(resp)
+
+	// test that invalid container pools errors
+	badSettingsTwo := testutil.MockConfig()
+	badSettingsTwo.ContainerPools.Pools = []evergreen.ContainerPool{
+		evergreen.ContainerPool{
+			Distro:        "valid-distro",
+			Id:            "test-pool-1",
+			MaxContainers: 100,
+		},
+		evergreen.ContainerPool{
+			Distro:        "invalid-distro",
+			Id:            "test-pool-2",
+			MaxContainers: 100,
+		},
+		evergreen.ContainerPool{
+			Distro:        "missing-distro",
+			Id:            "test-pool-3",
+			MaxContainers: 100,
+		},
+	}
+	jsonBody, err = json.Marshal(badSettingsTwo)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
+	s.Contains(err.Error(), "container pool test-pool-2 has invalid distro")
+	s.Contains(err.Error(), "error finding distro for container pool test-pool-3")
 	s.NotNil(resp)
 }
 
@@ -140,8 +189,8 @@ func (s *AdminRouteSuite) TestGetAuthentication() {
 	}
 	s.sc.SetSuperUsers([]string{"super_user"})
 
-	superCtx := context.WithValue(context.Background(), evergreen.RequestUser, &superUser)
-	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
+	superCtx := gimlet.AttachUser(context.Background(), &superUser)
+	normalCtx := gimlet.AttachUser(context.Background(), &normalUser)
 
 	s.NoError(s.getHandler.Authenticate(superCtx, s.sc))
 	s.Error(s.getHandler.Authenticate(normalCtx, s.sc))
@@ -156,8 +205,8 @@ func (s *AdminRouteSuite) TestPostAuthentication() {
 	}
 	s.sc.SetSuperUsers([]string{"super_user"})
 
-	superCtx := context.WithValue(context.Background(), evergreen.RequestUser, &superUser)
-	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
+	superCtx := gimlet.AttachUser(context.Background(), &superUser)
+	normalCtx := gimlet.AttachUser(context.Background(), &normalUser)
 
 	s.NoError(s.postHandler.Authenticate(superCtx, s.sc))
 	s.Error(s.postHandler.Authenticate(normalCtx, s.sc))
@@ -169,7 +218,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 
 	routeManager := getRevertRouteManager(route, version)
 	user := &user.DBUser{Id: "userName"}
-	ctx := context.WithValue(context.Background(), evergreen.RequestUser, user)
+	ctx := gimlet.AttachUser(context.Background(), user)
 	s.NotNil(routeManager)
 	s.Equal(route, routeManager.Route)
 	s.Equal(version, routeManager.Version)
@@ -213,7 +262,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 func TestRestartRoute(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 	const route = "/admin/restart"
 	const version = 2
 
@@ -264,7 +313,7 @@ func TestRestartRoute(t *testing.T) {
 func TestBannerRoutes(t *testing.T) {
 	assert := assert.New(t)
 
-	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
 	const route = "/admin/banner"
 	const version = 2
 
@@ -315,8 +364,8 @@ func TestBannerRoutes(t *testing.T) {
 	modelInterface, err := resp.Result[0].ToService()
 	assert.NoError(err)
 	model := modelInterface.(*restModel.APIBanner)
-	assert.EqualValues("foo", model.Text)
-	assert.EqualValues("warning", model.Theme)
+	assert.EqualValues(restModel.ToAPIString("foo"), model.Text)
+	assert.EqualValues(restModel.ToAPIString("warning"), model.Theme)
 }
 
 func TestAdminEventRoute(t *testing.T) {
@@ -327,7 +376,7 @@ func TestAdminEventRoute(t *testing.T) {
 
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	routeManager := getAdminSettingsManager("/admin/settings", 2)
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
@@ -373,4 +422,33 @@ func TestAdminEventRoute(t *testing.T) {
 	ts, err := time.Parse(time.RFC3339, pagination.Pages.Next.Key)
 	assert.NoError(err)
 	assert.InDelta(now.Unix(), ts.Unix(), float64(time.Millisecond.Nanoseconds()))
+}
+
+func TestClearTaskQueueRoute(t *testing.T) {
+	assert := assert.New(t)
+	route := clearTaskQueueHandler{}
+	distro := "d1"
+	tasks := []model.TaskQueueItem{
+		{
+			Id: "task1",
+		},
+		{
+			Id: "task2",
+		},
+		{
+			Id: "task3",
+		},
+	}
+	queue := model.NewTaskQueue(distro, tasks)
+	assert.Len(queue.Queue, 3)
+	assert.NoError(queue.Save())
+
+	route.distro = distro
+	sc := &data.DBConnector{}
+	_, err := route.Execute(context.Background(), sc)
+	assert.NoError(err)
+
+	queueFromDb, err := model.LoadTaskQueue(distro)
+	assert.NoError(err)
+	assert.Len(queueFromDb.Queue, 0)
 }

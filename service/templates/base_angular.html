@@ -9,7 +9,7 @@
         <link rel="shortcut icon" href="/static/img/favicon.ico">
 
         <!-- mongostrap (Bootstrap + MongoDB) + angular material styles -->
-        <link href="/static/css/mongostrap.min.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
+        <link href="/static/css/mongostrap.min.css?hash={{ BuildRevision }}" rel="stylesheet" />
         <link href="/static/css/angular-material{{if IsProd }}.min{{end}}.css" rel="stylesheet" />
         <link href="/static/css/md-time-picker.css" rel="stylesheet" />
 
@@ -18,51 +18,58 @@
         <link href="/static/material-design-icons/material-icons.css" rel="stylesheet" />
 
         <!-- our css -->
-        <link href="/static/dist/css/styles{{if IsProd }}.min{{end}}.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
+        <link href="/static/dist/css/styles{{if IsProd }}.min{{end}}.css?hash={{ BuildRevision }}" rel="stylesheet" />
 
         <!-- underscore.js js v1.4.4 js -->
-        <script type="text/javascript" src="/static/js/underscore-min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/underscore-min.js"></script>
 
         <!-- d3.js v3.5.3 -->
-        <script type="text/javascript" src="/static/js/d3.min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/d3.min.js"></script>
 
         <!-- angular.js v1.2.18 js -->
-        <script type="text/javascript" src="/static/js/angular{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-sanitize.min.js"></script>
-        <script type="text/javascript" src="/static/js/angular-aria{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-messages{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-animate{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-material{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/ansi_up.js"></script>
-        <script type="text/javascript" src="/static/js/angular-md5.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/filters/filters.common.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.drawer.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.eventlogs.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.visualization.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.badges.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.admin.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.tristateCheckbox.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.github.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.patch.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.spawn.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.events.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.svg.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/directives/directives.confirm.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/md-time-picker.js"></script>
-        <script type="text/javascript" src="/static/js/services/location_hash.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/services/rest.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/mci_module.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/controllers/project_controller.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="{{Static "js" "login.js"}}?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="{{Static "js" "notifybox.js"}}?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-sanitize.min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-aria{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-messages{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-animate{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-material{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/ansi_up.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-md5.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/filters/filters.common.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.drawer.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.eventlogs.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.visualization.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.badges.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.admin.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.tristateCheckbox.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.github.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.patch.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.spawn.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.events.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.svg.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.confirm.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/thirdparty/md-time-picker.js"></script>
+        <script type="text/javascript" src="/static/js/services/location_hash.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/services/rest.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/mci_module.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/js/controllers/project_controller.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="{{Static "js" "login.js"}}?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="{{Static "js" "notifybox.js"}}?hash={{ BuildRevision }}"></script>
 
         <!-- Angular UI-Grid -->
-        <script type="text/javascript" src="/static/js/ui-grid.min.js?hash={{ StaticsMD5 }}"></script>
-        <link href="/static/css/ui-grid.min.css?hash={{ StaticsMD5 }}" rel="stylesheet"/>
+        <script type="text/javascript" src="/static/thirdparty/ui-grid.min.js?hash={{ BuildRevision }}"></script>
+        <link href="/static/css/ui-grid.min.css?hash={{ BuildRevision }}" rel="stylesheet"/>
 
         <!-- Angular UI-Select -->
-        <script type="text/javascript" src="/static/js/select.min.js?hash={{ StaticsMD5 }}"></script>
-        <link href="/static/css/select.min.css?hash={{ StaticsMD5 }}" rel="stylesheet"/>
+        <script type="text/javascript" src="/static/thirdparty/select.min.js?hash={{ BuildRevision }}"></script>
+        <link href="/static/css/select.min.css?hash={{ BuildRevision }}" rel="stylesheet"/>
+
+        <!-- Stitch -->
+        <script type="text/javascript" src="/static/thirdparty/stitch.min.js?hash={{ BuildRevision }}"></script>
+
+        <!-- APP -->
+        <script type="text/javascript" src="/static/app/common/constants.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/app/common/Stitch.js?hash={{ BuildRevision }}"></script>
 
         <style type="text/css">
           #footer{ font-size:.8em; color:#888; }
@@ -90,12 +97,12 @@
 
     <body ng-controller="ProjectController">
         {{template "menu" .}}
-        <script src="/static/js/jquery.js"></script>
-        <script src="/static/js/mongostrap.min.js"></script>
         <script src="/static/js/common.js"></script>
-        <script src="/static/js/moment.min.js"></script>
-        <script src="/static/js/moment-timezone.min.js"></script>
-        <script src="/static/js/moment-timezone-data.js"></script>
+        <script src="/static/thirdparty/jquery.js"></script>
+        <script src="/static/thirdparty/mongostrap.min.js"></script>
+        <script src="/static/thirdparty/moment.min.js"></script>
+        <script src="/static/thirdparty/moment-timezone.min.js"></script>
+        <script src="/static/thirdparty/moment-timezone-data.js"></script>
 
         <!-- our scripts -->
         {{ template "scripts" .}}

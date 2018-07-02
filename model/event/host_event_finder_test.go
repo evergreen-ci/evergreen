@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -90,4 +92,86 @@ func TestRecentHostStatusFinder(t *testing.T) {
 		assert.NoError(db.Insert(AllLogCollection, data[i]))
 	}
 	assert.True(AllRecentHostEventsMatchStatus("test", 2, "one"))
+}
+
+func TestAgentDeployStatusFinder(t *testing.T) {
+	assert := assert.New(t)
+
+	const hostID = "host-two"
+
+	assert.NoError(db.Clear(AllLogCollection))
+	stat, err := GetRecentAgentDeployStatuses(hostID, 10)
+	assert.Error(err)
+	assert.Nil(stat)
+
+	for i := 0; i < 10; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+	time.Sleep(time.Millisecond)
+	LogHostAgentDeployed(hostID)
+
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+
+	assert.Equal(EventHostAgentDeployed, stat.Last)
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(1, stat.Success)
+	assert.Equal(9, stat.Failed)
+	assert.False(stat.LastAttemptFailed())
+	assert.False(stat.AllAttemptsFailed())
+
+	// Invert the data
+	//
+	assert.NoError(db.Clear(AllLogCollection))
+
+	for i := 0; i < 10; i++ {
+		LogHostAgentDeployed(hostID)
+	}
+	time.Sleep(time.Millisecond)
+	LogHostAgentDeployFailed(hostID, errors.New(":("))
+
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(9, stat.Success)
+	assert.Equal(1, stat.Failed)
+	assert.True(stat.LastAttemptFailed())
+	assert.False(stat.AllAttemptsFailed())
+
+	// Everything Fails
+	//
+	assert.NoError(db.Clear(AllLogCollection))
+
+	for i := 0; i < 10; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(0, stat.Success)
+	assert.Equal(10, stat.Failed)
+	assert.True(stat.LastAttemptFailed())
+	assert.True(stat.AllAttemptsFailed())
+
+	for i := 0; i < 5; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+	LogHostStatusChanged(hostID, evergreen.HostQuarantined, evergreen.HostRunning, "user", "logs")
+	for i := 0; i < 5; i++ {
+		LogHostAgentDeployFailed(hostID, errors.New(":("))
+	}
+	stat, err = GetRecentAgentDeployStatuses(hostID, 10)
+	assert.NoError(err)
+	assert.Equal(10, stat.Total)
+	assert.Equal(10, stat.Count)
+	assert.Equal(0, stat.Success)
+	assert.Equal(9, stat.Failed)
+	assert.Equal(1, stat.HostStatusChanged)
+	assert.False(stat.AllAttemptsFailed())
 }

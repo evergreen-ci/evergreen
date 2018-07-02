@@ -97,12 +97,12 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
-	manager, err := cloud.GetCloudManager(ctx, j.host.Provider, settings)
+	manager, err := cloud.GetManager(ctx, j.host.Provider, settings)
 	if err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
 	} else {
-		if calc, ok := manager.(cloud.CloudCostCalculator); ok {
+		if calc, ok := manager.(cloud.CostCalculator); ok {
 			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
 			if err != nil {
 				j.AddError(err)
@@ -126,6 +126,8 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"activated_by":    j.task.ActivatedBy,
 		"project":         j.task.Project,
 		"variant":         j.task.BuildVariant,
+		"version":         j.task.Version,
+		"build":           j.task.BuildId,
 		"distro":          j.host.Distro.Id,
 		"provider":        j.host.Distro.Provider,
 		"host":            j.host.Id,

@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alert"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -120,15 +121,7 @@ func RunSpawnWarningTriggers(host *host.Host) error {
 			return err
 		}
 		if shouldExec {
-			err := alert.EnqueueAlertRequest(&alert.AlertRequest{
-				Id:        bson.NewObjectId(),
-				Trigger:   trigger.Id(),
-				HostId:    host.Id,
-				CreatedAt: time.Now(),
-			})
-			if err != nil {
-				return err
-			}
+			event.LogExpirationWarningSent(host.Id)
 			err = storeTriggerBookkeeping(ctx, []Trigger{trigger})
 			if err != nil {
 				return err

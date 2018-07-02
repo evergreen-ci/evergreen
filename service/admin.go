@@ -6,26 +6,29 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
-	DBUser := GetUser(r)
+	ctx := r.Context()
 	template := "not_admin.html"
-	if uis.isSuperUser(DBUser) {
+	DBUser := gimlet.GetUser(ctx)
+	if DBUser != nil && uis.isSuperUser(DBUser) {
 		template = "admin.html"
 	}
 	data := struct {
 		ViewData
 	}{uis.GetCommonViewData(w, r, true, true)}
-	uis.WriteHTML(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
-	DBUser := GetUser(r)
+	ctx := r.Context()
+	DBUser := gimlet.GetUser(ctx)
 	template := "not_admin.html"
-	if uis.isSuperUser(DBUser) {
+	if DBUser != nil && uis.isSuperUser(DBUser) {
 		template = "admin_events.html"
 	}
 	dc := &data.DBAdminConnector{}
@@ -37,5 +40,5 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 		Data []model.APIAdminEvent
 		ViewData
 	}{events, uis.GetCommonViewData(w, r, true, true)}
-	uis.WriteHTML(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }

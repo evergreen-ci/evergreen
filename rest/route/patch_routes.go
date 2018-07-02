@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -33,10 +33,9 @@ func getPatchByIdManager(route string, version int) *RouteManager {
 				RequestHandler: &patchByIdHandler{},
 			},
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPatch,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &patchChangeStatusHandler{},
+				MethodType:     http.MethodPatch,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: &patchChangeStatusHandler{},
 			},
 		},
 	}
@@ -54,7 +53,7 @@ func (p *patchChangeStatusHandler) Handler() RequestHandler {
 }
 
 func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.patchId = mux.Vars(r)["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -72,7 +71,7 @@ func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 }
 
 func (p *patchChangeStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	user := GetUser(ctx)
+	user := MustHaveUser(ctx)
 	if p.Priority != nil {
 		priority := *p.Priority
 		if ok := validPriority(priority, user, sc); !ok {
@@ -118,8 +117,7 @@ func (p *patchByIdHandler) Handler() RequestHandler {
 }
 
 func (p *patchByIdHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	p.patchId = vars["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
@@ -167,10 +165,9 @@ func getPatchesByUserManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodGet,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    p.Handler(),
+				MethodType:     http.MethodGet,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: p.Handler(),
 			},
 		},
 	}
@@ -186,7 +183,7 @@ func (p *patchesByUserHandler) Handler() RequestHandler {
 }
 
 func (p *patchesByUserHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = patchesByUserArgs{mux.Vars(r)["user_id"]}
+	p.Args = patchesByUserArgs{gimlet.GetVars(r)["user_id"]}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -307,7 +304,7 @@ func (p *patchesByProjectHandler) Handler() RequestHandler {
 }
 
 func (p *patchesByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = patchesByProjectArgs{projectId: mux.Vars(r)["project_id"]}
+	p.Args = patchesByProjectArgs{projectId: gimlet.GetVars(r)["project_id"]}
 
 	return p.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -402,10 +399,9 @@ func getPatchAbortManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    p.Handler(),
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: p.Handler(),
 			},
 		},
 	}
@@ -420,13 +416,13 @@ func (p *patchAbortHandler) Handler() RequestHandler {
 }
 
 func (p *patchAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	p.patchId = vars["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
 func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.AbortPatch(p.patchId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.AbortPatch(p.patchId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Abort error")
@@ -470,10 +466,9 @@ func getPatchRestartManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    p.Handler(),
+				MethodType:     http.MethodPost,
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: p.Handler(),
 			},
 		},
 	}
@@ -488,15 +483,15 @@ func (p *patchRestartHandler) Handler() RequestHandler {
 }
 
 func (p *patchRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	p.patchId = vars["patch_id"]
+	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
 func (p *patchRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 
 	// If the version has not been finalized, returns NotFound
-	err := sc.RestartVersion(p.patchId, GetUser(ctx).Id)
+	usr := MustHaveUser(ctx)
+	err := sc.RestartVersion(p.patchId, usr.Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Restart error")

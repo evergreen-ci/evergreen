@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -20,8 +19,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestHostParseAndValidate(t *testing.T) {
@@ -68,7 +68,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -95,7 +95,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -122,7 +122,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -149,7 +149,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < numHostsInDB; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -171,7 +171,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -615,8 +615,8 @@ func TestTestPaginator(t *testing.T) {
 					status = "fail"
 				}
 				nextTest := testresult.TestResult{
-					TestFile: fmt.Sprintf("test%d", i),
-					Status:   status,
+					ID:     bson.ObjectId(fmt.Sprintf("object_id_%d_", i)),
+					Status: status,
 				}
 				cachedTests = append(cachedTests, nextTest)
 			}
@@ -632,27 +632,26 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToAPIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
 						Limit:    limit,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -667,27 +666,26 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToAPIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    50,
 						Relation: "next",
 					},
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
 						Limit:    limit,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -702,27 +700,26 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToAPIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", 0),
+						Key:      fmt.Sprintf("object_id_%d_", 0),
 						Limit:    50,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -737,22 +734,21 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToAPIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &PageResult{
 					Prev: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
 						Limit:    limit,
 						Relation: "prev",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
 			})
@@ -767,22 +763,21 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToAPIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
 				expectedPages := &PageResult{
 					Next: &Page{
-						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
 				}
 				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
 					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 			})
 		})
@@ -807,7 +802,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 		Convey("then should error on empty body", func() {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -830,7 +825,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -852,7 +847,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -876,7 +871,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldBeNil)
@@ -924,7 +919,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(resTask.Priority, ShouldEqual, int64(100))
 			So(resTask.Activated, ShouldBeTrue)
-			So(resTask.ActivatedBy, ShouldEqual, "testUser")
+			So(model.FromAPIString(resTask.ActivatedBy), ShouldEqual, "testUser")
 		})
 	})
 }
@@ -948,7 +943,7 @@ func TestTaskResetPrepare(t *testing.T) {
 		Convey("should error on empty project", func() {
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -959,7 +954,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			projCtx.Task = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -978,18 +973,24 @@ func TestTaskGetHandler(t *testing.T) {
 		rm := getTaskRouteManager("/tasks/{task_id}", 2)
 		sc := &data.MockConnector{}
 		sc.SetPrefix("rest")
-		r := mux.NewRouter()
 
 		Convey("and task is in the service context", func() {
 			sc.MockTaskConnector.CachedTasks = []task.Task{
-				{Id: "testTaskId"},
+				{Id: "testTaskId", Project: "testProject"},
 			}
 			sc.MockTaskConnector.CachedOldTasks = []task.Task{
 				{Id: "testTaskId_0",
 					OldTaskId: "testTaskId",
 				},
 			}
-			rm.Register(r, sc)
+
+			app := gimlet.NewApp()
+			app.SetPrefix(sc.GetPrefix())
+			rm.Register(app, sc)
+			So(app.Resolve(), ShouldBeNil)
+			r, err := app.Router()
+			So(err, ShouldBeNil)
+
 			Convey("a request with a user should then return no error and a task should"+
 				" should be returned", func() {
 				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
@@ -1004,6 +1005,8 @@ func TestTaskGetHandler(t *testing.T) {
 					},
 				}
 
+				req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
+
 				rr := httptest.NewRecorder()
 				r.ServeHTTP(rr, req)
 				So(rr.Code, ShouldEqual, http.StatusOK)
@@ -1011,7 +1014,8 @@ func TestTaskGetHandler(t *testing.T) {
 				res := model.APITask{}
 				err = json.Unmarshal(rr.Body.Bytes(), &res)
 				So(err, ShouldBeNil)
-				So(res.Id, ShouldEqual, "testTaskId")
+				So(model.FromAPIString(res.Id), ShouldEqual, "testTaskId")
+				So(model.FromAPIString(res.ProjectId), ShouldEqual, "testProject")
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("a request without a user should then return a 404 error and a task should"+
@@ -1039,6 +1043,7 @@ func TestTaskGetHandler(t *testing.T) {
 					So(err, ShouldBeNil)
 					req.Header.Add("Api-Key", "Key")
 					req.Header.Add("Api-User", "User")
+					req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
 
 					rr := httptest.NewRecorder()
 					r.ServeHTTP(rr, req)
@@ -1054,6 +1059,7 @@ func TestTaskGetHandler(t *testing.T) {
 					So(err, ShouldBeNil)
 					req.Header.Add("Api-Key", "Key")
 					req.Header.Add("Api-User", "User")
+					req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
 
 					rr := httptest.NewRecorder()
 					r.ServeHTTP(rr, req)
@@ -1128,7 +1134,11 @@ func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
 	So(err, ShouldResemble, expectedErr)
 	So(len(res), ShouldEqual, len(expectedModels))
 	for ix := range expectedModels {
-		So(res[ix], ShouldResemble, expectedModels[ix])
+		dbModel, err := res[ix].ToService()
+		So(err, ShouldBeNil)
+		expectedModel, err := expectedModels[ix].ToService()
+		So(err, ShouldBeNil)
+		So(dbModel, ShouldResemble, expectedModel)
 	}
 	So(pages, ShouldResemble, expectedPages)
 }

@@ -85,22 +85,18 @@ func (a *Agent) loop(ctx context.Context) error {
 	// can log its clean up.
 	var (
 		lgrCtx        context.Context
-		tskCtx        context.Context
 		cancel        context.CancelFunc
 		jitteredSleep time.Duration
 
 		exit bool
-		tc   *taskContext
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
-	defer cancel()
-	tskCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	tc = &taskContext{}
+	tc := &taskContext{}
 	needPostGroup := false
 
 LOOP:
@@ -112,6 +108,11 @@ LOOP:
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{tc.taskGroup})
 			if err != nil {
+				// task secret doesn't match, get another task
+				if errors.Cause(err) == client.HTTPConflictError {
+					timer.Reset(0)
+					continue LOOP
+				}
 				return errors.Wrap(err, "error getting next task")
 			}
 			if nextTask.TaskId != "" {
@@ -122,12 +123,15 @@ LOOP:
 				if exit {
 					// Query for next task, this time with an empty task group,
 					// to get a ShouldExit from the API, and set NeedsNewAgent.
+					timer.Reset(0)
 					continue LOOP
 				}
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
-				if err := a.runTask(tskCtx, tc); err != nil {
+				tskCtx, tskCancel := context.WithCancel(ctx)
+				defer tskCancel()
+				if err := a.runTask(tskCtx, tskCancel, tc); err != nil {
 					return errors.WithStack(err)
 				}
 				needPostGroup = true
@@ -136,6 +140,9 @@ LOOP:
 			} else if needPostGroup {
 				a.runPostGroupCommands(ctx, tc)
 				needPostGroup = false
+				// Running the post group commands implies exiting the group, so
+				// destroy prior task information.
+				tc = &taskContext{}
 			}
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
@@ -147,9 +154,7 @@ LOOP:
 func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (*taskContext, bool) {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
-	if tc.taskConfig == nil || nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
-		defer a.removeTaskDirectory(tc)
-		defer a.killProcs(tc, true)
+	if nextTaskHasDifferentTaskGroupOrBuild(nextTask, tc) {
 		setupGroup = true
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
@@ -168,6 +173,18 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 	}, false
 }
 
+func nextTaskHasDifferentTaskGroupOrBuild(nextTask *apimodels.NextTaskResponse, tc *taskContext) bool {
+	if tc.taskConfig == nil ||
+		nextTask.TaskGroup == "" ||
+		nextTask.TaskGroup != tc.taskGroup ||
+		// TODO The Version case is redundant, and can be removed after agents roll over after a deploy.
+		nextTask.Version != tc.taskConfig.Task.Version ||
+		nextTask.Build != tc.taskConfig.Task.BuildId {
+		return true
+	}
+	return false
+}
+
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
 
@@ -182,10 +199,9 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
+func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *taskContext) (err error) {
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "running task") }()
 
-	ctx, cancel := context.WithCancel(ctx)
 	grip.Info(message.Fields{
 		"message":     "running task",
 		"task_id":     tc.task.ID,
@@ -214,12 +230,11 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
 	tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string, 1)
-	go a.startHeartbeat(ctx, tc, heartbeat)
+	go a.startHeartbeat(ctx, cancel, tc, heartbeat)
 
-	var innerCtx context.Context
-	innerCtx, cancel = context.WithCancel(ctx)
+	innerCtx, innerCancel := context.WithCancel(ctx)
 
-	go a.startIdleTimeoutWatch(ctx, tc, cancel)
+	go a.startIdleTimeoutWatch(ctx, tc, innerCancel)
 
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
@@ -251,7 +266,7 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
 	}
 
-	if tc.hadTimedOut() {
+	if tc.hadTimedOut() && ctx.Err() == nil {
 		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
@@ -327,7 +342,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
-	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
+	taskConfig := tc.getTaskConfig()
+	taskGroup, err := model.GetTaskGroup(tc.taskGroup, taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-task commands"))
 		return
@@ -340,6 +356,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 }
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
+	defer a.removeTaskDirectory(tc)
+	defer a.killProcs(tc, true)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -355,8 +373,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands")
-		a.killProcs(tc, false)
-		defer a.killProcs(tc, false)
+		a.killProcs(tc, true)
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()

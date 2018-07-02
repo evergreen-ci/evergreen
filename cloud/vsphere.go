@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -16,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// vsphereManager implements the CloudManager interface for vSphere.
+// vsphereManager implements the Manager interface for vSphere.
 type vsphereManager struct {
 	client vsphereClient
 }
@@ -51,11 +50,6 @@ func (opts *vsphereSettings) Validate() error {
 	}
 
 	return nil
-}
-
-//GetInstanceName returns a name to be used for an instance
-func (*vsphereManager) GetInstanceName(d *distro.Distro) string {
-	return d.GenerateName()
 }
 
 // GetSettings returns an empty vsphereSettings struct
@@ -127,11 +121,6 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 	event.LogHostStarted(h.Id)
 
 	return h, nil
-}
-
-// CanSpawn always returns true.
-func (m *vsphereManager) CanSpawn() (bool, error) {
-	return true, nil
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,

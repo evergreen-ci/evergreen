@@ -1,6 +1,6 @@
 {{define "scripts"}}
-<script src="{{Static "js" "admin.js"}}?hash={{ StaticsMD5 }}"></script>
-<script type="text/javascript" src="{{Static "js" "js-yaml.min.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
 <style type="text/css">
 body{ background-color: rgb(250,250,250); }
 </style>
@@ -61,13 +61,14 @@ Admin Settings
             <li class="link" ng-click="scrollTo('naive')">Naive</li>
             <div>External Communication</div>
             <li class="link" ng-click="scrollTo('jira')">Jira</li>
-            <li class="link" ng-click="scrollTo('new_relic')">New Relic</li>
             <li class="link" ng-click="scrollTo('slack')">Slack</li>
             <li class="link" ng-click="scrollTo('splunk')">Splunk</li>
             <div>Background Processing</div>
             <li class="link" ng-click="scrollTo('amboy')">Amboy</li>
             <li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
-            <div>Cloud Providers</div>
+            <li class="link" ng-click="scrollTo('notifications')">Notifications Config</li>
+            <div>Providers</div>
+            <li class="link" ng-click="scrollTo('containerpools')">Container Pools</li>
             <li class="link" ng-click="scrollTo('aws')">AWS</li>
             <li class="link" ng-click="scrollTo('docker')">Docker</li>
             <li class="link" ng-click="scrollTo('gce')">GCE</li>
@@ -161,12 +162,6 @@ Admin Settings
                         </md-radio-group></td>
                       </tr>
                       <tr>
-                        <td>Github Status API</td>
-                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_status_api_disabled">
-                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                        </md-radio-group></td>
-                      </tr>
-                      <tr>
                         <td>CLI Updates</td>
                         <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.cli_updates_disabled">
                           <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
@@ -178,32 +173,81 @@ Admin Settings
                           <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
                         </md-radio-group></td>
                       </tr>
+                      <tr>
+                        <td>Task Logging</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.task_logging_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                          <td>&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td>Event Processing</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.event_processing_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>JIRA Notifications</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.jira_notifications_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Slack Notifications</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.slack_notifications_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Email Notifications</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.email_notifications_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Webhook Notifications</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.webhook_notifications_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Github PR Status Notifications</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_status_api_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
                     </tbody>
                   </table>
 
                 </md-card-content>
               </md-card>
 
-              <md-card flex=50 id="announcements" style="height:240px">
-                <md-card-title>
-                  <md-card-title-text>
-                    <span>Announcements</span>
-                  </md-card-title-text>
-                </md-card-title>
-                <md-card-content>
-                  <md-input-container class="control">
-                    <label>Site-wide banner:</label>
-                    <input type="text" id="txtBanner" ng-model="Settings.banner" placeholder="Enter banner text here">
-                  </md-input-container>
-                  <md-input-container class="control">
-                    <label>Banner style:</label>
-                    <md-select ng-model="Settings.banner_theme">
-                      <md-option ng-repeat="t in ValidThemes" value="[[t]]">[[t]]</md-option>
-                    </md-select>
-                  </md-input-container>
-                </md-card-content>
+              <section layout="column" flex=50>
+                <md-button type="submit" class="md-raised" ng-click="saveSettings()" style="width:20%; right:-78%">Save Changes</md-button>
 
-              </md-card>
+                <md-card flex=50 id="announcements" style="height:240px">
+                  <md-card-title>
+                    <md-card-title-text>
+                      <span>Announcements</span>
+                    </md-card-title-text>
+                  </md-card-title>
+                  <md-card-content>
+                    <md-input-container class="control">
+                      <label>Site-wide banner:</label>
+                      <input type="text" id="txtBanner" ng-model="Settings.banner" placeholder="Enter banner text here">
+                    </md-input-container>
+                    <md-input-container class="control">
+                      <label>Banner style:</label>
+                      <md-select ng-model="Settings.banner_theme">
+                        <md-option ng-repeat="t in ValidThemes" value="[[t]]">[[t]]</md-option>
+                      </md-select>
+                    </md-input-container>
+                  </md-card-content>
+
+                </md-card>
+              </section>
             </section>
 
             <section layout="row" flex>
@@ -325,12 +369,16 @@ Admin Settings
                 </md-card-title>
                 <md-card-content>
                   <md-input-container class="control" style="width:45%;">
-                    <label>Merge toggle</label>
-                    <input type="number" ng-model="Settings.scheduler.merge_toggle">
-                  </md-input-container>
-                  <md-input-container class="control" style="width:45%; margin-left:50px;">
                     <label>Task finder</label>
                     <input type="text" ng-model="Settings.scheduler.task_finder">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Host allocator</label>
+                    <input type="text" ng-model="Settings.scheduler.host_allocator">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Free host fraction</label>
+                    <input type="number" step="0.01" min="0" max="1" ng-model="Settings.scheduler.free_host_fraction">
                   </md-input-container>
                 </md-card-content>
               </md-card>
@@ -551,27 +599,6 @@ Admin Settings
               </md-card-content>
             </md-card>
 
-            <md-card flex=50 id="new_relic" style="height:200px">
-              <md-card-title>
-                <md-card-title-text>
-                  <span>New Relic</span>
-                </md-card-title-text>
-                <md-button ng-click="clearSection('new_relic')">
-                  <i class="fa fa-trash"></i>
-                </md-button>
-              </md-card-title>
-              <md-card-content>
-                <md-input-container class="control" style="width:45%;">
-                  <label>Application name</label>
-                  <input type="text" ng-model="Settings.new_relic.application_name">
-                </md-input-container>
-                <md-input-container class="control" style="width:45%; margin-left:50px;">
-                  <label>License key</label>
-                  <input type="text" ng-model="Settings.new_relic.license_key">
-                </md-input-container>
-              </md-card-content>
-            </md-card>
-
           </section>
 
           <section layout="row" flex>
@@ -717,6 +744,47 @@ Admin Settings
                 <md-input-container class="control" style="width:45%; margin-left:50px;">
                   <label>Buffer count</label>
                   <input type="number" ng-model="Settings.logger_config.buffer.count">
+                </md-input-container>
+              </md-card-content>
+            </md-card>
+          </section>
+
+          <section layout="row" flex>
+            <md-card flex=50 id="notifications" style="height:180px">
+              <md-card-title>
+                <md-card-title-text>
+                  <span>Notifications Config</span>
+                </md-card-title-text>
+                <md-button ng-click="clearSection('notifications')">
+                  <i class="fa fa-trash"></i>
+                </md-button>
+              </md-card-title>
+              <md-card-content>
+                <div class="muted small" style="height:25px;">All settings are applied per-server</div>
+                <md-input-container class="control" style="width:45%;">
+                  <label>Notifications Rate Limit Target per Time Interval</label>
+                  <input type="number" ng-model="Settings.notify.buffer_target_per_interval">
+                </md-input-container>
+                <md-input-container class="control" style="width:45%;">
+                  <label>Notifications Rate Limit Time Interval (seconds)</label>
+                  <input type="number" ng-model="Settings.notify.buffer_interval_seconds">
+                </md-input-container>
+              </md-card-content>
+            </md-card>
+          </section>
+
+          <section layout="row" flex>
+
+            <md-card flex=50 id="containerpools" style="max-width:49%">
+              <md-card-title>
+                <md-card-title-text>
+                  <span>Container Pools</span>
+                </md-card-title-text>
+              </md-card-title>
+              <md-card-content>
+                <md-input-container class="control">
+                  <textarea ng-model="tempContainerPools" rows="3" md-select-on-focus
+                   style="font-family:courier new, courier, monospace;"></textarea>
                 </md-input-container>
               </md-card-content>
             </md-card>
@@ -954,7 +1022,8 @@ Admin Settings
               </md-card-title>
               <md-card-content>
                 <md-input-container class="control">
-                  <textarea ng-model="tempPlugins" rows="3" md-select-on-focus></textarea>
+                  <textarea ng-model="tempPlugins" rows="3" md-select-on-focus
+                   style="font-family:courier new, courier, monospace;"></textarea>
                 </md-input-container>
               </md-card-content>
             </md-card>

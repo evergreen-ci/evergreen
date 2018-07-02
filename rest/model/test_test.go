@@ -22,13 +22,13 @@ func TestTestBuildFromService(t *testing.T) {
 
 			{
 				at: APITest{
-					Status:   APIString("testStatus"),
-					TestFile: APIString("testFile"),
+					Status:   ToAPIString("testStatus"),
+					TestFile: ToAPIString("testFile"),
 					Logs: TestLogs{
-						URL:     APIString("testUrl"),
+						URL:     ToAPIString("testUrl"),
 						LineNum: 15,
-						URLRaw:  APIString("testUrlRaw"),
-						LogId:   "",
+						URLRaw:  ToAPIString("testUrlRaw"),
+						LogId:   ToAPIString(""),
 					},
 					ExitCode:  1,
 					StartTime: NewTime(sTime),
@@ -60,7 +60,7 @@ func TestTestBuildFromService(t *testing.T) {
 				apiTest := &APITest{}
 				err := apiTest.BuildFromService(&tc.st)
 				So(err, ShouldBeNil)
-				So(apiTest, ShouldResemble, &tc.at)
+				So(FromAPIString(apiTest.TestFile), ShouldEqual, FromAPIString(tc.at.TestFile))
 			}
 		})
 	})

@@ -15,6 +15,9 @@ type HostOptions struct {
 	ExpirationDuration *time.Duration
 	UserName           string
 	UserHost           bool
+
+	HasContainers bool
+	ParentID      string
 }
 
 //CloudHost is a provider-agnostic host object that delegates methods
@@ -23,13 +26,13 @@ type HostOptions struct {
 type CloudHost struct {
 	Host     *host.Host
 	KeyPath  string
-	CloudMgr CloudManager
+	CloudMgr Manager
 }
 
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
 func GetCloudHost(ctx context.Context, host *host.Host, settings *evergreen.Settings) (*CloudHost, error) {
-	mgr, err := GetCloudManager(ctx, host.Provider, settings)
+	mgr, err := GetManager(ctx, host.Provider, settings)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,9 @@ package task
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,11 +24,27 @@ const (
 	taskKey  = "task"
 
 	// tasks should be unscheduled after ~2 weeks
-	unschedulableThreshold = 2 * 7 * 24 * time.Hour
+	unschedulableThreshold = 7 * 24 * time.Hour
+
+	// indicates the window of completed tasks we want to use in computing
+	// average task duration. By default we use tasks that have
+	// completed within the last 7 days
+	taskCompletionEstimateWindow = 24 * 7 * time.Hour
+
+	// if we have no data on a given task, default to 10 minutes so we
+	// have some new hosts spawned
+	defaultTaskDuration = 10 * time.Minute
+
+	// length of time to cache the expected duration in the task document
+	predictionTTL = 15 * time.Minute
 )
 
 var (
 	AgentHeartbeat = "heartbeat"
+
+	// A regex that matches either / or \ for splitting directory paths
+	// on either windows or linux paths.
+	eitherSlash *regexp.Regexp = regexp.MustCompile(`[/\\]`)
 )
 
 type Task struct {
@@ -97,8 +115,11 @@ type Task struct {
 	// TimeTaken is how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
 
-	// how long we expect the task to take from start to finish
-	ExpectedDuration time.Duration `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
+	// how long we expect the task to take from start to
+	// finish. expected duration is the legacy value, but the UI
+	// probably depends on it, so we maintain both values.
+	ExpectedDuration   time.Duration            `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
+	DurationPrediction util.CachedDurationValue `bson:"duration_prediction,omitempty" json:"-"`
 
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
@@ -110,6 +131,12 @@ type Task struct {
 	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
 	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+
+	// GenerateTask indicates that the task generates other tasks, which the
+	// scheduler will use to prioritize this task.
+	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
+	// GeneratedBy, if present, is the ID of the task that generated this task.
+	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -199,7 +226,7 @@ func IsAbortable(t Task) bool {
 }
 
 // IsFinished returns true if the project is no longer running
-func IsFinished(t Task) bool {
+func (t Task) IsFinished() bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
 		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
@@ -239,6 +266,10 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 		}
 	}
 	return false
+}
+
+func (t *Task) IsPatchRequest() bool {
+	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
 // Checks whether the dependencies for the task have all completed successfully.
@@ -378,7 +409,21 @@ func (t *Task) SetExpectedDuration(duration time.Duration) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ExpectedDurationKey: duration,
+				ExpectedDurationKey:   duration,
+				DurationPredictionKey: t.DurationPrediction,
+			},
+		},
+	)
+}
+
+func (t *Task) cacheExpectedDuration() error {
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				DurationPredictionKey: t.DurationPrediction,
 			},
 		},
 	)
@@ -393,7 +438,7 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	t.HostId = hostId
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroId
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -411,7 +456,29 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 			},
 		},
 	)
+	if err != nil {
+		return errors.Wrapf(err, "error marking task %s as dispatched", t.Id)
+	}
+	if t.IsPartOfDisplay() {
+		//when dispatching an execution task, mark its parent as dispatched
+		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == util.ZeroTime {
+			return t.DisplayTask.MarkAsDispatched("", "", dispatchTime)
+		}
+	}
+	return nil
+}
 
+func (t *Task) SetDistro(distroID string) error {
+	t.DistroId = distroID
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				DistroIdKey: distroID,
+			},
+		})
 }
 
 // MarkAsUndispatched marks that the task has been undispatched from a
@@ -471,7 +538,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 	if info.Updated > 0 {
 		for _, t := range tasks {
-			event.LogTaskScheduled(t.Id, scheduledTime)
+			event.LogTaskScheduled(t.Id, t.Execution, scheduledTime)
 		}
 	}
 	return nil
@@ -480,10 +547,17 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 // Removes tasks older than the unscheduable threshold (e.g. two
 // weeks) from the scheduler queue.
-func UnscheduleStaleUnderwaterTasks() (int, error) {
+//
+// If you pass an empty string as an argument to this function, this
+// operation will select tasks from all distros.
+func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 	query[PriorityKey] = 0
 	query[ActivatedByKey] = ""
+
+	if distroID != "" {
+		query[DistroIdKey] = distroID
+	}
 
 	query["$and"] = []bson.M{
 		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
@@ -539,9 +613,10 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
-	return UpdateOne(bson.M{
-		IdKey: t.Id,
-	},
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:   true,
@@ -594,6 +669,14 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
+
+	grip.Debug(message.Fields{
+		"message":   "marking task finished",
+		"task_id":   t.Id,
+		"execution": t.Execution,
+		"project":   t.Project,
+		"details":   t.Details,
+	})
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -635,7 +718,7 @@ func (t *Task) UpdateDisplayTask() error {
 			t.Activated = true
 		}
 
-		if IsFinished(execTask) {
+		if execTask.IsFinished() {
 			hasFinishedTasks = true
 		} else if execTask.IsDispatchable() {
 			hasUnfinishedTasks = true
@@ -692,6 +775,9 @@ func (t *Task) UpdateDisplayTask() error {
 
 	t.Status = status
 	t.TimeTaken = timeTaken
+	if t.IsFinished() {
+		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
+	}
 	return nil
 }
 
@@ -767,7 +853,7 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	tasks, err := Find(ByIds(taskIds))
+	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
 	if err != nil {
 		return err
 	}
@@ -841,7 +927,7 @@ func (t *Task) SetPriority(priority int64, user string) error {
 		bson.M{"$set": modifier},
 	)
 
-	event.LogTaskPriority(t.Id, user, priority)
+	event.LogTaskPriority(t.Id, t.Execution, user, priority)
 
 	return errors.WithStack(err)
 
@@ -966,7 +1052,7 @@ func (t *Task) SetCost(cost float64) error {
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state
-func AbortBuild(buildId string) error {
+func AbortBuild(buildId, caller string) error {
 	_, err := UpdateAll(
 		bson.M{
 			BuildIdKey: buildId,
@@ -974,7 +1060,17 @@ func AbortBuild(buildId string) error {
 		},
 		bson.M{"$set": bson.M{AbortedKey: true}},
 	)
-	return errors.WithStack(err)
+	if err != nil {
+		return errors.Wrap(err, "error setting aborted statuses")
+	}
+	ids, err := FindAllTaskIDsFromBuild(buildId)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks by build id")
+	}
+	if len(ids) > 0 {
+		event.LogManyTaskAbortRequests(ids, caller)
+	}
+	return nil
 }
 
 //String represents the stringified version of a task
@@ -989,6 +1085,8 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("TimeTaken: %v\n", t.TimeTaken)
 	taskStruct += fmt.Sprintf("Activated: %v\n", t.Activated)
 	taskStruct += fmt.Sprintf("Requester: %v\n", t.FinishTime)
+	taskStruct += fmt.Sprintf("PredictedDuration: %v\n", t.DurationPrediction)
+
 	return
 }
 
@@ -1006,6 +1104,9 @@ func (t *Task) Archive() error {
 			execTask, err := FindOne(ById(et))
 			if err != nil {
 				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if execTask == nil {
+				return errors.Errorf("unable to find execution task %s from display task %s", et, t.Id)
 			}
 			if err = execTask.Archive(); err != nil {
 				return errors.Wrap(err, "error archiving execution task")
@@ -1128,6 +1229,19 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
+// GetTestResultsForDisplayTask returns the test results for the execution tasks
+// for a display task.
+func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
+	if !t.DisplayOnly {
+		return nil, errors.Errorf("%s is not a display task", t.Id)
+	}
+	tasks, err := MergeTestResultsBulk([]Task{*t}, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results for display task")
+	}
+	return tasks[0].LocalTestResults, nil
+}
+
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
 // test results populated. Note that the order may change. The second parameter
 // can be used to use a specific test result filtering query, otherwise all test
@@ -1161,15 +1275,28 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	return out, nil
 }
 
-func FindSchedulable() ([]Task, error) {
-	return Find(db.Query(scheduleableTasksQuery()))
+func FindSchedulable(distroID string) ([]Task, error) {
+	query := scheduleableTasksQuery()
+
+	if distroID == "" {
+		return Find(db.Query(query))
+	}
+
+	query[DistroIdKey] = distroID
+	return Find(db.Query(query))
 }
 
-func FindRunnable() ([]Task, error) {
+func FindRunnable(distroID string) ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
+	match := scheduleableTasksQuery()
+	if distroID != "" {
+		match[DistroIdKey] = distroID
+
+	}
+
 	matchActivatedUndispatchedTasks := bson.M{
-		"$match": scheduleableTasksQuery(),
+		"$match": match,
 	}
 
 	graphLookupTaskDeps := bson.M{
@@ -1236,6 +1363,17 @@ func FindRunnable() ([]Task, error) {
 		},
 	}
 
+	filterPatchingDisabledProjects := bson.M{
+		"$match": bson.M{"$or": []bson.M{
+			{
+				RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
+			},
+			{
+				"project_ref.0." + "patching_disabled": false,
+			},
+		}},
+	}
+
 	removeProjectRef := bson.M{
 		"$project": bson.M{
 			"project_ref": 0,
@@ -1251,6 +1389,7 @@ func FindRunnable() ([]Task, error) {
 		replaceRoot,
 		joinProjectRef,
 		filterDisabledProejcts,
+		filterPatchingDisabledProjects,
 		removeProjectRef,
 	}
 
@@ -1294,4 +1433,124 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 	}
 
 	return time.Duration(runtimes[0].ExpectedDuration), nil
+}
+
+func (t *Task) FetchExpectedDuration() time.Duration {
+	if t.DurationPrediction.TTL == 0 {
+		t.DurationPrediction.TTL = util.JitterInterval(predictionTTL)
+	}
+
+	if t.DurationPrediction.Value == 0 && t.ExpectedDuration != 0 {
+		// this is probably just backfill, if we have an
+		// expected duration, let's assume it was collected
+		// before now slightly.
+		t.DurationPrediction.Value = t.ExpectedDuration
+		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
+	}
+
+	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
+		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, util.ZeroTime, time.Now().Add(-taskCompletionEstimateWindow))
+		grip.Notice(message.WrapError(err, message.Fields{
+			"name":      t.DisplayName,
+			"id":        t.Id,
+			"project":   t.Project,
+			"variant":   t.BuildVariant,
+			"operation": "fetching expected duration, expect stale scheduling data",
+		}))
+		if err != nil {
+			return defaultTaskDuration, false
+		}
+
+		if len(vals) != 1 {
+			if previous == 0 {
+				return defaultTaskDuration, true
+			}
+
+			return previous, true
+		}
+
+		ret := time.Duration(vals[0].ExpectedDuration)
+		if ret == 0 {
+			return defaultTaskDuration, true
+		}
+
+		return ret, true
+	}), message.Fields{
+		"message": "problem setting cached value refresher",
+		"cause":   "programmer error",
+	}))
+
+	expectedDuration, ok := t.DurationPrediction.Get()
+	if ok {
+		if err := t.SetExpectedDuration(expectedDuration); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task":    t.Id,
+				"message": "problem updating projected task duration",
+			}))
+		}
+	} else {
+		if err := t.cacheExpectedDuration(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task":    t.Id,
+				"message": "caching expected duration",
+			}))
+		}
+	}
+
+	return expectedDuration
+}
+
+// TaskStatusCount holds counts for task statuses
+type TaskStatusCount struct {
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
+}
+
+func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
+	switch status {
+	case evergreen.TaskSucceeded:
+		tsc.Succeeded++
+	case evergreen.TaskFailed, evergreen.TaskSetupFailed:
+		if statusDetails.TimedOut && statusDetails.Description == "heartbeat" {
+			tsc.TimedOut++
+		} else {
+			tsc.Failed++
+		}
+	case evergreen.TaskStarted, evergreen.TaskDispatched:
+		tsc.Started++
+	case evergreen.TaskUndispatched:
+		tsc.Undispatched++
+	case evergreen.TaskInactive:
+		tsc.Inactive++
+	}
+}
+
+const jqlBFQuery = "(project in (%v)) and ( %v ) order by updatedDate desc"
+
+// Generates a jira JQL string from the task
+// When we search in jira for a task we search in the specified JIRA project
+// If there are any test results, then we only search by test file
+// name of all of the failed tests.
+// Otherwise we search by the task name.
+func (t *Task) GetJQL(searchProjects []string) string {
+	var jqlParts []string
+	var jqlClause string
+	for _, testResult := range t.LocalTestResults {
+		if testResult.Status == evergreen.TestFailedStatus {
+			fileParts := eitherSlash.Split(testResult.TestFile, -1)
+			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(fileParts[len(fileParts)-1])))
+		}
+	}
+	if jqlParts != nil {
+		jqlClause = strings.Join(jqlParts, " or ")
+	} else {
+		jqlClause = fmt.Sprintf("text~\"%v\"", util.EscapeJQLReservedChars(t.DisplayName))
+	}
+
+	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }

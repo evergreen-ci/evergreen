@@ -1,6 +1,6 @@
 {{ define "menu"}}
-<script src="{{Static "js" "menu.js"}}?hash={{ StaticsMD5 }}"></script>
-<script src="{{Static "js" "md5.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "js" "menu.js"}}?hash={{ BuildRevision }}"></script>
+<script src="{{Static "thirdparty" "md5.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript">
 {{if .User}}
   window.isSuperUser = {{IsSuperUser .User.Id}};
@@ -32,11 +32,12 @@ window.JiraHost = {{.JiraHost}};
           <li><a ng-href="/task_timing/[[project]]">Stats</a></li>
           {{if .User}}
           <li><a ng-href="/hosts">Hosts</a></li>
-          <li ng-show="appPlugins.length > 0" class="dropdown">
+          <li class="dropdown">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Plugins </a>
           <ul class="dropdown-menu">
             <li ng-repeat="plugin in appPlugins"> <a ng-href="/plugin/[[plugin]]/app"> [[plugin]] </a> </li>
-            <li><a ng-href="/perfdiscovery">Performance Discovery</a></li>
+            <li><a ng-href="/perfdiscovery/[[project]]">Performance Discovery</a></li>
+            <li><a ng-href="/signal-processing/[[project]]">Signal Processing</a></li>
           </ul>
           </li>
           {{end}}
@@ -81,6 +82,7 @@ window.JiraHost = {{.JiraHost}};
             {{if IsSuperUser .User.Id}}
             <li><a href="/admin">Admin Settings</a></li>
             {{end}}
+            <li><a href="/notifications">Notifications</a></li>
             <li><a href="/logout">Logout</a></li>
           </ul>
           </li>

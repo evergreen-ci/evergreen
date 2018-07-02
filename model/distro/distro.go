@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Distro struct {
@@ -24,10 +28,14 @@ type Distro struct {
 	User        string   `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
 	SSHKey      string   `bson:"ssh_key,omitempty" json:"ssh_key,omitempty" mapstructure:"ssh_key,omitempty"`
 	SSHOptions  []string `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
-	UserData    string   `bson:"user_data,omitempty" json:"user_data,omitempty" mapstructure:"user_data,omitempty"`
 
 	SpawnAllowed bool        `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
 	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
+	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
+
+	MaxContainers int `bson:"max_containers,omitempty" json:"max_containers,omitempty" mapstructure:"max_containers,omitempty"`
+
+	ContainerPool string `bson:"container_pool,omitempty" json:"container_pool,omitempty" mapstructure:"container_pool,omitempty"`
 }
 
 type ValidateFormat string
@@ -44,13 +52,40 @@ func init() {
 
 // GenerateName generates a unique instance name for a distro.
 func (d *Distro) GenerateName() string {
-	return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
+	// gceMaxNameLength is the maximum length of an instance name permitted by GCE.
+	const gceMaxNameLength = 63
+
+	switch d.Provider {
+	case evergreen.ProviderNameStatic:
+		return "static"
+	case evergreen.ProviderNameDocker:
+		return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+	}
+
+	name := fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
+
+	if d.Provider == evergreen.ProviderNameGce {
+		// Ensure all characters in tags are on the whitelist
+		r, _ := regexp.Compile("[^a-z0-9_-]+")
+		name = string(r.ReplaceAll([]byte(strings.ToLower(name)), []byte("")))
+
+		// Ensure the new name's is no longer than gceMaxNameLength
+		if len(name) > gceMaxNameLength {
+			name = name[:gceMaxNameLength]
+		}
+	}
+
+	return name
 }
 
 func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
+}
+
+func (d *Distro) IsEphemeral() bool {
+	return util.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
 }
 
 func (d *Distro) BinaryName() string {
@@ -64,4 +99,20 @@ func (d *Distro) BinaryName() string {
 // ExecutableSubPath returns the directory containing the compiled agents.
 func (d *Distro) ExecutableSubPath() string {
 	return filepath.Join(d.Arch, d.BinaryName())
+}
+
+// ValidateContainerPoolDistros ensures that container pools have valid distros
+func ValidateContainerPoolDistros(s *evergreen.Settings) error {
+	catcher := grip.NewSimpleCatcher()
+
+	for _, pool := range s.ContainerPools.Pools {
+		d, err := FindOne(ById(pool.Distro))
+		if err != nil {
+			catcher.Add(fmt.Errorf("error finding distro for container pool %s", pool.Id))
+		}
+		if d.ContainerPool != "" {
+			catcher.Add(fmt.Errorf("container pool %s has invalid distro", pool.Id))
+		}
+	}
+	return errors.WithStack(catcher.Resolve())
 }

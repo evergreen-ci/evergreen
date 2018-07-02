@@ -64,20 +64,25 @@ func (s *SlackSuite) TestValidateAndConstructoRequiresValidate() {
 	opts.Hostname = "testsystem.com"
 	s.Error(opts.Validate())
 
+	opts.Name = "test"
 	opts.Channel = "$chat"
 	s.Error(opts.Validate())
-	opts.Name = "test"
+	opts.Channel = "@test"
+	s.NoError(opts.Validate(), "%+v", opts)
+	opts.Channel = "#test"
 	s.NoError(opts.Validate(), "%+v", opts)
 
 	defer os.Setenv(slackClientToken, os.Getenv(slackClientToken))
 	s.NoError(os.Setenv(slackClientToken, "foo"))
 }
 
-func (s *SlackSuite) TestValidateAddsOctothorpToChannelName() {
-	opts := &SlackOptions{Name: "test", Channel: "chat", Hostname: "foo"}
-	s.Equal("chat", opts.Channel)
-	s.NoError(opts.Validate())
+func (s *SlackSuite) TestValidateRequiresOctothorpOrArobase() {
+	opts := &SlackOptions{Name: "test", Channel: "#chat", Hostname: "foo"}
 	s.Equal("#chat", opts.Channel)
+	s.NoError(opts.Validate())
+	opts = &SlackOptions{Name: "test", Channel: "@chat", Hostname: "foo"}
+	s.Equal("@chat", opts.Channel)
+	s.NoError(opts.Validate())
 }
 
 func (s *SlackSuite) TestFieldSetIncludeCheck() {
@@ -261,6 +266,12 @@ func (s *SlackSuite) TestSendMethod() {
 	m = message.NewDefaultMessage(level.Alert, "world")
 	sender.Send(m)
 	s.Equal(mock.numSent, 1)
+	s.Equal("#test", mock.lastTarget)
+
+	m = message.NewSlackMessage(level.Alert, "#somewhere", "Hi", nil)
+	sender.Send(m)
+	s.Equal(mock.numSent, 2)
+	s.Equal("#somewhere", mock.lastTarget)
 }
 
 func (s *SlackSuite) TestSendMethodWithError() {
@@ -280,6 +291,13 @@ func (s *SlackSuite) TestSendMethodWithError() {
 	mock.failSendingMessage = true
 	sender.Send(m)
 	s.Equal(mock.numSent, 1)
+
+	// sender should not panic with empty attachments
+	s.NotPanics(func() {
+		m = message.NewSlackMessage(level.Alert, "#general", "I am a formatted slack message", nil)
+		sender.Send(m)
+		s.Equal(mock.numSent, 1)
+	})
 }
 
 func (s *SlackSuite) TestCreateMethodChangesClientState() {
@@ -308,4 +326,31 @@ func (s *SlackSuite) TestSendMethodDoesIncorrectlyAllowTooLowMessages() {
 	s.Equal(mock.numSent, 1)
 	sender.Send(message.NewDefaultMessage(level.Alert, "hello"))
 	s.Equal(mock.numSent, 2)
+}
+
+func (s *SlackSuite) TestSettingBotIdentity() {
+	sender, err := NewSlackLogger(s.opts, "foo", LevelInfo{level.Trace, level.Info})
+	s.NoError(err)
+	s.NotNil(sender)
+
+	mock, ok := s.opts.client.(*slackClientMock)
+	s.True(ok)
+	s.Equal(mock.numSent, 0)
+	s.False(mock.failSendingMessage)
+
+	m := message.NewDefaultMessage(level.Alert, "world")
+	sender.Send(m)
+	s.Equal(1, mock.numSent)
+	s.Empty(mock.lastMsg.Username)
+	s.Empty(mock.lastMsg.IconUrl)
+
+	s.opts.Username = "Grip"
+	s.opts.IconURL = "https://example.com/icon.ico"
+	sender, err = NewSlackLogger(s.opts, "foo", LevelInfo{level.Trace, level.Info})
+	s.NoError(err)
+	sender.Send(m)
+	s.Equal(2, mock.numSent)
+	s.Equal("Grip", mock.lastMsg.Username)
+	s.Equal("https://example.com/icon.ico", mock.lastMsg.IconUrl)
+	s.False(mock.lastMsg.AsUser)
 }

@@ -23,7 +23,9 @@ import (
 // DescriptionTemplateString defines the content of the alert ticket.
 const DescriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id}}/{{.Task.Execution}}]
+{{if .Host}}
 Host: [{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]
+{{end}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
@@ -31,9 +33,11 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 `
 const (
 	jiraFailingTasksField     = "customfield_12950"
+	jiraFailingTestsField     = "customfield_15756"
 	jiraFailingVariantField   = "customfield_14277"
 	jiraEvergreenProjectField = "customfield_14278"
 	jiraFailingRevisionField  = "customfield_14851"
+	jiraMaxTitleLength        = 254
 )
 
 // supportedJiraProjects are all of the projects, by name that we
@@ -85,7 +89,12 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	request["description"], err = getDescription(ctx, jd.uiRoot)
 
 	if isXgenProjBF(jd.handler.JiraHost(), jd.project) {
+		failedTests := []string{}
+		for _, t := range ctx.FailedTests {
+			failedTests = append(failedTests, t.TestFile)
+		}
 		request[jiraFailingTasksField] = []string{ctx.Task.DisplayName}
+		request[jiraFailingTestsField] = failedTests
 		request[jiraFailingVariantField] = []string{ctx.Task.BuildVariant}
 		request[jiraEvergreenProjectField] = []string{ctx.ProjectRef.Identifier}
 		request[jiraFailingRevisionField] = []string{ctx.Task.Revision}
@@ -108,7 +117,7 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 		return errors.Wrap(err, "error creating JIRA ticket")
 	}
 
-	event.LogJiraIssueCreated(ctx.Task.Id, result.Key)
+	event.LogJiraIssueCreated(ctx.Task.Id, ctx.Task.Execution, result.Key)
 
 	grip.Info(message.Fields{
 		"message": "creating jira ticket for failure",
@@ -137,32 +146,48 @@ func getSummary(ctx AlertContext) string {
 	switch {
 	case ctx.Task.Details.TimedOut:
 		subj.WriteString("Timed Out: ")
+	case ctx.Task.Details.Type == model.SystemCommandType:
+		subj.WriteString("System Failure: ")
+	case ctx.Task.Details.Type == model.SetupCommandType:
+		subj.WriteString("Setup Failure: ")
 	case len(failed) == 1:
 		subj.WriteString("Failure: ")
 	case len(failed) > 1:
 		subj.WriteString("Failures: ")
-	case ctx.Task.Details.Description == task.AgentHeartbeat:
-		subj.WriteString("System Failure: ")
-	case ctx.Task.Details.Type == model.SystemCommandType:
-		subj.WriteString("System Failure: ")
 	default:
 		subj.WriteString("Failed: ")
 	}
 
 	fmt.Fprintf(subj, "%s on %s ", ctx.Task.DisplayName, ctx.Build.DisplayName)
+	fmt.Fprintf(subj, "[%s @ %s] ", ctx.ProjectRef.DisplayName, ctx.Version.Revision[0:8])
 
-	// include test names if <= 4 failed, otherwise print two plus the number remaining
 	if len(failed) > 0 {
-		subj.WriteString("(")
-		if len(failed) <= 4 {
-			subj.WriteString(strings.Join(failed, ", "))
-		} else {
-			fmt.Fprintf(subj, "%s, %s, +%v more", failed[0], failed[1], len(failed)-2)
-		}
-		subj.WriteString(") ")
-	}
+		// Include an additional 10 characters for overhead, like the
+		// parens and number of failures.
+		remaining := jiraMaxTitleLength - subj.Len() - 10
 
-	fmt.Fprintf(subj, "[%s @ %s]", ctx.ProjectRef.DisplayName, ctx.Version.Revision[0:8])
+		if remaining < len(failed[0]) {
+			return subj.String()
+		}
+		subj.WriteString("(")
+		toPrint := []string{}
+		for _, fail := range failed {
+			if remaining-len(fail) > 0 {
+				toPrint = append(toPrint, fail)
+			}
+			remaining = remaining - len(fail) - 2
+		}
+		fmt.Fprint(subj, strings.Join(toPrint, ", "))
+		if len(failed)-len(toPrint) > 0 {
+			fmt.Fprintf(subj, " +%d more", len(failed)-len(toPrint))
+		}
+		subj.WriteString(")")
+	}
+	// Truncate string in case we made some mistake above, since it's better
+	// to have a truncated title than to miss a Jira ticket.
+	if subj.Len() > jiraMaxTitleLength {
+		return subj.String()[:jiraMaxTitleLength]
+	}
 	return subj.String()
 }
 

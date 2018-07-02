@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -16,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -42,12 +44,14 @@ func TestFetchRevisions(t *testing.T) {
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
-			So(repoTracker.FetchRevisions(ctx, 10), ShouldBeNil)
+			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 10
+			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
 		})
 
 		Convey("Only get 3 revisions from the given repository if given a "+
 			"limit of 4 commits where only 3 exist", func() {
-			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx, 4), t,
+			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 4
+			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
 				"Error running repository process %v")
 			numVersions, err := version.Count(version.All)
 			testutil.HandleTestingErr(err, t, "Error finding all versions")
@@ -56,7 +60,8 @@ func TestFetchRevisions(t *testing.T) {
 
 		Convey("Only get 2 revisions from the given repository if given a "+
 			"limit of 2 commits where 3 exist", func() {
-			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx, 2), t,
+			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
+			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
 				"Error running repository process %v")
 			numVersions, err := version.Count(version.All)
 			testutil.HandleTestingErr(err, t, "Error finding all versions")
@@ -143,6 +148,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(u.Insert(), ShouldBeNil)
 
 			_, err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
 			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
 			So(err, ShouldBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
@@ -294,7 +300,7 @@ func TestBatchTimes(t *testing.T) {
 			So(v, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(v.BuildVariants), ShouldEqual, 2)
-			So(repoTracker.activateElapsedBuilds(v), ShouldBeNil)
+			So(model.ActivateElapsedBuilds(v), ShouldBeNil)
 			So(v.BuildVariants[0].Activated, ShouldBeFalse)
 			So(v.BuildVariants[1].Activated, ShouldBeFalse)
 		})
@@ -316,7 +322,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := repoTracker.StoreRevisions(ctx, revisions)
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeTrue)
@@ -349,7 +355,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := repoTracker.StoreRevisions(ctx, revisions)
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeFalse)
@@ -380,7 +386,7 @@ func TestBatchTimes(t *testing.T) {
 			version, err := repoTracker.StoreRevisions(ctx, revisions)
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeTrue)
@@ -434,7 +440,7 @@ func TestBatchTimes(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("the new variant should activate immediately", func() {
-			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
 			So(bv1.Activated, ShouldBeTrue)
@@ -504,4 +510,90 @@ func createTestProject(override1, override2 *int) *model.Project {
 			},
 		},
 	}
+}
+
+func TestBuildBreakSubscriptions(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(user.Collection))
+	u := user.DBUser{
+		Id:           "me",
+		EmailAddress: "toki@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				BuildBreak: user.PreferenceEmail,
+			},
+		},
+	}
+	assert.NoError(u.Insert())
+
+	// no notifications in project or user
+	subs := []event.Subscription{}
+	assert.NoError(db.Clear(event.SubscriptionsCollection))
+	proj1 := model.ProjectRef{
+		Identifier:           "proj1",
+		NotifyOnBuildFailure: false,
+	}
+	v1 := version.Version{
+		Id:         "v1",
+		Identifier: proj1.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Branch:     "branch",
+	}
+	assert.NoError(addBuildBreakSubscriptions(&v1, &proj1))
+	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.Len(subs, 0)
+
+	// just a project
+	subs = []event.Subscription{}
+	assert.NoError(db.Clear(event.SubscriptionsCollection))
+	proj2 := model.ProjectRef{
+		Identifier:           "proj2",
+		NotifyOnBuildFailure: true,
+		Admins:               []string{"u2", "u3"},
+	}
+	u2 := user.DBUser{
+		Id:           "u2",
+		EmailAddress: "shaw@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				BuildBreak: user.PreferenceEmail,
+			},
+		},
+	}
+	assert.NoError(u2.Insert())
+	u3 := user.DBUser{
+		Id:           "u3",
+		EmailAddress: "tess@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				BuildBreak: user.PreferenceEmail,
+			},
+		},
+	}
+	assert.NoError(u3.Insert())
+	assert.NoError(addBuildBreakSubscriptions(&v1, &proj2))
+	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.Len(subs, 2)
+
+	// project has it enabled, but user doesn't want notifications
+	subs = []event.Subscription{}
+	assert.NoError(db.Clear(event.SubscriptionsCollection))
+	u4 := user.DBUser{
+		Id:           "u4",
+		EmailAddress: "rehgar@blizzard.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{},
+		},
+	}
+	assert.NoError(u4.Insert())
+	v3 := version.Version{
+		Id:         "v3",
+		Identifier: proj1.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Branch:     "branch",
+		AuthorID:   u4.Id,
+	}
+	assert.NoError(addBuildBreakSubscriptions(&v3, &proj2))
+	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.Len(subs, 2)
 }

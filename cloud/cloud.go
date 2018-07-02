@@ -5,19 +5,18 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
 
-// ProviderSettings exposes provider-specific configuration settings for a CloudManager.
+// ProviderSettings exposes provider-specific configuration settings for a Manager.
 type ProviderSettings interface {
 	Validate() error
 }
 
-//CloudManager is an interface which handles creating new hosts or modifying
+//Manager is an interface which handles creating new hosts or modifying
 //them via some third-party API.
-type CloudManager interface {
+type Manager interface {
 	// Returns a pointer to the manager's configuration settings struct
 	GetSettings() ProviderSettings
 
@@ -27,12 +26,6 @@ type CloudManager interface {
 	// SpawnHost attempts to create a new host by requesting one from the
 	// provider's API.
 	SpawnHost(context.Context, *host.Host) (*host.Host, error)
-
-	// CanSpawn indicates if this provider is capable of creating new instances
-	// with SpawnInstance(). If this provider doesn't support spawning new
-	// hosts, this will return false (and calls to SpawnInstance will
-	// return errors)
-	CanSpawn() (bool, error)
 
 	// get the status of an instance
 	GetInstanceStatus(context.Context, *host.Host) (CloudStatus, error)
@@ -59,21 +52,24 @@ type CloudManager interface {
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
-
-	// GetInstanceName returns the name that should be used for an instance of this provider
-	GetInstanceName(*distro.Distro) string
 }
 
-// CloudCostCalculator is an interface for cloud managers that can estimate an
-// what a span of time on a given host costs.
-type CloudCostCalculator interface {
+// CostCalculator is an interface for cloud providers that can estimate what a span of time on a
+// given host costs.
+type CostCalculator interface {
 	CostForDuration(context.Context, *host.Host, time.Time, time.Time) (float64, error)
 }
 
-// GetCloudManager returns an implementation of CloudManager for the given provider name.
+// BatchManager is an interface for cloud providers that support batch operations.
+type BatchManager interface {
+	// GetInstanceStatuses gets the status of a slice of instances.
+	GetInstanceStatuses(context.Context, []host.Host) ([]CloudStatus, error)
+}
+
+// GetManager returns an implementation of Manager for the given provider name.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetCloudManager(ctx context.Context, providerName string, settings *evergreen.Settings) (CloudManager, error) {
-	var provider CloudManager
+func GetManager(ctx context.Context, providerName string, settings *evergreen.Settings) (Manager, error) {
+	var provider Manager
 
 	switch providerName {
 	case evergreen.ProviderNameStatic:

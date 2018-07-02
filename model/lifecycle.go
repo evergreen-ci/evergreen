@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -111,7 +112,7 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state, and marks the build as deactivated.
 func AbortBuild(buildId string, caller string) error {
-	err := task.AbortBuild(buildId)
+	err := task.AbortBuild(buildId, caller)
 	if err != nil {
 		return err
 	}
@@ -120,7 +121,7 @@ func AbortBuild(buildId string, caller string) error {
 
 // AbortVersion sets the abort flag on all tasks associated with the version which are in an
 // abortable state
-func AbortVersion(versionId string) error {
+func AbortVersion(versionId, caller string) error {
 	_, err := task.UpdateAll(
 		bson.M{
 			task.VersionKey: versionId,
@@ -128,7 +129,17 @@ func AbortVersion(versionId string) error {
 		},
 		bson.M{"$set": bson.M{task.AbortedKey: true}},
 	)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "error setting aborted statuses")
+	}
+	ids, err := task.FindAllTaskIDsFromVersion(versionId)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks by version id")
+	}
+	if len(ids) > 0 {
+		event.LogManyTaskAbortRequests(ids, caller)
+	}
+	return nil
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {
@@ -162,13 +173,17 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 			status = evergreen.VersionFailed
 		}
 	}
-	return version.UpdateOne(
+	if err := version.UpdateOne(
 		bson.M{version.IdKey: versionId},
 		bson.M{"$set": bson.M{
 			version.FinishTimeKey: finishTime,
 			version.StatusKey:     status,
 		}},
-	)
+	); err != nil {
+		return errors.WithStack(err)
+	}
+	event.LogVersionStateChangeEvent(versionId, status)
+	return nil
 }
 
 // SetBuildPriority updates the priority field of all tasks associated with the given build id.
@@ -207,7 +222,6 @@ func SetVersionPriority(versionId string, priority int64) error {
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
-
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -307,11 +321,6 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 					buildId, t.Id)
 			}
 		}
-		if t.DisplayOnly {
-			if err = task.ResetTasks(t.ExecutionTasks); err != nil {
-				return errors.WithStack(err)
-			}
-		}
 	}
 
 	if abortInProgress {
@@ -394,9 +403,9 @@ func RefreshTasksCache(buildId string) error {
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
 
-//AddTasksToBuild creates the tasks for the given build of a project
+// AddTasksToBuild creates the tasks for the given build of a project
 func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
-	taskNames []string, displayNames []string) (*build.Build, error) {
+	taskNames []string, displayNames []string, generatedBy string) (*build.Build, error) {
 
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
@@ -407,16 +416,13 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// create the new tasks for the build
 	taskIds := NewTaskIdTable(project, v)
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
-	// insert the tasks into the db
-	for _, task := range tasks {
-		if err := task.Insert(); err != nil {
-			return nil, errors.Wrapf(err, "error inserting task %s", task.Id)
-		}
+	if err = tasks.Insert(); err != nil {
+		return nil, errors.Wrapf(err, "error inserting tasks for build", b.Id)
 	}
 
 	// update the build to hold the new tasks
@@ -430,7 +436,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
 func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskIdConfig,
-	buildName string, activated bool, taskNames []string, displayNames []string) (string, error) {
+	buildName string, activated bool, taskNames []string, displayNames []string, generatedBy string) (string, error) {
 
 	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
 
@@ -476,18 +482,13 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames)
+	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
-	// insert all of the build's tasks into the db
-	for _, task := range tasksForBuild {
-		err = task.Insert()
-		if err == nil || db.IsDuplicateKey(err) {
-			continue
-		}
-		return "", errors.Wrapf(err, "error inserting task %s", task.Id)
+	if err = tasksForBuild.InsertUnordered(); err != nil && !db.IsDuplicateKey(err) {
+		return "", errors.Wrapf(err, "error inserting task for build", buildId)
 	}
 
 	// create task caches for all of the tasks, and place them into the build
@@ -523,20 +524,22 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 	}
 
 	for _, t := range tg.Tasks {
-		tasks = append(tasks, BuildVariantTaskUnit{
+		bvt := BuildVariantTaskUnit{
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
 			IsGroup:         true,
 			GroupName:       in.Name,
-			Patchable:       taskMap[t].Patchable,
-			Priority:        taskMap[t].Priority,
-			DependsOn:       taskMap[t].DependsOn,
-			Requires:        taskMap[t].Requires,
+			Patchable:       in.Patchable,
+			Priority:        in.Priority,
+			DependsOn:       in.DependsOn,
+			Requires:        in.Requires,
 			Distros:         in.Distros,
-			ExecTimeoutSecs: taskMap[t].ExecTimeoutSecs,
-			Stepback:        taskMap[t].Stepback,
-		})
+			ExecTimeoutSecs: in.ExecTimeoutSecs,
+			Stepback:        in.Stepback,
+		}
+		bvt.Populate(taskMap[t])
+		tasks = append(tasks, bvt)
 	}
 	return tasks
 }
@@ -556,7 +559,8 @@ func shouldNotPatchBuild(t BuildVariantTaskUnit, requester string) bool {
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build,
-	v *version.Version, taskIds TaskIdConfig, taskNames []string, displayNames []string) ([]*task.Task, error) {
+	v *version.Version, taskIds TaskIdConfig, taskNames []string,
+	displayNames []string, generatedBy string) (task.Tasks, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -701,6 +705,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 		newTask.DisplayTask = displayTasks[newTask.DisplayName]
 
+		newTask.GeneratedBy = generatedBy
 		// append the task to the list of the created tasks
 		tasks = append(tasks, newTask)
 	}
@@ -788,12 +793,30 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
 	buildVariant *BuildVariant, b *build.Build, v *version.Version) *task.Task {
+	var distroID string
+
+	if len(buildVarTask.Distros) > 0 {
+		distroID = buildVarTask.Distros[0]
+	} else if len(buildVariant.RunOn) > 0 {
+		distroID = buildVariant.RunOn[0]
+	} else {
+		grip.Warning(message.Fields{
+			"task_id":   id,
+			"message":   "task is not runnable as there is no distro specified",
+			"variant":   buildVariant.Name,
+			"project":   project.Identifier,
+			"version":   v.Revision,
+			"requester": v.Requester,
+		})
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
 		DisplayName:         buildVarTask.Name,
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
+		DistroId:            distroID,
 		CreateTime:          b.CreateTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,
@@ -809,6 +832,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		Revision:            v.Revision,
 		Project:             project.Identifier,
 		Priority:            buildVarTask.Priority,
+		GenerateTask:        project.IsGenerateTask(buildVarTask.Name),
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName
@@ -844,9 +868,11 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		Version:             v.Id,
 		Revision:            v.Revision,
 		Project:             p.Identifier,
+		Requester:           v.Requester,
 		DisplayOnly:         true,
 		ExecutionTasks:      execTasks,
 		Status:              evergreen.TaskUndispatched,
+		IngestTime:          time.Now(),
 		StartTime:           util.ZeroTime,
 		FinishTime:          util.ZeroTime,
 		Activated:           b.Activated,
@@ -1001,7 +1027,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVariantPairs) error {
+func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVariantPairs, generatedBy string) error {
 	taskIds := NewPatchTaskIdTable(p, v, tasks)
 
 	newBuildIds := make([]string, 0)
@@ -1024,7 +1050,7 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
-		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames)
+		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames, generatedBy)
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			v.Id, pair.Variant, activated)
 		if err != nil {
@@ -1053,7 +1079,7 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVariantPairs) error {
+func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVariantPairs, generatedBy string) error {
 	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err
@@ -1093,7 +1119,7 @@ func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVaria
 			continue
 		}
 		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd); err != nil {
+		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd, generatedBy); err != nil {
 			return err
 		}
 	}

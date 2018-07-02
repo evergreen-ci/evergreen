@@ -2,11 +2,14 @@ package notification
 
 import (
 	"errors"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -27,7 +30,7 @@ func (s *notificationSuite) SetupSuite() {
 }
 
 func (s *notificationSuite) SetupTest() {
-	s.NoError(db.Clear(NotificationsCollection))
+	s.NoError(db.Clear(Collection))
 	s.n = Notification{
 		Subscriber: event.Subscriber{
 			Type: event.GithubPullRequestSubscriberType,
@@ -38,25 +41,25 @@ func (s *notificationSuite) SetupTest() {
 				Ref:      "sadasdkjsad",
 			},
 		},
-		Payload: GithubStatusAPIPayload{
-			Status:      "failure",
+		Payload: message.GithubStatus{
+			State:       message.GithubStateFailure,
 			Context:     "evergreen",
 			URL:         "https://example.com",
 			Description: "something failed",
 		},
 	}
 
-	s.False(s.n.ID.Valid())
+	s.Empty(s.n.ID)
 }
 
 func (s *notificationSuite) TestMarkSent() {
 	// MarkSent with notification that hasn't been stored
 	s.EqualError(s.n.MarkSent(), "notification has no ID")
-	s.False(s.n.ID.Valid())
+	s.Empty(s.n.ID)
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
 
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.NoError(InsertMany(s.n))
 
 	// mark that notification as sent
@@ -74,21 +77,21 @@ func (s *notificationSuite) TestMarkSent() {
 func (s *notificationSuite) TestMarkError() {
 	// MarkError, uninserted notification
 	s.EqualError(s.n.MarkError(errors.New("")), "notification has no ID")
-	s.False(s.n.ID.Valid())
+	s.Empty(s.n.ID)
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
 
 	s.NoError(s.n.MarkError(nil))
-	s.False(s.n.ID.Valid())
+	s.Empty(s.n.ID)
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
 
 	// MarkError, non nil error
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.NoError(InsertMany(s.n))
 
 	s.NoError(s.n.MarkError(errors.New("test")))
-	s.True(s.n.ID.Valid())
+	s.NotEmpty(s.n.ID)
 	s.Equal("test", s.n.Error)
 	s.NotZero(s.n.SentAt)
 	n, err := Find(s.n.ID)
@@ -96,31 +99,37 @@ func (s *notificationSuite) TestMarkError() {
 	s.Require().NotNil(n)
 	s.Equal("test", n.Error)
 	s.NotZero(n.SentAt)
+}
+
+func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
+	s.n.ID = "1"
+	s.NoError(InsertMany(s.n))
 
 	// nil error should have no side effect
 	s.NoError(s.n.MarkError(nil))
-	n, err = Find(s.n.ID)
+	n, err := Find(s.n.ID)
 	s.NoError(err)
-	s.NotEmpty(n.Error)
-	s.NotZero(n.SentAt)
+	s.Empty(n.Error)
+	s.Zero(n.SentAt)
 }
 
 func (s *notificationSuite) TestInsertMany() {
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 
-	payload := "slack hi"
 	n2 := Notification{
-		ID: bson.NewObjectId(),
+		ID: "2",
 		Subscriber: event.Subscriber{
 			Type:   event.SlackSubscriberType,
 			Target: "#general",
 		},
-		Payload: &payload,
+		Payload: &SlackPayload{
+			Body: "slack hi",
+		},
 	}
 
 	payload2 := "jira hi"
 	n3 := Notification{
-		ID: bson.NewObjectId(),
+		ID: "3",
 		Subscriber: event.Subscriber{
 			Type:   event.JIRACommentSubscriberType,
 			Target: "ABC-1234",
@@ -133,11 +142,11 @@ func (s *notificationSuite) TestInsertMany() {
 	s.NoError(InsertMany(slice...))
 
 	for i := range slice {
-		s.True(slice[i].ID.Valid())
+		s.NotEmpty(slice[i].ID)
 	}
 
 	out := []Notification{}
-	s.NoError(db.FindAllQ(NotificationsCollection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(Collection, db.Q{}, &out))
 	s.Len(out, 3)
 
 	for _, n := range out {
@@ -145,18 +154,18 @@ func (s *notificationSuite) TestInsertMany() {
 		s.Empty(n.Error)
 
 		if n.ID == slice[0].ID {
-			s.Require().IsType(&GithubStatusAPIPayload{}, n.Payload)
-			payload := n.Payload.(*GithubStatusAPIPayload)
-			s.Equal("failure", payload.Status)
+			payload, ok := n.Payload.(*message.GithubStatus)
+			s.Require().True(ok)
+			s.Equal("failure", string(payload.State))
 			s.Equal("evergreen", payload.Context)
 			s.Equal("https://example.com", payload.URL)
 			s.Equal("something failed", payload.Description)
 
 		} else if n.ID == slice[1].ID {
 			s.Equal(event.SlackSubscriberType, n.Subscriber.Type)
-			payload, ok := n.Payload.(*string)
+			payload, ok := n.Payload.(*SlackPayload)
 			s.True(ok)
-			s.Equal("slack hi", *payload)
+			s.Equal("slack hi", payload.Body)
 
 		} else if n.ID == slice[2].ID {
 			s.Equal(event.JIRACommentSubscriberType, n.Subscriber.Type)
@@ -172,10 +181,15 @@ func (s *notificationSuite) TestInsertMany() {
 
 func (s *notificationSuite) TestWebhookPayload() {
 	jsonData := `{"iama": "potato"}`
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.n.Subscriber.Type = event.EvergreenWebhookSubscriberType
-	s.n.Subscriber.Target = event.WebhookSubscriber{}
-	s.n.Payload = jsonData
+	s.n.Subscriber.Target = event.WebhookSubscriber{
+		URL:    "https://example.com",
+		Secret: []byte("it's dangerous to go alone. take this!"),
+	}
+	s.n.Payload = &util.EvergreenWebhook{
+		Body: []byte(jsonData),
+	}
 
 	s.NoError(InsertMany(s.n))
 
@@ -183,16 +197,16 @@ func (s *notificationSuite) TestWebhookPayload() {
 	s.NoError(err)
 	s.NotNil(n)
 
-	s.Equal(jsonData, *n.Payload.(*string))
+	s.Equal(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
 
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
-	s.Equal(jsonData, c.String())
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestJIRACommentPayload() {
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.n.Subscriber.Type = event.JIRACommentSubscriberType
 	target := "BF-1234"
 	s.n.Subscriber.Target = target
@@ -210,10 +224,11 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.Equal("hi", c.String())
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestJIRAIssuePayload() {
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.n.Subscriber.Type = event.JIRAIssueSubscriberType
 	issue := "1234"
 	s.n.Subscriber.Target = &issue
@@ -225,7 +240,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 		Type:        "5",
 		Components:  []string{"6"},
 		Labels:      []string{"7"},
-		Fields: map[string]string{
+		Fields: map[string]interface{}{
 			"8":  "9",
 			"10": "11",
 		},
@@ -242,33 +257,22 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
-
-	fields, ok := c.Raw().(message.JiraIssue)
-	s.True(ok)
-
-	s.Equal("1234", fields.Project)
-	s.Equal("1", fields.Summary)
-	s.Equal("2", fields.Description)
-	s.Equal("3", fields.Reporter)
-	s.Equal("4", fields.Assignee)
-	s.Equal("5", fields.Type)
-	s.Equal([]string{"6"}, fields.Components)
-	s.Equal([]string{"7"}, fields.Labels)
-	s.Len(fields.Fields, 2)
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestEmailPayload() {
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.n.Subscriber.Type = event.EmailSubscriberType
 	email := "a@a.a"
 	s.n.Subscriber.Target = &email
-	s.n.Payload = &EmailPayload{
-		Headers: map[string]string{
-			"8":  "9",
-			"10": "11",
+	s.n.Payload = &message.Email{
+		Headers: map[string][]string{
+			"8":  []string{"9"},
+			"10": []string{"11"},
 		},
-		Subject: "subject",
-		Body:    []byte("body"),
+		Subject:    "subject",
+		Body:       "body",
+		Recipients: []string{},
 	}
 
 	s.NoError(InsertMany(s.n))
@@ -283,17 +287,20 @@ func (s *notificationSuite) TestEmailPayload() {
 	s.NoError(err)
 	s.Require().NotNil(c)
 
-	_, ok := c.Raw().(message.Fields)
+	_, ok := c.Raw().(*message.Email)
 	s.True(ok)
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestSlackPayload() {
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.n.Subscriber.Type = event.SlackSubscriberType
 	slack := "#general"
 	s.n.Subscriber.Target = &slack
-	data := "text"
-	s.n.Payload = &data
+	s.n.Payload = &SlackPayload{
+		Body:        "Hi",
+		Attachments: []message.SlackAttachment{},
+	}
 
 	s.NoError(InsertMany(s.n))
 
@@ -306,16 +313,15 @@ func (s *notificationSuite) TestSlackPayload() {
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
-
-	s.Equal("text", c.String())
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestGithubPayload() {
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = "1"
 	s.n.Subscriber.Type = event.GithubPullRequestSubscriberType
 	s.n.Subscriber.Target = &event.GithubPullRequestSubscriber{}
-	s.n.Payload = &GithubStatusAPIPayload{
-		Status:      "failure",
+	s.n.Payload = &message.GithubStatus{
+		State:       message.GithubStateFailure,
 		Context:     "evergreen",
 		URL:         "https://example.com",
 		Description: "hi",
@@ -332,7 +338,36 @@ func (s *notificationSuite) TestGithubPayload() {
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
+	s.True(c.Loggable())
+}
 
-	_, ok := c.Raw().(message.Fields)
-	s.True(ok)
+func (s *notificationSuite) TestCollectUnsentNotificationStats() {
+	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
+		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
+		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType}
+
+	n := []Notification{}
+	// add one of every notification, unsent
+	for i, type_ := range types {
+		n = append(n, s.n)
+		n[i].ID = bson.NewObjectId().Hex()
+		n[i].Subscriber.Type = type_
+		s.NoError(db.Insert(Collection, n[i]))
+	}
+
+	// add one more, mark it sent
+	s.n.ID = bson.NewObjectId().Hex()
+	s.n.SentAt = time.Now()
+	s.NoError(db.Insert(Collection, s.n))
+
+	stats, err := CollectUnsentNotificationStats()
+	s.NoError(err)
+	s.Require().NotNil(stats)
+
+	// we should count 1 of each type
+	v := reflect.ValueOf(stats).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		s.Equal(1, int(f.Int()))
+	}
 }

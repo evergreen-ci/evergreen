@@ -23,7 +23,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2018-03-22"
+	ClientVersion = "2018-06-05"
 
 	errNotFound = "not found"
 )
@@ -53,6 +53,7 @@ type Settings struct {
 	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
+	ContainerPools     ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database           DBSettings                `yaml:"database"`
@@ -66,7 +67,6 @@ type Settings struct {
 	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic" id:"new_relic"`
 	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew         util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
@@ -478,17 +478,15 @@ func GetServiceFlags() (*ServiceFlags, error) {
 	return flags, nil
 }
 
-func sliceContains(slice []string, elem string) bool {
-	if slice == nil {
-		return false
-	}
-	for _, i := range slice {
-		if i == elem {
-			return true
-		}
-	}
+type ClientBinary struct {
+	Arch string `yaml:"arch" json:"arch"`
+	OS   string `yaml:"os" json:"os"`
+	URL  string `yaml:"url" json:"url"`
+}
 
-	return false
+type ClientConfig struct {
+	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"ClientBinaries"`
+	LatestRevision string         `yaml:"latest_revision" json:"LatestRevision"`
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

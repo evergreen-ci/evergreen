@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,6 +125,24 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 
 	err := s.a.loop(ctx)
 	s.Error(err)
+}
+
+func (s *AgentSuite) TestNextTaskConflict() {
+	s.mockCommunicator.NextTaskShouldConflict = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errChan := make(chan error)
+	go func() {
+		errChan <- s.a.loop(ctx)
+	}()
+	time.Sleep(time.Millisecond)
+	select {
+	case err := <-errChan:
+		s.NoError(err)
+	default:
+		// pass
+	}
 }
 
 func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
@@ -323,10 +342,24 @@ func (s *AgentSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err := s.a.runTask(ctx, s.tc)
+	err := s.a.runTask(ctx, cancel, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
+	shouldFind := map[string]bool{
+		"initial task setup":              false,
+		"Running post-task commands":      false,
+		"Sending final status as: failed": false,
+	}
+	for _, m := range s.mockCommunicator.GetMockMessages()["task_id"] {
+		for toFind, _ := range shouldFind {
+			if strings.Contains(m.Message, toFind) {
+				shouldFind[toFind] = true
+			}
+		}
+	}
+	for toFind, found := range shouldFind {
+		s.True(found, fmt.Sprintf("Expected to find '%s'", toFind))
+	}
 }
 
 func (s *AgentSuite) TestWaitCompleteSuccess() {
@@ -481,7 +514,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc.taskDirectory = "task_directory"
 	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
-	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be false")
+	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be true")
 	s.Equal("foo", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 
@@ -497,6 +530,24 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
 	s.True(tc.runGroupSetup, "if the next task is in a different group from the previous task, runGroupSetup should be true")
+	s.Equal("bar", tc.taskGroup)
+	s.Empty(tc.taskDirectory)
+
+	tc.taskConfig = &model.TaskConfig{
+		Task: &task.Task{
+			Version: versionId,
+			BuildId: "build_id_1",
+		},
+	}
+	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
+	nextTask.TaskGroup = "bar"
+	nextTask.Version = versionId
+	nextTask.Build = "build_id_2"
+	tc.taskGroup = "bar"
+	tc.taskDirectory = "task_directory"
+	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
+	s.False(exit)
+	s.True(tc.runGroupSetup, "if the next task in the same version but a different build, runSetupGroup should be true")
 	s.Equal("bar", tc.taskGroup)
 	s.Empty(tc.taskDirectory)
 }

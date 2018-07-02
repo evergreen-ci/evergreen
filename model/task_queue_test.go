@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -66,8 +67,7 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
 			// make sure the db representation was updated
-			tq, err := LoadTaskQueue(distroId)
-			taskQueue := tq.(*TaskQueue)
+			taskQueue, err := LoadTaskQueue(distroId)
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 2)
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
@@ -220,4 +220,119 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 	next = queue.FindNextTask(TaskSpec{})
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
+}
+
+func TestFindNextTaskWithLastTask(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(host.Collection, task.Collection))
+	defer db.ClearCollections(host.Collection, task.Collection)
+
+	hosts := []host.Host{}
+	for i := 0; i < 10; i++ {
+		hosts = append(hosts, host.Host{
+			Id:               fmt.Sprintf("host_%d", i),
+			Status:           "running",
+			LastTask:         fmt.Sprintf("task_id_%d", i),
+			LastGroup:        "task_group",
+			LastBuildVariant: "build_variant",
+			LastVersion:      "task_version",
+			LastProject:      "task_project",
+		})
+	}
+	for _, h := range hosts {
+		require.NoError(h.Insert())
+	}
+	tasks := []task.Task{}
+	for i := 0; i < 10; i++ {
+		tasks = append(tasks, task.Task{
+			Id:           fmt.Sprintf("task_%d", i),
+			TaskGroup:    "task_group",
+			BuildVariant: "build_variant",
+			Version:      "task_version",
+			Project:      "task_project",
+		})
+	}
+	queueTask := task.Task{
+		Id:           "first_item",
+		TaskGroup:    "task_group",
+		BuildVariant: "build_variant",
+		Version:      "task_version",
+		Project:      "task_project",
+	}
+	require.NoError(queueTask.Insert())
+	for _, t := range tasks {
+		require.NoError(t.Insert())
+	}
+
+	queue := TaskQueue{
+		Queue: []TaskQueueItem{
+			TaskQueueItem{
+				Id:            "first_item",
+				Group:         "task_group",
+				BuildVariant:  "build_variant",
+				Version:       "task_version",
+				Project:       "task_project",
+				GroupMaxHosts: 1,
+			},
+		},
+	}
+	next := queue.FindNextTask(TaskSpec{})
+	assert.Nil(next)
+}
+
+func TestTaskQueueGenerationTimes(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(TaskQueuesCollection))
+	defer db.ClearCollections(TaskQueuesCollection)
+
+	now := time.Now().Round(time.Millisecond)
+	taskQueue := &TaskQueue{
+		Distro:      "foo",
+		GeneratedAt: now,
+	}
+
+	assert.NoError(db.Insert(TaskQueuesCollection, taskQueue))
+
+	times, err := FindTaskQueueGenerationTimes()
+	assert.NoError(err)
+	assert.NotNil(times)
+	assert.Len(times, 1)
+	genTime, ok := times["foo"]
+	assert.True(ok)
+	assert.Equal(now, genTime)
+}
+
+func TestClearTaskQueue(t *testing.T) {
+	assert := assert.New(t)
+	distro := "distro"
+	otherDistro := "otherDistro"
+	tasks := []TaskQueueItem{
+		{
+			Id: "task1",
+		},
+		{
+			Id: "task2",
+		},
+		{
+			Id: "task3",
+		},
+	}
+	queue := NewTaskQueue(distro, tasks)
+	assert.Len(queue.Queue, 3)
+	assert.NoError(queue.Save())
+	otherQueue := NewTaskQueue(otherDistro, tasks)
+	assert.Len(otherQueue.Queue, 3)
+	assert.NoError(otherQueue.Save())
+
+	assert.NoError(ClearTaskQueue(distro))
+	queueFromDb, err := LoadTaskQueue(distro)
+	assert.NoError(err)
+	assert.Len(queueFromDb.Queue, 0)
+	otherQueueFromDb, err := LoadTaskQueue(otherDistro)
+	assert.NoError(err)
+	assert.Len(otherQueueFromDb.Queue, 3)
 }

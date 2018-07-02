@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
@@ -42,7 +43,7 @@ type Connector interface {
 
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
-	FindOldTasksByID(string) ([]task.Task, error)
+	FindOldTasksByIDWithDisplayTasks(string) ([]task.Task, error)
 	FindTasksByIds([]string) ([]task.Task, error)
 	SetTaskPriority(*task.Task, string, int64) error
 	SetTaskActivated(string, string, bool) error
@@ -72,6 +73,8 @@ type Connector interface {
 	FindProjectVars(string) (*model.ProjectVars, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
+	// GetVersionsAndVariants returns recent versions for a project
+	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
@@ -84,7 +87,7 @@ type Connector interface {
 	FindTestsByTaskId(string, string, string, int, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
-	FindUserById(string) (auth.APIUser, error)
+	FindUserById(string) (gimlet.User, error)
 
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
@@ -95,7 +98,7 @@ type Connector interface {
 	// started by the given user. If the given user is a super-user,
 	// the host will also be returned regardless of who the host was
 	// started by
-	FindHostByIdWithOwner(string, auth.User) (*host.Host, error)
+	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(string, string, string, *user.DBUser) (*host.Host, error)
@@ -118,6 +121,9 @@ type Connector interface {
 	// Interested time range is given as a start time and duration.
 	FindCostByDistroId(string, time.Time, time.Duration) (*task.DistroCost, error)
 
+	// ClearTaskQueue deletes all tasks from the task queue for a distro
+	ClearTaskQueue(string) error
+
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*version.Version, error)
 
@@ -131,7 +137,7 @@ type Connector interface {
 	FindPatchById(string) (*patch.Patch, error)
 
 	// AbortVersion aborts all tasks of a version given its ID.
-	AbortVersion(string) error
+	AbortVersion(string, string) error
 
 	// AbortPatch aborts the patch corresponding to the input patch ID and deletes if not finalized.
 	AbortPatch(string, string) error
@@ -168,6 +174,7 @@ type Connector interface {
 
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
+	UpdateSettings(*user.DBUser, user.UserSettings) error
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 
@@ -189,4 +196,13 @@ type Connector interface {
 
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 	GenerateTasks(string, []json.RawMessage) error
+
+	// SaveSubscriptions saves a set of notification subscriptions
+	SaveSubscriptions([]event.Subscription) error
+	// GetSubscriptions returns the subscriptions that belong to a user
+	GetSubscriptions(string, event.OwnerType) ([]restModel.APISubscription, error)
+	DeleteSubscription(id string) error
+
+	// Notifications
+	GetNotificationsStats() (*restModel.APIEventStats, error)
 }

@@ -76,10 +76,29 @@ func (s *slackJournal) Send(m message.Composer) {
 		s.Base.mutex.RLock()
 		defer s.Base.mutex.RUnlock()
 
-		msg, params := s.opts.produceMessage(m)
-		if err := s.opts.client.ChatPostMessage(s.opts.Channel, msg, params); err != nil {
+		var msg string
+		var params *slack.ChatPostMessageOpt
+		channel := s.opts.Channel
+
+		if slackMsg, ok := m.Raw().(*message.Slack); ok {
+			channel = slackMsg.Target
+			msg, params = slackMsg.Msg, &slack.ChatPostMessageOpt{
+				Attachments: slackMsg.Attachments,
+			}
+
+		} else {
+			msg, params = s.opts.produceMessage(m)
+		}
+
+		params.IconUrl = s.opts.IconURL
+		params.Username = s.opts.Username
+		if len(params.Username) != 0 || len(params.IconUrl) != 0 {
+			params.AsUser = false
+		}
+
+		if err := s.opts.client.ChatPostMessage(channel, msg, params); err != nil {
 			s.ErrorHandler(err, message.NewFormattedMessage(m.Priority(),
-				"%s: %s\n", params.Attachments[0].Fallback, msg))
+				"%s\n", msg))
 		}
 	}
 }
@@ -94,6 +113,10 @@ type SlackOptions struct {
 	Channel  string `bson:"channel" json:"channel" yaml:"channel"`
 	Hostname string `bson:"hostname" json:"hostname" yaml:"hostname"`
 	Name     string `bson:"name" json:"name" yaml:"name"`
+	// Username and IconURL allow the slack sender to set a display
+	// name and icon. Setting either parameter will force as_user to false.
+	Username string `bson:"username" json:"username" yaml:"username"`
+	IconURL  string `bson:"icon_url" json:"icon_url" yaml:"icon_url"`
 
 	// Configuration options for appending structured data to the
 	// message sent to slack. The BasicMetadata option appends
@@ -162,8 +185,8 @@ func (o *SlackOptions) Validate() error {
 		}
 	}
 
-	if !strings.HasPrefix(o.Channel, "#") {
-		o.Channel = "#" + o.Channel
+	if !strings.HasPrefix(o.Channel, "#") && !strings.HasPrefix(o.Channel, "@") {
+		return errors.New("Recipient must begin with '#' or '@'")
 	}
 
 	if len(errs) > 0 {

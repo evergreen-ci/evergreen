@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -120,17 +121,17 @@ func (s *VersionSuite) TestFindByVersionId() {
 	version := res.Result[0]
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
-	s.Equal(model.APIString(versionId), h.Id)
+	s.Equal(model.ToAPIString(versionId), h.Id)
 	s.Equal(model.NewTime(timeField), h.CreateTime)
 	s.Equal(model.NewTime(timeField), h.StartTime)
 	s.Equal(model.NewTime(timeField), h.FinishTime)
-	s.Equal(model.APIString(revision), h.Revision)
-	s.Equal(model.APIString(author), h.Author)
-	s.Equal(model.APIString(authorEmail), h.AuthorEmail)
-	s.Equal(model.APIString(msg), h.Message)
-	s.Equal(model.APIString(status), h.Status)
-	s.Equal(model.APIString(repo), h.Repo)
-	s.Equal(model.APIString(branch), h.Branch)
+	s.Equal(model.ToAPIString(revision), h.Revision)
+	s.Equal(model.ToAPIString(author), h.Author)
+	s.Equal(model.ToAPIString(authorEmail), h.AuthorEmail)
+	s.Equal(model.ToAPIString(msg), h.Message)
+	s.Equal(model.ToAPIString(status), h.Status)
+	s.Equal(model.ToAPIString(repo), h.Repo)
+	s.Equal(model.ToAPIString(branch), h.Branch)
 }
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
@@ -144,12 +145,12 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 	for idx, build := range res.Result {
 		b, ok := (build).(*model.APIBuild)
 		s.True(ok)
-		s.Equal(model.APIString(s.bi[idx]), b.Id)
+		s.Equal(model.ToAPIString(s.bi[idx]), b.Id)
 		s.Equal(model.NewTime(timeField), b.CreateTime)
 		s.Equal(model.NewTime(timeField), b.StartTime)
 		s.Equal(model.NewTime(timeField), b.FinishTime)
-		s.Equal(model.APIString(versionId), b.Version)
-		s.Equal(model.APIString(s.bv[idx]), b.BuildVariant)
+		s.Equal(model.ToAPIString(versionId), b.Version)
+		s.Equal(model.ToAPIString(s.bv[idx]), b.BuildVariant)
 	}
 }
 
@@ -165,7 +166,7 @@ func (s *VersionSuite) TestAbortVersion() {
 	s.Equal(1, len(res.Result))
 	version := res.Result[0]
 	h, _ := (version).(*model.APIVersion)
-	s.Equal(model.APIString(versionId), h.Id)
+	s.Equal(model.ToAPIString(versionId), h.Id)
 
 	// Check that all tasks have been aborted.
 	for _, t := range s.versionData.CachedTasks {
@@ -176,7 +177,7 @@ func (s *VersionSuite) TestAbortVersion() {
 // TestRestartVersion tests the route for restarting a version.
 func (s *VersionSuite) TestRestartVersion() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "caller1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
 
 	handler := &versionRestartHandler{versionId: "versionId"}
 
@@ -188,6 +189,6 @@ func (s *VersionSuite) TestRestartVersion() {
 	s.Equal(1, len(res.Result))
 	version := res.Result[0]
 	h, _ := (version).(*model.APIVersion)
-	s.Equal(model.APIString(versionId), h.Id)
+	s.Equal(model.ToAPIString(versionId), h.Id)
 	s.Equal("caller1", s.versionData.CachedRestartedVersions["versionId"])
 }

@@ -12,6 +12,8 @@ type DistroStats []StatsByDistro
 type StatsByDistro struct {
 	// ID of the distro the below stats are for
 	Distro string `bson:"distro" json:"distro,omitempty"`
+	// Provider is the provider type of the distro
+	Provider string `bson:"provider" json:"provider,omitempty"`
 	// Host status that the below stats are for
 	Status string `bson:"status" json:"status"`
 	// Number of hosts in this status
@@ -55,6 +57,22 @@ func (d DistroStats) TasksMap() map[string]int {
 
 	for _, s := range d {
 		out[s.Distro] += s.NumTasks
+	}
+
+	return out
+}
+
+func (d DistroStats) MaxHostsExceeded() map[string]int {
+	out := map[string]int{}
+
+	for _, s := range d {
+		if s.Provider == evergreen.ProviderNameStatic {
+			continue
+		}
+		overage := -1 * (s.MaxHosts - s.Count)
+		if overage > 0 {
+			out[s.Distro] = overage
+		}
 	}
 
 	return out
@@ -108,6 +126,10 @@ func statsByDistroPipeline() []bson.M {
 				"tasks": bson.M{
 					"$addToSet": "$" + RunningTaskKey,
 				},
+				"provider": bson.M{
+					// Grab any provider, since all hosts in a distro have the same provider
+					"$first": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
+				},
 			},
 		},
 		{
@@ -118,6 +140,7 @@ func statsByDistroPipeline() []bson.M {
 				"count":             1,
 				"num_tasks_running": bson.M{"$size": "$tasks"},
 				"_id":               0,
+				"provider":          1,
 			},
 		},
 	}

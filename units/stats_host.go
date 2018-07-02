@@ -2,6 +2,7 @@ package units
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
@@ -30,7 +31,7 @@ type hostStatsCollector struct {
 // distro to the default grip logger.
 func NewHostStatsCollector(id string) amboy.Job {
 	j := makeHostStatsCollector()
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", hostStatsCollectorJobName, id))
 	j.SetPriority(-1)
 
 	return j
@@ -53,6 +54,10 @@ func makeHostStatsCollector() *hostStatsCollector {
 func (j *hostStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
+	}
+
 	j.AddError(j.statsByDistro())
 	j.AddError(j.statsByProvider())
 }
@@ -65,9 +70,15 @@ func (j *hostStatsCollector) statsByDistro() error {
 
 	tasks := 0
 	count := 0
+	excess := 0
 	for _, h := range hosts {
 		count += h.Count
 		tasks += h.NumTasks
+
+		overage := -1 * (h.MaxHosts - h.Count)
+		if overage > 0 {
+			excess += overage
+		}
 	}
 
 	j.logger.Info(message.Fields{
@@ -75,6 +86,12 @@ func (j *hostStatsCollector) statsByDistro() error {
 		"hosts_total":   count,
 		"running_tasks": tasks,
 		"data":          hosts,
+	})
+
+	j.logger.WarningWhen(excess > 0, message.Fields{
+		"report": "maxHosts exceeded",
+		"data":   hosts.MaxHostsExceeded(),
+		"total":  excess,
 	})
 
 	return nil

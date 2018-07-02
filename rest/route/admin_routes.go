@@ -7,10 +7,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	dataModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
@@ -70,18 +72,16 @@ func (h *legacyAdminGetHandler) Execute(ctx context.Context, sc data.Connector) 
 func getAdminSettingsManager(route string, version int) *RouteManager {
 	agh := &adminGetHandler{}
 	adminGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    agh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: agh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	aph := &adminPostHandler{}
 	adminPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    aph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: aph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	adminRoute := RouteManager{
@@ -151,6 +151,10 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	if err != nil {
 		return ResponseData{}, errors.Wrap(err, "Validation error")
 	}
+	err = distro.ValidateContainerPoolDistros(newSettings)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Validation error")
+	}
 
 	_, err = sc.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
@@ -172,18 +176,16 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 func getBannerRouteManager(route string, version int) *RouteManager {
 	bph := &bannerPostHandler{}
 	bannerPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    bph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: bph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	bgh := &bannerGetHandler{}
 	bannerGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    bgh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: bgh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	bannerRoute := RouteManager{
@@ -217,13 +219,13 @@ func (h *bannerPostHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 
 func (h *bannerPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
-	if err := sc.SetAdminBanner(string(h.Banner), u); err != nil {
+	if err := sc.SetAdminBanner(model.FromAPIString(h.Banner), u); err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, err
 	}
-	if err := sc.SetBannerTheme(string(h.Theme), u); err != nil {
+	if err := sc.SetBannerTheme(model.FromAPIString(h.Theme), u); err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
@@ -253,7 +255,7 @@ func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 	return ResponseData{
-		Result: []model.Model{&model.APIBanner{Text: model.APIString(banner), Theme: model.APIString(theme)}},
+		Result: []model.Model{&model.APIBanner{Text: model.ToAPIString(banner), Theme: model.ToAPIString(theme)}},
 	}, nil
 }
 
@@ -261,10 +263,9 @@ func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 func getServiceFlagsRouteManager(route string, version int) *RouteManager {
 	fph := &flagsPostHandler{}
 	flagsPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    fph.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: fph.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	flagsRoute := RouteManager{
@@ -317,10 +318,9 @@ func getRestartRouteManager(queue amboy.Queue) routeManagerFactory {
 		}
 
 		restartHandler := MethodHandler{
-			PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-			Authenticator:     &SuperUserAuthenticator{},
-			RequestHandler:    rh.Handler(),
-			MethodType:        http.MethodPost,
+			Authenticator:  &SuperUserAuthenticator{},
+			RequestHandler: rh.Handler(),
+			MethodType:     http.MethodPost,
 		}
 
 		restartRoute := RouteManager{
@@ -393,10 +393,9 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 func getRevertRouteManager(route string, version int) *RouteManager {
 	rh := revertHandler{}
 	handler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    rh.Handler(),
-		MethodType:        http.MethodPost,
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: rh.Handler(),
+		MethodType:     http.MethodPost,
 	}
 
 	return &RouteManager{
@@ -513,4 +512,40 @@ func makeNextEventsPage(events []model.APIAdminEvent, limit int) *Page {
 		}
 	}
 	return nextPage
+}
+
+func getClearTaskQueueRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route: route,
+		Methods: []MethodHandler{
+			MethodHandler{
+				Authenticator:  &SuperUserAuthenticator{},
+				RequestHandler: &clearTaskQueueHandler{},
+				MethodType:     http.MethodDelete,
+			},
+		},
+		Version: version,
+	}
+}
+
+func (h *clearTaskQueueHandler) Handler() RequestHandler {
+	return &clearTaskQueueHandler{}
+}
+
+func (h *clearTaskQueueHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := gimlet.GetVars(r)
+	h.distro = vars["distro"]
+	_, err := distro.FindOne(distro.ById(h.distro))
+	if err != nil {
+		return &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    "unable to find distro",
+		}
+	}
+
+	return nil
+}
+
+func (h *clearTaskQueueHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	return ResponseData{}, sc.ClearTaskQueue(h.distro)
 }

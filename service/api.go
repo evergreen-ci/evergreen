@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -12,18 +11,15 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -39,8 +35,7 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	*render.Render
-	UserManager auth.UserManager
+	UserManager gimlet.UserManager
 	Settings    evergreen.Settings
 	queue       amboy.Queue
 }
@@ -57,7 +52,6 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, 
 	}
 
 	as := &APIServer{
-		Render:      render.New(render.Options{}),
 		UserManager: authManager,
 		Settings:    *settings,
 		queue:       queue,
@@ -119,7 +113,7 @@ func Serve(l net.Listener, handler http.Handler) error {
 // in the header with the secret in the db to ensure that they are the same.
 func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		t, code, err := model.ValidateTask(mux.Vars(r)["taskId"], checkSecret, r)
+		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], checkSecret, r)
 		if err != nil {
 			as.LoggedError(w, r, code, errors.Wrap(err, "invalid task"))
 			return
@@ -133,7 +127,7 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 // project and project ref to the request context.
 func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projectId := mux.Vars(r)["projectId"]
+		projectId := gimlet.GetVars(r)["projectId"]
 		if projectId == "" {
 			as.LoggedError(w, r, http.StatusBadRequest, errors.New("missing project Id"))
 			return
@@ -169,7 +163,7 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 
 func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		h, code, err := model.ValidateHost(mux.Vars(r)["hostId"], r)
+		h, code, err := model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
 		if err != nil {
 			as.LoggedError(w, r, code, errors.Wrap(err, "host not assigned to run task"))
 			return
@@ -198,7 +192,7 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, v)
+	gimlet.WriteJSON(w, v)
 }
 
 func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
@@ -216,12 +210,16 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, p)
+	gimlet.WriteJSON(w, p)
 }
 
 // AttachTestLog is the API Server hook for getting
 // the test logs and storing them in the test_logs collection.
 func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
+	if as.GetSettings().ServiceFlags.TaskLoggingDisabled {
+		http.Error(w, "task logging is disabled", http.StatusConflict)
+		return
+	}
 	t := MustHaveTask(r)
 	log := &model.TestLog{}
 	err := util.ReadJSONInto(util.NewRequestReader(r), log)
@@ -241,7 +239,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	logReply := struct {
 		Id string `json:"_id"`
 	}{log.Id}
-	as.WriteJSON(w, http.StatusOK, logReply)
+	gimlet.WriteJSON(w, logReply)
 }
 
 // AttachResults attaches the received results to the task in the database.
@@ -258,7 +256,7 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, "test results successfully attached")
+	gimlet.WriteJSON(w, "test results successfully attached")
 }
 
 // FetchProjectVars is an API hook for returning the project variables
@@ -271,11 +269,11 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if projectVars == nil {
-		as.WriteJSON(w, http.StatusOK, apimodels.ExpansionVars{})
+		gimlet.WriteJSON(w, apimodels.ExpansionVars{})
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, projectVars.Vars)
+	gimlet.WriteJSON(w, projectVars)
 }
 
 // AttachFiles updates file mappings for a task or build
@@ -294,27 +292,39 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		grip.Error(message)
-		as.WriteJSON(w, http.StatusBadRequest, message)
+		gimlet.WriteJSONError(w, message)
 		return
 	}
 
 	if err := entry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", t.Id, err)
 		grip.Error(message)
-		as.WriteJSON(w, http.StatusInternalServerError, message)
+		gimlet.WriteJSONInternalError(w, message)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
+	gimlet.WriteJSON(w, fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
 }
 
 // AppendTaskLog appends the received logs to the task's internal logs.
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
+	if as.GetSettings().ServiceFlags.TaskLoggingDisabled {
+		http.Error(w, "task logging is disabled", http.StatusConflict)
+		return
+	}
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), taskLog); err != nil {
+	length, err := util.ReadJSONIntoWithLength(util.NewRequestReader(r), taskLog)
+	if err != nil {
 		http.Error(w, "unable to read logs from request", http.StatusBadRequest)
 		return
 	}
+
+	grip.Info(message.Fields{
+		"message": "appending task log",
+		"size":    length,
+		"task_id": t.Id,
+		"project": t.Project,
+	})
 
 	taskLog.TaskId = t.Id
 	taskLog.Execution = t.Execution
@@ -324,13 +334,13 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, "Logs added")
+	gimlet.WriteJSON(w, "Logs added")
 }
 
 // FetchTask loads the task from the database and sends it to the requester.
 func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	as.WriteJSON(w, http.StatusOK, t)
+	gimlet.WriteJSON(w, t)
 }
 
 // Heartbeat handles heartbeat pings from Evergreen agents. If the heartbeating
@@ -347,7 +357,7 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 	if err := t.UpdateHeartbeat(); err != nil {
 		grip.Warningf("Error updating heartbeat for task %s: %+v", t.Id, err)
 	}
-	as.WriteJSON(w, http.StatusOK, heartbeatResponse)
+	gimlet.WriteJSON(w, heartbeatResponse)
 }
 
 // TaskSystemInfo is the handler for the system info collector, which
@@ -363,7 +373,7 @@ func (as *APIServer) TaskSystemInfo(w http.ResponseWriter, r *http.Request) {
 
 	event.LogTaskSystemData(t.Id, info)
 
-	as.WriteJSON(w, http.StatusOK, struct{}{})
+	gimlet.WriteJSON(w, struct{}{})
 }
 
 // TaskProcessInfo is the handler for the process info collector, which
@@ -378,7 +388,7 @@ func (as *APIServer) TaskProcessInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event.LogTaskProcessData(t.Id, procs)
-	as.WriteJSON(w, http.StatusOK, struct{}{})
+	gimlet.WriteJSON(w, struct{}{})
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
@@ -397,7 +407,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	}
 	userToken, err := as.UserManager.CreateUserToken(userCredentials.Username, userCredentials.Password)
 	if err != nil {
-		as.WriteJSON(w, http.StatusUnauthorized, err.Error())
+		gimlet.WriteJSONResponse(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -409,108 +419,13 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	}{}
 	dataOut.User.Name = userCredentials.Username
 	dataOut.Token = userToken
-	as.WriteJSON(w, http.StatusOK, dataOut)
+	gimlet.WriteJSON(w, dataOut)
 
-}
-
-// Get the host with the id specified in the request
-func getHostFromRequest(r *http.Request) (*host.Host, error) {
-	// get id and secret from the request.
-	vars := mux.Vars(r)
-	tag := vars["tag"]
-	if len(tag) == 0 {
-		return nil, errors.New("no host tag supplied")
-	}
-	// find the host
-	h, err := host.FindOne(host.ById(tag))
-	if h == nil {
-		return nil, errors.Errorf("no host with tag: %v", tag)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return h, nil
-}
-
-func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
-	hostObj, err := getHostFromRequest(r)
-	if err != nil {
-		grip.Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// if the host failed
-	setupSuccess := mux.Vars(r)["status"]
-	if setupSuccess == evergreen.HostStatusFailed {
-		grip.Infof("Initializing host %s failed", hostObj.Id)
-		// send notification to the Evergreen team about this provisioning failure
-		subject := fmt.Sprintf("%v Evergreen provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
-
-		hostLink := fmt.Sprintf("%v/host/%v", as.Settings.Ui.Url, hostObj.Id)
-		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
-			hostObj.Distro.Id, hostObj.Id, hostObj.Host, hostLink)
-		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			grip.Errorln("Error sending email:", err)
-		}
-
-		// get/store setup logs
-		var setupLog []byte
-		body := util.NewRequestReader(r)
-		defer body.Close()
-
-		setupLog, err = ioutil.ReadAll(body)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		event.LogProvisionFailed(hostObj.Id, string(setupLog))
-
-		err = hostObj.SetUnprovisioned()
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Initializing host %v failed", hostObj.Id))
-		return
-	}
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-
-	cloudManager, err := cloud.GetCloudManager(ctx, hostObj.Provider, &as.Settings)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",
-			notify.ProvisionFailurePreface, hostObj.Distro.Id)
-		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
-			hostObj.Id, hostObj.Provider, err)
-		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			grip.Errorln("Error sending email:", err)
-		}
-		return
-	}
-
-	dns, err := cloudManager.GetDNSName(ctx, hostObj)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	// mark host as provisioned
-	if err := hostObj.MarkAsProvisioned(); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	grip.Infof("Successfully marked host '%s' with dns '%s' as provisioned", hostObj.Id, dns)
 }
 
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["identifier"]
+	id := gimlet.GetVars(r)["identifier"]
 	projectRef, err := model.FindOneProjectRef(id)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -520,7 +435,7 @@ func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, projectRef)
+	gimlet.WriteJSON(w, projectRef)
 }
 
 func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
@@ -529,7 +444,7 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, allProjs)
+	gimlet.WriteJSON(w, allProjs)
 }
 
 func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
@@ -542,12 +457,12 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 		project.Tasks[i].Commands = []model.PluginCommandConf{}
 
 	}
-	as.WriteJSON(w, http.StatusOK, project.Tasks)
+	gimlet.WriteJSON(w, project.Tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 	_, project := MustHaveProject(r)
 
-	as.WriteJSON(w, http.StatusOK, project.BuildVariants)
+	gimlet.WriteJSON(w, project.BuildVariants)
 }
 
 // validateProjectConfig returns a slice containing a list of any errors
@@ -557,7 +472,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	defer body.Close()
 	yamlBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		as.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Error reading request body: %v", err))
+		gimlet.WriteJSONError(w, fmt.Sprintf("Error reading request body: %v", err))
 		return
 	}
 
@@ -565,7 +480,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	validationErr := validator.ValidationError{}
 	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
-		as.WriteJSON(w, http.StatusBadRequest, []validator.ValidationError{validationErr})
+		gimlet.WriteJSONError(w, []validator.ValidationError{validationErr})
 		return
 	}
 	syntaxErrs, err := validator.CheckProjectSyntax(project)
@@ -575,32 +490,42 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 	semanticErrs := validator.CheckProjectSemantics(project)
 	if len(syntaxErrs)+len(semanticErrs) != 0 {
-		as.WriteJSON(w, http.StatusBadRequest, append(syntaxErrs, semanticErrs...))
+		gimlet.WriteJSONError(w, append(syntaxErrs, semanticErrs...))
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, []validator.ValidationError{})
+	gimlet.WriteJSON(w, []validator.ValidationError{})
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
+	if err == nil {
+		return
+	}
+
 	grip.Error(message.WrapError(err, message.Fields{
 		"method":  r.Method,
 		"url":     r.URL.String(),
 		"code":    code,
 		"len":     r.ContentLength,
-		"request": GetRequestID(r),
+		"request": gimlet.GetRequestID(r.Context()),
 	}))
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		as.WriteJSON(w, code, struct {
+		gimlet.WriteJSONResponse(w, code, struct {
 			Error string `json:"error"`
 		}{err.Error()})
 	} else {
 		// Not a JSON request, so write plaintext.
 		http.Error(w, err.Error(), code)
 	}
+}
+
+// Returns information about available updates for client binaries.
+// Replies 404 if this data is not configured.
+func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
+	gimlet.WriteJSON(w, as.clientConfig)
 }
 
 // GetSettings returns the global evergreen settings.
@@ -610,102 +535,69 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 
 // NewRouter returns the root router for all APIServer endpoints.
 func (as *APIServer) AttachRoutes(root *mux.Router) {
-	// attaches the /rest/v1 routes
-	AttachRESTHandler(root, as)
-	// attaches /rest/v2 routes
-	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
-	route.AttachHandler(root, as.queue, as.Settings.ApiUrl, APIV2Prefix, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
-
-	r := root.PathPrefix("/api/2/").Subrouter()
-	r.HandleFunc("/", home)
-
-	apiRootOld := root.PathPrefix("/api/").Subrouter()
+	root.HandleFunc("/api/2/", home)
 
 	// Project lookup and validation routes
-	apiRootOld.HandleFunc("/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
-	apiRootOld.HandleFunc("/validate", as.validateProjectConfig).Methods("POST")
-	apiRootOld.HandleFunc("/projects", requireUser(as.listProjects, nil)).Methods("GET")
-	apiRootOld.HandleFunc("/tasks/{projectId}", requireUser(as.checkProject(as.listTasks), nil)).Methods("GET")
-	apiRootOld.HandleFunc("/variants/{projectId}", requireUser(as.checkProject(as.listVariants), nil)).Methods("GET")
-
-	// Task Queue routes
-	apiRootOld.HandleFunc("/task_queue", as.getTaskQueueSizes).Methods("GET")
-	apiRootOld.HandleFunc("/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
+	root.HandleFunc("/api/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
+	root.HandleFunc("/api/validate", as.validateProjectConfig).Methods("POST")
+	root.HandleFunc("/api/projects", requireUser(as.listProjects, nil)).Methods("GET")
+	root.HandleFunc("/api/tasks/{projectId}", requireUser(as.checkProject(as.listTasks), nil)).Methods("GET")
+	root.HandleFunc("/api/variants/{projectId}", requireUser(as.checkProject(as.listVariants), nil)).Methods("GET")
 
 	// User session routes
-	apiRootOld.HandleFunc("/token", as.getUserSession).Methods("POST")
+	root.HandleFunc("/api/token", as.getUserSession).Methods("POST")
 
 	// Patches
-	patchPath := apiRootOld.PathPrefix("/patches").Subrouter()
-	patchPath.HandleFunc("/", requireUser(as.submitPatch, nil)).Methods("PUT")
-	patchPath.HandleFunc("/mine", requireUser(as.listPatches, nil)).Methods("GET")
-	patchPath.HandleFunc("/{patchId:\\w+}", requireUser(as.summarizePatch, nil)).Methods("GET")
-	patchPath.HandleFunc("/{patchId:\\w+}", requireUser(as.existingPatchRequest, nil)).Methods("POST")
-	patchPath.HandleFunc("/{patchId:\\w+}/{projectId}/modules", requireUser(as.checkProject(as.listPatchModules), nil)).Methods("GET")
-	patchPath.HandleFunc("/{patchId:\\w+}/modules", requireUser(as.deletePatchModule, nil)).Methods("DELETE")
-	patchPath.HandleFunc("/{patchId:\\w+}/modules", requireUser(as.updatePatchModule, nil)).Methods("POST")
+	root.HandleFunc("/api/patches/", requireUser(as.submitPatch, nil)).Methods("PUT")
+	root.HandleFunc("/api/patches/mine", requireUser(as.listPatches, nil)).Methods("GET")
+	root.HandleFunc("/api/patches/{patchId:\\w+}", requireUser(as.summarizePatch, nil)).Methods("GET")
+	root.HandleFunc("/api/patches/{patchId:\\w+}", requireUser(as.existingPatchRequest, nil)).Methods("POST")
+	root.HandleFunc("/api/patches/{patchId:\\w+}/{projectId}/modules", requireUser(as.checkProject(as.listPatchModules), nil)).Methods("GET")
+	root.HandleFunc("/api/patches/{patchId:\\w+}/modules", requireUser(as.deletePatchModule, nil)).Methods("DELETE")
+	root.HandleFunc("/api/patches/{patchId:\\w+}/modules", requireUser(as.updatePatchModule, nil)).Methods("POST")
 
-	// Routes for operating on existing spawn hosts - get info, terminate, etc.
-	spawn := apiRootOld.PathPrefix("/spawn/").Subrouter()
-	spawn.HandleFunc("/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.hostInfo, nil)).Methods("GET")
-	spawn.HandleFunc("/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.modifyHost, nil)).Methods("POST")
-	spawn.HandleFunc("/ready/{instance_id:[\\w_\\-\\@]+}/{status}", requireUser(as.spawnHostReady, nil)).Methods("POST")
+	// SpawnHosts
+	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.hostInfo, nil)).Methods("GET")
+	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.modifyHost, nil)).Methods("POST")
+	root.HandleFunc("/api/spawns/", requireUser(as.requestHost, nil)).Methods("PUT")
+	root.HandleFunc("/api/spawns/{user}/", requireUser(as.hostsInfoForUser, nil)).Methods("GET")
+	root.HandleFunc("/api/spawns/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
 
-	runtimes := apiRootOld.PathPrefix("/runtimes/").Subrouter()
-	runtimes.HandleFunc("/", as.listRuntimes).Methods("GET")
-	runtimes.HandleFunc("/timeout/{seconds:\\d*}", as.lateRuntimes).Methods("GET")
-
-	// Internal status
-	status := apiRootOld.PathPrefix("/status/").Subrouter()
-	status.HandleFunc("/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
-	status.HandleFunc("/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
-	status.HandleFunc("/recent_tasks", as.recentTaskStatuses).Methods("GET")
-	status.HandleFunc("/stuck_hosts", as.getStuckHosts).Methods("GET")
-
-	// Hosts callback
-	host := r.PathPrefix("/host/{tag:[\\w_\\-\\@]+}/").Subrouter()
-	host.HandleFunc("/ready/{status}", as.hostReady).Methods("POST")
-
-	// Spawnhost routes - creating new hosts, listing existing hosts, listing distros
-	spawns := apiRootOld.PathPrefix("/spawns/").Subrouter()
-	spawns.HandleFunc("/", requireUser(as.requestHost, nil)).Methods("PUT")
-	spawns.HandleFunc("/{user}/", requireUser(as.hostsInfoForUser, nil)).Methods("GET")
-	spawns.HandleFunc("/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
+	// Internal status reporting
+	root.HandleFunc("/api/runtimes/", as.listRuntimes).Methods("GET")
+	root.HandleFunc("/api/runtimes/timeout/{seconds:\\d*}", as.lateRuntimes).Methods("GET")
+	root.HandleFunc("/api/status/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
+	root.HandleFunc("/api/status/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
+	root.HandleFunc("/api/status/stuck_hosts", as.getStuckHosts).Methods("GET")
+	root.HandleFunc("/api/task_queue", as.getTaskQueueSizes).Methods("GET")
+	root.HandleFunc("/api/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
 
 	// Agent routes
-	agentRouter := r.PathPrefix("/agent").Subrouter()
-	agentRouter.HandleFunc("/next_task", as.checkHost(as.NextTask)).Methods("GET")
-
-	taskRouter := r.PathPrefix("/task/{taskId}").Subrouter()
-
-	taskRouter.HandleFunc("/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
-	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
-	taskRouter.HandleFunc("/new_end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
-	taskRouter.HandleFunc("/new_start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
-
-	taskRouter.HandleFunc("/log", as.checkTask(true, as.checkHost(as.AppendTaskLog))).Methods("POST")
-	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.checkHost(as.Heartbeat))).Methods("POST")
-	taskRouter.HandleFunc("/results", as.checkTask(true, as.checkHost(as.AttachResults))).Methods("POST")
-	taskRouter.HandleFunc("/test_logs", as.checkTask(true, as.checkHost(as.AttachTestLog))).Methods("POST")
-	taskRouter.HandleFunc("/files", as.checkTask(false, as.checkHost(as.AttachFiles))).Methods("POST")
-	taskRouter.HandleFunc("/system_info", as.checkTask(true, as.checkHost(as.TaskSystemInfo))).Methods("POST")
-	taskRouter.HandleFunc("/process_info", as.checkTask(true, as.checkHost(as.TaskProcessInfo))).Methods("POST")
-	taskRouter.HandleFunc("/distro", as.checkTask(false, as.GetDistro)).Methods("GET")
-	taskRouter.HandleFunc("/", as.checkTask(true, as.FetchTask)).Methods("GET")
-	taskRouter.HandleFunc("/version", as.checkTask(false, as.GetVersion)).Methods("GET")
-	taskRouter.HandleFunc("/project_ref", as.checkTask(false, as.GetProjectRef)).Methods("GET")
-	taskRouter.HandleFunc("/fetch_vars", as.checkTask(true, as.FetchProjectVars)).Methods("GET")
+	root.HandleFunc("/api/2/agent/next_task", as.checkHost(as.NextTask)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/log", as.checkTask(true, as.checkHost(as.AppendTaskLog))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/heartbeat", as.checkTask(true, as.checkHost(as.Heartbeat))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/results", as.checkTask(true, as.checkHost(as.AttachResults))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/test_logs", as.checkTask(true, as.checkHost(as.AttachTestLog))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/files", as.checkTask(false, as.checkHost(as.AttachFiles))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/system_info", as.checkTask(true, as.checkHost(as.TaskSystemInfo))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/process_info", as.checkTask(true, as.checkHost(as.TaskProcessInfo))).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/distro", as.checkTask(false, as.GetDistro)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/", as.checkTask(true, as.FetchTask)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/version", as.checkTask(false, as.GetVersion)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/project_ref", as.checkTask(false, as.GetProjectRef)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/fetch_vars", as.checkTask(true, as.FetchProjectVars)).Methods("GET")
 
 	// plugins
-	taskRouter.HandleFunc("/git/patchfile/{patchfile_id}", as.checkTask(false, as.gitServePatchFile)).Methods("GET")
-	taskRouter.HandleFunc("/git/patch", as.checkTask(false, as.gitServePatch)).Methods("GET")
-	taskRouter.HandleFunc("/keyval/inc", as.checkTask(false, as.keyValPluginInc)).Methods("POST")
-	taskRouter.HandleFunc("/manifest/load", as.checkTask(false, as.manifestLoadHandler)).Methods("GET")
-	taskRouter.HandleFunc("/s3Copy/s3Copy", as.checkTask(false, as.s3copyPlugin)).Methods("POST")
-
-	taskRouter.HandleFunc("/json/tags/{task_name}/{name}", as.checkTask(false, as.getTaskJSONTagsForTask)).Methods("GET")
-	taskRouter.HandleFunc("/json/history/{task_name}/{name}", as.checkTask(false, as.getTaskJSONTaskHistory)).Methods("GET")
-	taskRouter.HandleFunc("/json/data/{name}", as.checkTask(false, as.insertTaskJSON)).Methods("POST")
-	taskRouter.HandleFunc("/json/data/{task_name}/{name}", as.checkTask(false, as.getTaskJSONByName)).Methods("GET")
-	taskRouter.HandleFunc("/json/data/{task_name}/{name}/{variant}", as.checkTask(false, as.getTaskJSONForVariant)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/git/patchfile/{patchfile_id}", as.checkTask(false, as.gitServePatchFile)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/git/patch", as.checkTask(false, as.gitServePatch)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/keyval/inc", as.checkTask(false, as.keyValPluginInc)).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/manifest/load", as.checkTask(false, as.manifestLoadHandler)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/s3Copy/s3Copy", as.checkTask(false, as.s3copyPlugin)).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/json/tags/{task_name}/{name}", as.checkTask(false, as.getTaskJSONTagsForTask)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/json/history/{task_name}/{name}", as.checkTask(false, as.getTaskJSONTaskHistory)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/json/data/{name}", as.checkTask(false, as.insertTaskJSON)).Methods("POST")
+	root.HandleFunc("/api/2/task/{taskId}/json/data/{task_name}/{name}", as.checkTask(false, as.getTaskJSONByName)).Methods("GET")
+	root.HandleFunc("/api/2/task/{taskId}/json/data/{task_name}/{name}/{variant}", as.checkTask(false, as.getTaskJSONForVariant)).Methods("GET")
 }

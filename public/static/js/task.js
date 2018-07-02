@@ -16,6 +16,33 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     $("#content").addClass("bannerMargin");
   }
 
+  // handle resizing of left sidebar. Since everything on this page is in containers
+  // that have position:absolute, we need to manually adjust widths/positions like this
+  var isResizing = false;
+  var lastXPos = 0;
+  $(function () {
+    var container = $('#page'),
+        left = $('#drawer'),
+        right = $('#page-content'),
+        handle = $('#drag');
+
+    handle.on('mousedown', function (e) {
+        isResizing = true;
+        lastXPos = e.clientX;
+    });
+
+    $(document).on('mousemove', function (e) {
+        if (!isResizing)
+            return;
+
+        var offset = e.clientX - container.offset().left;
+        left.css('width', offset);
+        right.css('left', offset);
+    }).on('mouseup', function (e) {
+        isResizing = false;
+    });
+  });
+
   // helper to convert the history fetched from the backend into revisions,
   // grouped by date, for front-end display
   function groupHistory(history) {
@@ -234,12 +261,72 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
       });
 
-      mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash) {
+      mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash, $mdDialog, mciSubscriptionsService, notificationService, $mdToast) {
         $scope.userTz = $window.userTz;
         $scope.haveUser = $window.have_user;
         $scope.taskHost = $window.taskHost;
         $scope.jiraHost = $window.jiraHost;
+        $scope.subscriptions = [];
 
+        $scope.triggers = [
+          {
+            trigger: "outcome",
+            resource_type: "TASK",
+            label: "this task finishes",
+          },
+          {
+            trigger: "failure",
+            resource_type: "TASK",
+            label: "this task fails",
+          },
+          {
+            trigger: "success",
+            resource_type: "TASK",
+            label: "this task succeeds",
+          },
+          {
+            trigger: "exceeds-duration",
+            resource_type: "TASK",
+            label: "the runtime for this task exceeds some duration",
+            extraFields: [
+              {text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration}
+            ]
+          },
+          {
+            trigger: "runtime-change",
+            resource_type: "TASK",
+            label: "the runtime for this task changes by some percentage",
+            extraFields: [
+              {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
+            ]
+          },
+        ];
+
+        $scope.addSubscription = function() {
+          omitMethods = {};
+          omitMethods[SUBSCRIPTION_JIRA_ISSUE] = true;
+          omitMethods[SUBSCRIPTION_EVERGREEN_WEBHOOK] = true;
+          promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
+
+          $mdDialog.show(promise).then(function(data){
+            addSelectorsAndOwnerType(data, "task", $scope.task.id);
+            $scope.subscriptions.push(data);
+            $scope.saveSubscriptions();
+          });
+        };
+
+        $scope.saveSubscriptions = function() {
+          var success = function() {
+            $mdToast.show({
+              templateUrl: "/static/partials/subscription_confirmation_toast.html",
+              position: "bottom right"
+            });
+          };
+          var failure = function(resp) {
+            notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
+          };
+          mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
+        }
 
         // Returns true if 'testResult' represents a test failure, and returns false otherwise.
         $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {

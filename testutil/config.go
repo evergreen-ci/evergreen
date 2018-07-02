@@ -8,14 +8,24 @@ import (
 )
 
 const (
-	TestDir      = "config_test"
-	TestSettings = "evg_settings.yml"
+	TestDir                    = "config_test"
+	TestSettings               = "evg_settings.yml"
+	testSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
 )
 
 // TestConfig creates test settings from a test config.
 func TestConfig() *evergreen.Settings {
-	file := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
-	settings, err := evergreen.NewSettings(file)
+	return loadConfig(TestDir, TestSettings)
+}
+
+func TestConfigWithDefaultAuthTokens() *evergreen.Settings {
+	return loadConfig(TestDir, testSettingsWithAuthTokens)
+}
+
+func loadConfig(path ...string) *evergreen.Settings {
+	paths := []string{evergreen.FindEvergreenHome()}
+	paths = append(paths, path...)
+	settings, err := evergreen.NewSettings(filepath.Join(paths...))
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +40,7 @@ func TestConfig() *evergreen.Settings {
 func MockConfig() *evergreen.Settings {
 	return &evergreen.Settings{
 		Alerts: evergreen.AlertsConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,
@@ -68,10 +78,19 @@ func MockConfig() *evergreen.Settings {
 				Organization: "ghorg",
 			},
 		},
-		Banner:             "banner",
-		BannerTheme:        "important",
-		ClientBinariesDir:  "bin_dir",
-		ConfigDir:          "cfg_dir",
+		Banner:            "banner",
+		BannerTheme:       "important",
+		ClientBinariesDir: "bin_dir",
+		ConfigDir:         "cfg_dir",
+		ContainerPools: evergreen.ContainerPoolsConfig{
+			Pools: []evergreen.ContainerPool{
+				evergreen.ContainerPool{
+					Distro:        "valid-distro",
+					Id:            "test-pool-1",
+					MaxContainers: 100,
+				},
+			},
+		},
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
@@ -87,12 +106,8 @@ func MockConfig() *evergreen.Settings {
 		},
 		Keys:    map[string]string{"k3": "v3"},
 		LogPath: "logpath",
-		NewRelic: evergreen.NewRelicConfig{
-			ApplicationName: "new_relic",
-			LicenseKey:      "key",
-		},
 		Notify: evergreen.NotifyConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,
@@ -139,8 +154,7 @@ func MockConfig() *evergreen.Settings {
 			MaxConcurrentRequests:      30,
 		},
 		Scheduler: evergreen.SchedulerConfig{
-			MergeToggle: 10,
-			TaskFinder:  "legacy",
+			TaskFinder: "legacy",
 		},
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:         true,
@@ -153,11 +167,16 @@ func MockConfig() *evergreen.Settings {
 			GithubPRTestingDisabled:      true,
 			RepotrackerPushEventDisabled: true,
 			CLIUpdatesDisabled:           true,
+			EventProcessingDisabled:      true,
+			JIRANotificationsDisabled:    true,
+			SlackNotificationsDisabled:   true,
+			EmailNotificationsDisabled:   true,
+			WebhookNotificationsDisabled: true,
 			GithubStatusAPIDisabled:      true,
 		},
 		Slack: evergreen.SlackConfig{
 			Options: &send.SlackOptions{
-				Channel:   "channel",
+				Channel:   "#channel",
 				Fields:    true,
 				FieldsSet: map[string]bool{},
 			},

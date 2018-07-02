@@ -138,9 +138,9 @@ func ByMostRecentForRequester(projectId, requester string) db.Q {
 	).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
-// ByMostRecentNonignored finds all non-ignored versions within a project,
+// ByMostRecentNonIgnored finds all non-ignored versions within a project,
 // ordered by most recently created to oldest.
-func ByMostRecentNonignored(projectId string) db.Q {
+func ByMostRecentNonIgnored(projectId string) db.Q {
 	return db.Query(
 		bson.M{
 			RequesterKey:  evergreen.RepotrackerVersionRequester,
@@ -148,6 +148,19 @@ func ByMostRecentNonignored(projectId string) db.Q {
 			IgnoredKey:    bson.M{"$ne": true},
 		},
 	).Sort([]string{"-" + RevisionOrderNumberKey})
+}
+
+func BySuccessfulBeforeRevision(project string, beforeRevision int) db.Q {
+	return db.Query(
+		bson.M{
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			IdentifierKey: project,
+			StatusKey:     evergreen.VersionSucceeded,
+			RevisionOrderNumberKey: bson.M{
+				"$lt": beforeRevision,
+			},
+		},
+	)
 }
 
 // BaseVersionFromPatch finds the base version for a patch version.
@@ -171,6 +184,13 @@ func FindOne(query db.Q) (*Version, error) {
 
 func FindOneId(id string) (*Version, error) {
 	return FindOne(ById(id))
+}
+
+func FindByIds(ids []string) ([]Version, error) {
+	return Find(db.Query(bson.M{
+		IdKey: bson.M{
+			"$in": ids,
+		}}))
 }
 
 func Find(query db.Q) ([]Version, error) {

@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -1746,4 +1746,174 @@ buildvariants:
 	semanticErrs := CheckProjectSemantics(&proj)
 	assert.Len(semanticErrs, 0)
 	assert.NoError(err)
+}
+
+func TestTaskGroupWithDependencyOutsideGroupWarning(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{Id: "example_distro"}
+	require.NoError(d.Insert())
+	exampleYml := `
+tasks:
+- name: not_in_a_task_group
+  commands:
+  - command: shell.exec
+- name: task_in_a_task_group
+  commands:
+  - command: shell.exec
+  depends_on:
+  - name: not_in_a_task_group
+task_groups:
+- name: example_task_group
+  tasks:
+  - task_in_a_task_group
+buildvariants:
+- name: "bv"
+  run_on: "example_distro"
+  tasks:
+  - name: example_task_group
+`
+	proj := model.Project{}
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	assert.NotNil(proj)
+	assert.Empty(err)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("example_task_group", tg.Name)
+	assert.Len(tg.Tasks, 1)
+	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
+	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
+	syntaxErrs, err := CheckProjectSyntax(&proj)
+	assert.Len(syntaxErrs, 1)
+	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
+	assert.NoError(err)
+	semanticErrs := CheckProjectSemantics(&proj)
+	assert.Len(semanticErrs, 0)
+	assert.NoError(err)
+}
+
+func TestDisplayTaskExecutionTasksNameValidation(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{Id: "example_distro"}
+	require.NoError(d.Insert())
+	exampleYml := `
+tasks:
+- name: one
+  commands:
+  - command: shell.exec
+- name: two
+  commands:
+  - command: shell.exec
+- name: display_three
+  commands:
+  - command: shell.exec
+buildvariants:
+- name: "bv"
+  run_on: "example_distro"
+  tasks:
+  - name: one
+  - name: two
+  display_tasks:
+  - name: display_ordinals
+    execution_tasks:
+    - one
+    - two
+`
+	proj := model.Project{}
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	assert.NotNil(proj)
+	assert.NoError(err)
+
+	proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks,
+		"display_three")
+
+	syntaxErrs, err := CheckProjectSyntax(&proj)
+	assert.Len(syntaxErrs, 1)
+	assert.NoError(err)
+	assert.Equal(syntaxErrs[0].Level, Error)
+	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
+		syntaxErrs[0].Message)
+	semanticErrs := CheckProjectSemantics(&proj)
+	assert.NoError(err)
+	assert.Len(semanticErrs, 0)
+}
+
+func TestValidateCreateHosts(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	// passing case
+	yml := `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	var p model.Project
+	err := model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs := validateCreateHosts(&p)
+	assert.Len(errs, 0)
+
+	// error: times called per task
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
+
+	// error: total times called
+	yml = `
+  tasks:
+  - name: t_1
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_2
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_3
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  - name: t_4
+    commands:
+    - command: create.host
+    - command: create.host
+    - command: create.host
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: t_1
+    - name: t_2
+    - name: t_3
+    - name: t_4
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateCreateHosts(&p)
+	assert.Len(errs, 1)
 }

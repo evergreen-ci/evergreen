@@ -9,18 +9,20 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 const hostTerminationJobName = "host-termination-job"
+
+const teardownFailurePreface = "[TEARDOWN-FAILURE]"
 
 func init() {
 	registry.AddJobType(hostTerminationJobName, func() amboy.Job {
@@ -56,7 +58,7 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host) amboy.Job {
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(2)
-	ts := util.RoundPartOfHour(3).Format(tsFormat)
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
 
 	return j
@@ -64,6 +66,7 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host) amboy.Job {
 
 func (j *hostTerminationJob) Run(ctx context.Context) {
 	var err error
+	defer j.MarkComplete()
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -73,7 +76,21 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 		if j.host == nil {
 			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+			return
 		}
+	}
+
+	if !j.host.IsEphemeral() {
+		grip.Notice(message.Fields{
+			"job":      j.ID(),
+			"host":     j.HostID,
+			"job_type": j.Type().Name,
+			"status":   j.host.Status,
+			"provider": j.host.Distro.Provider,
+			"message":  "host termination for a non-spawnable distro",
+			"cause":    "programmer error",
+		})
+		return
 	}
 
 	if j.env == nil {
@@ -97,7 +114,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
 		})
-		if err = j.host.ClearRunningTask(j.host.RunningTask, time.Now()); err != nil {
+		if err = j.host.ClearRunningTask(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
 				"message":  "Error clearing running task for host",
@@ -126,8 +143,23 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
+		// host may still be an intent host
+		if j.host.Status == evergreen.HostUninitialized {
+			if err := j.host.Terminate(evergreen.User); err != nil {
+				j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":     j.host.Id,
+					"provider": j.host.Distro.Provider,
+					"job_type": j.Type().Name,
+					"job":      j.ID(),
+					"message":  "problem terminating intent host in db",
+				}))
+			}
+			return
+		}
+
 		j.AddError(err)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
@@ -145,34 +177,56 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"job":      j.ID(),
 			"message":  "attempted to terminated an already terminated host",
 		})
+		if err := j.host.Terminate(evergreen.User); err != nil {
+			j.AddError(errors.Wrap(err, "problem terminating host in db"))
+			grip.Error(message.WrapError(err, message.Fields{
+				"host":     j.host.Id,
+				"provider": j.host.Distro.Provider,
+				"job_type": j.Type().Name,
+				"job":      j.ID(),
+				"message":  "problem terminating host in db",
+			}))
+		}
 
 		return
 	}
 
-	if err := runHostTeardown(ctx, j.host, cloudHost); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_type": j.Type().Name,
-			"message":  "Error running teardown script",
-			"host":     j.host.Id,
-		}))
-
-		subj := fmt.Sprintf("%v Error running teardown for host %v",
-			notify.TeardownFailurePreface, j.host.Id)
-
-		grip.Error(message.WrapError(notify.NotifyAdmins(subj, err.Error(), settings),
-			message.Fields{
-				"message":  "problem sending email",
-				"host":     j.host.Id,
-				"subject":  subj,
-				"error":    err.Error(),
+	if j.host.Status != evergreen.HostProvisionFailed {
+		// only run teardown if provisioning was successful
+		if err := runHostTeardown(ctx, j.host, cloudHost); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
-				"job":      j.ID(),
+				"message":  "Error running teardown script",
+				"host":     j.host.Id,
 			}))
+
+			subj := fmt.Sprintf("%v Error running teardown for host %v",
+				teardownFailurePreface, j.host.Id)
+
+			mailer, serr := j.env.GetSender(evergreen.SenderEmail)
+			if serr != nil {
+				grip.Alert(message.Fields{
+					"message":    "problem getting sender",
+					"operation":  "host termination issue",
+					"sender_err": serr,
+					"error":      err,
+					"host":       j.host.Id,
+					"subject":    subj,
+				})
+			} else {
+				mailer.Send(message.NewEmailMessage(level.Error, message.Email{
+					From:       settings.Notify.SMTP.From,
+					Recipients: settings.Notify.SMTP.AdminEmail,
+					Subject:    subj,
+					Body:       err.Error(),
+				}))
+			}
+		}
 	}
 
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {
 		j.AddError(err)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem terminating host",
 			"host":     j.host.Id,
 			"job":      j.ID(),

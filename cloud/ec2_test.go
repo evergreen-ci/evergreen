@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -23,11 +24,11 @@ var (
 type EC2Suite struct {
 	suite.Suite
 	onDemandOpts    *EC2ManagerOptions
-	onDemandManager CloudManager
+	onDemandManager Manager
 	spotOpts        *EC2ManagerOptions
-	spotManager     CloudManager
+	spotManager     Manager
 	autoOpts        *EC2ManagerOptions
-	autoManager     CloudManager
+	autoManager     Manager
 	impl            *ec2Manager
 }
 
@@ -46,23 +47,33 @@ func (s *EC2Suite) SetupTest() {
 		provider: onDemandProvider,
 	}
 	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
+	_ = s.onDemandManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+	})
 	s.spotOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: spotProvider,
 	}
 	s.spotManager = NewEC2Manager(s.spotOpts)
+	_ = s.spotManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+	})
 	s.autoOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: autoProvider,
 	}
 	s.autoManager = NewEC2Manager(s.autoOpts)
+	_ = s.autoManager.Configure(context.Background(), &evergreen.Settings{
+		Expansions: map[string]string{"test": "expand"},
+	})
 	var ok bool
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
 }
 
 func (s *EC2Suite) TestConstructor() {
-	s.Implements((*CloudManager)(nil), NewEC2Manager(s.onDemandOpts))
+	s.Implements((*Manager)(nil), NewEC2Manager(s.onDemandOpts))
+	s.Implements((*BatchManager)(nil), NewEC2Manager(s.onDemandOpts))
 }
 
 func (s *EC2Suite) TestValidateProviderSettings() {
@@ -72,22 +83,25 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 		SecurityGroup: "sg-123456",
 		KeyName:       "keyName",
 	}
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.AMI = ""
 	s.Error(p.Validate())
 	p.AMI = "ami"
 
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.InstanceType = ""
 	s.Error(p.Validate())
 	p.InstanceType = "type"
 
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.SecurityGroup = ""
 	s.Error(p.Validate())
 	p.SecurityGroup = "sg-123456"
+	p.SecurityGroupIDs = []string{"sg-123456"}
+	s.Error(p.Validate())
+	p.SecurityGroupIDs = nil
 
-	s.Nil(p.Validate())
+	s.NoError(p.Validate())
 	p.KeyName = ""
 	s.Error(p.Validate())
 	p.KeyName = "keyName"
@@ -139,6 +153,20 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	s.Equal("anotherDeviceName", *b[1].DeviceName)
 	s.Equal("anotherVirtualName", *b[1].VirtualName)
 	s.NoError(err)
+
+	ebsMount := MountPoint{
+		DeviceName: "device",
+		Size:       10,
+		Iops:       100,
+		SnapshotID: "snapshot-1",
+	}
+	b, err = makeBlockDeviceMappings([]MountPoint{ebsMount})
+	s.NoError(err)
+	s.Len(b, 1)
+	s.Equal("device", *b[0].DeviceName)
+	s.Equal(int64(10), *b[0].Ebs.VolumeSize)
+	s.Equal(int64(100), *b[0].Ebs.Iops)
+	s.Equal("snapshot-1", *b[0].Ebs.SnapshotId)
 }
 
 func (s *EC2Suite) TestGetSettings() {
@@ -418,12 +446,6 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
-func (s *EC2Suite) TestCanSpawn() {
-	can, err := s.onDemandManager.CanSpawn()
-	s.True(can)
-	s.NoError(err)
-}
-
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -523,7 +545,8 @@ func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
 }
 
 func (s *EC2Suite) TestGetInstanceName() {
-	id := s.onDemandManager.GetInstanceName(&distro.Distro{Id: "foo"})
+	d := distro.Distro{Id: "foo"}
+	id := d.GenerateName()
 	s.True(strings.HasPrefix(id, "evg-foo-"))
 }
 
@@ -570,4 +593,208 @@ func (s *EC2Suite) TestPersistInstanceId() {
 	_, err := s.onDemandManager.GetDNSName(context.Background(), h)
 	s.NoError(err)
 	s.Equal("instance_id", h.ExternalIdentifier)
+}
+
+func (s *EC2Suite) TestGetInstanceStatuses() {
+	hosts := []host.Host{
+		{
+			Id: "sir-1",
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2Spot,
+			},
+		},
+		{
+			Id: "i-2",
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2OnDemand,
+			},
+		},
+		{
+			Id: "sir-3",
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2Spot,
+			},
+		},
+		{
+			Id: "i-4",
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2OnDemand,
+			},
+		},
+		{
+			Id: "i-5",
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2OnDemand,
+			},
+		},
+		{
+			Id: "i-6",
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2OnDemand,
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+
+	// spot IDs returned doesn't match spot IDs submitted
+	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
+		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
+			&ec2.SpotInstanceRequest{
+				InstanceId: makeStringPtr("sir-1"),
+				State:      makeStringPtr(SpotStatusActive),
+				SpotInstanceRequestId: makeStringPtr("1"),
+			},
+		},
+	}
+	s.True(ok)
+	batchManager, ok := s.onDemandManager.(BatchManager)
+	s.True(ok)
+	s.NotNil(batchManager)
+	_, err := batchManager.GetInstanceStatuses(ctx, hosts)
+	s.Error(err, "return an error if the number of spot IDs returned is different from submitted")
+
+	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
+		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
+			// This host returns with no id
+			&ec2.SpotInstanceRequest{
+				SpotInstanceRequestId: makeStringPtr("sir-1"),
+				State: makeStringPtr(ec2.SpotInstanceStateFailed),
+			},
+			&ec2.SpotInstanceRequest{
+				InstanceId: makeStringPtr("i-3"),
+				State:      makeStringPtr(SpotStatusActive),
+				SpotInstanceRequestId: makeStringPtr("sir-3"),
+			},
+		},
+	}
+	mock.DescribeInstancesOutput = &ec2.DescribeInstancesOutput{
+		Reservations: []*ec2.Reservation{
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: makeStringPtr("i-3"),
+						State: &ec2.InstanceState{
+							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+						},
+					},
+				},
+			},
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: makeStringPtr("i-2"),
+						State: &ec2.InstanceState{
+							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+						},
+					},
+				},
+			},
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: makeStringPtr("i-4"),
+						State: &ec2.InstanceState{
+							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+						},
+					},
+				},
+			},
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: makeStringPtr("i-5"),
+						State: &ec2.InstanceState{
+							Name: makeStringPtr(ec2.InstanceStateNameTerminated),
+						},
+					},
+				},
+			},
+			{
+				Instances: []*ec2.Instance{
+					{
+						InstanceId: makeStringPtr("i-6"),
+						State: &ec2.InstanceState{
+							Name: makeStringPtr(ec2.InstanceStateNameShuttingDown),
+						},
+					},
+				},
+			},
+		},
+	}
+	statuses, err := batchManager.GetInstanceStatuses(ctx, hosts)
+	s.NoError(err)
+	s.Len(mock.DescribeSpotInstanceRequestsInput.SpotInstanceRequestIds, 2)
+	s.Len(mock.DescribeInstancesInput.InstanceIds, 5)
+	s.Equal(*mock.DescribeInstancesInput.InstanceIds[0], "i-3")
+	s.Equal(*mock.DescribeInstancesInput.InstanceIds[1], "i-2")
+	s.Equal(*mock.DescribeInstancesInput.InstanceIds[2], "i-4")
+	s.Equal(*mock.DescribeInstancesInput.InstanceIds[3], "i-5")
+	s.Equal(*mock.DescribeInstancesInput.InstanceIds[4], "i-6")
+	s.Len(statuses, 6)
+	s.Equal(statuses, []CloudStatus{
+		StatusFailed,
+		StatusRunning,
+		StatusRunning,
+		StatusRunning,
+		StatusTerminated,
+		StatusTerminated,
+	})
+}
+
+func (s *EC2Suite) TestGetRegion() {
+	h := &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{},
+		},
+	}
+	r, err := getRegion(h)
+	s.NoError(err)
+	s.Equal(defaultRegion, r)
+
+	h = &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{
+				"region": defaultRegion,
+			},
+		},
+	}
+	r, err = getRegion(h)
+	s.NoError(err)
+	s.Equal(defaultRegion, r)
+
+	h = &host.Host{
+		Distro: distro.Distro{
+			ProviderSettings: &map[string]interface{}{
+				"region": "us-west-2",
+			},
+		},
+	}
+	r, err = getRegion(h)
+	s.NoError(err)
+	s.Equal("us-west-2", r)
+}
+
+func (s *EC2Suite) TestUserDataExpand() {
+	expanded, err := s.autoManager.(*ec2Manager).expandUserData("${test} a thing")
+	s.NoError(err)
+	s.Equal("expand a thing", expanded)
+}
+
+func (s *EC2Suite) TestGetSecurityGroup() {
+	settings := EC2ProviderSettings{
+		SecurityGroup: "sg-1",
+	}
+	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
+	settings = EC2ProviderSettings{
+		SecurityGroupIDs: []string{"sg-1"},
+	}
+	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
+	settings = EC2ProviderSettings{
+		SecurityGroupIDs: []string{"sg-1", "sg-2"},
+	}
+	s.Equal([]*string{makeStringPtr("sg-1"), makeStringPtr("sg-2")}, settings.getSecurityGroups())
 }

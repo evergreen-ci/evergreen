@@ -278,7 +278,8 @@ h3.section-heading {
   background-color: #5cb85c;
   color: white;
 }
-.failed {
+.failed,
+.test-timed-out {
   background-color: #d9534f;
   color: white;
 }
@@ -544,11 +545,11 @@ md-select:not([disabled]):focus .md-select-value {
 md-input-container label {
   font-size: medium;
 }
-md-radio-button .md-on,
+md-radio-button:not([disabled]) .md-on,
 md-checkbox.md-checked .md-icon {
   background-color: rgba(0, 0, 0, 0.7) !important;
 }
-md-radio-button .md-off {
+md-radio-button:not([disabled]) .md-off {
   border-color: rgba(0, 0, 0, 0.7) !important;
 }
 md-radio-button {
@@ -561,6 +562,9 @@ md-radio-group.md-focused:not(:empty) .md-checked .md-container:before {
 }
 md-checkbox.md-checked .md-ink-ripple {
   color: rgba(0, 0, 0, 0.7) !important;
+}
+.strikethrough {
+  text-decoration: line-through;
 }
 .remove-version {
   margin: 10px;
@@ -2332,6 +2336,12 @@ md-card-title .md-button {
 .md-chip-input-container input {
   width: 500px;
 }
+.nav .pill-small {
+  cursor: pointer;
+}
+.nav .pill-small > a {
+  padding: 3px 8px;
+}
 .banner-container {
   height: 50px;
   margin: 8px;
@@ -2417,5 +2427,15 @@ md-card-title .md-button {
 }
 .eventsTable tbody tr:nth-child(even) td {
   background-color: rgba(0, 0, 0, 0.22);
+}
+.notificationTable {
+  width: 50%;
+}
+.notificationTable th,
+.notificationTable td {
+  padding: 10px;
+}
+.notificationTable md-radio-button {
+  width: 33%;
 }
 /*# sourceMappingURL=/static/dist/less.map */

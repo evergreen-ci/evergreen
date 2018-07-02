@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 )
@@ -37,7 +37,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				u := user.DBUser{
 					Id: "test_user",
 				}
-				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+				ctx = gimlet.AttachUser(ctx, &u)
 				ctx = context.WithValue(ctx, RequestContext, &opCtx)
 				So(author.Authenticate(ctx, serviceContext), ShouldBeNil)
 			})
@@ -52,7 +52,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				u := user.DBUser{
 					Id: "test_user",
 				}
-				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+				ctx = gimlet.AttachUser(ctx, &u)
 				ctx = context.WithValue(ctx, RequestContext, &opCtx)
 				So(author.Authenticate(ctx, serviceContext), ShouldBeNil)
 			})
@@ -68,7 +68,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				u := user.DBUser{
 					Id: "test_user",
 				}
-				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+				ctx = gimlet.AttachUser(ctx, &u)
 				ctx = context.WithValue(ctx, RequestContext, &opCtx)
 				err := author.Authenticate(ctx, serviceContext)
 
@@ -97,7 +97,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 				u := user.DBUser{
 					Id: "test_user",
 				}
-				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+				ctx = gimlet.AttachUser(ctx, &u)
 				So(author.Authenticate(ctx, serviceContext), ShouldBeNil)
 			})
 			Convey("if user is not in the superusers, should error", func() {
@@ -107,7 +107,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 				u := user.DBUser{
 					Id: "test_user",
 				}
-				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
+				ctx = gimlet.AttachUser(ctx, &u)
 				err := author.Authenticate(ctx, serviceContext)
 
 				errToResemble := rest.APIError{

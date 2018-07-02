@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -13,7 +13,7 @@ import (
 type Notifier struct {
 	// functions which will be called to create any notifications that need
 	// to be sent
-	notificationBuilders []notificationBuilder
+	NotificationBuilders []NotificationBuilder
 }
 
 // create and send any notifications that need to be sent
@@ -22,7 +22,7 @@ func (self *Notifier) Notify(settings *evergreen.Settings) error {
 	catcher := grip.NewBasicCatcher()
 	startAt := time.Now()
 
-	for _, f := range self.notificationBuilders {
+	for _, f := range self.NotificationBuilders {
 
 		// get the necessary notifications
 		notifications, err := f(settings)
@@ -43,7 +43,7 @@ func (self *Notifier) Notify(settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
 		"message":       "completed monitor notifications",
-		"num_builders":  len(self.notificationBuilders),
+		"num_builders":  len(self.NotificationBuilders),
 		"num_errors":    catcher.Len(),
 		"duration_secs": time.Since(startAt).Seconds(),
 	})
@@ -54,29 +54,23 @@ func (self *Notifier) Notify(settings *evergreen.Settings) error {
 // send all of the specified notifications, and execute the callbacks for any
 // that are successfully sent. returns an aggregate list of any errors
 // that occur
-func sendNotifications(notifications []notification, settings *evergreen.Settings) []error {
+func sendNotifications(notifications []Notification, settings *evergreen.Settings) []error {
 	// used to store any errors that occur
 	var errs []error
 
-	// ask for the mailer we'll use
-	mailer := notify.ConstructMailer(settings.Notify)
+	mailer, err := evergreen.GetEnvironment().GetSender(evergreen.SenderEmail)
+	if err != nil {
+		errs = append(errs, err)
+		return errs
+	}
 
 	for _, n := range notifications {
-
-		// send the notification
-		err := notify.TrySendNotificationToUser(
-			n.recipient,
-			n.subject,
-			n.message,
-			mailer,
-		)
-
-		// continue on error to allow further notifications to be sent
-		if err != nil {
-			errs = append(errs, errors.Wrapf(err,
-				"error sending notification to %s", n.recipient))
-			continue
-		}
+		mailer.Send(message.NewEmailMessage(level.Notice, message.Email{
+			From:       settings.Notify.SMTP.From,
+			Recipients: []string{n.recipient},
+			Subject:    n.subject,
+			Body:       n.message,
+		}))
 
 		// run the notification's callback, since it has been successfully sent
 		if n.callback != nil {

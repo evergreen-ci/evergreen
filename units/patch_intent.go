@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -31,7 +30,6 @@ import (
 )
 
 const (
-	githubAcceptDiff        = "application/vnd.github.v3.diff"
 	patchIntentJobName      = "patch-intent-processor"
 	errInvalidPatchedConfig = "invalid patched config"
 )
@@ -121,7 +119,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			update = NewGithubStatusUpdateJobForExternalPatch(patchDoc.Id.Hex())
 
 		} else {
-			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+			update = NewGithubStatusUpdateJobForNewPatch(patchDoc.Id.Hex())
 		}
 		update.Run(ctx)
 		j.AddError(update.Error())
@@ -185,6 +183,19 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	pref, err := model.FindOneProjectRef(patchDoc.Project)
+	if err != nil {
+		return errors.Wrap(err, "can't find patch project")
+	}
+
+	if !pref.Enabled {
+		return errors.New("project is disabled")
+	}
+
+	if pref.PatchingDisabled {
+		return errors.New("patching is diabled for project")
+	}
+
 	// Get and validate patched config and add it to the patch document
 	project, err := validator.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
@@ -234,15 +245,44 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.Wrap(err, "error computing patch num")
 	}
 
-	patchDoc.CreateTime = time.Now()
+	if patchDoc.CreateTime.IsZero() {
+		patchDoc.CreateTime = time.Now()
+	}
 	patchDoc.Id = j.PatchID
 
-	if err := patchDoc.Insert(); err != nil {
+	if err = patchDoc.Insert(); err != nil {
 		return err
 	}
+	if patchDoc.IsGithubPRPatch() {
+		ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
+			Owner:    patchDoc.GithubPatchData.BaseOwner,
+			Repo:     patchDoc.GithubPatchData.BaseRepo,
+			PRNumber: patchDoc.GithubPatchData.PRNumber,
+			Ref:      patchDoc.GithubPatchData.HeadHash,
+		})
+		patchSub := event.NewPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
+		if err = patchSub.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert patch subscription for Github PR"))
+		}
+		buildSub := event.NewBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
+		if err = buildSub.Upsert(); err != nil {
+			catcher.Add(errors.Wrap(err, "failed to insert build subscription for Github PR"))
+		}
+	}
+	if catcher.HasErrors() {
+		grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+			"message":     "failed to save subscription, patch will not notify",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
+			"source":      "patch intents",
+		}))
+	}
+	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
+		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
 				"job":         j.ID(),
@@ -255,71 +295,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	return nil
-}
-
-// buildPatchURL creates a URL to enable downloading patch files through the
-// Github API
-func buildPatchURL(gp *patch.GithubPatch) string {
-	url := &url.URL{
-		Scheme: "https",
-		Host:   "api.github.com",
-		Path: fmt.Sprintf("/repos/%s/%s/pulls/%d.diff", gp.BaseOwner,
-			gp.BaseRepo, gp.PRNumber),
-	}
-
-	return url.String()
-}
-
-func fetchDiffFromGithub(gh *patch.GithubPatch, token string) (string, []patch.Summary, error) {
-	client, err := util.GetOAuth2HTTPClient(token)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "error getting http client")
-	}
-	defer util.PutHTTPClient(client)
-
-	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to create github request")
-	}
-
-	diff, err := doGithubRequest(client, req, githubAcceptDiff)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
-	}
-
-	summaries, err := thirdparty.GetPatchSummaries(diff)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to get patch summary")
-	}
-
-	return diff, summaries, nil
-}
-
-func doGithubRequest(client *http.Client, req *http.Request, accept string) (string, error) {
-	req.Header.Del("Accept")
-	req.Header.Add("Accept", accept)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to fetch data from github")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("Expected 200 OK, got %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-
-	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
-		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
-			patch.SizeLimit, resp.ContentLength)
-	}
-
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to read response body from github response")
-	}
-
-	return string(bytes), nil
+	return catcher.Resolve()
 }
 
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
@@ -398,14 +374,6 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
-	projectVars, err := model.FindOneProjectVars(projectRef.Identifier)
-	if err != nil {
-		return false, errors.Wrapf(err, "Could not find project vars for project '%s'", projectRef.Identifier)
-	}
-	if projectVars == nil {
-		return false, errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
-	}
-
 	isMember, err := authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
@@ -423,7 +391,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, err
 	}
 
-	patchContent, summaries, err := fetchDiffFromGithub(&patchDoc.GithubPatchData, githubOauthToken)
+	patchContent, summaries, err := thirdparty.GetGithubPullRequestDiff(ctx, githubOauthToken, &patchDoc.GithubPatchData)
 	if err != nil {
 		return isMember, err
 	}

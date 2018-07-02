@@ -9,17 +9,18 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
-const (
+var (
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostExpirationExtension    = "extendHostExpiration"
 	HostTerminate              = "terminate"
@@ -28,7 +29,7 @@ const (
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 
-	var spawnDistro *distro.Distro
+	var spawnDistro distro.Distro
 	var spawnTask *task.Task
 	var err error
 	if len(r.FormValue("distro_id")) > 0 {
@@ -48,12 +49,12 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uis.WriteHTML(w, http.StatusOK, struct {
-		Distro          *distro.Distro
+	uis.render.WriteResponse(w, http.StatusOK, struct {
+		Distro          distro.Distro
 		Task            *task.Task
 		MaxHostsPerUser int
 		ViewData
-	}{spawnDistro, spawnTask, spawn.MaxPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{spawnDistro, spawnTask, cloud.MaxSpawnHostsPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -66,12 +67,12 @@ func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, hosts)
+	gimlet.WriteJSON(w, hosts)
 }
 
 func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	uis.WriteJSON(w, http.StatusOK, user.PublicKeys())
+	gimlet.WriteJSON(w, user.PublicKeys())
 }
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +92,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 			})
 		}
 	}
-	uis.WriteJSON(w, http.StatusOK, distroList)
+	gimlet.WriteJSON(w, distroList)
 }
 
 func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +133,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host spawned"))
-	uis.WriteJSON(w, http.StatusOK, "Host successfully spawned")
+	gimlet.WriteJSON(w, "Host successfully spawned")
 }
 
 func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +145,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	hostId := string(updateParams.HostID)
+	hostId := restModel.FromAPIString(updateParams.HostID)
 	h, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
@@ -162,50 +163,54 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if updateParams.Action == nil {
+		http.Error(w, "no action specified", http.StatusBadRequest)
+		return
+	}
 	// determine what action needs to be taken
-	switch updateParams.Action {
+	switch *updateParams.Action {
 	case HostTerminate:
 		if h.Status == evergreen.HostTerminated {
-			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", h.Id))
+			gimlet.WriteJSONError(w, fmt.Sprintf("Host %v is already terminated", h.Id))
 			return
 		}
 		var cancel func()
 		ctx, cancel = context.WithCancel(r.Context())
 		defer cancel()
 
-		if err := spawn.TerminateHost(ctx, h, evergreen.GetEnvironment().Settings(), u.Id); err != nil {
+		if err := cloud.TerminateSpawnHost(ctx, h, evergreen.GetEnvironment().Settings(), u.Id); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		uis.WriteJSON(w, http.StatusOK, "host terminated")
+		gimlet.WriteJSON(w, "host terminated")
 		return
 
 	case HostPasswordUpdate:
-		pwd := string(updateParams.RDPPwd)
+		pwd := restModel.FromAPIString(updateParams.RDPPwd)
 		if !h.Distro.IsWindows() {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
 			return
 		}
-		if !spawn.ValidateRDPPassword(pwd) {
+		if !cloud.ValidateRDPPassword(pwd) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}
-		if err := spawn.SetHostRDPPassword(ctx, h, pwd); err != nil {
+		if err := cloud.SetHostRDPPassword(ctx, h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host RDP password successfully updated."))
-		uis.WriteJSON(w, http.StatusOK, "Successfully updated host password")
+		gimlet.WriteJSON(w, "Successfully updated host password")
 		return
 
 	case HostExpirationExtension:
-		addtHours, err := strconv.Atoi(string(updateParams.AddHours))
+		addtHours, err := strconv.Atoi(restModel.FromAPIString(updateParams.AddHours))
 		if err != nil {
 			http.Error(w, "bad hours param", http.StatusBadRequest)
 			return
 		}
 		var futureExpiration time.Time
-		futureExpiration, err = spawn.MakeExtendedHostExpiration(h, time.Duration(addtHours)*time.Hour)
+		futureExpiration, err = cloud.MakeExtendedSpawnHostExpiration(h, time.Duration(addtHours)*time.Hour)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
@@ -217,7 +222,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration "+
 			"extension successful; %v will expire on %v", hostId,
 			futureExpiration.Format(time.RFC850))))
-		uis.WriteJSON(w, http.StatusOK, "Successfully extended host expiration time")
+		gimlet.WriteJSON(w, "Successfully extended host expiration time")
 		return
 
 	default:

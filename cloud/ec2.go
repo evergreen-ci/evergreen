@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -41,8 +40,12 @@ type EC2ProviderSettings struct {
 
 	// MountPoints are the disk mount points for EBS volumes.
 	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
+
 	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
 	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
+
+	// SecurityGroupIDs is a list of security group IDs.
+	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
 
 	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
 	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
@@ -58,12 +61,22 @@ type EC2ProviderSettings struct {
 
 	// UserData are commands to run after the instance starts.
 	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
+
+	// Region is the EC2 region in which the instance will start. If empty,
+	// the ec2Manager will spawn in "us-east-1".
+	Region string `mapstructure:"region" json:"region" bson:"region,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
-	if s.AMI == "" || s.InstanceType == "" || s.SecurityGroup == "" || s.KeyName == "" {
-		return errors.New("AMI, instance type, security group, and key name must not be empty")
+	if s.AMI == "" || s.InstanceType == "" || s.KeyName == "" {
+		return errors.New("AMI, instance type, and key name must not be empty")
+	}
+	if s.SecurityGroup == "" && len(s.SecurityGroupIDs) == 0 {
+		return errors.New("Security group must not be empty")
+	}
+	if s.SecurityGroup != "" && len(s.SecurityGroupIDs) > 0 {
+		return errors.New("Must only set SecurityGroup or SecurityGroupIDs")
 	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
@@ -75,6 +88,18 @@ func (s *EC2ProviderSettings) Validate() error {
 		return errors.Wrap(err, "block device mappings invalid")
 	}
 	return nil
+}
+
+func (s *EC2ProviderSettings) getSecurityGroups() []*string {
+	groups := []*string{}
+	if len(s.SecurityGroupIDs) > 0 {
+		for _, group := range s.SecurityGroupIDs {
+			groups = append(groups, makeStringPtr(group))
+		}
+		return groups
+	}
+	groups = append(groups, makeStringPtr(s.SecurityGroup))
+	return groups
 }
 
 type ec2ProviderType int
@@ -108,11 +133,12 @@ type EC2ManagerOptions struct {
 type ec2Manager struct {
 	*EC2ManagerOptions
 	credentials *credentials.Credentials
+	settings    *evergreen.Settings
 }
 
 // NewEC2Manager creates a new manager of EC2 spot and on-demand instances.
-func NewEC2Manager(opts *EC2ManagerOptions) CloudManager {
-	return &ec2Manager{opts, nil}
+func NewEC2Manager(opts *EC2ManagerOptions) Manager {
+	return &ec2Manager{EC2ManagerOptions: opts}
 }
 
 // GetSettings returns a pointer to the manager's configuration settings struct.
@@ -122,6 +148,8 @@ func (m *ec2Manager) GetSettings() ProviderSettings {
 
 // Configure loads credentials or other settings from the config file.
 func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
+	m.settings = settings
+
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
 		return errors.New("AWS ID and Secret must not be blank")
 	}
@@ -149,16 +177,20 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
 				DeviceIndex:              makeInt64Ptr(0),
-				Groups:                   []*string{&ec2Settings.SecurityGroup},
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
-		input.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
+		input.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	if ec2Settings.UserData != "" {
-		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
+		expanded, err := m.expandUserData(ec2Settings.UserData)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem expanding user data")
+		}
+		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		input.UserData = &userData
 	}
 
@@ -264,16 +296,20 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
 				DeviceIndex:              makeInt64Ptr(0),
-				Groups:                   []*string{&ec2Settings.SecurityGroup},
+				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
-		spotRequest.LaunchSpecification.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
+		spotRequest.LaunchSpecification.SecurityGroups = ec2Settings.getSecurityGroups()
 	}
 
 	if ec2Settings.UserData != "" {
-		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
+		expanded, err := m.expandUserData(ec2Settings.UserData)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem expanding user data")
+		}
+		userData := base64.StdEncoding.EncodeToString([]byte(expanded))
 		spotRequest.LaunchSpecification.UserData = &userData
 	}
 
@@ -314,7 +350,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	ec2Settings := &EC2ProviderSettings{}
 	if h.Distro.ProviderSettings != nil {
 		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
-			return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
+			return nil, errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
 		}
 	}
 	grip.Debug(message.Fields{
@@ -334,7 +370,11 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 	h.InstanceType = ec2Settings.InstanceType
 
-	if err = m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting region for host")
+	}
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -427,14 +467,91 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
-// CanSpawn indicates if a host can be spawned.
-func (m *ec2Manager) CanSpawn() (bool, error) {
-	return true, nil
+// GetInstanceStatuses returns the current status of a slice of EC2 instances.
+func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) ([]CloudStatus, error) {
+	if err := m.client.Create(m.credentials, defaultRegion); err != nil {
+		return nil, errors.Wrap(err, "error creating client")
+	}
+
+	spotHostIDs := []*string{}
+	onDemandHostIDs := []*string{}
+	instanceIdToHostMap := map[string]string{}
+	hostToStatusMap := map[string]CloudStatus{}
+	hostsToCheck := []*string{}
+
+	// Populate spot and on-demand slices
+	for i := range hosts {
+		if isHostSpot(&hosts[i]) {
+			spotHostIDs = append(spotHostIDs, &hosts[i].Id)
+		}
+		if isHostOnDemand(&hosts[i]) {
+			instanceIdToHostMap[hosts[i].Id] = hosts[i].Id
+			onDemandHostIDs = append(onDemandHostIDs, &hosts[i].Id)
+		}
+	}
+
+	// Get instance IDs for spot instances
+	if len(spotHostIDs) > 0 {
+		spotOut, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: spotHostIDs,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "error describing spot instances")
+		}
+		if len(spotOut.SpotInstanceRequests) != len(spotHostIDs) {
+			return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
+		}
+		for i := range spotHostIDs {
+			if spotOut.SpotInstanceRequests[i].InstanceId == nil || *spotOut.SpotInstanceRequests[i].InstanceId == "" {
+				hostToStatusMap[*spotHostIDs[i]] = cloudStatusFromSpotStatus(*spotOut.SpotInstanceRequests[i].State)
+				continue
+			}
+			hostsToCheck = append(hostsToCheck, spotOut.SpotInstanceRequests[i].InstanceId)
+			instanceIdToHostMap[*spotOut.SpotInstanceRequests[i].InstanceId] = *spotHostIDs[i]
+		}
+	}
+
+	// Get host statuses
+	hostsToCheck = append(hostsToCheck, onDemandHostIDs...)
+	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: hostsToCheck,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error describing instances")
+	}
+	for i, res := range out.Reservations {
+		hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]]] = ec2StatusToEvergreenStatus(*res.Instances[0].State.Name)
+	}
+
+	// Populate cloud statuses
+	statuses := []CloudStatus{}
+	for _, h := range hosts {
+		statuses = append(statuses, hostToStatusMap[h.Id])
+	}
+	return statuses, nil
+}
+
+func getRegion(h *host.Host) (string, error) {
+	ec2Settings := &EC2ProviderSettings{}
+	if h.Distro.ProviderSettings != nil {
+		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
+			return "", errors.Wrapf(err, "Error decoding params for distro %s: %+v", h.Distro.Id, ec2Settings)
+		}
+	}
+	r := defaultRegion
+	if ec2Settings.Region != "" {
+		r = ec2Settings.Region
+	}
+	return r, nil
 }
 
 // GetInstanceStatus returns the current status of an EC2 instance.
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	if err := m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return StatusUnknown, errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -464,14 +581,16 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 			"terminated!", h.Id)
 		return err
 	}
-
-	if err := m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
 	instanceId := h.Id
-	var err error
 	if isHostSpot(h) {
 		instanceId, err = m.cancelSpotRequest(ctx, h)
 		if err != nil {
@@ -540,6 +659,11 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 	if _, err = m.client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	}); err != nil {
+		if ec2err, ok := err.(awserr.Error); ok {
+			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
+				return "", h.Terminate(evergreen.User)
+			}
+		}
 		grip.Error(message.Fields{
 			"message":       "failed to cancel spot request",
 			"host":          h.Id,
@@ -579,7 +703,11 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
-		if err := m.client.Create(m.credentials); err != nil {
+		r, err := getRegion(h)
+		if err != nil {
+			return errors.Wrap(err, "problem getting region from host")
+		}
+		if err := m.client.Create(m.credentials, r); err != nil {
 			return errors.Wrap(err, "error creating client")
 		}
 		defer m.client.Close()
@@ -619,6 +747,15 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 				"distro":        h.Distro.Id,
 			}))
 		}
+		if resp == nil || len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+			grip.Error(message.Fields{
+				"message":       "error finding instance",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			})
+			return errors.Errorf("error finding instance for %s", h.Id)
+		}
 		instance := resp.Reservations[0].Instances[0]
 		for _, vol := range instance.BlockDeviceMappings {
 			if *vol.DeviceName == "" {
@@ -649,7 +786,11 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	var instance *ec2.Instance
 	var err error
 
-	if err = m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting region from host")
+	}
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return "", errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -677,6 +818,19 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 		if err != nil {
 			return "", errors.Wrap(err, "error getting instance info")
 		}
+	}
+
+	// Cache launch time and availability zone in host document, since we
+	// have access to this information now. Cost jobs will use this
+	// information later.
+	h.Zone = *instance.Placement.AvailabilityZone
+	h.StartTime = *instance.LaunchTime
+	h.VolumeTotalSize, err = getVolumeSize(ctx, m.client, h)
+	if err != nil {
+		return "", errors.Wrapf(err, "error getting volume size for host %s", h.Id)
+	}
+	if err := h.CacheHostData(); err != nil {
+		return "", errors.Wrap(err, "error updating host document in db")
 	}
 	return *instance.PublicDnsName, nil
 }
@@ -708,11 +862,6 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
-// GetInstanceName returns the name of an instance.
-func (m *ec2Manager) GetInstanceName(d *distro.Distro) string {
-	return d.GenerateName()
-}
-
 func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	spotDetails, err := m.client.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
 	if err != nil {
@@ -732,10 +881,10 @@ func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (C
 
 	//Spot request is not fulfilled. Either it's failed/closed for some reason,
 	//or still pending evaluation
-	return cloudStatusFromSpotStatus(h.Id, *spotInstance.State), nil
+	return cloudStatusFromSpotStatus(*spotInstance.State), nil
 }
 
-func cloudStatusFromSpotStatus(id, state string) CloudStatus {
+func cloudStatusFromSpotStatus(state string) CloudStatus {
 	switch state {
 	case SpotStatusOpen:
 		return StatusPending
@@ -748,11 +897,6 @@ func cloudStatusFromSpotStatus(id, state string) CloudStatus {
 	case SpotStatusFailed:
 		return StatusFailed
 	default:
-		grip.Error(message.Fields{
-			"message": "Unexpected status code in spot request",
-			"code":    state,
-			"id":      id,
-		})
 		return StatusUnknown
 	}
 }
@@ -761,7 +905,11 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
-	if err := m.client.Create(m.credentials); err != nil {
+	r, err := getRegion(h)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -782,4 +930,13 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	}
 
 	return total, nil
+}
+
+func (m *ec2Manager) expandUserData(userData string) (string, error) {
+	exp := util.NewExpansions(m.settings.Expansions)
+	expanded, err := exp.ExpandString(userData)
+	if err != nil {
+		return "", errors.Wrap(err, "error expanding userdata script")
+	}
+	return expanded, nil
 }

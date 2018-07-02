@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -54,8 +54,8 @@ func (s *BuildByIdSuite) TestFindByIdProjFound() {
 
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.APIString("build1"), b.Id)
-	s.Equal(model.APIString("project"), b.ProjectId)
+	s.Equal(model.ToAPIString("build1"), b.Id)
+	s.Equal(model.ToAPIString("project"), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
@@ -68,8 +68,8 @@ func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
 
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.APIString("build2"), b.Id)
-	s.Equal(model.APIString(""), b.ProjectId)
+	s.Equal(model.ToAPIString("build2"), b.Id)
+	s.Equal(model.ToAPIString(""), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdFail() {
@@ -108,7 +108,7 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 
 func (s *BuildChangeStatusSuite) TestSetActivation() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
@@ -123,12 +123,12 @@ func (s *BuildChangeStatusSuite) TestSetActivation() {
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
 	s.True(b.Activated)
-	s.Equal(model.APIString("user1"), b.ActivatedBy)
+	s.Equal(model.ToAPIString("user1"), b.ActivatedBy)
 }
 
 func (s *BuildChangeStatusSuite) TestSetActivationFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "zzz"
@@ -142,7 +142,7 @@ func (s *BuildChangeStatusSuite) TestSetActivationFail() {
 
 func (s *BuildChangeStatusSuite) TestSetPriority() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
@@ -159,7 +159,7 @@ func (s *BuildChangeStatusSuite) TestSetPriority() {
 
 func (s *BuildChangeStatusSuite) TestSetPriorityManualFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
@@ -173,7 +173,7 @@ func (s *BuildChangeStatusSuite) TestSetPriorityManualFail() {
 
 func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	s.sc.SetSuperUsers([]string{"admin"})
 
@@ -220,7 +220,7 @@ func (s *BuildAbortSuite) SetupSuite() {
 
 func (s *BuildAbortSuite) TestAbort() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildAbortRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
@@ -232,7 +232,7 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["build2"])
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.APIString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
@@ -241,12 +241,12 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["build2"])
 	b, ok = (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.APIString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 }
 
 func (s *BuildAbortSuite) TestAbortFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildAbortRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
@@ -285,7 +285,7 @@ func (s *BuildRestartSuite) SetupSuite() {
 
 func (s *BuildRestartSuite) TestRestart() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildRestartManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"
@@ -295,19 +295,19 @@ func (s *BuildRestartSuite) TestRestart() {
 	s.NotNil(res)
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.APIString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	b, ok = (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.APIString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 }
 
 func (s *BuildRestartSuite) TestRestartFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
 	rm := getBuildRestartManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"
