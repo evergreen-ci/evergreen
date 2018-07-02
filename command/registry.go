@@ -33,6 +33,7 @@ func init() {
 		"git.apply_patch":       gitApplyPatchFactory,
 		"git.get_project":       gitFetchProjectFactory,
 		"gotest.parse_files":    goTestFactory,
+		"gotest.parse_json":     goTest2JSONFactory,
 		"json.get":              taskDataGetFactory,
 		"json.get_history":      taskDataHistoryFactory,
 		"json.send":             taskDataSendFactory,
