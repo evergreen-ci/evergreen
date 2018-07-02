@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -85,6 +86,10 @@ const (
 	actionSkip   = "skip"
 
 	benchmark = "Benchmark"
+)
+
+var (
+	testStartRegex = regexp.MustCompile(`^=== RUN\s+.*$`)
 )
 
 // Golang's JSON result output ('test2json') is a newline delimited list
@@ -185,7 +190,6 @@ func processTestEvents(data []*testEvent) ([]string, map[TestKey]*Test) {
 		switch event.Action {
 		case actionRun:
 			m[key].StartTime = event.Time
-			m[key].FirstLogLine = len(testLog)
 
 		case actionPass, actionFail, actionSkip:
 			m[key].Status = event.Action
@@ -235,6 +239,10 @@ func processTestEvents(data []*testEvent) ([]string, map[TestKey]*Test) {
 }
 
 func shouldTagLineNumber(line, packageName, testName string) bool {
+	if testStartRegex.MatchString(line) {
+		return true
+	}
+
 	// All tests below apply only to benchmarks
 	if !strings.HasPrefix(testName, "Benchmark") {
 		return false
