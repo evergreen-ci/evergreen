@@ -54,11 +54,11 @@ func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
 	return n, nil
 }
 
-func (a *APIApp) attachRoutes(router *mux.Router, addPrefix bool) error {
+func (a *APIApp) attachRoutes(router *mux.Router, addAppPrefix bool) error {
 	catcher := grip.NewCatcher()
 	for _, route := range a.routes {
 		if !route.IsValid() {
-			catcher.Add(fmt.Errorf("%s is not a valid route, skipping", route.route))
+			catcher.Add(fmt.Errorf("%s is not a valid route, skipping", route))
 			continue
 		}
 
@@ -68,11 +68,12 @@ func (a *APIApp) attachRoutes(router *mux.Router, addPrefix bool) error {
 		}
 
 		handler := route.getHandlerWithMiddlware(a.wrappers)
-		if a.NoVersions {
-			router.Handle(route.resolveLegacyRoute(a, addPrefix), handler)
-		} else if route.version >= 0 {
-			versionedRoute := route.resolveVersionedRoute(a, addPrefix)
+
+		if route.version >= 0 {
+			versionedRoute := route.resolveVersionedRoute(a, addAppPrefix)
 			router.Handle(versionedRoute, handler).Methods(methods...)
+		} else if a.NoVersions {
+			router.Handle(route.resolveLegacyRoute(a, addAppPrefix), handler).Methods(methods...)
 		} else {
 			catcher.Add(fmt.Errorf("skipping '%s', because of versioning error", route))
 		}
@@ -81,54 +82,68 @@ func (a *APIApp) attachRoutes(router *mux.Router, addPrefix bool) error {
 	return catcher.Resolve()
 }
 
-func (r *APIRoute) getRoutePrefix(app *APIApp, addPrefix bool) string {
-	if !addPrefix {
+func (r *APIRoute) getRoutePrefix(app *APIApp, addAppPrefix bool) string {
+	if !addAppPrefix {
 		return ""
 	}
 
-	if r.prefix != "" {
+	if r.overrideAppPrefix && r.prefix != "" {
 		return r.prefix
 	}
 
 	return app.prefix
 }
 
-func (r *APIRoute) resolveLegacyRoute(app *APIApp, addPrefix bool) string {
-	prefix := r.getRoutePrefix(app, addPrefix)
+func (r *APIRoute) resolveLegacyRoute(app *APIApp, addAppPrefix bool) string {
+	var output string
 
-	if prefix == "" {
-		return r.route
+	prefix := r.getRoutePrefix(app, addAppPrefix)
+
+	if prefix != "" {
+		output += prefix
 	}
 
-	if strings.HasPrefix(r.route, "/") {
-		return prefix + r.route
+	if r.prefix != prefix && r.prefix != "" {
+		output += r.prefix
 	}
 
-	return strings.Join([]string{prefix, r.route}, "/")
+	output += r.route
+
+	return output
 }
 
-func (r *APIRoute) resolveVersionedRoute(app *APIApp, addPrefix bool) string {
-	var (
-		versionPrefix string
-		prefix        string
-		route         string
-	)
+func (r *APIRoute) getVersionPart(app *APIApp) string {
+	var versionPrefix string
 
 	if !app.SimpleVersions {
 		versionPrefix = "v"
 	}
 
-	prefix = r.getRoutePrefix(app, addPrefix)
-	if strings.HasPrefix(r.route, prefix) {
-		if prefix == "" {
-			return fmt.Sprintf("/%s%d%s", versionPrefix, r.version, r.route)
-		}
-		route = r.route[len(prefix):]
-	} else {
-		route = r.route
+	return fmt.Sprintf("/%s%d", versionPrefix, r.version)
+}
+
+func (r *APIRoute) resolveVersionedRoute(app *APIApp, addAppPrefix bool) string {
+	var (
+		output string
+		route  string
+	)
+
+	route = r.route
+	firstPrefix := r.getRoutePrefix(app, addAppPrefix)
+
+	if firstPrefix != "" {
+		output += firstPrefix
 	}
 
-	return fmt.Sprintf("%s/%s%d%s", prefix, versionPrefix, r.version, route)
+	output += r.getVersionPart(app)
+
+	if r.prefix != firstPrefix && r.prefix != "" {
+		output += r.prefix
+	}
+
+	output += route
+
+	return output
 }
 
 func (r *APIRoute) getHandlerWithMiddlware(mws []Middleware) http.Handler {

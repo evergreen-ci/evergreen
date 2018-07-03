@@ -49,7 +49,7 @@ func getNextTaskEndpoint(t *testing.T, as *APIServer, hostId string, details *ap
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -75,7 +75,7 @@ func getEndTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string, deta
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -103,7 +103,7 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -835,6 +835,10 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				dbAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
 					displayTask.DisplayName, displayTask.BuildVariant, displayTask.Project))
 				So(err, ShouldBeNil)
+				if err != nil {
+					return
+				}
+
 				So(dbAlert.Type, ShouldEqual, alertrecord.TaskFailTransitionId)
 				So(dbAlert.TaskId, ShouldEqual, displayTask.Id)
 

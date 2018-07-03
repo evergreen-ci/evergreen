@@ -67,7 +67,6 @@ imports:
   - name: github.com/urfave/cli
     version: 01857ac33766ce0c93856370626f9799281c14f4
 
-
   - name: github.com/evergreen-ci/crowd
     version: 96ed7c0438ed5e6f3fff5181fa5b83115742faa9
 
@@ -88,7 +87,8 @@ imports:
 
   - name: github.com/mholt/archiver
     version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
-
+  - name: github.com/google/shlex
+    version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
@@ -108,8 +108,12 @@ imports:
   - name: golang.org/x/sys
     version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
 
-  - name: github.com/google/shlex
-    version: 6f45313302b9c56850fc17f99e40caebce98c716
+  - name: github.com/google/go-github
+    version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
+  - name: github.com/google/go-querystring
+    version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
+  - name: github.com/PuerkitoBio/rehttp
+    version: 11cf6ea5d3e9afda34846e1db511aa218049471c
 
   - name: github.com/mongodb/grip
     version: 5d6dffc047e01c5553d48459d68a2d4f6c11a6ff
@@ -117,11 +121,5 @@ imports:
     version: a39cb2703e7f53a0d46f17a785d25f85fa19923a
   - name: github.com/mongodb/amboy
     version: d1e174d349e86cfe074824d06cc3d58018a27257
-  - name: github.com/google/go-github
-    version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
-  - name: github.com/google/go-querystring
-    version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
-  - name: github.com/PuerkitoBio/rehttp
-    version: 11cf6ea5d3e9afda34846e1db511aa218049471c
   - name: github.com/evergreen-ci/gimlet
-    version: 4febf689f4e17dad26594f7b28ddaff0b0fbe63c
+    version: c41c37a064b5e18782f34f7bb108e21488d91f8b
