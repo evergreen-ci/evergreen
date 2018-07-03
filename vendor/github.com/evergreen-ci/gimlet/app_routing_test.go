@@ -38,6 +38,14 @@ func (s *RoutingSuite) TestRouteConstructorAlwaysAddsPrefix() {
 	}
 }
 
+func (s *RoutingSuite) TestRoutePrefixConstructor() {
+	one := s.app.PrefixRoute("foo").Route("baz")
+	two := s.app.AddRoute("baz").Prefix("foo")
+	s.Equal(one.prefix, two.prefix)
+	s.Equal(one.route, two.route)
+	s.Equal(one, two)
+}
+
 func (s *RoutingSuite) TestPutMethod() {
 	r := s.app.AddRoute("/work").Put()
 	s.Len(s.app.routes, 1)
@@ -50,7 +58,12 @@ func (s *RoutingSuite) TestPrefixMethod() {
 	r := s.app.AddRoute("/work").Prefix("foo")
 	s.Len(s.app.routes, 1)
 	s.Equal(r, s.app.routes[0])
-	s.Equal(s.app.routes[0].prefix, "foo")
+	s.Equal(s.app.routes[0].prefix, "/foo")
+
+	s.False(r.overrideAppPrefix)
+	r.OverridePrefix()
+	s.True(r.overrideAppPrefix)
+
 }
 
 func (s *RoutingSuite) TestDeleteMethod() {

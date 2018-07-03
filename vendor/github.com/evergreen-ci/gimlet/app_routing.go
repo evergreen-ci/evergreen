@@ -14,12 +14,13 @@ import (
 // and includes the route and associate internal metadata for the
 // route.
 type APIRoute struct {
-	route    string
-	prefix   string
-	methods  []httpMethod
-	handler  http.HandlerFunc
-	wrappers []Middleware
-	version  int
+	route             string
+	prefix            string
+	methods           []httpMethod
+	handler           http.HandlerFunc
+	wrappers          []Middleware
+	version           int
+	overrideAppPrefix bool
 }
 
 func (r *APIRoute) String() string {
@@ -53,6 +54,31 @@ func (a *APIApp) AddRoute(r string) *APIRoute {
 	return route
 }
 
+// PrefixRoute allows you to create a new route with a
+// prefix. Prefixes override the applications global prefix.
+func (a *APIApp) PrefixRoute(p string) *APIRoute {
+	route := &APIRoute{prefix: p, version: -1}
+
+	if !strings.HasPrefix(route.route, "/") {
+		route.prefix = "/" + route.prefix
+	}
+
+	a.routes = append(a.routes, route)
+
+	return route
+}
+
+// Route allows you to set or reset the route path on an existing route.
+func (r *APIRoute) Route(route string) *APIRoute {
+	r.route = route
+
+	if !strings.HasPrefix(r.route, "/") {
+		r.route = "/" + r.route
+	}
+
+	return r
+}
+
 // IsValid checks if a route has is valid and populated.
 func (r *APIRoute) IsValid() bool {
 	switch {
@@ -74,10 +100,26 @@ func (r *APIRoute) ClearWrappers() { r.wrappers = []Middleware{} }
 // route. Route-specific middlware is applied after application specific
 // middleware (when there's a route or application prefix) and before
 // global application middleware (when merging applications without prefixes.)
-func (r *APIRoute) Wrap(m Middleware) *APIRoute { r.wrappers = append(r.wrappers, m); return r }
+func (r *APIRoute) Wrap(m ...Middleware) *APIRoute { r.wrappers = append(r.wrappers, m...); return r }
 
 // Prefix allows per-route prefixes, which will override the application's global prefix if set.
-func (r *APIRoute) Prefix(p string) *APIRoute { r.prefix = p; return r }
+func (r *APIRoute) Prefix(p string) *APIRoute {
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+
+	r.prefix = p
+	return r
+}
+
+// OverridePrefix forces the route's prefix to override the global app
+// prefix. By default, the route's prefix is combined (after a
+// version) with the application's prefix.
+//
+// When setting override prefix on an application that has a prefix
+// specified, this option will not take effect in cases where you're
+// merging multiple applications together.
+func (r *APIRoute) OverridePrefix() *APIRoute { r.overrideAppPrefix = true; return r }
 
 // Version allows you to specify an integer for the version of this
 // route. Version is chainable.

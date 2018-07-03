@@ -42,7 +42,6 @@ func GetServer(addr string, n http.Handler) *http.Server {
 
 func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app := gimlet.NewApp()
-	app.ResetMiddleware()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
@@ -63,7 +62,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// we will continue to publish these routes in these
 	// endpoints.
 	apiRestV2 := gimlet.NewApp()
-	apiRestV2.ResetMiddleware()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	route.AttachHandler(apiRestV2, as.queue, as.Settings.Ui.Url, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
 
@@ -74,7 +72,8 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	r := mux.NewRouter()
 
 	uis.AttachRoutes(r)
-	as.AttachRoutes(r)
+	agent := as.GetServiceApp()
+	cli := as.GetUserApp()
 
-	return gimlet.AssembleHandler(r, app, rest, apiRestV2)
+	return gimlet.AssembleHandler(r, app, agent, cli, rest, apiRestV2)
 }

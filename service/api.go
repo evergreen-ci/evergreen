@@ -1,10 +1,8 @@
 package service
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"strings"
 
@@ -20,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -94,30 +91,23 @@ func MustHaveProject(r *http.Request) (*model.ProjectRef, *model.Project) {
 	return pref, p
 }
 
-// GetListener creates a network listener on the given address.
-func GetListener(addr string) (net.Listener, error) {
-	return net.Listen("tcp", addr)
-}
-
-// GetTLSListener creates an encrypted listener with the given TLS config and address.
-func GetTLSListener(addr string, conf *tls.Config) (net.Listener, error) {
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return tls.NewListener(l, conf), nil
-}
-
-// Serve serves the handler on the given listener.
-func Serve(l net.Listener, handler http.Handler) error {
-	return (&http.Server{Handler: handler}).Serve(l)
-}
-
 // checkTask get the task from the request header and ensures that there is a task. It checks the secret
 // in the header with the secret in the db to ensure that they are the same.
-func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.HandlerFunc {
+func (as *APIServer) checkTask(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], checkSecret, r)
+		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], false, r)
+		if err != nil {
+			as.LoggedError(w, r, code, errors.Wrap(err, "invalid task"))
+			return
+		}
+		r = setAPITaskContext(r, t)
+		next(w, r)
+	}
+}
+
+func (as *APIServer) checkTaskStrict(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		t, code, err := model.ValidateTask(gimlet.GetVars(r)["taskId"], true, r)
 		if err != nil {
 			as.LoggedError(w, r, code, errors.Wrap(err, "invalid task"))
 			return
@@ -537,74 +527,97 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 	return as.Settings
 }
 
-// NewRouter returns the root router for all APIServer endpoints.
-func (as *APIServer) AttachRoutes(root *mux.Router) {
-	root.HandleFunc("/api/2/", home)
+func (as *APIServer) GetUserApp() *gimlet.APIApp {
+	checkProject := gimlet.WrapperMiddleware(as.checkProject)
 
-	// Project lookup and validation routes
-	root.HandleFunc("/api/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
-	root.HandleFunc("/api/validate", as.validateProjectConfig).Methods("POST")
-	root.HandleFunc("/api/projects", requireUser(as.listProjects, nil)).Methods("GET")
-	root.HandleFunc("/api/tasks/{projectId}", requireUser(as.checkProject(as.listTasks), nil)).Methods("GET")
-	root.HandleFunc("/api/variants/{projectId}", requireUser(as.checkProject(as.listVariants), nil)).Methods("GET")
+	app := gimlet.NewApp()
+	app.NoVersions = true
+	app.SimpleVersions = true
+	app.AddMiddleware(gimlet.NewRequireAuthHandler())
 
-	// Client auto-update routes
-	root.HandleFunc("/api/update", as.getUpdate).Methods("GET")
-
-	// User session routes
-	root.HandleFunc("/api/token", as.getUserSession).Methods("POST")
+	app.PrefixRoute("/api").Route("/tasks/{projectId}").Wrap(checkProject).Handler(as.listTasks).Get()
+	app.PrefixRoute("/api").Route("/variants/{projectId}").Wrap(checkProject).Handler(as.listVariants).Get()
+	app.PrefixRoute("/api").Route("/projects").Handler(as.listProjects).Get()
 
 	// Patches
-	root.HandleFunc("/api/patches/", requireUser(as.submitPatch, nil)).Methods("PUT")
-	root.HandleFunc("/api/patches/mine", requireUser(as.listPatches, nil)).Methods("GET")
-	root.HandleFunc("/api/patches/{patchId:\\w+}", requireUser(as.summarizePatch, nil)).Methods("GET")
-	root.HandleFunc("/api/patches/{patchId:\\w+}", requireUser(as.existingPatchRequest, nil)).Methods("POST")
-	root.HandleFunc("/api/patches/{patchId:\\w+}/{projectId}/modules", requireUser(as.checkProject(as.listPatchModules), nil)).Methods("GET")
-	root.HandleFunc("/api/patches/{patchId:\\w+}/modules", requireUser(as.deletePatchModule, nil)).Methods("DELETE")
-	root.HandleFunc("/api/patches/{patchId:\\w+}/modules", requireUser(as.updatePatchModule, nil)).Methods("POST")
+	app.PrefixRoute("/api/patches").Route("/").Handler(as.submitPatch).Put()
+	app.PrefixRoute("/api/patches").Route("/mine").Handler(as.listPatches).Get()
+	app.PrefixRoute("/api/patches").Route("/{patchId:\\w+}").Get().Handler(as.summarizePatch)
+	app.PrefixRoute("/api/patches").Route("/{patchId:\\w+}").Post().Handler(as.existingPatchRequest)
+	app.PrefixRoute("/api/patches").Route("/{patchId:\\w+}/{projectId}/modules").Wrap(checkProject).Handler(as.listPatchModules).Get()
+	app.PrefixRoute("/api/patches").Route("/{patchId:\\w+}/modules").Handler(as.deletePatchModule).Delete()
+	app.PrefixRoute("/api/patches").Route("/{patchId:\\w+}/modules").Handler(as.updatePatchModule).Post()
 
 	// SpawnHosts
-	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.hostInfo, nil)).Methods("GET")
-	root.HandleFunc("/api/spawn/{instance_id:[\\w_\\-\\@]+}/", requireUser(as.modifyHost, nil)).Methods("POST")
-	root.HandleFunc("/api/spawns/", requireUser(as.requestHost, nil)).Methods("PUT")
-	root.HandleFunc("/api/spawns/{user}/", requireUser(as.hostsInfoForUser, nil)).Methods("GET")
-	root.HandleFunc("/api/spawns/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
+	app.PrefixRoute("/api/spawn").Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.hostInfo).Get()
+	app.PrefixRoute("/api/spawn").Route("/{instance_id:[\\w_\\-\\@]+}/").Handler(as.modifyHost).Post()
+	app.PrefixRoute("/api/spawns").Route("/").Handler(as.requestHost).Put()
+	app.PrefixRoute("/api/spawns").Route("/{user}/").Handler(as.hostsInfoForUser).Get()
+	app.PrefixRoute("/api/spawns").Route("/distros/list/").Handler(as.listDistros).Get()
+
+	return app
+}
+
+// NewRouter returns the root router for all APIServer endpoints.
+func (as *APIServer) GetServiceApp() *gimlet.APIApp {
+	checkTaskSecret := gimlet.WrapperMiddleware(as.checkTaskStrict)
+	checkTask := gimlet.WrapperMiddleware(as.checkTask)
+	checkHost := gimlet.WrapperMiddleware(as.checkHost)
+
+	app := gimlet.NewApp()
+	app.NoVersions = true
+	app.SimpleVersions = true
+
+	// Project lookup and validation routes
+	app.PrefixRoute("/api").Route("/ref/{identifier}").Handler(as.fetchProjectRef).Get()
+	app.PrefixRoute("/api").Route("/validate").Handler(as.validateProjectConfig).Post()
+
+	// Client auto-update routes
+	app.PrefixRoute("/api").Route("/update").Handler(as.getUpdate).Get()
+	app.PrefixRoute("/api").Route("/token").Handler(as.getUserSession).Post()
+	app.PrefixRoute("/api").Version(2).Handler(home).Get()
+
+	// User session routes
 
 	// Internal status reporting
-	root.HandleFunc("/api/runtimes/", as.listRuntimes).Methods("GET")
-	root.HandleFunc("/api/runtimes/timeout/{seconds:\\d*}", as.lateRuntimes).Methods("GET")
-	root.HandleFunc("/api/status/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
-	root.HandleFunc("/api/status/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
-	root.HandleFunc("/api/status/stuck_hosts", as.getStuckHosts).Methods("GET")
-	root.HandleFunc("/api/task_queue", as.getTaskQueueSizes).Methods("GET")
-	root.HandleFunc("/api/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
+	app.PrefixRoute("/api").Route("/runtimes/").Handler(as.listRuntimes).Get()
+	app.PrefixRoute("/api").Route("/runtimes/timeout/{seconds:\\d*}").Handler(as.lateRuntimes).Get()
+	app.PrefixRoute("/api").Route("/status/consistent_task_assignment").Handler(as.consistentTaskAssignment).Get()
+	app.PrefixRoute("/api").Route("/status/stuck_hosts").Handler(as.getStuckHosts).Get()
+	app.PrefixRoute("/api").Route("/status/info").Handler(as.serviceStatusSimple).Get()
+	app.PrefixRoute("/api").Route("/task_queue").Handler(as.getTaskQueueSizes).Get()
+	app.PrefixRoute("/api").Route("/task_queue/limit").Handler(as.checkTaskQueueSize).Get()
 
 	// Agent routes
-	root.HandleFunc("/api/2/agent/next_task", as.checkHost(as.NextTask)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/log", as.checkTask(true, as.checkHost(as.AppendTaskLog))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/heartbeat", as.checkTask(true, as.checkHost(as.Heartbeat))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/results", as.checkTask(true, as.checkHost(as.AttachResults))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/test_logs", as.checkTask(true, as.checkHost(as.AttachTestLog))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/files", as.checkTask(false, as.checkHost(as.AttachFiles))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/system_info", as.checkTask(true, as.checkHost(as.TaskSystemInfo))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/process_info", as.checkTask(true, as.checkHost(as.TaskProcessInfo))).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/distro", as.checkTask(false, as.GetDistro)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/", as.checkTask(true, as.FetchTask)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/version", as.checkTask(false, as.GetVersion)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/project_ref", as.checkTask(false, as.GetProjectRef)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/fetch_vars", as.checkTask(true, as.FetchProjectVars)).Methods("GET")
+	app.PrefixRoute("/api").Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
+
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/start").Wrap(checkTaskSecret, checkHost).Handler(as.StartTask).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/log").Wrap(checkTaskSecret, checkHost).Handler(as.AppendTaskLog).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/").Wrap(checkTaskSecret).Handler(as.FetchTask).Get()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/fetch_vars").Wrap(checkTaskSecret).Handler(as.FetchProjectVars).Get()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/heartbeat").Wrap(checkTaskSecret, checkHost).Handler(as.Heartbeat).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/results").Wrap(checkTaskSecret, checkHost).Handler(as.AttachResults).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/system_info").Wrap(checkTaskSecret, checkHost).Handler(as.TaskSystemInfo).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/process_info").Wrap(checkTaskSecret, checkHost).Handler(as.TaskProcessInfo).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/distro").Wrap(checkTask).Handler(as.GetDistro).Get()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/version").Wrap(checkTask).Handler(as.GetVersion).Get()
+	app.PrefixRoute("/api").Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
 
 	// plugins
-	root.HandleFunc("/api/2/task/{taskId}/git/patchfile/{patchfile_id}", as.checkTask(false, as.gitServePatchFile)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/git/patch", as.checkTask(false, as.gitServePatch)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/keyval/inc", as.checkTask(false, as.keyValPluginInc)).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/manifest/load", as.checkTask(false, as.manifestLoadHandler)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/s3Copy/s3Copy", as.checkTask(false, as.s3copyPlugin)).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/json/tags/{task_name}/{name}", as.checkTask(false, as.getTaskJSONTagsForTask)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/json/history/{task_name}/{name}", as.checkTask(false, as.getTaskJSONTaskHistory)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/json/data/{name}", as.checkTask(false, as.insertTaskJSON)).Methods("POST")
-	root.HandleFunc("/api/2/task/{taskId}/json/data/{task_name}/{name}", as.checkTask(false, as.getTaskJSONByName)).Methods("GET")
-	root.HandleFunc("/api/2/task/{taskId}/json/data/{task_name}/{name}/{variant}", as.checkTask(false, as.getTaskJSONForVariant)).Methods("GET")
+
+	app.PrefixRoute("/api").Version(2).Route("/git/patchfile/{patchfile_id}").Wrap(checkTask).Handler(as.gitServePatchFile).Get()
+	app.PrefixRoute("/api").Version(2).Route("/git/patch").Wrap(checkTask).Handler(as.gitServePatch).Get()
+	app.PrefixRoute("/api").Version(2).Route("/keyval/inc").Wrap(checkTask).Handler(as.keyValPluginInc).Post()
+	app.PrefixRoute("/api").Version(2).Route("/manifest/load").Wrap(checkTask).Handler(as.manifestLoadHandler).Get()
+	app.PrefixRoute("/api").Version(2).Route("/s3Copy/s3Copy").Wrap(checkTask).Handler(as.s3copyPlugin).Post()
+	app.PrefixRoute("/api").Version(2).Route("/json/tags/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONTagsForTask).Get()
+	app.PrefixRoute("/api").Version(2).Route("/json/history/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONTaskHistory).Get()
+	app.PrefixRoute("/api").Version(2).Route("/json/data/{name}").Wrap(checkTask).Handler(as.insertTaskJSON).Post()
+	app.PrefixRoute("/api").Version(2).Route("/json/data/{task_name}/{name}").Wrap(checkTask).Handler(as.getTaskJSONByName).Get()
+	app.PrefixRoute("/api").Version(2).Route("/json/data/{task_name}/{name}/{variant}").Wrap(checkTask).Handler(as.getTaskJSONForVariant).Get()
+
+	return app
 }

@@ -20,6 +20,7 @@ func TestAssembleHandler(t *testing.T) {
 
 	app = NewApp()
 	app.SetPrefix("foo")
+	app.AddMiddleware(MakeRecoveryLogger())
 	h, err = AssembleHandler(router, app)
 	assert.NoError(err)
 	assert.NotNil(h)
@@ -32,6 +33,7 @@ func TestAssembleHandler(t *testing.T) {
 	assert.Nil(h)
 
 	app = NewApp()
+	app.AddMiddleware(MakeRecoveryLogger())
 	h, err = AssembleHandler(router, app)
 	assert.NoError(err)
 	assert.NotNil(h)

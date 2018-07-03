@@ -21,7 +21,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
-	"github.com/urfave/negroni"
 )
 
 // APIApp is a structure representing a single API service.
@@ -48,9 +47,6 @@ func NewApp() *APIApp {
 	a := &APIApp{
 		port: 3000,
 	}
-
-	a.AddMiddleware(negroni.NewRecovery())
-	a.AddMiddleware(NewAppLogger())
 
 	return a
 }
