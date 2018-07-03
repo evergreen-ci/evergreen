@@ -562,7 +562,7 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 }
 
 func (s *AdminSuite) TestJIRANotificationsConfig() {
-	c := JIRANotificationConfig{
+	c := JIRANotificationsConfig{
 		CustomFields: map[string]JIRAProjectFields{
 			"this": JIRAProjectFields{
 				"should": "disappear",
@@ -583,7 +583,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	}
 	s.NoError(c.Set())
 
-	c = JIRANotificationConfig{}
+	c = JIRANotificationsConfig{}
 	s.NoError(c.Get())
 	s.NoError(c.ValidateAndDefault())
 	s.Require().Len(c.CustomFields, 1)
@@ -591,7 +591,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	s.Equal("magical{{.Template.Expansion}}", c.CustomFields["EVG"]["customfield_12345"])
 	s.NoError(c.ValidateAndDefault())
 
-	c = JIRANotificationConfig{}
+	c = JIRANotificationsConfig{}
 	s.NoError(c.Set())
 	s.NoError(c.ValidateAndDefault())
 	c.CustomFields = map[string]JIRAProjectFields{

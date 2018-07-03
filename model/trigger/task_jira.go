@@ -33,10 +33,6 @@ const (
 	failedTestNamesTmpl = "%%FailedTestNames%%"
 )
 
-// supportedJiraProjects are all of the projects, by name that we
-// expect to be compatible with the custom fields above.
-var supportedJiraProjects = []string{"BFG", "BF", "EVG", "MAKE", "BUILD"}
-
 // descriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var descriptionTemplate = template.Must(template.New("Desc").Parse(descriptionTemplateString))
 
