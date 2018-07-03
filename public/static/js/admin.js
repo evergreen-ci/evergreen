@@ -271,7 +271,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
     delete $scope.Settings.jira_notifications.custom_fields[key];
   }
   $scope.addJIRAProject = function() {
-    var value = $scope.jiraMapping.newProject;
+    var value = $scope.jiraMapping.newProject.toUpperCase();
     if (!value) {
       return;
     }
