@@ -1054,16 +1054,13 @@ Admin Settings
                       <label>[[fieldName]]</label>
                       <input type="text" ng-model="Settings.jira_notifications.custom_fields[project][fieldName]">
                     </md-input-container>
-                    <md-button ng-click="addJIRAFieldFromProject(project, fieldName)">
+                    <md-button ng-click="deleteJIRAFieldFromProject(project, fieldName)">
                       <i class="fa fa-trash"></i>
                     </md-button>
                   </span>
                   <div>
-                    <div>
-                      <span>Add new field</span>
-                    </div>
                     <md-input-container class="control" style="width:45%;">
-                      <label>Field Name</label>
+                      <label>Add new field</label>
                       <input type="text" default="ABC" ng-model="jiraMapping.newField[project]" />
                     </md-input-container>
                     <md-button ng-click="addJIRAFieldToProject(project)">
@@ -1073,11 +1070,8 @@ Admin Settings
                   <hr />
                 </div>
                 <div>
-                  <div>
-                    <span>Add new project</span>
-                  </div>
                   <md-input-container class="control" style="width: 200px;">
-                    <label>JIRA Project</label>
+                    <label>Add new JIRA Project</label>
                     <input type="text" default="ABC" ng-model="jiraMapping.newProject" />
                   </md-input-container>
                   <md-button ng-click="addJIRAProject()">
