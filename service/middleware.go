@@ -232,6 +232,10 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 	pc.AllProjects = make([]UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
+		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
+			pc.IsAdmin = true
+		}
+
 		if !p.Enabled {
 			continue
 		}
@@ -243,10 +247,6 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 				Owner:       p.Owner,
 			}
 			pc.AllProjects = append(pc.AllProjects, uiProj)
-		}
-
-		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
-			pc.IsAdmin = true
 		}
 	}
 	return nil
