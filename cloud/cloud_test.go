@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetManager(t *testing.T) {
@@ -53,7 +54,6 @@ func TestGetManager(t *testing.T) {
 			So(cloudMgr, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
-
 	})
 
 }
@@ -61,21 +61,15 @@ func TestGetManager(t *testing.T) {
 func TestGetContainerManager(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	Convey("GetContainerManager() should return non-nil for all valid container provider names", t, func() {
 
-		Convey("Docker should be returned for docker provider name", func() {
-			cloudMgr, err := GetContainerManager(ctx, "docker", testutil.TestConfig())
-			So(cloudMgr, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &dockerManager{})
-		})
+	assert := assert.New(t)
 
-		Convey("Invalid provider names should return nil with err", func() {
-			cloudMgr, err := GetContainerManager(ctx, "bogus", testutil.TestConfig())
-			So(cloudMgr, ShouldBeNil)
-			So(err, ShouldNotBeNil)
-		})
+	cloudMgr, err := GetContainerManager(ctx, "docker", testutil.TestConfig())
+	assert.NotNil(cloudMgr)
+	assert.NoError(err)
+	assert.IsType(cloudMgr, &dockerManager{})
 
-	})
-
+	cloudMgr, err = GetContainerManager(ctx, "bogus", testutil.TestConfig())
+	assert.Nil(cloudMgr)
+	assert.EqualError(err, "No known container provider for 'bogus'")
 }
