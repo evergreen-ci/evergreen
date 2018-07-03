@@ -49,6 +49,7 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	clients := negroni.NewStatic(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))
 	clients.Prefix = "/clients"
 	app.AddMiddleware(clients)
+	app.StrictSlash = true
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
@@ -71,12 +72,11 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// legacy routes directly.
 	r := mux.NewRouter()
 
-	uis.AttachRoutes(r)
-
+	uiService := uis.GetServiceApp()
 	apiService := as.GetServiceApp()
 
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
 
-	return gimlet.AssembleHandler(r, app, rest, apiRestV2, apiService)
+	return gimlet.AssembleHandler(r, app, uiService, rest, apiRestV2, apiService)
 }
