@@ -39,8 +39,8 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
       $scope.tempContainerPools = resp.data.container_pools.pools ? jsyaml.safeDump(resp.data.container_pools.pools) : ""
 
       $scope.Settings = resp.data;
-      $scope.Settings.jira_notifications = $scope.Settings.jira_notifications || {};
-      console.log(resp.data);
+      $scope.Settings.jira_notifications = $scope.Settings.jira_notifications;
+      $scope.Settings.jira_notifications.custom_fields = $scope.Settings.jira_notifications.custom_fields || {};
     }
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error loading settings: " + resp.data.error, "errorHeader");
@@ -268,30 +268,30 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
     if (!key) {
       return;
     }
-    delete $scope.Settings.jira_notifications[key];
+    delete $scope.Settings.jira_notifications.custom_fields[key];
   }
   $scope.addJIRAProject = function() {
     var value = $scope.jiraMapping.newProject;
     if (!value) {
       return;
     }
-    if (!$scope.Settings.jira_notifications[value]) {
-      $scope.Settings.jira_notifications[value] = {};
+    if (!$scope.Settings.jira_notifications.custom_fields[value]) {
+      $scope.Settings.jira_notifications.custom_fields[value] = {};
     }
     delete $scope.jiraMapping.newProject;
   }
   $scope.addJIRAFieldToProject = function(project) {
     var field = $scope.jiraMapping.newField[project];
-    if (!field || $scope.Settings.jira_notifications[project][field]) {
+    if (!field || $scope.Settings.jira_notifications.custom_fields[project][field]) {
         return;
     }
-    $scope.Settings.jira_notifications[project][field] = "{FIXME}";
+    $scope.Settings.jira_notifications.custom_fields[project][field] = "{FIXME}";
   }
   $scope.deleteJIRAFieldFromProject = function(project, field) {
     if (!field) {
         return;
     }
-    delete $scope.Settings.jira_notifications[project][field];
+    delete $scope.Settings.jira_notifications.custom_fields[project][field];
   }
 
   $scope.jiraMapping = {};

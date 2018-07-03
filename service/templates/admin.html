@@ -261,7 +261,7 @@ Admin Settings
                   </md-button>
                 </md-card-title>
                 <md-card-content>
-                  <div ng-repeat="(project, fields) in Settings.jira_notifications">
+                  <div ng-repeat="(project, fields) in Settings.jira_notifications.custom_fields">
                     <div>
                       <span>JIRA Project: [[project]]</span>
                       <span>
@@ -273,7 +273,7 @@ Admin Settings
                     <span ng-repeat="(fieldName, tmpl) in fields">
                       <md-input-container class="control" style="width: 200px;">
                         <label>[[fieldName]]</label>
-                        <input type="text" ng-model="Settings.jira_notifications[project][fieldName]">
+                        <input type="text" ng-model="Settings.jira_notifications.custom_fields[project][fieldName]">
                       </md-input-container>
                       <md-button ng-click="addJIRAFieldFromProject(project, fieldName)">
                         <i class="fa fa-trash"></i>
