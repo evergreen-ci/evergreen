@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -29,12 +28,9 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 {{end}}
 `
 const (
-	jiraFailingTasksField     = "customfield_12950"
-	jiraFailingTestsField     = "customfield_15756"
-	jiraFailingVariantField   = "customfield_14277"
-	jiraEvergreenProjectField = "customfield_14278"
-	jiraFailingRevisionField  = "customfield_14851"
-	jiraMaxTitleLength        = 254
+	jiraMaxTitleLength = 254
+
+	failedTestNamesTmpl = "%%FailedTestNames%%"
 )
 
 // supportedJiraProjects are all of the projects, by name that we
@@ -52,38 +48,25 @@ type jiraTestFailure struct {
 }
 
 type jiraBuilder struct {
-	project    string
-	issueType  string
-	jiraConfig *evergreen.JiraConfig
+	project   string
+	issueType string
+	mappings  *evergreen.JIRANotificationsConfig
 
 	data jiraTemplateData
 }
 
 type jiraTemplateData struct {
-	UIRoot      string
-	Task        *task.Task
-	Build       *build.Build
-	Host        *host.Host
-	Project     *model.ProjectRef
-	Version     *version.Version
-	FailedTests []task.TestResult
-	Tests       []jiraTestFailure
+	UIRoot          string
+	Task            *task.Task
+	Build           *build.Build
+	Host            *host.Host
+	Project         *model.ProjectRef
+	Version         *version.Version
+	FailedTests     []task.TestResult
+	FailedTestNames []string
+	Tests           []jiraTestFailure
 }
 
-// isXgenProjBF is a gross function to figure out if the jira instance
-// and project are correctly configured for the specified kind of
-// requests/issue metadata.
-func isXgenProjBF(host, project string) bool {
-	if !strings.Contains(host, "mongodb") {
-		return false
-	}
-
-	return util.StringSliceContains(supportedJiraProjects, project)
-}
-
-type AlertContext struct{}
-
-// Deliver posts the alert defined by the AlertContext to JIRA.
 func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 	description, err := j.getDescription()
 	if err != nil {
@@ -94,19 +77,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 		Type:        j.issueType,
 		Summary:     j.getSummary(),
 		Description: description,
-	}
-
-	if isXgenProjBF(j.jiraConfig.Host, j.project) {
-		failedTests := []string{}
-		for _, t := range j.data.FailedTests {
-			failedTests = append(failedTests, t.TestFile)
-		}
-		issue.Fields = map[string]interface{}{}
-		issue.Fields[jiraFailingTasksField] = []string{j.data.Task.DisplayName}
-		issue.Fields[jiraFailingTestsField] = failedTests
-		issue.Fields[jiraFailingVariantField] = []string{j.data.Task.BuildVariant}
-		issue.Fields[jiraEvergreenProjectField] = []string{j.data.Project.Identifier}
-		issue.Fields[jiraFailingRevisionField] = []string{j.data.Task.Revision}
+		Fields:      j.makeCustomFields(),
 	}
 
 	if err != nil {
@@ -184,6 +155,55 @@ func (j *jiraBuilder) getSummary() string {
 		return subj.String()[:jiraMaxTitleLength]
 	}
 	return subj.String()
+}
+
+func (j *jiraBuilder) makeCustomFields() map[string]interface{} {
+	fields := map[string]interface{}{}
+	customFields, ok := j.mappings.CustomFields[j.project]
+	if !ok || len(customFields) == 0 {
+		return nil
+	}
+
+	for i := range j.data.Task.LocalTestResults {
+		if j.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
+			j.data.FailedTests = append(j.data.FailedTests, j.data.Task.LocalTestResults[i])
+			j.data.FailedTestNames = append(j.data.FailedTestNames, j.data.Task.LocalTestResults[i].TestFile)
+		}
+	}
+
+	for fieldName, fieldTmpl := range customFields {
+		if fieldTmpl == failedTestNamesTmpl {
+			fields[fieldName] = j.data.FailedTestNames
+			continue
+		}
+
+		tmpl, err := template.New(fmt.Sprintf("%s-%s", j.project, fieldName)).Parse(fieldTmpl)
+		if err != nil {
+			// Admins should be notified of misconfiguration, but we shouldn't block
+			// ticket generation
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":      "invalid custom field template",
+				"jira_project": j.project,
+				"jira_field":   fieldName,
+				"template":     fieldTmpl,
+			}))
+			continue
+		}
+
+		buf := &bytes.Buffer{}
+		if err = tmpl.Execute(buf, &j.data); err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":      "template execution failed",
+				"jira_project": j.project,
+				"jira_field":   fieldName,
+				"template":     fieldTmpl,
+			}))
+			continue
+		}
+
+		fields[fieldName] = []string{buf.String()}
+	}
+	return fields
 }
 
 // historyURL provides a full URL to the test's task history page.

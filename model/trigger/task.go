@@ -3,6 +3,7 @@ package trigger
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -606,8 +607,8 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 	}
 
 	builder := jiraBuilder{
-		project:    project,
-		jiraConfig: &evergreen.JiraConfig{},
+		project:  strings.ToUpper(project),
+		mappings: &evergreen.JIRANotificationsConfig{},
 
 		data: jiraTemplateData{
 			UIRoot:  j.uiConfig.Url,
@@ -619,14 +620,8 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 		},
 	}
 
-	if err = builder.jiraConfig.Get(); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch jira settings while building jira task payload")
-	}
-
-	for i := range builder.data.Task.LocalTestResults {
-		if builder.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
-			builder.data.FailedTests = append(builder.data.FailedTests, builder.data.Task.LocalTestResults[i])
-		}
+	if err = builder.mappings.Get(); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch jira custom field mappings while building jira task payload")
 	}
 
 	return builder.build()

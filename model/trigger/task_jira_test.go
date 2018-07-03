@@ -7,12 +7,15 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -323,4 +326,82 @@ func TestJIRADescription(t *testing.T) {
 			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1/0")
 		})
 	})
+}
+
+func TestCustomFields(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	const (
+		jiraFailingTasksField     = "customfield_12950"
+		jiraFailingTestsField     = "customfield_15756"
+		jiraFailingVariantField   = "customfield_14277"
+		jiraEvergreenProjectField = "customfield_14278"
+		jiraFailingRevisionField  = "customfield_14851"
+	)
+	assert := assert.New(t)
+
+	config := evergreen.JIRANotificationsConfig{CustomFields: map[string]evergreen.JIRAProjectFields{}}
+	config.CustomFields["BFG"] = evergreen.JIRAProjectFields{
+		jiraFailingTasksField:     "{{.Task.DisplayName}}",
+		jiraFailingTestsField:     "%%FailedTestNames%%",
+		jiraFailingVariantField:   "{{.Task.BuildVariant}}",
+		jiraEvergreenProjectField: "{{.Project.Identifier}}",
+		jiraFailingRevisionField:  "{{.Task.Revision}}",
+	}
+	config.CustomFields["EFG"] = nil
+	config.CustomFields["HIJ"] = evergreen.JIRAProjectFields{}
+
+	j := jiraBuilder{
+		project:  "ABC",
+		mappings: &config,
+		data: jiraTemplateData{
+			UIRoot: "http://evergreen.ui",
+			Project: &model.ProjectRef{
+				DisplayName: projectName,
+				Identifier:  projectId,
+				Owner:       projectOwner,
+			},
+			Task: &task.Task{
+				Id:           taskId,
+				BuildVariant: "build12",
+				DisplayName:  taskName,
+				Details:      apimodels.TaskEndDetail{},
+				Project:      projectId,
+				Revision:     versionRevision,
+				LocalTestResults: []task.TestResult{
+					{TestFile: testName1, Status: evergreen.TestFailedStatus, URL: "direct_link"},
+					{TestFile: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
+					{TestFile: testName3, Status: evergreen.TestSucceededStatus},
+				},
+			},
+			Host:  &host.Host{Id: hostId, Host: hostDNS},
+			Build: &build.Build{DisplayName: buildName, Id: buildId},
+			Version: &version.Version{
+				Revision: versionRevision,
+				Message:  versionMessage,
+			},
+		},
+	}
+
+	assert.Empty(j.makeCustomFields())
+
+	j.project = "EFG"
+	assert.Empty(j.makeCustomFields())
+
+	j.project = "HIJ"
+	assert.Empty(j.makeCustomFields())
+
+	j.project = "KLM"
+	assert.Empty(j.makeCustomFields())
+
+	j.project = "BFG"
+	j.data.FailedTestNames = []string{}
+	fields := j.makeCustomFields()
+	assert.Len(fields, 5)
+	assert.Equal([]string{projectId}, fields[jiraEvergreenProjectField])
+	assert.Equal([]string{taskName}, fields[jiraFailingTasksField])
+	assert.Equal([]string{"build12"}, fields[jiraFailingVariantField])
+	assert.Equal([]string{versionRevision}, fields[jiraFailingRevisionField])
+	assert.Len(fields[jiraFailingTestsField], 2)
+	assert.Contains(fields[jiraFailingTestsField], testName1)
+	assert.Contains(fields[jiraFailingTestsField], testName2)
 }
