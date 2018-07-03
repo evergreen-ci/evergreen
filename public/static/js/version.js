@@ -13,24 +13,28 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       trigger: "outcome",
       resource_type: "VERSION",
       label: "this version finishes",
+      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "failure",
       resource_type: "VERSION",
       label: "this version fails",
+      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "success",
       resource_type: "VERSION",
       label: "this version succeeds",
+      regex_selectors: versionRegexSelectors()
     },
-        {
+    {
       trigger: "exceeds-duration",
       resource_type: "VERSION",
       label: "the runtime for this version exceeds some duration",
       extraFields: [
         {text: "Version duration (seconds)", key: "version-duration-secs", validator: validateDuration}
-      ]
+      ],
+      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "runtime-change",
@@ -38,22 +42,26 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       label: "the runtime for this version changes by some percentage",
       extraFields: [
         {text: "Percent change", key: "version-percent-change", validator: validatePercentage}
-      ]
+      ],
+      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "outcome",
       resource_type: "BUILD",
-      label: "a build-variant in this version finishes"
+      label: "a build-variant in this version finishes",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
-      label: "a build-variant in this version fails"
+      label: "a build-variant in this version fails",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "success",
       resource_type: "BUILD",
-      label: "a build-variant in this version succeeds"
+      label: "a build-variant in this version succeeds",
+      regex_selectors: buildRegexSelectors(),
     },
   ];
   hash = $location.hash();

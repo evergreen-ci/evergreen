@@ -14,6 +14,25 @@
                     <input type="text" ng-model="extraData[field.key]"/>
                   </div>
                 </p>
+                <div ng-show="trigger.regex_selectors.length > 0">
+                  <p>and it matches</p>
+                  <p ng-show="regexSelectors === {}">anything</p>
+                  <p ng-show="regexSelectors !== {}">
+                    <p ng-repeat="(type, field) in regexSelectors">[[field.type_label]]: /[[field.data]]/
+                      <md-button ng-click="deleteRegexSelector(type)">
+                        <i class="fa fa-trash"></i>
+                      </md-button>
+                    </p>
+                  </p>
+                  <select ng-model="tempRegexSelector.type">
+                    <option ng-disabled="selectorDisabled(field)" ng-value="field.type" ng-repeat="field in trigger.regex_selectors">[[field.type_label]]</option>
+                  </select>
+                  <label>matches</label>
+                  <input type="text" ng-model="tempRegexSelector.data"/>
+                  <md-button ng-click="addRegexSelector()">
+                    <i class="fa fa-plus"></i>
+                  </md-button>
+                </div>
                 <p>
                 then notify by:
                 <select ng-model="method" ng-options="t as t.label for t in subscription_methods track by t.value"></select>
@@ -30,12 +49,10 @@
                     <div ng-show="method.value === 'slack'">
                         <label for="slack">Slack Username or Channel</label>
                         <input id="slack" ng-model="targets['slack']" placeholder="@user"></input>
-                        <!-- add me button -->
                     </div>
                     <div ng-show="method.value === 'email'">
                         <label for="email">Email Address</label>
                         <input id="email" ng-model="targets['email']" placeholder="someone@example.com"></input>
-                        <!-- add me button -->
                     </div>
                     <div ng-show="method.value === 'evergreen-webhook'">
                         <md-list>

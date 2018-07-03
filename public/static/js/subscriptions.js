@@ -94,6 +94,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       });
     };
     $scope.extraData = {};
+    $scope.regexSelectors = {};
 
     $scope.closeDialog = function(save) {
         if(save === true) {
@@ -119,6 +120,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             d.trigger = $scope.trigger.trigger;
             d.trigger_label = $scope.trigger.label;
             d.trigger_data = $scope.extraData;
+            d.regex_selectors = $scope.regexSelectors;
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -179,7 +181,6 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         return false;
     };
 
-
     $scope.bindTrigger = function() {
       _.each($scope.c.triggers, function(trigger){
         if (trigger.trigger === $scope.trigger.trigger) {
@@ -188,8 +189,10 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
           return;
         }
       });
+      $scope.regexSelectors = {};
     };
 
+    $scope.regexSelectors = {};
     $scope.method = {};
     $scope.targets = {};
     $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {
@@ -211,6 +214,25 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         }, error: function(resp) {
             console.log("failed to fetch user settings: ", resp);
         }});
+    }
+
+    $scope.addRegexSelector = function() {
+      if (!$scope.tempRegexSelector.type || !$scope.tempRegexSelector.data) {
+          return;
+      }
+      var typeLabel = _.find($scope.trigger.regex_selectors, function(selector) {
+        return selector.type === $scope.tempRegexSelector.type;
+      });
+      $scope.regexSelectors[$scope.tempRegexSelector.type] = {type_label: typeLabel.type_label, data: $scope.tempRegexSelector.data};
+      $scope.tempRegexSelector = {};
+    }
+
+    $scope.deleteRegexSelector = function(type) {
+      delete $scope.regexSelectors[type];
+    }
+
+    $scope.selectorDisabled = function(field) {
+      return field.type in $scope.regexSelectors;
     }
 }
 
@@ -281,4 +303,51 @@ function validatePercentage(percent) {
     return percent + " must be positive";
   }
   return "";
+}
+
+function versionRegexSelectors() {
+  return [
+    {
+      type: "project",
+      type_label: "Evergreen project",
+    },
+  ];
+}
+
+function buildRegexSelectors() {
+  return [
+    {
+      type: "display-name",
+      type_label: "Build Variant Name",
+    },
+    {
+      type: "in-version",
+      type_label: "In Version with ID",
+    },
+    {
+      type: "project",
+      type_label: "Evergreen project",
+    },
+  ];
+}
+
+function taskRegexSelectors() {
+  return [
+    {
+      type: "display-name",
+      type_label: "Task Name",
+    },
+    {
+      type: "in-version",
+      type_label: "In Version with ID",
+    },
+    {
+      type: "in-build",
+      type_label: "In Build with ID",
+    },
+    {
+      type: "project",
+      type_label: "Evergreen project",
+    },
+  ];
 }
