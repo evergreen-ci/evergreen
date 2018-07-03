@@ -28,6 +28,13 @@ type hostStatsJob struct {
 	logger   grip.Journaler
 }
 
+type taskSpawnedHost struct {
+	ID        string `json:"id"`
+	SpawnedBy string `json:"spawned_by"`
+	Task      string `json:"task_scope"`
+	Build     string `json:"build_scope"`
+}
+
 func makeHostStats() *hostStatsJob {
 	j := &hostStatsJob{
 		Base: job.Base{
@@ -51,18 +58,36 @@ func NewHostStatsJob(ts string) amboy.Job {
 func (j *hostStatsJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
-	counts, err := host.CountInactiveHostsByProvider()
-	if err != nil {
-		j.AddError(errors.Wrap(err, "error aggregating inactive hosts"))
-		return
-	}
-
 	if j.logger == nil {
 		j.logger = logging.MakeGrip(grip.GetSender())
 	}
 
+	inactiveHosts, err := host.CountInactiveHostsByProvider()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error aggregating inactive hosts"))
+		return
+	}
 	j.logger.Info(message.Fields{
 		"message": "count of decommissioned/quarantined hosts",
-		"counts":  counts,
+		"counts":  inactiveHosts,
+	})
+
+	taskSpawned, err := host.FindAllHostsSpawnedByTasks()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error finding hosts spawned by tasks"))
+		return
+	}
+	hosts := []taskSpawnedHost{}
+	for _, h := range taskSpawned {
+		hosts = append(hosts, taskSpawnedHost{
+			ID:        h.Id,
+			SpawnedBy: h.User,
+			Task:      h.SpawnOptions.TaskID,
+			Build:     h.SpawnOptions.BuildID,
+		})
+	}
+	j.logger.Info(message.Fields{
+		"message": "hosts spawned by tasks",
+		"hosts":   hosts,
 	})
 }
