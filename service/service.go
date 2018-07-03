@@ -75,5 +75,8 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 
 	apiService := as.GetServiceApp()
 
-	return gimlet.AssembleHandler(r, app, apiService, rest, apiRestV2)
+	// the order that we merge handlers matters here, and we must
+	// define more specific routes before less specific routes.
+
+	return gimlet.AssembleHandler(r, app, rest, apiRestV2, apiService)
 }
