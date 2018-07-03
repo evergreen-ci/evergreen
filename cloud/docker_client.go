@@ -137,15 +137,15 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 
 // GetContainer returns low-level information on the Docker container with the
 // specified ID running on the specified host machine.
-func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host, id string) (*types.ContainerJSON, error) {
+func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host, containerID string) (*types.ContainerJSON, error) {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	container, err := dockerClient.ContainerInspect(ctx, id)
+	container, err := dockerClient.ContainerInspect(ctx, containerID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Docker inspect API call failed for container '%s'", id)
+		return nil, errors.Wrapf(err, "Docker inspect API call failed for container '%s'", containerID)
 	}
 
 	return &container, nil
@@ -171,15 +171,15 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 }
 
 // RemoveContainer forcibly removes a running or stopped container by ID from its host machine.
-func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, id string) error {
+func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, containerID string) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
 
 	opts := types.ContainerRemoveOptions{Force: true}
-	if err = dockerClient.ContainerRemove(ctx, id, opts); err != nil {
-		err = errors.Wrapf(err, "Failed to remove container '%s'", id)
+	if err = dockerClient.ContainerRemove(ctx, containerID, opts); err != nil {
+		err = errors.Wrapf(err, "Failed to remove container '%s'", containerID)
 		grip.Error(err)
 		return err
 	}
@@ -188,15 +188,15 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, id
 }
 
 // StartContainer starts a stopped or new container by ID on the host machine.
-func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, id string) error {
+func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, containerID string) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
 
 	opts := types.ContainerStartOptions{}
-	if err := dockerClient.ContainerStart(ctx, id, opts); err != nil {
-		return errors.Wrapf(err, "Failed to start container %s", id)
+	if err := dockerClient.ContainerStart(ctx, containerID, opts); err != nil {
+		return errors.Wrapf(err, "Failed to start container %s", containerID)
 	}
 
 	return nil
