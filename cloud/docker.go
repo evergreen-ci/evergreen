@@ -22,11 +22,6 @@ type dockerManager struct {
 	client dockerClient
 }
 
-type portRange struct {
-	MinPort uint16 `mapstructure:"min_port" json:"min_port" bson:"min_port"`
-	MaxPort uint16 `mapstructure:"max_port" json:"max_port" bson:"max_port"`
-}
-
 // ProviderSettings specifies the settings used to configure a host instance.
 type dockerSettings struct {
 	// ImageID is the Docker image ID already loaded on the host machine.
@@ -48,7 +43,7 @@ func (settings *dockerSettings) Validate() error {
 		return errors.New("ImageName must not be blank")
 	}
 
-	if settings.PoolId == "" {
+	if settings.PoolID == "" {
 		return errors.New("PoolID must not be blank.")
 	}
 
@@ -89,27 +84,24 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	}
 
 	grip.Info(message.Fields{
-		"message":     "decoded Docker container settings",
-		"container":   h.Id,
-		"host_ip":     hostIP,
-		"image_id":    settings.ImageID,
-		"client_port": settings.ClientPort,
-		"min_port":    settings.PortRange.MinPort,
-		"max_port":    settings.PortRange.MaxPort,
+		"message":   "decoded Docker container settings",
+		"container": h.Id,
+		"host_ip":   hostIP,
+		"image_id":  settings.ImageID,
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, parent, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
 	}
 
 	// Start container
-	if err := m.client.StartContainer(ctx, h); err != nil {
+	if err := m.client.StartContainer(ctx, parent, h.Id); err != nil {
 		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", hostIP)
 		// Clean up
-		if err2 := m.client.RemoveContainer(ctx, h); err2 != nil {
+		if err2 := m.client.RemoveContainer(ctx, parent, h.Id); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
 		}
 		grip.Error(err)
@@ -123,7 +115,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	event.LogHostStarted(h.Id)
 
 	// Retrieve container details
-	newContainer, err := m.client.GetContainer(ctx, h)
+	newContainer, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", hostIP)
 		grip.Error(err)
@@ -151,7 +143,11 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	container, err := m.client.GetContainer(ctx, h)
+	parent, err := host.FindOne(host.ById(h.ParentID))
+	if err != nil {
+		return StatusUnknown, errors.Wrapf(err, "Error finding parent of host %s", h.Id)
+	}
+	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
@@ -176,7 +172,12 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 		return err
 	}
 
-	if err := m.client.RemoveContainer(ctx, h); err != nil {
+	parent, err := host.FindOne(host.ById(h.ParentID))
+	if err != nil {
+		return errors.Wrapf(err, "Error finding parent of host %s", h.Id)
+	}
+
+	if err := m.client.RemoveContainer(ctx, parent, h.Id); err != nil {
 		return errors.Wrap(err, "API call to remove container failed")
 	}
 
