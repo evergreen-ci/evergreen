@@ -27,9 +27,9 @@ func (s *createHostSuite) SetupTest() {
 
 func (s *createHostSuite) TestParamDefaults() {
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Equal(ProviderEC2, s.cmd.CloudProvider)
-	s.Equal(DefaultSetupTimeoutSecs, s.cmd.SetupTimeoutSecs)
-	s.Equal(DefaultTeardownTimeoutSecs, s.cmd.TeardownTimeoutSecs)
+	s.Equal(ProviderEC2, s.cmd.CreateHost.CloudProvider)
+	s.Equal(DefaultSetupTimeoutSecs, s.cmd.CreateHost.SetupTimeoutSecs)
+	s.Equal(DefaultTeardownTimeoutSecs, s.cmd.CreateHost.TeardownTimeoutSecs)
 }
 
 func (s *createHostSuite) TestParamValidation() {

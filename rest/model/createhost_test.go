@@ -3,17 +3,19 @@ package model
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateHostBuildFromService(t *testing.T) {
 	assert := assert.New(t)
-	c := &CreateHost{
-		DNSName:    "foo.com",
-		InstanceID: "sir-123",
+	h := host.Host{
+		Host:               "foo.com",
+		ExternalIdentifier: "sir-123",
 	}
-	createHost := &CreateHost{}
-	err := createHost.BuildFromService(c)
+	c := &CreateHost{}
+	err := c.BuildFromService(h)
 	assert.NoError(err)
-	assert.Equal(c, createHost)
+	assert.Equal(c.DNSName, h.Host)
+	assert.Equal(c.InstanceID, h.ExternalIdentifier)
 }
