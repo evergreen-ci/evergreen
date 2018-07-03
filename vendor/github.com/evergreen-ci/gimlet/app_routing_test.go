@@ -157,7 +157,7 @@ func (s *RoutingSuite) TestRouteValidation() {
 }
 
 func (s *RoutingSuite) TestStringNoMethods() {
-	r := s.app.AddRoute("/foo").Version(2)
+	r := s.app.Route().Route("/foo").Version(2)
 	str := r.String()
 	s.Contains(str, "v='2")
 	s.Contains(str, "/foo")
@@ -182,6 +182,12 @@ func (s *RoutingSuite) TestLegacyRouteResolution() {
 
 	out := r.resolveLegacyRoute(s.app, false)
 	s.Equal("/foo/bar", out)
+
+	r = s.app.Route().Route("/foo/bar")
+
+	out = r.resolveLegacyRoute(s.app, false)
+	s.Equal("/foo/bar", out)
+
 }
 
 func (s *RoutingSuite) TestResolveRoutes() {

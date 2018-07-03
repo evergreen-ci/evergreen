@@ -72,8 +72,8 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	r := mux.NewRouter()
 
 	uis.AttachRoutes(r)
-	agent := as.GetServiceApp()
-	cli := as.GetUserApp()
 
-	return gimlet.AssembleHandler(r, app, cli, agent, rest, apiRestV2)
+	apiService := as.GetServiceApp()
+
+	return gimlet.AssembleHandler(r, app, apiService, rest, apiRestV2)
 }

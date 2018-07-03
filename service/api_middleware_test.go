@@ -16,23 +16,10 @@ import (
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
-	"github.com/urfave/negroni"
 )
 
 func init() {
 	reporting.QuietMode()
-}
-
-func (as *APIServer) Handler() (http.Handler, error) {
-	router := mux.NewRouter()
-	as.AttachRoutes(router)
-
-	n := negroni.New()
-	n.Use(gimlet.MakeRecoveryLogger())
-	n.Use(gimlet.UserMiddleware(as.UserManager, GetUserMiddlewareConf()))
-
-	n.UseHandler(router)
-	return n, nil
 }
 
 func TestCheckHostWrapper(t *testing.T) {
@@ -65,7 +52,7 @@ func TestCheckHostWrapper(t *testing.T) {
 		)
 
 		root := mux.NewRouter()
-		root.HandleFunc("/{taskId}/", as.checkTask(true, as.checkHost(
+		root.HandleFunc("/{taskId}/", as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
@@ -185,7 +172,7 @@ func TestCheckHostWrapper(t *testing.T) {
 		)
 
 		root := mux.NewRouter()
-		root.HandleFunc("/{taskId}/{hostId}", as.checkTask(true, as.checkHost(
+		root.HandleFunc("/{taskId}/{hostId}", as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)

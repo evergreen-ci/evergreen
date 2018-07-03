@@ -56,6 +56,15 @@ func (a *APIApp) AddRoute(r string) *APIRoute {
 	return route
 }
 
+// Route returns a route object without a route name configured.
+func (a *APIApp) Route() *APIRoute {
+	route := &APIRoute{version: -1}
+
+	a.routes = append(a.routes, route)
+
+	return route
+}
+
 // PrefixRoute allows you to create a new route with a
 // prefix. Prefixes override the applications global prefix.
 func (a *APIApp) PrefixRoute(p string) *APIRoute {
