@@ -38,6 +38,7 @@ type dockerClientImpl struct {
 	apiVersion string
 	// httpDockerClient for making HTTP requests within the Docker dockerClient wrapper.
 	httpClient *http.Client
+	client     *docker.Client
 }
 
 // generateClient generates a Docker client that can talk to the specified host
@@ -48,10 +49,17 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 		return nil, errors.New("HostIP must not be blank")
 	}
 
+	// cache the *docker.Client in dockerClientImpl
+	if c.client != nil {
+		return c.client, nil
+	}
+
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
 	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, ClientPort)
-	client, err := docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
+
+	var err error
+	c.client, err = docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
 	if err != nil {
 		grip.Error(message.Fields{
 			"message":     "Docker initialize client API call failed",
@@ -62,7 +70,7 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 		return nil, errors.Wrapf(err, "Docker initialize client API call failed at endpoint '%s'", endpoint)
 	}
 
-	return client, nil
+	return c.client, nil
 }
 
 // Init sets the Docker API version to use for API calls to the Docker client.
