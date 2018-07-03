@@ -19,7 +19,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-//
+// Temporary port used for all connections to the Docker daemon. To be moved to
+// ContainerPoolsConfig section of Evergreen settings after EVG-3598
 const ClientPort = 3389
 
 // The dockerClient interface wraps the Docker dockerClient interaction.
@@ -39,12 +40,10 @@ type dockerClientImpl struct {
 	httpClient *http.Client
 }
 
-// TODO: REWRITE THIS
 // generateClient generates a Docker client that can talk to the specified host
 // machine. The Docker client must be exposed and available for requests at the
 // client port 3369 on the host machine.
 func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) {
-
 	if h.Host == "" {
 		return nil, errors.New("HostIP must not be blank")
 	}
@@ -78,7 +77,6 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	return nil
 }
 
-// TODO: EDIT THE BELOW COMMENTS
 // CreateContainer creates a new Docker container that runs an SSH daemon, and binds the
 // container's SSH port to another port on the host machine. The preloaded Docker image
 // must satisfy the following constraints:
@@ -89,7 +87,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, id string, s *dockerSettings) error {
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, s *dockerSettings) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
@@ -98,7 +96,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, id
 	// List all containers to find ports that are already taken.
 	containers, err := c.ListContainers(ctx, h)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to list containers for host '%s'", h.Id)
+		return errors.Wrapf(err, "Failed to list containers on host '%s'", h.Id)
 	}
 
 	// Create a host config to bind the SSH port to another open port.
@@ -121,15 +119,15 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, id
 
 	grip.Info(message.Fields{
 		"message":       "Creating docker container",
-		"name":          id,
+		"name":          name,
 		"image_id":      containerConf.Image,
 		"exposed_ports": containerConf.ExposedPorts,
 		"port_bindings": hostConf.PortBindings,
 	})
 
 	// Build container
-	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, id); err != nil {
-		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", id)
+	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, name); err != nil {
+		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", name)
 		grip.Error(err)
 		return err
 	}
@@ -137,7 +135,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, id
 	return nil
 }
 
-// GetContainer returns low-level information on the Docker container by ID on a host machine
+// GetContainer returns low-level information on the Docker container with the
+// specified ID running on the specified host machine.
 func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host, id string) (*types.ContainerJSON, error) {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
@@ -159,8 +158,8 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	// Get all the things!
-	opts := types.ContainerListOptions{All: true}
+	// Get all running containers
+	opts := types.ContainerListOptions{All: false}
 	containers, err := dockerClient.ContainerList(ctx, opts)
 	if err != nil {
 		err = errors.Wrap(err, "Docker list API call failed")
@@ -188,7 +187,7 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, id
 	return nil
 }
 
-// StartContainer starts a stopped or new container on the host machine.
+// StartContainer starts a stopped or new container by ID on the host machine.
 func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, id string) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {

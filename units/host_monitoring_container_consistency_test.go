@@ -19,7 +19,9 @@ func TestHostMonitoringContainerConsistencyJob(t *testing.T) {
 
 	assert.NoError(db.Clear(host.Collection))
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	env := evergreen.GetEnvironment()
 	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 

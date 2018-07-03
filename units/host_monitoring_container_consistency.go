@@ -93,7 +93,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 	}
-	containersFromDocker, err := m.GetContainers(ctx, j.host)
+	containersIdsFromDocker, err := m.GetContainers(ctx, j.host)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from Docker", j.HostID))
 	}
@@ -103,7 +103,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	var found bool
 	for _, container := range containersFromDB {
 		found = false
-		for _, id := range containersFromDocker {
+		for _, id := range containersIdsFromDocker {
 			if container.Id == id {
 				found = true
 				break

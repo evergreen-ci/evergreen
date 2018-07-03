@@ -39,7 +39,7 @@ func (s *DockerSuite) SetupSuite() {
 		Host:          "127.0.0.1",
 		HasContainers: true,
 	}
-	parent.Insert()
+	s.NoError(parent.Insert())
 }
 
 func (s *DockerSuite) SetupTest() {
@@ -61,15 +61,9 @@ func (s *DockerSuite) SetupTest() {
 			},
 		},
 	}
-	s.parentHost = host.Host{
-		Id:   "d",
-		Host: "host",
-	}
 	s.hostOpts = HostOptions{
-		ParentID: "d",
+		ParentID: "parent",
 	}
-	s.parentHost.Insert()
-	s.distro.Insert()
 }
 
 func (s *DockerSuite) TestValidateSettings() {
@@ -512,5 +506,22 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 		_, err := s.manager.SpawnHost(ctx, host)
 		s.Error(err)
 	})
+}
 
+func (s *DockerSuite) TestGetContainers() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failList)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	containers, err := s.manager.GetContainers(ctx, parent)
+	s.NoError(err)
+	s.Equal(1, len(containers))
+	s.Equal("container-1", containers[0])
 }
