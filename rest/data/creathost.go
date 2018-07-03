@@ -3,23 +3,15 @@ package data
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 // DBCreateHostConnector supports `host.create` commands from the agent.
 type DBCreateHostConnector struct{}
-
-func (*DBCreateHostConnector) CreateHostsForTask(taskID string, createHost apimodels.CreateHost) error {
-	j := units.NewTaskHostCreateJob(taskID, createHost)
-	return evergreen.GetEnvironment().RemoteQueue().Put(j)
-}
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
 func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
@@ -51,11 +43,6 @@ func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, erro
 
 // MockCreateHostConnector mocks `DBCreateHostConnector`.
 type MockCreateHostConnector struct{}
-
-// ListHostsForTask lists running hosts scoped to the task or the task's build.
-func (*MockCreateHostConnector) CreateHostsForTask(taskID string, createHost apimodels.CreateHost) error {
-	return errors.New("method not implemented")
-}
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
 func (*MockCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
