@@ -17,11 +17,6 @@ const (
 	securityGroupsKey             = "security_group_ids"
 )
 
-type distro struct {
-	ID       string           `bson:"_id"`
-	Settings providerSettings `bson:"settings"`
-}
-
 type providerSettings struct {
 	SecurityGroup  string   `bson:"security_group"`
 	SecurityGroups []string `bson:"security_group_ids"`

@@ -23,6 +23,11 @@ type securityGroupSuite struct {
 	suite.Suite
 }
 
+type distro struct {
+	ID       string           `bson:"_id"`
+	Settings providerSettings `bson:"settings"`
+}
+
 func TestSecurityGroupMigration(t *testing.T) {
 	require := require.New(t)
 
