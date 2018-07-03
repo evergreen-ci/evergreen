@@ -529,8 +529,8 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 
 // NewRouter returns the root router for all APIServer endpoints.
 func (as *APIServer) GetServiceApp() *gimlet.APIApp {
-	checkTaskSecret := gimlet.WrapperMiddleware(as.checkTaskStrict)
 	checkProject := gimlet.WrapperMiddleware(as.checkProject)
+	checkTaskSecret := gimlet.WrapperMiddleware(as.checkTaskStrict)
 	checkUser := gimlet.NewRequireAuthHandler()
 	checkTask := gimlet.WrapperMiddleware(as.checkTask)
 	checkHost := gimlet.WrapperMiddleware(as.checkHost)
