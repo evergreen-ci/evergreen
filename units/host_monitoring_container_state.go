@@ -86,16 +86,19 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	containersFromDB, err := j.host.GetContainers()
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from DB", j.HostID))
+		return
 	}
 
 	// list containers using Docker provider
 	m, err := cloud.GetContainerManager(ctx, j.provider, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		return
 	}
 	containersIdsFromDocker, err := m.GetContainers(ctx, j.host)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from Docker", j.HostID))
+		return
 	}
 
 	// for each non-terminated container in containersDB that is not running in

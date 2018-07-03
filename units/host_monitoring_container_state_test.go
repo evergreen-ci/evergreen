@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHostMonitoringContainerConsistencyJob(t *testing.T) {
+func TestHostMonitoringContainerStateJob(t *testing.T) {
 	assert := assert.New(t)
 	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
