@@ -28,6 +28,13 @@ type hostStatsJob struct {
 	logger   grip.Journaler
 }
 
+type taskSpawnedHost struct {
+	ID        string `json:"id"`
+	SpawnedBy string `json:"spawned_by"`
+	Task      string `json:"task_scope"`
+	Build     string `json:"build_scope"`
+}
+
 func makeHostStats() *hostStatsJob {
 	j := &hostStatsJob{
 		Base: job.Base{
@@ -70,12 +77,17 @@ func (j *hostStatsJob) Run(_ context.Context) {
 		j.AddError(errors.Wrap(err, "error finding hosts spawned by tasks"))
 		return
 	}
-	hostIds := []string{}
+	hosts := []taskSpawnedHost{}
 	for _, h := range taskSpawned {
-		hostIds = append(hostIds, h.Id)
+		hosts = append(hosts, taskSpawnedHost{
+			ID:        h.Id,
+			SpawnedBy: h.User,
+			Task:      h.SpawnOptions.TaskID,
+			Build:     h.SpawnOptions.BuildID,
+		})
 	}
 	j.logger.Info(message.Fields{
 		"message": "hosts spawned by tasks",
-		"hosts":   hostIds,
+		"hosts":   hosts,
 	})
 }
