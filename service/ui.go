@@ -61,7 +61,7 @@ type ViewData struct {
 func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	ropts := gimlet.RendererOptions{
@@ -188,13 +188,19 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
 
 	app := gimlet.NewApp()
+	app.NoVersions = true
 
 	// User login and logout
 	app.AddRoute("/login").Handler(uis.loginPage).Get()
 	app.AddRoute("/login").Handler(uis.login).Post()
-	app.AddRoute("/login/redirect").Handler(uis.UserManager.GetLoginHandler(uis.RootURL)).Get()
-	app.AddRoute("/login/redirect/callback").Handler(uis.UserManager.GetLoginCallbackHandler()).Get()
 	app.AddRoute("/logout").Handler(uis.logout).Get()
+
+	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
+		app.AddRoute("/login/redirect").Handler(h).Get()
+	}
+	if h := uis.UserManager.GetLoginCallbackHandler(); h != nil {
+		app.AddRoute("/login/redirect/callback").Handler(h).Get()
+	}
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
@@ -328,8 +334,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext).Handler(uis.adminEvents).Get()
 
 	// Plugin routes
-	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Handler(uis.bbJiraSearch)
-	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Handler(uis.bbGetCreatedTickets)
+	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Handler(uis.bbJiraSearch).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Handler(uis.bbGetCreatedTickets).Get()
 	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Handler(bbGetNote).Get()
 	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Handler(bbSaveNote).Put()
 	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Handler(uis.bbFileTicket).Post()
