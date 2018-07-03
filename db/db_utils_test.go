@@ -49,7 +49,7 @@ func TestDBUtils(t *testing.T) {
 				NoSort,
 				out,
 			)
-			So(err, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 			So(out, ShouldResemble, in)
 
 		})
