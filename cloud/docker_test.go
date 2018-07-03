@@ -66,8 +66,7 @@ func (s *DockerSuite) SetupTest() {
 }
 
 func (s *DockerSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(host.Collection))
-	s.NoError(db.ClearCollections(distro.Collection))
+	s.NoError(db.ClearCollections(host.Collection, distro.Collection))
 }
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
