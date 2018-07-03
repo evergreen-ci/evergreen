@@ -48,7 +48,8 @@ func (s *AppSuite) TestRouterGetterReturnsErrorWhenUnresovled() {
 
 func (s *AppSuite) TestMiddleWearResetEmptiesList() {
 	s.app.AddMiddleware(NewAppLogger())
-	s.Len(s.app.middleware, 2)
+	s.app.AddMiddleware(NewStatic("", http.Dir("")))
+	s.Len(s.app.middleware, 3)
 	s.app.ResetMiddleware()
 	s.Len(s.app.middleware, 0)
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -127,8 +126,8 @@ func checkResultMatches(m MethodHandler, expectedErr error,
 	So(err, ShouldBeNil)
 
 	resp := httptest.NewRecorder()
-	r := mux.NewRouter()
-	r.HandleFunc(testRoute, handler)
+
+	handler.ServeHTTP(resp, req)
 
 	r.ServeHTTP(resp, req)
 

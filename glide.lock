@@ -27,10 +27,6 @@ imports:
     version: 5b6cfd2e8cb0a84da7d0d52307afda3e5cb0b410
   - name: github.com/Microsoft/go-winio
     version: 7ff89941bcb93df2e962467fb073c6e997b13cf0
-  - name: github.com/gorilla/context
-    version: 50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da
-  - name: github.com/gorilla/mux
-    version: ac112f7d75a0714af1bd86ab17749b31f7809640
   - name: github.com/gorilla/securecookie
     version: 1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b
   - name: github.com/gorilla/sessions
@@ -62,8 +58,6 @@ imports:
   - name: golang.org/x/tools/cmd/cover
     version: release-branch.go1.4
 
-  - name: github.com/urfave/negroni
-    version: c262547a5086067ebe455c81db5cc52eb298ac3c
   - name: github.com/urfave/cli
     version: 01857ac33766ce0c93856370626f9799281c14f4
 
@@ -122,4 +116,4 @@ imports:
   - name: github.com/mongodb/amboy
     version: d1e174d349e86cfe074824d06cc3d58018a27257
   - name: github.com/evergreen-ci/gimlet
-    version: c41c37a064b5e18782f34f7bb108e21488d91f8b
+    version: 6be136eb4eb57ce1710fab87c4f52cdcaa49f7f0
