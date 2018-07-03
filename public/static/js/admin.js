@@ -286,6 +286,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
         return;
     }
     $scope.Settings.jira_notifications.custom_fields[project][field] = "{FIXME}";
+    delete $scope.jiraMapping.newField[project];
   }
   $scope.deleteJIRAFieldFromProject = function(project, field) {
     if (!field) {
