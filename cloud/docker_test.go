@@ -404,6 +404,7 @@ func (s *DockerSuite) TestGetDNSName() {
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
+
 	dns, err = s.manager.GetDNSName(ctx, host)
 	s.NoError(err)
 	s.NotEmpty(dns)

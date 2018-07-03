@@ -107,12 +107,13 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	// get parent of host
 	parent, err := h.GetParent()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+		return nil, errors.Wrapf(err, "Error finding parent of host '%s'", h.Id)
 	}
-	if parent.Host == "" {
-		return nil, errors.Errorf("Error retrieving DNS name for parent host '%s'", parent.Id)
+	hostIP := parent.Host
+	if hostIP == "" {
+		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parent.Id)
 	}
-	settings.HostIP = parent.Host
+	settings.HostIP = hostIP
 
 	if err := settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
@@ -121,7 +122,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	grip.Info(message.Fields{
 		"message":     "decoded Docker container settings",
 		"container":   h.Id,
-		"host_ip":     settings.HostIP,
+		"host_ip":     hostIP,
 		"image_id":    settings.ImageID,
 		"client_port": settings.ClientPort,
 		"min_port":    settings.PortRange.MinPort,
@@ -130,14 +131,14 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 
 	// Create container
 	if err := m.client.CreateContainer(ctx, parent, h.Id, settings); err != nil {
-		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
+		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
 	}
 
 	// Start container
 	if err := m.client.StartContainer(ctx, parent, h.Id); err != nil {
-		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", settings.HostIP)
+		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", hostIP)
 		// Clean up
 		if err2 := m.client.RemoveContainer(ctx, parent, h.Id); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
@@ -155,7 +156,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	// Retrieve container details
 	newContainer, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
-		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", settings.HostIP)
+		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
 	}
@@ -167,12 +168,12 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		grip.Error(err)
 		return nil, err
 	}
-	h.Host = fmt.Sprintf("%s:%s", settings.HostIP, hostPort)
+	h.Host = fmt.Sprintf("%s:%s", hostIP, hostPort)
 
 	grip.Info(message.Fields{
 		"message":   "retrieved open port binding",
 		"container": h.Id,
-		"host_ip":   settings.HostIP,
+		"host_ip":   hostIP,
 		"host_port": hostPort,
 	})
 
