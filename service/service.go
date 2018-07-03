@@ -75,5 +75,5 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	agent := as.GetServiceApp()
 	cli := as.GetUserApp()
 
-	return gimlet.AssembleHandler(r, app, agent, cli, rest, apiRestV2)
+	return gimlet.AssembleHandler(r, app, cli, agent, rest, apiRestV2)
 }

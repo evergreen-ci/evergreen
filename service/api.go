@@ -575,7 +575,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	// Client auto-update routes
 	app.PrefixRoute("/api").Route("/update").Handler(as.getUpdate).Get()
 	app.PrefixRoute("/api").Route("/token").Handler(as.getUserSession).Post()
-	app.PrefixRoute("/api").Version(2).Handler(home).Get()
+	app.PrefixRoute("/api").Route("/").Version(2).Handler(home).Get()
 
 	// User session routes
 

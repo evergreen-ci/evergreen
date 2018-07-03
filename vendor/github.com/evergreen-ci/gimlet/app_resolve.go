@@ -58,7 +58,7 @@ func (a *APIApp) attachRoutes(router *mux.Router, addAppPrefix bool) error {
 	catcher := grip.NewCatcher()
 	for _, route := range a.routes {
 		if !route.IsValid() {
-			catcher.Add(fmt.Errorf("%s is not a valid route, skipping", route.route))
+			catcher.Add(fmt.Errorf("%s is not a valid route, skipping", route))
 			continue
 		}
 
@@ -73,7 +73,7 @@ func (a *APIApp) attachRoutes(router *mux.Router, addAppPrefix bool) error {
 			versionedRoute := route.resolveVersionedRoute(a, addAppPrefix)
 			router.Handle(versionedRoute, handler).Methods(methods...)
 		} else if a.NoVersions {
-			router.Handle(route.resolveLegacyRoute(a, addAppPrefix), handler)
+			router.Handle(route.resolveLegacyRoute(a, addAppPrefix), handler).Methods(methods...)
 		} else {
 			catcher.Add(fmt.Errorf("skipping '%s', because of versioning error", route))
 		}
@@ -95,17 +95,21 @@ func (r *APIRoute) getRoutePrefix(app *APIApp, addAppPrefix bool) string {
 }
 
 func (r *APIRoute) resolveLegacyRoute(app *APIApp, addAppPrefix bool) string {
+	var output string
+
 	prefix := r.getRoutePrefix(app, addAppPrefix)
 
-	if prefix == "" {
-		return r.route
+	if prefix != "" {
+		output += prefix
 	}
 
-	if strings.HasPrefix(r.route, "/") {
-		return prefix + r.route
+	if r.prefix != prefix && r.prefix != "" {
+		output += r.prefix
 	}
 
-	return strings.Join([]string{prefix, r.route}, "/")
+	output += r.route
+
+	return output
 }
 
 func (r *APIRoute) getVersionPart(app *APIApp) string {

@@ -177,14 +177,21 @@ func (s *RoutingSuite) TestStringWithMethods() {
 	s.Contains(str, "PATCH")
 }
 
+func (s *RoutingSuite) TestLegacyRouteResolution() {
+	r := s.app.PrefixRoute("/foo").Route("/bar")
+
+	out := r.resolveLegacyRoute(s.app, false)
+	s.Equal("/foo/bar", out)
+}
+
 func (s *RoutingSuite) TestResolveRoutes() {
 	s.app.prefix = "/bar"
 	r := s.app.AddRoute("/foo").Version(-1).Get()
 	s.Equal("/foo", r.resolveLegacyRoute(s.app, false))
 	s.Equal("/bar/foo", r.resolveLegacyRoute(s.app, true))
 
-	r.route = "foo"
-	s.Equal("foo", r.resolveLegacyRoute(s.app, false))
+	r.route = "/foo"
+	s.Equal("/foo", r.resolveLegacyRoute(s.app, false))
 	s.Equal("/bar/foo", r.resolveLegacyRoute(s.app, true))
 }
 

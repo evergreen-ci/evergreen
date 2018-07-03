@@ -30,11 +30,13 @@ func (r *APIRoute) String() string {
 	}
 
 	return fmt.Sprintf(
-		"r='%s', v='%d', methods=[%s], defined=%t",
+		"r='%s%s', v='%d', methods=[%s], defined=%t, prefixOverride=%t",
+		r.prefix,
 		r.route,
 		r.version,
 		strings.Join(methods, ", "),
 		r.handler != nil,
+		r.overrideAppPrefix,
 	)
 }
 
@@ -59,7 +61,7 @@ func (a *APIApp) AddRoute(r string) *APIRoute {
 func (a *APIApp) PrefixRoute(p string) *APIRoute {
 	route := &APIRoute{prefix: p, version: -1}
 
-	if !strings.HasPrefix(route.route, "/") {
+	if !strings.HasPrefix(route.prefix, "/") {
 		route.prefix = "/" + route.prefix
 	}
 
