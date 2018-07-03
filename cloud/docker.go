@@ -160,7 +160,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		grip.Error(err)
 		return nil, err
 	}
-	// TODO: set container host ID to Docker container ID
 
 	hostPort, err := retrieveOpenPortBinding(newContainer)
 	if err != nil {
