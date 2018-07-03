@@ -32,7 +32,7 @@ func TestDockerSuite(t *testing.T) {
 
 func (s *DockerSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-	db.Clear(host.Collection)
+	s.NoError(db.Clear(host.Collection))
 
 	parent := &host.Host{
 		Id:            "parent",
