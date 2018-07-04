@@ -202,6 +202,12 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		app.AddRoute("/login/redirect/callback").Handler(h).Get()
 	}
 
+	if uis.Settings.Ui.CsrfKey != "" {
+		app.AddMiddleware(gimlet.WrapperHandlerMiddleware(
+			csrf.Protect([]byte(uis.Settings.Ui.CsrfKey), csrf.ErrorHandler(http.HandlerFunc(ForbiddenHandler))),
+		))
+	}
+
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
