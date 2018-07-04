@@ -51,13 +51,14 @@ func TestCheckHostWrapper(t *testing.T) {
 		)
 
 		app := gimlet.NewApp()
+		app.NoVersions = true
 		app.AddRoute("/{taskId}/").Handler(as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
 				gimlet.WriteJSON(w, nil)
 			}),
-		)))
+		))).Get()
 
 		root, err := app.Handler()
 		if err != nil {
@@ -176,6 +177,7 @@ func TestCheckHostWrapper(t *testing.T) {
 		)
 
 		app := gimlet.NewApp()
+		app.NoVersions = true
 		app.AddRoute("/{taskId}/{hostId}").Handler(as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
@@ -183,7 +185,7 @@ func TestCheckHostWrapper(t *testing.T) {
 
 				gimlet.WriteJSON(w, nil)
 			}),
-		)))
+		))).Get()
 
 		root, err := app.Handler()
 		if err != nil {

@@ -129,8 +129,6 @@ func checkResultMatches(m MethodHandler, expectedErr error,
 
 	handler.ServeHTTP(resp, req)
 
-	r.ServeHTTP(resp, req)
-
 	if expectedErr != nil {
 		errResult := rest.APIError{}
 		wrappedBody := ioutil.NopCloser(resp.Body)
