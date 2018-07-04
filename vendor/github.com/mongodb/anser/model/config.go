@@ -27,8 +27,10 @@ type ConfigurationSimpleMigration struct {
 
 // ConfigurationManualMigrations defines either a stream/manual
 // migration, as the definition for either depend on having the
-// migration implementation for that name to be defined.
+// migration implementation for that name to be defined. The params
+// field are only used by custom migrations.
 type ConfigurationManualMigration struct {
-	Options GeneratorOptions `bson:"options" json:"options" yaml:"options"`
-	Name    string           `bson:"name" json:"name" yaml:"name"`
+	Options GeneratorOptions  `bson:"options" json:"options" yaml:"options"`
+	Name    string            `bson:"name" json:"name" yaml:"name"`
+	Params  map[string]string `bson:"params,omitempty" json:"params,omitempty" yaml:"params,omitempty"`
 }

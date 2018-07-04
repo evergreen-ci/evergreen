@@ -69,7 +69,7 @@ type migrationGeneratorFactory func(anser.Environment, migrationGeneratorFactory
 // execution. See the anser documentation and the
 // anser/example_test.go for an example.
 func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environment) (*anser.Application, error) {
-	const allLogCollection = "event_log"
+
 	app := &anser.Application{
 		Options: model.ApplicationOptions{
 			Limit:  opts.Limit,
@@ -93,7 +93,7 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		migrationGithubHooksToCollection:       githubHooksToCollectionGenerator,
 		migrationZeroDateFix:                   zeroDateFixGenerator(githubToken),
 		migrationAdminEventRestructure:         adminEventRestructureGenerator,
-		migrationEventRtypeRestructureAllLogs:  makeEventRTypeMigration(allLogCollection),
+		migrationEventRtypeRestructureAllLogs:  eventRTypeMigration,
 		migrationSetDefaultBranch:              setDefaultBranchMigrationGenerator,
 		migrationAdminMapRestructure:           adminMapRestructureGenerator,
 		migrationSpawnhostExpirationPreference: setSpawnhostPreferenceGenerator,

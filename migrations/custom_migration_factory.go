@@ -8,34 +8,35 @@ import (
 
 const perfCopyVariantMigrationFactory = "perf-copy-variant-factory"
 
-// NewCustomApplication constructs and sets up an application instance from
-// a configuration structure and a migration factory.
-func NewCustomApplication(env anser.Environment, conf *CustomConfiguration) (*anser.Application, error) {
-	type migrationGeneratorFactoryFactory func(args map[string]string) migrationGeneratorFactory
-	customMigrationRegistry := map[string]migrationGeneratorFactoryFactory{
-		perfCopyVariantMigrationFactory: perfCopyVariantFactoryFactory,
-	}
+type customMigrationGeneratorFactory func(args map[string]string) migrationGeneratorFactory
 
+func (opts Options) CustomApplication(env anser.Environment, conf *model.ConfigurationManualMigration) (*anser.Application, error) {
 	if conf == nil {
 		return nil, errors.New("cannot specify a nil configuration")
 	}
 
+	customMigrationRegistry := map[string]customMigrationGeneratorFactory{
+		perfCopyVariantMigrationFactory: perfCopyVariantFactoryFactory,
+	}
+
 	app := &anser.Application{
-		Options: conf.Options,
+		Options: model.ApplicationOptions{
+			Limit:  opts.Limit,
+			DryRun: opts.DryRun,
+		},
 	}
 
-	g := conf.CustomMigration
-	if !g.Options.IsValid() {
-		return nil, errors.Errorf("custom migration generator '%s' is not valid", g.Options.JobID)
+	if !conf.Options.IsValid() {
+		return nil, errors.Errorf("custom migration generator '%s' is not valid", conf.Options.JobID)
 	}
 
-	generatorFactory := customMigrationRegistry[g.Name](g.Params)
-	opts := migrationGeneratorFactoryOptions{
-		id:    g.Options.JobID,
-		db:    g.Options.NS.DB,
-		limit: conf.Options.Limit,
+	mopts := migrationGeneratorFactoryOptions{
+		id:    conf.Options.JobID,
+		db:    conf.Options.NS.DB,
+		limit: opts.Limit,
 	}
-	generator, err := generatorFactory(env, opts)
+
+	generator, err := customMigrationRegistry[conf.Name](conf.Params)(env, mopts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating generator")
 	}
@@ -46,15 +47,4 @@ func NewCustomApplication(env anser.Environment, conf *CustomConfiguration) (*an
 	}
 
 	return app, nil
-}
-
-type CustomConfiguration struct {
-	Options         model.ApplicationOptions `bson:"options" json:"options" yaml:"options"`
-	CustomMigration CustomManualMigration    `bson:"custom_migrations" json:"custom_migrations" yaml:"custom_migrations"`
-}
-
-type CustomManualMigration struct {
-	Options model.GeneratorOptions `bson:"options" json:"options" yaml:"options"`
-	Name    string                 `bson:"name" json:"name" yaml:"name"`
-	Params  map[string]string      `bson:"params" json:"params" yaml:"params"`
 }
