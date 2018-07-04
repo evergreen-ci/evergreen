@@ -191,8 +191,6 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       });
       $scope.regexSelectors = {};
     };
-
-    $scope.regexSelectors = {};
     $scope.method = {};
     $scope.targets = {};
     $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {
