@@ -1,6 +1,9 @@
 package model
 
-import "github.com/pkg/errors"
+import (
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/pkg/errors"
+)
 
 type CreateHost struct {
 	DNSName    string `json:"dns_name"`
@@ -9,9 +12,12 @@ type CreateHost struct {
 
 func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *CreateHost:
-		createHost.DNSName = v.DNSName
-		createHost.InstanceID = v.InstanceID
+	case host.Host:
+		createHost.DNSName = v.Host
+		createHost.InstanceID = v.ExternalIdentifier
+	case *host.Host:
+		createHost.DNSName = v.Host
+		createHost.InstanceID = v.ExternalIdentifier
 	default:
 		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)
 	}
@@ -19,5 +25,5 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 }
 
 func (createHost *CreateHost) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not impelemented for APIDistro")
+	return nil, errors.Errorf("ToService() is not implemented for CreateHost")
 }

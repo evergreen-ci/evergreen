@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -62,7 +61,7 @@ type ViewData struct {
 func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	ropts := gimlet.RendererOptions{
@@ -105,176 +104,6 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 	}
 
 	return uis, nil
-}
-
-// NewRouter sets up a request router for the UI, installing
-// hard-coded routes as well as those belonging to plugins.
-func (uis *UIServer) AttachRoutes(r *mux.Router) {
-	r = r.StrictSlash(true)
-
-	// User login and logout
-	r.HandleFunc("/login", uis.loginPage).Methods("GET")
-	r.HandleFunc("/login", uis.login).Methods("POST")
-	// User login with redirect to external site and redirect back
-	r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
-	r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
-	r.HandleFunc("/logout", uis.logout)
-
-	requireLogin := func(next http.HandlerFunc) http.HandlerFunc {
-		return requireUser(next, uis.RedirectToLogin)
-	}
-
-	// Waterfall pages
-	r.HandleFunc("/", uis.loadCtx(uis.waterfallPage))
-	r.HandleFunc("/waterfall", uis.loadCtx(uis.waterfallPage))
-	r.HandleFunc("/waterfall/{project_id}", uis.loadCtx(uis.waterfallPage))
-
-	// Timeline page
-	r.HandleFunc("/timeline/{project_id}", uis.loadCtx(uis.timeline))
-	r.HandleFunc("/timeline", uis.loadCtx(uis.timeline))
-	r.HandleFunc("/json/timeline/{project_id}", uis.loadCtx(uis.timelineJson))
-	r.HandleFunc("/json/patches/project/{project_id}", uis.loadCtx(uis.patchTimelineJson))
-	r.HandleFunc("/json/patches/user/{user_id}", uis.loadCtx(uis.patchTimelineJson))
-
-	// Grid page
-	r.HandleFunc("/grid", uis.loadCtx(uis.grid))
-	r.HandleFunc("/grid/{project_id}", uis.loadCtx(uis.grid))
-	r.HandleFunc("/grid/{project_id}/{version_id}", uis.loadCtx(uis.grid))
-	r.HandleFunc("/grid/{project_id}/{version_id}/{depth}", uis.loadCtx(uis.grid))
-
-	// Task page (and related routes)
-	r.HandleFunc("/task/{task_id}", uis.loadCtx(uis.taskPage)).Methods("GET")
-	r.HandleFunc("/task/{task_id}/{execution}", uis.loadCtx(uis.taskPage)).Methods("GET")
-	r.HandleFunc("/tasks/{task_id}", requireLogin(uis.loadCtx(uis.taskModify))).Methods("PUT")
-	r.HandleFunc("/json/task_log/{task_id}", uis.loadCtx(uis.taskLog))
-	r.HandleFunc("/json/task_log/{task_id}/{execution}", uis.loadCtx(uis.taskLog))
-	r.HandleFunc("/task_log_raw/{task_id}/{execution}", uis.loadCtx(uis.taskLogRaw))
-
-	// Performance Discovery pages
-	r.HandleFunc("/perfdiscovery/", requireLogin(uis.loadCtx(uis.perfdiscoveryPage))).Methods("GET")
-	r.HandleFunc("/perfdiscovery/{project_id}", requireLogin(uis.loadCtx(uis.perfdiscoveryPage))).Methods("GET")
-
-	// Signal Processing page
-	r.HandleFunc("/signal-processing/", requireLogin(uis.loadCtx(uis.signalProcessingPage))).Methods("GET")
-	r.HandleFunc("/signal-processing/{project_id}", requireLogin(uis.loadCtx(uis.signalProcessingPage))).Methods("GET")
-
-	// Test Logs
-	r.HandleFunc("/test_log/{task_id}/{task_execution}/{test_name}", uis.loadCtx(uis.testLog))
-	r.HandleFunc("/test_log/{log_id}", uis.loadCtx(uis.testLog))
-
-	// Build page
-	r.HandleFunc("/build/{build_id}", uis.loadCtx(uis.buildPage)).Methods("GET")
-	r.HandleFunc("/builds/{build_id}", requireLogin(uis.loadCtx(uis.modifyBuild))).Methods("PUT")
-	r.HandleFunc("/json/build_history/{build_id}", uis.loadCtx(uis.buildHistory)).Methods("GET")
-
-	// Version page
-	r.HandleFunc("/version/{version_id}", uis.loadCtx(uis.versionPage)).Methods("GET")
-	r.HandleFunc("/version/{version_id}", requireLogin(uis.loadCtx(uis.modifyVersion))).Methods("PUT")
-	r.HandleFunc("/json/version_history/{version_id}", uis.loadCtx(uis.versionHistory))
-	r.HandleFunc("/version/{project_id}/{revision}", uis.loadCtx(uis.versionFind)).Methods("GET")
-
-	// Hosts
-	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.hostsPage))).Methods("GET")
-	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.modifyHosts))).Methods("PUT")
-	r.HandleFunc("/host/{host_id}", requireLogin(uis.loadCtx(uis.hostPage))).Methods("GET")
-	r.HandleFunc("/host/{host_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyHost))).Methods("PUT")
-
-	// Distros
-	r.HandleFunc("/distros", requireLogin(uis.loadCtx(uis.distrosPage))).Methods("GET")
-	r.HandleFunc("/distros", uis.requireSuperUser(uis.loadCtx(uis.addDistro))).Methods("PUT")
-	r.HandleFunc("/distros/{distro_id}", requireLogin(uis.loadCtx(uis.getDistro))).Methods("GET")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.addDistro))).Methods("PUT")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyDistro))).Methods("POST")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.removeDistro))).Methods("DELETE")
-
-	// Event Logs
-	r.HandleFunc("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}", uis.loadCtx(uis.fullEventLogs))
-
-	// Task History
-	r.HandleFunc("/task_history/{task_name}", uis.loadCtx(uis.taskHistoryPage))
-	r.HandleFunc("/task_history/{project_id}/{task_name}", uis.loadCtx(uis.taskHistoryPage))
-	r.HandleFunc("/task_history/{project_id}/{task_name}/pickaxe", uis.loadCtx(uis.taskHistoryPickaxe))
-	r.HandleFunc("/task_history/{project_id}/{task_name}/test_names", uis.loadCtx(uis.taskHistoryTestNames))
-
-	// History Drawer Endpoints
-	r.HandleFunc("/history/tasks/{task_id}/{window}", uis.loadCtx(uis.taskHistoryDrawer))
-	r.HandleFunc("/history/versions/{version_id}/{window}", uis.loadCtx(uis.versionHistoryDrawer))
-
-	// Variant History
-	r.HandleFunc("/build_variant/{project_id}/{variant}", uis.loadCtx(uis.variantHistory))
-
-	// Task queues
-	r.HandleFunc("/task_queue/", requireLogin(uis.loadCtx(uis.allTaskQueues)))
-
-	// Scheduler
-	r.HandleFunc("/scheduler/distro/{distro_id}", uis.loadCtx(uis.getSchedulerPage))
-	r.HandleFunc("/scheduler/distro/{distro_id}/logs", uis.loadCtx(uis.getSchedulerLogs))
-	r.HandleFunc("/scheduler/stats", uis.loadCtx(uis.schedulerStatsPage))
-	r.HandleFunc("/scheduler/distro/{distro_id}/stats", uis.loadCtx(uis.averageSchedulerStats))
-	r.HandleFunc("/scheduler/stats/utilization", uis.loadCtx(uis.schedulerHostUtilization))
-
-	// Patch pages
-	r.HandleFunc("/patch/{patch_id}", requireLogin(uis.loadCtx(uis.patchPage))).Methods("GET")
-	r.HandleFunc("/patch/{patch_id}", requireLogin(uis.loadCtx(uis.schedulePatch))).Methods("POST")
-	r.HandleFunc("/diff/{patch_id}/", requireLogin(uis.loadCtx(uis.diffPage)))
-	r.HandleFunc("/filediff/{patch_id}/", requireLogin(uis.loadCtx(uis.fileDiffPage)))
-	r.HandleFunc("/rawdiff/{patch_id}/", requireLogin(uis.loadCtx(uis.rawDiffPage)))
-	r.HandleFunc("/patches", requireLogin(uis.loadCtx(uis.patchTimeline)))
-	r.HandleFunc("/patches/project/{project_id}", requireLogin(uis.loadCtx(uis.patchTimeline)))
-	r.HandleFunc("/patches/user/{user_id}", requireLogin(uis.loadCtx(uis.userPatchesTimeline)))
-	r.HandleFunc("/patches/mine", requireLogin(uis.loadCtx(uis.myPatchesTimeline)))
-
-	// Spawnhost routes
-	r.HandleFunc("/spawn", requireLogin(uis.loadCtx(uis.spawnPage))).Methods("GET")
-	r.HandleFunc("/spawn", requireLogin(uis.loadCtx(uis.requestNewHost))).Methods("PUT")
-	r.HandleFunc("/spawn", requireLogin(uis.loadCtx(uis.modifySpawnHost))).Methods("POST")
-	r.HandleFunc("/spawn/hosts", requireLogin(uis.loadCtx(uis.getSpawnedHosts))).Methods("GET")
-	r.HandleFunc("/spawn/distros", requireLogin(uis.loadCtx(uis.listSpawnableDistros))).Methods("GET")
-	r.HandleFunc("/spawn/keys", requireLogin(uis.loadCtx(uis.getUserPublicKeys))).Methods("GET")
-
-	// User settings
-	r.HandleFunc("/settings", requireLogin(uis.loadCtx(uis.userSettingsPage))).Methods("GET")
-	r.HandleFunc("/settings/newkey", requireLogin(uis.loadCtx(uis.newAPIKey))).Methods("POST")
-	r.HandleFunc("/notifications", requireLogin(uis.loadCtx(uis.notificationsPage))).Methods("GET")
-
-	// Task stats
-	r.HandleFunc("/task_timing", requireLogin(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
-	r.HandleFunc("/task_timing/{project_id}", requireLogin(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
-	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{request}/{task_name}", requireLogin(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
-	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{request}", requireLogin(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
-
-	// Project routes
-	r.HandleFunc("/projects", requireLogin(uis.loadCtx(uis.projectsPage))).Methods("GET")
-	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.projectPage))).Methods("GET")
-	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.modifyProject))).Methods("POST")
-	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.addProject))).Methods("PUT")
-	r.HandleFunc("/project/{project_id}/repo_revision", uis.loadCtx(uis.requireAdmin(uis.setRevision))).Methods("PUT")
-
-	// Admin routes
-	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
-	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
-
-	// Plugin routes
-	r.HandleFunc("/plugin/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)
-	r.HandleFunc("/plugin/buildbaron/created_tickets/{task_id}", uis.bbGetCreatedTickets)
-	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbGetNote).Methods("GET")
-	r.HandleFunc("/plugin/buildbaron/note/{task_id}", bbSaveNote).Methods("PUT")
-	r.HandleFunc("/plugin/buildbaron/file_ticket", uis.bbFileTicket).Methods("POST")
-	r.HandleFunc("/plugin/buildbaron/feedback/{task_id}/{execution}", uis.bbGetFeedback).Methods("GET")
-	r.HandleFunc("/plugin/buildbaron/feedback/{task_id}/{execution}/{feedback_type}", uis.bbRemoveFeedback).Methods("DELETE")
-	r.HandleFunc("/plugin/buildbaron/feedback", uis.bbSendFeedback).Methods("POST")
-	r.HandleFunc("/plugin/manifest/get/{project_id}/{revision}", uis.GetManifest)
-	r.HandleFunc("/plugin/dashboard/tasks/project/{project_id}/version/{version_id}", perfDashGetTasksForVersion)
-	r.HandleFunc("/plugin/json/version", perfGetVersion)
-	r.HandleFunc("/plugin/json/version/{version_id}/{name}", perfGetTasksForVersion)
-	r.HandleFunc("/plugin/json/version/latest/{project_id}/{name}", perfGetTasksForLatestVersion)
-	r.HandleFunc("/plugin/json/task/{task_id}/{name}/", perfGetTaskById)
-	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tags", perfGetTags)
-	r.HandleFunc("/plugin/json/task/{task_id}/{name}/tag", perfHandleTaskTag).Methods("POST", "DELETE")
-	r.HandleFunc("/plugin/json/tags/", perfGetProjectTags)
-	r.HandleFunc("/plugin/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", perfGetTaskJSONByTag)
-	r.HandleFunc("/plugin/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", perfGetCommit)
-	r.HandleFunc("/plugin/json/history/{task_id}/{name}", perfGetTaskHistory)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
@@ -348,4 +177,189 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
 	return viewData
+}
+
+// NewRouter sets up a request router for the UI, installing
+// hard-coded routes as well as those belonging to plugins.
+func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
+	needsLogin := gimlet.WrapperMiddleware(uis.requireLogin)
+	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
+	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
+	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
+
+	app := gimlet.NewApp()
+	app.NoVersions = true
+
+	// User login and logout
+	app.AddRoute("/login").Handler(uis.loginPage).Get()
+	app.AddRoute("/login").Handler(uis.login).Post()
+	app.AddRoute("/logout").Handler(uis.logout).Get()
+
+	if h := uis.UserManager.GetLoginHandler(uis.RootURL); h != nil {
+		app.AddRoute("/login/redirect").Handler(h).Get()
+	}
+	if h := uis.UserManager.GetLoginCallbackHandler(); h != nil {
+		app.AddRoute("/login/redirect/callback").Handler(h).Get()
+	}
+
+	if uis.Settings.Ui.CsrfKey != "" {
+		app.AddMiddleware(gimlet.WrapperHandlerMiddleware(
+			csrf.Protect([]byte(uis.Settings.Ui.CsrfKey), csrf.ErrorHandler(http.HandlerFunc(ForbiddenHandler))),
+		))
+	}
+
+	// Waterfall pages
+	app.AddRoute("/").Wrap(needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/waterfall").Wrap(needsContext).Handler(uis.waterfallPage).Get()
+	app.AddRoute("/waterfall/{project_id}").Wrap(needsContext).Handler(uis.waterfallPage).Get()
+
+	// Timeline page
+
+	app.AddRoute("/timeline/{project_id}").Wrap(needsContext).Handler(uis.timeline).Get()
+	app.AddRoute("/timeline").Wrap(needsContext).Handler(uis.timeline).Get()
+	app.AddRoute("/json/timeline/{project_id}").Wrap(needsContext).Handler(uis.timelineJson).Get()
+	app.AddRoute("/json/patches/project/{project_id}").Wrap(needsContext).Handler(uis.patchTimelineJson).Get()
+	app.AddRoute("/json/patches/user/{user_id}").Wrap(needsContext).Handler(uis.patchTimelineJson).Get()
+
+	// Grid page
+	app.AddRoute("/grid").Wrap(needsContext).Handler(uis.grid).Get()
+	app.AddRoute("/grid/{project_id}").Wrap(needsContext).Handler(uis.grid).Get()
+	app.AddRoute("/grid/{project_id}/{version_id}").Wrap(needsContext).Handler(uis.grid).Get()
+	app.AddRoute("/grid/{project_id}/{version_id}/{depth}").Wrap(needsContext).Handler(uis.grid).Get()
+
+	// Task page (and related routes)
+	app.AddRoute("/task/{task_id}").Wrap(needsContext).Handler(uis.taskPage).Get()
+	app.AddRoute("/task/{task_id}/{execution}").Wrap(needsContext).Handler(uis.taskPage).Get()
+	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskModify).Put()
+	app.AddRoute("/json/task_log/{task_id}").Wrap(needsContext).Handler(uis.taskLog).Get()
+	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsContext).Handler(uis.taskLog).Get()
+	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsContext).Handler(uis.taskLogRaw).Get()
+
+	// Performance Discovery pages
+	app.AddRoute("/perfdiscovery/").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
+	app.AddRoute("/perfdiscovery/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
+
+	// Signal Processing page
+	app.AddRoute("/signal-processing/").Wrap(needsLogin, needsContext).Handler(uis.signalProcessingPage).Get()
+	app.AddRoute("/signal-processing/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.signalProcessingPage).Get()
+
+	// Test Logs
+	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{log_id}").Wrap(needsContext).Handler(uis.testLog).Get()
+
+	// Build page
+	app.AddRoute("/build/{build_id}").Wrap(needsContext).Handler(uis.buildPage).Get()
+	app.AddRoute("/builds/{build_id}").Wrap(needsLogin, needsContext).Handler(uis.modifyBuild).Put()
+	app.AddRoute("/json/build_history/{build_id}").Wrap(needsContext).Handler(uis.buildHistory).Get()
+
+	// Version page
+	app.AddRoute("/version/{version_id}").Wrap(needsContext).Handler(uis.versionPage).Get()
+	app.AddRoute("/version/{version_id}").Wrap(needsLogin, needsContext).Handler(uis.modifyVersion).Put()
+	app.AddRoute("/json/version_history/{version_id}").Wrap(needsContext).Handler(uis.versionHistory).Get()
+	app.AddRoute("/version/{project_id}/{revision}").Wrap(needsContext).Handler(uis.versionFind).Get()
+
+	// Hosts
+	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.hostsPage).Get()
+	app.AddRoute("/hosts").Wrap(needsLogin, needsContext).Handler(uis.modifyHosts).Put()
+	app.AddRoute("/host/{host_id}").Wrap(needsLogin, needsContext).Handler(uis.hostPage).Get()
+	app.AddRoute("/host/{host_id}").Wrap(needsSuperUser, needsContext).Handler(uis.modifyHost).Put()
+
+	// Distros
+	app.AddRoute("/distros").Wrap(needsLogin, needsContext).Handler(uis.distrosPage).Get()
+	app.AddRoute("/distros").Wrap(needsSuperUser, needsContext).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsLogin, needsContext).Handler(uis.getDistro).Get()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext).Handler(uis.addDistro).Put()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext).Handler(uis.modifyDistro).Post()
+	app.AddRoute("/distros/{distro_id}").Wrap(needsSuperUser, needsContext).Handler(uis.removeDistro).Delete()
+
+	// Event Logs
+	app.AddRoute("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}").Wrap(needsContext).Handler(uis.fullEventLogs).Get()
+
+	// Task History
+	app.AddRoute("/task_history/{task_name}").Wrap(needsContext).Handler(uis.taskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}").Wrap(needsContext).Handler(uis.taskHistoryPage).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}/pickaxe").Wrap(needsContext).Handler(uis.taskHistoryPickaxe).Get()
+	app.AddRoute("/task_history/{project_id}/{task_name}/test_names").Wrap(needsContext).Handler(uis.taskHistoryTestNames).Get()
+
+	// History Drawer Endpoints
+	app.AddRoute("/history/tasks/{task_id}/{window}").Wrap(needsContext).Handler(uis.taskHistoryDrawer).Get()
+	app.AddRoute("/history/versions/{version_id}/{window}").Wrap(needsContext).Handler(uis.versionHistoryDrawer).Get()
+
+	// Variant History
+	app.AddRoute("/build_variant/{project_id}/{variant}").Wrap(needsContext).Handler(uis.variantHistory).Get()
+
+	// Task queues
+	app.AddRoute("/task_queue/").Wrap(needsLogin, needsContext).Handler(uis.allTaskQueues).Get()
+
+	// Scheduler
+	app.AddRoute("/scheduler/distro/{distro_id}").Wrap(needsContext).Handler(uis.getSchedulerPage).Get()
+	app.AddRoute("/scheduler/distro/{distro_id}/logs").Wrap(needsContext).Handler(uis.getSchedulerLogs).Get()
+	app.AddRoute("/scheduler/stats").Wrap(needsContext).Handler(uis.schedulerStatsPage).Get()
+	app.AddRoute("/scheduler/distro/{distro_id}/stats").Wrap(needsContext).Handler(uis.averageSchedulerStats).Get()
+	app.AddRoute("/scheduler/stats/utilization").Wrap(needsContext).Handler(uis.schedulerHostUtilization).Get()
+
+	// Patch pages
+	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext).Handler(uis.patchPage).Get()
+	app.AddRoute("/patch/{patch_id}").Wrap(needsLogin, needsContext).Handler(uis.schedulePatch).Post()
+	app.AddRoute("/diff/{patch_id}/").Wrap(needsLogin, needsContext).Handler(uis.diffPage).Get()
+	app.AddRoute("/filediff/{patch_id}/").Wrap(needsLogin, needsContext).Handler(uis.fileDiffPage).Get()
+	app.AddRoute("/rawdiff/{patch_id}/").Wrap(needsLogin, needsContext).Handler(uis.rawDiffPage).Get()
+	app.AddRoute("/patches").Wrap(needsLogin, needsContext).Handler(uis.patchTimeline).Get()
+	app.AddRoute("/patches/project/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.patchTimeline).Get()
+	app.AddRoute("/patches/user/{user_id}").Wrap(needsLogin, needsContext).Handler(uis.userPatchesTimeline).Get()
+	app.AddRoute("/patches/mine").Wrap(needsLogin, needsContext).Handler(uis.myPatchesTimeline).Get()
+
+	// Spawnhost routes
+	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.spawnPage).Get()
+	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.requestNewHost).Put()
+	app.AddRoute("/spawn").Wrap(needsLogin, needsContext).Handler(uis.modifySpawnHost).Post()
+	app.AddRoute("/spawn/hosts").Wrap(needsLogin, needsContext).Handler(uis.getSpawnedHosts).Get()
+	app.AddRoute("/spawn/distros").Wrap(needsLogin, needsContext).Handler(uis.listSpawnableDistros).Get()
+	app.AddRoute("/spawn/keys").Wrap(needsLogin, needsContext).Handler(uis.getUserPublicKeys).Get()
+
+	// User settings
+	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
+	app.AddRoute("/settings/newkey").Wrap(needsLogin, needsContext).Handler(uis.newAPIKey).Post()
+	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.notificationsPage).Get()
+
+	// Task stats
+	app.AddRoute("/task_timing").Wrap(needsLogin, needsContext).Handler(uis.taskTimingPage).Get()
+	app.AddRoute("/task_timing/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.taskTimingPage).Get()
+	app.AddRoute("/json/task_timing/{project_id}/{build_variant}/{request}/{task_name}").Wrap(needsLogin, needsContext).Handler(uis.taskTimingJSON).Get()
+	app.AddRoute("/json/task_timing/{project_id}/{build_variant}/{request}").Wrap(needsLogin, needsContext).Handler(uis.taskTimingJSON).Get()
+
+	// Project routes
+	app.AddRoute("/projects").Wrap(needsLogin, needsContext).Handler(uis.projectsPage).Get()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin).Handler(uis.projectPage).Get()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin).Handler(uis.modifyProject).Post()
+	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin).Handler(uis.addProject).Put()
+	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext).Handler(uis.setRevision).Put()
+
+	// Admin routes
+	app.AddRoute("/admin").Wrap(needsLogin, needsContext).Handler(uis.adminSettings).Get()
+	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext).Handler(uis.adminEvents).Get()
+
+	// Plugin routes
+	app.PrefixRoute("/plugin").Route("/buildbaron/jira_bf_search/{task_id}/{execution}").Handler(uis.bbJiraSearch).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/created_tickets/{task_id}").Handler(uis.bbGetCreatedTickets).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Handler(bbGetNote).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/note/{task_id}").Handler(bbSaveNote).Put()
+	app.PrefixRoute("/plugin").Route("/buildbaron/file_ticket").Handler(uis.bbFileTicket).Post()
+	app.PrefixRoute("/plugin").Route("/buildbaron/feedback/{task_id}/{execution}").Handler(uis.bbGetFeedback).Get()
+	app.PrefixRoute("/plugin").Route("/buildbaron/feedback/{task_id}/{execution}/{feedback_type}").Handler(uis.bbRemoveFeedback).Delete()
+	app.PrefixRoute("/plugin").Route("/buildbaron/feedback").Handler(uis.bbSendFeedback).Post()
+	app.PrefixRoute("/plugin").Route("/manifest/get/{project_id}/{revision}").Handler(uis.GetManifest).Get()
+	app.PrefixRoute("/plugin").Route("/dashboard/tasks/project/{project_id}/version/{version_id}").Handler(perfDashGetTasksForVersion).Get()
+	app.PrefixRoute("/plugin").Route("/json/version").Handler(perfGetVersion).Get()
+	app.PrefixRoute("/plugin").Route("/json/version/{version_id}/{name}").Handler(perfGetTasksForVersion).Get()
+	app.PrefixRoute("/plugin").Route("/json/version/latest/{project_id}/{name}").Handler(perfGetTasksForLatestVersion).Get()
+	app.PrefixRoute("/plugin").Route("/json/task/{task_id}/{name}/").Handler(perfGetTaskById).Get()
+	app.PrefixRoute("/plugin").Route("/json/task/{task_id}/{name}/tags").Handler(perfGetTags).Get()
+	app.PrefixRoute("/plugin").Route("/json/task/{task_id}/{name}/tag").Handler(perfHandleTaskTag).Post().Delete()
+	app.PrefixRoute("/plugin").Route("/json/tags/").Handler(perfGetProjectTags).Get()
+	app.PrefixRoute("/plugin").Route("/json/tag/{project_id}/{tag}/{variant}/{task_name}/{name}").Handler(perfGetTaskJSONByTag).Get()
+	app.PrefixRoute("/plugin").Route("/json/commit/{project_id}/{revision}/{variant}/{task_name}/{name}").Handler(perfGetCommit).Get()
+	app.PrefixRoute("/plugin").Route("/json/history/{task_id}/{name}").Handler(perfGetTaskHistory).Get()
+
+	return app
 }

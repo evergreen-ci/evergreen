@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/gorilla/csrf"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -63,14 +62,7 @@ func startWebService() cli.Command {
 				return errors.WithStack(err)
 			}
 			apiServer = service.GetServer(settings.Api.HttpListenAddr, serviceHandler)
-
-			if settings.Ui.CsrfKey != "" {
-				errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
-				uiHandler := csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(serviceHandler)
-				uiServer = service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
-			} else {
-				uiServer = service.GetServer(settings.Ui.HttpListenAddr, serviceHandler)
-			}
+			uiServer = service.GetServer(settings.Ui.HttpListenAddr, serviceHandler)
 
 			catcher := grip.NewBasicCatcher()
 			apiWait := make(chan struct{})

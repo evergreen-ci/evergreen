@@ -194,7 +194,7 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int, pool *evergr
 			numHostsToSpawn = containerCapacity(len(currentParents), len(existingContainers), numHostsToSpawn, pool.MaxContainers)
 		}
 
-		// create host intent documents for non-parent hosts
+		// host.create intent documents for non-parent hosts
 		for i := 0; i < numHostsToSpawn; i++ {
 			intentHost, err := insertIntent(d)
 			if err != nil {

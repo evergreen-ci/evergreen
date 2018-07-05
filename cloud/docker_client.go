@@ -12,16 +12,13 @@ import (
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
-
-// Temporary port used for all connections to the Docker daemon. To be moved to
-// ContainerPoolsConfig section of Evergreen settings after EVG-3598
-const ClientPort = 3389
 
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
@@ -56,9 +53,8 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
-	endpoint := fmt.Sprintf("tcp://%s:%d", h.Host, ClientPort)
-
 	var err error
+	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, h.ContainerPoolSettings.Port)
 	c.client, err = docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
 	if err != nil {
 		grip.Error(message.Fields{
@@ -107,10 +103,14 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		return errors.Wrapf(err, "Failed to list containers on host '%s'", h.Id)
 	}
 
-	// Create a host config to bind the SSH port to another open port.
-	hostConf, err := makeHostConfig(s, containers)
+	settings, err := evergreen.GetConfig()
 	if err != nil {
-		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", s.HostIP)
+		return errors.Wrap(err, "Error getting evergreen settings")
+	}
+	// Create a host config to bind the SSH port to another open port.
+	hostConf, err := makeHostConfig(s.PoolID, settings, containers)
+	if err != nil {
+		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", h.Host)
 		grip.Error(err)
 		return err
 	}
