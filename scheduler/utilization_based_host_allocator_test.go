@@ -63,7 +63,7 @@ func TestGroupByTaskGroup(t *testing.T) {
 	}
 	groups = groupByTaskGroup(hosts, tasks)
 	assert.Len(groups, 2)
-	assert.Len(groups[makeTaskGroupString("g2", "", "", "")].hosts, 0)
+	assert.Len(groups[makeTaskGroupString("g2", "", "", "")].hosts, 2)
 	assert.Len(groups[makeTaskGroupString("g2", "", "", "")].tasks, 1)
 	assert.Len(groups[""].hosts, 2)
 	assert.Len(groups[""].tasks, 1)
