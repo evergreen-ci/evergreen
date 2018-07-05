@@ -101,6 +101,7 @@ Evergreen - Distros
           <label class="distro-label" ng-show="checkPoolID(form.poolID.$modelValue)"> Pool Mapping Information:</label>
             <p style="font-family:courier new, courier, monospace;" ng-bind-html="displayContainerPool(form.poolID.$modelValue)"></p>
       </div>
+    </div>
       <div ng-show="activeDistro.provider.startsWith('ec2')">
         <div>
     <label class="distro-label">AMI ID:</label>

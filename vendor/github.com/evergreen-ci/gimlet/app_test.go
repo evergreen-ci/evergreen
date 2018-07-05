@@ -35,7 +35,7 @@ func (s *AppSuite) TestDefaultValuesAreSet() {
 	s.Len(s.app.middleware, 0)
 	s.Len(s.app.routes, 0)
 	s.Equal(s.app.port, 3000)
-	s.False(s.app.StrictSlash)
+	s.True(s.app.StrictSlash)
 	s.False(s.app.isResolved)
 }
 

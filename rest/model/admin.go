@@ -785,7 +785,7 @@ type APIContainerPool struct {
 	Distro        APIString `json:"distro"`
 	Id            APIString `json:"id"`
 	MaxContainers int       `json:"max_containers"`
-	Port          uint16    `json:port`
+	Port          uint16    `json:"port"`
 }
 
 func (a *APIContainerPool) BuildFromService(h interface{}) error {
