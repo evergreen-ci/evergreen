@@ -1,10 +1,10 @@
 package scheduler
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -178,8 +178,8 @@ func tasksAreCommitBuilds(t1, t2 task.Task) bool {
 // list. This is to ensure that task groups are dispatched in the order that
 // they are defined.
 func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
-	if differentBuildOrTaskGroup(t1, t2) {
-		return 0, nil
+	if ret, value := compareTasksWithTaskGroups(t1, t2); ret {
+		return value, nil
 	}
 
 	// find earlier task
@@ -195,48 +195,42 @@ func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 			}
 		}
 	}
-
-	// TODO: EVG-3305 Remove this logging
-	tasksFromTaskGroup := []string{}
-	foundTaskGroup := false
-	_, ok := comparator.projects[t1.Version]
-	foundVersion := ok
-	for _, tg := range comparator.projects[t1.Version].TaskGroups {
-		if tg.Name == t1.TaskGroup {
-			tasksFromTaskGroup = append(tasksFromTaskGroup, tg.Tasks...)
-			foundTaskGroup = true
-		}
-	}
-	grip.Error(message.Fields{
-		"message":                 "something went wrong sorting by task group order",
-		"ticket":                  "EVG-3305",
-		"t1_id":                   t1.Id,
-		"t1_display_name":         t1.DisplayName,
-		"t1_version":              t1.Version,
-		"t1_group":                t1.TaskGroup,
-		"t2_id":                   t2.Id,
-		"t2_display_name":         t2.DisplayName,
-		"t2_version":              t2.Version,
-		"t2_group":                t2.TaskGroup,
-		"comparator_projects_len": len(comparator.projects),
-		"tasks_from_task_group":   tasksFromTaskGroup,
-		"found_version":           foundVersion,
-		"found_task_group":        foundTaskGroup,
-		"task_groups_in_version":  len(comparator.projects[t1.Version].TaskGroups),
-	})
-
 	return 0, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, t1.TaskGroup)
 }
 
-// differentBuildOrTaskGroup returns true iff two tasks have different builds
-// or task groups, or empty task groups.
-func differentBuildOrTaskGroup(t1, t2 task.Task) bool {
-	if t1.TaskGroup == "" || t2.TaskGroup == "" ||
-		t1.TaskGroup != t2.TaskGroup ||
-		t1.BuildId != t2.BuildId {
-		return true
+// compareTasksWithTaskGroups returns true to return early (do not apply byTaskGroupOrder), false
+// otherwise. If it returns true, its second value is 1 if the first task should sort higher than
+// the second task, -1 if the second task should sort higher than the first task, and 0 to try other
+// comparators.
+func compareTasksWithTaskGroups(t1, t2 task.Task) (bool, int) {
+	// Try other comparators if both tasks are not in task groups.
+	if t1.TaskGroup == "" && t2.TaskGroup == "" {
+		return true, 0
 	}
-	return false
+
+	// If one task is in a task group, sort that one higher, which keeps the pre-task order,
+	// because task groups have already been sorted to the top.
+	if t1.TaskGroup != "" && t2.TaskGroup == "" {
+		return true, 1
+	}
+	if t1.TaskGroup == "" && t2.TaskGroup != "" {
+		return true, -1
+	}
+
+	// If tasks are in the same task group and build, apply the task group comparator so that
+	// tasks within the same task group are sorted according to their order in the project's
+	// configuration file.
+	if t1.TaskGroup == t2.TaskGroup && t1.BuildId == t2.BuildId {
+		return false, 0
+	}
+
+	// Otherwise, both tasks are in task groups but in different task groups or builds, so keep
+	// the order from the pre-sort step. Since returning 0 would cause other comparators to run,
+	// sort them using the same rules as the pre-sort step.
+	if fmt.Sprintf("%s-%s", t1.BuildId, t1.TaskGroup) > fmt.Sprintf("%s-%s", t2.BuildId, t2.TaskGroup) {
+		return true, 1
+	}
+	return true, -1
 }
 
 // byGenerateTasks schedules tasks that generate tasks ahead of tasks that do not.

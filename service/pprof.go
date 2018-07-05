@@ -23,7 +23,6 @@ import (
 // GetHandlerPprof returns a handler for pprof endpoints.
 func GetHandlerPprof(settings *evergreen.Settings) (http.Handler, error) {
 	app := gimlet.NewApp()
-	app.ResetMiddleware()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.SetPrefix("/debug/pprof")
 	app.StrictSlash = false

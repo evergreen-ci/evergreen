@@ -173,7 +173,7 @@ const (
 
 const (
 	GenerateTasksCommandName = "generate.tasks"
-	CreateHostCommandName    = "create.host"
+	CreateHostCommandName    = "host.create"
 )
 
 type SenderKey int

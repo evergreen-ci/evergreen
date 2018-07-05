@@ -12,13 +12,15 @@ func TestRouteResolutionHelpers(t *testing.T) {
 	hndlr := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 	logger := MakeRecoveryLogger()
 	app := &APIApp{}
+	app.SetPrefix("baz")
+
 	for _, tc := range []struct {
 		route     *APIRoute
 		expected  string
 		addPrefix bool
 	}{
 		{
-			expected:  "/v1/bar",
+			expected:  "/v1/foo/bar",
 			addPrefix: false,
 			route: &APIRoute{
 				prefix:  "/foo",
@@ -28,7 +30,7 @@ func TestRouteResolutionHelpers(t *testing.T) {
 			},
 		},
 		{
-			expected:  "/foo/v1/bar",
+			expected:  "/baz/v1/foo/bar",
 			addPrefix: true,
 			route: &APIRoute{
 				prefix:  "/foo",
@@ -38,13 +40,44 @@ func TestRouteResolutionHelpers(t *testing.T) {
 			},
 		},
 		{
-			expected:  "/foo/v1/bar",
+			expected:  "/baz/v1/foo/bar",
 			addPrefix: true,
+			route: &APIRoute{
+				handler: hndlr,
+				version: 1,
+				route:   "/foo/bar",
+			},
+		},
+		{
+			expected:  "/v1/foo/bar",
+			addPrefix: false,
 			route: &APIRoute{
 				prefix:  "/foo",
 				handler: hndlr,
 				version: 1,
-				route:   "/foo/bar",
+				route:   "/bar",
+			},
+		},
+		{
+			expected:  "/foo/v1/bar",
+			addPrefix: true,
+			route: &APIRoute{
+				prefix:            "/foo",
+				handler:           hndlr,
+				version:           1,
+				route:             "/bar",
+				overrideAppPrefix: true,
+			},
+		},
+		{
+			expected:  "/v1/foo/bar",
+			addPrefix: false,
+			route: &APIRoute{
+				prefix:            "/foo",
+				handler:           hndlr,
+				version:           1,
+				route:             "/bar",
+				overrideAppPrefix: true,
 			},
 		},
 	} {

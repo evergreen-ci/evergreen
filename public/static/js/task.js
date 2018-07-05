@@ -383,10 +383,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       }
 
       $scope.setSortBy = function(order) {
-        // Storing sorted results for future use in multiple places
-        $scope.sortedTests = $filter('orderBy')(
-          $scope.task.test_results, order.by, order.reverse
-        )
         $scope.sortBy = order;
         hash.sort = order.name;
         $locationHash.set(hash);
@@ -454,7 +450,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           $scope.otherExecutions = _.range(task.total_executions + 1)
         }
 
-        $scope.setSortBy($scope.sortOrders[0])
+        $scope.sortBy = $scope.sortOrders[0];
 
         $scope.isMet = function(dependency) {
           // check if a dependency is met, unmet, or in progress
@@ -681,11 +677,11 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       var isFinished = function(status) {
         switch (status) {
           case "success":
-            return true
+          return true;
           case "failed":
-            return true
+          return true;
           default:
-            return false
+          return false;
         }
       }
 

@@ -156,6 +156,10 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
+	return requireUser(next, uis.RedirectToLogin)
+}
+
 // isSuperUser verifies that a given user has super user permissions.
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
@@ -232,6 +236,10 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 	pc.AllProjects = make([]UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
+		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
+			pc.IsAdmin = true
+		}
+
 		if !p.Enabled {
 			continue
 		}
@@ -243,10 +251,6 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 				Owner:       p.Owner,
 			}
 			pc.AllProjects = append(pc.AllProjects, uiProj)
-		}
-
-		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
-			pc.IsAdmin = true
 		}
 	}
 	return nil

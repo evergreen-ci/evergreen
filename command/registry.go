@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -17,36 +18,37 @@ func init() {
 	evgRegistry = newCommandRegistry()
 
 	cmds := map[string]CommandFactory{
-		"archive.targz_pack":    tarballCreateFactory,
-		"archive.targz_extract": tarballExtractFactory,
-		"archive.zip_pack":      zipArchiveCreateFactory,
-		"archive.zip_extract":   zipExtractFactory,
-		"archive.auto_extract":  autoExtractFactory,
-		"attach.results":        attachResultsFactory,
-		"attach.xunit_results":  xunitResultsFactory,
-		"attach.artifacts":      attachArtifactsFactory,
-		"create.host":           createHostFactory,
-		"expansions.fetch_vars": fetchVarsFactory,
-		"expansions.update":     updateExpansionsFactory,
-		"expansions.write":      writeExpansionsFactory,
-		"generate.tasks":        generateTaskFactory,
-		"git.apply_patch":       gitApplyPatchFactory,
-		"git.get_project":       gitFetchProjectFactory,
-		"gotest.parse_files":    goTestFactory,
-		"json.get":              taskDataGetFactory,
-		"json.get_history":      taskDataHistoryFactory,
-		"json.send":             taskDataSendFactory,
-		"keyval.inc":            keyValIncFactory,
-		"manifest.load":         manifestLoadFactory,
-		"s3.get":                s3GetFactory,
-		"s3.put":                s3PutFactory,
-		"s3Copy.copy":           s3CopyFactory,
-		"shell.cleanup":         shellCleanupFactory,
-		"shell.exec":            shellExecFactory,
-		"shell.track":           shellTrackFactory,
-		"subprocess.exec":       subprocessExecFactory,
-		"setup.initial":         initialSetupFactory,
-		"timeout.update":        timeoutUpdateFactory,
+		"archive.targz_pack":            tarballCreateFactory,
+		"archive.targz_extract":         tarballExtractFactory,
+		"archive.zip_pack":              zipArchiveCreateFactory,
+		"archive.zip_extract":           zipExtractFactory,
+		"archive.auto_extract":          autoExtractFactory,
+		"attach.results":                attachResultsFactory,
+		"attach.xunit_results":          xunitResultsFactory,
+		"attach.artifacts":              attachArtifactsFactory,
+		evergreen.CreateHostCommandName: createHostFactory,
+		"expansions.fetch_vars":         fetchVarsFactory,
+		"expansions.update":             updateExpansionsFactory,
+		"expansions.write":              writeExpansionsFactory,
+		"generate.tasks":                generateTaskFactory,
+		"git.apply_patch":               gitApplyPatchFactory,
+		"git.get_project":               gitFetchProjectFactory,
+		"gotest.parse_files":            goTestFactory,
+		"gotest.parse_json":             goTest2JSONFactory,
+		"json.get":                      taskDataGetFactory,
+		"json.get_history":              taskDataHistoryFactory,
+		"json.send":                     taskDataSendFactory,
+		"keyval.inc":                    keyValIncFactory,
+		"manifest.load":                 manifestLoadFactory,
+		"s3.get":                        s3GetFactory,
+		"s3.put":                        s3PutFactory,
+		"s3Copy.copy":                   s3CopyFactory,
+		"shell.cleanup":                 shellCleanupFactory,
+		"shell.exec":                    shellExecFactory,
+		"shell.track":                   shellTrackFactory,
+		"subprocess.exec":               subprocessExecFactory,
+		"setup.initial":                 initialSetupFactory,
+		"timeout.update":                timeoutUpdateFactory,
 	}
 
 	for name, factory := range cmds {

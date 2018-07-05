@@ -91,7 +91,9 @@ func groupTaskGroups(comparator *CmpBasedTaskComparator) error {
 		taskMap[k] = t
 		taskKeys = append(taskKeys, k)
 	}
-	sort.Strings(taskKeys)
+	// Reverse sort to sort task groups to the top, so that they are more
+	// quickly pinned to hosts.
+	sort.Sort(sort.Reverse(sort.StringSlice(taskKeys)))
 	for i, k := range taskKeys {
 		comparator.tasks[i] = taskMap[k]
 	}
