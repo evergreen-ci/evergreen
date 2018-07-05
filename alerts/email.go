@@ -232,10 +232,10 @@ func getSubject(alertCtx AlertContext) string {
 		)
 	case alertrecord.SpawnHostTwoHourWarning:
 		return fmt.Sprintf("Your %s host (%s) will expire in two hours.",
-			alertCtx.Host.Distro, alertCtx.Host.Id)
+			alertCtx.Host.Distro.Id, alertCtx.Host.Id)
 	case alertrecord.SpawnHostTwelveHourWarning:
 		return fmt.Sprintf("Your %s host (%s) will expire in twelve hours.",
-			alertCtx.Host.Distro, alertCtx.Host.Id)
+			alertCtx.Host.Distro.Id, alertCtx.Host.Id)
 		// TODO(EVG-224) alertrecord.SpawnHostExpired:
 	}
 	return taskFailureSubject(alertCtx)
