@@ -1,8 +1,9 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, mciDistroRestService) {
+mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, $filter, mciDistroRestService) {
 
   $scope.readOnly = !$window.isSuperUser;
 
   $scope.distros = $window.distros;
+  $scope.containerPools = $window.containerPools;
   $scope.containerPoolDistros = $window.containerPoolDistros;
   $scope.containerPoolIds = $window.containerPoolIds;
 
@@ -370,6 +371,15 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     }
     return $scope.containerPoolIds.includes(id)
   }
+
+  $scope.displayContainerPool = function(id){
+     var pool = ($filter('filter')($scope.containerPools, {'id':id}))[0];
+     var info = "";
+     for (var prop in pool) {
+       info += prop + ": " + pool[prop] + "<br>";
+     };
+     return info;
+  };
 
   // checks that the form is valid for the given active distro
   $scope.validForm = function() {
