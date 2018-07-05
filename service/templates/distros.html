@@ -98,6 +98,7 @@ Evergreen - Distros
           <input type="text" ng-required="activeDistro.provider == 'docker'" name="poolID" class="form-control" ng-model="activeDistro.settings.pool_id" placeholder="Pool ID to put containers on" ng-readonly="readOnly">
           <div class="icon fa fa-warning distro-error" ng-show="!checkPoolID(form.poolID.$modelValue)">An existing pool ID is required.</div>
       </div>
+    </div>
       <div ng-show="activeDistro.provider.startsWith('ec2')">
         <div>
     <label class="distro-label">AMI ID:</label>
