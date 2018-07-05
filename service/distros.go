@@ -37,8 +37,10 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	containerPoolDistros := make([]string, 0)
+	containerPoolIds := make([]string, 0)
 	for _, p := range settings.ContainerPools.Pools {
 		containerPoolDistros = append(containerPoolDistros, p.Distro)
+		containerPoolIds = append(containerPoolIds, p.Id)
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
@@ -46,7 +48,8 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		Keys    map[string]string
 		ViewData
 		ContainerPoolDistros []string
-	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPoolDistros},
+		ContainerPoolIds     []string
+	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPoolDistros, containerPoolIds},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 
