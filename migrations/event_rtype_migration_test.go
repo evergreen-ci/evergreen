@@ -12,8 +12,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const allLogCollection = "event_log"
-
 type eventRTypeMigrationSuite struct {
 	events []anserdb.Document
 
@@ -83,7 +81,7 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	gen, err := makeEventRTypeMigration(allLogCollection)(anser.GetEnvironment(), args)
+	gen, err := eventRTypeMigration(anser.GetEnvironment(), args)
 	s.Require().NoError(err)
 	gen.Run(ctx)
 	s.Require().NoError(gen.Error())
