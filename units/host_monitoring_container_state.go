@@ -90,29 +90,32 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	}
 
 	// list containers using Docker provider
-	m, err := cloud.GetContainerManager(ctx, j.provider, j.settings)
+	mgr, err := cloud.GetManager(ctx, j.provider, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return
 	}
-	containersIdsFromDocker, err := m.GetContainers(ctx, j.host)
+	containerMgr, err := cloud.ConvertContainerManager(mgr)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error getting Docker manager"))
+		return
+	}
+	containerIdsFromDocker, err := containerMgr.GetContainers(ctx, j.host)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "error getting containers on parent %s from Docker", j.HostID))
 		return
 	}
 
-	// for each non-terminated container in containersDB that is not running in
-	// containersDB, mark it as terminated
-	var found bool
+	// build map of running container IDs
+	isRunning := make(map[string]bool)
+	for _, id := range containerIdsFromDocker {
+		isRunning[id] = true
+	}
+
+	// for each non-terminated container in DB that is not actually running on
+	// Docker, mark it as terminated
 	for _, container := range containersFromDB {
-		found = false
-		for _, id := range containersIdsFromDocker {
-			if container.Id == id {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !isRunning[container.Id] {
 			j.AddError(container.SetTerminated(evergreen.User))
 		}
 	}

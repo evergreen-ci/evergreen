@@ -58,18 +58,17 @@ func TestGetManager(t *testing.T) {
 
 }
 
-func TestGetContainerManager(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func TestConvertContainerManager(t *testing.T) {
 	assert := assert.New(t)
 
-	cloudMgr, err := GetContainerManager(ctx, "docker", testutil.TestConfig())
-	assert.NotNil(cloudMgr)
-	assert.NoError(err)
-	assert.IsType(cloudMgr, &dockerManager{})
+	m1 := &dockerManager{}
+	m2 := &staticManager{}
 
-	cloudMgr, err = GetContainerManager(ctx, "bogus", testutil.TestConfig())
-	assert.Nil(cloudMgr)
-	assert.EqualError(err, "No known container provider for 'bogus'")
+	_, err := ConvertContainerManager(m1)
+	assert.NoError(err)
+
+	cm2, err := ConvertContainerManager(m2)
+	assert.EqualError(err, "Error converting manager to container manager")
+	assert.Nil(cm2)
+
 }

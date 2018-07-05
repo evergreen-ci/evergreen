@@ -91,6 +91,8 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider})
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
+	case evergreen.ProviderNameDockerMock:
+		provider = &dockerManager{client: &dockerClientMock{}}
 	case evergreen.ProviderNameOpenstack:
 		provider = &openStackManager{}
 	case evergreen.ProviderNameGce:
@@ -98,8 +100,9 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	case evergreen.ProviderNameVsphere:
 		provider = &vsphereManager{}
 	default:
-		return nil, errors.Errorf("No known provider for '%v'", providerName)
+		return nil, errors.Errorf("No known provider for '%s'", providerName)
 	}
+
 	if err := provider.Configure(ctx, settings); err != nil {
 		return nil, errors.Wrap(err, "Failed to configure cloud provider")
 	}
@@ -107,22 +110,11 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	return provider, nil
 }
 
-func GetContainerManager(ctx context.Context, providerName string, settings *evergreen.Settings) (ContainerManager, error) {
-	var provider ContainerManager
-	switch providerName {
-	case evergreen.ProviderNameDocker:
-		provider = &dockerManager{}
-	case evergreen.ProviderNameDockerMock:
-		provider = &dockerManager{
-			client: &dockerClientMock{},
-		}
-	default:
-		return nil, errors.Errorf("No known container provider for '%v'", providerName)
+// ConvertContainerManager converts a regular manager into a container manager,
+// errors if type conversion not possible.
+func ConvertContainerManager(m Manager) (ContainerManager, error) {
+	if cm, ok := m.(ContainerManager); ok {
+		return cm, nil
 	}
-
-	if err := provider.Configure(ctx, settings); err != nil {
-		return nil, errors.Wrap(err, "Failed to configure container provider")
-	}
-
-	return provider, nil
+	return nil, errors.New("Error converting manager to container manager")
 }
