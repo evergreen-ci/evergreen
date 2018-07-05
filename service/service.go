@@ -8,10 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/urfave/negroni"
 )
 
 const (
@@ -45,10 +43,8 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
-	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
-	clients := negroni.NewStatic(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))
-	clients.Prefix = "/clients"
-	app.AddMiddleware(clients)
+	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
+	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
 	app.StrictSlash = true
 
 	// in the future, we'll make the gimlet app here, but we
@@ -70,13 +66,11 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// point, and we'll just have the app, but during the legacy
 	// transition, we convert the app to a router and then attach
 	// legacy routes directly.
-	r := mux.NewRouter()
 
 	uiService := uis.GetServiceApp()
 	apiService := as.GetServiceApp()
 
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
-
-	return gimlet.AssembleHandler(r, app, uiService, rest, apiRestV2, apiService)
+	return gimlet.MergeApplications(app, uiService, rest, apiRestV2, apiService)
 }
