@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -25,11 +24,11 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
-	CreateContainer(context.Context, string, distro.Distro, *host.Host, *dockerSettings) error
-	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
-	ListContainers(context.Context, distro.Distro, *host.Host) ([]types.Container, error)
-	RemoveContainer(context.Context, *host.Host, string) error
-	StartContainer(context.Context, *host.Host, string) error
+	CreateContainer(context.Context, string, distro.Distro, *dockerSettings) error
+	GetContainer(context.Context, *host.Host) (*types.ContainerJSON, error)
+	ListContainers(context.Context, distro.Distro) ([]types.Container, error)
+	RemoveContainer(context.Context, *host.Host) error
+	StartContainer(context.Context, *host.Host) error
 }
 
 type dockerClientImpl struct {
@@ -42,7 +41,7 @@ type dockerClientImpl struct {
 // generateClient generates a Docker client that can talk to the host machine
 // specified in the distro. The Docker client must be exposed and available for
 // requests at the distro-specified client port on the host machine.
-func (c *dockerClientImpl) generateClient(d distro.Distro, h *host.Host) (*docker.Client, error) {
+func (c *dockerClientImpl) generateClient(d distro.Distro) (*docker.Client, error) {
 	// Populate and validate settings
 	settings := &dockerSettings{} // Instantiate global settings
 	if d.ProviderSettings != nil {
@@ -55,14 +54,9 @@ func (c *dockerClientImpl) generateClient(d distro.Distro, h *host.Host) (*docke
 		return nil, errors.Wrapf(err, "Invalid Docker settings in distro '%s'", d.Id)
 	}
 
-	s, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, errors.Wrap(err, "Error getting evergreen settings")
-	}
-	pool := s.ContainerPools.GetContainerPool(settings.PoolID)
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
-	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, pool.Port)
+	endpoint := fmt.Sprintf("tcp://%s:%v", settings.HostIP, settings.ClientPort)
 	client, err := docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
 	if err != nil {
 		grip.Error(message.Fields{
@@ -99,26 +93,22 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, id string, d distro.Distro, h *host.Host, s *dockerSettings) error {
-	dockerClient, err := c.generateClient(d, h)
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, id string, d distro.Distro, s *dockerSettings) error {
+	dockerClient, err := c.generateClient(d)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
 
 	// List all containers to find ports that are already taken.
-	containers, err := c.ListContainers(ctx, d, h)
+	containers, err := c.ListContainers(ctx, d)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to list containers for distro '%s'", d.Id)
 	}
 
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "Error getting evergreen settings")
-	}
 	// Create a host config to bind the SSH port to another open port.
-	hostConf, err := makeHostConfig(s.PoolID, settings, containers)
+	hostConf, err := makeHostConfig(d, s, containers)
 	if err != nil {
-		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", h.Host)
+		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", s.HostIP)
 		grip.Error(err)
 		return err
 	}
@@ -152,8 +142,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, id string, d dis
 }
 
 // GetContainer returns low-level information on the Docker container.
-func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host, id string) (*types.ContainerJSON, error) {
-	dockerClient, err := c.generateClient(h.Distro, h)
+func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host) (*types.ContainerJSON, error) {
+	dockerClient, err := c.generateClient(h.Distro)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
@@ -167,8 +157,8 @@ func (c *dockerClientImpl) GetContainer(ctx context.Context, h *host.Host, id st
 }
 
 // ListContainers lists all containers running on the distro-specified host machine.
-func (c *dockerClientImpl) ListContainers(ctx context.Context, d distro.Distro, h *host.Host) ([]types.Container, error) {
-	dockerClient, err := c.generateClient(d, h)
+func (c *dockerClientImpl) ListContainers(ctx context.Context, d distro.Distro) ([]types.Container, error) {
+	dockerClient, err := c.generateClient(d)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
@@ -186,8 +176,8 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, d distro.Distro, 
 }
 
 // RemoveContainer forcibly removes a running or stopped container from its host machine.
-func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, id string) error {
-	dockerClient, err := c.generateClient(h.Distro, h)
+func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host) error {
+	dockerClient, err := c.generateClient(h.Distro)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
@@ -203,8 +193,8 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, h *host.Host, id
 }
 
 // StartContainer starts a stopped or new container on the host machine.
-func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, id string) error {
-	dockerClient, err := c.generateClient(h.Distro, h)
+func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host) error {
+	dockerClient, err := c.generateClient(h.Distro)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}

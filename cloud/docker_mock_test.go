@@ -40,14 +40,14 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
-func (c *dockerClientMock) CreateContainer(context.Context, string, distro.Distro, *host.Host, *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, string, distro.Distro, *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error) {
+func (c *dockerClientMock) GetContainer(context.Context, *host.Host) (*types.ContainerJSON, error) {
 	if c.failGet {
 		return nil, errors.New("failed to inspect container")
 	}
@@ -78,7 +78,7 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	return container, nil
 }
 
-func (c *dockerClientMock) ListContainers(context.Context, distro.Distro, *host.Host) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(context.Context, distro.Distro) ([]types.Container, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}
@@ -91,14 +91,14 @@ func (c *dockerClientMock) ListContainers(context.Context, distro.Distro, *host.
 	return []types.Container{container}, nil
 }
 
-func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) error {
+func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host) error {
 	if c.failRemove {
 		return errors.New("failed to remove container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) error {
+func (c *dockerClientMock) StartContainer(context.Context, *host.Host) error {
 	if c.failStart {
 		return errors.New("failed to start container")
 	}

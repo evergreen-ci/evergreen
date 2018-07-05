@@ -45,8 +45,13 @@ func (s *DockerSuite) SetupTest() {
 		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"image_name": "docker_image",
-			"pool_id":    "pool_id",
+			"host_ip":     "127.0.0.1",
+			"image_name":  "docker_image",
+			"client_port": 4243,
+			"port_range": map[string]interface{}{
+				"min_port": 5000,
+				"max_port": 5010,
+			},
 		},
 	}
 	s.parentHost = host.Host{
@@ -66,20 +71,78 @@ func (s *DockerSuite) TearDownTest() {
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
-		ImageID: "docker_image",
-		PoolID:  "pool_id",
+		HostIP:     "127.0.0.1",
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+		PortRange: &portRange{
+			MinPort: 5000,
+			MaxPort: 5010,
+		},
 	}
 	s.NoError(settingsOk.Validate())
 
+	// error when missing host ip
+	settingsNoHostIP := &dockerSettings{
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+		PortRange: &portRange{
+			MinPort: 5000,
+			MaxPort: 5010,
+		},
+	}
+	s.Error(settingsNoHostIP.Validate())
+
 	// error when missing image id
 	settingsNoImageID := &dockerSettings{
-		PoolID: "pool_id",
+		HostIP:     "127.0.0.1",
+		ClientPort: 4243,
+		PortRange: &portRange{
+			MinPort: 5000,
+			MaxPort: 5010,
+		},
 	}
 	s.Error(settingsNoImageID.Validate())
 
-	// error when missing pool id
-	settingsInvalidPortsZero := &dockerSettings{
+	// error when missing client port
+	settingsNoClientPort := &dockerSettings{
+		HostIP:  "127.0.0.1",
 		ImageID: "docker_image",
+		PortRange: &portRange{
+			MinPort: 5000,
+			MaxPort: 5010,
+		},
+	}
+	s.Error(settingsNoClientPort.Validate())
+
+	// error when invalid port range
+	settingsInvalidPorts := &dockerSettings{
+		HostIP:     "127.0.0.1",
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+		PortRange: &portRange{
+			MinPort: 5010,
+			MaxPort: 5000,
+		},
+	}
+	s.Error(settingsInvalidPorts.Validate())
+
+	// error when missing port PortRange
+	settingsNoPortRange := &dockerSettings{
+		HostIP:     "127.0.0.1",
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+	}
+	s.Error(settingsNoPortRange.Validate())
+
+	// error when ports are 0
+	settingsInvalidPortsZero := &dockerSettings{
+		HostIP:     "127.0.0.1",
+		ImageID:    "docker_image",
+		ClientPort: 4243,
+		PortRange: &portRange{
+			MinPort: 0,
+			MaxPort: 0,
+		},
 	}
 	s.Error(settingsInvalidPortsZero.Validate())
 }
@@ -357,33 +420,23 @@ func (s *DockerSuite) TestMakeHostConfig() {
 	}
 	containers := []types.Container{container}
 
-	settingsNoOpenPorts := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
-					Id:            "test_pool",
-					MaxContainers: 1,
-					Port:          5000,
-				},
-			},
+	settingsNoOpenPorts := &dockerSettings{
+		PortRange: &portRange{
+			MinPort: 5000,
+			MaxPort: 5001,
 		},
 	}
-	conf, err := makeHostConfig("test_pool", settingsNoOpenPorts, containers)
+	conf, err := makeHostConfig(s.distro, settingsNoOpenPorts, containers)
 	s.Error(err)
 	s.Nil(conf)
 
-	settingsOpenPorts := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
-					Id:            "pool_id",
-					MaxContainers: 10,
-					Port:          5000,
-				},
-			},
+	settingsOpenPorts := &dockerSettings{
+		PortRange: &portRange{
+			MinPort: 5000,
+			MaxPort: 5010,
 		},
 	}
-	conf, err = makeHostConfig("pool_id", settingsOpenPorts, containers)
+	conf, err = makeHostConfig(s.distro, settingsOpenPorts, containers)
 	s.NoError(err)
 	s.NotNil(conf)
 }
@@ -447,7 +500,7 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	delete(*s.distro.ProviderSettings, "image_name")
+	delete(*s.distro.ProviderSettings, "port_range")
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 

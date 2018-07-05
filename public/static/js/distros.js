@@ -4,7 +4,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   $scope.distros = $window.distros;
   $scope.containerPoolDistros = $window.containerPoolDistros;
-  $scope.containerPoolIds = $window.containerPoolIds;
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
@@ -362,13 +361,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 	return false
     }
     return (!min && !max) || (min >= 0 && min <= max);
-  }
-
-  $scope.checkPoolID = function(id) {
-    if ($scope.form.poolID.$invalid) {
-      return false
-    }
-    return $scope.containerPoolIds.includes(id)
   }
 
   // checks that the form is valid for the given active distro

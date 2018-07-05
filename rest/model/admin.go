@@ -785,7 +785,6 @@ type APIContainerPool struct {
 	Distro        APIString `json:"distro"`
 	Id            APIString `json:"id"`
 	MaxContainers int       `json:"max_containers"`
-	Port          uint16    `json:port`
 }
 
 func (a *APIContainerPool) BuildFromService(h interface{}) error {
@@ -794,7 +793,6 @@ func (a *APIContainerPool) BuildFromService(h interface{}) error {
 		a.Distro = ToAPIString(v.Distro)
 		a.Id = ToAPIString(v.Id)
 		a.MaxContainers = v.MaxContainers
-		a.Port = v.Port
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -806,7 +804,6 @@ func (a *APIContainerPool) ToService() (interface{}, error) {
 		Distro:        FromAPIString(a.Distro),
 		Id:            FromAPIString(a.Id),
 		MaxContainers: a.MaxContainers,
-		Port:          a.Port,
 	}, nil
 }
 

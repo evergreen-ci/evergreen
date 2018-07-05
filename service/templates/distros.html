@@ -4,7 +4,6 @@
   window.distros = {{ .Distros }};
   window.keys = {{ .Keys }};
   window.containerPoolDistros = {{ .ContainerPoolDistros }};
-  window.containerPoolIds = {{ .ContainerPoolIds }};
 </script>
 {{end}}
 {{define "title"}}
@@ -89,14 +88,30 @@ Evergreen - Distros
       </div>
       <div ng-show="activeDistro.provider == 'docker'">
         <div>
+    <label class="distro-label">Host IP:</label>
+    <input type="text" ng-required="activeDistro.provider == 'docker'" name="hostIP" class="form-control" ng-model="activeDistro.settings.host_ip" placeholder="Machine IP address or DNS name" ng-readonly="readOnly">
+    <div class="icon fa fa-warning distro-error" ng-show="form.hostIP.$dirty && form.hostIP.$error.required || form.hostIP.$invalid">Host IP is required</div>
+        </div>
+        <div>
     <label class="distro-label">Docker Image ID:</label>
     <input type="text" ng-required="activeDistro.provider == 'docker'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="Docker image ID preloaded on host machine" ng-readonly="readOnly">
     <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image ID is required</div>
         </div>
         <div>
-          <label class="distro-label">Pool ID:</label>
-          <input type="text" ng-required="activeDistro.provider == 'docker'" name="poolID" class="form-control" ng-model="activeDistro.settings.pool_id" placeholder="Pool ID to put containers on" ng-readonly="readOnly">
-          <div class="icon fa fa-warning distro-error" ng-show="!checkPoolID(form.poolID.$modelValue)">An existing pool ID is required.</div>
+    <label class="distro-label">Docker Client Port:</label>
+    <input ng-readonly="readOnly" ng-required="activeDistro.provider == 'docker'" name="clientPort" class="form-control" type="number" ng-model="activeDistro.settings.client_port" placeholder="Port exposing the Docker remote API e.g. 2376">
+    <div class="icon fa fa-warning distro-error" ng-show="form.clientPort.$dirty && form.clientPort.$error.required || form.clientPort.$invalid || form.clientPort.$modelValue < 0">Non-negative numeric Client Port is required</div>
+        </div>
+        <div id="port-table" class="distro-table-scroll">
+    <label class="distro-label">Container Port Range:</label>
+    <table style="margin-left: -8px;" ng-form name="portRange" class="table distro-table" ng-init="form.devName=''; form.devSize=''">
+      <tr>
+        <td style="padding-left: 10px;"><input ng-readonly="readOnly" ng-required="activeDistro.settings.port_range.max_port" name="minPort" type="number" ng-model="activeDistro.settings.port_range.min_port" class="form-control" placeholder="Min Port"></td>
+        <td><input ng-readonly="readOnly" ng-required="activeDistro.settings.port_range.min_port" name="maxPort" type="number" ng-model="activeDistro.settings.port_range.max_port" class="form-control" placeholder="Max Port"></td>
+      </tr>
+    </table>
+    <div class="icon fa fa-warning distro-error" ng-show="!checkPortRange(form.portRange.minPort.$modelValue, form.portRange.maxPort.$modelValue)">A non-negative, increasing port range is required</div>
+        </div>
       </div>
       <div ng-show="activeDistro.provider.startsWith('ec2')">
         <div>
