@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -103,12 +102,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		return errors.Wrapf(err, "Failed to list containers on host '%s'", h.Id)
 	}
 
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "Error getting evergreen settings")
-	}
 	// Create a host config to bind the SSH port to another open port.
-	hostConf, err := makeHostConfig(s.PoolID, settings, containers)
+	hostConf, err := makeHostConfig(h, containers)
 	if err != nil {
 		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", h.Host)
 		grip.Error(err)

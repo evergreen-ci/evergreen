@@ -24,25 +24,18 @@ type dockerManager struct {
 type dockerSettings struct {
 	// ImageID is the Docker image ID already loaded on the host machine.
 	ImageID string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
-	// PoolID is the ID of the container pool that maps the containers to a parent distro
-	PoolID string `mapstructure:"pool_id" json:"pool_id" bson:"pool_id"`
 }
 
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
 	imageIDKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageID")
-	poolIDKey  = bsonutil.MustHaveTag(dockerSettings{}, "PoolID")
 )
 
 //Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageID == "" {
 		return errors.New("ImageName must not be blank")
-	}
-
-	if settings.PoolID == "" {
-		return errors.New("PoolID must not be blank.")
 	}
 
 	return nil

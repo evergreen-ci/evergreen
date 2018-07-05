@@ -69,21 +69,12 @@ func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
 		ImageID: "docker_image",
-		PoolID:  "pool_id",
 	}
 	s.NoError(settingsOk.Validate())
 
 	// error when missing image id
-	settingsNoImageID := &dockerSettings{
-		PoolID: "pool_id",
-	}
+	settingsNoImageID := &dockerSettings{}
 	s.Error(settingsNoImageID.Validate())
-
-	// error when missing pool id
-	settingsInvalidPortsZero := &dockerSettings{
-		ImageID: "docker_image",
-	}
-	s.Error(settingsInvalidPortsZero.Validate())
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -360,35 +351,29 @@ func (s *DockerSuite) TestMakeHostConfig() {
 	}
 	containers := []types.Container{container}
 
-	settingsNoOpenPorts := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
-					Id:            "test_pool",
-					MaxContainers: 1,
-					Port:          5000,
-				},
-			},
+	hostNoOpenPorts := &host.Host{
+		Id: "host-1",
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Id:            "test_pool-1",
+			MaxContainers: 1,
+			Port:          5000,
 		},
 	}
 
-	conf, err := makeHostConfig("test_pool", settingsNoOpenPorts, containers)
+	conf, err := makeHostConfig(hostNoOpenPorts, containers)
 	s.Error(err)
 	s.Nil(conf)
 
-	settingsOpenPorts := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
-					Id:            "pool_id",
-					MaxContainers: 10,
-					Port:          5000,
-				},
-			},
+	hostOpenPorts := &host.Host{
+		Id: "host-2",
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Id:            "test_pool-2",
+			MaxContainers: 10,
+			Port:          5000,
 		},
 	}
 
-	conf, err = makeHostConfig("pool_id", settingsOpenPorts, containers)
+	conf, err = makeHostConfig(hostOpenPorts, containers)
 	s.NoError(err)
 	s.NotNil(conf)
 }
