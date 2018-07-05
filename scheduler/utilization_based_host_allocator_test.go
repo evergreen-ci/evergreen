@@ -1533,5 +1533,51 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(2, hosts[s.distroName])
+	// robust handling of task groups would request 2 hosts rather than 1 here
+	s.Equal(1, hosts[s.distroName])
+}
+
+func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
+	h1 := host.Host{
+		Id: "h1",
+	}
+	h2 := host.Host{
+		Id: "h2",
+	}
+	h3 := host.Host{
+		Id: "h3",
+	}
+
+	data := HostAllocatorData{
+		distros: map[string]distro.Distro{
+			s.distroName: s.distro,
+		},
+		existingDistroHosts: map[string][]host.Host{
+			s.distroName: []host.Host{h1, h2, h3},
+		},
+		freeHostFraction: 1,
+		taskQueueItems: map[string][]model.TaskQueueItem{
+			s.distroName: []model.TaskQueueItem{
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g1",
+					GroupMaxHosts:    3,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g1",
+					GroupMaxHosts:    3,
+				},
+				{
+					ExpectedDuration: 30 * time.Minute,
+					Group:            "g1",
+					GroupMaxHosts:    3,
+				},
+			},
+		},
+	}
+
+	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
+	s.NoError(err)
+	s.Equal(0, hosts[s.distroName])
 }

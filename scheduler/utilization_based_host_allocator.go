@@ -110,6 +110,17 @@ func groupByTaskGroup(runningHosts []host.Host, taskQueue []model.TaskQueueItem)
 		}
 	}
 
+	// Any task group can use a host not running a task group, so add them to each list.
+	// This does mean that we can plan more than 1 task for a given host from 2 different
+	// task groups, but that should be in the realm of "this is an estimate"
+	for tg, data := range tgs {
+		if tg == "" {
+			continue
+		}
+		data.hosts = append(data.hosts, tgs[""].hosts...)
+		tgs[tg] = data
+	}
+
 	return tgs
 }
 
