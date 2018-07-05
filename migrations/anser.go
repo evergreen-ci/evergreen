@@ -97,7 +97,6 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		migrationSetDefaultBranch:              setDefaultBranchMigrationGenerator,
 		migrationAdminMapRestructure:           adminMapRestructureGenerator,
 		migrationSpawnhostExpirationPreference: setSpawnhostPreferenceGenerator,
-		migrationDistroSecurityGroups:          distroSecurityGroupsGenerator,
 	}
 	catcher := grip.NewBasicCatcher()
 
