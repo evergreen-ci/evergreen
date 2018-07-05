@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -546,7 +547,8 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				break
 			}
 
-			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts)))
+			ctx := context.Background()
+			catcher.Add(queue.Put(NewHostCreateJob(ctx, env, h, ts, 1, 0)))
 		}
 
 		return catcher.Resolve()

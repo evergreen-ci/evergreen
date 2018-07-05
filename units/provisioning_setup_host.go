@@ -391,39 +391,42 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		"operation":     "increment provisioning errors failed",
 	}))
 
-	output, err := j.runHostSetup(ctx, h, settings)
-	if err != nil {
-		if shouldRetryProvisioning(h) {
-			grip.Debug(message.Fields{
-				"host":     h.Id,
-				"attempts": h.ProvisionAttempts,
-				"output":   output,
-				"distro":   h.Distro.Id,
-				"job":      j.ID(),
-				"error":    err.Error(),
-				"message":  "provisioning failed, but will retry",
-			})
-			return nil
+	// If this is not a task-spawned host
+	if !h.SpawnOptions.SpawnedByTask {
+		output, err := j.runHostSetup(ctx, h, settings)
+		if err != nil {
+			if shouldRetryProvisioning(h) {
+				grip.Debug(message.Fields{
+					"host":     h.Id,
+					"attempts": h.ProvisionAttempts,
+					"output":   output,
+					"distro":   h.Distro.Id,
+					"job":      j.ID(),
+					"error":    err.Error(),
+					"message":  "provisioning failed, but will retry",
+				})
+				return nil
+			}
+
+			grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
+				"operation": "running host provisioning alert trigger",
+				"job":       j.ID(),
+				"host":      h.Id,
+				"attempts":  h.ProvisionAttempts,
+			}))
+			event.LogProvisionFailed(h.Id, output)
+
+			// mark the host's provisioning as failed
+			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned",
+				"attempts":  h.ProvisionAttempts,
+				"distro":    h.Distro.Id,
+				"job":       j.ID(),
+				"host":      h.Id,
+			}))
+
+			return errors.Wrapf(err, "error initializing host %s", h.Id)
 		}
-
-		grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
-			"operation": "running host provisioning alert trigger",
-			"job":       j.ID(),
-			"host":      h.Id,
-			"attempts":  h.ProvisionAttempts,
-		}))
-		event.LogProvisionFailed(h.Id, output)
-
-		// mark the host's provisioning as failed
-		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
-			"operation": "setting host unprovisioned",
-			"attempts":  h.ProvisionAttempts,
-			"distro":    h.Distro.Id,
-			"job":       j.ID(),
-			"host":      h.Id,
-		}))
-
-		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
 
 	// If this is a spawn host
