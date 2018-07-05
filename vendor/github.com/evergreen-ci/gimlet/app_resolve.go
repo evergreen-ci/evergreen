@@ -55,6 +55,7 @@ func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
 }
 
 func (a *APIApp) attachRoutes(router *mux.Router, addAppPrefix bool) error {
+	router.StrictSlash(a.StrictSlash)
 	catcher := grip.NewCatcher()
 	for _, route := range a.routes {
 		if !route.IsValid() {

@@ -19,6 +19,7 @@ func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) 
 	mws := []Middleware{}
 
 	seenPrefixes := make(map[string]struct{})
+
 	for _, app := range apps {
 		if app.prefix != "" {
 			if _, ok := seenPrefixes[app.prefix]; ok {
@@ -44,10 +45,6 @@ func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) 
 
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
-	}
-
-	if len(apps) == 1 {
-		router.StrictSlash(apps[0].StrictSlash)
 	}
 
 	n := negroni.New()

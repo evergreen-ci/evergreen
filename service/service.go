@@ -45,7 +45,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
 	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
 	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
-	app.StrictSlash = true
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.

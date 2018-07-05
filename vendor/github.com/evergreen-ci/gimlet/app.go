@@ -45,7 +45,8 @@ type APIApp struct {
 // for new methods.
 func NewApp() *APIApp {
 	a := &APIApp{
-		port: 3000,
+		port:        3000,
+		StrictSlash: true,
 	}
 
 	return a
