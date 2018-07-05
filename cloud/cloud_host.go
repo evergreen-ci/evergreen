@@ -19,6 +19,7 @@ type HostOptions struct {
 	HasContainers         bool
 	ParentID              string
 	ContainerPoolSettings *evergreen.ContainerPool
+	SpawnOptions          host.SpawnOptions
 }
 
 //CloudHost is a provider-agnostic host object that delegates methods

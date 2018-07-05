@@ -69,6 +69,12 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	if c.CreateHost.CloudProvider != ProviderEC2 {
 		catcher.Add(errors.New("only 'ec2' is supported for providers"))
 	}
+	if c.CreateHost.Retries > 10 {
+		catcher.Add(errors.New("retries must not be greater than 10"))
+	}
+	if c.CreateHost.Retries < 1 {
+		c.CreateHost.Retries = 1
+	}
 	if c.CreateHost.Scope != ScopeTask && c.CreateHost.Scope != ScopeBuild {
 		catcher.Add(errors.New("scope must be build or task"))
 	}
@@ -89,6 +95,8 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 
 func (c *createHost) Execute(ctx context.Context, client client.Communicator,
 	logger client.LoggerProducer, conf *model.TaskConfig) error {
+
+	// TODO Remember to parse userdata file to string
 
 	return errors.New("createHost is not yet implemented")
 }

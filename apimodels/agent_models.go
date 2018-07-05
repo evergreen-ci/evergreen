@@ -83,10 +83,12 @@ type CreateHost struct {
 	Scope               string `mapstructure:"scope" json:"scope"`
 	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
 	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
+	Retries             int    `mapstructure:"retries" json:"retries"`
 }
 
 type EbsDevice struct {
+	DeviceName string `mapstructure:"device_name" json:"device_name"`
 	IOPS       int    `mapstructure:"ebs_iops" json:"ebs_iops"`
-	SizeGB     int    `mapstructure:"ebs_size" json:"ebs_size"`
+	SizeGiB    int    `mapstructure:"ebs_size" json:"ebs_size"`
 	SnapshotID string `mapstructure:"ebs_snapshot_id" json:"ebs_snapshot_id"`
 }
