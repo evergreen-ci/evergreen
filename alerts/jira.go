@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -32,17 +31,8 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.
 {{end}}
 `
 const (
-	jiraFailingTasksField     = "customfield_12950"
-	jiraFailingTestsField     = "customfield_15756"
-	jiraFailingVariantField   = "customfield_14277"
-	jiraEvergreenProjectField = "customfield_14278"
-	jiraFailingRevisionField  = "customfield_14851"
-	jiraMaxTitleLength        = 254
+	jiraMaxTitleLength = 254
 )
-
-// supportedJiraProjects are all of the projects, by name that we
-// expect to be compatible with the custom fields above.
-var supportedJiraProjects = []string{"BFG", "BF", "EVG", "MAKE", "BUILD"}
 
 // DescriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var DescriptionTemplate = template.Must(template.New("Desc").Parse(DescriptionTemplateString))
@@ -62,21 +52,15 @@ type jiraCreator interface {
 
 // jiraDeliverer is an implementation of Deliverer that files JIRA tickets
 type jiraDeliverer struct {
-	project   string
-	issueType string
-	uiRoot    string
-	handler   jiraCreator
-}
-
-// isXgenProjBF is a gross function to figure out if the jira instance
-// and project are correctly configured for the specified kind of
-// requests/issue metadata.
-func isXgenProjBF(host, project string) bool {
-	if !strings.Contains(host, "mongodb") {
-		return false
-	}
-
-	return util.StringSliceContains(supportedJiraProjects, project)
+	project               string
+	issueType             string
+	uiRoot                string
+	handler               jiraCreator
+	failingTasksField     string
+	failingTestsField     string
+	failingVariantField   string
+	failingRevisionField  string
+	evergreenProjectField string
 }
 
 // Deliver posts the alert defined by the AlertContext to JIRA.
@@ -88,16 +72,24 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	request["summary"] = getSummary(ctx)
 	request["description"], err = getDescription(ctx, jd.uiRoot)
 
-	if isXgenProjBF(jd.handler.JiraHost(), jd.project) {
-		failedTests := []string{}
-		for _, t := range ctx.FailedTests {
-			failedTests = append(failedTests, t.TestFile)
-		}
-		request[jiraFailingTasksField] = []string{ctx.Task.DisplayName}
-		request[jiraFailingTestsField] = failedTests
-		request[jiraFailingVariantField] = []string{ctx.Task.BuildVariant}
-		request[jiraEvergreenProjectField] = []string{ctx.ProjectRef.Identifier}
-		request[jiraFailingRevisionField] = []string{ctx.Task.Revision}
+	failedTests := []string{}
+	for _, t := range ctx.FailedTests {
+		failedTests = append(failedTests, t.TestFile)
+	}
+	if jd.failingTasksField != "" {
+		request[jd.failingTasksField] = []string{ctx.Task.DisplayName}
+	}
+	if jd.failingTestsField != "" {
+		request[jd.failingTestsField] = failedTests
+	}
+	if jd.failingVariantField != "" {
+		request[jd.failingVariantField] = []string{ctx.Task.BuildVariant}
+	}
+	if jd.evergreenProjectField != "" {
+		request[jd.evergreenProjectField] = []string{ctx.ProjectRef.Identifier}
+	}
+	if jd.failingRevisionField != "" {
+		request[jd.failingRevisionField] = []string{ctx.Task.Revision}
 	}
 
 	if err != nil {

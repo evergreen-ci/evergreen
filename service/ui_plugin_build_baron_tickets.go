@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -15,20 +16,11 @@ import (
 	"github.com/mongodb/grip"
 )
 
-const (
-	FailingTasksField     = "customfield_12950"
-	FailingTestsField     = "customfield_15756"
-	FailingVariantField   = "customfield_14277"
-	EvergreenProjectField = "customfield_14278"
-	FailingRevisionField  = "customfield_14851"
-	UIRoot                = "https://evergreen.mongodb.com"
-)
-
 const DescriptionTemplateString = `
-h2. [{{.Task.DisplayName}} failed on {{.Task.BuildVariant}}|` + UIRoot + `/task/{{.Task.Id}}/{{.Task.Execution}}]
+h2. [{{.Task.DisplayName}} failed on {{.Task.BuildVariant}}|{{.UiRoot}}/task/{{.Task.Id}}/{{.Task.Execution}}]
 
-{{with .Host}} Host: [{{.Host}}|` + UIRoot + `/host/{{.Id}}] {{end}}
-Project: [{{.Task.Project}}|` + UIRoot + `/waterfall/{{.Task.Project}}]
+Host: [{{.Host.Host}}|{{.UiRoot}}/host/{{.Host.Id}}]
+Project: [{{.Task.Project}}|{{.UiRoot}}/waterfall/{{.Task.Project}}]
 
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 
@@ -68,7 +60,16 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if t == nil {
-		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("task not found for id %v", input.TaskId))
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("task not found for id %s", input.TaskId))
+		return
+	}
+	proj, err := model.FindOneProjectRef(t.Project)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, err.Error())
+		return
+	}
+	if proj == nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("project not found for task %s", input.TaskId))
 		return
 	}
 	var h *host.Host
@@ -80,7 +81,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if h == nil {
-			gimlet.WriteJSONInternalError(w, fmt.Sprintf("host not found for task id %v with host id: %v", input.TaskId, t.HostId))
+			gimlet.WriteJSONInternalError(w, fmt.Sprintf("host not found for task id %s with host id: %s", input.TaskId, t.HostId))
 			return
 		}
 	}
@@ -98,7 +99,7 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.TestFile),
 				URL:        test.URL,
-				HistoryURL: historyURL(t, cleanTestName(test.TestFile)),
+				HistoryURL: historyURL(t, cleanTestName(test.TestFile), uis.Settings.Ui.Url),
 			})
 		}
 	}
@@ -107,15 +108,25 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 	request := map[string]interface{}{}
 	request["project"] = map[string]string{"key": uis.buildBaronProjects[t.Project].TicketCreateProject}
 	request["summary"] = getSummary(t.DisplayName, tests)
-	request[FailingTasksField] = []string{t.DisplayName}
-	request[FailingTestsField] = failedTests
-	request[FailingVariantField] = []string{t.BuildVariant}
-	request[EvergreenProjectField] = []string{t.Project}
-	request[FailingRevisionField] = []string{t.Revision}
 	request["issuetype"] = map[string]string{"name": "Build Failure"}
 	request["assignee"] = map[string]string{"name": u.Id}
 	request["reporter"] = map[string]string{"name": u.Id}
-	request["description"], err = getDescription(t, h, u.Id, tests)
+	request["description"], err = getDescription(*t, *h, u.Id, uis.Settings.Ui.Url, tests)
+	if proj.Jira.FailingTasksField != "" {
+		request[proj.Jira.FailingTasksField] = []string{t.DisplayName}
+	}
+	if proj.Jira.FailingTestsField != "" {
+		request[proj.Jira.FailingTestsField] = failedTests
+	}
+	if proj.Jira.FailingVariantField != "" {
+		request[proj.Jira.FailingVariantField] = []string{t.BuildVariant}
+	}
+	if proj.Jira.EvergreenProjectField != "" {
+		request[proj.Jira.EvergreenProjectField] = []string{t.Project}
+	}
+	if proj.Jira.FailingRevisionField != "" {
+		request[proj.Jira.FailingRevisionField] = []string{t.Revision}
+	}
 
 	if err != nil {
 		gimlet.WriteJSONError(w, fmt.Sprintf("error creating description: %v", err))
@@ -154,9 +165,9 @@ func cleanTestName(path string) string {
 	return path
 }
 
-func historyURL(t *task.Task, testName string) string {
+func historyURL(t *task.Task, testName, uiRoot string) string {
 	return fmt.Sprintf("%v/task_history/%v/%v#%v=fail",
-		UIRoot, t.Project, t.DisplayName, testName)
+		uiRoot, t.Project, t.DisplayName, testName)
 }
 
 func getSummary(taskName string, tests []jiraTestFailure) string {
@@ -176,13 +187,14 @@ func getSummary(taskName string, tests []jiraTestFailure) string {
 	}
 }
 
-func getDescription(t *task.Task, h *host.Host, userId string, tests []jiraTestFailure) (string, error) {
+func getDescription(t task.Task, h host.Host, userId, uiRoot string, tests []jiraTestFailure) (string, error) {
 	args := struct {
-		Task   *task.Task
-		Host   *host.Host
+		Task   task.Task
+		Host   host.Host
 		UserId string
+		UiRoot string
 		Tests  []jiraTestFailure
-	}{t, h, userId, tests}
+	}{t, h, userId, uiRoot, tests}
 	buf := &bytes.Buffer{}
 	if err := DescriptionTemplate.Execute(buf, args); err != nil {
 		return "", err
