@@ -41,6 +41,9 @@ type EC2ProviderSettings struct {
 	// MountPoints are the disk mount points for EBS volumes.
 	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
 
+	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
+	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
+
 	// SecurityGroupIDs is a list of security group IDs.
 	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
 
@@ -69,8 +72,11 @@ func (s *EC2ProviderSettings) Validate() error {
 	if s.AMI == "" || s.InstanceType == "" || s.KeyName == "" {
 		return errors.New("AMI, instance type, and key name must not be empty")
 	}
-	if len(s.SecurityGroupIDs) == 0 {
-		return errors.New("Security groups must not be empty")
+	if s.SecurityGroup == "" && len(s.SecurityGroupIDs) == 0 {
+		return errors.New("Security group must not be empty")
+	}
+	if s.SecurityGroup != "" && len(s.SecurityGroupIDs) > 0 {
+		return errors.New("Must only set SecurityGroup or SecurityGroupIDs")
 	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
@@ -92,6 +98,7 @@ func (s *EC2ProviderSettings) getSecurityGroups() []*string {
 		}
 		return groups
 	}
+	groups = append(groups, makeStringPtr(s.SecurityGroup))
 	return groups
 }
 

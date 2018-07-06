@@ -43,11 +43,11 @@ type MountPoint struct {
 
 var (
 	// bson fields for the EC2ProviderSettings struct
-	AMIKey            = bsonutil.MustHaveTag(EC2ProviderSettings{}, "AMI")
-	InstanceTypeKey   = bsonutil.MustHaveTag(EC2ProviderSettings{}, "InstanceType")
-	SecurityGroupsKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroupIDs")
-	KeyNameKey        = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
-	MountPointsKey    = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
+	AMIKey           = bsonutil.MustHaveTag(EC2ProviderSettings{}, "AMI")
+	InstanceTypeKey  = bsonutil.MustHaveTag(EC2ProviderSettings{}, "InstanceType")
+	SecurityGroupKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroup")
+	KeyNameKey       = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
+	MountPointsKey   = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
 )
 
 var (
