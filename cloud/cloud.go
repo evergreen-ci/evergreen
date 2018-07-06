@@ -57,7 +57,7 @@ type Manager interface {
 type ContainerManager interface {
 	Manager
 
-	// GetContainers returns the IDs of all containers on a specified host
+	// GetContainers returns the IDs of all running containers on a specified host
 	GetContainers(context.Context, *host.Host) ([]string, error)
 }
 
