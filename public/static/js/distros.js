@@ -373,12 +373,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   }
 
   $scope.displayContainerPool = function(id){
-     var pool = ($filter('filter')($scope.containerPools, {'id':id}))[0];
-     var info = "";
-     for (var prop in pool) {
-       info += prop + ": " + pool[prop] + "<br>";
-     };
-     return info;
+    return ($filter('filter')($scope.containerPools, {'id':id}))[0];
   };
 
   // checks that the form is valid for the given active distro
