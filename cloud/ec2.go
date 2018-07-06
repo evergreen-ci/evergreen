@@ -75,9 +75,6 @@ func (s *EC2ProviderSettings) Validate() error {
 	if s.SecurityGroup == "" && len(s.SecurityGroupIDs) == 0 {
 		return errors.New("Security group must not be empty")
 	}
-	if s.SecurityGroup != "" && len(s.SecurityGroupIDs) > 0 {
-		return errors.New("Must only set SecurityGroup or SecurityGroupIDs")
-	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
 	}
