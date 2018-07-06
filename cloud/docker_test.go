@@ -32,6 +32,7 @@ func TestDockerSuite(t *testing.T) {
 
 func (s *DockerSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	s.NoError(db.Clear(host.Collection))
 }
 
 func (s *DockerSuite) SetupTest() {
@@ -50,11 +51,12 @@ func (s *DockerSuite) SetupTest() {
 		},
 	}
 	s.parentHost = host.Host{
-		Id:   "d",
-		Host: "host",
+		Id:            "parent",
+		Host:          "host",
+		HasContainers: true,
 	}
 	s.hostOpts = HostOptions{
-		ParentID: "d",
+		ParentID: "parent",
 	}
 	s.NoError(s.parentHost.Insert())
 	s.NoError(s.distro.Insert())
@@ -67,21 +69,12 @@ func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
 		ImageID: "docker_image",
-		PoolID:  "pool_id",
 	}
 	s.NoError(settingsOk.Validate())
 
 	// error when missing image id
-	settingsNoImageID := &dockerSettings{
-		PoolID: "pool_id",
-	}
+	settingsNoImageID := &dockerSettings{}
 	s.Error(settingsNoImageID.Validate())
-
-	// error when missing pool id
-	settingsInvalidPortsZero := &dockerSettings{
-		ImageID: "docker_image",
-	}
-	s.Error(settingsInvalidPortsZero.Validate())
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -116,7 +109,7 @@ func (s *DockerSuite) TestIsUpFailAPICall() {
 }
 
 func (s *DockerSuite) TestIsUpStatuses() {
-	host := &host.Host{}
+	host := &host.Host{ParentID: "parent"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -343,6 +336,7 @@ func (s *DockerSuite) TestGetDNSName() {
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
+
 	dns, err = s.manager.GetDNSName(ctx, host)
 	s.NoError(err)
 	s.NotEmpty(dns)
@@ -357,33 +351,29 @@ func (s *DockerSuite) TestMakeHostConfig() {
 	}
 	containers := []types.Container{container}
 
-	settingsNoOpenPorts := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
-					Id:            "test_pool",
-					MaxContainers: 1,
-					Port:          5000,
-				},
-			},
+	hostNoOpenPorts := &host.Host{
+		Id: "host-1",
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Id:            "test_pool-1",
+			MaxContainers: 1,
+			Port:          5000,
 		},
 	}
-	conf, err := makeHostConfig("test_pool", settingsNoOpenPorts, containers)
+
+	conf, err := makeHostConfig(hostNoOpenPorts, containers)
 	s.Error(err)
 	s.Nil(conf)
 
-	settingsOpenPorts := &evergreen.Settings{
-		ContainerPools: evergreen.ContainerPoolsConfig{
-			Pools: []evergreen.ContainerPool{
-				evergreen.ContainerPool{
-					Id:            "pool_id",
-					MaxContainers: 10,
-					Port:          5000,
-				},
-			},
+	hostOpenPorts := &host.Host{
+		Id: "host-2",
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Id:            "test_pool-2",
+			MaxContainers: 10,
+			Port:          5000,
 		},
 	}
-	conf, err = makeHostConfig("pool_id", settingsOpenPorts, containers)
+
+	conf, err = makeHostConfig(hostOpenPorts, containers)
 	s.NoError(err)
 	s.NotNil(conf)
 }
@@ -455,5 +445,22 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 		_, err := s.manager.SpawnHost(ctx, host)
 		s.Error(err)
 	})
+}
 
+func (s *DockerSuite) TestGetContainers() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failList)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	containers, err := s.manager.GetContainers(ctx, parent)
+	s.NoError(err)
+	s.Equal(1, len(containers))
+	s.Equal("container-1", containers[0])
 }

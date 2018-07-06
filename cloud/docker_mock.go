@@ -1,5 +1,3 @@
-// +build go1.7
-
 package cloud
 
 import (
@@ -11,7 +9,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -40,7 +37,7 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
-func (c *dockerClientMock) CreateContainer(context.Context, string, distro.Distro, *host.Host, *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, string, *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}
@@ -78,11 +75,12 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	return container, nil
 }
 
-func (c *dockerClientMock) ListContainers(context.Context, distro.Distro, *host.Host) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.Container, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}
 	container := types.Container{
+		ID: "container-1",
 		Ports: []types.Port{
 			{PublicPort: 5000},
 			{PublicPort: 5001},
