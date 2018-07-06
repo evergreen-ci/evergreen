@@ -81,7 +81,7 @@ func groupByTaskGroup(runningHosts []host.Host, taskQueue []model.TaskQueueItem)
 	for _, h := range runningHosts {
 		groupString := ""
 		if h.RunningTask != "" && h.RunningTaskGroup != "" {
-			groupString = makeTaskGroupString(h.RunningTaskGroup, h.LastBuildVariant, h.LastProject, h.LastVersion)
+			groupString = makeTaskGroupString(h.RunningTaskGroup, h.RunningTaskBuildVariant, h.RunningTaskProject, h.RunningTaskVersion)
 		}
 		if data, exists := tgs[groupString]; exists {
 			data.hosts = append(data.hosts, h)
