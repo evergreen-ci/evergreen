@@ -48,6 +48,7 @@ type APITask struct {
 	GenerateTask       bool             `json:"generate_task"`
 	GeneratedBy        string           `json:"generated_by"`
 	Artifacts          []APIFile        `json:"artifacts"`
+	MinQueuePos        int              `json:"min_queue_pos"`
 }
 
 type logLinks struct {
@@ -114,6 +115,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			EstimatedCost:    v.Cost,
 			GenerateTask:     v.GenerateTask,
 			GeneratedBy:      v.GeneratedBy,
+			MinQueuePos:	  v.MinQueuePos,
 		}
 
 		if len(v.DependsOn) > 0 {
@@ -174,6 +176,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		Cost:             ad.EstimatedCost,
 		GenerateTask:     ad.GenerateTask,
 		GeneratedBy:      ad.GeneratedBy,
+		MinQueuePos:	  ad.MinQueuePos,
 	}
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 
