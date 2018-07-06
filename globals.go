@@ -130,6 +130,7 @@ const (
 	ProviderNameEc2OnDemand = "ec2-ondemand"
 	ProviderNameEc2Spot     = "ec2-spot"
 	ProviderNameDocker      = "docker"
+	ProviderNameDockerMock  = "docker-mock"
 	ProviderNameGce         = "gce"
 	ProviderNameStatic      = "static"
 	ProviderNameOpenstack   = "openstack"
