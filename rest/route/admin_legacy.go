@@ -4,59 +4,48 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
 // this route is to preserve backwards compatibility with old versions of the CLI
-func getLegacyAdminSettingsManager(route string, version int) *RouteManager {
-	agh := &legacyAdminGetHandler{}
-	adminGet := MethodHandler{
-		Authenticator:  &NoAuthAuthenticator{},
-		RequestHandler: agh.Handler(),
-		MethodType:     http.MethodGet,
+func makeLegacyAdminConfig(sc data.Connector) gimlet.RouteHandler {
+	return &legacyAdminGetHandler{
+		sc: sc,
 	}
+}
 
-	adminRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{adminGet},
-		Version: version,
+type legacyAdminGetHandler struct {
+	sc data.Connector
+}
+
+func (h *legacyAdminGetHandler) Factory() gimlet.RouteHandler {
+	return &legacyAdminGetHandler{
+		sc: h.sc,
 	}
-	return &adminRoute
 }
 
-type legacyAdminGetHandler struct{}
-
-func (h *legacyAdminGetHandler) Handler() RequestHandler {
-	return &legacyAdminGetHandler{}
+func (h *legacyAdminGetHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+	return ctx, nil
 }
 
-func (h *legacyAdminGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	return nil
-}
-
-func (h *legacyAdminGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	settings, err := sc.GetEvergreenSettings()
+func (h *legacyAdminGetHandler) Run(ctx context.Context) gimlet.Responder {
+	settings, err := h.sc.GetEvergreenSettings()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
+
 	settingsModel := model.NewConfigModel()
-	err = settingsModel.BuildFromService(settings)
-	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+
+	if err = settingsModel.BuildFromService(settings); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
+
 	modelCopy := model.NewConfigModel()
 	modelCopy.Banner = settingsModel.Banner
 	modelCopy.BannerTheme = settingsModel.BannerTheme
-	return ResponseData{
-		Result: []model.Model{modelCopy},
-	}, nil
+
+	return gimlet.NewJSONResponse(modelCopy)
 }
