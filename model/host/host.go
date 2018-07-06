@@ -132,7 +132,7 @@ type SpawnOptions struct {
 	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
 
 	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
-	SetupSetup time.Time `bson:"setup_setup" json:"setup_setup"`
+	TimeoutSetup time.Time `bson:"setup_setup" json:"setup_setup"`
 
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
