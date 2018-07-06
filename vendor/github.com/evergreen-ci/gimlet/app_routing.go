@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	// "github.com/evergreen-ci/evergreen/model/patch"
-	_ "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 )
 

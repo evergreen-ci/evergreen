@@ -310,7 +310,7 @@ retryLoop:
 					}
 
 					// in all other cases, log an error and retry after an interval.
-					grip.Error(err)
+					logger.Execution().Error(errors.WithMessage(err, "problem putting s3 file"))
 					timer.Reset(backoffCounter.Duration())
 					continue retryLoop
 				}

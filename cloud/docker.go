@@ -1,5 +1,3 @@
-// +build go1.7
-
 package cloud
 
 import (
@@ -26,25 +24,18 @@ type dockerManager struct {
 type dockerSettings struct {
 	// ImageID is the Docker image ID already loaded on the host machine.
 	ImageID string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
-	// PoolID is the ID of the container pool that maps the containers to a parent distro
-	PoolID string `mapstructure:"pool_id" json:"pool_id" bson:"pool_id"`
 }
 
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
 	imageIDKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageID")
-	poolIDKey  = bsonutil.MustHaveTag(dockerSettings{}, "PoolID")
 )
 
 //Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageID == "" {
 		return errors.New("ImageName must not be blank")
-	}
-
-	if settings.PoolID == "" {
-		return errors.New("PoolID must not be blank.")
 	}
 
 	return nil
@@ -61,6 +52,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
+
 	// Decode provider settings from distro settings
 	settings := &dockerSettings{}
 	if h.Distro.ProviderSettings != nil {
@@ -69,18 +61,18 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		}
 	}
 
-	if err := settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid Docker settings in distro '%s'", h.Distro.Id)
-	}
-
-	parent, err := host.FindOne(host.ById(h.ParentID))
+	// get parent of host
+	parent, err := h.GetParent()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error finding parent of host %s", h.Id)
+		return nil, errors.Wrapf(err, "Error finding parent of host '%s'", h.Id)
 	}
 	hostIP := parent.Host
-
 	if hostIP == "" {
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parent.Id)
+	}
+
+	if err := settings.Validate(); err != nil {
+		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
 	}
 
 	grip.Info(message.Fields{
@@ -91,7 +83,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, parent, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, parent, h.Id, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
@@ -143,10 +135,12 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	parent, err := host.FindOne(host.ById(h.ParentID))
+	// get parent of container host
+	parent, err := h.GetParent()
 	if err != nil {
-		return StatusUnknown, errors.Wrapf(err, "Error finding parent of host %s", h.Id)
+		return StatusUnknown, errors.Wrapf(err, "Error retrieving parent of host '%s'", h.Id)
 	}
+
 	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
@@ -172,9 +166,10 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 		return err
 	}
 
-	parent, err := host.FindOne(host.ById(h.ParentID))
+	// get parent of container host
+	parent, err := h.GetParent()
 	if err != nil {
-		return errors.Wrapf(err, "Error finding parent of host %s", h.Id)
+		return errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
 	}
 
 	if err := m.client.RemoveContainer(ctx, parent, h.Id); err != nil {
@@ -239,4 +234,18 @@ func (m *dockerManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, e
 // for the host. For Docker this is not relevant.
 func (m *dockerManager) TimeTilNextPayment(_ *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]string, error) {
+	containers, err := m.client.ListContainers(ctx, h)
+	if err != nil {
+		return nil, errors.Wrap(err, "error listing containers")
+	}
+
+	ids := []string{}
+	for _, container := range containers {
+		ids = append(ids, container.ID)
+	}
+
+	return ids, nil
 }

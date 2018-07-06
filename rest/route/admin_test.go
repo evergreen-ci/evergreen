@@ -309,64 +309,6 @@ func TestRestartRoute(t *testing.T) {
 	assert.Nil(model.TasksErrored)
 }
 
-func TestBannerRoutes(t *testing.T) {
-	assert := assert.New(t)
-
-	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
-	const route = "/admin/banner"
-	const version = 2
-
-	routeManager := getBannerRouteManager(route, version)
-	assert.NotNil(routeManager)
-	assert.Equal(route, routeManager.Route)
-	assert.Equal(version, routeManager.Version)
-	postHandler := routeManager.Methods[0]
-	getHandler := routeManager.Methods[1]
-	connector := data.MockConnector{}
-
-	// test that invalid theme errors
-	body := struct {
-		Text  string `json:"banner"`
-		Theme string `json:"theme"`
-	}{"foo", "bar"}
-	jsonBody, err := json.Marshal(&body)
-	assert.NoError(err)
-	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest("POST", "/admin/banner", buffer)
-	assert.NoError(err)
-	assert.NoError(postHandler.ParseAndValidate(ctx, request))
-	_, err = postHandler.Execute(ctx, &data.MockConnector{})
-	assert.Error(err)
-
-	// test a valid post request
-	body = struct {
-		Text  string `json:"banner"`
-		Theme string `json:"theme"`
-	}{"foo", "warning"}
-	jsonBody, err = json.Marshal(&body)
-	assert.NoError(err)
-	buffer = bytes.NewBuffer(jsonBody)
-	request, err = http.NewRequest("POST", "/admin/banner", buffer)
-	assert.NoError(err)
-	assert.NoError(postHandler.ParseAndValidate(ctx, request))
-	resp, err := postHandler.Execute(ctx, &connector)
-	assert.NoError(err)
-	assert.NotNil(resp)
-
-	// test getting what we just sets
-	request, err = http.NewRequest("GET", "/admin/banner", nil)
-	assert.NoError(err)
-	assert.NoError(getHandler.ParseAndValidate(ctx, request))
-	resp, err = getHandler.Execute(ctx, &connector)
-	assert.NoError(err)
-	assert.NotNil(resp)
-	modelInterface, err := resp.Result[0].ToService()
-	assert.NoError(err)
-	model := modelInterface.(*restModel.APIBanner)
-	assert.EqualValues(restModel.ToAPIString("foo"), model.Text)
-	assert.EqualValues(restModel.ToAPIString("warning"), model.Theme)
-}
-
 func TestAdminEventRoute(t *testing.T) {
 	assert := assert.New(t)
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())

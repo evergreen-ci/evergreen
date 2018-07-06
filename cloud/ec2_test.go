@@ -78,10 +78,10 @@ func (s *EC2Suite) TestConstructor() {
 
 func (s *EC2Suite) TestValidateProviderSettings() {
 	p := &EC2ProviderSettings{
-		AMI:           "ami",
-		InstanceType:  "type",
-		SecurityGroup: "sg-123456",
-		KeyName:       "keyName",
+		AMI:              "ami",
+		InstanceType:     "type",
+		SecurityGroupIDs: []string{"sg-123456"},
+		KeyName:          "keyName",
 	}
 	s.NoError(p.Validate())
 	p.AMI = ""
@@ -94,12 +94,9 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	p.InstanceType = "type"
 
 	s.NoError(p.Validate())
-	p.SecurityGroup = ""
-	s.Error(p.Validate())
-	p.SecurityGroup = "sg-123456"
-	p.SecurityGroupIDs = []string{"sg-123456"}
-	s.Error(p.Validate())
 	p.SecurityGroupIDs = nil
+	s.Error(p.Validate())
+	p.SecurityGroupIDs = []string{"sg-123456"}
 
 	s.NoError(p.Validate())
 	p.KeyName = ""
@@ -228,9 +225,9 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -286,10 +283,10 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"is_vpc":         true,
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -345,9 +342,9 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -401,10 +398,10 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"is_vpc":         true,
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -786,7 +783,7 @@ func (s *EC2Suite) TestUserDataExpand() {
 
 func (s *EC2Suite) TestGetSecurityGroup() {
 	settings := EC2ProviderSettings{
-		SecurityGroup: "sg-1",
+		SecurityGroupIDs: []string{"sg-1"},
 	}
 	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{

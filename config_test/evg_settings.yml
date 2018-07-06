@@ -22,6 +22,9 @@ providers:
     aws:
         aws_secret: "aws secret"
         aws_id: "aws id"
+    docker:
+        api_version: 1.32
+        
 auth:
     crowd:
         username: "mci-nonprod"
