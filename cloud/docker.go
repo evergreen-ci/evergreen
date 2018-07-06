@@ -57,7 +57,7 @@ func (*dockerManager) GetSettings() ProviderSettings {
 
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != evergreen.ProviderNameDocker && h.Distro.Provider != evergreen.ProviderNameDockerStatic {
+	if h.Distro.Provider != evergreen.ProviderNameDocker {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
