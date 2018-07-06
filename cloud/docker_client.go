@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -22,6 +24,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
+	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, string, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
@@ -49,6 +52,9 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 	if c.client != nil {
 		return c.client, nil
 	}
+
+	// allow connections to Docker daemon with self-signed certificates
+	c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true
 
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
@@ -78,6 +84,42 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	// Create HTTP client
 	c.httpClient = util.GetHTTPClient()
 	return nil
+}
+
+// BuildImageWithAgent takes a base image and builds a new image on the specified
+// host from a Dockfile in the root directory, which adds the Evergreen binary
+func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return "", errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	var buffer bytes.Buffer
+	buffer.WriteString(baseImage)
+	buffer.WriteString("-agent")
+	newImage := buffer.String()
+
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return "", errors.Wrap(err, "Error retrieving evergreen settings")
+	}
+	executablePath := h.Distro.ExecutableSubPath()
+
+	options := types.ImageBuildOptions{
+		BuildArgs: map[string]*string{
+			"BASE_IMAGE":          &baseImage,
+			"EXECUTABLE_SUB_PATH": &executablePath,
+			"URL": &settings.Ui.Url,
+		},
+		Tags: []string{newImage},
+	}
+
+	_, err = dockerClient.ImageBuild(ctx, nil, options)
+	if err != nil {
+		return "", errors.Wrapf(err, "Error building Docker image from base image %s", baseImage)
+	}
+
+	return newImage, nil
 }
 
 // CreateContainer creates a new Docker container that runs an SSH daemon, and binds the
@@ -110,13 +152,18 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		return err
 	}
 
+	imageID, err := c.BuildImageWithAgent(ctx, h, s.ImageID)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", s.ImageID, h.Id)
+	}
+
 	// Populate container settings.
 	containerConf := &container.Config{
 		// ExposedPorts exposes the default SSH port to external connections.
 		ExposedPorts: nat.PortSet{
 			sshdPort: {},
 		},
-		Image: s.ImageID,
+		Image: imageID,
 	}
 	networkConf := &network.NetworkingConfig{}
 

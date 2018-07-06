@@ -1,6 +1,9 @@
 package route
 
 import (
+	"context"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -151,4 +154,26 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
+}
+
+func TestDockerfileRoute(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+
+	route := makeHostDockerfileRouteManager()
+
+	request, err := http.NewRequest("GET", "/hosts/dockerfile", nil)
+	assert.NoError(err)
+	assert.NoError(route.Parse(ctx, request))
+	response := route.Run(ctx)
+
+	parts := []string{
+		"ARG BASE_IMAGE",
+		"FROM $BASE_IMAGE",
+		"ARG EXECUTABLE_SUB_PATH",
+		"ARG URL",
+		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
+	}
+
+	assert.Equal(strings.Join(parts, "\n"), response.Data())
 }
