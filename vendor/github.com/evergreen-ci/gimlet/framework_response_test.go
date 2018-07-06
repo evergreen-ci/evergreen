@@ -1,6 +1,7 @@
 package gimlet
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -158,64 +159,79 @@ func TestResponseBuilderConstructor(t *testing.T) {
 func TestSimpleResponseBuilder(t *testing.T) {
 	f := map[string]interface{}{"foo": "bar"}
 	err := errors.New("foo")
-	er := ErrorResponse{418, "coffee"}
 
-	t.Run("TextConstructor", func(t *testing.T) {
-		for idx, resp := range []Responder{
-			NewTextResponse("foo"),
-			NewTextErrorResponse("foo"),
-			NewTextInternalErrorResponse("foo"),
-			MakeTextErrorResponder(err),
-			MakeTextErrorResponder(er),
-		} {
-			assert.Equal(t, TEXT, resp.Format(), "%d", idx)
-		}
-	})
-	t.Run("HTMLConstructor", func(t *testing.T) {
-		for idx, resp := range []Responder{
-			NewHTMLResponse("foo"),
-			NewHTMLErrorResponse("foo"),
-			NewHTMLInternalErrorResponse("foo"),
-		} {
-			assert.Equal(t, HTML, resp.Format(), "%d", idx)
-		}
-	})
-	t.Run("BinaryConstructor", func(t *testing.T) {
-		for idx, resp := range []Responder{
-			NewBinaryResponse(f),
-			NewBinaryErrorResponse(f),
-			NewBinaryInternalErrorResponse(f),
-		} {
-			assert.Equal(t, BINARY, resp.Format(), "%d", idx)
-		}
-	})
-	t.Run("JSONConstructorValid", func(t *testing.T) {
-		for idx, resp := range []Responder{
-			NewJSONResponse(f),
-			NewJSONErrorResponse(f),
-			NewJSONInternalErrorResponse(f),
-			MakeJSONErrorResponder(err),
-			MakeJSONErrorResponder(er),
-		} {
-			assert.Equal(t, JSON, resp.Format(), "%d", idx)
-		}
-	})
-	t.Run("YAMLConstructorValid", func(t *testing.T) {
-		for idx, resp := range []Responder{
-			NewYAMLResponse(f),
-			NewYAMLErrorResponse(f),
-			NewYAMLInternalErrorResponse(f),
-			MakeYAMLErrorResponder(err),
-			MakeYAMLErrorResponder(er),
-		} {
-			assert.Equal(t, YAML, resp.Format(), "%d", idx)
-		}
-	})
+	for idx, er := range []error{
+		ErrorResponse{0, "coffee"},
+		&ErrorResponse{0, "coffee"},
+		ErrorResponse{400, "coffee"},
+		&ErrorResponse{400, "coffee"},
+		ErrorResponse{501, "coffee"},
+		&ErrorResponse{501, "coffee"},
+	} {
+		t.Run(fmt.Sprintf("TextConstructorCase%d", idx), func(t *testing.T) {
+			for idx, resp := range []Responder{
+				NewTextResponse("foo"),
+				NewTextErrorResponse("foo"),
+				NewTextInternalErrorResponse("foo"),
+				MakeTextErrorResponder(err),
+				MakeTextErrorResponder(er),
+				MakeTextInternalErrorResponder(err),
+			} {
+				assert.Equal(t, TEXT, resp.Format(), "%d", idx)
+			}
+		})
+		t.Run(fmt.Sprintf("HTMLConstructorCase%d", idx), func(t *testing.T) {
+			for idx, resp := range []Responder{
+				NewHTMLResponse("foo"),
+				NewHTMLErrorResponse("foo"),
+				NewHTMLInternalErrorResponse("foo"),
+			} {
+				assert.Equal(t, HTML, resp.Format(), "%d", idx)
+			}
+		})
+		t.Run(fmt.Sprintf("BinaryConstructorCase%d", idx), func(t *testing.T) {
+			for idx, resp := range []Responder{
+				NewBinaryResponse(f),
+				NewBinaryErrorResponse(f),
+				NewBinaryInternalErrorResponse(f),
+			} {
+				assert.Equal(t, BINARY, resp.Format(), "%d", idx)
+			}
+		})
+		t.Run(fmt.Sprintf("JSONConstructorValidCase%d", idx), func(t *testing.T) {
+			for idx, resp := range []Responder{
+				NewJSONResponse(f),
+				NewJSONErrorResponse(f),
+				NewJSONInternalErrorResponse(f),
+				MakeJSONErrorResponder(err),
+				MakeJSONErrorResponder(er),
+				MakeJSONInternalErrorResponder(err),
+			} {
+				assert.Equal(t, JSON, resp.Format(), "%d", idx)
+			}
+		})
+		t.Run(fmt.Sprintf("YAMLConstructorValid%d", idx), func(t *testing.T) {
+			for idx, resp := range []Responder{
+				NewYAMLResponse(f),
+				NewYAMLErrorResponse(f),
+				NewYAMLInternalErrorResponse(f),
+				MakeYAMLErrorResponder(err),
+				MakeYAMLInternalErrorResponder(err),
+				MakeYAMLErrorResponder(er),
+			} {
+				assert.Equal(t, YAML, resp.Format(), "%d", idx)
+			}
+		})
+	}
 	t.Run("ErrorConstructorGeneric", func(t *testing.T) {
+		er := ErrorResponse{418, "coffee"}
 		for idx, resp := range []Responder{
 			MakeTextErrorResponder(er),
 			MakeJSONErrorResponder(er),
 			MakeYAMLErrorResponder(er),
+			MakeJSONInternalErrorResponder(er),
+			MakeYAMLInternalErrorResponder(er),
+			MakeTextInternalErrorResponder(er),
 		} {
 			assert.Equal(t, resp.Status(), 418, "%d", idx)
 		}
