@@ -481,6 +481,17 @@ func updateMakespans(b *build.Build) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks)))
 }
 
+func isUnexpectedFailStatus(status string) bool {
+	isExpectedFailStatus := status == evergreen.TaskFailed ||
+		status == evergreen.TaskSucceeded ||
+		status == evergreen.TaskSystemFailed ||
+		status == evergreen.TaskSystemTimedOut ||
+		status == evergreen.TaskSystemUnresponse ||
+		status == evergreen.TaskTestTimedOut
+
+	return !isExpectedFailStatus
+}
+
 // UpdateBuildStatusForTask finds all the builds for a task and updates the
 // status of the build based on the task's status.
 func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
@@ -517,6 +528,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			if err != nil {
 				return err
 			}
+			grip.ErrorWhen(isUnexpectedFailStatus(t.Status), message.Fields{
+				"lookhere":           "evg-3455",
+				"task_id":            t.Id,
+				"task_status":        t.Status,
+				"task_dispatch_time": t.DispatchTime,
+				"task_is_display":    t.DisplayOnly,
+				"task_is_execution":  displayTask != nil,
+				"execution_tasks":    t.ExecutionTasks,
+			})
 			if displayTask != nil {
 				err = displayTask.UpdateDisplayTask()
 				if err != nil {
