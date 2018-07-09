@@ -96,10 +96,6 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     $scope.extraData = {};
     $scope.regexSelectors = {};
 
-    $scope.hasSelectors = function() {
-      return Object.keys($scope.regexSelectors).length !== 0;
-    }
-
     $scope.closeDialog = function(save) {
         if(save === true) {
             $scope.validationErrors = [];
@@ -238,6 +234,10 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
 
     $scope.selectorDisabled = function(field) {
       return field.type in $scope.regexSelectors;
+    }
+
+    $scope.hasSelectors = function() {
+      return Object.keys($scope.regexSelectors).length !== 0;
     }
 }
 
