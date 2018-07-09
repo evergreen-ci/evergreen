@@ -344,7 +344,11 @@ func TestGetJIRADeliverer(t *testing.T) {
 			Provider: JiraProvider,
 			Settings: map[string]interface{}{"project": "TEST", "issue": "Bug"},
 		}
-		qp := &QueueProcessor{}
+		qp := &QueueProcessor{
+			projectsCache: map[string]*model.ProjectRef{
+				"myProject": &model.ProjectRef{},
+			},
+		}
 		Convey("a QueueProcessor with full settings should return the JIRA deliverer", func() {
 			qp.config = &evergreen.Settings{
 				Jira: evergreen.JiraConfig{
@@ -356,7 +360,7 @@ func TestGetJIRADeliverer(t *testing.T) {
 					Url: "root",
 				},
 			}
-			d, err := qp.getDeliverer(alertConf)
+			d, err := qp.getDeliverer(alertConf, "myProject")
 			So(err, ShouldBeNil)
 			So(d, ShouldNotBeNil)
 			jd, ok := d.(*jiraDeliverer)
@@ -368,11 +372,11 @@ func TestGetJIRADeliverer(t *testing.T) {
 
 		Convey("a QueueProcessor with a malformed alertConf should error", func() {
 			alertConf.Settings = map[string]interface{}{"NOTproject": "TEST"}
-			d, err := qp.getDeliverer(alertConf)
+			d, err := qp.getDeliverer(alertConf, "myProject")
 			So(err, ShouldNotBeNil)
 			So(d, ShouldBeNil)
 			alertConf.Settings = map[string]interface{}{"project": 1000}
-			d, err = qp.getDeliverer(alertConf)
+			d, err = qp.getDeliverer(alertConf, "myProject")
 			So(err, ShouldNotBeNil)
 			So(d, ShouldBeNil)
 		})
@@ -383,7 +387,7 @@ func TestGetJIRADeliverer(t *testing.T) {
 					Url: "root",
 				},
 			}
-			d, err := qp.getDeliverer(alertConf)
+			d, err := qp.getDeliverer(alertConf, "myProject")
 			So(err, ShouldNotBeNil)
 			So(d, ShouldBeNil)
 		})
@@ -395,7 +399,7 @@ func TestGetJIRADeliverer(t *testing.T) {
 					Host:     "www.example.com",
 				},
 			}
-			d, err := qp.getDeliverer(alertConf)
+			d, err := qp.getDeliverer(alertConf, "myProject")
 			So(err, ShouldNotBeNil)
 			So(d, ShouldBeNil)
 		})

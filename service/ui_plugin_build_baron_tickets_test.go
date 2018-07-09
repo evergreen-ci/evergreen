@@ -11,13 +11,14 @@ import (
 func TestDescriptionGeneration(t *testing.T) {
 	Convey("With a set of details, a valid description should be generated", t, func() {
 		_, err := getDescription(
-			&task.Task{
+			task.Task{
 				DisplayName:  "My Task",
 				Id:           "mytaskid1",
 				BuildVariant: "osx-108",
 			},
-			&host.Host{},
+			host.Host{},
 			"myUser",
+			"https://evergreen.mongodb.com",
 			[]jiraTestFailure{
 				{Name: "1.js", URL: "path/to/1"},
 				{Name: "2.js", URL: "path/to/2"},
@@ -27,14 +28,15 @@ func TestDescriptionGeneration(t *testing.T) {
 	})
 	Convey("With a display task, a valid description should also be generated", t, func() {
 		_, err := getDescription(
-			&task.Task{
+			task.Task{
 				DisplayName:  "My Task",
 				Id:           "mytaskid1",
 				BuildVariant: "osx-108",
 				DisplayOnly:  true,
 			},
-			nil,
+			host.Host{},
 			"myUser",
+			"https://evergreen.mongodb.com",
 			[]jiraTestFailure{
 				{Name: "1.js", URL: "path/to/1"},
 				{Name: "2.js", URL: "path/to/2"},

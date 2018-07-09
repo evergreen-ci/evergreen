@@ -199,7 +199,7 @@ func (qp *QueueProcessor) findProject(projectId string) (*model.ProjectRef, erro
 	return project, nil
 }
 
-func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Deliverer, error) {
+func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig, evgProject string) (Deliverer, error) {
 	// load and validate "project" JSON value
 	projectField, ok := alertConf.Settings["project"]
 	if !ok {
@@ -230,11 +230,20 @@ func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Delivere
 		qp.config.Jira.Username,
 		qp.config.Jira.Password,
 	)
+	projectRef, ok := qp.projectsCache[evgProject]
+	if !ok || projectRef == nil {
+		return nil, errors.Errorf("unable to find project %s", evgProject)
+	}
 	return &jiraDeliverer{
-		project:   project,
-		issueType: issue,
-		handler:   &handler,
-		uiRoot:    qp.config.Ui.Url,
+		project:               project,
+		issueType:             issue,
+		handler:               &handler,
+		uiRoot:                qp.config.Ui.Url,
+		failingTasksField:     projectRef.Jira.FailingTasksField,
+		failingTestsField:     projectRef.Jira.FailingTestsField,
+		failingVariantField:   projectRef.Jira.FailingVariantField,
+		failingRevisionField:  projectRef.Jira.FailingRevisionField,
+		evergreenProjectField: projectRef.Jira.EvergreenProjectField,
 	}, nil
 }
 
@@ -282,12 +291,12 @@ func (qp *QueueProcessor) newSlackProvider(alertConfg model.AlertConfig) (Delive
 
 // getDeliverer returns the correct implementation of Deliverer according to the provider
 // specified in a project's alerts configuration.
-func (qp *QueueProcessor) getDeliverer(alertConf model.AlertConfig) (Deliverer, error) {
+func (qp *QueueProcessor) getDeliverer(alertConf model.AlertConfig, project string) (Deliverer, error) {
 	switch alertConf.Provider {
 	case SlackProvider:
 		return qp.newSlackProvider(alertConf)
 	case JiraProvider:
-		return qp.newJIRAProvider(alertConf)
+		return qp.newJIRAProvider(alertConf, project)
 	case EmailProvider:
 		return &EmailDeliverer{
 			SMTPSettings{
@@ -307,10 +316,12 @@ func (qp *QueueProcessor) getDeliverer(alertConf model.AlertConfig) (Deliverer, 
 
 func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) error {
 	var alertConfigs []model.AlertConfig
+	project := ""
 	if ctx.ProjectRef != nil {
 		// Project-specific alert - use alert configs defined on the project
 		// TODO(EVG-223) patch alerts should go to patch owner
 		alertConfigs = ctx.ProjectRef.Alerts[req.Trigger]
+		project = ctx.ProjectRef.Identifier
 	} else if ctx.Host != nil {
 		// Host-specific alert - use superuser alert configs for now
 		// TODO(EVG-224) spawnhost alerts should go to spawnhost owner
@@ -318,7 +329,7 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 	}
 
 	for _, alertConfig := range alertConfigs {
-		deliverer, err := qp.getDeliverer(alertConfig)
+		deliverer, err := qp.getDeliverer(alertConfig, project)
 		if err != nil {
 			return errors.Wrap(err, "Failed to get email deliverer")
 		}
