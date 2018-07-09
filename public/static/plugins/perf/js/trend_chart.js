@@ -170,8 +170,10 @@ var drawSingleTrendChart = function(params) {
   })
 
   var cfg = PerfChartService.cfg;
-  document.getElementById(containerId).innerHTML = '';
+  var el = document.getElementById(containerId)
+  if (!el) return
 
+  el.innerHTML = ''
   var svg = d3.select('#' + containerId)
     .append('svg')
     .attr({
