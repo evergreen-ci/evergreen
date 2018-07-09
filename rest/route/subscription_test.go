@@ -441,7 +441,7 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 		"trigger":       "atrigger",
 		"owner":         "me",
 		"owner_type":    "person",
-		"selectors": []map[string]string{{
+		"regex_selectors": []map[string]string{{
 			"type": "object",
 			"data": "",
 		}},
@@ -454,9 +454,9 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.NoError(err)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Invalid selectors: Selector had empty type or data")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Invalid regex selectors: Selector had empty type or data")
 
-	body[0]["selectors"] = []map[string]string{{
+	body[0]["regex_selectors"] = []map[string]string{{
 		"type": "",
 		"data": "data",
 	}}
@@ -464,5 +464,55 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.NoError(err)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Invalid selectors: Selector had empty type or data")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Invalid regex selectors: Selector had empty type or data")
+}
+
+func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	body := []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "yahoo@aol.com",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: must specify at least 1 selector")
+}
+
+func (s *SubscriptionRouteSuite) TestAcceptSubscriptionWithOnlyRegexSelectors() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	body := []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"regex_selectors": []map[string]string{{
+			"type": "object",
+			"data": "data",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "yahoo@aol.com",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 }
