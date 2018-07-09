@@ -96,6 +96,10 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     $scope.extraData = {};
     $scope.regexSelectors = {};
 
+    $scope.hasSelectors = function() {
+      return Object.keys($scope.regexSelectors).length !== 0;
+    }
+
     $scope.closeDialog = function(save) {
         if(save === true) {
             $scope.validationErrors = [];
@@ -120,7 +124,9 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             d.trigger = $scope.trigger.trigger;
             d.trigger_label = $scope.trigger.label;
             d.trigger_data = $scope.extraData;
-            d.regex_selectors = $scope.regexSelectors;
+            d.regex_selectors = _($scope.regexSelectors).map(function(val, key) {
+              return {type: key, data: val.data};
+            });
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -185,6 +191,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       _.each($scope.c.triggers, function(trigger){
         if (trigger.trigger === $scope.trigger.trigger) {
           $scope.extraFields = trigger.extraFields;
+          $scope.regexSelectorOptions = trigger.regex_selectors;
           $scope.addCustomValidation(trigger.extraFields);
           return;
         }
