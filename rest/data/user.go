@@ -112,7 +112,7 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	spawnHostOutcomeSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnHostOutcome,
 		dbUser.Settings.Notifications.SpawnHostOutcomeID, spawnHostOutcomeSubscriber, dbUser.Id)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to create spawn host outcome subscription")
 	}
 	if spawnHostOutcomeSubscription != nil {
 		settings.Notifications.SpawnHostOutcomeID = spawnHostOutcomeSubscription.ID

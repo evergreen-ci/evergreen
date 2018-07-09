@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -159,25 +158,20 @@ func (t *spawnHostTriggers) email() *message.Email {
 }
 
 func (t *spawnHostTriggers) makePayload(sub *event.Subscription) interface{} {
-	var payload interface{}
-	if sub.Subscriber.Type == event.SlackSubscriberType {
-		payload = t.slack()
+	switch sub.Subscriber.Type {
+	case event.SlackSubscriberType:
+		return t.slack()
 
-	} else if sub.Subscriber.Type == event.EmailSubscriberType {
-		payload = t.email()
+	case event.EmailSubscriberType:
+		return t.email()
+
+	default:
+		return nil
 	}
-
-	return payload
 }
 
 func (t *spawnHostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	payload := t.makePayload(sub)
-	grip.Info(message.Fields{
-		"look-here":   "foidsjfhkafhaiwf",
-		"pl":          payload == nil,
-		"e":           t.event.EventType,
-		"provisioned": t.host.Provisioned,
-	})
 	if payload == nil {
 		return nil, nil
 	}
