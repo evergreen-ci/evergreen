@@ -769,7 +769,7 @@ var drawTrendGraph = function(scope, PerfChartService) {
   for (var i = 0; i < tests.length; i++) {
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
-    var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
+    var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + key
 
     drawSingleTrendChart({
       PerfChartService: PerfChartService,
