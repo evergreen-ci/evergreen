@@ -172,7 +172,7 @@ func (t *spawnHostTriggers) makePayload(sub *event.Subscription) interface{} {
 func (t *spawnHostTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
 	payload := t.makePayload(sub)
 	if payload == nil {
-		return nil, nil
+		return nil, errors.Errorf("unspported subscriber type: %s", sub.Type)
 	}
 
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
