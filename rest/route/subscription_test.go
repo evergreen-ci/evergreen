@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -406,4 +407,62 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
 	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
+
+	body = []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "object",
+			"data": "",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "yahoo@aol.com",
+		},
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Invalid selectors: Selector had empty type or data")
+}
+
+func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	body := []map[string]interface{}{{
+		"resource_type": "atype",
+		"trigger":       "atrigger",
+		"owner":         "me",
+		"owner_type":    "person",
+		"selectors": []map[string]string{{
+			"type": "object",
+			"data": "",
+		}},
+		"subscriber": map[string]string{
+			"type":   "email",
+			"target": "yahoo@aol.com",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Invalid selectors: Selector had empty type or data")
+
+	body[0]["selectors"] = []map[string]string{{
+		"type": "",
+		"data": "data",
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Invalid selectors: Selector had empty type or data")
 }
