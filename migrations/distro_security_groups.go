@@ -71,6 +71,9 @@ func makeDistroSecurityGroupMigration(database string) db.MigrationOperation {
 			"$push": db.Document{
 				bsonutil.GetDottedKeyName(settingsKey, securityGroupsKey): settings.SecurityGroup,
 			},
+			"$unset": db.Document{
+				bsonutil.GetDottedKeyName(settingsKey, securityGroupKey): "",
+			},
 		}
 		return session.DB(database).C(distroCollection).UpdateId(id, update)
 	}
