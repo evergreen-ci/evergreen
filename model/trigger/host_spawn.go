@@ -146,7 +146,6 @@ func (t *spawnHostTriggers) email() *message.Email {
 	cmd := "N/A"
 	if t.host.Provisioned {
 		status = "spawned"
-		url = spawnHostURL(t.uiConfig.Url)
 		cmd = sshCommand(t.host)
 	}
 
