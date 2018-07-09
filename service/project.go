@@ -296,10 +296,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !projectRef.Enabled {
-		projectRef.PRTestingEnabled = false
-	}
-
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
