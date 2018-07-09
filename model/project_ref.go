@@ -44,7 +44,6 @@ type ProjectRef struct {
 	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
 	// the set of alert deliveries to be processed for that trigger.
 	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
-	Jira   JiraSettings             `bson:"jira,omitempty" json:"jira,omitempty"`
 
 	// TODO: remove the alerts field above
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
@@ -68,14 +67,6 @@ type AlertConfig struct {
 	// Data contains provider-specific on how a notification should be delivered.
 	// Typed as bson.M so that the appropriate provider can parse out necessary details
 	Settings bson.M `bson:"settings" json:"settings"`
-}
-
-type JiraSettings struct {
-	FailingTasksField     string `bson:"failing_tasks_field" json:"failing_tasks_field"`
-	FailingTestsField     string `bson:"failing_tests_field" json:"failing_tests_field"`
-	FailingVariantField   string `bson:"failing_variant_field" json:"failing_variant_field"`
-	FailingRevisionField  string `bson:"failing_revision_field" json:"failing_revision_field"`
-	EvergreenProjectField string `bson:"project_field" json:"project_field"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
@@ -112,7 +103,6 @@ var (
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
-	projectRefJiraKey               = bsonutil.MustHaveTag(ProjectRef{}, "Jira")
 )
 
 const (
@@ -324,7 +314,6 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
-				projectRefJiraKey:               projectRef.Jira,
 			},
 		},
 	)
