@@ -520,15 +520,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if t.IsFinished() {
-			grip.ErrorWhen(isUnexpectedFailStatus(t.Status), message.Fields{
-				"lookhere":           "evg-3455",
-				"task_id":            t.Id,
-				"task_status":        t.Status,
-				"task_dispatch_time": t.DispatchTime,
-				"task_is_display":    t.DisplayOnly,
-				"task_is_execution":  t.IsPartOfDisplay(),
-				"execution_tasks":    t.ExecutionTasks,
-			})
 			var displayTask *task.Task
 			status := ""
 			finishedTasks++
@@ -537,6 +528,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			if err != nil {
 				return err
 			}
+			grip.ErrorWhen(isUnexpectedFailStatus(t.Status), message.Fields{
+				"lookhere":           "evg-3455",
+				"task_id":            t.Id,
+				"task_status":        t.Status,
+				"task_dispatch_time": t.DispatchTime,
+				"task_is_display":    t.DisplayOnly,
+				"task_is_execution":  displayTask != nil,
+				"execution_tasks":    t.ExecutionTasks,
+			})
 			if displayTask != nil {
 				err = displayTask.UpdateDisplayTask()
 				if err != nil {
