@@ -73,22 +73,22 @@ func (s *spawnHostTriggersSuite) TestSuccessfulSpawn() {
 	sub.Subscriber.Type = event.JIRAIssueSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 
 	sub.Subscriber.Type = event.JIRACommentSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 
 	sub.Subscriber.Type = event.GithubPullRequestSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 
 	sub.Subscriber.Type = event.EvergreenWebhookSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 }
 
 func (s *spawnHostTriggersSuite) TestFailedSpawn() {
@@ -113,20 +113,20 @@ func (s *spawnHostTriggersSuite) TestFailedSpawn() {
 	sub.Subscriber.Type = event.JIRAIssueSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 
 	sub.Subscriber.Type = event.JIRACommentSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 
 	sub.Subscriber.Type = event.GithubPullRequestSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 
 	sub.Subscriber.Type = event.EvergreenWebhookSubscriberType
 	n, err = s.t.Process(&sub)
 	s.Nil(n)
-	s.NoError(err)
+	s.EqualError(err, "unsupported subscriber type: ")
 }
