@@ -111,6 +111,6 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 		opts.DB = settings.Amboy.DB
 		opts.Priority = true
 
-		reporter, err := reporting.MakeDBQueueState()
+		reporter, err := reporting.MakeDBQueueState(settings.Amboy.Name, opts, j.env.Session())
 	}
 }
