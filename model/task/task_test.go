@@ -95,6 +95,14 @@ func TestDependenciesMet(t *testing.T) {
 			So(met, ShouldBeTrue)
 		})
 
+		Convey("task with overridden dependencies should be met", func() {
+			task.DependsOn = depTaskIds
+			task.OverrideDependencies = true
+			met, err := task.DependenciesMet(map[string]Task{})
+			So(err, ShouldBeNil)
+			So(met, ShouldBeTrue)
+		})
+
 		Convey("if only some of the tasks dependencies are finished"+
 			" successfully, then it should not think its dependencies are met",
 			func() {
