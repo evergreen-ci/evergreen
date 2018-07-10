@@ -18,16 +18,15 @@ import (
 )
 
 const (
-	InactiveStatus         = "inactive"
-	WaterfallPerPageLimit  = 5
-	WaterfallBVFilterParam = "bv_filter"
-	WaterfallSkipParam     = "skip"
+	waterfallPerPageLimit  = 5
+	waterfallBVFilterParam = "bv_filter"
+	waterfallSkipParam     = "skip"
 )
 
 // Pull the skip value out of the http request
 func skipValue(r *http.Request) (int, error) {
 	// determine how many versions to skip
-	toSkipStr := r.FormValue(WaterfallSkipParam)
+	toSkipStr := r.FormValue(waterfallSkipParam)
 	if toSkipStr == "" {
 		toSkipStr = "0"
 	}
@@ -194,9 +193,7 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskSt
 
 // For given build variant, variant display name and variant search query
 // checks if matched variant has active tasks
-func variantHasActiveTasks(
-	b build.Build, bvDisplayName string, variantQuery string,
-) bool {
+func variantHasActiveTasks(b build.Build, bvDisplayName string, variantQuery string) bool {
 	return strings.Contains(
 		strings.ToUpper(bvDisplayName), strings.ToUpper(variantQuery),
 	) && b.IsActive()
@@ -207,12 +204,7 @@ func variantHasActiveTasks(
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func getVersionsAndVariants(
-	skip,
-	numVersionElements int,
-	project *model.Project,
-	variantQuery string,
-) (versionVariantData, error) {
+func getVersionsAndVariants(skip, numVersionElements int, project *model.Project, variantQuery string) (versionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []waterfallVersion{}
 
@@ -617,7 +609,7 @@ func waterfallDataAdaptor(
 	}
 
 	// compute the number of versions on the previous page
-	finalData.PreviousPageCount, err = countOnPreviousPage(skip, WaterfallPerPageLimit, project, variantQuery)
+	finalData.PreviousPageCount, err = countOnPreviousPage(skip, waterfallPerPageLimit, project, variantQuery)
 	if err != nil {
 		return waterfallData{}, err
 	}
@@ -646,11 +638,11 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		skip = 0
 	}
 
-	variantQuery := strings.TrimSpace(r.URL.Query().Get(WaterfallBVFilterParam))
+	variantQuery := strings.TrimSpace(r.URL.Query().Get(waterfallBVFilterParam))
 
 	// first, get all of the versions and variants we will need
 	vvData, err := getVersionsAndVariants(
-		skip, WaterfallPerPageLimit, project, variantQuery,
+		skip, waterfallPerPageLimit, project, variantQuery,
 	)
 
 	if err != nil {
@@ -683,7 +675,7 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 
 	query := r.URL.Query()
 
-	skipQ := query.Get(WaterfallSkipParam)
+	skipQ := query.Get(waterfallSkipParam)
 	skip := 0
 
 	if skipQ != "" {
@@ -701,10 +693,10 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 	limit, err := strconv.Atoi(query.Get("limit"))
 
 	if err != nil {
-		limit = WaterfallPerPageLimit
+		limit = waterfallPerPageLimit
 	}
 
-	variantQuery := strings.TrimSpace(query.Get(WaterfallBVFilterParam))
+	variantQuery := strings.TrimSpace(query.Get(waterfallBVFilterParam))
 
 	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery)
 
