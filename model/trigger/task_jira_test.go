@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -362,7 +361,8 @@ func TestCustomFields(t *testing.T) {
 	}
 	fields["EFG"] = nil
 	fields["HIJ"] = map[string]string{}
-	config := evergreen.JIRANotificationsConfig{CustomFields: util.MakeNestedKeyValuePair(fields)}
+	config := evergreen.JIRANotificationsConfig{}
+	config.CustomFields.FromMap(fields)
 
 	j := jiraBuilder{
 		project:  "ABC",
