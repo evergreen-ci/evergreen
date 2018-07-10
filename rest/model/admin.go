@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -21,6 +22,7 @@ func NewConfigModel() *APIAdminSettings {
 		Expansions:        map[string]string{},
 		HostInit:          &APIHostInitConfig{},
 		Jira:              &APIJiraConfig{},
+		JIRANotifications: &APIJIRANotificationsConfig{},
 		Keys:              map[string]string{},
 		LoggerConfig:      &APILoggerConfig{},
 		Notify:            &APINotifyConfig{},
@@ -32,7 +34,6 @@ func NewConfigModel() *APIAdminSettings {
 		Slack:             &APISlackConfig{},
 		Splunk:            &APISplunkConnectionInfo{},
 		Ui:                &APIUIConfig{},
-		JIRANotifications: &APIJIRANotificationsConfig{},
 	}
 }
 
@@ -1300,10 +1301,8 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 }
 
 type APIJIRANotificationsConfig struct {
-	CustomFields map[string]apiJIRAProjectFields `json:"custom_fields,omitempty"`
+	CustomFields map[string]map[string]string `json:"custom_fields,omitempty"`
 }
-
-type apiJIRAProjectFields map[string]string
 
 func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 	var config *evergreen.JIRANotificationsConfig
@@ -1320,13 +1319,12 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 		return nil
 	}
 
-	if j.CustomFields == nil {
-		j.CustomFields = map[string]apiJIRAProjectFields{}
+	m, err := config.CustomFields.NestedMap()
+	if err != nil {
+		return errors.Wrap(err, "failed to build jira custom field configuration")
 	}
 
-	for k, v := range config.CustomFields {
-		j.CustomFields[k] = apiJIRAProjectFields(v)
-	}
+	j.CustomFields = m
 
 	return nil
 }
@@ -1335,12 +1333,10 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 		return evergreen.JIRANotificationsConfig{}, nil
 	}
 	config := evergreen.JIRANotificationsConfig{
-		CustomFields: map[string]evergreen.JIRAProjectFields{},
+		CustomFields: util.KeyValuePairSlice{},
 	}
 
-	for k, v := range j.CustomFields {
-		config.CustomFields[k] = evergreen.JIRAProjectFields(v)
-	}
+	config.CustomFields = util.MakeNestedKeyValuePair(j.CustomFields)
 
 	return config, nil
 }

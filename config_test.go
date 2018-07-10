@@ -563,9 +563,12 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 
 func (s *AdminSuite) TestJIRANotificationsConfig() {
 	c := JIRANotificationsConfig{
-		CustomFields: map[string]JIRAProjectFields{
-			"this": JIRAProjectFields{
-				"should": "disappear",
+		CustomFields: util.KeyValuePairSlice{
+			{
+				Key: "this",
+				Value: map[string]string{
+					"should": "disappear",
+				},
 			},
 		},
 	}
@@ -576,9 +579,17 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 		s.NoError(c.ValidateAndDefault())
 	})
 
-	c.CustomFields = map[string]JIRAProjectFields{
-		"EVG": JIRAProjectFields{
-			"customfield_12345": "magical{{.Template.Expansion}}",
+	//c.CustomFields = map[string]JIRAProjectFields{
+	//	"EVG": JIRAProjectFields{
+	//		"customfield_12345": "magical{{.Template.Expansion}}",
+	//	},
+	//}
+	c.CustomFields = util.KeyValuePairSlice{
+		{
+			Key: "EVG",
+			Value: map[string]string{
+				"customfield_12345": "magical{{.Template.Expansion}}",
+			},
 		},
 	}
 	s.NoError(c.Set())
@@ -586,17 +597,22 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	c = JIRANotificationsConfig{}
 	s.NoError(c.Get())
 	s.NoError(c.ValidateAndDefault())
-	s.Require().Len(c.CustomFields, 1)
-	s.Require().Len(c.CustomFields["EVG"], 1)
-	s.Equal("magical{{.Template.Expansion}}", c.CustomFields["EVG"]["customfield_12345"])
+	m, err := c.CustomFields.NestedMap()
+	s.NoError(err)
+	s.Require().Len(m, 1)
+	s.Require().Len(m["EVG"], 1)
+	s.Equal("magical{{.Template.Expansion}}", m["EVG"]["customfield_12345"])
 	s.NoError(c.ValidateAndDefault())
 
 	c = JIRANotificationsConfig{}
 	s.NoError(c.Set())
 	s.NoError(c.ValidateAndDefault())
-	c.CustomFields = map[string]JIRAProjectFields{
-		"this": JIRAProjectFields{
-			"is": "{{.Invalid}",
+	c.CustomFields = util.KeyValuePairSlice{
+		{
+			Key: "this",
+			Value: map[string]string{
+				"is": "{{.Invalid}",
+			},
 		},
 	}
 	s.EqualError(c.ValidateAndDefault(), "template: jira_notification:1: unexpected \"}\" in operand")

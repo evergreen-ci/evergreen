@@ -155,7 +155,15 @@ func (j *jiraBuilder) getSummary() string {
 
 func (j *jiraBuilder) makeCustomFields() map[string]interface{} {
 	fields := map[string]interface{}{}
-	customFields, ok := j.mappings.CustomFields[j.project]
+	m, err := j.mappings.CustomFields.NestedMap()
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "failed to build custom fields",
+			"task_id": j.data.Task.Id,
+		}))
+		return nil
+	}
+	customFields, ok := m[j.project]
 	if !ok || len(customFields) == 0 {
 		return nil
 	}

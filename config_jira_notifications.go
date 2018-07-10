@@ -1,21 +1,22 @@
 package evergreen
 
 import (
+	"fmt"
 	"text/template"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 type JIRANotificationsConfig struct {
-	CustomFields map[string]JIRAProjectFields `bson:"custom_fields"`
+	// CustomFields is a map[string]map[string]string. The key of the first
+	// map is the JIRA project (ex: EVG), the key of the second map is
+	// the custom field name, and the inner most value is the template
+	// for the custom field
+	CustomFields util.KeyValuePairSlice `bson:"custom_fields"`
 }
-
-// JIRAProjectFields is a map of JIRA field names to Golang template strings
-// If the expanded template resolves to a slice, the slice will be handed to
-// JIRA without any manipulation
-type JIRAProjectFields map[string]string
 
 func (c *JIRANotificationsConfig) SectionId() string { return "jira_notifications" }
 
@@ -36,9 +37,14 @@ func (c *JIRANotificationsConfig) Set() error {
 
 func (c *JIRANotificationsConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	for _, project := range c.CustomFields {
-		for _, tmpl := range project {
-			_, err := template.New("jira_notification").Parse(tmpl)
+	m, err := c.CustomFields.NestedMap()
+	if err != nil {
+		return errors.Wrap(err, "failed to build jira notifications custom field")
+	}
+
+	for _, project := range m {
+		for field, tmpl := range project {
+			_, err := template.New(fmt.Sprintf("%s-%s", project, field)).Parse(tmpl)
 			catcher.Add(err)
 		}
 	}
