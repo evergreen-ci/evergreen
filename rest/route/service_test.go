@@ -16,10 +16,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -387,7 +387,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
 			})
 			Convey("when APIError is returned from DB, should percolate upward", func() {
-				expectedErr := rest.APIError{
+				expectedErr := gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
 					Message:    "not found",
 				}
@@ -806,7 +806,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := rest.APIError{
+			expectedErr := gimlet.ErrorResponse{
 				Message:    "No request body sent",
 				StatusCode: http.StatusBadRequest,
 			}
@@ -829,7 +829,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := rest.APIError{
+			expectedErr := gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
 					"but receieved '%s'",
 					"bool", "string"),
@@ -851,7 +851,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := rest.APIError{
+			expectedErr := gimlet.ErrorResponse{
 				Message:    "Must set 'activated' or 'priority'",
 				StatusCode: http.StatusBadRequest,
 			}
@@ -958,7 +958,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := rest.APIError{
+			expectedErr := gimlet.ErrorResponse{
 				Message:    "Task not found",
 				StatusCode: http.StatusNotFound,
 			}
@@ -1098,7 +1098,7 @@ func TestTaskResetExecute(t *testing.T) {
 
 			_, err := trh.Execute(ctx, &sc)
 			So(err, ShouldNotBeNil)
-			apiErr, ok := err.(rest.APIError)
+			apiErr, ok := err.(gimlet.ErrorResponse)
 			So(ok, ShouldBeTrue)
 			So(apiErr.StatusCode, ShouldEqual, http.StatusBadRequest)
 
@@ -1131,7 +1131,7 @@ func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
 	sc data.Connector, args interface{}, expectedPages *PageResult,
 	expectedModels []model.Model, expectedErr error) {
 	res, pages, err := paginator(key, limit, args, sc)
-	So(err, ShouldResemble, expectedErr)
+	So(errors.Cause(err), ShouldResemble, expectedErr)
 	So(len(res), ShouldEqual, len(expectedModels))
 	for ix := range expectedModels {
 		dbModel, err := res[ix].ToService()

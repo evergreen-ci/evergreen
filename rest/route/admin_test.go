@@ -240,7 +240,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/revert", buffer)
 	s.NoError(err)
-	ctx, err = routeManager.Parse(ctx, request)
+	err = routeManager.Parse(ctx, request)
 	s.NoError(err)
 	resp := routeManager.Run(ctx)
 	s.NotNil(resp)
@@ -253,7 +253,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/revert", buffer)
 	s.NoError(err)
-	ctx, err = routeManager.Parse(ctx, request)
+	err = routeManager.Parse(ctx, request)
 	s.Error(err)
 	s.NotNil(ctx)
 }
