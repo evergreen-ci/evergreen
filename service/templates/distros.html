@@ -99,7 +99,6 @@ Evergreen - Distros
           <select ng-readonly="readOnly" name="poolID" ng-model="activeDistro.settings.pool_id" ng-required="activeDistro.provider == 'docker'">
             <option ng-repeat="pool in containerPoolIds" value=[[pool]]>[[pool]]</option>
           </select>
-          <div class="icon fa fa-warning distro-error" ng-show="!checkPoolID(form.poolID.$modelValue)">An existing pool ID is required.</div>
           <div ng-show="checkPoolID(form.poolID.$modelValue)">
             <label class="distro-label"> Pool Mapping Information:</label>
             <p style="font-family:courier new, courier, monospace;" ng-repeat="(key, value) in displayContainerPool(form.poolID.$modelValue)">[[key]]: [[value]]</p>
