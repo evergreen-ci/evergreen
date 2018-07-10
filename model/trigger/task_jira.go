@@ -68,10 +68,15 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating description")
 	}
+	summary, err := j.getSummary()
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating summary")
+	}
+
 	issue := message.JiraIssue{
 		Project:     j.project,
 		Type:        j.issueType,
-		Summary:     j.getSummary(),
+		Summary:     summary,
 		Description: description,
 		Fields:      j.makeCustomFields(),
 	}
@@ -95,7 +100,7 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 // getSummary creates a JIRA subject for a task failure in the style of
 //  Failures: Task_name on Variant (test1, test2) [ProjectName @ githash]
 // based on the given AlertContext.
-func (j *jiraBuilder) getSummary() string {
+func (j *jiraBuilder) getSummary() (string, error) {
 	subj := &bytes.Buffer{}
 	failed := []string{}
 
@@ -120,8 +125,11 @@ func (j *jiraBuilder) getSummary() string {
 		subj.WriteString("Failed: ")
 	}
 
-	fmt.Fprintf(subj, "%s on %s ", j.data.Task.DisplayName, j.data.Build.DisplayName)
-	fmt.Fprintf(subj, "[%s @ %s] ", j.data.Project.DisplayName, j.data.Version.Revision[0:8])
+	catcher := grip.NewSimpleCatcher()
+	_, err := fmt.Fprintf(subj, "%s on %s ", j.data.Task.DisplayName, j.data.Build.DisplayName)
+	catcher.Add(err)
+	_, err = fmt.Fprintf(subj, "[%s @ %s] ", j.data.Project.DisplayName, j.data.Version.Revision[0:8])
+	catcher.Add(err)
 
 	if len(failed) > 0 {
 		// Include an additional 10 characters for overhead, like the
@@ -129,7 +137,7 @@ func (j *jiraBuilder) getSummary() string {
 		remaining := jiraMaxTitleLength - subj.Len() - 10
 
 		if remaining < len(failed[0]) {
-			return subj.String()
+			return subj.String(), catcher.Resolve()
 		}
 		subj.WriteString("(")
 		toPrint := []string{}
@@ -139,18 +147,20 @@ func (j *jiraBuilder) getSummary() string {
 			}
 			remaining = remaining - len(fail) - 2
 		}
-		fmt.Fprint(subj, strings.Join(toPrint, ", "))
+		_, err = fmt.Fprint(subj, strings.Join(toPrint, ", "))
+		catcher.Add(err)
 		if len(failed)-len(toPrint) > 0 {
-			fmt.Fprintf(subj, " +%d more", len(failed)-len(toPrint))
+			_, err := fmt.Fprintf(subj, " +%d more", len(failed)-len(toPrint))
+			catcher.Add(err)
 		}
 		subj.WriteString(")")
 	}
 	// Truncate string in case we made some mistake above, since it's better
 	// to have a truncated title than to miss a Jira ticket.
 	if subj.Len() > jiraMaxTitleLength {
-		return subj.String()[:jiraMaxTitleLength]
+		return subj.String()[:jiraMaxTitleLength], catcher.Resolve()
 	}
-	return subj.String()
+	return subj.String(), catcher.Resolve()
 }
 
 func (j *jiraBuilder) makeCustomFields() map[string]interface{} {

@@ -68,8 +68,9 @@ func TestJIRASummary(t *testing.T) {
 
 		Convey("a task that timed out should return a subject", func() {
 			j.data.Task.Details.TimedOut = true
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("denoting the time out and showing the task name", func() {
 				So(subj, ShouldContainSubstring, "Timed Out")
 				So(subj, ShouldContainSubstring, taskName)
@@ -81,8 +82,9 @@ func TestJIRASummary(t *testing.T) {
 		})
 		Convey("a task that failed on a system command should return a subject", func() {
 			j.data.Task.Details.Type = model.SystemCommandType
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("denoting the system failure and showing the task name", func() {
 				So(subj, ShouldContainSubstring, "System")
 				So(subj, ShouldContainSubstring, taskName)
@@ -92,8 +94,9 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task that failed on a normal command with no tests should return a subject", func() {
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("denoting the failure and showing the task name", func() {
 				So(subj, ShouldContainSubstring, "Failed")
 				So(subj, ShouldContainSubstring, taskName)
@@ -111,8 +114,9 @@ func TestJIRASummary(t *testing.T) {
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 			}
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("denoting the failure and showing the task name and failed tests", func() {
 				So(subj, ShouldContainSubstring, "Failures")
 				So(subj, ShouldContainSubstring, taskName)
@@ -134,8 +138,9 @@ func TestJIRASummary(t *testing.T) {
 				{TestFile: testName2, Status: evergreen.TestFailedStatus},
 				{TestFile: testName3, Status: evergreen.TestSilentlyFailedStatus},
 			}
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("denoting the failure and showing the task name and failed tests", func() {
 				So(subj, ShouldContainSubstring, "Failures")
 				So(subj, ShouldContainSubstring, taskName)
@@ -164,8 +169,9 @@ func TestJIRASummary(t *testing.T) {
 				{TestFile: testName3, Status: evergreen.TestFailedStatus},
 				{TestFile: reallyLongTestName, Status: evergreen.TestFailedStatus},
 			}
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("and list the tests, but not exceed 254 characters", func() {
 				So(subj, ShouldContainSubstring, "Failures")
 				So(subj, ShouldContainSubstring, taskName)
@@ -185,8 +191,9 @@ func TestJIRASummary(t *testing.T) {
 				{TestFile: testName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName3, Status: evergreen.TestSucceededStatus},
 			}
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("denoting a task failure without a parenthetical", func() {
 				So(subj, ShouldContainSubstring, "Failed")
 				So(subj, ShouldContainSubstring, taskName)
@@ -206,8 +213,9 @@ func TestJIRASummary(t *testing.T) {
 				{TestFile: testName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: testName3, Status: evergreen.TestSilentlyFailedStatus},
 			}
-			subj := j.getSummary()
+			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
 			Convey("denoting a task failure without a parenthetical", func() {
 				So(subj, ShouldContainSubstring, "Failed")
 				So(subj, ShouldContainSubstring, taskName)
@@ -222,7 +230,11 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a failed task should match hash regex", func() {
-			matches := githashRegex.FindAllStringSubmatch(j.getSummary(), -1)
+			subj, err := j.getSummary()
+			So(subj, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
+
+			matches := githashRegex.FindAllStringSubmatch(subj, -1)
 			So(len(matches), ShouldEqual, 1)
 			So(len(matches[0]), ShouldEqual, 2)
 			So(matches[0][1], ShouldEqual, "aaaaaaaa")
