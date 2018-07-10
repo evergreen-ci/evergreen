@@ -49,6 +49,22 @@ type Responder interface {
 	SetPages(*ResponsePages) error
 }
 
+func WriteResponse(rw http.ResponseWriter, resp Responder) {
+	// Write the response, based on the format specified.
+	switch resp.Format() {
+	case JSON:
+		WriteJSONResponse(rw, resp.Status(), resp.Data())
+	case TEXT:
+		WriteTextResponse(rw, resp.Status(), resp.Data())
+	case HTML:
+		WriteHTMLResponse(rw, resp.Status(), resp.Data())
+	case YAML:
+		WriteYAMLResponse(rw, resp.Status(), resp.Data())
+	case BINARY:
+		WriteBinaryResponse(rw, resp.Status(), resp.Data())
+	}
+}
+
 // NewResponseBuilder constructs a Responder implementation that can
 // be used to incrementally build a with successive calls to AddData().
 func NewResponseBuilder() Responder { return &responseBuilder{} }

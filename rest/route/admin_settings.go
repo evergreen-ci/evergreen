@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -49,18 +48,12 @@ func (h *adminGetHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	settings, err := sc.GetEvergreenSettings()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	settingsModel := model.NewConfigModel()
 	err = settingsModel.BuildFromService(settings)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 	return ResponseData{
 		Result: []model.Model{settingsModel},
@@ -102,10 +95,7 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 
 	_, err = sc.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	err = h.model.BuildFromService(newSettings)
 	if err != nil {

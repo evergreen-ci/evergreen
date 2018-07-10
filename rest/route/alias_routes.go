@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -41,10 +40,7 @@ func (a *aliasGetHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 func (a *aliasGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	aliases, err := sc.FindProjectAliases(a.name)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	models := make([]model.Model, len(aliases))
 	for i, a := range aliases {

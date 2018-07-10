@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -45,18 +44,12 @@ func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	u := MustHaveUser(ctx)
 	flags, err := h.Flags.ToService()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	err = sc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	return ResponseData{
 		Result: []model.Model{&h.Flags},

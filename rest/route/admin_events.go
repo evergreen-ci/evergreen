@@ -101,18 +101,18 @@ type revertHandler struct {
 
 func (h *revertHandler) Factory() gimlet.RouteHandler { return &revertHandler{sc: h.sc} }
 
-func (h *revertHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+func (h *revertHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
-		return ctx, errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 
 	if h.GUID == "" {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "GUID to revert to must be specified",
 		}
 	}
-	return ctx, nil
+	return nil
 }
 
 func (h *revertHandler) Run(ctx context.Context) gimlet.Responder {

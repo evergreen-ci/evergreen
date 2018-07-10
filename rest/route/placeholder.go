@@ -19,13 +19,11 @@ type placeHolderHandler struct {
 }
 
 func (p *placeHolderHandler) Factory() gimlet.RouteHandler {
-	return &placeHolderHandler{
-		sc: p.sc,
-	}
+	return &placeHolderHandler{sc: p.sc}
 }
 
-func (p *placeHolderHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
-	return ctx, nil
+func (p *placeHolderHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
 }
 
 func (p *placeHolderHandler) Run(ctx context.Context) gimlet.Responder {

@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -55,10 +54,7 @@ func (b *buildGetHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 func (b *buildGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundBuild, err := sc.FindBuildById(b.buildId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	buildModel := &model.APIBuild{}
@@ -73,10 +69,7 @@ func (b *buildGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 	buildModel.ProjectId = model.ToAPIString(proj)
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{
@@ -105,7 +98,7 @@ func (b *buildChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 	}
 
 	if b.Activated == nil && b.Priority == nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Must set 'activated' or 'priority'",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -118,7 +111,7 @@ func (b *buildChangeStatusHandler) Execute(ctx context.Context, sc data.Connecto
 	if b.Priority != nil {
 		priority := *b.Priority
 		if ok := validPriority(priority, user, sc); !ok {
-			return ResponseData{}, &rest.APIError{
+			return ResponseData{}, gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
@@ -141,10 +134,7 @@ func (b *buildChangeStatusHandler) Execute(ctx context.Context, sc data.Connecto
 	buildModel := &model.APIBuild{}
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	return ResponseData{
 		Result: []model.Model{buildModel},
@@ -188,26 +178,17 @@ func (b *buildAbortHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	usr := MustHaveUser(ctx)
 	err := sc.AbortBuild(b.buildId, usr.Id)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Abort error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Abort error")
 	}
 
 	foundBuild, err := sc.FindBuildById(b.buildId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	buildModel := &model.APIBuild{}
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{
@@ -252,26 +233,17 @@ func (b *buildRestartHandler) Execute(ctx context.Context, sc data.Connector) (R
 	usr := MustHaveUser(ctx)
 	err := sc.RestartBuild(b.buildId, usr.Id)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Restart error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Restart error")
 	}
 
 	foundBuild, err := sc.FindBuildById(b.buildId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 	buildModel := &model.APIBuild{}
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{

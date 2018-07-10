@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -23,7 +23,7 @@ func (bc *DBBuildConnector) FindBuildById(buildId string) (*build.Build, error) 
 		return nil, err
 	}
 	if b == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("build with id %s not found", buildId),
 		}
@@ -76,7 +76,7 @@ func (bc *MockBuildConnector) FindBuildById(buildId string) (*build.Build, error
 			return &bc.CachedBuilds[idx], nil
 		}
 	}
-	return nil, &rest.APIError{
+	return nil, gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("build with id %s not found", buildId),
 	}
