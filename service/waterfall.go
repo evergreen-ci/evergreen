@@ -582,12 +582,7 @@ func countOnPreviousPage(
 	}
 }
 
-func waterfallDataAdaptor(
-	vvData versionVariantData,
-	project *model.Project,
-	skip int,
-	variantQuery string,
-) (waterfallData, error) {
+func waterfallDataAdaptor(vvData versionVariantData, project *model.Project, skip int, variantQuery string) (waterfallData, error) {
 	var err error
 	finalData := waterfallData{}
 	var wfv waterfallVersions = vvData.Versions
