@@ -45,6 +45,7 @@ func SetActiveState(taskId string, caller string, active bool) error {
 			if err = t.ActivateTask(caller); err != nil {
 				return errors.Wrap(err, "error while activating task")
 			}
+			event.LogTaskActivated(taskId, t.Execution, caller)
 		}
 
 		if t.DistroId == "" {
@@ -78,14 +79,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
+		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	} else {
 		return nil
-	}
-
-	if active {
-		event.LogTaskActivated(taskId, t.Execution, caller)
-	} else {
-		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	}
 
 	if t.IsPartOfDisplay() {
