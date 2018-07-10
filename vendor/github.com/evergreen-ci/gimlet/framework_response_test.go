@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -156,13 +157,16 @@ func TestResponseBuilderConstructor(t *testing.T) {
 
 func TestSimpleResponseBuilder(t *testing.T) {
 	f := map[string]interface{}{"foo": "bar"}
-	st := struct{ Foo chan struct{} }{Foo: make(chan struct{})}
+	err := errors.New("foo")
+	er := ErrorResponse{418, "coffee"}
 
 	t.Run("TextConstructor", func(t *testing.T) {
 		for idx, resp := range []Responder{
 			NewTextResponse("foo"),
 			NewTextErrorResponse("foo"),
 			NewTextInternalErrorResponse("foo"),
+			MakeTextErrorResponder(err),
+			MakeTextErrorResponder(er),
 		} {
 			assert.Equal(t, TEXT, resp.Format(), "%d", idx)
 		}
@@ -190,18 +194,10 @@ func TestSimpleResponseBuilder(t *testing.T) {
 			NewJSONResponse(f),
 			NewJSONErrorResponse(f),
 			NewJSONInternalErrorResponse(f),
+			MakeJSONErrorResponder(err),
+			MakeJSONErrorResponder(er),
 		} {
 			assert.Equal(t, JSON, resp.Format(), "%d", idx)
-		}
-	})
-	t.Run("JSONConstructorInvalid", func(t *testing.T) {
-		for idx, resp := range []Responder{
-			NewJSONResponse(st),
-			NewJSONErrorResponse(st),
-			NewJSONInternalErrorResponse(st),
-		} {
-			assert.Equal(t, TEXT, resp.Format(), "%d", idx)
-			assert.Equal(t, http.StatusInternalServerError, resp.Status())
 		}
 	})
 	t.Run("YAMLConstructorValid", func(t *testing.T) {
@@ -209,18 +205,19 @@ func TestSimpleResponseBuilder(t *testing.T) {
 			NewYAMLResponse(f),
 			NewYAMLErrorResponse(f),
 			NewYAMLInternalErrorResponse(f),
+			MakeYAMLErrorResponder(err),
+			MakeYAMLErrorResponder(er),
 		} {
 			assert.Equal(t, YAML, resp.Format(), "%d", idx)
 		}
 	})
-	t.Run("YAMLConstructorInvalid", func(t *testing.T) {
+	t.Run("ErrorConstructorGeneric", func(t *testing.T) {
 		for idx, resp := range []Responder{
-			NewYAMLResponse(st),
-			NewYAMLErrorResponse(st),
-			NewYAMLInternalErrorResponse(st),
+			MakeTextErrorResponder(er),
+			MakeJSONErrorResponder(er),
+			MakeYAMLErrorResponder(er),
 		} {
-			assert.Equal(t, TEXT, resp.Format(), "%d", idx)
-			assert.Equal(t, http.StatusInternalServerError, resp.Status())
+			assert.Equal(t, resp.Status(), 418, "%d", idx)
 		}
 	})
 }

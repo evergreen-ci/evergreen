@@ -1,4 +1,4 @@
-package buildbaron
+package plugin
 
 import (
 	"testing"
@@ -39,11 +39,6 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
 		},
-	}))
-
-	bbPlugin = BuildBaronPlugin{}
-	assert.Error(bbPlugin.Configure(map[string]interface{}{
-		"Projects": map[string]evergreen.BuildBaronProject{},
 	}))
 
 	bbPlugin = BuildBaronPlugin{}

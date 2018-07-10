@@ -218,6 +218,9 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
         if (build.CurrentTime && d) {
           build.Tasks[i].Task.time_taken = (build.CurrentTime - d) * 1000 * 1000;
         }
+      } else {
+        // use the start/end time rather than time taken so that display tasks display the wall clock time
+        build.Tasks[i].Task.time_taken = 1000 * 1000 * (Date.parse(build.Tasks[i].Task.finish_time) - Date.parse(build.Tasks[i].Task.start_time));
       }
       if (build.Tasks[i].Task.time_taken > $scope.computed.maxTaskTime) {
         $scope.computed.maxTaskTime = build.Tasks[i].Task.time_taken;

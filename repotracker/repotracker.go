@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -188,34 +187,6 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// sendFailureNotification sends a notification to the MCI Team when the
-// repotracker is unable to fetch revisions from a given project ref
-func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string, err error) {
-	// Send a notification to the MCI team
-	settings := repoTracker.Settings
-	max := settings.RepoTracker.MaxRepoRevisionsToSearch
-	if max <= 0 {
-		max = DefaultMaxRepoRevisionsToSearch
-	}
-	projectRef := repoTracker.ProjectRef
-	subject := fmt.Sprintf(notify.RepotrackerFailurePreface,
-		projectRef.Identifier, lastRevision)
-	url := fmt.Sprintf("https://api.github.com/%v/%v/commits/%v",
-		projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	msg := fmt.Sprintf("Could not find last known revision '%v' "+
-		"within the most recent %v revisions at %v: %v", lastRevision, max, url, err)
-	nErr := notify.NotifyAdmins(subject, msg, settings)
-	if nErr != nil {
-		grip.Error(message.WrapError(nErr, message.Fields{
-			"message":  "error sending email",
-			"runner":   RunnerName,
-			"revision": lastRevision,
-			"content":  msg,
-			"subject":  subject,
-		}))
-	}
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
@@ -434,7 +405,16 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		} else {
 			lastRevision = repository.LastRevision
 		}
-		repoTracker.sendFailureNotification(lastRevision, err)
+
+		// this used to send email, but it happens so
+		// infrequently, and mail is a bad format for this.
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message":      "repotracker configuration problem",
+			"project":      projectRef.Identifier,
+			"runner":       RunnerName,
+			"lastRevision": lastRevision,
+		}))
+
 		return nil, err
 	}
 

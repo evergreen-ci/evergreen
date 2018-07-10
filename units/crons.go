@@ -195,7 +195,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		if flags.AlertsDisabled {
+		if flags.EventProcessingDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "alerts disabled",
 				"impact":  "not processing alerts for notifications",
@@ -542,7 +542,7 @@ func PopulateHostSetupJobs(env evergreen.Environment, part int) amboy.QueueOpera
 			return nil
 		}
 
-		hosts, err := host.Find(host.Provisioning())
+		hosts, err := host.FindByFirstProvisioningAttempt()
 		grip.Error(message.WrapError(err, message.Fields{
 			"operation": "background task creation",
 			"cron":      setupHostJobName,
@@ -616,6 +616,23 @@ func PopulateLegacyRunnerJobs(env evergreen.Environment, part int) amboy.QueueOp
 			catcher.Add(queue.Put(NewLegacyMonitorRunnerJob(env, ts)))
 		}
 
+		return catcher.Resolve()
+	}
+}
+
+func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.AlertsDisabled {
+			return nil
+		}
+
+		ts := util.RoundPartOfHour(parts).Format(tsFormat)
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(queue.Put(NewSpawnhostExpirationWarningsJob(ts)))
 		return catcher.Resolve()
 	}
 }

@@ -47,6 +47,7 @@
       </div>
     </span>
     <span ng-switch-when="HOST_TASK_FINISHED">Task <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:'...']]</a> completed with status: <b>[[eventLogObj.data.task_status]]</b></span>
+    <span ng-switch-when="HOST_EXPIRATION_WARNING_SENT">Expiration warning sent</span>
   </div>
   <div class="clearfix"></div>
 </div>

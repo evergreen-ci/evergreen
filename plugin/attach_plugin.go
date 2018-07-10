@@ -1,17 +1,16 @@
-package attach
+package plugin
 
 import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
 func init() {
-	plugin.Publish(&AttachPlugin{})
+	Publish(&AttachPlugin{})
 }
 
 const (
@@ -78,15 +77,15 @@ func getAllArtifacts(tasks []artifact.TaskIDAndExecution) ([]artifact.File, erro
 
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
 // that will be added to the Task and Build pages.
-func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return &plugin.PanelConfig{
-		Panels: []plugin.UIPanel{
+func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
+	return &PanelConfig{
+		Panels: []UIPanel{
 			{
-				Page:     plugin.TaskPage,
-				Position: plugin.PageLeft,
+				Page:     TaskPage,
+				Position: PageLeft,
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/task_files_panel.html'\" " +
 					"ng-init='files=plugins.attach' ng-show='plugins.attach.length'></div>",
-				DataFunc: func(context plugin.UIContext) (interface{}, error) {
+				DataFunc: func(context UIContext) (interface{}, error) {
 					if context.Task == nil {
 						return nil, nil
 					}
@@ -121,11 +120,11 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				},
 			},
 			{
-				Page:     plugin.BuildPage,
-				Position: plugin.PageLeft,
+				Page:     BuildPage,
+				Position: PageLeft,
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/build_files_panel.html'\" " +
 					"ng-init='filesByTask=plugins.attach' ng-show='plugins.attach.length'></div>",
-				DataFunc: func(context plugin.UIContext) (interface{}, error) {
+				DataFunc: func(context UIContext) (interface{}, error) {
 					if context.Build == nil {
 						return nil, nil
 					}

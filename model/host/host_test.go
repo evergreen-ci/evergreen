@@ -627,6 +627,20 @@ func TestUpsert(t *testing.T) {
 				So(host.Host, ShouldEqual, "host2")
 
 			})
+
+		Convey("Upserting a host with new ID should set priv_atttempts", func() {
+			So(host.Insert(), ShouldBeNil)
+			So(host.Remove(), ShouldBeNil)
+			host.Id = "s-12345"
+			_, err := host.Upsert()
+			So(err, ShouldBeNil)
+
+			out := bson.M{}
+			So(db.FindOneQ(Collection, db.Query(bson.M{}), &out), ShouldBeNil)
+			val, ok := out[ProvisionAttemptsKey]
+			So(ok, ShouldBeTrue)
+			So(val, ShouldEqual, 0)
+		})
 	})
 }
 
@@ -2085,4 +2099,47 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 	found, err = AllHostsSpawnedByTasksToTerminate()
 	assert.NoError(err)
 	assert.Len(found, 3)
+}
+
+func TestFindByFirstProvisioningAttempt(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	hosts := []Host{
+		{
+			Id:          "host1",
+			Status:      evergreen.HostRunning,
+			RunningTask: "task",
+		},
+		{
+			Id:     "host2",
+			Status: evergreen.HostStarting,
+		},
+		{
+			Id:     "host3",
+			Status: evergreen.HostProvisioning,
+		},
+		{
+			Id:                "host4",
+			ProvisionAttempts: 3,
+			Status:            evergreen.HostProvisioning,
+		},
+	}
+	for i := range hosts {
+		assert.NoError(hosts[i].Insert())
+	}
+
+	hosts, err := FindByFirstProvisioningAttempt()
+	assert.NoError(err)
+	assert.Len(hosts, 1)
+	assert.Equal("host3", hosts[0].Id)
+
+	assert.NoError(db.ClearCollections(Collection))
+	assert.NoError(db.Insert(Collection, bson.M{
+		"_id":    "host5",
+		"status": evergreen.HostProvisioning,
+	}))
+	hosts, err = FindByFirstProvisioningAttempt()
+	assert.NoError(err)
+	assert.Empty(hosts)
 }

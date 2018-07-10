@@ -40,7 +40,7 @@ func loadConfig(path ...string) *evergreen.Settings {
 func MockConfig() *evergreen.Settings {
 	return &evergreen.Settings{
 		Alerts: evergreen.AlertsConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,
@@ -107,7 +107,7 @@ func MockConfig() *evergreen.Settings {
 		Keys:    map[string]string{"k3": "v3"},
 		LogPath: "logpath",
 		Notify: evergreen.NotifyConfig{
-			SMTP: &evergreen.SMTPConfig{
+			SMTP: evergreen.SMTPConfig{
 				Server:     "server",
 				Port:       2285,
 				UseSSL:     true,

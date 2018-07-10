@@ -27,29 +27,41 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
         ).reduce(function(x,y){return x+y}, 0);
     }
 
-    $scope.setRestartSelection = function(s){
-        $scope.selection = s;
-        if($scope.selection == "") {
-            return;
+    $scope.statuses = {
+      ALL: {
+        name: 'All',
+        matches: function(task) { return true },
+      },
+      NONE: {
+        name: 'None',
+        matches: function(task) { return false },
+      },
+      FAILURES: {
+        name: 'Failures',
+        matches: function(task) { return task.status == 'failed' }
+      },
+      SYSTEM_FAILURES: {
+        name: 'System Failures',
+        matches: function(task) {
+          return $filter('statusFilter')(task) == 'system-failed'
         }
-        for(var j=0;j<$scope.version.Builds.length;j++){
-            for(var i=0;i<$scope.version.Builds[j].Build.tasks.length;i++){
-                var t = $scope.version.Builds[j].Build.tasks[i];
-                var setting = false;
-                if(s == "none"){
-                    // do nothing (everything gets unchecked)
-                }else if(s == "all"){
-                    setting = true;
-                }else if(t.status != "undispatched" && t.status == "failed"){
-                    if(s == "failures"){
-                        setting = true;
-                    }else if (s == "system-failures" && $filter("statusFilter")(t) =="system-failed"){
-                        setting = true;
-                    }
-                }
-                $scope.version.Builds[j].Build.tasks[i].checkedForRestart = setting;
-            }
+      },
+      SETUP_FAILURES: {
+        name: 'Setup Failures',
+        matches: function(task) {
+          return $filter('statusFilter')(task) == 'setup-failed'
         }
+      },
+    }
+
+    $scope.setRestartSelection = function(status){
+        $scope.selection = status
+
+        _.each($scope.version.Builds, function(build) {
+            _.each(build.Build.tasks, function(task) {
+                task.checkedForRestart = status.matches(task)
+            })
+        })
     }
 
     $scope.restart = function() {
@@ -171,16 +183,13 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
         });
     }
 
-    $scope.setRestartSelection('all');
+    $scope.setRestartSelection($scope.statuses.ALL)
 }]);
 
-mciModule.directive('adminRestartVersion', function() {
-  return {
-    restrict: 'E',
-    templateUrl: '/static/partials/admin-restart-version.html',
-  }
-});
-
+mciModule.directive('adminRestartVersion', function() { return {
+  restrict: 'E',
+  templateUrl: '/static/partials/admin-restart-version.html',
+}})
 
 mciModule.directive('adminScheduleAll', function() {
     return {

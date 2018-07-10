@@ -23,10 +23,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	ProjectCookieName string = "mci-project-cookie"
-)
-
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
 	render     gimlet.Renderer
@@ -257,9 +253,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) {
 	// Admin routes
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
 	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
-
-	// Static Path handlers
-	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
 
 	// Plugin routes
 	r.HandleFunc("/plugin/buildbaron/jira_bf_search/{task_id}/{execution}", uis.bbJiraSearch)

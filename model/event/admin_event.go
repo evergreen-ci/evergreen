@@ -1,7 +1,6 @@
 package event
 
 import (
-	"fmt"
 	"reflect"
 	"time"
 
@@ -142,7 +141,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	// get the correct implementation of the interface from the registry
 	section := evergreen.ConfigRegistry.GetSection(out.Section)
 	if section == nil {
-		return nil, fmt.Errorf("unable to determine section '%s'", out.Section)
+		return nil, errors.Errorf("unable to determine section '%s'", out.Section)
 	}
 
 	// create 2 copies of the section interface for our value
@@ -171,13 +170,13 @@ func RevertConfig(guid string, user string) error {
 		return errors.Wrap(err, "problem finding events")
 	}
 	if len(events) == 0 {
-		return fmt.Errorf("unable to find event with GUID %s", guid)
+		return errors.Errorf("unable to find event with GUID %s", guid)
 	}
 	evt := events[0]
 	data := evt.Data.(*AdminEventData)
 	current := evergreen.ConfigRegistry.GetSection(data.Section)
 	if current == nil {
-		return fmt.Errorf("unable to find section %s", data.Section)
+		return errors.Errorf("unable to find section %s", data.Section)
 	}
 	err = current.Get()
 	if err != nil {
