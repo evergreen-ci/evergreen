@@ -258,7 +258,7 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	assert.True(ok)
 	assert.Len(dbModel.CustomFields, 2)
 
-	m, err := dbModel.CustomFields.NestedMap()
+	m, err := dbModel.CustomFields.ToMap()
 	assert.NoError(err)
 
 	evg := m["EVG"]

@@ -563,11 +563,14 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 
 func (s *AdminSuite) TestJIRANotificationsConfig() {
 	c := JIRANotificationsConfig{
-		CustomFields: util.KeyValuePairSlice{
+		CustomFields: JIRACustomFieldsByProject{
 			{
-				Key: "this",
-				Value: map[string]string{
-					"should": "disappear",
+				Project: "this",
+				Fields: []JIRANotificationsCustomField{
+					{
+						Field:    "should",
+						Template: "disappear",
+					},
 				},
 			},
 		},
@@ -579,16 +582,14 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 		s.NoError(c.ValidateAndDefault())
 	})
 
-	//c.CustomFields = map[string]JIRAProjectFields{
-	//	"EVG": JIRAProjectFields{
-	//		"customfield_12345": "magical{{.Template.Expansion}}",
-	//	},
-	//}
-	c.CustomFields = util.KeyValuePairSlice{
+	c.CustomFields = JIRACustomFieldsByProject{
 		{
-			Key: "EVG",
-			Value: map[string]string{
-				"customfield_12345": "magical{{.Template.Expansion}}",
+			Project: "EVG",
+			Fields: []JIRANotificationsCustomField{
+				{
+					Field:    "customfield_12345",
+					Template: "magical{{.Template.Expansion}}",
+				},
 			},
 		},
 	}
@@ -597,7 +598,7 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	c = JIRANotificationsConfig{}
 	s.NoError(c.Get())
 	s.NoError(c.ValidateAndDefault())
-	m, err := c.CustomFields.NestedMap()
+	m, err := c.CustomFields.ToMap()
 	s.NoError(err)
 	s.Require().Len(m, 1)
 	s.Require().Len(m["EVG"], 1)
@@ -607,13 +608,16 @@ func (s *AdminSuite) TestJIRANotificationsConfig() {
 	c = JIRANotificationsConfig{}
 	s.NoError(c.Set())
 	s.NoError(c.ValidateAndDefault())
-	c.CustomFields = util.KeyValuePairSlice{
+	c.CustomFields = JIRACustomFieldsByProject{
 		{
-			Key: "this",
-			Value: map[string]string{
-				"is": "{{.Invalid}",
+			Project: "this",
+			Fields: []JIRANotificationsCustomField{
+				{
+					Field:    "is",
+					Template: "{{.Invalid}",
+				},
 			},
 		},
 	}
-	s.EqualError(c.ValidateAndDefault(), "template: jira_notification:1: unexpected \"}\" in operand")
+	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: unexpected \"}\" in operand")
 }

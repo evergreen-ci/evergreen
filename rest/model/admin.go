@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -1319,7 +1318,7 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 		return nil
 	}
 
-	m, err := config.CustomFields.NestedMap()
+	m, err := config.CustomFields.ToMap()
 	if err != nil {
 		return errors.Wrap(err, "failed to build jira custom field configuration")
 	}
@@ -1333,10 +1332,10 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 		return evergreen.JIRANotificationsConfig{}, nil
 	}
 	config := evergreen.JIRANotificationsConfig{
-		CustomFields: util.KeyValuePairSlice{},
+		CustomFields: evergreen.JIRACustomFieldsByProject{},
 	}
 
-	config.CustomFields = util.MakeNestedKeyValuePair(j.CustomFields)
+	config.CustomFields.FromMap(j.CustomFields)
 
 	return config, nil
 }
