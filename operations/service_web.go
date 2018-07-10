@@ -72,7 +72,7 @@ func startWebService() cli.Command {
 				close(apiWait)
 			}()
 
-			uiWait := make(chan struct{})
+v			uiWait := make(chan struct{})
 			go func() {
 				defer recovery.LogStackTraceAndContinue("ui server")
 				catcher.Add(uiServer.ListenAndServe())
