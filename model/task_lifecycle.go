@@ -540,15 +540,15 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				}
 				t = *displayTask
 				status = t.Status
-				grip.ErrorWhen(isUnexpectedFailStatus(t.Status), message.Fields{
-					"lookhere":           "evg-3455",
-					"task_id":            t.Id,
-					"task_status":        t.Status,
-					"task_dispatch_time": t.DispatchTime,
-					"task_is_display":    t.DisplayOnly,
-					"execution_tasks":    t.ExecutionTasks,
-				})
 				if t.IsFinished() {
+					grip.ErrorWhen(t.Status == evergreen.TaskUndispatched, message.Fields{
+						"lookhere":           "evg-3455",
+						"task_id":            t.Id,
+						"task_status":        t.Status,
+						"task_dispatch_time": t.DispatchTime,
+						"task_is_display":    t.DisplayOnly,
+						"execution_tasks":    t.ExecutionTasks,
+					})
 					continue
 				}
 			}
