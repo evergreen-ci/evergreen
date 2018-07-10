@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 )
 
 // DBTestConnector is a struct that implements the Test related methods
@@ -27,7 +27,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, status string, limi
 		} else {
 			message = fmt.Sprintf("tests for task with taskId '%s' and execution %d not found", taskId, execution)
 		}
-		return []testresult.TestResult{}, &rest.APIError{
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}

@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 )
 
 type CLIUpdateConnector struct{}
@@ -15,14 +15,14 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 	env := evergreen.GetEnvironment()
 	config := env.ClientConfig()
 	if config == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "no clients configured",
 		}
 	}
 
 	if err := update.BuildFromService(*config); err != nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		}
@@ -30,7 +30,7 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		}

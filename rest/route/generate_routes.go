@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -43,20 +42,20 @@ func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 	var err error
 	if h.files, err = parseJson(r); err != nil {
 		failedJson := []byte{}
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("error reading JSON from body (%s):\n%s", err, string(failedJson)),
 		}
 	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
 	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    "task is invalid",
 		}
 	}
 	if _, code, err := dbModel.ValidateHost("", r); err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    "host is invalid",
 		}

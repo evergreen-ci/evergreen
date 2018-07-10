@@ -24,12 +24,12 @@ func (m *mockHandler) Factory() RouteHandler {
 		responder:         m.responder,
 	}
 }
-func (m *mockHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+func (m *mockHandler) Parse(ctx context.Context, r *http.Request) error {
 	if m.shouldParseError {
-		return ctx, errors.New("should parse error")
+		return errors.New("should parse error")
 	}
 
-	return ctx, nil
+	return nil
 }
 
 func (m *mockHandler) Run(ctx context.Context) Responder {

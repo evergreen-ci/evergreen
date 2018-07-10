@@ -30,9 +30,9 @@ func (h *bannerPostHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	if err := gimlet.GetJSON(r.Body, h); err != nil {
-		return ctx, errors.Wrap(err, "problem parsing request")
+		return errors.Wrap(err, "problem parsing request")
 	}
 
 	h.model = model.APIBanner{
@@ -40,7 +40,7 @@ func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) (context
 		Theme: h.Theme,
 	}
 
-	return ctx, nil
+	return nil
 }
 
 func (h *bannerPostHandler) Run(ctx context.Context) gimlet.Responder {
@@ -72,8 +72,8 @@ func (h *bannerGetHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
-	return ctx, nil
+func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
 }
 
 func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {

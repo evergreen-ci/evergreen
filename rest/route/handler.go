@@ -4,13 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 )
 
 // MethodHandler contains all of the methods necessary for completely processing
@@ -72,24 +68,25 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 
 		for _, pf := range methodHandler.PrefetchFunctions {
 			if ctx, err = pf(ctx, sc, r); err != nil {
-				handleAPIError(err, w, r)
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 				return
 			}
 		}
 
 		if err = methodHandler.Authenticate(ctx, sc); err != nil {
-			handleAPIError(err, w, r)
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
 		reqHandler := methodHandler.RequestHandler.Handler()
 
 		if err = reqHandler.ParseAndValidate(ctx, r); err != nil {
-			handleAPIError(err, w, r)
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
 		result, err := reqHandler.Execute(ctx, sc)
 		if err != nil {
-			handleAPIError(err, w, r)
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
+
 			return
 		}
 
@@ -101,7 +98,7 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 		case *PaginationMetadata:
 			err := m.MakeHeader(w, sc.GetURL(), r.URL.Path)
 			if err != nil {
-				handleAPIError(err, w, r)
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 				return
 			}
 			gimlet.WriteJSON(w, result.Result)
@@ -113,32 +110,4 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 			}
 		}
 	}
-}
-
-// handleAPIError handles writing the given error to the response writer.
-// It checks if the given error is an APIError and turns it into JSON to be
-// written back to the requester. If the error is unknown, it must have come
-// from a service layer package, in which case it is an internal server error
-// and is returned as such.
-func handleAPIError(e error, w http.ResponseWriter, r *http.Request) {
-	e = errors.Cause(e)
-	var apiErr *rest.APIError
-	if castErr, ok := e.(rest.APIError); ok {
-		grip.Warningln("passed a dereferenced APIError to error handler")
-		apiErr = &castErr
-	} else if apiErr, ok = e.(*rest.APIError); !ok {
-		apiErr = &rest.APIError{
-			StatusCode: http.StatusInternalServerError,
-			Message:    e.Error(),
-		}
-	}
-	grip.Warning(message.Fields{
-		"status": http.StatusText(apiErr.StatusCode),
-		"code":   apiErr.StatusCode,
-		"method": r.Method,
-		"path":   r.URL.Path,
-		"error":  e.Error(),
-	})
-
-	gimlet.WriteJSONResponse(w, apiErr.StatusCode, apiErr)
 }

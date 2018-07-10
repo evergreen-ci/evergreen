@@ -27,8 +27,8 @@ func (h *legacyAdminGetHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-func (h *legacyAdminGetHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
-	return ctx, nil
+func (h *legacyAdminGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	return nil
 }
 
 func (h *legacyAdminGetHandler) Run(ctx context.Context) gimlet.Responder {

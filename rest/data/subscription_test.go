@@ -69,6 +69,6 @@ func TestGetSubscriptions(t *testing.T) {
 	assert.Len(apiSubs, 0)
 
 	apiSubs, err = c.GetSubscriptions("", event.OwnerTypePerson)
-	assert.EqualError(err, "no subscription owner provided")
+	assert.EqualError(err, "400 (Bad Request): no subscription owner provided")
 	assert.Len(apiSubs, 0)
 }

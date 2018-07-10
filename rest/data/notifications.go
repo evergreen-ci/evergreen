@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/rest"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +35,7 @@ func (c *NotificationConnector) GetNotificationsStats() (*restModel.APIEventStat
 	}
 
 	if err = stats.BuildFromService(nStats); err != nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			Message:    "failed to build stats response",
 			StatusCode: http.StatusInternalServerError,
 		}
