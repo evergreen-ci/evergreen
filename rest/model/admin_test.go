@@ -240,12 +240,12 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	assert.Nil(dbModel.CustomFields)
 
 	api = APIJIRANotificationsConfig{
-		CustomFields: map[string]apiJIRAProjectFields{
-			"EVG": apiJIRAProjectFields{
+		CustomFields: map[string]map[string]string{
+			"EVG": map[string]string{
 				"customfield_12345": "{{.Something}}",
 				"customfield_12346": "{{.SomethingElse}}",
 			},
-			"GVE": apiJIRAProjectFields{
+			"GVE": map[string]string{
 				"customfield_54321": "{{.SomethingElser}}",
 				"customfield_54322": "{{.SomethingEvenElser}}",
 			},
@@ -258,12 +258,15 @@ func TestAPIJIRANotificationsConfig(t *testing.T) {
 	assert.True(ok)
 	assert.Len(dbModel.CustomFields, 2)
 
-	evg := dbModel.CustomFields["EVG"]
+	m, err := dbModel.CustomFields.NestedMap()
+	assert.NoError(err)
+
+	evg := m["EVG"]
 	assert.Len(evg, 2)
 	assert.Equal("{{.Something}}", evg["customfield_12345"])
 	assert.Equal("{{.SomethingElse}}", evg["customfield_12346"])
 
-	gve := dbModel.CustomFields["GVE"]
+	gve := m["GVE"]
 	assert.Len(gve, 2)
 	assert.Equal("{{.SomethingElser}}", gve["customfield_54321"])
 	assert.Equal("{{.SomethingEvenElser}}", gve["customfield_54322"])
