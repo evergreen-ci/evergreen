@@ -53,7 +53,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 		case <-ctx.Done():
 			return nil
 		case job := <-q.channel:
-			err := q.driver.Lock(job)
+			err := q.driver.Lock(ctx, job)
 			if err != nil {
 				grip.Warning(err)
 				continue

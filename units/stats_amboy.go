@@ -8,7 +8,9 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/amboy/reporting"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
@@ -77,7 +79,7 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 	return j
 }
 
-func (j *amboyStatsCollector) Run(_ context.Context) {
+func (j *amboyStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if j.env == nil {
@@ -101,5 +103,14 @@ func (j *amboyStatsCollector) Run(_ context.Context) {
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(),
 		})
+
+		settings := j.env.Settings()
+
+		opts := queue.DefaultMongoDBOptions()
+		opts.URI = settings.Database.Url
+		opts.DB = settings.Amboy.DB
+		opts.Priority = true
+
+		reporter, err := reporting.MakeDBQueueState()
 	}
 }

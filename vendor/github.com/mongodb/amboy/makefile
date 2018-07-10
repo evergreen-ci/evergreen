@@ -1,7 +1,7 @@
 # start project configuration
 name := amboy
 buildDir := build
-packages := $(name) dependency job registry pool queue rest logger
+packages := $(name) dependency job registry pool queue rest logger reporting
 orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -19,7 +19,7 @@ lintArgs := --tests --deadline=5m --vendor
 lintArgs += --disable="gotype" --disable="gas" --enable="goimports"
 lintArgs += --skip="$(buildDir)" --skip="buildscripts"
 #  add and configure additional linters
-lintArgs += --line-length=100 --dupl-threshold=175 --cyclo-over=17
+lintArgs += --line-length=100 --dupl-threshold=175 --cyclo-over=30
 #  two similar functions triggered the duplicate warning, but they're not.
 lintArgs += --exclude="duplicate of registry.go"
 lintArgs += --exclude="don.t use underscores.*_DependencyState.*"
@@ -59,6 +59,7 @@ $(gopath)/src/%:
 $(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/.lintSetup
 	go build -o $@ $<
 $(buildDir)/.lintSetup:$(lintDeps)
+	@mkdir -p $(buildDir)
 	@-$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 # end dependency installation tools
 

@@ -81,6 +81,7 @@ func TestAvergeTimeCalculator(t *testing.T) {
 		period: time.Minute,
 		size:   2,
 		target: 10,
+		jobs:   map[string]context.CancelFunc{},
 	}
 	// average is uninitialized by default
 	assert.Equal(p.ewma.Value(), float64(0))

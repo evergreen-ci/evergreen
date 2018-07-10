@@ -18,8 +18,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const lockTimeout = 5 * time.Minute
-
 // mongoDB is a type that represents and wraps a queues
 // persistence of jobs *and* locks to a mongoDB instance.
 type mongoDB struct {
@@ -31,6 +29,7 @@ type mongoDB struct {
 	instanceID       string
 	priority         bool
 	respectWaitUntil bool
+	useNewQuery      bool
 	mu               sync.RWMutex
 	LockManager
 }
@@ -67,6 +66,7 @@ func NewMongoDBDriver(name string, opts MongoDBOptions) Driver {
 		mongodbURI:       opts.URI,
 		priority:         opts.Priority,
 		respectWaitUntil: opts.CheckWaitUntil,
+		useNewQuery:      true,
 		instanceID:       fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
 	}
 }
@@ -206,7 +206,7 @@ func (d *mongoDB) Get(name string) (amboy.Job, error) {
 }
 
 func (d *mongoDB) getAtomicQuery(jobName string, stat amboy.JobStatusInfo) bson.M {
-	timeoutTs := time.Now().Add(-lockTimeout)
+	timeoutTs := time.Now().Add(-LockTimeout)
 
 	return bson.M{
 		"_id": jobName,
@@ -395,30 +395,42 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 		job    amboy.Job
 	)
 
-	qd = bson.M{
-		"$or": []bson.M{
-			{
-				"status.completed": false,
-				"status.in_prog":   false,
-			},
-			{
-				"status.completed": false,
-				"status.in_prog":   true,
-				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-lockTimeout)},
-			},
-		},
-	}
-
-	if d.respectWaitUntil {
+	if d.useNewQuery {
 		qd = bson.M{
-			"$and": []bson.M{
-				qd,
-				{"$or": []bson.M{
-					{"time_info.wait_until": bson.M{"$lte": time.Now()}},
-					{"time_info.wait_until": bson.M{"$exists": false}}},
+			"$or": []bson.M{
+				{
+					"status.completed": false,
+					"status.in_prog":   false,
+				},
+				{
+					"status.completed": false,
+					"status.mod_ts":    bson.M{"$lte": time.Now().Add(-LockTimeout)},
+					"status.in_prog":   true,
 				},
 			},
 		}
+
+		if d.respectWaitUntil {
+			qd = bson.M{
+				"$and": []bson.M{
+					qd,
+					{"$or": []bson.M{
+						{"time_info.wait_until": bson.M{"$lte": time.Now()}},
+						{"time_info.wait_until": bson.M{"$exists": false}}},
+					},
+				},
+			}
+		}
+	} else {
+		qd = bson.M{"status.completed": false, "status.in_prog": false}
+
+		if d.respectWaitUntil {
+			qd["$or"] = []bson.M{
+				{"time_info.wait_until": bson.M{"$lte": time.Now()}},
+				{"time_info.wait_until": bson.M{"$exists": false}},
+			}
+		}
+
 	}
 
 	query := jobs.Find(qd).Batch(4)
@@ -445,6 +457,7 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 						"message":   "problem closing iterator",
 						"operation": "retrieving next job",
 						"misses":    misses,
+						"new_query": d.useNewQuery,
 					}))
 					return nil
 				}
@@ -462,6 +475,7 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 					"operation": "converting next job",
 					"message":   "problem converting job object from mongodb",
 					"misses":    misses,
+					"new_query": d.useNewQuery,
 				}))
 
 				// try for the next thing in the iterator if we can
@@ -476,6 +490,7 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 					"message":   "problem closing iterator",
 					"operation": "returning next job",
 					"misses":    misses,
+					"new_query": d.useNewQuery,
 					"job_id":    job.ID(),
 				}))
 				return nil

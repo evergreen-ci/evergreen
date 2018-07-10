@@ -64,7 +64,7 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
-			if err := q.driver.Lock(job); err != nil {
+			if err := q.driver.Lock(ctx, job); err != nil {
 				grip.Warning(err)
 				continue
 			}
