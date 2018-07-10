@@ -460,13 +460,7 @@ func anyActiveTasks(builds []build.Build) bool {
 // Calculates how many actual versions would appear on the previous page, given
 // the starting skip for the current page as well as the number of version
 // elements per page (including elements containing rolled-up versions).
-func countOnPreviousPage(
-	skip int,
-	numVersionElements int,
-	project *model.Project,
-	variantQuery string,
-) (int, error) {
-
+func countOnPreviousPage(skip int, numVersionElements int, project *model.Project, variantQuery string) (int, error) {
 	buildVariantMappings := project.GetVariantMappings()
 
 	// if there is no previous page
