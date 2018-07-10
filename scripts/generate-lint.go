@@ -58,6 +58,11 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 			if dir == scriptsDir {
 				continue
 			}
+
+			if strings.Contains(dir, "vendor") {
+				continue
+			}
+
 			if dir == "." || dir == "main" {
 				targets["evergreen"] = struct{}{}
 			} else {
@@ -111,16 +116,22 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 		}
 		split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
 		for _, p := range split {
-			if !strings.Contains(p, "vendor") && strings.Contains(p, "evergreen") {
-				if p == packagePrefix {
-					targets = append(targets, "evergreen")
-					continue
-				}
-				p = strings.TrimPrefix(p, packagePrefix)
-				p = strings.TrimPrefix(p, "/")
-				p = strings.Replace(p, "/", "-", -1)
-				targets = append(targets, p)
+			if strings.Contains(p, "vendor") {
+				continue
 			}
+
+			if !strings.Contains(p, "evergreen") {
+				continue
+			}
+
+			if p == packagePrefix {
+				targets = append(targets, "evergreen")
+				continue
+			}
+			p = strings.TrimPrefix(p, packagePrefix)
+			p = strings.TrimPrefix(p, "/")
+			p = strings.Replace(p, "/", "-", -1)
+			targets = append(targets, p)
 		}
 	} else {
 		maxHosts = patchMaxHosts
