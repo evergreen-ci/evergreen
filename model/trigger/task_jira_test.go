@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -339,16 +340,17 @@ func TestCustomFields(t *testing.T) {
 	)
 	assert := assert.New(t)
 
-	config := evergreen.JIRANotificationsConfig{CustomFields: map[string]evergreen.JIRAProjectFields{}}
-	config.CustomFields["BFG"] = evergreen.JIRAProjectFields{
+	fields := map[string]map[string]string{}
+	fields["BFG"] = map[string]string{
 		jiraFailingTasksField:     "{{.Task.DisplayName}}",
 		jiraFailingTestsField:     "%%FailedTestNames%%",
 		jiraFailingVariantField:   "{{.Task.BuildVariant}}",
 		jiraEvergreenProjectField: "{{.Project.Identifier}}",
 		jiraFailingRevisionField:  "{{.Task.Revision}}",
 	}
-	config.CustomFields["EFG"] = nil
-	config.CustomFields["HIJ"] = evergreen.JIRAProjectFields{}
+	fields["EFG"] = nil
+	fields["HIJ"] = map[string]string{}
+	config := evergreen.JIRANotificationsConfig{CustomFields: util.MakeNestedKeyValuePair(fields)}
 
 	j := jiraBuilder{
 		project:  "ABC",
@@ -395,13 +397,13 @@ func TestCustomFields(t *testing.T) {
 
 	j.project = "BFG"
 	j.data.FailedTestNames = []string{}
-	fields := j.makeCustomFields()
-	assert.Len(fields, 5)
-	assert.Equal([]string{projectId}, fields[jiraEvergreenProjectField])
-	assert.Equal([]string{taskName}, fields[jiraFailingTasksField])
-	assert.Equal([]string{"build12"}, fields[jiraFailingVariantField])
-	assert.Equal([]string{versionRevision}, fields[jiraFailingRevisionField])
-	assert.Len(fields[jiraFailingTestsField], 2)
-	assert.Contains(fields[jiraFailingTestsField], testName1)
-	assert.Contains(fields[jiraFailingTestsField], testName2)
+	customFields := j.makeCustomFields()
+	assert.Len(customFields, 5)
+	assert.Equal([]string{projectId}, customFields[jiraEvergreenProjectField])
+	assert.Equal([]string{taskName}, customFields[jiraFailingTasksField])
+	assert.Equal([]string{"build12"}, customFields[jiraFailingVariantField])
+	assert.Equal([]string{versionRevision}, customFields[jiraFailingRevisionField])
+	assert.Len(customFields[jiraFailingTestsField], 2)
+	assert.Contains(customFields[jiraFailingTestsField], testName1)
+	assert.Contains(customFields[jiraFailingTestsField], testName2)
 }
