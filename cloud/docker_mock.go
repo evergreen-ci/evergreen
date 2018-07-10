@@ -1,5 +1,3 @@
-// +build go1.7
-
 package cloud
 
 import (
@@ -11,7 +9,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -40,14 +37,14 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
-func (c *dockerClientMock) CreateContainer(context.Context, string, distro.Distro, *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, string, *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) GetContainer(context.Context, *host.Host) (*types.ContainerJSON, error) {
+func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error) {
 	if c.failGet {
 		return nil, errors.New("failed to inspect container")
 	}
@@ -78,11 +75,12 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host) (*types.Con
 	return container, nil
 }
 
-func (c *dockerClientMock) ListContainers(context.Context, distro.Distro) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.Container, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}
 	container := types.Container{
+		ID: "container-1",
 		Ports: []types.Port{
 			{PublicPort: 5000},
 			{PublicPort: 5001},
@@ -91,14 +89,14 @@ func (c *dockerClientMock) ListContainers(context.Context, distro.Distro) ([]typ
 	return []types.Container{container}, nil
 }
 
-func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host) error {
+func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) error {
 	if c.failRemove {
 		return errors.New("failed to remove container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) StartContainer(context.Context, *host.Host) error {
+func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) error {
 	if c.failStart {
 		return errors.New("failed to start container")
 	}

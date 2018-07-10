@@ -4,96 +4,86 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
-// this manages the /admin/banner route, which allows setting the banner
-func getBannerRouteManager(route string, version int) *RouteManager {
-	bph := &bannerPostHandler{}
-	bannerPost := MethodHandler{
-		Authenticator:  &SuperUserAuthenticator{},
-		RequestHandler: bph.Handler(),
-		MethodType:     http.MethodPost,
+func makeSetAdminBanner(sc data.Connector) gimlet.RouteHandler {
+	return &bannerPostHandler{
+		sc: sc,
 	}
-
-	bgh := &bannerGetHandler{}
-	bannerGet := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: bgh.Handler(),
-		MethodType:     http.MethodGet,
-	}
-
-	bannerRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{bannerPost, bannerGet},
-		Version: version,
-	}
-	return &bannerRoute
 }
 
 type bannerPostHandler struct {
 	Banner model.APIString `json:"banner"`
 	Theme  model.APIString `json:"theme"`
 	model  model.APIBanner
+
+	sc data.Connector
 }
 
-func (h *bannerPostHandler) Handler() RequestHandler {
-	return &bannerPostHandler{}
-}
-
-func (h *bannerPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	if err := util.ReadJSONInto(r.Body, h); err != nil {
-		return err
+func (h *bannerPostHandler) Factory() gimlet.RouteHandler {
+	return &bannerPostHandler{
+		sc: h.sc,
 	}
+}
+
+func (h *bannerPostHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+	if err := gimlet.GetJSON(r.Body, h); err != nil {
+		return ctx, errors.Wrap(err, "problem parsing request")
+	}
+
 	h.model = model.APIBanner{
 		Text:  h.Banner,
 		Theme: h.Theme,
 	}
-	return nil
+
+	return ctx, nil
 }
 
-func (h *bannerPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *bannerPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	if err := sc.SetAdminBanner(model.FromAPIString(h.Banner), u); err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+
+	if err := h.sc.SetAdminBanner(model.FromAPIString(h.Banner), u); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner text"))
 	}
-	if err := sc.SetBannerTheme(model.FromAPIString(h.Theme), u); err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+	if err := h.sc.SetBannerTheme(model.FromAPIString(h.Theme), u); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem setting banner theme"))
 	}
-	return ResponseData{
-		Result: []model.Model{&h.model},
-	}, nil
+
+	return gimlet.NewJSONResponse(h.model)
 }
 
-type bannerGetHandler struct{}
-
-func (h *bannerGetHandler) Handler() RequestHandler {
-	return &bannerGetHandler{}
+func makeFetchAdminBanner(sc data.Connector) gimlet.RouteHandler {
+	return &bannerGetHandler{
+		sc: sc,
+	}
 }
 
-func (h *bannerGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	return nil
+type bannerGetHandler struct {
+	sc data.Connector
 }
 
-func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	banner, theme, err := sc.GetBanner()
+func (h *bannerGetHandler) Factory() gimlet.RouteHandler {
+	return &bannerGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *bannerGetHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+	return ctx, nil
+}
+
+func (h *bannerGetHandler) Run(ctx context.Context) gimlet.Responder {
+	banner, theme, err := h.sc.GetBanner()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
-	return ResponseData{
-		Result: []model.Model{&model.APIBanner{Text: model.ToAPIString(banner), Theme: model.ToAPIString(theme)}},
-	}, nil
+
+	return gimlet.NewJSONResponse(&model.APIBanner{
+		Text:  model.ToAPIString(banner),
+		Theme: model.ToAPIString(theme),
+	})
 }

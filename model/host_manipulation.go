@@ -40,7 +40,7 @@ func UpdateStaticHosts() error {
 }
 
 func UpdateStaticDistro(d distro.Distro) error {
-	if d.Provider != evergreen.ProviderNameStatic && d.Provider != evergreen.ProviderNameDockerStatic {
+	if d.Provider != evergreen.ProviderNameStatic {
 		return nil
 	}
 
@@ -86,10 +86,6 @@ func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 
 		if d.Provider == evergreen.ProviderNameStatic {
 			staticHost.Provider = evergreen.HostTypeStatic
-		}
-		if d.Provider == evergreen.ProviderNameDockerStatic {
-			staticHost.Provider = evergreen.ProviderNameDockerStatic
-			staticHost.HasContainers = true
 		}
 
 		// upsert the host

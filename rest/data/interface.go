@@ -207,5 +207,5 @@ type Connector interface {
 	GetNotificationsStats() (*restModel.APIEventStats, error)
 
 	// ListHostsForTask lists running hosts scoped to the task or the task's build.
-	ListHostsForTask(string) ([]restModel.CreateHost, error)
+	ListHostsForTask(string) ([]host.Host, error)
 }

@@ -32,6 +32,12 @@ type EC2ProviderSettings struct {
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
+	// If set, overrides key from credentials
+	AWSKeyID string `mapstructure:"aws_access_key_id" bson:"aws_access_key_id,omitempty"`
+
+	// If set, overrides secret from credentials
+	AWSSecret string `mapstructure:"aws_secret_access_key" bson:"aws_secret_access_key,omitempty"`
+
 	// InstanceType is the EC2 instance type.
 	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
 
@@ -40,9 +46,6 @@ type EC2ProviderSettings struct {
 
 	// MountPoints are the disk mount points for EBS volumes.
 	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
-
-	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
-	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
 
 	// SecurityGroupIDs is a list of security group IDs.
 	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
@@ -72,11 +75,8 @@ func (s *EC2ProviderSettings) Validate() error {
 	if s.AMI == "" || s.InstanceType == "" || s.KeyName == "" {
 		return errors.New("AMI, instance type, and key name must not be empty")
 	}
-	if s.SecurityGroup == "" && len(s.SecurityGroupIDs) == 0 {
-		return errors.New("Security group must not be empty")
-	}
-	if s.SecurityGroup != "" && len(s.SecurityGroupIDs) > 0 {
-		return errors.New("Must only set SecurityGroup or SecurityGroupIDs")
+	if len(s.SecurityGroupIDs) == 0 {
+		return errors.New("Security groups must not be empty")
 	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
@@ -98,7 +98,6 @@ func (s *EC2ProviderSettings) getSecurityGroups() []*string {
 		}
 		return groups
 	}
-	groups = append(groups, makeStringPtr(s.SecurityGroup))
 	return groups
 }
 
@@ -362,6 +361,13 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	})
 	if err := ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
+	}
+
+	if ec2Settings.AWSKeyID != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     ec2Settings.AWSKeyID,
+			SecretAccessKey: ec2Settings.AWSSecret,
+		})
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)

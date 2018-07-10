@@ -13,26 +13,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
-	"github.com/urfave/negroni"
 )
 
 func init() {
 	reporting.QuietMode()
-}
-
-func (as *APIServer) Handler() (http.Handler, error) {
-	router := mux.NewRouter()
-	as.AttachRoutes(router)
-
-	n := negroni.New()
-	n.Use(gimlet.MakeRecoveryLogger())
-	n.Use(gimlet.UserMiddleware(as.UserManager, GetUserMiddlewareConf()))
-
-	n.UseHandler(router)
-	return n, nil
 }
 
 func TestCheckHostWrapper(t *testing.T) {
@@ -64,14 +50,20 @@ func TestCheckHostWrapper(t *testing.T) {
 			retreivedHost *host.Host
 		)
 
-		root := mux.NewRouter()
-		root.HandleFunc("/{taskId}/", as.checkTask(true, as.checkHost(
+		app := gimlet.NewApp()
+		app.NoVersions = true
+		app.AddRoute("/{taskId}/").Handler(as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
 				gimlet.WriteJSON(w, nil)
 			}),
-		)))
+		))).Get()
+
+		root, err := app.Handler()
+		if err != nil {
+			t.Fatalf("creating test handler server: %v", err)
+		}
 
 		Convey("and documents representing a proper host-task relationship", func() {
 			So(t1.Insert(), ShouldBeNil)
@@ -184,15 +176,21 @@ func TestCheckHostWrapper(t *testing.T) {
 			retreivedHost *host.Host
 		)
 
-		root := mux.NewRouter()
-		root.HandleFunc("/{taskId}/{hostId}", as.checkTask(true, as.checkHost(
+		app := gimlet.NewApp()
+		app.NoVersions = true
+		app.AddRoute("/{taskId}/{hostId}").Handler(as.checkTaskStrict(as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				retreivedTask = GetTask(r)
 				retreivedHost = GetHost(r)
 
 				gimlet.WriteJSON(w, nil)
 			}),
-		)))
+		))).Get()
+
+		root, err := app.Handler()
+		if err != nil {
+			t.Fatalf("creating test API server: %v", err)
+		}
 
 		Convey("and documents representing a proper host-task relationship", func() {
 

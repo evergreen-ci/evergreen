@@ -178,12 +178,12 @@ func ensureHasNonZeroID(ctx context.Context, d *distro.Distro, s *evergreen.Sett
 func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	if d.ContainerPool != "" {
 		// check if container pool exists
-		_, err := s.ContainerPools.GetContainerPool(d.ContainerPool)
-		if err != nil {
+		pool := s.ContainerPools.GetContainerPool(d.ContainerPool)
+		if pool == nil {
 			return []ValidationError{{Error, "distro container pool does not exist"}}
 		}
 		// warn if container pool exists without valid distro
-		err = distro.ValidateContainerPoolDistros(s)
+		err := distro.ValidateContainerPoolDistros(s)
 		if err != nil {
 			return []ValidationError{{Error, "error in container pool settings: " + err.Error()}}
 		}

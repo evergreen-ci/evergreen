@@ -8,10 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/urfave/negroni"
 )
 
 const (
@@ -42,14 +40,11 @@ func GetServer(addr string, n http.Handler) *http.Server {
 
 func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	app := gimlet.NewApp()
-	app.ResetMiddleware()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddMiddleware(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.UserManager))
-	app.AddMiddleware(negroni.NewStatic(http.Dir(filepath.Join(uis.Home, "public"))))
-	clients := negroni.NewStatic(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))
-	clients.Prefix = "/clients"
-	app.AddMiddleware(clients)
+	app.AddMiddleware(gimlet.NewStatic("", http.Dir(filepath.Join(uis.Home, "public"))))
+	app.AddMiddleware(gimlet.NewStatic("/clients", http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory))))
 
 	// in the future, we'll make the gimlet app here, but we
 	// need/want to access and construct it separately.
@@ -63,7 +58,6 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// we will continue to publish these routes in these
 	// endpoints.
 	apiRestV2 := gimlet.NewApp()
-	apiRestV2.ResetMiddleware()
 	apiRestV2.SetPrefix(evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix)
 	route.AttachHandler(apiRestV2, as.queue, as.Settings.Ui.Url, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
 
@@ -71,10 +65,11 @@ func GetRouter(as *APIServer, uis *UIServer) (http.Handler, error) {
 	// point, and we'll just have the app, but during the legacy
 	// transition, we convert the app to a router and then attach
 	// legacy routes directly.
-	r := mux.NewRouter()
 
-	uis.AttachRoutes(r)
-	as.AttachRoutes(r)
+	uiService := uis.GetServiceApp()
+	apiService := as.GetServiceApp()
 
-	return gimlet.AssembleHandler(r, app, rest, apiRestV2)
+	// the order that we merge handlers matters here, and we must
+	// define more specific routes before less specific routes.
+	return gimlet.MergeApplications(app, uiService, rest, apiRestV2, apiService)
 }

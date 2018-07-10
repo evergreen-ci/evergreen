@@ -457,14 +457,41 @@ mciModule.controller('PerfController', function PerfController(
         }
       }catch (e){ }
     }
+
+    // This fn makes trend charts order consistent with
+    // tests order (at the right upper panel)
+    $scope.trendChartNames = []
+    function reorderTrendCharts() {
+      if (!$scope.perfSample) return
+
+      // Underscore `intersection` preserves order of the first coll
+      $scope.trendChartNames = _.intersection(
+        $scope.sortedTestNames,
+        $scope.perfSample.testNames()
+      )
+    }
+
+    // When user changes test sorting order
+    $scope.sortedTestNames = []
+    $scope.$watch('sortedTests', function(tests) {
+      $scope.sortedTestNames = _.map(tests, function(d) {
+        return d.test_result.display_name
+      })
+      reorderTrendCharts()
+    })
+
+    // When perf data loaded
+    $scope.$watch('perfSample', function(perfSample) {
+      reorderTrendCharts()
+    })
+
     // Populate the graph and table for this task
     $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(
       function(resp){
         var d = resp.data;
-        $scope.perfSample = new TestSample(d);
-        var w = 700;
-        var bw = 1;
-        var h = 100;
+
+        $scope.perfSample = new TestSample(d)
+
         if("tag" in d && d.tag.length > 0){
           $scope.perfTagData.tag = d.tag
         }
@@ -742,7 +769,7 @@ var drawTrendGraph = function(scope, PerfChartService) {
   for (var i = 0; i < tests.length; i++) {
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
-    var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
+    var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + key
 
     drawSingleTrendChart({
       PerfChartService: PerfChartService,

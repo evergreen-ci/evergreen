@@ -6,16 +6,15 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
-// DBCreateHostConnector supports `create.host` commands from the agent.
+// DBCreateHostConnector supports `host.create` commands from the agent.
 type DBCreateHostConnector struct{}
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
-func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]model.CreateHost, error) {
+func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: "error finding task"}
@@ -32,18 +31,12 @@ func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]model.CreateHos
 	if catcher.HasErrors() {
 		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: catcher.String()}
 	}
-	hosts := []model.CreateHost{}
+	hosts := []host.Host{}
 	for _, h := range hostsSpawnedByBuild {
-		hosts = append(hosts, model.CreateHost{
-			InstanceID: h.Id,
-			DNSName:    h.Host,
-		})
+		hosts = append(hosts, h)
 	}
 	for _, h := range hostsSpawnedByTask {
-		hosts = append(hosts, model.CreateHost{
-			InstanceID: h.Id,
-			DNSName:    h.Host,
-		})
+		hosts = append(hosts, h)
 	}
 	return hosts, nil
 }
@@ -52,6 +45,6 @@ func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]model.CreateHos
 type MockCreateHostConnector struct{}
 
 // ListHostsForTask lists running hosts scoped to the task or the task's build.
-func (*MockCreateHostConnector) ListHostsForTask(taskID string) ([]model.CreateHost, error) {
+func (*MockCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
 	return nil, errors.New("method not implemented")
 }

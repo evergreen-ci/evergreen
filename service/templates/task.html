@@ -251,6 +251,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                           <tr>
                             <td>Name</td>
                             <td>Status</td>
+                            <td>Time Taken</td>
                           </tr>
                         </thead>
                         <tbody>
@@ -260,6 +261,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                             </td>
                             <td>
                               [[et.status]]
+                            </td>
+                            <td>
+                              [[et.time_taken | stringifyNanoseconds]]
                             </td>
                           </tr>
                         </tbody>
@@ -330,7 +334,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
               <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                 <li role="presentation" class="dropdown-header">Sort Options</li>
                 <li role="presentation" ng-repeat="order in sortOrders">
-                  <a role="menuitem" ng-click="setSortBy(order);" href="javascript:return false;">
+                  <a role="menuitem" ng-click="setSortBy(order)">
                     [[order.name]]
                   </a>
                 </li>
@@ -371,7 +375,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 </tr>
               </thead>
               <tbody data-test-results="task.test_results">
-                <tr ng-repeat="test in task.test_results | orderBy:sortBy.by:sortBy.reverse"
+                <tr ng-repeat="test in sortedTests"
                     ng-show="test.test_result.status != 'skip'"
                     class="test-result-row"
                     ng-class="test.test_result.display_name == hash.test | conditional:'highlight-bg':''">

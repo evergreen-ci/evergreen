@@ -4,6 +4,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 
   $scope.distros = $window.distros;
   $scope.containerPoolDistros = $window.containerPoolDistros;
+  $scope.containerPoolIds = $window.containerPoolIds;
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
@@ -363,6 +364,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     return (!min && !max) || (min >= 0 && min <= max);
   }
 
+  $scope.checkPoolID = function(id) {
+    if ($scope.form.poolID.$invalid) {
+      return false
+    }
+    return $scope.containerPoolIds.includes(id)
+  }
+
   // checks that the form is valid for the given active distro
   $scope.validForm = function() {
     if ($scope.activeDistro.provider.startsWith('ec2')) {
@@ -375,7 +383,11 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   $scope.validSecurityGroup = function(){
     if ($scope.activeDistro){
       if ($scope.activeDistro.settings.is_vpc){
-       return $scope.activeDistro.settings.security_group.substring(0,3) == 'sg-';
+        for (var i = 0; i < $scope.activeDistro.settings.security_group_ids.length; i++) {
+          if ($scope.activeDistro.settings.security_group_ids[i].substring(0,3) !== "sg-") {
+            return false
+          }
+        }
      }
    }
    return true

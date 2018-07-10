@@ -48,6 +48,7 @@ func (c *cachedSpotRate) getCopy() []spotRate {
 type spotRate struct {
 	Time  time.Time
 	Price float64
+	Zone  string
 }
 
 var pkgCachingPriceFetcher *cachingPriceFetcher
@@ -173,40 +174,42 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 }
 
 func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
-	cpf.Lock()
-	defer cpf.Unlock()
 	osName := string(os)
 	if settings.IsVpc {
 		osName += " (Amazon VPC)"
 	}
+
 	grip.Debug(message.Fields{
 		"message":       "getting spot history",
 		"instance_type": settings.InstanceType,
 		"function":      "getLatestLowestSpotCostForInstance",
 		"start_time":    "future",
 	})
-	prices, err := client.DescribeSpotPriceHistory(ctx, &ec2.DescribeSpotPriceHistoryInput{
+
+	args := hourlySpotPriceHistoryInput{
+		iType: settings.InstanceType,
+		os:    osType(osName),
 		// passing a future start time gets the latest price only
-		StartTime:           makeTimePtr(time.Now().UTC().Add(24 * time.Hour)),
-		InstanceTypes:       []*string{makeStringPtr(settings.InstanceType)},
-		ProductDescriptions: []*string{makeStringPtr(osName)},
-	})
-	if err != nil {
-		return 0, "", errors.Wrap(err, "error getting spot price history")
+		start: time.Now().UTC().Add(24 * time.Hour),
+		end:   time.Now().UTC().Add(25 * time.Hour),
+		// passing empty zone to find the "best"
+		zone: "",
 	}
-	if len(prices.SpotPriceHistory) == 0 {
+
+	prices, err := cpf.describeHourlySpotPriceHistory(ctx, client, args)
+	if err != nil {
+		return 0, "", errors.WithStack(err)
+	}
+	if len(prices) == 0 {
 		return 0, "", errors.New("no prices found")
 	}
+
 	var min float64
 	var az string
-	for i := range prices.SpotPriceHistory {
-		p, err := strconv.ParseFloat(*prices.SpotPriceHistory[i].SpotPrice, 0)
-		if err != nil {
-			return 0, "", errors.Wrap(err, "error parsing spot price")
-		}
-		if min == 0 || p < min {
-			min = p
-			az = *prices.SpotPriceHistory[i].AvailabilityZone
+	for i := range prices {
+		if min == 0 || prices[i].Price < min {
+			min = prices[i].Price
+			az = prices[i].Zone
 		}
 	}
 	return min, az, nil
@@ -557,7 +560,12 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 			if err != nil {
 				return nil, errors.Wrap(err, "parsing spot price")
 			}
-			prices = append(prices, spotRate{Time: input.start, Price: price})
+			var zone string
+			if history[i].AvailabilityZone != nil {
+				zone = *history[i].AvailabilityZone
+			}
+
+			prices = append(prices, spotRate{Time: input.start, Price: price, Zone: zone})
 			// we increment the hour but stay on the same price history index
 			// in case the current spot price spans more than one hour
 			input.start = input.start.Add(time.Hour)

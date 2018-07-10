@@ -60,19 +60,19 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 	}))
 }
 
-func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
+func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 	assert := assert.New(t)
 
 	bbPlugin := BuildBaronPlugin{}
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:            "BFG",
-				TicketSearchProjects:           []string{"BF", "BFG"},
-				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
-				AlternativeEndpointUsername:    "user",
-				AlternativeEndpointPassword:    "pass",
-				AlternativeEndpointTimeoutSecs: 10,
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionServer:      "https://evergreen.mongodb.com",
+				BFSuggestionUsername:    "user",
+				BFSuggestionPassword:    "pass",
+				BFSuggestionTimeoutSecs: 10,
 			},
 		},
 	}))
@@ -81,10 +81,10 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 	assert.Nil(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:            "BFG",
-				TicketSearchProjects:           []string{"BF", "BFG"},
-				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
-				AlternativeEndpointTimeoutSecs: 10,
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionServer:      "https://evergreen.mongodb.com",
+				BFSuggestionTimeoutSecs: 10,
 			},
 		},
 	}))
@@ -93,10 +93,10 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:         "BFG",
-				TicketSearchProjects:        []string{"BF", "BFG"},
-				AlternativeEndpointUsername: "user",
-				AlternativeEndpointPassword: "pass",
+				TicketCreateProject:  "BFG",
+				TicketSearchProjects: []string{"BF", "BFG"},
+				BFSuggestionUsername: "user",
+				BFSuggestionPassword: "pass",
 			},
 		},
 	}))
@@ -105,9 +105,9 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:            "BFG",
-				TicketSearchProjects:           []string{"BF", "BFG"},
-				AlternativeEndpointTimeoutSecs: 10,
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionTimeoutSecs: 10,
 			},
 		},
 	}))
@@ -116,10 +116,10 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:            "BFG",
-				TicketSearchProjects:           []string{"BF", "BFG"},
-				AlternativeEndpointURL:         "://evergreen.mongodb.com",
-				AlternativeEndpointTimeoutSecs: 10,
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionServer:      "://evergreen.mongodb.com",
+				BFSuggestionTimeoutSecs: 10,
 			},
 		},
 	}))
@@ -128,11 +128,11 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:            "BFG",
-				TicketSearchProjects:           []string{"BF", "BFG"},
-				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
-				AlternativeEndpointPassword:    "pass",
-				AlternativeEndpointTimeoutSecs: 10,
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionServer:      "https://evergreen.mongodb.com",
+				BFSuggestionPassword:    "pass",
+				BFSuggestionTimeoutSecs: 10,
 			},
 		},
 	}))
@@ -141,10 +141,10 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:            "BFG",
-				TicketSearchProjects:           []string{"BF", "BFG"},
-				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
-				AlternativeEndpointTimeoutSecs: 0,
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionServer:      "https://evergreen.mongodb.com",
+				BFSuggestionTimeoutSecs: 0,
 			},
 		},
 	}))
@@ -153,10 +153,10 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Projects": map[string]evergreen.BuildBaronProject{
 			"proj": evergreen.BuildBaronProject{
-				TicketCreateProject:            "BFG",
-				TicketSearchProjects:           []string{"BF", "BFG"},
-				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
-				AlternativeEndpointTimeoutSecs: -1,
+				TicketCreateProject:     "BFG",
+				TicketSearchProjects:    []string{"BF", "BFG"},
+				BFSuggestionServer:      "https://evergreen.mongodb.com",
+				BFSuggestionTimeoutSecs: -1,
 			},
 		},
 	}))

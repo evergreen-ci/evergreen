@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -286,58 +285,57 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 	// should be included in the results.
 	versionStartBoundary, versionEndBoundary := versions[0], versions[len(versions)-1]
 
+	matchStage := bson.M{
+		task.RequesterKey:   evergreen.RepotrackerVersionRequester,
+		task.ProjectKey:     iter.ProjectName,
+		task.DisplayNameKey: iter.TaskName,
+		task.RevisionOrderNumberKey: bson.M{
+			"$gte": versionEndBoundary.RevisionOrderNumber,
+			"$lte": versionStartBoundary.RevisionOrderNumber,
+		},
+	}
+	if len(iter.BuildVariants) > 0 {
+		// only filter on bv if passed in - this handles scenarios where a task may have been removed
+		// from the project yaml but we want to know its history before that
+		matchStage[task.BuildVariantKey] = bson.M{"$in": iter.BuildVariants}
+	}
+	projectStage := bson.M{
+		task.IdKey:                  1,
+		task.StatusKey:              1,
+		task.DetailsKey:             1,
+		task.ActivatedKey:           1,
+		task.TimeTakenKey:           1,
+		task.BuildVariantKey:        1,
+		task.RevisionKey:            1,
+		task.RevisionOrderNumberKey: 1,
+	}
+	groupStage := bson.M{
+		"_id":   fmt.Sprintf("$%v", task.RevisionKey),
+		"order": bson.M{"$first": fmt.Sprintf("$%v", task.RevisionOrderNumberKey)},
+		"tasks": bson.M{
+			"$push": bson.M{
+				task.IdKey:           fmt.Sprintf("$%v", task.IdKey),
+				task.StatusKey:       fmt.Sprintf("$%v", task.StatusKey),
+				task.DetailsKey:      fmt.Sprintf("$%v", task.DetailsKey),
+				task.ActivatedKey:    fmt.Sprintf("$%v", task.ActivatedKey),
+				task.TimeTakenKey:    fmt.Sprintf("$%v", task.TimeTakenKey),
+				task.BuildVariantKey: fmt.Sprintf("$%v", task.BuildVariantKey),
+			},
+		},
+	}
+
 	pipeline := []bson.M{
-		{"$match": bson.M{
-			task.RequesterKey:    evergreen.RepotrackerVersionRequester,
-			task.ProjectKey:      iter.ProjectName,
-			task.DisplayNameKey:  iter.TaskName,
-			task.BuildVariantKey: bson.M{"$in": iter.BuildVariants},
-			task.RevisionOrderNumberKey: bson.M{
-				"$gte": versionEndBoundary.RevisionOrderNumber,
-				"$lte": versionStartBoundary.RevisionOrderNumber,
-			},
-		}},
-		{"$project": bson.M{
-			task.IdKey:                  1,
-			task.StatusKey:              1,
-			task.DetailsKey:             1,
-			task.ActivatedKey:           1,
-			task.TimeTakenKey:           1,
-			task.BuildVariantKey:        1,
-			task.RevisionKey:            1,
-			task.RevisionOrderNumberKey: 1,
-		}},
-		{"$group": bson.M{
-			"_id":   fmt.Sprintf("$%v", task.RevisionKey),
-			"order": bson.M{"$first": fmt.Sprintf("$%v", task.RevisionOrderNumberKey)},
-			"tasks": bson.M{
-				"$push": bson.M{
-					task.IdKey:           fmt.Sprintf("$%v", task.IdKey),
-					task.StatusKey:       fmt.Sprintf("$%v", task.StatusKey),
-					task.DetailsKey:      fmt.Sprintf("$%v", task.DetailsKey),
-					task.ActivatedKey:    fmt.Sprintf("$%v", task.ActivatedKey),
-					task.TimeTakenKey:    fmt.Sprintf("$%v", task.TimeTakenKey),
-					task.BuildVariantKey: fmt.Sprintf("$%v", task.BuildVariantKey),
-				},
-			},
-		}},
+		{"$match": matchStage},
+		{"$project": projectStage},
+		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
 	agg := database.C(task.Collection).Pipe(pipeline)
-	grip.Debug(message.Fields{
-		"message":       "debugging task history",
-		"task_pipeline": pipeline,
-	})
-
 	var aggregatedTasks []bson.M
 	if err = agg.All(&aggregatedTasks); err != nil {
 		return chunk, errors.WithStack(err)
 	}
 	chunk.Tasks = aggregatedTasks
-	grip.Debug(message.Fields{
-		"message":      "debugging task history",
-		"task_results": aggregatedTasks,
-	})
 
 	failedTests, err := iter.GetFailedTests(agg)
 	if err != nil {
@@ -836,11 +834,6 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 		query[task.RevisionOrderNumberKey] = *revisionQuery
 	}
 
-	grip.Debug(message.Fields{
-		"message":    "debugging test history",
-		"task_query": query,
-	})
-
 	return query, nil
 }
 
@@ -860,11 +853,6 @@ func formTestsQuery(params *TestHistoryParameters, taskIds []string) bson.M {
 			"$in": params.TestStatuses,
 		}
 	}
-
-	grip.Debug(message.Fields{
-		"message":     "debugging test history",
-		"tests_query": query,
-	})
 
 	return query
 }

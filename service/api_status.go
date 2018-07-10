@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip/message"
 )
 
 const (
@@ -214,20 +212,6 @@ func (as *APIServer) getStuckHosts(w http.ResponseWriter, r *http.Request) {
 		HostIds: hosts,
 		TaskIds: tasks,
 	})
-}
-
-func (as *APIServer) serviceStatusWithAuth(w http.ResponseWriter, r *http.Request) {
-	out := struct {
-		BuildId    string              `json:"build_revision"`
-		SystemInfo *message.SystemInfo `json:"sys_info"`
-		Pid        int                 `json:"pid"`
-	}{
-		BuildId:    evergreen.BuildRevision,
-		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
-		Pid:        os.Getpid(),
-	}
-
-	gimlet.WriteJSON(w, &out)
 }
 
 func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request) {

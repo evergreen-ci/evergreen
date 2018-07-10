@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -47,112 +47,132 @@ var (
 	}
 )
 
-func TestAltEndpointProcessResponse(t *testing.T) {
+func TestAltEndpointParseResponseData(t *testing.T) {
 	assert := assert.New(t)
 
-	altEndpoint := altEndpointSuggest{evergreen.BuildBaronProject{}}
-	tickets, err := altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
-			"task_id": "my_task",
-			"execution": 0,
-			"status": "ok",
-			"suggestions": [
-				{
-					"test_name": "all.js",
-					"issues": [
-						{
-							"key": "BF-1",
-							"summary": "ticket #1",
-							"status": "Open",
-							"created_date": "2018-04-16T01:01:01",
-							"updated_date": "2018-04-17T01:01:01"
-						},
-						{
-							"key": "BF-2",
-							"summary": "ticket #2",
-							"status": "Closed",
-							"created_date": "2018-04-16T02:02:02",
-							"updated_date": "2018-04-17T02:02:02"
-						},
-						{
-							"key": "BF-3",
-							"summary": "ticket #3",
-							"status": "Resolved",
-							"resolution": "Fixed",
-							"created_date": "2018-04-16T03:03:03",
-							"updated_date": "2018-04-17T03:03:03"
-						}
-					]
-				}
+	altEndpoint := altEndpointSuggest{nil, 0}
+	data := bfSuggestionResponse{}
+	rawJSON := `{
+		"task_id": "my_task",
+		"execution": 0,
+		"status": "ok",
+		"suggestions": [
+		{
+			"test_name": "all.js",
+			"issues": [
+			{
+				"key": "BF-1",
+				"summary": "ticket #1",
+				"status": "Open",
+				"created_date": "2018-04-16T01:01:01",
+				"updated_date": "2018-04-17T01:01:01"
+			},
+			{
+				"key": "BF-2",
+				"summary": "ticket #2",
+				"status": "Closed",
+				"created_date": "2018-04-16T02:02:02",
+				"updated_date": "2018-04-17T02:02:02"
+			},
+			{
+				"key": "BF-3",
+				"summary": "ticket #3",
+				"status": "Resolved",
+				"resolution": "Fixed",
+				"created_date": "2018-04-16T03:03:03",
+				"updated_date": "2018-04-17T03:03:03"
+			}
 			]
-		}`)))
+		}
+		]
+	}`
+	err := util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
+
+	tickets, err := altEndpoint.parseResponseData(data)
 
 	assert.Nil(err)
-	assert.Equal(tickets, []thirdparty.JiraTicket{ticket1, ticket2, ticket3},
+	assert.Equal([]thirdparty.JiraTicket{ticket1, ticket2, ticket3}, tickets,
 		"expected JIRA tickets for all suggestions to be returned")
 
-	altEndpoint = altEndpointSuggest{evergreen.BuildBaronProject{}}
-	tickets, err = altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
-			"task_id": "my_task",
-			"execution": 0,
-			"status": "ok",
-			"suggestions": [
-				{
-					"test_name": "all.js",
-					"issues": [
-						{
-							"key": "BF-1",
-							"summary": "ticket #1",
-							"status": "Open",
-							"created_date": "2018-04-16T01:01:01",
-							"updated_date": "2018-04-17T01:01:01"
-						},
-						{
-							"key": "BF-3",
-							"summary": "ticket #3",
-							"status": "Resolved",
-							"resolution": "Fixed",
-							"created_date": "2018-04-16T03:03:03",
-							"updated_date": "2018-04-17T03:03:03"
-						}
-					]
-				},
-				{
-					"test_name": "all2.js",
-					"issues": [
-						{
-							"key": "BF-2",
-							"summary": "ticket #2",
-							"status": "Closed",
-							"created_date": "2018-04-16T02:02:02",
-							"updated_date": "2018-04-17T02:02:02"
-						}
-					]
-				}
+	altEndpoint = altEndpointSuggest{nil, 0}
+	data = bfSuggestionResponse{}
+	rawJSON = `{
+		"task_id": "my_task",
+		"execution": 0,
+		"status": "ok",
+		"suggestions": [
+		{
+			"test_name": "all.js",
+			"issues": [
+			{
+				"key": "BF-1",
+				"summary": "ticket #1",
+				"status": "Open",
+				"created_date": "2018-04-16T01:01:01",
+				"updated_date": "2018-04-17T01:01:01"
+			},
+			{
+				"key": "BF-3",
+				"summary": "ticket #3",
+				"status": "Resolved",
+				"resolution": "Fixed",
+				"created_date": "2018-04-16T03:03:03",
+				"updated_date": "2018-04-17T03:03:03"
+			}
 			]
-		}`)))
+		},
+		{
+			"test_name": "all2.js",
+			"issues": [
+			{
+				"key": "BF-2",
+				"summary": "ticket #2",
+				"status": "Closed",
+				"created_date": "2018-04-16T02:02:02",
+				"updated_date": "2018-04-17T02:02:02"
+			}
+			]
+		}
+		]
+	}`
+	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
+
+	tickets, err = altEndpoint.parseResponseData(data)
 
 	assert.Nil(err)
-	assert.Equal(tickets, []thirdparty.JiraTicket{ticket1, ticket3, ticket2},
+	assert.Equal([]thirdparty.JiraTicket{ticket1, ticket3, ticket2}, tickets,
 		"expected JIRA tickets for all tests to be returned")
 
-	altEndpoint = altEndpointSuggest{evergreen.BuildBaronProject{}}
-	tickets, err = altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
+	altEndpoint = altEndpointSuggest{nil, 0}
+	data = bfSuggestionResponse{}
+	rawJSON = `{
 		"task_id": "my_task",
 		"execution": 0,
 		"status": "ok",
 		"suggestions": []
-	}`)))
+	}`
+	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
+
+	tickets, err = altEndpoint.parseResponseData(data)
 
 	assert.EqualError(err, "no suggestions found",
 		"expected an error to be return if no suggestions were made")
 	assert.Nil(tickets)
 
-	altEndpoint = altEndpointSuggest{evergreen.BuildBaronProject{}}
-	tickets, err = altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
-			"task_id": "my_task",
-			"execution": 0,
-			"status": "scheduled"
-		}`)))
+	altEndpoint = altEndpointSuggest{nil, 0}
+	data = bfSuggestionResponse{}
+	rawJSON = `{
+		"task_id": "my_task",
+		"execution": 0,
+		"status": "scheduled"
+	}`
+	err = util.ReadJSONInto(ioutil.NopCloser(bytes.NewBufferString(rawJSON)), &data)
+	assert.Nil(err)
+
+	tickets, err = altEndpoint.parseResponseData(data)
 
 	assert.EqualError(err, "Build Baron suggestions weren't ready: status=scheduled",
 		"expected an error to be returned if suggestions weren't ready yet")
@@ -177,25 +197,31 @@ func TestRaceSuggesters(t *testing.T) {
 
 	fallback := &mockSuggest{[]thirdparty.JiraTicket{ticket1}, nil}
 	altEndpoint := &mockSuggest{nil, errors.New("Build Baron suggestions returned an error")}
+	multiSource := multiSourceSuggest{fallback, altEndpoint}
 
-	tickets, err := raceSuggesters(fallback, altEndpoint, &task.Task{})
+	tickets, source, err := multiSource.Suggest(&task.Task{})
 	assert.Nil(err)
-	assert.Equal(tickets, []thirdparty.JiraTicket{ticket1},
+	assert.Equal(jiraSource, source)
+	assert.Equal([]thirdparty.JiraTicket{ticket1}, tickets,
 		"expected fallback result to be returned")
 
 	fallback = &mockSuggest{[]thirdparty.JiraTicket{ticket1}, nil}
 	altEndpoint = &mockSuggest{[]thirdparty.JiraTicket{ticket2, ticket3}, nil}
+	multiSource1 := multiSourceSuggest{fallback, altEndpoint}
 
-	tickets, err = raceSuggesters(fallback, altEndpoint, &task.Task{})
+	tickets, source, err = multiSource1.Suggest(&task.Task{})
 	assert.Nil(err)
-	assert.Equal(tickets, []thirdparty.JiraTicket{ticket2, ticket3},
+	assert.Equal(bfSuggestionSource, source)
+	assert.Equal([]thirdparty.JiraTicket{ticket2, ticket3}, tickets,
 		"expected alternative endpoint result to be returned")
 
 	fallback = &mockSuggest{nil, errors.New("Error from fallback")}
 	altEndpoint = &mockSuggest{nil, errors.New("Error from alternative endpoint")}
+	multiSource2 := multiSourceSuggest{fallback, altEndpoint}
 
-	tickets, err = raceSuggesters(fallback, altEndpoint, &task.Task{})
+	tickets, source, err = multiSource2.Suggest(&task.Task{})
 	assert.EqualError(err, "Error from fallback",
 		"expected error from fallback to be returned since both failed")
 	assert.Nil(tickets)
+	assert.Equal(jiraSource, source)
 }

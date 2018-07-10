@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/urfave/negroni"
 )
 
 var versionTestConfig = testutil.TestConfig()
@@ -453,10 +452,6 @@ func TestActivateVersion(t *testing.T) {
 	router, err := app.Handler()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
-	n := negroni.New()
-	n.Use(gimlet.UserMiddleware(uis.UserManager, GetUserMiddlewareConf()))
-	n.UseHandler(router)
-
 	Convey("When marking a particular version as active", t, func() {
 		testutil.HandleTestingErr(db.ClearCollections(version.Collection, build.Collection), t,
 			"Error clearing collections")
@@ -511,7 +506,7 @@ func TestActivateVersion(t *testing.T) {
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
 		// in the actual handler function
-		n.ServeHTTP(response, request)
+		router.ServeHTTP(response, request)
 
 		So(response.Code, ShouldEqual, http.StatusOK)
 
@@ -536,7 +531,7 @@ func TestActivateVersion(t *testing.T) {
 		response := httptest.NewRecorder()
 		// add auth cookie--this can be anything if we are using a MockUserManager
 		request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-		n.ServeHTTP(response, request)
+		router.ServeHTTP(response, request)
 
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
@@ -564,7 +559,7 @@ func TestActivateVersion(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
-		n.ServeHTTP(response, request)
+		router.ServeHTTP(response, request)
 
 		Convey("response should indicate a permission error", func() {
 			So(response.Code, ShouldEqual, http.StatusUnauthorized)

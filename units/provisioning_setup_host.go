@@ -111,7 +111,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 
 var (
 	errRetryHost           = errors.New("host status is starting after running provisioning")
-	errIgnorableCreateHost = errors.New("create host encountered internal error")
+	errIgnorableCreateHost = errors.New("host.create encountered internal error")
 )
 
 func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
@@ -123,10 +123,6 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		"job":     j.ID(),
 	})
 
-	if err := j.setDNSName(ctx, h, settings); err != nil {
-		return errors.Wrap(err, "error settings DNS name")
-	}
-
 	if err := ctx.Err(); err != nil {
 		return errors.Wrapf(err, "hostinit canceled during setup for host %s", h.Id)
 	}
@@ -137,7 +133,6 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		"job":     j.ID(),
 		"distro":  h.Distro.Id,
 		"hostid":  h.Id,
-		"DNS":     h.Host,
 	})
 
 	if err := j.provisionHost(ctx, h, settings); err != nil {
@@ -189,13 +184,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	return nil
 }
 
-func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, settings *evergreen.Settings) error {
-	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetManager(ctx, host.Distro.Provider, settings)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get cloud manager for provider %s", host.Distro.Provider)
-	}
-
+func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr cloud.Manager, settings *evergreen.Settings) error {
 	if host.Host != "" {
 		return nil
 	}
@@ -229,6 +218,10 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		return "", errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
 			targetHost.Id, targetHost.Provider)
+	}
+
+	if err := j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
+		return "", errors.Wrap(err, "error settings DNS name")
 	}
 
 	// run the function scheduled for when the host is up

@@ -18,10 +18,11 @@ import (
 )
 
 type DockerSuite struct {
-	client   dockerClient
-	manager  *dockerManager
-	distro   distro.Distro
-	hostOpts HostOptions
+	client     dockerClient
+	manager    *dockerManager
+	distro     distro.Distro
+	hostOpts   HostOptions
+	parentHost host.Host
 	suite.Suite
 }
 
@@ -31,6 +32,7 @@ func TestDockerSuite(t *testing.T) {
 
 func (s *DockerSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	s.NoError(db.Clear(host.Collection))
 }
 
 func (s *DockerSuite) SetupTest() {
@@ -41,97 +43,38 @@ func (s *DockerSuite) SetupTest() {
 		client: s.client,
 	}
 	s.distro = distro.Distro{
+		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"host_ip":     "127.0.0.1",
-			"image_name":  "docker_image",
-			"client_port": 4243,
-			"port_range": map[string]interface{}{
-				"min_port": 5000,
-				"max_port": 5010,
-			},
+			"image_name": "docker_image",
+			"pool_id":    "pool_id",
 		},
 	}
-	s.hostOpts = HostOptions{}
+	s.parentHost = host.Host{
+		Id:            "parent",
+		Host:          "host",
+		HasContainers: true,
+	}
+	s.hostOpts = HostOptions{
+		ParentID: "parent",
+	}
+	s.NoError(s.parentHost.Insert())
+	s.NoError(s.distro.Insert())
 }
 
+func (s *DockerSuite) TearDownTest() {
+	s.NoError(db.ClearCollections(host.Collection, distro.Collection))
+}
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
+		ImageID: "docker_image",
 	}
 	s.NoError(settingsOk.Validate())
 
-	// error when missing host ip
-	settingsNoHostIP := &dockerSettings{
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
-	}
-	s.Error(settingsNoHostIP.Validate())
-
 	// error when missing image id
-	settingsNoImageID := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
-	}
+	settingsNoImageID := &dockerSettings{}
 	s.Error(settingsNoImageID.Validate())
-
-	// error when missing client port
-	settingsNoClientPort := &dockerSettings{
-		HostIP:  "127.0.0.1",
-		ImageID: "docker_image",
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
-	}
-	s.Error(settingsNoClientPort.Validate())
-
-	// error when invalid port range
-	settingsInvalidPorts := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5010,
-			MaxPort: 5000,
-		},
-	}
-	s.Error(settingsInvalidPorts.Validate())
-
-	// error when missing port PortRange
-	settingsNoPortRange := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-	}
-	s.Error(settingsNoPortRange.Validate())
-
-	// error when ports are 0
-	settingsInvalidPortsZero := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 0,
-			MaxPort: 0,
-		},
-	}
-	s.Error(settingsInvalidPortsZero.Validate())
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -166,7 +109,7 @@ func (s *DockerSuite) TestIsUpFailAPICall() {
 }
 
 func (s *DockerSuite) TestIsUpStatuses() {
-	host := &host.Host{}
+	host := &host.Host{ParentID: "parent"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -408,23 +351,29 @@ func (s *DockerSuite) TestMakeHostConfig() {
 	}
 	containers := []types.Container{container}
 
-	settingsNoOpenPorts := &dockerSettings{
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5001,
+	hostNoOpenPorts := &host.Host{
+		Id: "host-1",
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Id:            "test_pool-1",
+			MaxContainers: 1,
+			Port:          5000,
 		},
 	}
-	conf, err := makeHostConfig(s.distro, settingsNoOpenPorts, containers)
+
+	conf, err := makeHostConfig(hostNoOpenPorts, containers)
 	s.Error(err)
 	s.Nil(conf)
 
-	settingsOpenPorts := &dockerSettings{
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
+	hostOpenPorts := &host.Host{
+		Id: "host-2",
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Id:            "test_pool-2",
+			MaxContainers: 10,
+			Port:          5000,
 		},
 	}
-	conf, err = makeHostConfig(s.distro, settingsOpenPorts, containers)
+
+	conf, err = makeHostConfig(hostOpenPorts, containers)
 	s.NoError(err)
 	s.NotNil(conf)
 }
@@ -488,7 +437,7 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	delete(*s.distro.ProviderSettings, "port_range")
+	delete(*s.distro.ProviderSettings, "image_name")
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 
@@ -496,5 +445,22 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 		_, err := s.manager.SpawnHost(ctx, host)
 		s.Error(err)
 	})
+}
 
+func (s *DockerSuite) TestGetContainers() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failList)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	containers, err := s.manager.GetContainers(ctx, parent)
+	s.NoError(err)
+	s.Equal(1, len(containers))
+	s.Equal("container-1", containers[0])
 }

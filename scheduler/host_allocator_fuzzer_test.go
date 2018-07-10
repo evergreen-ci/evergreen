@@ -59,6 +59,7 @@ func (s *HostAllocatorFuzzerSuite) SetupSuite() {
 	}
 	s.projectName = "testProject"
 	s.freeHostFraction = 0.5
+	s.ctx = context.Background()
 	s.settings = fuzzerSettings{
 		taskDurations: []time.Duration{
 			10 * time.Second,

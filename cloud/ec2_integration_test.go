@@ -38,9 +38,9 @@ func fetchTestDistro() distro.Distro {
 			// TODO : The below settings require access to our staging environment. We
 			// hope to make settings test data better in the future so that we do not
 			// have to include values like these in our test code.
-			"security_group": "sg-601a6c13",
-			"subnet_id":      "subnet-517c941a",
-			"vpc_name":       "stage_dynamic_vpc",
+			"security_group_ids": []string{"sg-601a6c13"},
+			"subnet_id":          "subnet-517c941a",
+			"vpc_name":           "stage_dynamic_vpc",
 		},
 
 		SetupAsSudo: true,

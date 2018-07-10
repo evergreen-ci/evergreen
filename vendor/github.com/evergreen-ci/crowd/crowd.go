@@ -167,6 +167,7 @@ func (self *Client) CreateSession(username, password string) (*Session, error) {
 		return nil, err
 	}
 	req, err := http.NewRequest("POST", subUrl.String(), ioutil.NopCloser(bytes.NewReader(jsonBytes)))
+	req.ContentLength = int64(len(jsonBytes))
 	if err != nil {
 		return nil, fmt.Errorf("Could not create request: %v", err)
 	}
