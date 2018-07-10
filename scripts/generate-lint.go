@@ -59,7 +59,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 				continue
 			}
 
-			if strings.Contains(dir, "vendor") {
+			if strings.HasPrefix(dir, "vendor") {
 				continue
 			}
 
