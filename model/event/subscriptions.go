@@ -174,7 +174,7 @@ func findSelector(selectors []Selector, selectorType string) *Selector {
 
 func (s *Subscription) Upsert() error {
 	if s.ID == "" {
-		s.ID = bson.NewObjectId().String()
+		s.ID = bson.NewObjectId().Hex()
 	}
 	update := bson.M{
 		subscriptionTypeKey:           s.Type,
@@ -297,7 +297,10 @@ func validatePositiveFloat(s string) error {
 }
 
 func (s *Subscription) String() string {
-	id := s.ID
+	id := "???"
+	if s.ID != "" {
+		id = s.ID
+	}
 
 	tmpl := []string{
 		fmt.Sprintf("ID: %s", id),
@@ -426,7 +429,7 @@ func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscripti
 
 func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
 	return Subscription{
-		ID:      bson.NewObjectId().String(),
+		ID:      bson.NewObjectId().Hex(),
 		Type:    resourceType,
 		Trigger: trigger,
 		Selectors: []Selector{

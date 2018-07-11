@@ -135,7 +135,7 @@ func (s *eventSuite) TestWithRealData() {
 func (s *eventSuite) TestEventWithNilData() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
-		ID:         bson.NewObjectId().String(),
+		ID:         bson.NewObjectId().Hex(),
 		ResourceId: "TEST1",
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -268,7 +268,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.Zero(ptime)
 
 	s.EqualError(logger.MarkProcessed(&event), "event has no ID")
-	event.ID = bson.NewObjectId().String()
+	event.ID = bson.NewObjectId().Hex()
 	s.EqualError(logger.MarkProcessed(&event), "failed to update 'processed at' time: not found")
 
 	s.NoError(logger.LogEvent(&event))
@@ -411,7 +411,7 @@ func (s *eventSuite) TestTaskEventLogLegacyEvents() {
 func (s *eventSuite) TestFindLastProcessedEvent() {
 	events := []EventLogEntry{
 		{
-			ID:           bson.NewObjectId().String(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -423,7 +423,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId().String(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -435,7 +435,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId().String(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -459,7 +459,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 func (s *eventSuite) TestCountUnprocessedEvents() {
 	events := []EventLogEntry{
 		{
-			ID:           bson.NewObjectId().String(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -470,7 +470,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId().String(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -482,7 +482,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId().String(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -550,7 +550,7 @@ func findResourceTypeIn(data interface{}) (bool, string) {
 func (s *eventSuite) TestLogManyEvents() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event1 := EventLogEntry{
-		ID:           bson.NewObjectId().String(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -558,7 +558,7 @@ func (s *eventSuite) TestLogManyEvents() {
 		ResourceType: "TASK",
 	}
 	event2 := EventLogEntry{
-		ID:           bson.NewObjectId().String(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),

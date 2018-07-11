@@ -123,7 +123,7 @@ func (e *EventLogEntry) validateEvent() error {
 		return errors.New("event log entry has no r_type")
 	}
 	if e.ID == "" {
-		e.ID = bson.NewObjectId().String()
+		e.ID = bson.NewObjectId().Hex()
 	}
 	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
 		loc, _ := time.LoadLocation("UTC")

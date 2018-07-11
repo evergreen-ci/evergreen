@@ -32,7 +32,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	t5 := "slack_user"
 	s.subscriptions = []Subscription{
 		{
-			ID:      bson.NewObjectId().String(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    "type1",
 			Trigger: "trigger1",
 			Selectors: []Selector{
@@ -50,7 +50,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:      bson.NewObjectId().String(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    "type1",
 			Trigger: "trigger1",
 			Selectors: []Selector{
@@ -68,7 +68,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:      bson.NewObjectId().String(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    "type1",
 			Trigger: "trigger1",
 			Selectors: []Selector{
@@ -116,7 +116,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().String(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    "type2",
 			Trigger: "trigger2",
 			Selectors: []Selector{
