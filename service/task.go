@@ -313,7 +313,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
-	isAdmin := isAdmin(usr, projCtx.ProjectRef) || util.StringSliceContains(uis.Settings.SuperUsers, usr.Username())
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task           uiTaskData
@@ -322,8 +321,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		JiraHost       string
 		IsProjectAdmin bool
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, uis.GetCommonViewData(w, r, false, true)}, "base",
-		"task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings),
+		uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
@@ -710,9 +709,14 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "override_dependencies":
+		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) {
+			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
+			return
+		}
 		err = projCtx.Task.SetOverrideDependencies(authUser.Username())
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
