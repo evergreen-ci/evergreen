@@ -226,7 +226,7 @@ func IsAbortable(t Task) bool {
 }
 
 // IsFinished returns true if the project is no longer running
-func (t Task) IsFinished() bool {
+func (t *Task) IsFinished() bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
 		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
@@ -749,6 +749,14 @@ func (t *Task) UpdateDisplayTask() error {
 		sort.Sort(byPriority(statuses))
 		status = statuses[0]
 	}
+
+	grip.InfoWhen(status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime, message.Fields{
+		"lookhere":                      "evg-3345",
+		"message":                       "update display tasks",
+		"task_id":                       t.Id,
+		"status":                        status,
+		"dispatch_time_is_go_zero_time": t.DispatchTime.IsZero(),
+	})
 
 	update := bson.M{
 		StatusKey:    status,

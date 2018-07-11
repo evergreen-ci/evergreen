@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -56,19 +55,13 @@ func (vh *versionHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 func (vh *versionHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundVersion, err := sc.FindVersionById(vh.versionId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	versionModel := &model.APIVersion{}
 	err = versionModel.BuildFromService(foundVersion)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 	return ResponseData{
 		Result: []model.Model{versionModel},
@@ -116,10 +109,7 @@ func (h *buildsForVersionHandler) Execute(ctx context.Context, sc data.Connector
 	// First, find the version by its ID.
 	foundVersion, err := sc.FindVersionById(h.versionId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error in finding the version")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error in finding the version")
 	}
 
 	// Then, find each build variant in the found version by its ID.
@@ -127,18 +117,12 @@ func (h *buildsForVersionHandler) Execute(ctx context.Context, sc data.Connector
 	for _, buildStatus := range foundVersion.BuildVariants {
 		foundBuild, err := sc.FindBuildById(buildStatus.BuildId)
 		if err != nil {
-			if _, ok := err.(*rest.APIError); !ok {
-				err = errors.Wrap(err, "Database error in finding the build")
-			}
-			return ResponseData{}, err
+			return ResponseData{}, errors.Wrap(err, "Database error in finding the build")
 		}
 		buildModel := &model.APIBuild{}
 		err = buildModel.BuildFromService(*foundBuild)
 		if err != nil {
-			if _, ok := err.(*rest.APIError); !ok {
-				err = errors.Wrap(err, "API model error")
-			}
-			return ResponseData{}, err
+			return ResponseData{}, errors.Wrap(err, "API model error")
 		}
 
 		buildModels = append(buildModels, buildModel)
@@ -186,32 +170,24 @@ func (h *versionAbortHandler) ParseAndValidate(ctx context.Context, r *http.Requ
 // Execute calls the data AbortVersion function to abort all tasks of a version.
 func (h *versionAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	var userId string
+
 	if u := gimlet.GetUser(ctx); u != nil {
 		userId = u.Username()
 	}
 	err := sc.AbortVersion(h.versionId, userId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error in aborting version:")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error in aborting version:")
 	}
 
 	foundVersion, err := sc.FindVersionById(h.versionId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error in finding version:")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error in finding version:")
 	}
 
 	versionModel := &model.APIVersion{}
 	err = versionModel.BuildFromService(foundVersion)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{
@@ -260,28 +236,19 @@ func (h *versionRestartHandler) Execute(ctx context.Context, sc data.Connector) 
 	// Restart the version
 	err := sc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error in restarting version:")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error in restarting version:")
 	}
 
 	// Find the version to return updated status.
 	foundVersion, err := sc.FindVersionById(h.versionId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error in finding version:")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error in finding version:")
 	}
 
 	versionModel := &model.APIVersion{}
 	err = versionModel.BuildFromService(foundVersion)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{

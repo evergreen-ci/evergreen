@@ -251,6 +251,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                           <tr>
                             <td>Name</td>
                             <td>Status</td>
+                            <td>Time Taken</td>
                           </tr>
                         </thead>
                         <tbody>
@@ -260,6 +261,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                             </td>
                             <td>
                               [[et.status]]
+                            </td>
+                            <td>
+                              [[et.time_taken | stringifyNanoseconds]]
                             </td>
                           </tr>
                         </tbody>

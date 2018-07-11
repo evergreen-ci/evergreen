@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -60,7 +60,7 @@ func (hgh *testGetHandler) Handler() RequestHandler {
 func (tgh *testGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
@@ -71,7 +71,7 @@ func (tgh *testGetHandler) ParseAndValidate(ctx context.Context, r *http.Request
 	if execution != "" {
 		executionInt, err = strconv.Atoi(execution)
 		if err != nil {
-			return rest.APIError{
+			return gimlet.ErrorResponse{
 				Message:    "Invalid execution",
 				StatusCode: http.StatusBadRequest,
 			}
@@ -88,27 +88,20 @@ func (tgh *testGetHandler) ParseAndValidate(ctx context.Context, r *http.Request
 // testPaginator is the PaginatorFunc that implements the functionality of paginating
 // over the tests results of a task. It executes the database lookup and creates
 // the pages for pagination.
-func testPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
-	*PageResult, error) {
+func testPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
 	tghArgs, ok := args.(testGetHandlerArgs)
 	if !ok {
 		grip.EmergencyPanic("Test pagination args had wrong type")
 	}
 	tests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit*2, 1, tghArgs.testExecution)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	// Make the previous page
 	prevTests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit, -1, tghArgs.testExecution)
 	if err != nil && tests == nil { // don't error if we already found valid results
-		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	nextPage := makeNextTestsPage(tests, limit)

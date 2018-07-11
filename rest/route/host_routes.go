@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -106,24 +105,18 @@ func (high *hostIDGetHandler) ParseAndValidate(ctx context.Context, r *http.Requ
 func (high *hostIDGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundHost, err := sc.FindHostById(high.hostId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	hostModel := &model.APIHost{}
 	if err = hostModel.BuildFromService(*foundHost); err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	if foundHost.RunningTask != "" {
 		runningTask, err := sc.FindTaskById(foundHost.RunningTask)
 		if err != nil {
-			if apiErr, ok := err.(*rest.APIError); !ok || (ok && apiErr.StatusCode != http.StatusNotFound) {
+			if apiErr, ok := err.(gimlet.ErrorResponse); !ok || (ok && apiErr.StatusCode != http.StatusNotFound) {
 				return ResponseData{}, errors.Wrap(err, "Database error")
 			}
 		}
@@ -172,7 +165,7 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	}
 	hosts, err := sc.FindHostsById(key, hpArgs.status, hpArgs.user, limit*2, 1)
 	if err != nil {
-		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(gimlet.ErrorResponse); !ok || apiErr.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -182,7 +175,7 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	// Make the previous page
 	prevHosts, err := sc.FindHostsById(key, hpArgs.status, hpArgs.user, limit, -1)
 	if err != nil && hosts == nil {
-		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(gimlet.ErrorResponse); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
 	}
@@ -212,7 +205,7 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 
 	tasks, err := sc.FindTasksByIds(taskIds)
 	if err != nil {
-		if apiErr, ok := err.(*rest.APIError); !ok ||
+		if apiErr, ok := err.(gimlet.ErrorResponse); !ok ||
 			(ok && apiErr.StatusCode != http.StatusNotFound) {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
@@ -312,19 +305,13 @@ func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (Res
 
 	intentHost, err := sc.NewIntentHost(hph.Distro, hph.KeyName, "", user)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "error spawning host")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "error spawning host")
 	}
 
 	hostModel := &model.APIHost{}
 	err = hostModel.BuildFromService(intentHost)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{
@@ -370,14 +357,14 @@ func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (
 	}
 
 	if host.Status == evergreen.HostTerminated {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("Host %s is already terminated", host.Id),
 		}
 
 	} else if host.Status == evergreen.HostUninitialized {
 		if err := sc.SetHostStatus(host, evergreen.HostTerminated, u.Id); err != nil {
-			return ResponseData{}, &rest.APIError{
+			return ResponseData{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
 			}
@@ -385,7 +372,7 @@ func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (
 
 	} else {
 		if err := sc.TerminateHost(ctx, host, u.Id); err != nil {
-			return ResponseData{}, &rest.APIError{
+			return ResponseData{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
 			}
@@ -432,7 +419,7 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 
 	h.rdpPassword = model.FromAPIString(hostModify.RDPPwd)
 	if !cloud.ValidateRDPPassword(h.rdpPassword) {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid password",
 		}
@@ -450,19 +437,19 @@ func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Conn
 	}
 
 	if !host.Distro.IsWindows() {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "RDP passwords can only be set on Windows hosts",
 		}
 	}
 	if host.Status != evergreen.HostRunning {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "RDP passwords can only be set on running hosts",
 		}
 	}
 	if err := cloud.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		}
@@ -508,7 +495,7 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 
 	addHours, err := strconv.Atoi(model.FromAPIString(hostModify.AddHours))
 	if err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "expiration not a number",
 		}
@@ -516,13 +503,13 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 	h.addHours = time.Duration(addHours) * time.Hour
 
 	if h.addHours <= 0 {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "must add more than 0 hours to expiration",
 		}
 	}
 	if h.addHours > cloud.MaxSpawnHostExpirationDurationHours {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("cannot add more than %s", cloud.MaxSpawnHostExpirationDurationHours.String()),
 		}
@@ -539,7 +526,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 		return ResponseData{}, err
 	}
 	if host.Status == evergreen.HostTerminated {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "cannot extend expiration of a terminated host",
 		}
@@ -548,14 +535,14 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	var newExp time.Time
 	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
 		}
 	}
 
 	if err := sc.SetHostExpirationTime(host, newExp); err != nil {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		}
@@ -566,7 +553,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 
 func validateHostID(hostID string) (string, error) {
 	if strings.TrimSpace(hostID) == "" {
-		return "", &rest.APIError{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "missing/empty host id",
 		}

@@ -44,7 +44,6 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error
 	}
 
 	return nil, errors.New("Must have at least one form of authentication, currently there are none")
-
 }
 
 // sets the Token in the session cookie for authentication

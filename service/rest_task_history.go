@@ -163,7 +163,14 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONError(w, err.Error())
 		return
 	}
-	results, err := model.GetTestHistoryV2(&params)
+	var results []model.TestHistoryResult
+	if params.BeforeRevision == "" && params.AfterRevision == "" &&
+		params.BeforeDate.IsZero() && params.AfterDate.IsZero() {
+		// if the task results could be unbounded, use the aggregation version of the query
+		results, err = model.GetTestHistory(&params)
+	} else {
+		results, err = model.GetTestHistoryV2(&params)
+	}
 	if err != nil {
 		gimlet.WriteJSONError(w, err.Error())
 		return

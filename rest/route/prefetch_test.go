@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
@@ -30,7 +29,7 @@ func TestPrefetchProject(t *testing.T) {
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
-				errToResemble := rest.APIError{
+				errToResemble := gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
 					Message:    "Project not found",
 				}
@@ -43,7 +42,7 @@ func TestPrefetchProject(t *testing.T) {
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(ctx.Value(RequestContext), ShouldBeNil)
 
-				errToResemble := rest.APIError{
+				errToResemble := gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
 					Message:    "Not found",
 				}

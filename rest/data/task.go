@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -25,7 +25,7 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 		return nil, err
 	}
 	if t == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task with id %s not found", taskId),
 		}
@@ -52,7 +52,7 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 		} else {
 			message = fmt.Sprintf("tasks from build '%s' not found", buildId)
 		}
-		return []task.Task{}, &rest.APIError{
+		return []task.Task{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}
@@ -67,7 +67,7 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 			}
 		}
 		if !found {
-			return []task.Task{}, &rest.APIError{
+			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
 			}
@@ -82,7 +82,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 		return nil, err
 	}
 	if len(ts) == 0 {
-		return []task.Task{}, &rest.APIError{
+		return []task.Task{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no tasks found",
 		}
@@ -118,7 +118,7 @@ func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 			message = fmt.Sprintf("task from project '%s' and commit '%s' not found",
 				projectId, commitHash)
 		}
-		return []task.Task{}, &rest.APIError{
+		return []task.Task{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}
@@ -133,7 +133,7 @@ func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 			}
 		}
 		if !found {
-			return []task.Task{}, &rest.APIError{
+			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
 			}

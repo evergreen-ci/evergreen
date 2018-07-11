@@ -60,3 +60,16 @@
   color: #646464;
   font-style: italic;
 }
+
+.buildbaron-feedback-icons {
+  padding: 5px;
+}
+
+.buildbaron-feedback-description {
+  padding: 5px;
+  font-style: italic;
+}
+
+.buildbaron-feedback .form-group {
+  margin-left: 0px;
+}

@@ -195,7 +195,7 @@ func PopulateEventAlertProcessing(parts int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		if flags.AlertsDisabled {
+		if flags.EventProcessingDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "alerts disabled",
 				"impact":  "not processing alerts for notifications",
@@ -351,6 +351,25 @@ func PopulateParentDecommissionJobs() amboy.QueueOperation {
 	}
 }
 
+func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+
+		parents, err := host.FindAllRunningParents()
+		if err != nil {
+			return errors.Wrap(err, "Error finding parent hosts")
+		}
+
+		// create job to check container state consistency for each parent
+		for _, p := range parents {
+			catcher.Add(queue.Put(NewHostMonitorContainerStateJob(env, &p, evergreen.ProviderNameDocker, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
@@ -371,13 +390,14 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		lastPlanned, err := model.FindTaskQueueGenerationTimes()
 		catcher.Add(err)
 
-		names, err := distro.FindActive()
+		// find all active distros
+		distros, err := distro.Find(distro.ByActive())
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{
 			"runner":   "scheduler",
 			"previous": lastPlanned,
-			"distros":  names,
+			"distros":  distro.DistroGroup(distros).GetDistroIds(),
 			"op":       "dispatcher",
 		})
 
@@ -388,13 +408,20 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		}))
 
 		ts := util.RoundPartOfMinute(20)
-		for _, id := range names {
-			lastRun, ok := lastPlanned[id]
+		settings := env.Settings()
+
+		for _, d := range distros {
+			// do not create scheduler jobs for parent distros
+			if d.IsParent(settings) {
+				continue
+			}
+
+			lastRun, ok := lastPlanned[d.Id]
 			if ok && time.Since(lastRun) < 40*time.Second {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewDistroSchedulerJob(env, id, ts)))
+			catcher.Add(queue.Put(NewDistroSchedulerJob(env, d.Id, ts)))
 		}
 
 		return catcher.Resolve()

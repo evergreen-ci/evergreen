@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -203,7 +203,7 @@ func TestPaginationExecutor(t *testing.T) {
 
 				queryParams := fmt.Sprintf("%s=%s", testLimitQueryParam, "garbage")
 
-				expectedError := rest.APIError{
+				expectedError := gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message: fmt.Sprintf("Value '%v' provided for '%v' must be integer",
 						"garbage", testLimitQueryParam),

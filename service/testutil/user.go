@@ -17,9 +17,13 @@ var MockUser = user.DBUser{Id: "testuser", APIKey: "testapikey"}
 func (MockUserManager) GetUserByToken(_ context.Context, _ string) (gimlet.User, error) {
 	return &MockUser, nil
 }
-func (MockUserManager) CreateUserToken(_, _ string) (string, error)      { return MockUser.Username(), nil }
-func (MockUserManager) GetLoginHandler(_ string) http.HandlerFunc        { return nil }
-func (MockUserManager) IsRedirect() bool                                 { return false }
-func (MockUserManager) GetLoginCallbackHandler() http.HandlerFunc        { return nil }
+func (MockUserManager) CreateUserToken(_, _ string) (string, error) { return MockUser.Username(), nil }
+func (MockUserManager) GetLoginHandler(_ string) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {}
+}
+func (MockUserManager) IsRedirect() bool { return false }
+func (MockUserManager) GetLoginCallbackHandler() http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {}
+}
 func (MockUserManager) GetOrCreateUser(gimlet.User) (gimlet.User, error) { return &MockUser, nil }
 func (MockUserManager) GetUserByID(string) (gimlet.User, error)          { return &MockUser, nil }

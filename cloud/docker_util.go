@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -24,10 +24,8 @@ const (
 // to an open port on the host machine. An open port must be in the port range specified
 // by the provider settings, but must not a port already being used by existing containers.
 // If no ports are available on the host machine, makeHostConfig errors.
-func makeHostConfig(d distro.Distro, s *dockerSettings, containers []types.Container) (*container.HostConfig, error) {
+func makeHostConfig(h *host.Host, containers []types.Container) (*container.HostConfig, error) {
 	hostConfig := &container.HostConfig{}
-	minPort := s.PortRange.MinPort
-	maxPort := s.PortRange.MaxPort
 
 	reservedPorts := make(map[uint16]bool)
 	for _, c := range containers {
@@ -37,7 +35,7 @@ func makeHostConfig(d distro.Distro, s *dockerSettings, containers []types.Conta
 	}
 
 	hostConfig.PortBindings = make(nat.PortMap)
-	for i := minPort; i <= maxPort; i++ {
+	for i := h.ContainerPoolSettings.Port; i <= h.ContainerPoolSettings.Port+uint16(h.ContainerPoolSettings.MaxContainers); i++ {
 		// if port is not already in use, bind it to sshd exposed container port
 		if !reservedPorts[i] {
 			hostConfig.PortBindings[sshdPort] = []nat.PortBinding{

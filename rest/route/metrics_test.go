@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 )
@@ -84,7 +84,7 @@ func (s *TaskMetricsSuite) TestInvalidTimesAsKeyShouldError() {
 			s.Len(a, 0)
 			s.Nil(b)
 			s.Error(err)
-			apiErr, ok := err.(rest.APIError)
+			apiErr, ok := err.(gimlet.ErrorResponse)
 			s.True(ok)
 			s.Contains(apiErr.Message, i)
 		}

@@ -13,9 +13,9 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 )
 
 const (
@@ -117,7 +117,7 @@ func (pe *PaginationExecutor) ParseAndValidate(_ context.Context, r *http.Reques
 	var err error
 	pe.limit, err = strconv.Atoi(limit)
 	if err != nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message: fmt.Sprintf("Value '%v' provided for '%v' must be integer",
 				limit, pe.LimitQueryParam),

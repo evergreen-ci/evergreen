@@ -69,6 +69,10 @@ func (s *KvPairSuite) TestMapToKvSliceNested() {
 	pair1 := out[0]
 	s.Equal("key3", pair1.Key)
 	s.EqualValues(s.kvSliceNested[0].Value, pair1.Value)
+
+	nestedMap, err := out.NestedMap()
+	s.NoError(err)
+	s.EqualValues(s.testMapNested, nestedMap)
 }
 
 func (s *KvPairSuite) TestErrorsForInvalidInput() {

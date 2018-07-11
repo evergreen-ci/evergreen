@@ -7,7 +7,6 @@ import (
 
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -63,26 +62,19 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 	}
 	projects, err := sc.FindProjects(key, limit*2, 1, isAuthenticated)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 	if len(projects) <= 0 {
-		err = &rest.APIError{
+		return []model.Model{}, nil, gimlet.ErrorResponse{
 			Message:    "no projects found",
 			StatusCode: http.StatusNotFound,
 		}
-		return []model.Model{}, nil, err
 	}
 
 	// Make the previous page
 	prevProjects, err := sc.FindProjects(key, limit, -1, isAuthenticated)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	// Populate page info
@@ -110,7 +102,7 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 	for _, p := range projects {
 		projectModel := &model.APIProject{}
 		if err = projectModel.BuildFromService(p); err != nil {
-			return []model.Model{}, nil, &rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    "problem converting project document",
 				StatusCode: http.StatusInternalServerError,
 			}
@@ -119,7 +111,7 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 		// now set the vars field
 		vars, err := sc.FindProjectVars(model.FromAPIString(projectModel.Identifier))
 		if err != nil {
-			return []model.Model{}, nil, &rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    "problem fetching project vars",
 				StatusCode: http.StatusInternalServerError,
 			}
@@ -165,7 +157,7 @@ func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Reque
 	if limit != "" {
 		h.limit, err = strconv.Atoi(limit)
 		if err != nil {
-			return rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Invalid limit",
 			}
@@ -177,7 +169,7 @@ func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Reque
 	if offset != "" {
 		h.offset, err = strconv.Atoi(offset)
 		if err != nil {
-			return rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Invalid offset",
 			}
@@ -191,14 +183,14 @@ func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Reque
 func (h *versionsGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	projRef, err := dbModel.FindOneProjectRef(h.project)
 	if err != nil {
-		return ResponseData{}, rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Project not found",
 		}
 	}
 	proj, err := dbModel.FindProject("", projRef)
 	if err != nil {
-		return ResponseData{}, rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Project not found",
 		}

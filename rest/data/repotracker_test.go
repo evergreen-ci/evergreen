@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,13 +20,13 @@ func TestValidatePushEvent(t *testing.T) {
 
 	branch, err := validatePushEvent(nil)
 	assert.Error(err)
-	assert.IsType(new(rest.APIError), err)
+	assert.IsType(gimlet.ErrorResponse{}, err)
 	assert.Empty(branch)
 
 	event := github.PushEvent{}
 	branch, err = validatePushEvent(&event)
 	assert.Error(err)
-	assert.IsType(new(rest.APIError), err)
+	assert.IsType(gimlet.ErrorResponse{}, err)
 	assert.Empty(branch)
 
 	event.Ref = github.String("refs/heads/changes")
@@ -61,7 +61,7 @@ func TestValidateProjectRefs(t *testing.T) {
 
 	refs, err := validateProjectRefs("baxterthehacker", "public-repo", "changes")
 	assert.Error(err)
-	assert.Equal("no project refs found", err.Error())
+	assert.Contains(err.Error(), "no project refs found")
 	assert.Empty(refs)
 	assert.NoError(doc.Insert())
 

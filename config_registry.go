@@ -47,6 +47,7 @@ func resetRegistry() error {
 		&SlackConfig{},
 		&UIConfig{},
 		&Settings{},
+		&JIRANotificationsConfig{},
 	}
 
 	ConfigRegistry = newConfigSectionRegistry()

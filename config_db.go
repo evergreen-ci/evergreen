@@ -71,6 +71,9 @@ var (
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
+
+	// ContainerPool keys
+	ContainerPoolIdKey = bsonutil.MustHaveTag(ContainerPool{}, "Id")
 )
 
 func byId(id string) bson.M {

@@ -22,11 +22,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/admin":                             getLegacyAdminSettingsManager,
-		"/admin/banner":                      getBannerRouteManager,
-		"/admin/events":                      getAdminEventRouteManager,
 		"/admin/restart":                     getRestartRouteManager(queue),
-		"/admin/revert":                      getRevertRouteManager,
 		"/admin/service_flags":               getServiceFlagsRouteManager,
 		"/admin/settings":                    getAdminSettingsManager,
 		"/admin/task_queue":                  getClearTaskQueueRouteManager,
@@ -79,5 +75,15 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		getManager(path, 2).Register(app, sc)
 	}
 
-	app.AddRoute("/").Version(2).RouteHandler(makePlaceHolderManger(sc)).Get()
+	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers())
+	checkUser := gimlet.NewRequireAuthHandler()
+
+	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
+	app.AddRoute("/admin").Version(2).Get().RouteHandler(makeLegacyAdminConfig(sc))
+	app.AddRoute("/admin/banner").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchAdminBanner(sc))
+	app.AddRoute("/admin/banner").Version(2).Post().Wrap(superUser).RouteHandler(makeSetAdminBanner(sc))
+	app.AddRoute("/admin/events").Version(2).Get().Wrap(superUser).RouteHandler(makeFetchAdminEvents(sc))
+	app.AddRoute("/admin/revert").Version(2).Post().Wrap(superUser).RouteHandler(makeRevertRouteManager(sc))
+	app.AddRoute("/hosts/create/{task_id}").Version(2).Post().RouteHandler(makeHostCreateRouteManager(sc))
+	app.AddRoute("/hosts/list/{task_id}").Version(2).Get().RouteHandler(makeHostListRouteManager(sc))
 }

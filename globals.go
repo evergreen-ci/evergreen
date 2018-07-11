@@ -126,17 +126,16 @@ const (
 
 // cloud provider related constants
 const (
-	ProviderNameEc2Auto       = "ec2-auto"
-	ProviderNameEc2OnDemand   = "ec2-ondemand"
-	ProviderNameEc2Spot       = "ec2-spot"
-	ProviderNameDocker        = "docker"
-	ProviderNameDockerStatic  = "docker-static"
-	ProviderNameDockerDynamic = "docker-dynamic"
-	ProviderNameGce           = "gce"
-	ProviderNameStatic        = "static"
-	ProviderNameOpenstack     = "openstack"
-	ProviderNameVsphere       = "vsphere"
-	ProviderNameMock          = "mock"
+	ProviderNameEc2Auto     = "ec2-auto"
+	ProviderNameEc2OnDemand = "ec2-ondemand"
+	ProviderNameEc2Spot     = "ec2-spot"
+	ProviderNameDocker      = "docker"
+	ProviderNameDockerMock  = "docker-mock"
+	ProviderNameGce         = "gce"
+	ProviderNameStatic      = "static"
+	ProviderNameOpenstack   = "openstack"
+	ProviderNameVsphere     = "vsphere"
+	ProviderNameMock        = "mock"
 
 	// TODO: This can be removed when no more hosts with provider ec2 are running.
 	ProviderNameEc2Legacy = "ec2"
@@ -173,7 +172,7 @@ const (
 
 const (
 	GenerateTasksCommandName = "generate.tasks"
-	CreateHostCommandName    = "create.host"
+	CreateHostCommandName    = "host.create"
 )
 
 type SenderKey int

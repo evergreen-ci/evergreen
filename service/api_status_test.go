@@ -33,7 +33,7 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -61,7 +61,7 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -170,25 +170,6 @@ func TestServiceStatusEndPoints(t *testing.T) {
 			_, ok := out["build_revision"]
 			So(ok, ShouldBeTrue)
 		})
-		Convey("auth endpoint should report extended information", func() {
-			request, err := http.NewRequest("GET", url, nil)
-			So(err, ShouldBeNil)
-			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-
-			resp, err := http.DefaultClient.Do(request)
-			So(err, ShouldBeNil)
-			So(resp.StatusCode, ShouldEqual, 200)
-			out := map[string]interface{}{}
-
-			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
-
-			So(len(out), ShouldEqual, 3)
-			for _, key := range []string{"build_revision", "sys_info", "pid"} {
-				_, ok := out[key]
-				So(ok, ShouldBeTrue)
-			}
-
-		})
 	})
 }
 
@@ -251,7 +232,6 @@ func TestStuckHostEndpoints(t *testing.T) {
 			So(resp.Code, ShouldEqual, http.StatusOK)
 
 			out := stuckHostResp{}
-
 			So(json.NewDecoder(resp.Body).Decode(&out), ShouldBeNil)
 			So(out.Status, ShouldEqual, apiStatusError)
 			So(len(out.HostIds), ShouldEqual, 1)

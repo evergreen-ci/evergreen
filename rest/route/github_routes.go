@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -66,7 +66,7 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 	gh.msgID = r.Header.Get("X-Github-Delivery")
 
 	if len(gh.secret) == 0 || gh.queue == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
@@ -79,7 +79,7 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 			"msg_id":  gh.msgID,
 			"event":   gh.eventType,
 		}))
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "failed to read request body",
 		}
@@ -93,7 +93,7 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 			"event":   gh.eventType,
 			"message": "rejecting github webhook",
 		}))
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
 		}
@@ -106,7 +106,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		if event.HookID == nil {
-			return ResponseData{}, rest.APIError{
+			return ResponseData{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "malformed ping event",
 			}
@@ -120,7 +120,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 
 	case *github.PullRequestEvent:
 		if event.Action == nil {
-			err := rest.APIError{
+			err := gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "pull request has no action",
 			}
@@ -144,7 +144,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 					"action":  *event.Action,
 					"message": "failed to create intent",
 				}))
-				return ResponseData{}, &rest.APIError{
+				return ResponseData{}, gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    err.Error(),
 				}
@@ -164,7 +164,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 			})
 
 			if err := sc.AddPatchIntent(ghi, gh.queue); err != nil {
-				return ResponseData{}, &rest.APIError{
+				return ResponseData{}, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
 				}

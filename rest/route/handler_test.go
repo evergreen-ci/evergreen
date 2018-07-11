@@ -7,11 +7,10 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -28,7 +27,7 @@ func TestMakeHandler(t *testing.T) {
 
 		Convey("And authenticator errors should cause response to "+
 			"contain error information", func() {
-			auth.err = rest.APIError{
+			auth.err = gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Not Authenticated",
 			}
@@ -36,7 +35,7 @@ func TestMakeHandler(t *testing.T) {
 		})
 		Convey("And parseValidate errors should cause response to "+
 			"contain error information", func() {
-			requestHandler.parseValidateErr = rest.APIError{
+			requestHandler.parseValidateErr = gimlet.ErrorResponse{
 				StatusCode: http.StatusRequestEntityTooLarge,
 				Message:    "Request too large to parse",
 			}
@@ -45,7 +44,7 @@ func TestMakeHandler(t *testing.T) {
 		})
 		Convey("And execute errors should cause response to "+
 			"contain error information", func() {
-			requestHandler.executeErr = rest.APIError{
+			requestHandler.executeErr = gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    "Not found in DB",
 			}
@@ -54,11 +53,11 @@ func TestMakeHandler(t *testing.T) {
 		})
 		Convey("And parseValidate and execute errors should cause response to "+
 			"contain parseValidate error information", func() {
-			requestHandler.executeErr = rest.APIError{
+			requestHandler.executeErr = gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    "Not found in DB",
 			}
-			requestHandler.parseValidateErr = rest.APIError{
+			requestHandler.parseValidateErr = gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Request did not contain all fields",
 			}
@@ -67,11 +66,11 @@ func TestMakeHandler(t *testing.T) {
 		})
 		Convey("And authenticate and execute errors should cause response to "+
 			"contain authenticate error information", func() {
-			auth.err = rest.APIError{
+			auth.err = gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Not Authenticated",
 			}
-			requestHandler.executeErr = rest.APIError{
+			requestHandler.executeErr = gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    "Not found in DB",
 			}
@@ -127,20 +126,18 @@ func checkResultMatches(m MethodHandler, expectedErr error,
 	So(err, ShouldBeNil)
 
 	resp := httptest.NewRecorder()
-	r := mux.NewRouter()
-	r.HandleFunc(testRoute, handler)
 
-	r.ServeHTTP(resp, req)
+	handler.ServeHTTP(resp, req)
 
 	if expectedErr != nil {
-		errResult := rest.APIError{}
+		errResult := gimlet.ErrorResponse{}
 		wrappedBody := ioutil.NopCloser(resp.Body)
 
 		err := util.ReadJSONInto(wrappedBody, &errResult)
 		So(err, ShouldBeNil)
 
 		So(errResult.StatusCode, ShouldEqual, expectedStatusCode)
-		if apiErr, ok := expectedErr.(rest.APIError); ok {
+		if apiErr, ok := expectedErr.(gimlet.ErrorResponse); ok {
 			So(apiErr.Message, ShouldEqual, errResult.Message)
 		} else {
 			So(expectedErr.Error(), ShouldEqual, errResult.Message)

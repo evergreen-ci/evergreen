@@ -125,7 +125,7 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	settings.Notifications = *pref
 
 	settings.SlackUsername = "#Test"
-	s.EqualError(s.sc.UpdateSettings(s.users[0], settings), "expected a Slack username, but got a channel")
+	s.EqualError(s.sc.UpdateSettings(s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
 }
 
 func TestDBUserConnector(t *testing.T) {

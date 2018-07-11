@@ -78,13 +78,15 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		idleTimeStartAt = h.StartTime
 	}
 
+	msg := fmt.Sprintf("Task %v started on host %v", t.Id, h.Id)
+
 	job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
 	if err = as.queue.Put(job); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error queuing host idle stats"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error queuing host idle stats for %s", msg))
 		return
 	}
 
-	gimlet.WriteJSON(w, fmt.Sprintf("Task %v started on host %v", t.Id, h.Id))
+	gimlet.WriteJSON(w, msg)
 }
 
 // validateTaskEndDetails returns true if the task is finished or undispatched

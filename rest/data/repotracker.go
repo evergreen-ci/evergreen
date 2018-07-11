@@ -7,8 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -119,7 +119,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	})
 
 	if catcher.HasErrors() {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    catcher.Resolve().Error(),
 		}
@@ -148,7 +148,7 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	if event == nil || event.Ref == nil || event.Repo == nil ||
 		event.Repo.Name == nil || event.Repo.Owner == nil ||
 		event.Repo.Owner.Name == nil || event.Repo.FullName == nil {
-		return "", &rest.APIError{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid PushEvent from github",
 		}
@@ -161,7 +161,7 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 
 	refs := strings.Split(*event.Ref, "/")
 	if len(refs) != 3 {
-		return "", &rest.APIError{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("Unexpected Git ref format: %s", *event.Ref),
 		}
@@ -173,14 +173,14 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 func validateProjectRefs(owner, repo, branch string) ([]model.ProjectRef, error) {
 	refs, err := model.FindProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		}
 	}
 
 	if len(refs) == 0 {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "no project refs found",
 		}

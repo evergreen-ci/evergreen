@@ -25,15 +25,17 @@ func TestAppSuite(t *testing.T) {
 
 func (s *AppSuite) SetupTest() {
 	s.app = NewApp()
+	s.app.AddMiddleware(MakeRecoveryLogger())
 	err := grip.GetSender().SetLevel(send.LevelInfo{Default: level.Debug, Threshold: level.Info})
 	s.NoError(err)
 }
 
 func (s *AppSuite) TestDefaultValuesAreSet() {
-	s.Len(s.app.middleware, 2)
+	s.app = NewApp()
+	s.Len(s.app.middleware, 0)
 	s.Len(s.app.routes, 0)
 	s.Equal(s.app.port, 3000)
-	s.False(s.app.StrictSlash)
+	s.True(s.app.StrictSlash)
 	s.False(s.app.isResolved)
 }
 
@@ -45,15 +47,11 @@ func (s *AppSuite) TestRouterGetterReturnsErrorWhenUnresovled() {
 }
 
 func (s *AppSuite) TestMiddleWearResetEmptiesList() {
-	s.Len(s.app.middleware, 2)
+	s.app.AddMiddleware(NewAppLogger())
+	s.app.AddMiddleware(NewStatic("", http.Dir("")))
+	s.Len(s.app.middleware, 3)
 	s.app.ResetMiddleware()
 	s.Len(s.app.middleware, 0)
-}
-
-func (s *AppSuite) TestMiddleWearAdderAddsItemToList() {
-	s.Len(s.app.middleware, 2)
-	s.app.AddMiddleware(NewAppLogger())
-	s.Len(s.app.middleware, 3)
 }
 
 func (s *AppSuite) TestPortSetterDoesNotAllowImpermisableValues() {

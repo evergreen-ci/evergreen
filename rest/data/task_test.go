@@ -8,8 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -101,8 +101,8 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
 	s.NotNil(err)
 	s.Nil(found)
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -234,8 +234,8 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleTaskFail() {
 	s.NotNil(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -245,8 +245,8 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleBuildFail() {
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -340,8 +340,8 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -351,8 +351,8 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByCommitFail() {
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -405,8 +405,8 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddleFail() {
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }

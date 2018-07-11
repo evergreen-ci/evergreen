@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 )
 
 func getSubscriptionRouteManager(route string, version int) *RouteManager {
@@ -58,7 +58,7 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 	for _, subscription := range *s.Subscriptions {
 		subscriptionInterface, err := subscription.ToService()
 		if err != nil {
-			return &rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Error parsing request body: " + err.Error(),
 			}
@@ -66,7 +66,7 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 
 		dbSubscription, ok := subscriptionInterface.(event.Subscription)
 		if !ok {
-			return &rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    "Error parsing subscription interface",
 			}
@@ -77,27 +77,27 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 		}
 
 		if dbSubscription.OwnerType == event.OwnerTypePerson && dbSubscription.Owner != u.Username() {
-			return &rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "Cannot change subscriptions for anyone other than yourself",
 			}
 		}
 
 		if ok, msg := isSubscriptionAllowed(dbSubscription); !ok {
-			return &rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    msg,
 			}
 		}
 
 		if ok, msg := validateSelectors(dbSubscription.Subscriber, dbSubscription.Selectors); !ok {
-			return &rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf("Invalid selectors: %s", msg),
 			}
 		}
 		if ok, msg := validateSelectors(dbSubscription.Subscriber, dbSubscription.RegexSelectors); !ok {
-			return &rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf("Invalid regex selectors: %s", msg),
 			}
@@ -105,7 +105,7 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 
 		err = dbSubscription.Validate()
 		if err != nil {
-			return &rest.APIError{
+			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Error validating subscription: " + err.Error(),
 			}
@@ -165,19 +165,19 @@ func (s *subscriptionGetHandler) ParseAndValidate(ctx context.Context, r *http.R
 	s.owner = r.FormValue("owner")
 	s.ownerType = r.FormValue("type")
 	if !event.IsValidOwnerType(s.ownerType) {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid owner type",
 		}
 	}
 	if s.owner == "" {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Owner cannot be blank",
 		}
 	}
 	if s.ownerType == string(event.OwnerTypePerson) && s.owner != u.Username() {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Cannot get subscriptions for someone other than yourself",
 		}
@@ -214,7 +214,7 @@ func (s *subscriptionDeleteHandler) ParseAndValidate(ctx context.Context, r *htt
 	u := MustHaveUser(ctx)
 	idString := r.FormValue("id")
 	if idString == "" {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Must specify an ID to delete",
 		}
@@ -222,19 +222,19 @@ func (s *subscriptionDeleteHandler) ParseAndValidate(ctx context.Context, r *htt
 	s.id = idString
 	subscription, err := event.FindSubscriptionByIDString(s.id)
 	if err != nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		}
 	}
 	if subscription == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Subscription not found",
 		}
 	}
 	if subscription.Owner != u.Username() {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Cannot delete subscriptions for someone other than yourself",
 		}

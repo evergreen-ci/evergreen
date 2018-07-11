@@ -88,6 +88,7 @@ func MockConfig() *evergreen.Settings {
 					Distro:        "valid-distro",
 					Id:            "test-pool-1",
 					MaxContainers: 100,
+					Port:          9999,
 				},
 			},
 		},
