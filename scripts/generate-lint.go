@@ -116,11 +116,11 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 		}
 		split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
 		for _, p := range split {
-			if strings.Contains(p, "vendor") {
+			if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
 				continue
 			}
 
-			if !strings.Contains(p, "evergreen") {
+			if !strings.HasPrefix(p, packagePrefix) {
 				continue
 			}
 
