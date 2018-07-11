@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
@@ -112,5 +113,37 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 		opts.Priority = true
 
 		reporter, err := reporting.MakeDBQueueState(settings.Amboy.Name, opts, j.env.Session())
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+
+		r := message.Fields{
+			"message": "amboy remote queue report",
+		}
+
+		pending, err := reporter.JobStatus(ctx, reporting.Pending)
+		j.AddError(err)
+		if pending != nil {
+			r["pending"] = pending
+		}
+		inprog, err := reporter.JobStatus(ctx, reporting.InProgress)
+		j.AddError(err)
+		if inprog != nil {
+			r["inprog"] = inprog
+		}
+		stale, err := reporter.JobStatus(ctx, reporting.Stale)
+		j.AddError(err)
+		if stale != nil {
+			r["stale"] = stale
+		}
+
+		recentErrors, err := reporter.RecentErrors(ctx, time.Minute, reporting.StatsOnly)
+		j.AddError(err)
+		if recentErrors != nil {
+			r["errors"] = recentErrors
+		}
+
+		j.logger.InfoWhen(len(r) > 1, r)
 	}
 }
