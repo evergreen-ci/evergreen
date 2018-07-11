@@ -38,6 +38,13 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		}
 
 		if t.DispatchTime != util.ZeroTime && t.Status == evergreen.TaskUndispatched {
+			grip.Info(message.Fields{
+				"lookhere":                "evg-3455",
+				"message":                 "task reset with zero time",
+				"task_id":                 t.Id,
+				"dispatchtime_is_go_zero": t.DispatchTime.IsZero(),
+				"caller":                  caller,
+			})
 			if err = resetTask(t.Id, caller); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
