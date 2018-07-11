@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -8,9 +9,42 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestConfigModelHasMatchingFieldNames(t *testing.T) {
+	assert := assert.New(t)
+	config := evergreen.Settings{}
+
+	matched := map[string]bool{}
+
+	configRef := reflect.TypeOf(&config).Elem()
+	for i := 0; i < configRef.NumField(); i++ {
+		configFieldName := configRef.Field(i).Name
+		matched[configFieldName] = true
+	}
+
+	apiConfig := APIAdminSettings{}
+	apiConfigRef := reflect.TypeOf(&apiConfig).Elem()
+	for i := 0; i < apiConfigRef.NumField(); i++ {
+		configFieldName := apiConfigRef.Field(i).Name
+		v, ok := matched[configFieldName]
+		assert.True(v)
+		assert.True(ok, fmt.Sprintf("%s is missing from evergreen.Settings", configFieldName))
+		if ok {
+			matched[configFieldName] = false
+		}
+	}
+
+	exclude := []string{"Id", "CredentialsNew", "Database", "KeysNew", "ExpansionsNew", "PluginsNew"}
+	for k, v := range matched {
+		if !util.StringSliceContains(exclude, k) {
+			assert.False(v, fmt.Sprintf("%s is missing from APIAdminSettings", k))
+		}
+	}
+}
 
 func TestModelConversion(t *testing.T) {
 	assert := assert.New(t)
@@ -196,4 +230,50 @@ func allStructFieldsTrue(t *testing.T, s interface{}) {
 			}
 		}
 	}
+}
+
+func TestAPIJIRANotificationsConfig(t *testing.T) {
+	assert := assert.New(t)
+	api := APIJIRANotificationsConfig{}
+	dbModelIface, err := api.ToService()
+	assert.NoError(err)
+	dbModel, ok := dbModelIface.(evergreen.JIRANotificationsConfig)
+	assert.True(ok)
+	assert.Nil(dbModel.CustomFields)
+
+	api = APIJIRANotificationsConfig{
+		CustomFields: map[string]map[string]string{
+			"EVG": map[string]string{
+				"customfield_12345": "{{.Something}}",
+				"customfield_12346": "{{.SomethingElse}}",
+			},
+			"GVE": map[string]string{
+				"customfield_54321": "{{.SomethingElser}}",
+				"customfield_54322": "{{.SomethingEvenElser}}",
+			},
+		},
+	}
+
+	dbModelIface, err = api.ToService()
+	assert.NoError(err)
+	dbModel, ok = dbModelIface.(evergreen.JIRANotificationsConfig)
+	assert.True(ok)
+	assert.Len(dbModel.CustomFields, 2)
+
+	m, err := dbModel.CustomFields.ToMap()
+	assert.NoError(err)
+
+	evg := m["EVG"]
+	assert.Len(evg, 2)
+	assert.Equal("{{.Something}}", evg["customfield_12345"])
+	assert.Equal("{{.SomethingElse}}", evg["customfield_12346"])
+
+	gve := m["GVE"]
+	assert.Len(gve, 2)
+	assert.Equal("{{.SomethingElser}}", gve["customfield_54321"])
+	assert.Equal("{{.SomethingEvenElser}}", gve["customfield_54322"])
+
+	newAPI := APIJIRANotificationsConfig{}
+	assert.NoError(newAPI.BuildFromService(&dbModel))
+	assert.Equal(api, newAPI)
 }
