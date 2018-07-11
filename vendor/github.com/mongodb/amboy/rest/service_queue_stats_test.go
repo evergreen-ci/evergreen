@@ -13,7 +13,7 @@ import (
 
 func TestStatusOuputGenerator(t *testing.T) {
 	assert := assert.New(t)
-	service := NewService()
+	service := NewQueueService()
 	ctx := context.Background()
 
 	st := service.getStatus()
@@ -34,7 +34,7 @@ func TestStatusOuputGenerator(t *testing.T) {
 func TestStatusMethod(t *testing.T) {
 	assert := assert.New(t) // nolint
 	ctx := context.Background()
-	service := NewService()
+	service := NewQueueService()
 
 	w := httptest.NewRecorder()
 

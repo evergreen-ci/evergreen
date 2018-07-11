@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
@@ -57,6 +58,10 @@ func (q *limitedSizeLocal) Put(j amboy.Job) error {
 		return errors.Errorf("cannot dispatch '%s', already complete", name)
 	}
 	q.mu.RUnlock()
+
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
 
 	select {
 	case q.channel <- j:

@@ -77,6 +77,9 @@ func (q *adaptiveLocalOrdering) Put(j amboy.Job) error {
 
 	out := make(chan error)
 	q.operations <- func(ctx context.Context, items *adaptiveOrderItems) {
+		j.UpdateTimeInfo(amboy.JobTimeInfo{
+			Created: time.Now(),
+		})
 		out <- items.add(j)
 		close(out)
 	}
