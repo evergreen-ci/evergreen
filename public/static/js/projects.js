@@ -27,13 +27,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       trigger: "outcome",
       resource_type: "VERSION",
       label: "any version finishes",
-      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "failure",
       resource_type: "VERSION",
       label: "any version fails",
-      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "outcome",

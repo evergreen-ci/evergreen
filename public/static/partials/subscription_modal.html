@@ -19,7 +19,7 @@
                   <div>
                     <ul>
                     <li ng-show="!hasSelectors()">anything</li>
-                    <li ng-repeat="(type, field) in regexSelectors">[[field.type_label]]: /[[field.data]]/
+                    <li ng-repeat="(type, field) in regexSelectors">where [[field.type_label]]: /[[field.data]]/
                       <md-button ng-click="deleteRegexSelector(type)">
                         <i class="fa fa-trash"></i>
                       </md-button>

@@ -95,6 +95,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     };
     $scope.extraData = {};
     $scope.regexSelectors = {};
+    $scope.tempRegexSelector = {};
 
     $scope.closeDialog = function(save) {
         if(save === true) {
@@ -310,28 +311,11 @@ function validatePercentage(percent) {
   return "";
 }
 
-function versionRegexSelectors() {
-  return [
-    {
-      type: "project",
-      type_label: "Evergreen project",
-    },
-  ];
-}
-
 function buildRegexSelectors() {
   return [
     {
       type: "display-name",
       type_label: "Build Variant Name",
-    },
-    {
-      type: "in-version",
-      type_label: "In Version with ID",
-    },
-    {
-      type: "project",
-      type_label: "Evergreen project",
     },
   ];
 }
@@ -341,18 +325,6 @@ function taskRegexSelectors() {
     {
       type: "display-name",
       type_label: "Task Name",
-    },
-    {
-      type: "in-version",
-      type_label: "In Version with ID",
-    },
-    {
-      type: "in-build",
-      type_label: "In Build with ID",
-    },
-    {
-      type: "project",
-      type_label: "Evergreen project",
-    },
+    }
   ];
 }

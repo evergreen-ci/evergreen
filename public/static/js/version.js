@@ -13,19 +13,16 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       trigger: "outcome",
       resource_type: "VERSION",
       label: "this version finishes",
-      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "failure",
       resource_type: "VERSION",
       label: "this version fails",
-      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "success",
       resource_type: "VERSION",
       label: "this version succeeds",
-      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "exceeds-duration",
@@ -34,7 +31,6 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       extraFields: [
         {text: "Version duration (seconds)", key: "version-duration-secs", validator: validateDuration}
       ],
-      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "runtime-change",
@@ -43,7 +39,6 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       extraFields: [
         {text: "Percent change", key: "version-percent-change", validator: validatePercentage}
       ],
-      regex_selectors: versionRegexSelectors()
     },
     {
       trigger: "outcome",
