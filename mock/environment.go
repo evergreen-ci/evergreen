@@ -76,7 +76,9 @@ func (e *Environment) LocalQueue() amboy.Queue {
 }
 
 func (e *Environment) Session() *mgo.Session {
-	return nil
+	session, _, _ := edb.GetGlobalSessionFactory().GetSession()
+
+	return session
 }
 
 func (e *Environment) Settings() *evergreen.Settings {
