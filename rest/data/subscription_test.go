@@ -16,7 +16,7 @@ func TestGetSubscriptions(t *testing.T) {
 
 	subs := []event.Subscription{
 		{
-			ID:        bson.NewObjectId(),
+			ID:        bson.NewObjectId().String(),
 			Owner:     "someone",
 			OwnerType: event.OwnerTypePerson,
 			Type:      "PATCH",
@@ -33,7 +33,7 @@ func TestGetSubscriptions(t *testing.T) {
 			},
 		},
 		{
-			ID:        bson.NewObjectId(),
+			ID:        bson.NewObjectId().String(),
 			Owner:     "someoneelse",
 			OwnerType: event.OwnerTypePerson,
 			Type:      "PATCH",

@@ -57,7 +57,7 @@ func (s *buildSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().String(),
 			Type:    event.ResourceTypeBuild,
 			Trigger: "outcome",
 			Selectors: []event.Selector{
@@ -76,7 +76,7 @@ func (s *buildSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().String(),
 			Type:    event.ResourceTypeBuild,
 			Trigger: "success",
 			Selectors: []event.Selector{
@@ -95,7 +95,7 @@ func (s *buildSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().String(),
 			Type:    event.ResourceTypeBuild,
 			Trigger: "failure",
 			Selectors: []event.Selector{
@@ -114,7 +114,7 @@ func (s *buildSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().String(),
 			Type:    event.ResourceTypeBuild,
 			Trigger: triggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -133,7 +133,7 @@ func (s *buildSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().String(),
 			Type:    event.ResourceTypeBuild,
 			Trigger: triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
@@ -253,7 +253,7 @@ func (s *buildSuite) TestOutcome() {
 
 func (s *buildSuite) TestTaskStatusToDesc() {
 	b := &build.Build{
-		Id:           bson.NewObjectId().Hex(),
+		Id:           bson.NewObjectId().String(),
 		BuildVariant: "testvariant",
 		Version:      "testversion",
 		Status:       evergreen.BuildFailed,

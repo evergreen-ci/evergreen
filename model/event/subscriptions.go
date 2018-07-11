@@ -49,7 +49,7 @@ const (
 )
 
 type Subscription struct {
-	ID             bson.ObjectId     `bson:"_id"`
+	ID             string            `bson:"_id"`
 	Type           string            `bson:"type"`
 	Trigger        string            `bson:"trigger"`
 	Selectors      []Selector        `bson:"selectors,omitempty"`
@@ -61,7 +61,7 @@ type Subscription struct {
 }
 
 type unmarshalSubscription struct {
-	ID             bson.ObjectId     `bson:"_id"`
+	ID             string            `bson:"_id"`
 	Type           string            `bson:"type"`
 	Trigger        string            `bson:"trigger"`
 	Selectors      []Selector        `bson:"selectors,omitempty"`
@@ -173,8 +173,8 @@ func findSelector(selectors []Selector, selectorType string) *Selector {
 }
 
 func (s *Subscription) Upsert() error {
-	if len(s.ID.Hex()) == 0 {
-		s.ID = bson.NewObjectId()
+	if s.ID == "" {
+		s.ID = bson.NewObjectId().String()
 	}
 	update := bson.M{
 		subscriptionTypeKey:           s.Type,
@@ -196,7 +196,7 @@ func (s *Subscription) Upsert() error {
 		return err
 	}
 	if c.UpsertedId != nil {
-		s.ID = c.UpsertedId.(bson.ObjectId)
+		s.ID = c.UpsertedId.(string)
 		return nil
 	}
 
@@ -206,14 +206,7 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
-func FindSubscriptionByIDString(id string) (*Subscription, error) {
-	if !bson.IsObjectIdHex(id) {
-		return nil, errors.Errorf("%s is not a valid ObjectID", id)
-	}
-	return FindSubscriptionByID(bson.ObjectIdHex(id))
-}
-
-func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
+func FindSubscriptionByID(id string) (*Subscription, error) {
 	out := Subscription{}
 	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
 		subscriptionIDKey: id,
@@ -228,15 +221,8 @@ func FindSubscriptionByID(id bson.ObjectId) (*Subscription, error) {
 	return &out, nil
 }
 
-func RemoveSubscriptionID(id string) error {
-	if !bson.IsObjectIdHex(id) {
-		return errors.Errorf("%s is not a valid ObjectID", id)
-	}
-	return RemoveSubscription(bson.ObjectIdHex(id))
-}
-
-func RemoveSubscription(id bson.ObjectId) error {
-	if !id.Valid() {
+func RemoveSubscription(id string) error {
+	if id == "" {
 		return errors.New("id is not valid, cannot remove")
 	}
 
@@ -311,10 +297,7 @@ func validatePositiveFloat(s string) error {
 }
 
 func (s *Subscription) String() string {
-	id := "???"
-	if s.ID.Valid() {
-		id = s.ID.Hex()
-	}
+	id := s.ID
 
 	tmpl := []string{
 		fmt.Sprintf("ID: %s", id),
@@ -372,11 +355,11 @@ const (
 	triggerOutcome = "outcome"
 )
 
-func CreateOrUpdateImplicitSubscription(subscriptionType string, id bson.ObjectId,
+func CreateOrUpdateImplicitSubscription(subscriptionType string, id string,
 	subscriber Subscriber, user string) (*Subscription, error) {
 	var err error
 	var sub *Subscription
-	if id.Valid() {
+	if id != "" {
 		sub, err = FindSubscriptionByID(id)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding subscription")
@@ -404,7 +387,7 @@ func CreateOrUpdateImplicitSubscription(subscriptionType string, id bson.ObjectI
 			return nil, errors.Wrap(err, "failed to update subscription")
 		}
 	} else {
-		if id.Valid() {
+		if id != "" {
 			if err := RemoveSubscription(id); err != nil {
 				return nil, errors.Wrap(err, "error removing subscription")
 			}
@@ -443,7 +426,7 @@ func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscripti
 
 func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
 	return Subscription{
-		ID:      bson.NewObjectId(),
+		ID:      bson.NewObjectId().String(),
 		Type:    resourceType,
 		Trigger: trigger,
 		Selectors: []Selector{

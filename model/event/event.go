@@ -16,9 +16,9 @@ const (
 )
 
 type EventLogEntry struct {
-	ID           bson.ObjectId `bson:"_id" json:"-"`
-	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
+	ID           string    `bson:"_id" json:"-"`
+	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
@@ -37,9 +37,9 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 }
 
 type unmarshalEventLogEntry struct {
-	ID           bson.ObjectId `bson:"_id" json:"-"`
-	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
+	ID           string    `bson:"_id" json:"-"`
+	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
@@ -87,7 +87,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 			temp.ResourceType != EventTaskProcessInfo {
 			grip.Alert(message.Fields{
 				"message":  "unmigrated event was found",
-				"event_id": temp.ID.String(),
+				"event_id": temp.ID,
 				"r_type":   temp.ResourceType,
 			})
 		}
@@ -122,8 +122,8 @@ func (e *EventLogEntry) validateEvent() error {
 	if len(e.ResourceType) == 0 {
 		return errors.New("event log entry has no r_type")
 	}
-	if !e.ID.Valid() {
-		e.ID = bson.NewObjectId()
+	if e.ID == "" {
+		e.ID = bson.NewObjectId().String()
 	}
 	if !registry.IsSubscribable(e.ResourceType, e.EventType) {
 		loc, _ := time.LoadLocation("UTC")
