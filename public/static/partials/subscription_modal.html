@@ -15,22 +15,22 @@
                   </div>
                 </p>
                 <div ng-show="regexSelectorOptions.length > 0">
-                  <p>and it matches:</p>
-                  <div>
-                    <ul>
-                    <li ng-show="!hasSelectors()">anything</li>
-                    <li ng-repeat="(type, field) in regexSelectors">where [[field.type_label]]: /[[field.data]]/
-                      <md-button ng-click="deleteRegexSelector(type)">
-                        <i class="fa fa-trash"></i>
-                      </md-button>
-                    </li>
-                    </ul>
+                  <div ng-show="hasSelectors()">
+                    <p>and:</p>
+                      <ul style="list-style-type: circle !important;" >
+                          <li ng-repeat="(type, field) in regexSelectors"><b>[[field.type_label]]</b> matches regex <span style="font-family: monospace;">/[[field.data]]/</pre>
+                          <md-button ng-click="deleteRegexSelector(type)">
+                            <i class="fa fa-trash"></i>
+                          </md-button>
+                        </li>
+                      </ul>
                   </div>
                   <div>
-                    Add Regex: <select ng-model="tempRegexSelector.type">
+                    <p>Add Additional Criteria:</p>
+                    <select ng-model="tempRegexSelector.type">
                       <option ng-disabled="selectorDisabled(field)" ng-value="field.type" ng-repeat="field in regexSelectorOptions">[[field.type_label]]</option>
                     </select>
-                    <label>matches</label>
+                    <label>matches regex</label>
                     <input type="text" ng-model="tempRegexSelector.data"/>
                     <md-button ng-click="addRegexSelector()">
                       <i class="fa fa-plus"></i>

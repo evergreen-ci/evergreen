@@ -156,6 +156,10 @@ func (t *buildTriggers) Selectors() []event.Selector {
 			Type: selectorDisplayName,
 			Data: t.build.DisplayName,
 		},
+		{
+			Type: selectorBuildVariant,
+			Data: t.build.BuildVariant,
+		},
 	}
 }
 

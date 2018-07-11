@@ -317,6 +317,10 @@ function buildRegexSelectors() {
       type: "display-name",
       type_label: "Build Variant Name",
     },
+    {
+      type: "build-variant",
+      type_label: "Build Variant ID",
+    },
   ];
 }
 
