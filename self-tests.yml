@@ -534,6 +534,7 @@ buildvariants:
       - name: "dist"
       - name: ".smoke"
       - name: ".test"
+      - name: "js-test"
       - name: generate-lint
 
   - name: ubuntu1604-debug
