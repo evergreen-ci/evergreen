@@ -15,7 +15,7 @@ type LockManagerSuite struct {
 	driver      *priorityDriver
 	testCancel  context.CancelFunc
 	suiteCancel context.CancelFunc
-	ctx         context.Context
+
 	suite.Suite
 }
 
@@ -32,10 +32,11 @@ func (s *LockManagerSuite) SetupSuite() {
 }
 
 func (s *LockManagerSuite) SetupTest() {
-	s.ctx, s.testCancel = context.WithCancel(context.Background())
+	var ctx context.Context
+	ctx, s.testCancel = context.WithCancel(context.Background())
 	s.lm = newLockManager("test", s.driver)
-	s.lm.timeout = 100 * time.Millisecond
-	s.lm.start(s.ctx)
+	s.lm.timeout = time.Second
+	s.lm.start(ctx)
 }
 
 func (s *LockManagerSuite) TearDownTest() {
@@ -48,10 +49,10 @@ func (s *LockManagerSuite) TearDownSuite() {
 }
 
 func (s *LockManagerSuite) TestCannotLockOrUnlockANilJob() {
-	s.Error(s.lm.Lock(s.ctx, nil))
+	s.Error(s.lm.Lock(nil))
 	s.Error(s.lm.Unlock(nil))
 	var j amboy.Job
-	s.Error(s.lm.Lock(s.ctx, j))
+	s.Error(s.lm.Lock(j))
 	s.Error(s.lm.Unlock(j))
 }
 
@@ -59,10 +60,10 @@ func (s *LockManagerSuite) TestSuccessiveAttemptsToTakeALockAreErrors() {
 	j := job.NewShellJob("echo hi", "")
 	s.NoError(s.driver.Put(j))
 
-	s.NoError(s.lm.Lock(s.ctx, j))
+	s.NoError(s.lm.Lock(j))
 
 	for i := 0; i < 10; i++ {
-		s.Error(s.lm.Lock(s.ctx, j))
+		s.Error(s.lm.Lock(j))
 	}
 }
 
@@ -71,7 +72,7 @@ func (s *LockManagerSuite) TestLockAndUnlockCylcesWorkForOneJob() {
 	s.NoError(s.driver.Put(j))
 
 	for i := 0; i < 10; i++ {
-		s.NoError(s.lm.Lock(s.ctx, j))
+		s.NoError(s.lm.Lock(j))
 		s.NoError(s.lm.Unlock(j))
 	}
 }
@@ -83,16 +84,16 @@ func (s *LockManagerSuite) TestLocksArePerJob() {
 	s.NoError(s.driver.Put(jtwo))
 	s.NotEqual(jone.ID(), jtwo.ID())
 
-	s.NoError(s.lm.Lock(s.ctx, jone))
-	s.NoError(s.lm.Lock(s.ctx, jtwo))
+	s.NoError(s.lm.Lock(jone))
+	s.NoError(s.lm.Lock(jtwo))
 }
 
 func (s *LockManagerSuite) TestLockReachesTimeout() {
 	j := job.NewShellJob("echo hello", "")
 	s.NoError(s.driver.Put(j))
 
-	s.NoError(s.lm.Lock(s.ctx, j))
-	time.Sleep(s.lm.timeout * 3)
-	s.NoError(s.lm.Lock(s.ctx, j))
-	s.Error(s.lm.Lock(s.ctx, j))
+	s.NoError(s.lm.Lock(j))
+	time.Sleep(s.lm.timeout * 2)
+	s.NoError(s.lm.Lock(j))
+	s.Error(s.lm.Lock(j))
 }

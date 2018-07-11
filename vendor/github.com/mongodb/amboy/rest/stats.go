@@ -17,7 +17,7 @@ type status struct {
 	SupportedJobTypes []string `bson:"supported_job_types" json:"supported_job_types" yaml:"supported_job_types"`
 }
 
-func (s *QueueService) getStatus() status {
+func (s *Service) getStatus() status {
 	output := status{
 		SupportedJobTypes: s.registeredTypes,
 	}
@@ -35,14 +35,16 @@ func (s *QueueService) getStatus() status {
 
 // Status defines an http.HandlerFunc that returns health check and
 // current staus status information for the entire service.
-func (s *QueueService) Status(w http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(w, s.getStatus())
+func (s *Service) Status(w http.ResponseWriter, r *http.Request) {
+	st := s.getStatus()
+
+	gimlet.WriteJSON(w, st)
 }
 
 // WaitAll blocks waiting for all pending jobs in the queue to
 // stop. Has a default timeout of 10 seconds, and returns 408 (request
 // timeout) when the timeout succeeds.
-func (s *QueueService) WaitAll(w http.ResponseWriter, r *http.Request) {
+func (s *Service) WaitAll(w http.ResponseWriter, r *http.Request) {
 	timeout, err := parseTimeout(r)
 	if err != nil {
 		grip.Infof("problem parsing timeout for wait-all operation: %v", err)

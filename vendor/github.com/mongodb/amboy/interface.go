@@ -83,8 +83,6 @@ type JobStatusInfo struct {
 	InProgress        bool      `bson:"in_prog" json:"in_progress" yaml:"in_progress"`
 	ModificationTime  time.Time `bson:"mod_ts" json:"mod_time" yaml:"mod_time"`
 	ModificationCount int       `bson:"mod_count" json:"mod_count" yaml:"mod_count"`
-	ErrorCount        int       `bson:"err_count" json:"err_count" yaml:"err_count"`
-	Errors            []string  `bson:"errors,omitempty" json:"errors,omitempty" yaml:"errors,omitempty"`
 }
 
 // JobTimeInfo stores timing information for a job and is used by both
@@ -93,7 +91,6 @@ type JobStatusInfo struct {
 // data to delay execution of a job when WaitUntil refers to a time
 // in the future.
 type JobTimeInfo struct {
-	Created   time.Time     `bson:"created,omitempty" json:"created,omitempty" yaml:"created,omitempty"`
 	Start     time.Time     `bson:"start" json:"start,omitempty" yaml:"start,omitempty"`
 	End       time.Time     `bson:"end" json:"end,omitempty" yaml:"end,omitempty"`
 	WaitUntil time.Time     `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
@@ -189,6 +186,6 @@ type AbortableRunner interface {
 
 	IsRunning(string) bool
 	RunningJobs() []string
-	Abort(context.Context, string) error
-	AbortAll(context.Context)
+	Abort(string) error
+	AbortAll()
 }

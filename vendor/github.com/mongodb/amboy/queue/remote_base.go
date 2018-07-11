@@ -38,10 +38,6 @@ func (q *remoteBase) Put(j amboy.Job) error {
 		return errors.New("cannot add jobs with versions less than 0")
 	}
 
-	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		Created: time.Now(),
-	})
-
 	return q.driver.Put(j)
 }
 
@@ -123,7 +119,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			if err := q.driver.Save(j); err != nil {
 				grip.Warningf("problem persisting job '%s', %+v", j.ID(), err)
 				timer.Reset(retryInterval)
-				if time.Since(startAt) > time.Minute+LockTimeout {
+				if time.Since(startAt) > time.Minute+lockTimeout {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
@@ -290,7 +286,7 @@ func isDispatchable(stat amboy.JobStatusInfo) bool {
 
 	// don't return an inprogress job if the mod
 	// time is less than the lock timeout
-	if stat.InProgress && time.Since(stat.ModificationTime) < LockTimeout {
+	if stat.InProgress && time.Since(stat.ModificationTime) < lockTimeout {
 		return false
 	}
 

@@ -33,14 +33,15 @@ import (
 // an implementation of most common Job methods which most jobs
 // need not implement themselves.
 type Base struct {
-	TaskID  string        `bson:"name" json:"name" yaml:"name"`
-	JobType amboy.JobType `bson:"job_type" json:"job_type" yaml:"job_type"`
+	TaskID        string            `bson:"name" json:"name" yaml:"name"`
+	JobType       amboy.JobType     `bson:"job_type" json:"job_type" yaml:"job_type"`
+	Errors        []string          `bson:"errors" json:"errors" yaml:"errors"`
+	PriorityValue int               `bson:"priority" json:"priority" yaml:"priority"`
+	TaskTimeInfo  amboy.JobTimeInfo `bson:"time_info" json:"time_info" yaml:"time_info"`
 
-	priority int
-	timeInfo amboy.JobTimeInfo
-	status   amboy.JobStatusInfo
-	dep      dependency.Manager
-	mutex    sync.RWMutex
+	status amboy.JobStatusInfo
+	dep    dependency.Manager
+	mutex  sync.RWMutex
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -66,7 +67,7 @@ func (b *Base) AddError(err error) {
 		b.mutex.Lock()
 		defer b.mutex.Unlock()
 
-		b.status.Errors = append(b.status.Errors, err.Error())
+		b.Errors = append(b.Errors, err.Error())
 	}
 }
 
@@ -77,7 +78,7 @@ func (b *Base) HasErrors() bool {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
 
-	return len(b.status.Errors) > 0
+	return len(b.Errors) > 0
 }
 
 // SetID makes it possible to change the ID of an amboy.Job. It is not
@@ -133,20 +134,11 @@ func (b *Base) Error() error {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
 
-	if len(b.status.Errors) == 0 {
+	if len(b.Errors) == 0 {
 		return nil
 	}
 
-	return errors.New(strings.Join(b.status.Errors, "\n"))
-}
-
-// ErrorCount reflects the total number of errors that the job has
-// encountered.
-func (b *Base) ErrorCount() int {
-	b.mutex.RLock()
-	defer b.mutex.RUnlock()
-
-	return len(b.status.Errors)
+	return errors.New(strings.Join(b.Errors, "\n"))
 }
 
 // Priority returns the priority value, and is part of the amboy.Job
@@ -155,7 +147,7 @@ func (b *Base) Priority() int {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
 
-	return b.priority
+	return b.PriorityValue
 }
 
 // SetPriority allows users to set the priority of a job, and is part
@@ -164,7 +156,7 @@ func (b *Base) SetPriority(p int) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	b.priority = p
+	b.PriorityValue = p
 }
 
 // Status returns the current state of the job including information
@@ -193,7 +185,7 @@ func (b *Base) TimeInfo() amboy.JobTimeInfo {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
 
-	return b.timeInfo
+	return b.TaskTimeInfo
 }
 
 // UpdateTimeInfo updates the stored value of time in the job, but
@@ -202,23 +194,19 @@ func (b *Base) UpdateTimeInfo(i amboy.JobTimeInfo) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 
-	if !i.Created.IsZero() {
-		b.timeInfo.Created = i.Created
-	}
-
 	if !i.Start.IsZero() {
-		b.timeInfo.Start = i.Start
+		b.TaskTimeInfo.Start = i.Start
 	}
 
 	if !i.End.IsZero() {
-		b.timeInfo.End = i.End
+		b.TaskTimeInfo.End = i.End
 	}
 
 	if !i.WaitUntil.IsZero() {
-		b.timeInfo.WaitUntil = i.WaitUntil
+		b.TaskTimeInfo.WaitUntil = i.WaitUntil
 	}
 
-	if i.MaxTime != 0 {
-		b.timeInfo.MaxTime = i.MaxTime
+	if i.MaxTime == 0 {
+		b.TaskTimeInfo.MaxTime = i.MaxTime
 	}
 }

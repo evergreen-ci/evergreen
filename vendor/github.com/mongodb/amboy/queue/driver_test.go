@@ -21,8 +21,6 @@ type DriverSuite struct {
 	driver            Driver
 	driverConstructor func() Driver
 	tearDown          func()
-	ctx               context.Context
-	cancel            context.CancelFunc
 	suite.Suite
 }
 
@@ -54,11 +52,9 @@ func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	mDriver := NewMongoDBDriver(
 		"test-"+tests.uuid,
 		DefaultMongoDBOptions()).(*mongoDB)
-
 	tests.driverConstructor = func() Driver {
 		return mDriver
 	}
-
 	tests.tearDown = func() {
 		session, jobs := mDriver.getJobsCollection()
 		defer session.Close()
@@ -72,23 +68,18 @@ func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 // Implementation of the suite:
 
 func (s *DriverSuite) SetupSuite() {
-	s.ctx, s.cancel = context.WithCancel(context.Background())
 	job.RegisterDefaultJobs()
 }
 
 func (s *DriverSuite) SetupTest() {
 	s.driver = s.driverConstructor()
-	s.NoError(s.driver.Open(s.ctx))
+	s.NoError(s.driver.Open(context.Background()))
 }
 
 func (s *DriverSuite) TearDownTest() {
 	if s.tearDown != nil {
 		s.tearDown()
 	}
-}
-
-func (s *DriverSuite) TearDownSuite() {
-	s.cancel()
 }
 
 func (s *DriverSuite) TestInitialValues() {
@@ -205,6 +196,7 @@ func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 }
 
 func (s *DriverSuite) TestNextMethodReturnsJob() {
+	ctx := context.Background()
 	s.Equal(0, s.driver.Stats().Total)
 
 	j := job.NewShellJob("echo foo", "")
@@ -214,7 +206,7 @@ func (s *DriverSuite) TestNextMethodReturnsJob() {
 	s.Equal(1, stats.Total)
 	s.Equal(1, stats.Pending)
 
-	nj := s.driver.Next(s.ctx)
+	nj := s.driver.Next(ctx)
 	stats = s.driver.Stats()
 	s.Equal(0, stats.Completed)
 	s.Equal(1, stats.Pending)
@@ -223,7 +215,7 @@ func (s *DriverSuite) TestNextMethodReturnsJob() {
 
 	if s.NotNil(nj) {
 		s.Equal(j.ID(), nj.ID())
-		s.NoError(s.driver.Lock(s.ctx, j))
+		s.NoError(s.driver.Lock(j))
 	}
 }
 

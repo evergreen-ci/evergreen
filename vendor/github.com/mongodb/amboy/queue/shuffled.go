@@ -17,7 +17,6 @@ package queue
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
@@ -99,10 +98,6 @@ func (q *shuffledLocal) Put(j amboy.Job) error {
 		if isPending || isCompleted || isDispatched {
 			ret <- errors.Errorf("job '%s' already exists", id)
 		}
-
-		j.UpdateTimeInfo(amboy.JobTimeInfo{
-			Created: time.Now(),
-		})
 
 		pending[id] = j
 

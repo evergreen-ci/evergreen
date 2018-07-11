@@ -33,7 +33,7 @@ func NewQueueTester(p amboy.Runner) *QueueTester {
 // sense.
 func NewQueueTesterInstance() *QueueTester {
 	return &QueueTester{
-		toProcess: make(chan amboy.Job, 101),
+		toProcess: make(chan amboy.Job, 10),
 		storage:   make(map[string]amboy.Job),
 	}
 }
@@ -160,8 +160,8 @@ func (j *jobThatPanics) Run(_ context.Context) {
 	panic("panic err")
 }
 
-func jobsChanWithPanicingJobs(ctx context.Context, num int) <-chan workUnit {
-	out := make(chan workUnit)
+func jobsChanWithPanicingJobs(ctx context.Context, num int) <-chan amboy.Job {
+	out := make(chan amboy.Job)
 
 	go func() {
 		defer close(out) // nolint
@@ -174,7 +174,7 @@ func jobsChanWithPanicingJobs(ctx context.Context, num int) <-chan workUnit {
 			select {
 			case <-ctx.Done():
 				return
-			case out <- workUnit{job: &jobThatPanics{}, cancel: func() {}}:
+			case out <- &jobThatPanics{}:
 				count++
 			}
 		}

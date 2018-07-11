@@ -24,7 +24,7 @@ import (
 //
 // Returns an error if the size or target numbers are less than one
 // and if the period is less than a millisecond.
-func NewMovingAverageRateLimitedWorkers(size, targetNum int, period time.Duration, q amboy.Queue) (amboy.AbortableRunner, error) {
+func NewMovingAverageRateLimitedWorkers(size, targetNum int, period time.Duration, q amboy.Queue) (amboy.Runner, error) {
 	errs := []string{}
 
 	if targetNum <= 0 {
@@ -53,7 +53,6 @@ func NewMovingAverageRateLimitedWorkers(size, targetNum int, period time.Duratio
 		size:   size,
 		queue:  q,
 		ewma:   ewma.NewMovingAverage(period.Minutes()),
-		jobs:   make(map[string]context.CancelFunc),
 	}
 
 	return p, nil
@@ -65,9 +64,8 @@ type ewmaRateLimiting struct {
 	ewma     ewma.MovingAverage
 	size     int
 	queue    amboy.Queue
-	jobs     map[string]context.CancelFunc
 	canceler context.CancelFunc
-	mutex    sync.RWMutex
+	mutex    sync.Mutex
 	wg       sync.WaitGroup
 }
 
@@ -135,17 +133,13 @@ func (p *ewmaRateLimiting) Start(ctx context.Context) error {
 	return nil
 }
 
-func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
+func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan amboy.Job) {
 	var (
-		err    error
-		job    amboy.Job
-		cancel context.CancelFunc
+		err error
+		job amboy.Job
 	)
 
-	p.mutex.Lock()
 	p.wg.Add(1)
-	p.mutex.Unlock()
-
 	defer p.wg.Done()
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
@@ -155,9 +149,6 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 			}
 			// start a replacement worker.
 			go p.worker(ctx, jobs)
-		}
-		if cancel != nil {
-			cancel()
 		}
 	}()
 
@@ -171,24 +162,13 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan workUnit) {
 			select {
 			case <-ctx.Done():
 				return
-			case wu := <-jobs:
-				cancel = wu.cancel
-				job = wu.job
-
+			case job := <-jobs:
 				interval := p.runJob(ctx, job)
-				cancel()
 
 				timer.Reset(interval)
 			}
 		}
 	}
-}
-
-func (p *ewmaRateLimiting) addCanceler(id string, cancel context.CancelFunc) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	p.jobs[id] = cancel
 }
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
@@ -197,17 +177,6 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		Start: start,
 	}
 	j.UpdateTimeInfo(ti)
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	p.addCanceler(j.ID(), cancel)
-
-	defer func() {
-		p.mutex.Lock()
-		defer p.mutex.Unlock()
-
-		delete(p.jobs, j.ID())
-	}()
 
 	runJob(ctx, j)
 
@@ -231,18 +200,14 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 	}
 	if err := j.Error(); err != nil {
 		r["error"] = err.Error()
-		grip.Error(r)
-	} else {
-		grip.Debug(r)
 	}
+
+	grip.Debug(r)
 
 	return interval
 }
 
 func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
 	if p.canceler != nil {
 		return errors.New("cannot change queue on active runner")
 	}
@@ -252,89 +217,9 @@ func (p *ewmaRateLimiting) SetQueue(q amboy.Queue) error {
 }
 
 func (p *ewmaRateLimiting) Close() {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	for id, closer := range p.jobs {
-		closer()
-		delete(p.jobs, id)
+	if p.canceler != nil {
+		p.canceler()
 	}
-
-	if p.canceler == nil {
-		return
-	}
-
-	p.canceler()
-	p.canceler = nil
 	grip.Debug("pool's context canceled, waiting for running jobs to complete")
-
-	// because of the timer+2 contexts in the worker
-	// implementation, we can end up returning earlier and because
-	// pools are restartable, end up calling wait more than once,
-	// which doesn't affect behavior but does cause this to panic in
-	// tests
-	defer func() { recover() }()
-
 	p.wg.Wait()
-}
-
-func (p *ewmaRateLimiting) IsRunning(id string) bool {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-
-	_, ok := p.jobs[id]
-
-	return ok
-}
-
-func (p *ewmaRateLimiting) RunningJobs() []string {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-
-	out := []string{}
-
-	for id := range p.jobs {
-		out = append(out, id)
-	}
-
-	return out
-}
-
-func (p *ewmaRateLimiting) Abort(ctx context.Context, id string) error {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	cancel, ok := p.jobs[id]
-	if !ok {
-		return errors.Errorf("job '%s' is not defined", id)
-	}
-	cancel()
-	delete(p.jobs, id)
-
-	job, ok := p.queue.Get(id)
-	if !ok {
-		return errors.Errorf("could not find '%s' in the queue", id)
-	}
-
-	p.queue.Complete(ctx, job)
-
-	return nil
-}
-
-func (p *ewmaRateLimiting) AbortAll(ctx context.Context) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	for id, cancel := range p.jobs {
-		if ctx.Err() != nil {
-			break
-		}
-		cancel()
-		delete(p.jobs, id)
-		job, ok := p.queue.Get(id)
-		if !ok {
-			continue
-		}
-		p.queue.Complete(ctx, job)
-	}
 }

@@ -6,20 +6,14 @@ import (
 	"sort"
 	"sync"
 	"testing"
-	"time"
 
-	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/suite"
 )
 
 type AbortablePoolSuite struct {
-	pool           amboy.AbortableRunner
-	queue          *QueueTester
-	setupPool      func()
-	setupQueuePool func()
-	setJob         func(string, context.CancelFunc)
-	runJob         func(context.Context, amboy.Job)
+	pool  *abortablePool
+	queue *QueueTester
 	suite.Suite
 }
 
@@ -35,63 +29,19 @@ func (f *cancelFuncCounter) Canceler() {
 }
 
 func TestAbortablePoolSuite(t *testing.T) {
-	s := new(AbortablePoolSuite)
-	s.setupPool = func() {
-		s.pool = &abortablePool{
-			jobs: make(map[string]context.CancelFunc),
-		}
-	}
-
-	s.setJob = func(id string, cancel context.CancelFunc) {
-		s.pool.(*abortablePool).jobs[id] = cancel
-	}
-
-	s.setupQueuePool = func() {
-		s.pool.(*abortablePool).queue = s.queue
-	}
-
-	s.runJob = func(ctx context.Context, j amboy.Job) {
-		s.pool.(*abortablePool).runJob(ctx, j)
-	}
-
-	suite.Run(t, s)
-}
-
-func TestRateLimitedAbortablePoolSuite(t *testing.T) {
-	s := new(AbortablePoolSuite)
-	s.setupPool = func() {
-		s.pool = &ewmaRateLimiting{
-			jobs:   make(map[string]context.CancelFunc),
-			period: time.Second,
-			target: 1000,
-			size:   2,
-			ewma:   ewma.NewMovingAverage(0.06),
-		}
-	}
-
-	s.setJob = func(id string, cancel context.CancelFunc) {
-		s.pool.(*ewmaRateLimiting).jobs[id] = cancel
-	}
-
-	s.setupQueuePool = func() {
-		s.pool.(*ewmaRateLimiting).queue = s.queue
-	}
-
-	s.runJob = func(ctx context.Context, j amboy.Job) {
-		_ = s.pool.(*ewmaRateLimiting).runJob(ctx, j)
-	}
-
-	suite.Run(t, s)
+	suite.Run(t, new(AbortablePoolSuite))
 }
 
 func (s *AbortablePoolSuite) SetupTest() {
-	s.setupPool()
+	s.pool = &abortablePool{
+		jobs: make(map[string]context.CancelFunc),
+	}
 	s.queue = &QueueTester{
 		pool:      s.pool,
 		toProcess: make(chan amboy.Job),
 		storage:   make(map[string]amboy.Job),
 	}
-	s.setupQueuePool()
+
 }
 
 func (s *AbortablePoolSuite) TestImplementationCompliance() {
@@ -112,66 +62,56 @@ func (s *AbortablePoolSuite) TestConstructorUnflappability() {
 func (s *AbortablePoolSuite) TestCloserCancelsFuncs() {
 	closer := &cancelFuncCounter{}
 	s.Equal(0, closer.counter)
-	s.Len(s.pool.RunningJobs(), 0)
+	s.Len(s.pool.jobs, 0)
 
-	s.setJob("id", closer.Canceler)
+	s.pool.jobs["id"] = closer.Canceler
 	s.Equal(0, closer.counter)
-	s.Len(s.pool.RunningJobs(), 1)
+	s.Len(s.pool.jobs, 1)
 
 	s.pool.Close()
 	s.Equal(1, closer.counter)
-	s.Len(s.pool.RunningJobs(), 0)
+	s.Len(s.pool.jobs, 0)
 }
 
 func (s *AbortablePoolSuite) TestSingleAborterErrorsForUnknownJob() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.Error(s.pool.Abort(ctx, "foo"))
-	s.Error(s.pool.Abort(ctx, "DOES NOT EXIST"))
+	s.Error(s.pool.Abort("foo"))
+	s.Error(s.pool.Abort("DOES NOT EXIST"))
 }
 
 func (s *AbortablePoolSuite) TestSingleAborterCancelsJob() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	closer := &cancelFuncCounter{}
 	s.Equal(0, closer.counter)
-	s.setJob("id", closer.Canceler)
-	s.Len(s.pool.RunningJobs(), 1)
+	s.pool.jobs["id"] = closer.Canceler
+	s.Len(s.pool.jobs, 1)
 	s.Equal(0, closer.counter)
 
-	s.Error(s.pool.Abort(ctx, "foo"))
-	s.Len(s.pool.RunningJobs(), 1)
+	s.Error(s.pool.Abort("foo"))
+	s.Len(s.pool.jobs, 1)
 	s.Equal(0, closer.counter)
 
-	_ = s.pool.Abort(ctx, "id")
-	s.Len(s.pool.RunningJobs(), 0)
+	s.NoError(s.pool.Abort("id"))
+	s.Len(s.pool.jobs, 0)
 	s.Equal(1, closer.counter)
 }
 
 func (s *AbortablePoolSuite) TestAbortAllWorks() {
-	closers := make([]*cancelFuncCounter, 10)
+	closers := make([]cancelFuncCounter, 10)
 
-	s.Len(s.pool.RunningJobs(), 0)
+	s.Len(s.pool.jobs, 0)
 	count := 0
 	seen := 0
-	for idx := range closers {
-		closers[idx] = &cancelFuncCounter{}
-
+	for idx, c := range closers {
 		seen++
-		count += closers[idx].counter
-		s.setJob(fmt.Sprint(idx), closers[idx].Canceler)
+		count += c.counter
+		s.pool.jobs[fmt.Sprint(idx)] = closers[idx].Canceler
 	}
 	s.Equal(10, seen)
 	s.Equal(0, count)
 
-	s.Len(s.pool.RunningJobs(), 10)
+	s.Len(s.pool.jobs, 10)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.pool.AbortAll(ctx)
-	s.Len(s.pool.RunningJobs(), 0)
+	s.pool.AbortAll()
+	s.Len(s.pool.jobs, 0)
 	seen = 0
 	for _, c := range closers {
 		count += c.counter
@@ -182,17 +122,16 @@ func (s *AbortablePoolSuite) TestAbortAllWorks() {
 }
 
 func (s *AbortablePoolSuite) TestIntrospectionMethods() {
-	closers := make([]*cancelFuncCounter, 10)
 
-	s.Len(s.pool.RunningJobs(), 0)
+	closers := make([]cancelFuncCounter, 10)
+
+	s.Len(s.pool.jobs, 0)
 	count := 0
 	seen := 0
 	for idx := range closers {
-		closers[idx] = &cancelFuncCounter{}
-
 		seen++
 		count += closers[idx].counter
-		s.setJob(fmt.Sprint(idx), closers[idx].Canceler)
+		s.pool.jobs[fmt.Sprint(idx)] = closers[idx].Canceler
 	}
 
 	for idx := range closers {
@@ -210,10 +149,10 @@ func (s *AbortablePoolSuite) TestIntrospectionMethods() {
 }
 
 func (s *AbortablePoolSuite) TestAbortableRunJob() {
-	s.Len(s.pool.RunningJobs(), 0)
+	s.Len(s.pool.jobs, 0)
 
 	j := &jobThatPanics{}
 	ctx := context.Background()
-	s.Panics(func() { s.runJob(ctx, j) })
-	s.Len(s.pool.RunningJobs(), 0)
+	s.Panics(func() { s.pool.runJob(ctx, j) })
+	s.Len(s.pool.jobs, 0)
 }

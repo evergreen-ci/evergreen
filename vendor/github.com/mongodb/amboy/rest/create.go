@@ -17,14 +17,14 @@ type createResponse struct {
 	Status     status `bson:"status,omitempty" json:"status,omitempty" yaml:"status,omitempty"`
 }
 
-func (s *QueueService) createJobResponseBase() *createResponse {
+func (s *Service) createJobResponseBase() *createResponse {
 	return &createResponse{
 		QueueDepth: s.queue.Stats().Pending,
 		Status:     s.getStatus(),
 	}
 }
 
-func (s *QueueService) createJob(payload *registry.JobInterchange) (*createResponse, error) {
+func (s *Service) createJob(payload *registry.JobInterchange) (*createResponse, error) {
 	resp := s.createJobResponseBase()
 	j, err := payload.Resolve(amboy.JSON)
 
@@ -47,7 +47,7 @@ func (s *QueueService) createJob(payload *registry.JobInterchange) (*createRespo
 
 // Create provides an interface for REST clients to create jobs in the
 // local queue that backs the service.
-func (s *QueueService) Create(w http.ResponseWriter, r *http.Request) {
+func (s *Service) Create(w http.ResponseWriter, r *http.Request) {
 	jobPayload := &registry.JobInterchange{}
 	resp := s.createJobResponseBase()
 

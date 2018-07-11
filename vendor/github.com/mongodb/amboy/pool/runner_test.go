@@ -10,7 +10,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 func init() {
@@ -22,100 +22,124 @@ func init() {
 	grip.Warning(sender.SetLevel(lvl))
 }
 
-type poolFactory func() amboy.Runner
-type testCaseFunc func(*testing.T)
+type RunnerSuite struct {
+	pool    amboy.Runner
+	queue   *QueueTester
+	factory func() amboy.Runner
 
-func makeTestQueue(pool amboy.Runner) amboy.Queue {
-	return &QueueTester{
-		pool:      pool,
+	suite.Suite
+}
+
+func TestLocalRunnerBaseSuite(t *testing.T) {
+	s := new(RunnerSuite)
+	s.factory = func() amboy.Runner { return new(localWorkers) }
+
+	suite.Run(t, s)
+}
+
+func TestSingleRunnerBaseSuite(t *testing.T) {
+	s := new(RunnerSuite)
+	s.factory = func() amboy.Runner { return new(single) }
+
+	suite.Run(t, s)
+}
+
+func TestSimpleRateLimitedSuite(t *testing.T) {
+	s := new(RunnerSuite)
+	s.factory = func() amboy.Runner {
+		return &simpleRateLimited{
+			size:     2,
+			interval: time.Second,
+		}
+	}
+
+	suite.Run(t, s)
+}
+
+func TestAbortableSuite(t *testing.T) {
+	s := new(RunnerSuite)
+	s.factory = func() amboy.Runner {
+		return &abortablePool{
+			size: 2,
+			jobs: make(map[string]context.CancelFunc),
+		}
+	}
+
+	suite.Run(t, s)
+}
+
+func TestAverageRateLimitedSuite(t *testing.T) {
+	s := new(RunnerSuite)
+	s.factory = func() amboy.Runner {
+		return &ewmaRateLimiting{
+			size:   2,
+			period: time.Second,
+			target: 5,
+			ewma:   ewma.NewMovingAverage(),
+		}
+	}
+
+	suite.Run(t, s)
+}
+
+func TestGroupWorker(t *testing.T) {
+	s := new(RunnerSuite)
+	s.factory = func() amboy.Runner {
+		return &Group{
+			size: 2,
+		}
+	}
+
+	suite.Run(t, s)
+}
+
+func (s *RunnerSuite) SetupTest() {
+	s.pool = s.factory()
+	s.queue = &QueueTester{
+		pool:      s.pool,
 		toProcess: make(chan amboy.Job),
 		storage:   make(map[string]amboy.Job),
 	}
 
 }
 
-func TestRunnerImplementations(t *testing.T) {
-	pools := map[string]func() amboy.Runner{
-		"Local":  func() amboy.Runner { return new(localWorkers) },
-		"Single": func() amboy.Runner { return new(single) },
-		"RateLimitedSimple": func() amboy.Runner {
-			return &simpleRateLimited{
-				size:     1,
-				interval: time.Second,
-			}
-		},
-		"RateLimitedAverage": func() amboy.Runner {
-			return &ewmaRateLimiting{
-				size:   1,
-				period: time.Second,
-				target: 5,
-				ewma:   ewma.NewMovingAverage(),
-			}
-		},
-		"Abortable": func() amboy.Runner {
-			return &abortablePool{
-				size: 1,
-				jobs: make(map[string]context.CancelFunc),
-			}
-		},
-	}
-	cases := map[string]func(poolFactory) testCaseFunc{
-		"NotStarted": func(factory poolFactory) testCaseFunc {
-			return func(t *testing.T) {
-				pool := factory()
-				assert.False(t, pool.Started())
-			}
-		},
-		"MutableQueue": func(factory poolFactory) testCaseFunc {
-			return func(t *testing.T) {
-				pool := factory()
-				queue := makeTestQueue(pool)
+func (s *RunnerSuite) TestNotStartedByDefault() {
+	s.False(s.pool.Started())
+}
 
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+func (s *RunnerSuite) TestQuequeIsMutable() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-				// it's an unconfigured runner without a queue, it should always error
-				assert.Error(t, pool.Start(ctx))
+	// it's an unconfigured runner without a queue, it should always error
+	s.Error(s.pool.Start(ctx))
 
-				// this should start the queue
-				assert.NoError(t, pool.SetQueue(queue))
+	// this should start the queue
+	s.NoError(s.pool.SetQueue(s.queue))
 
-				// it's cool to start the runner
-				assert.NoError(t, pool.Start(ctx))
+	// it's cool to start the runner
+	s.NoError(s.pool.Start(ctx))
 
-				// once the runner starts you can't add pools
-				assert.Error(t, pool.SetQueue(queue))
+	// once the runner starts you can't add pools
+	s.Error(s.pool.SetQueue(s.queue))
 
-				// subsequent calls to start should noop
-				assert.NoError(t, pool.Start(ctx))
-			}
-		},
-		"CloseImpactsStateAsExpected": func(factory poolFactory) testCaseFunc {
-			return func(t *testing.T) {
-				pool := factory()
-				queue := makeTestQueue(pool)
-				assert.False(t, pool.Started())
+	// subsequent calls to start should noop
+	s.NoError(s.pool.Start(ctx))
+}
 
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+func (s *RunnerSuite) TestCloseDoesNotAffectState() {
+	s.False(s.pool.Started())
 
-				assert.False(t, pool.Started())
-				assert.NoError(t, pool.SetQueue(queue))
-				assert.NoError(t, pool.Start(ctx))
-				assert.True(t, pool.Started())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-				assert.NotPanics(t, func() {
-					pool.Close()
-				})
+	s.pool.Close()
 
-				assert.False(t, pool.Started())
-			}
-		},
-	}
+	s.False(s.pool.Started())
+	s.NoError(s.pool.SetQueue(s.queue))
+	s.NoError(s.pool.Start(ctx))
 
-	for poolName, factory := range pools {
-		for caseName, test := range cases {
-			t.Run(poolName+caseName, test(factory))
-		}
-	}
+	s.pool.Close()
+
+	s.True(s.pool.Started())
 }

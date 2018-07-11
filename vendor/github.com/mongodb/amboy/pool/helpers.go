@@ -12,11 +12,6 @@ import (
 	"github.com/mongodb/grip/recovery"
 )
 
-type workUnit struct {
-	job    amboy.Job
-	cancel context.CancelFunc
-}
-
 func runJob(ctx context.Context, job amboy.Job) {
 	maxTime := job.TimeInfo().MaxTime
 	if maxTime > 0 {
@@ -54,18 +49,15 @@ func executeJob(ctx context.Context, job amboy.Job, q amboy.Queue) {
 	}
 	if err := job.Error(); err != nil {
 		r["error"] = err.Error()
-		grip.Error(r)
-	} else {
-		grip.Debug(r)
 	}
+	grip.Debug(r)
 
 }
 
-func worker(ctx context.Context, jobs <-chan workUnit, q amboy.Queue, wg *sync.WaitGroup) {
+func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.WaitGroup) {
 	var (
-		err    error
-		job    amboy.Job
-		cancel context.CancelFunc
+		err error
+		job amboy.Job
 	)
 
 	wg.Add(1)
@@ -81,34 +73,24 @@ func worker(ctx context.Context, jobs <-chan workUnit, q amboy.Queue, wg *sync.W
 			// start a replacement worker.
 			go worker(ctx, jobs, q, wg)
 		}
-
-		if cancel != nil {
-			cancel()
-		}
 	}()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case wu := <-jobs:
-			if wu.job == nil {
+		case job = <-jobs:
+			if job == nil {
 				continue
 			}
 
-			job = wu.job
-			cancel = wu.cancel
 			executeJob(ctx, job, q)
-			cancel()
 		}
 	}
 }
 
-func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <-chan workUnit {
-	var nctx context.Context
-
-	output := make(chan workUnit)
-
+func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <-chan amboy.Job {
+	output := make(chan amboy.Job)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -117,10 +99,7 @@ func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <
 			case <-ctx.Done():
 				return
 			default:
-				wu := workUnit{}
-				nctx, wu.cancel = context.WithCancel(ctx)
-
-				job := q.Next(nctx)
+				job := q.Next(ctx)
 				if job == nil {
 					continue
 				}
@@ -130,8 +109,8 @@ func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <
 						job.ID())
 					continue
 				}
-				wu.job = job
-				output <- wu
+
+				output <- job
 			}
 		}
 	}()

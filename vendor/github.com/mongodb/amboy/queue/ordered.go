@@ -21,7 +21,6 @@ import (
 	"context"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -83,10 +82,6 @@ func (q *depGraphOrderedLocal) Put(j amboy.Job) error {
 
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
-
-	j.UpdateTimeInfo(amboy.JobTimeInfo{
-		Created: time.Now(),
-	})
 
 	if q.started {
 		return errors.Errorf("cannot add %s because ordered task dispatching has begun", name)

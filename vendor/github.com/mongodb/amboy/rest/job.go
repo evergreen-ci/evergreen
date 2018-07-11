@@ -21,7 +21,7 @@ type jobStatusResponse struct {
 	Job         interface{} `bson:"job,omitempty" json:"job,omitempty" yaml:"job,omitempty"`
 }
 
-func (s *QueueService) getJobStatusResponse(name string) (*jobStatusResponse, error) {
+func (s *Service) getJobStatusResponse(name string) (*jobStatusResponse, error) {
 	var msg string
 	var err error
 
@@ -56,7 +56,7 @@ func (s *QueueService) getJobStatusResponse(name string) (*jobStatusResponse, er
 }
 
 // JobStatus is a http.HandlerFunc that writes a job status document to the request.
-func (s *QueueService) JobStatus(w http.ResponseWriter, r *http.Request) {
+func (s *Service) JobStatus(w http.ResponseWriter, r *http.Request) {
 	name := gimlet.GetVars(r)["name"]
 
 	response, err := s.getJobStatusResponse(name)
@@ -72,7 +72,7 @@ func (s *QueueService) JobStatus(w http.ResponseWriter, r *http.Request) {
 // WaitJob waits for a single job to be complete. It takes a timeout
 // argument, which defaults to 10 seconds, and returns 408 (request
 // timeout) if the timeout is reached before the job completes.
-func (s *QueueService) WaitJob(w http.ResponseWriter, r *http.Request) {
+func (s *Service) WaitJob(w http.ResponseWriter, r *http.Request) {
 	name := gimlet.GetVars(r)["name"]
 	response, err := s.getJobStatusResponse(name)
 	if err != nil {
@@ -110,7 +110,7 @@ func parseTimeout(r *http.Request) (time.Duration, error) {
 	return timeout, errors.Wrapf(err, "problem parsing timeout from %s", timeoutInput)
 }
 
-func (s *QueueService) waitForJob(ctx context.Context, name string) (*jobStatusResponse, int, error) {
+func (s *Service) waitForJob(ctx context.Context, name string) (*jobStatusResponse, int, error) {
 	job, ok := s.queue.Get(name)
 	if !ok {
 		response, err := s.getJobStatusResponse(name)

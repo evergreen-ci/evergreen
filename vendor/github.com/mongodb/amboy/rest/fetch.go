@@ -11,7 +11,7 @@ import (
 
 // Fetch is an http handler that writes a job interchange object to a
 // the response, and allows clients to retrieve jobs from the service.
-func (s *QueueService) Fetch(w http.ResponseWriter, r *http.Request) {
+func (s *Service) Fetch(w http.ResponseWriter, r *http.Request) {
 	name := gimlet.GetVars(r)["name"]
 
 	job, ok := s.queue.Get(name)

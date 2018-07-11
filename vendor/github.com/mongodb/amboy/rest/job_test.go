@@ -16,7 +16,7 @@ import (
 )
 
 type JobStatusSuite struct {
-	service *QueueService
+	service *Service
 	require *require.Assertions
 	jobName string
 	closer  context.CancelFunc
@@ -29,7 +29,7 @@ func TestJobStatusSuite(t *testing.T) {
 
 func (s *JobStatusSuite) SetupSuite() {
 	s.require = s.Require()
-	s.service = NewQueueService()
+	s.service = NewService()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.closer = cancel
 
@@ -72,7 +72,7 @@ func (s *JobStatusSuite) TestJobNameReturnsSuccessfulResponse() {
 }
 
 func (s *JobStatusSuite) TestRequestReturnsErrorInErrorConditions() {
-	router, err := s.service.App().Handler()
+	router, err := s.service.App().Router()
 	s.NoError(err)
 
 	for _, name := range []string{"foo", "bar", "df-df"} {
@@ -94,7 +94,7 @@ func (s *JobStatusSuite) TestRequestReturnsErrorInErrorConditions() {
 }
 
 func (s *JobStatusSuite) TestRequestValidJobStatus() {
-	router, err := s.service.App().Handler()
+	router, err := s.service.App().Router()
 	s.NoError(err)
 
 	w := httptest.NewRecorder()

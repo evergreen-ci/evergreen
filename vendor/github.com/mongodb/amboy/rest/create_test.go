@@ -18,7 +18,7 @@ import (
 )
 
 type CreateJobSuite struct {
-	service *QueueService
+	service *Service
 	require *require.Assertions
 	closer  context.CancelFunc
 	suite.Suite
@@ -30,7 +30,7 @@ func TestCreateJobSuite(t *testing.T) {
 
 func (s *CreateJobSuite) SetupSuite() {
 	s.require = s.Require()
-	s.service = NewQueueService()
+	s.service = NewService()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.closer = cancel
 
@@ -62,10 +62,10 @@ func (s *CreateJobSuite) TestNilJobPayloadResultsInError() {
 
 func (s *CreateJobSuite) TestAddingAJobThatAlreadyExistsResultsInError() {
 	j := job.NewShellJob("true", "")
+	s.NoError(s.service.queue.Put(j))
+
 	payload, err := registry.MakeJobInterchange(j, amboy.JSON)
 	s.NoError(err)
-
-	s.NoError(s.service.queue.Put(j))
 
 	resp, err := s.service.createJob(payload)
 	s.Error(err, fmt.Sprintf("%+v", resp))
@@ -89,7 +89,7 @@ func (s *CreateJobSuite) TestAddingJobSuccessfuly() {
 }
 
 func (s *CreateJobSuite) TestRequestWithNilPayload() {
-	router, err := s.service.App().Handler()
+	router, err := s.service.App().Router()
 	s.NoError(err)
 
 	rb, err := json.Marshal(`{}`)
@@ -109,7 +109,7 @@ func (s *CreateJobSuite) TestRequestWithNilPayload() {
 }
 
 func (s *CreateJobSuite) TestRequestToAddJobThatAlreadyExists() {
-	router, err := s.service.App().Handler()
+	router, err := s.service.App().Router()
 	s.NoError(err)
 
 	payload, err := registry.MakeJobInterchange(job.NewShellJob("true", ""), amboy.JSON)
@@ -138,7 +138,7 @@ func (s *CreateJobSuite) TestRequestToAddJobThatAlreadyExists() {
 }
 
 func (s *CreateJobSuite) TestRequestToAddNewJobRegistersJob() {
-	router, err := s.service.App().Handler()
+	router, err := s.service.App().Router()
 	s.NoError(err)
 
 	startingTotal := s.service.queue.Stats().Total

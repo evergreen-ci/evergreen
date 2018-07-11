@@ -5,6 +5,7 @@ package rest
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -18,9 +19,9 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type QueueClientSuite struct {
-	service *QueueService
-	client  *QueueClient
+type ClientSuite struct {
+	service *Service
+	client  *Client
 	server  *httptest.Server
 	info    struct {
 		host string
@@ -31,22 +32,22 @@ type QueueClientSuite struct {
 	suite.Suite
 }
 
-func TestQueueClientSuite(t *testing.T) {
-	suite.Run(t, new(QueueClientSuite))
+func TestClientSuite(t *testing.T) {
+	suite.Run(t, new(ClientSuite))
 }
 
-func (s *QueueClientSuite) SetupSuite() {
+func (s *ClientSuite) SetupSuite() {
 	job.RegisterDefaultJobs()
 
 	s.require = s.Require()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.closer = cancel
-	s.service = NewQueueService()
+	s.service = NewService()
 	s.NoError(s.service.Open(ctx))
 
 	app := s.service.App()
 	s.NoError(app.Resolve())
-	router, err := s.service.App().Handler()
+	router, err := s.service.app.Router()
 	s.NoError(err)
 
 	s.server = httptest.NewServer(router)
@@ -59,14 +60,14 @@ func (s *QueueClientSuite) SetupSuite() {
 	grip.Infof("running test rest service at '%s', on port '%d'", s.info.host, s.info.port)
 }
 
-func (s *QueueClientSuite) TearDownSuite() {
+func (s *ClientSuite) TearDownSuite() {
 	grip.Infof("closing test rest service at '%s', on port '%d'", s.info.host, s.info.port)
 	s.server.Close()
 	s.closer()
 }
 
-func (s *QueueClientSuite) SetupTest() {
-	s.client = &QueueClient{}
+func (s *ClientSuite) SetupTest() {
+	s.client = &Client{}
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -76,7 +77,12 @@ func (s *QueueClientSuite) SetupTest() {
 //
 ////////////////////////////////////////////////////////////////////////
 
-func (s *QueueClientSuite) TestSetHostRequiresHttpURL() {
+func (s *ClientSuite) TestClientGetter() {
+	s.Exactly(s.client.Client(), s.client.client)
+
+}
+
+func (s *ClientSuite) TestSetHostRequiresHttpURL() {
 	example := "http://exmaple.com"
 
 	s.Equal("", s.client.Host())
@@ -91,7 +97,7 @@ func (s *QueueClientSuite) TestSetHostRequiresHttpURL() {
 	}
 }
 
-func (s *QueueClientSuite) TestSetHostStripsTrailingSlash() {
+func (s *ClientSuite) TestSetHostStripsTrailingSlash() {
 	uris := []string{
 		"http://foo.example.com/",
 		"https://extra.example.net/bar/s/",
@@ -105,7 +111,7 @@ func (s *QueueClientSuite) TestSetHostStripsTrailingSlash() {
 	}
 }
 
-func (s *QueueClientSuite) TestSetHostRoundTripsValidHostWithGetter() {
+func (s *ClientSuite) TestSetHostRoundTripsValidHostWithGetter() {
 	uris := []string{
 		"http://foo.example.com",
 		"https://extra.example.net/bar/s",
@@ -116,7 +122,7 @@ func (s *QueueClientSuite) TestSetHostRoundTripsValidHostWithGetter() {
 	}
 }
 
-func (s *QueueClientSuite) TestPortSetterDisallowsPortsToBeZero() {
+func (s *ClientSuite) TestPortSetterDisallowsPortsToBeZero() {
 	s.Equal(0, s.client.port)
 	s.Equal(0, s.client.Port())
 
@@ -124,7 +130,7 @@ func (s *QueueClientSuite) TestPortSetterDisallowsPortsToBeZero() {
 	s.Equal(3000, s.client.Port())
 }
 
-func (s *QueueClientSuite) TestPortSetterDisallowsTooBigPorts() {
+func (s *ClientSuite) TestPortSetterDisallowsTooBigPorts() {
 	s.Equal(0, s.client.port)
 	s.Equal(0, s.client.Port())
 
@@ -134,14 +140,14 @@ func (s *QueueClientSuite) TestPortSetterDisallowsTooBigPorts() {
 	}
 }
 
-func (s *QueueClientSuite) TestPortSetterRoundTripsValidPortsWithGetter() {
+func (s *ClientSuite) TestPortSetterRoundTripsValidPortsWithGetter() {
 	for _, p := range []int{65, 8080, 1400} {
 		s.NoError(s.client.SetPort(p), strconv.Itoa(p))
 		s.Equal(p, s.client.Port())
 	}
 }
 
-func (s *QueueClientSuite) TestSetPrefixRemovesTrailingAndLeadingSlashes() {
+func (s *ClientSuite) TestSetPrefixRemovesTrailingAndLeadingSlashes() {
 	s.Equal("", s.client.Prefix())
 
 	for _, p := range []string{"/foo", "foo/", "/foo/"} {
@@ -150,7 +156,7 @@ func (s *QueueClientSuite) TestSetPrefixRemovesTrailingAndLeadingSlashes() {
 	}
 }
 
-func (s *QueueClientSuite) TestSetPrefixRoundTripsThroughGetter() {
+func (s *ClientSuite) TestSetPrefixRoundTripsThroughGetter() {
 	for _, p := range []string{"", "foo/bar", "foo", "foo/bar/baz"} {
 		s.NoError(s.client.SetPrefix(p))
 		s.Equal(p, s.client.Prefix())
@@ -163,8 +169,8 @@ func (s *QueueClientSuite) TestSetPrefixRoundTripsThroughGetter() {
 //
 ////////////////////////////////////////////////////////////////////////
 
-func (s *QueueClientSuite) TestNewQueueClientPropogatesValidValuesToCreatedValues() {
-	nc, err := NewQueueClient("http://example.com", 8080, "amboy")
+func (s *ClientSuite) TestNewClientPropogatesValidValuesToCreatedValues() {
+	nc, err := NewClient("http://example.com", 8080, "amboy")
 	s.NoError(err)
 
 	s.Equal(8080, nc.Port())
@@ -172,23 +178,35 @@ func (s *QueueClientSuite) TestNewQueueClientPropogatesValidValuesToCreatedValue
 	s.Equal("amboy", nc.Prefix())
 }
 
-func (s *QueueClientSuite) TestCorrectedNewQueueClientSettings() {
-	nc, err := NewQueueClient("http://example.com", 900000000, "/amboy/")
+func (s *ClientSuite) TestCorrectedNewClientSettings() {
+	nc, err := NewClient("http://example.com", 900000000, "/amboy/")
 	s.Error(err)
 	s.Nil(nc)
 }
 
-func (s *QueueClientSuite) TestNewQueueClientConstructorPropogatesErrorStateForHost() {
-	nc, err := NewQueueClient("foo", 3000, "")
+func (s *ClientSuite) TestNewClientConstructorPropogatesErrorStateForHost() {
+	nc, err := NewClient("foo", 3000, "")
 
 	s.Nil(nc)
 	s.Error(err)
 }
 
-func (s *QueueClientSuite) TestNewQueueClientFromExistingWithNilClientReturnsError() {
-	nc, err := NewQueueClientFromExisting(nil, "http://example.com", 2048, "amboy")
+func (s *ClientSuite) TestNewClientFromExistingUsesExistinHTTPClient() {
+	client := &http.Client{}
+
+	nc, err := NewClientFromExisting(client, "http://example.com", 2048, "amboy")
+	s.NoError(err)
+	s.Exactly(client, nc.Client())
+}
+
+func (s *ClientSuite) TestNewClientFromExistingWithNilClientReturnsError() {
+	nc, err := NewClientFromExisting(nil, "http://example.com", 2048, "amboy")
 	s.Error(err)
 	s.Nil(nc)
+}
+
+func (s *ClientSuite) TestCopyeConstructorUsesDifferentHTTPClient() {
+	s.NotEqual(s.client.Client(), s.client.Copy().Client())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -197,7 +215,7 @@ func (s *QueueClientSuite) TestNewQueueClientFromExistingWithNilClientReturnsErr
 //
 ////////////////////////////////////////////////////////////////////////
 
-func (s *QueueClientSuite) TestURLGeneratiorWithoutDefaultPortInResult() {
+func (s *ClientSuite) TestURLGeneratiorWithoutDefaultPortInResult() {
 	s.NoError(s.client.SetHost("http://amboy.example.net"))
 
 	for _, p := range []int{0, 80} {
@@ -207,7 +225,7 @@ func (s *QueueClientSuite) TestURLGeneratiorWithoutDefaultPortInResult() {
 	}
 }
 
-func (s *QueueClientSuite) TestURLGenerationWithNonDefaultPort() {
+func (s *ClientSuite) TestURLGenerationWithNonDefaultPort() {
 	for _, p := range []int{82, 8080, 3000, 42420, 2048} {
 		s.NoError(s.client.SetPort(p))
 		host := "http://amboy.example.net"
@@ -221,7 +239,7 @@ func (s *QueueClientSuite) TestURLGenerationWithNonDefaultPort() {
 	}
 }
 
-func (s *QueueClientSuite) TestURLGenerationWithEmptyPrefix() {
+func (s *ClientSuite) TestURLGenerationWithEmptyPrefix() {
 	host := "http://amboy.example.net"
 	endpoint := "status"
 
@@ -232,12 +250,12 @@ func (s *QueueClientSuite) TestURLGenerationWithEmptyPrefix() {
 		s.client.getURL(endpoint))
 }
 
-func (s *QueueClientSuite) TestGetStatusOperationWithoutRunningServerReturnsError() {
+func (s *ClientSuite) TestGetStatusOperationWithoutRunningServerReturnsError() {
 	var err error
 
-	s.client, err = NewQueueClient("http://example.net", 3000, "/amboy")
+	s.client, err = NewClient("http://example.net", 3000, "/amboy")
 	s.require.NoError(err)
-	s.client.client.Timeout = 5 * time.Millisecond
+	s.client.Client().Timeout = 5 * time.Millisecond
 	ctx := context.Background()
 
 	st, err := s.client.getStats(ctx)
@@ -245,10 +263,10 @@ func (s *QueueClientSuite) TestGetStatusOperationWithoutRunningServerReturnsErro
 	s.Nil(st)
 }
 
-func (s *QueueClientSuite) TestGetStatusWithServerAndCanceled() {
+func (s *ClientSuite) TestGetStatusWithServerAndCanceled() {
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	cancel()
@@ -258,10 +276,10 @@ func (s *QueueClientSuite) TestGetStatusWithServerAndCanceled() {
 	s.Nil(st)
 }
 
-func (s *QueueClientSuite) TestGetStatusResponseHasExpectedValues() {
+func (s *ClientSuite) TestGetStatusResponseHasExpectedValues() {
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	st, err := s.client.getStats(ctx)
@@ -272,11 +290,11 @@ func (s *QueueClientSuite) TestGetStatusResponseHasExpectedValues() {
 	s.Len(st.SupportedJobTypes, 2, fmt.Sprint(st.SupportedJobTypes))
 }
 
-func (s *QueueClientSuite) TestGetStatsHelperWithInvalidHostReturnsError() {
+func (s *ClientSuite) TestGetStatsHelperWithInvalidHostReturnsError() {
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host+".1", s.info.port, "")
-	s.client.client.Timeout = 5 * time.Millisecond
+	s.client, err = NewClient(s.info.host+".1", s.info.port, "")
+	s.client.Client().Timeout = 5 * time.Millisecond
 	s.NoError(err)
 
 	st, err := s.client.getStats(ctx)
@@ -284,10 +302,10 @@ func (s *QueueClientSuite) TestGetStatsHelperWithInvalidHostReturnsError() {
 	s.Error(err)
 }
 
-func (s *QueueClientSuite) TestGetStatsHelperWithCanceledContextReturnsError() {
+func (s *ClientSuite) TestGetStatsHelperWithCanceledContextReturnsError() {
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	cancel()
@@ -297,10 +315,10 @@ func (s *QueueClientSuite) TestGetStatsHelperWithCanceledContextReturnsError() {
 
 }
 
-func (s *QueueClientSuite) TestGetStatsHelperWithActualJob() {
+func (s *ClientSuite) TestGetStatsHelperWithActualJob() {
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	j := job.NewShellJob("true", "")
@@ -312,10 +330,10 @@ func (s *QueueClientSuite) TestGetStatsHelperWithActualJob() {
 	s.NoError(err, fmt.Sprintf("%+v", st))
 }
 
-func (s *QueueClientSuite) TestJobStatusWithCanceledContextReturnsError() {
+func (s *ClientSuite) TestJobStatusWithCanceledContextReturnsError() {
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	cancel()
@@ -325,11 +343,11 @@ func (s *QueueClientSuite) TestJobStatusWithCanceledContextReturnsError() {
 	s.Error(err)
 }
 
-func (s *QueueClientSuite) TestJobStatusWithInvalidURLReturnsError() {
+func (s *ClientSuite) TestJobStatusWithInvalidURLReturnsError() {
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host+".1", s.info.port, "")
-	s.client.client.Timeout = 5 * time.Millisecond
+	s.client, err = NewClient(s.info.host+".1", s.info.port, "")
+	s.client.Client().Timeout = 5 * time.Millisecond
 	s.NoError(err)
 
 	st, err := s.client.jobStatus(ctx, "foo")
@@ -337,10 +355,10 @@ func (s *QueueClientSuite) TestJobStatusWithInvalidURLReturnsError() {
 	s.Nil(st)
 }
 
-func (s *QueueClientSuite) TestJobStatusWithNonExistingJobReturnsError() {
+func (s *ClientSuite) TestJobStatusWithNonExistingJobReturnsError() {
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	st, err := s.client.jobStatus(ctx, "foo")
@@ -351,10 +369,10 @@ func (s *QueueClientSuite) TestJobStatusWithNonExistingJobReturnsError() {
 	s.Equal("foo", st.ID)
 }
 
-func (s *QueueClientSuite) TestJobStatusWithValidJob() {
+func (s *ClientSuite) TestJobStatusWithValidJob() {
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	j := job.NewShellJob("echo foo", "")
@@ -374,12 +392,12 @@ func (s *QueueClientSuite) TestJobStatusWithValidJob() {
 //
 ////////////////////////////////////////////////////////////////////////
 
-func (s *QueueClientSuite) TestRunningMethodWithCanceledContextReturnsError() {
+func (s *ClientSuite) TestRunningMethodWithCanceledContextReturnsError() {
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	running, err := s.client.Running(ctx)
@@ -387,13 +405,13 @@ func (s *QueueClientSuite) TestRunningMethodWithCanceledContextReturnsError() {
 	s.False(running)
 }
 
-func (s *QueueClientSuite) TestRunningMethodWithoutRunningQueue() {
+func (s *ClientSuite) TestRunningMethodWithoutRunningQueue() {
 	var err error
 	existing := s.service.queue
 	s.service.queue = nil
 	ctx := context.Background()
 
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	running, err := s.client.Running(ctx)
@@ -403,10 +421,10 @@ func (s *QueueClientSuite) TestRunningMethodWithoutRunningQueue() {
 	s.service.queue = existing
 }
 
-func (s *QueueClientSuite) TestRunningWiwthRunningQueue() {
+func (s *ClientSuite) TestRunningWiwthRunningQueue() {
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	s.True(s.service.queue.Started())
@@ -416,10 +434,10 @@ func (s *QueueClientSuite) TestRunningWiwthRunningQueue() {
 	s.True(running)
 }
 
-func (s *QueueClientSuite) TestPendingJobsWithCanceledContextReturnsError() {
+func (s *ClientSuite) TestPendingJobsWithCanceledContextReturnsError() {
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	cancel()
@@ -430,11 +448,11 @@ func (s *QueueClientSuite) TestPendingJobsWithCanceledContextReturnsError() {
 	s.Error(err)
 }
 
-func (s *QueueClientSuite) TestPendingJobsIsZeroAfterWaitingOnTheQueue() {
+func (s *ClientSuite) TestPendingJobsIsZeroAfterWaitingOnTheQueue() {
 	amboy.Wait(s.service.queue)
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 	pending, err := s.client.PendingJobs(ctx)
 
@@ -442,10 +460,10 @@ func (s *QueueClientSuite) TestPendingJobsIsZeroAfterWaitingOnTheQueue() {
 	s.NoError(err)
 }
 
-func (s *QueueClientSuite) TestJobCompleteWithCanceledContextReturnsError() {
+func (s *ClientSuite) TestJobCompleteWithCanceledContextReturnsError() {
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	cancel()
@@ -456,11 +474,11 @@ func (s *QueueClientSuite) TestJobCompleteWithCanceledContextReturnsError() {
 	s.Error(err)
 }
 
-func (s *QueueClientSuite) TestJobCompleteIsZeroAfterWaitingOnTheQueue() {
+func (s *ClientSuite) TestJobCompleteIsZeroAfterWaitingOnTheQueue() {
 	amboy.Wait(s.service.queue)
 	var err error
 	ctx := context.Background()
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	s.NoError(err)
 
 	j := job.NewShellJob("echo foo", "")
@@ -473,9 +491,9 @@ func (s *QueueClientSuite) TestJobCompleteIsZeroAfterWaitingOnTheQueue() {
 	s.NoError(err)
 }
 
-func (s *QueueClientSuite) TestJobSubmitWithCanceledContextReturnsError() {
+func (s *ClientSuite) TestJobSubmitWithCanceledContextReturnsError() {
 	var err error
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	ctx, cancel := context.WithCancel(context.Background())
 	s.NoError(err)
 
@@ -487,9 +505,9 @@ func (s *QueueClientSuite) TestJobSubmitWithCanceledContextReturnsError() {
 	s.Error(err)
 }
 
-func (s *QueueClientSuite) TestSubmitJobReturnsSuccessfulJobId() {
+func (s *ClientSuite) TestSubmitJobReturnsSuccessfulJobId() {
 	var err error
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	ctx := context.Background()
 	s.NoError(err)
 
@@ -499,9 +517,9 @@ func (s *QueueClientSuite) TestSubmitJobReturnsSuccessfulJobId() {
 	s.NoError(err)
 }
 
-func (s *QueueClientSuite) TestSubmitDuplicateJobReturnsError() {
+func (s *ClientSuite) TestSubmitDuplicateJobReturnsError() {
 	var err error
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	ctx := context.Background()
 	s.NoError(err)
 
@@ -518,11 +536,11 @@ func (s *QueueClientSuite) TestSubmitDuplicateJobReturnsError() {
 	s.Equal("", name)
 }
 
-func (s *QueueClientSuite) TestWhenWaitMethodReturnsJobsAreComplete() {
+func (s *ClientSuite) TestWhenWaitMethodReturnsJobsAreComplete() {
 	var err error
 	var name string
 
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	ctx := context.Background()
 	s.NoError(err)
 
@@ -537,10 +555,10 @@ func (s *QueueClientSuite) TestWhenWaitMethodReturnsJobsAreComplete() {
 	}
 }
 
-func (s *QueueClientSuite) TestWhenWaitAllMethodReturnsAllJobsAreComplete() {
+func (s *ClientSuite) TestWhenWaitAllMethodReturnsAllJobsAreComplete() {
 	var err error
 
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	ctx := context.Background()
 	s.NoError(err)
 
@@ -559,10 +577,10 @@ func (s *QueueClientSuite) TestWhenWaitAllMethodReturnsAllJobsAreComplete() {
 	s.Equal(0, qst.Pending)
 }
 
-func (s *QueueClientSuite) TestFetchJobReturnsEquivalentJob() {
+func (s *ClientSuite) TestFetchJobReturnsEquivalentJob() {
 	var err error
 
-	s.client, err = NewQueueClient(s.info.host, s.info.port, "")
+	s.client, err = NewClient(s.info.host, s.info.port, "")
 	ctx := context.Background()
 	s.NoError(err)
 	jobs := []*job.ShellJob{}

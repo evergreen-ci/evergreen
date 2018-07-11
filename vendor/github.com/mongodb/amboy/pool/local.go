@@ -91,8 +91,6 @@ func (r *localWorkers) Start(ctx context.Context) error {
 func (r *localWorkers) Close() {
 	if r.canceler != nil {
 		r.canceler()
-		r.canceler = nil
-		r.started = false
 	}
 	r.wg.Wait()
 }
