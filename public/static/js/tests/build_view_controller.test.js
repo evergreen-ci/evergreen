@@ -74,14 +74,14 @@ describe("BuildViewController", function() {
       },
       Version: {},
       Tasks : [
-        { Task : { time_taken : 25 } },
-        { Task : { time_taken : 2 } },
-        { Task : { time_taken : 35 } },
-        { Task : { time_taken : 0 } },
+        { Task : { start_time : '04 Oct 2018 1:00:00 GMT', finish_time: '04 Oct 2018 1:01:00 GMT'} },
+        { Task : { start_time : '04 Oct 2018 1:00:00 GMT', finish_time: '04 Oct 2018 1:20:00 GMT'} },
+        { Task : { start_time : '04 Oct 2018 1:00:00 GMT', finish_time: '04 Oct 2018 1:35:00 GMT'} },
+        { Task : { start_time : '04 Oct 2018 1:00:00 GMT', finish_time: '04 Oct 2018 1:00:00 GMT'}},
       ],
     };
     scope.setBuild(mockBuild);
 
-    expect(scope.computed.maxTaskTime).toBe(35);
+    expect(scope.computed.maxTaskTime).toBe(2100000000000); // 35 mins in nanoseconds
   });
 });

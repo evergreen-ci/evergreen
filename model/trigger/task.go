@@ -3,13 +3,18 @@ package trigger
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -211,14 +216,28 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 }
 
 func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
-	data, err := t.makeData(sub, pastTenseOverride)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to collect task data")
-	}
+	var payload interface{}
+	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
+		project, ok := sub.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
+		}
+		var err error
+		payload, err = t.makeJIRATaskPayload(*project)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create jira payload for task")
+		}
 
-	payload, err := makeCommonPayload(sub, t.Selectors(), data)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build notification")
+	} else {
+		data, err := t.makeData(sub, pastTenseOverride)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to collect task data")
+		}
+
+		payload, err = makeCommonPayload(sub, t.Selectors(), data)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build notification")
+		}
 	}
 
 	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
@@ -564,6 +583,48 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	return n, catcher.Resolve()
+}
+
+func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, error) {
+	buildDoc, err := build.FindOne(build.ById(j.task.BuildId))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
+	}
+
+	hostDoc, err := host.FindOneId(j.task.HostId)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
+	}
+
+	versionDoc, err := version.FindOneId(j.task.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
+	}
+
+	projectRef, err := model.FindOneProjectRef(j.task.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
+	}
+
+	builder := jiraBuilder{
+		project:  strings.ToUpper(project),
+		mappings: &evergreen.JIRANotificationsConfig{},
+
+		data: jiraTemplateData{
+			UIRoot:  j.uiConfig.Url,
+			Task:    j.task,
+			Version: versionDoc,
+			Project: projectRef,
+			Build:   buildDoc,
+			Host:    hostDoc,
+		},
+	}
+
+	if err = builder.mappings.Get(); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch jira custom field mappings while building jira task payload")
+	}
+
+	return builder.build()
 }
 
 // mapTestResultsByTestFile creates map of test file to TestResult struct. If

@@ -12,26 +12,27 @@ import (
 
 func NewConfigModel() *APIAdminSettings {
 	return &APIAdminSettings{
-		Alerts:         &APIAlertsConfig{},
-		Amboy:          &APIAmboyConfig{},
-		Api:            &APIapiConfig{},
-		AuthConfig:     &APIAuthConfig{},
-		ContainerPools: &APIContainerPoolsConfig{},
-		Credentials:    map[string]string{},
-		Expansions:     map[string]string{},
-		HostInit:       &APIHostInitConfig{},
-		Jira:           &APIJiraConfig{},
-		Keys:           map[string]string{},
-		LoggerConfig:   &APILoggerConfig{},
-		Notify:         &APINotifyConfig{},
-		Plugins:        map[string]map[string]interface{}{},
-		Providers:      &APICloudProviders{},
-		RepoTracker:    &APIRepoTrackerConfig{},
-		Scheduler:      &APISchedulerConfig{},
-		ServiceFlags:   &APIServiceFlags{},
-		Slack:          &APISlackConfig{},
-		Splunk:         &APISplunkConnectionInfo{},
-		Ui:             &APIUIConfig{},
+		Alerts:            &APIAlertsConfig{},
+		Amboy:             &APIAmboyConfig{},
+		Api:               &APIapiConfig{},
+		AuthConfig:        &APIAuthConfig{},
+		ContainerPools:    &APIContainerPoolsConfig{},
+		Credentials:       map[string]string{},
+		Expansions:        map[string]string{},
+		HostInit:          &APIHostInitConfig{},
+		Jira:              &APIJiraConfig{},
+		JIRANotifications: &APIJIRANotificationsConfig{},
+		Keys:              map[string]string{},
+		LoggerConfig:      &APILoggerConfig{},
+		Notify:            &APINotifyConfig{},
+		Plugins:           map[string]map[string]interface{}{},
+		Providers:         &APICloudProviders{},
+		RepoTracker:       &APIRepoTrackerConfig{},
+		Scheduler:         &APISchedulerConfig{},
+		ServiceFlags:      &APIServiceFlags{},
+		Slack:             &APISlackConfig{},
+		Splunk:            &APISplunkConnectionInfo{},
+		Ui:                &APIUIConfig{},
 	}
 }
 
@@ -67,6 +68,7 @@ type APIAdminSettings struct {
 	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
 	SuperUsers         []string                          `json:"superusers,omitempty"`
 	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
+	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -1298,4 +1300,45 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 	}
 
 	return out, nil
+}
+
+type APIJIRANotificationsConfig struct {
+	CustomFields map[string]map[string]string `json:"custom_fields,omitempty"`
+}
+
+func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
+	var config *evergreen.JIRANotificationsConfig
+	switch v := h.(type) {
+	case *evergreen.JIRANotificationsConfig:
+		config = v
+	case evergreen.JIRANotificationsConfig:
+		config = &v
+	default:
+		return errors.Errorf("expected *evergreen.APIJIRANotificationsConfig, but got %T instead", h)
+	}
+
+	if len(config.CustomFields) == 0 {
+		return nil
+	}
+
+	m, err := config.CustomFields.ToMap()
+	if err != nil {
+		return errors.Wrap(err, "failed to build jira custom field configuration")
+	}
+
+	j.CustomFields = m
+
+	return nil
+}
+func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
+	if j.CustomFields == nil || len(j.CustomFields) == 0 {
+		return evergreen.JIRANotificationsConfig{}, nil
+	}
+	config := evergreen.JIRANotificationsConfig{
+		CustomFields: evergreen.JIRACustomFieldsByProject{},
+	}
+
+	config.CustomFields.FromMap(j.CustomFields)
+
+	return config, nil
 }
