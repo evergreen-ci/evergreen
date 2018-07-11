@@ -382,7 +382,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
   $scope.validSecurityGroup = function(){
     if ($scope.activeDistro){
-      if ($scope.activeDistro.settings.is_vpc){
+      if ($scope.activeDistro.settings.is_vpc && $scope.activeDistro.settings.security_group_ids){
         for (var i = 0; i < $scope.activeDistro.settings.security_group_ids.length; i++) {
           if ($scope.activeDistro.settings.security_group_ids[i].substring(0,3) !== "sg-") {
             return false
