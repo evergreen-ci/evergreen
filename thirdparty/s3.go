@@ -78,12 +78,6 @@ type CopyObjectError struct {
 	ErrMsg    string
 }
 
-type Auth struct {
-	AccessKey, SecretKey, Region string
-	token                        string
-	expiration                   time.Time
-}
-
 func (e CopyObjectError) Error() string {
 	return fmt.Sprintf("Code: %v\nMessage: %v\nResource: %v"+
 		"\nRequestId: %v\nErrMsg: %v\n",
@@ -235,7 +229,10 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 	}
 	size := fileInfo.Size()
 	buffer := make([]byte, size)
-	file.Read(buffer)
+	_, err = file.Read(buffer)
+	if err != nil {
+		return errors.Wrapf(err, "Error reading bytes of file %S", localFilePath)
+	}
 
 	// Step 1: initiate multipart upload
 	resp, err := createPart(svc, bucket, localFilePath, contentType)
@@ -388,10 +385,13 @@ func legacyGetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 
 func GetS3File(auth *aws.Auth, s3URL, filePath string) (io.ReadCloser, error) {
 	if !newCode {
-		legacyGetS3File(auth, s3URL)
+		return legacyGetS3File(auth, s3URL)
 	}
 
 	urlParsed, err := url.Parse(s3URL)
+	if err != nil {
+		return nil, err
+	}
 
 	config := &awsSDK.Config{
 		Credentials: credentials.NewStaticCredentials(auth.AccessKey, auth.SecretKey, auth.Token()),
