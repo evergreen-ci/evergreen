@@ -3,9 +3,10 @@
   body{ background: #f5f6f7; }
 </style>
 <script type="text/javascript">
-  window.plugins = {{.PluginContent.Data}}
-  window.jiraHost = {{.JiraHost}}
-  window.hasBanner = {{ne .Banner ""}}
+  window.plugins = {{.PluginContent.Data}};
+  window.jiraHost = {{.JiraHost}};
+  window.hasBanner = {{ne .Banner ""}};
+  window.isAdmin = {{.IsProjectAdmin}};
 </script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
@@ -129,6 +130,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       </li>
                       <li>
                         <a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a>
+                      </li>
+                      <li ng-show="isAdmin && task.depends_on && task.depends_on.length > 0">
+                        <a tabindex="-1" href="#" ng-click="overrideDependencies()">Override Dependencies</a>
                       </li>
                     </ul>
                 </div>
@@ -304,6 +308,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   </tr>
                 </tbody>
               </table>
+              <div ng-show="task.override_dependencies" style="margin-top:10px;">
+                Dependencies for this task have been overridden. It will not wait for its dependencies to finish before running.
+              </div>
             </div>
           </div>
         </div>
