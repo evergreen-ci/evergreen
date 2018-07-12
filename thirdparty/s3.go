@@ -371,6 +371,7 @@ func abortMultipartUpload(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOutput
 	}
 	return nil
 }
+
 func legacyGetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 	urlParsed, err := url.Parse(s3URL)
 	if err != nil {
