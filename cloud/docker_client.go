@@ -128,6 +128,9 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	// wait for ImageBuild to complete -- success response otherwise returned
 	// before building from Dockerfile is over, and next ContainerCreate will fail
 	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "Error reading ImageBuild response")
+	}
 
 	return newImage, nil
 }
