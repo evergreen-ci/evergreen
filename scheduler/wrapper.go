@@ -68,19 +68,15 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
 
-	distroHostsMap, err := findUsableHosts(conf.DistroID)
+	distroHosts, err := findUsableHosts(conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "with host query")
 	}
 
 	allocatorArgs := HostAllocatorData{
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			conf.DistroID: res.taskQueueItem,
-		},
-		existingDistroHosts: distroHostsMap,
-		distros: map[string]distro.Distro{
-			conf.DistroID: distroSpec,
-		},
+		taskQueueItems:   res.taskQueueItem,
+		existingHosts:    distroHosts,
+		distro:           distroSpec,
 		freeHostFraction: conf.FreeHostFraction,
 	}
 
@@ -113,7 +109,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	})
 
 	var makespan time.Duration
-	numHosts := time.Duration(len(distroHostsMap) + len(hostsSpawned))
+	numHosts := time.Duration(len(distroHosts) + len(hostsSpawned))
 	if numHosts != 0 {
 		makespan = res.schedulerEvent.ExpectedDuration / numHosts
 	} else if res.schedulerEvent.TaskQueueLength > 0 {

@@ -81,7 +81,7 @@ type ScheduledDistroTasksData struct {
 	tasksAccountedFor map[string]bool
 
 	// all distros this task could run on
-	taskRunDistros map[string][]string
+	taskRunDistros []string
 
 	// the name of the distro whose task queue items data this represents
 	currentDistroId string
@@ -96,24 +96,7 @@ type sortableDistroByNumStaticHost struct {
 // distro while taking the duration of running/scheduled tasks into
 // consideration. Returns a map of distro to number of hosts to spawn.
 func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (newHostsNeeded map[string]int, err error) {
-	queueDistros := make([]distro.Distro, 0,
-		len(hostAllocatorData.taskQueueItems))
-
-	// Sanity check to ensure that we have a distro object for each item in the
-	// task queue. Also pulls the distros we need for sorting
-	for distroId := range hostAllocatorData.taskQueueItems {
-		d, ok := hostAllocatorData.distros[distroId]
-		if !ok {
-			return nil, errors.Errorf("No distro info available for distro %v",
-				distroId)
-		}
-		if d.Id != distroId {
-			return nil, errors.Errorf("Bad mapping between task queue distro "+
-				"name and host allocator distro data: %v != %v", d.Id,
-				distroId)
-		}
-		queueDistros = append(queueDistros, d)
-	}
+	queueDistros := []distro.Distro{hostAllocatorData.distro}
 
 	// sort the distros by the number of static hosts available. why?
 	// well if we have tasks that can run on say 2 distros, one with static
@@ -166,9 +149,7 @@ func computeScheduledTasksDuration(
 	scheduledTasksDuration float64, sharedTasksDuration map[string]float64) {
 
 	taskQueueItems := scheduledDistroTasksData.taskQueueItems
-	taskRunDistros := scheduledDistroTasksData.taskRunDistros
 	tasksAccountedFor := scheduledDistroTasksData.tasksAccountedFor
-	currentDistroId := scheduledDistroTasksData.currentDistroId
 	sharedTasksDuration = make(map[string]float64)
 
 	// compute the total expected duration for tasks in this queue
@@ -181,11 +162,9 @@ func computeScheduledTasksDuration(
 		// if the task can be run on multiple distros - including this one - add
 		// it to the total duration of 'shared tasks' for the distro and all
 		// other distros it can be run on
-		distroIds, ok := taskRunDistros[taskQueueItem.Id]
-		if ok && util.StringSliceContains(distroIds, currentDistroId) {
-			for _, distroId := range distroIds {
-				sharedTasksDuration[distroId] +=
-					taskQueueItem.ExpectedDuration.Seconds()
+		if util.StringSliceContains(scheduledDistroTasksData.taskRunDistros, scheduledDistroTasksData.currentDistroId) {
+			for _, distroId := range scheduledDistroTasksData.taskRunDistros {
+				sharedTasksDuration[distroId] += taskQueueItem.ExpectedDuration.Seconds()
 			}
 		}
 	}
@@ -427,8 +406,8 @@ func durationNumNewHostsForDistro(ctx context.Context,
 	distroScheduleData map[string]DistroScheduleData) (numNewHosts int,
 	err error) {
 
-	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Id]
-	taskQueueItems := hostAllocatorData.taskQueueItems[distro.Id]
+	existingDistroHosts := hostAllocatorData.existingHosts
+	taskQueueItems := hostAllocatorData.taskQueueItems
 	taskRunDistros := hostAllocatorData.taskRunDistros
 
 	// determine how many free hosts we have

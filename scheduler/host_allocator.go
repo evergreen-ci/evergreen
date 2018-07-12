@@ -21,13 +21,13 @@ type HostAllocator func(context.Context, HostAllocatorData) (map[string]int, err
 
 // HostAllocatorData is the set of parameters passed to a HostAllocator.
 type HostAllocatorData struct {
-	taskQueueItems      map[string][]model.TaskQueueItem
-	existingDistroHosts map[string][]host.Host
-	taskRunDistros      map[string][]string
-	distros             map[string]distro.Distro
-	freeHostFraction    float64
-	usesContainers      bool
-	containerPool       *evergreen.ContainerPool
+	taskQueueItems   []model.TaskQueueItem
+	existingHosts    []host.Host
+	taskRunDistros   []string
+	distro           distro.Distro
+	freeHostFraction float64
+	usesContainers   bool
+	containerPool    *evergreen.ContainerPool
 }
 
 func GetHostAllocator(name string) HostAllocator {

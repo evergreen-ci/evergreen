@@ -372,7 +372,7 @@ func insertIntent(d distro.Distro) (*host.Host, error) {
 
 // Finds live hosts in the DB and organizes them by distro. Pass the
 // empty string to retrieve all distros
-func findUsableHosts(distroID string) (map[string][]host.Host, error) {
+func findUsableHosts(distroID string) ([]host.Host, error) {
 	// fetch all hosts, split by distro
 	query := host.IsLive()
 	if distroID != "" {
@@ -385,14 +385,7 @@ func findUsableHosts(distroID string) (map[string][]host.Host, error) {
 		return nil, errors.Wrap(err, "Error finding live hosts")
 	}
 
-	// figure out all hosts we have up - per distro
-	hostsByDistro := make(map[string][]host.Host)
-	for _, liveHost := range allHosts {
-		hostsByDistro[liveHost.Distro.Id] = append(hostsByDistro[liveHost.Distro.Id],
-			liveHost)
-	}
-
-	return hostsByDistro, nil
+	return allHosts, nil
 }
 
 // pass 'allDistros' or the empty string to unchedule all distros.

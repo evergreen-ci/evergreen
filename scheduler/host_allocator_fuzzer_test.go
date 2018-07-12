@@ -135,16 +135,10 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 	}
 
 	s.testData = HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: hosts,
-		},
+		distro:           s.distro,
+		existingHosts:    hosts,
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: taskQueue,
-		},
+		taskQueueItems:   taskQueue,
 	}
 }
 
@@ -154,7 +148,7 @@ func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 		hosts, err := s.allocator(s.ctx, s.testData)
 		s.NoError(err)
 		newHosts := hosts[s.distroName]
-		queue := s.testData.taskQueueItems[s.distroName]
+		queue := s.testData.taskQueueItems
 		queueSize := len(queue)
 		queueDuration := calcScheduledTasksDuration(queue)
 		s.True(newHosts >= 0)
