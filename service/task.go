@@ -313,6 +313,10 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
+	isAdmin := false
+	if usr != nil {
+		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
+	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Task           uiTaskData
@@ -321,8 +325,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		JiraHost       string
 		IsProjectAdmin bool
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings),
-		uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
