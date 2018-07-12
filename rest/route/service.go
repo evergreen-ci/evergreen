@@ -22,10 +22,6 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/admin/restart":                     getRestartRouteManager(queue),
-		"/admin/service_flags":               getServiceFlagsRouteManager,
-		"/admin/settings":                    getAdminSettingsManager,
-		"/admin/task_queue":                  getClearTaskQueueRouteManager,
 		"/alias/{name}":                      getAliasRouteManager,
 		"/builds/{build_id}":                 getBuildByIdRouteManager,
 		"/builds/{build_id}/abort":           getBuildAbortRouteManager,
@@ -51,8 +47,8 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		"/projects/{project_id}/recent_versions":               getRecentVersionsManager,
 		"/projects/{project_id}/revisions/{commit_hash}/tasks": getTasksByProjectAndCommitRouteManager,
 		"/status/cli_version":                                  getCLIVersionRouteManager,
-		"/status/notifications":                                getNotificationsStatusRouteManager,
 		"/status/hosts/distros":                                getHostStatsByDistroManager,
+		"/status/notifications":                                getNotificationsStatusRouteManager,
 		"/status/recent_tasks":                                 getRecentTasksRouteManager,
 		"/subscriptions":                                       getSubscriptionRouteManager,
 		"/tasks/{task_id}":                                     getTaskRouteManager,
@@ -62,9 +58,9 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		"/tasks/{task_id}/metrics/system":                      getTaskSystemMetricsManager,
 		"/tasks/{task_id}/restart":                             getTaskRestartRouteManager,
 		"/tasks/{task_id}/tests":                               getTestRouteManager,
+		"/user/settings":                                       getUserSettingsRouteManager,
 		"/users/{user_id}/hosts":                               getHostsByUserManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,
-		"/user/settings":                                       getUserSettingsRouteManager,
 		"/versions/{version_id}":                               getVersionIdRouteManager,
 		"/versions/{version_id}/abort":                         getAbortVersionRouteManager,
 		"/versions/{version_id}/builds":                        getBuildsForVersionRouteManager,
@@ -84,6 +80,11 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 	app.AddRoute("/admin/banner").Version(2).Post().Wrap(superUser).RouteHandler(makeSetAdminBanner(sc))
 	app.AddRoute("/admin/events").Version(2).Get().Wrap(superUser).RouteHandler(makeFetchAdminEvents(sc))
 	app.AddRoute("/admin/revert").Version(2).Post().Wrap(superUser).RouteHandler(makeRevertRouteManager(sc))
+	app.AddRoute("/admin/restart").Version(2).Post().Wrap(superUser).RouteHandler(makeRestartRoute(sc, queue))
+	app.AddRoute("/admin/task_queue").Version(2).Delete().Wrap(superUser).RouteHandler(makeClearTaskQueueHandler(sc))
+	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(superUser).RouteHandler(makeSetServiceFlagsRouteManager(sc))
+	app.AddRoute("/admin/settings").Version(2).Get().Wrap(superUser).RouteHandler(makeFetchAdminSettings(sc))
+	app.AddRoute("/admin/settings").Version(2).Post().Wrap(superUser).RouteHandler(makeSetAdminSettings(sc))
 	app.AddRoute("/hosts/create/{task_id}").Version(2).Post().RouteHandler(makeHostCreateRouteManager(sc))
 	app.AddRoute("/hosts/list/{task_id}").Version(2).Get().RouteHandler(makeHostListRouteManager(sc))
 }
