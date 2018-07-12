@@ -37,9 +37,9 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 }
 
 type unmarshalEventLogEntry struct {
-	ID           string    `bson:"_id" json:"-"`
-	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
+	ID           interface{} `bson:"_id" json:"-"`
+	ResourceType string      `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  time.Time   `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
@@ -105,7 +105,15 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 		return errors.Wrap(err, "failed to unmarshal data")
 	}
 
-	e.ID = temp.ID
+	// IDs for events were ObjectIDs previously, so we need to do this
+	switch v := temp.ID.(type) {
+	case string:
+		e.ID = v
+	case bson.ObjectId:
+		e.ID = v.Hex()
+	default:
+		return errors.Errorf("unrecognized ID format for event %v", v)
+	}
 	e.Timestamp = temp.Timestamp
 	e.ResourceId = temp.ResourceId
 	e.EventType = temp.EventType

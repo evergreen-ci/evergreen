@@ -118,6 +118,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.checkRealData(&entries[0], loc)
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+		s.Equal("5949645c9acd9604fdd202d9", entries[0].ID)
 		s.IsType(&HostEventData{}, entries[0].Data)
 		s.Equal("HOST", entries[0].ResourceType)
 
