@@ -221,9 +221,6 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // HostDockerfile route returns Dockerfile in text response.
-// Add the following to user.data for parent distros:
-// curl https://evergreen.mongodb.com/rest/v2/hosts/dockerfile > /root/Dockerfile
-
 type hostDockerfileHandler struct {
 }
 
@@ -239,9 +236,11 @@ func (h *hostDockerfileHandler) Run(ctx context.Context) gimlet.Responder {
 	parts := []string{
 		"ARG BASE_IMAGE",
 		"FROM $BASE_IMAGE",
-		"ARG EXECUTABLE_SUB_PATH",
 		"ARG URL",
+		"ARG EXECUTABLE_SUB_PATH",
+		"ARG BINARY_NAME",
 		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
+		"RUN chmod +x /root/${BINARY_NAME}",
 	}
 	file := strings.Join(parts, "\n")
 

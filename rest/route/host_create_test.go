@@ -170,9 +170,11 @@ func TestDockerfileRoute(t *testing.T) {
 	parts := []string{
 		"ARG BASE_IMAGE",
 		"FROM $BASE_IMAGE",
-		"ARG EXECUTABLE_SUB_PATH",
 		"ARG URL",
+		"ARG EXECUTABLE_SUB_PATH",
+		"ARG BINARY_NAME",
 		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
+		"RUN chmod +x /root/${BINARY_NAME}",
 	}
 
 	assert.Equal(strings.Join(parts, "\n"), response.Data())

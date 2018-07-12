@@ -191,7 +191,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		"--cleanup",
 	}
 
-	// Populate container settings.
+	// Populate container settings with command and new image.
 	containerConf := &container.Config{
 		// ExposedPorts exposes the default SSH port to external connections.
 		ExposedPorts: nat.PortSet{
