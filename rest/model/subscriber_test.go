@@ -75,6 +75,38 @@ func TestSubscriberModelsWebhook(t *testing.T) {
 	assert.EqualValues(origWebhookSubscriber, serviceModel)
 }
 
+func TestSubscriberModelsJIRAIssue(t *testing.T) {
+	assert := assert.New(t)
+
+	jiraIssueSubscriber := event.Subscriber{
+		Type: event.JIRAIssueSubscriberType,
+		Target: event.JIRAIssueSubscriber{
+			Project:   "ABC",
+			IssueType: "123",
+		},
+	}
+	apiJIRAIssueSubscriber := APISubscriber{}
+	err := apiJIRAIssueSubscriber.BuildFromService(jiraIssueSubscriber)
+	assert.NoError(err)
+
+	origJIRAIssueSubscriber, err := apiJIRAIssueSubscriber.ToService()
+	assert.NoError(err)
+	assert.EqualValues(jiraIssueSubscriber, origJIRAIssueSubscriber)
+
+	// incoming subscribers have target serialized as a map
+	incoming := APISubscriber{
+		Type: ToAPIString(event.JIRAIssueSubscriberType),
+		Target: map[string]interface{}{
+			"project":    "ABC",
+			"issue_type": "123",
+		},
+	}
+
+	serviceModel, err := incoming.ToService()
+	assert.NoError(err)
+	assert.EqualValues(origJIRAIssueSubscriber, serviceModel)
+}
+
 func TestSubscriberModelsSlack(t *testing.T) {
 	assert := assert.New(t)
 

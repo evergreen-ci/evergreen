@@ -418,4 +418,9 @@ func TestCustomFields(t *testing.T) {
 	assert.Len(customFields[jiraFailingTestsField], 2)
 	assert.Contains(customFields[jiraFailingTestsField], testName1)
 	assert.Contains(customFields[jiraFailingTestsField], testName2)
+
+	msg, err := j.build()
+	assert.NoError(err)
+	assert.NotNil(msg)
+	assert.Equal("Build Failure", msg.Type)
 }

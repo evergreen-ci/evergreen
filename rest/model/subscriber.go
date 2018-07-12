@@ -35,7 +35,6 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 		var target interface{}
 
 		switch v.Type {
-
 		case event.GithubPullRequestSubscriberType:
 			sub := APIGithubPRSubscriber{}
 			err := sub.BuildFromService(v.Target)
@@ -52,8 +51,16 @@ func (s *APISubscriber) BuildFromService(h interface{}) error {
 			}
 			target = sub
 
-		case event.JIRAIssueSubscriberType, event.JIRACommentSubscriberType,
-			event.EmailSubscriberType, event.SlackSubscriberType:
+		case event.JIRAIssueSubscriberType:
+			sub := APIJIRAIssueSubscriber{}
+			err := sub.BuildFromService(v.Target)
+			if err != nil {
+				return err
+			}
+			target = sub
+
+		case event.JIRACommentSubscriberType, event.EmailSubscriberType,
+			event.SlackSubscriberType:
 			target = v.Target
 
 		default:
@@ -103,8 +110,21 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 			return nil, err
 		}
 
-	case event.JIRAIssueSubscriberType, event.JIRACommentSubscriberType,
-		event.EmailSubscriberType, event.SlackSubscriberType:
+	case event.JIRAIssueSubscriberType:
+		apiModel := APIJIRAIssueSubscriber{}
+		if err := mapstructure.Decode(s.Target, &apiModel); err != nil {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("jira issue subscriber is malformed: %s", err.Error()),
+			}
+		}
+		target, err = apiModel.ToService()
+		if err != nil {
+			return nil, err
+		}
+
+	case event.JIRACommentSubscriberType, event.EmailSubscriberType,
+		event.SlackSubscriberType:
 		target = s.Target
 
 	default:
@@ -164,5 +184,34 @@ func (s *APIWebhookSubscriber) ToService() (interface{}, error) {
 	return event.WebhookSubscriber{
 		URL:    FromAPIString(s.URL),
 		Secret: []byte(FromAPIString(s.Secret)),
+	}, nil
+}
+
+type APIJIRAIssueSubscriber struct {
+	Project   APIString `json:"project" mapstructure:"project"`
+	IssueType APIString `json:"issue_type" mapstructure:"issue_type"`
+}
+
+func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
+	if v, ok := h.(event.JIRAIssueSubscriber); ok {
+		h = &v
+	}
+
+	switch v := h.(type) {
+	case *event.JIRAIssueSubscriber:
+		s.Project = ToAPIString(v.Project)
+		s.IssueType = ToAPIString(string(v.IssueType))
+
+	default:
+		return errors.New("unknown type for APIWebhookSubscriber")
+	}
+
+	return nil
+}
+
+func (s *APIJIRAIssueSubscriber) ToService() (interface{}, error) {
+	return event.JIRAIssueSubscriber{
+		Project:   FromAPIString(s.Project),
+		IssueType: FromAPIString(s.IssueType),
 	}, nil
 }

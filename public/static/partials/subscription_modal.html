@@ -24,8 +24,14 @@
                         <input id="issue-id" ng-model="targets['jira-comment']" placeholder="ABC-123"></input>
                     </div>
                     <div ng-show="method.value === 'jira-issue'">
-                        <label for="project">JIRA Project</label>
-                        <input id="project" ng-model="targets['jira-issue']" placeholder="ABC"></input>
+                        <md-list-item>
+                            <label for="project">JIRA Project</label>
+                            <input id="project" ng-model="targets['jira-issue']['project']" placeholder="ABC"></input>
+                        </md-list-item>
+                        <md-list-item>
+                            <label for="issue-type">Issue Type</label>
+                            <input id="issue-type" ng-model="targets['jira-issue']['issue_type']" placeholder="Build Failure"></input>
+                        </md-list-item>
                     </div>
                     <div ng-show="method.value === 'slack'">
                         <label for="slack">Slack Username or Channel</label>
