@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -82,14 +81,14 @@ func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 
 	key := model.APIPubKey{}
 	if err := util.ReadJSONInto(body, &key); err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("failed to unmarshal public key: %s", err),
 		}
 	}
 	h.keyName = model.FromAPIString(key.Name)
 	if err := validateKeyName(h.keyName); err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("invalid public key name: %s", err),
 		}
@@ -97,7 +96,7 @@ func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 
 	h.keyValue = model.FromAPIString(key.Key)
 	if err := validateKeyValue(h.keyValue); err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
 		}
@@ -140,7 +139,7 @@ func (h *keysPostHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 	u := MustHaveUser(ctx)
 
 	if _, err := u.GetPublicKey(h.keyName); err == nil {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "a public key with this name already exists for user",
 		}
@@ -178,7 +177,7 @@ func (h *keysDeleteHandler) Handler() RequestHandler {
 func (h *keysDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	h.keyName = gimlet.GetVars(r)["key_name"]
 	if strings.TrimSpace(h.keyName) == "" {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "empty key name",
 		}
@@ -191,7 +190,7 @@ func (h *keysDeleteHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	user := MustHaveUser(ctx)
 
 	if _, err := user.GetPublicKey(h.keyName); err != nil {
-		return ResponseData{}, &rest.APIError{
+		return ResponseData{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("key with name '%s' does not exist", h.keyName),
 		}

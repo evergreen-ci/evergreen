@@ -17,18 +17,19 @@ const (
 	ResourceTypeTask = "TASK"
 
 	// event types
-	TaskCreated          = "TASK_CREATED"
-	TaskDispatched       = "TASK_DISPATCHED"
-	TaskUndispatched     = "TASK_UNDISPATCHED"
-	TaskStarted          = "TASK_STARTED"
-	TaskFinished         = "TASK_FINISHED"
-	TaskRestarted        = "TASK_RESTARTED"
-	TaskActivated        = "TASK_ACTIVATED"
-	TaskDeactivated      = "TASK_DEACTIVATED"
-	TaskAbortRequest     = "TASK_ABORT_REQUEST"
-	TaskScheduled        = "TASK_SCHEDULED"
-	TaskPriorityChanged  = "TASK_PRIORITY_CHANGED"
-	TaskJiraAlertCreated = "TASK_JIRA_ALERT_CREATED"
+	TaskCreated                 = "TASK_CREATED"
+	TaskDispatched              = "TASK_DISPATCHED"
+	TaskUndispatched            = "TASK_UNDISPATCHED"
+	TaskStarted                 = "TASK_STARTED"
+	TaskFinished                = "TASK_FINISHED"
+	TaskRestarted               = "TASK_RESTARTED"
+	TaskActivated               = "TASK_ACTIVATED"
+	TaskDeactivated             = "TASK_DEACTIVATED"
+	TaskAbortRequest            = "TASK_ABORT_REQUEST"
+	TaskScheduled               = "TASK_SCHEDULED"
+	TaskPriorityChanged         = "TASK_PRIORITY_CHANGED"
+	TaskJiraAlertCreated        = "TASK_JIRA_ALERT_CREATED"
+	TaskDepdendenciesOverridden = "TASK_DEPENDENCIES_OVERRIDDEN"
 )
 
 // implements Data
@@ -147,4 +148,9 @@ func LogManyTaskAbortRequests(taskIds []string, userId string) {
 func LogTaskScheduled(taskId string, execution int, scheduledTime time.Time) {
 	logTaskEvent(taskId, TaskScheduled,
 		TaskEventData{Execution: execution, Timestamp: scheduledTime})
+}
+
+func LogTaskDependenciesOverridden(taskId string, execution int, userID string) {
+	logTaskEvent(taskId, TaskDepdendenciesOverridden,
+		TaskEventData{Execution: execution, UserId: userID})
 }

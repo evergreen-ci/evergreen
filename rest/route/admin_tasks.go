@@ -7,7 +7,6 @@ import (
 
 	dataModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -59,7 +58,7 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 		return err
 	}
 	if h.EndTime.Before(h.StartTime) {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "End time cannot be before start time",
 		}
@@ -79,17 +78,11 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 	}
 	resp, err := sc.RestartFailedTasks(h.queue, opts)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Error restarting tasks")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Error restarting tasks")
 	}
 	restartModel := &model.RestartTasksResponse{}
 	if err = restartModel.BuildFromService(resp); err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 	return ResponseData{
 		Result: []model.Model{restartModel},
@@ -119,7 +112,7 @@ func (h *clearTaskQueueHandler) ParseAndValidate(ctx context.Context, r *http.Re
 	h.distro = vars["distro"]
 	_, err := distro.FindOne(distro.ById(h.distro))
 	if err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "unable to find distro",
 		}

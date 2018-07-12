@@ -38,6 +38,13 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		}
 
 		if t.DispatchTime != util.ZeroTime && t.Status == evergreen.TaskUndispatched {
+			grip.Info(message.Fields{
+				"lookhere":                "evg-3455",
+				"message":                 "task reset with zero time",
+				"task_id":                 t.Id,
+				"dispatchtime_is_go_zero": t.DispatchTime.IsZero(),
+				"caller":                  caller,
+			})
 			if err = resetTask(t.Id, caller); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
@@ -45,6 +52,7 @@ func SetActiveState(taskId string, caller string, active bool) error {
 			if err = t.ActivateTask(caller); err != nil {
 				return errors.Wrap(err, "error while activating task")
 			}
+			event.LogTaskActivated(taskId, t.Execution, caller)
 		}
 
 		if t.DistroId == "" {
@@ -78,14 +86,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
+		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	} else {
 		return nil
-	}
-
-	if active {
-		event.LogTaskActivated(taskId, t.Execution, caller)
-	} else {
-		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	}
 
 	if t.IsPartOfDisplay() {
@@ -481,17 +484,6 @@ func updateMakespans(b *build.Build) error {
 	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks)))
 }
 
-func isUnexpectedFailStatus(status string) bool {
-	isExpectedFailStatus := status == evergreen.TaskFailed ||
-		status == evergreen.TaskSucceeded ||
-		status == evergreen.TaskSystemFailed ||
-		status == evergreen.TaskSystemTimedOut ||
-		status == evergreen.TaskSystemUnresponse ||
-		status == evergreen.TaskTestTimedOut
-
-	return !isExpectedFailStatus
-}
-
 // UpdateBuildStatusForTask finds all the builds for a task and updates the
 // status of the build based on the task's status.
 func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
@@ -528,15 +520,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			if err != nil {
 				return err
 			}
-			grip.ErrorWhen(isUnexpectedFailStatus(t.Status), message.Fields{
-				"lookhere":           "evg-3455",
-				"task_id":            t.Id,
-				"task_status":        t.Status,
-				"task_dispatch_time": t.DispatchTime,
-				"task_is_display":    t.DisplayOnly,
-				"task_is_execution":  displayTask != nil,
-				"execution_tasks":    t.ExecutionTasks,
-			})
 			if displayTask != nil {
 				err = displayTask.UpdateDisplayTask()
 				if err != nil {

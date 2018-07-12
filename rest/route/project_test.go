@@ -149,10 +149,10 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	// invalid limit
 	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?limit=asdf", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid limit")
+	s.EqualError(getVersions.ParseAndValidate(ctx, request), "400 (Bad Request): Invalid limit")
 
 	// invalid offset
 	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid offset")
+	s.EqualError(getVersions.ParseAndValidate(ctx, request), "400 (Bad Request): Invalid offset")
 }

@@ -48,7 +48,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 
 	_, err = modifyHostStatus(env.LocalQueue(), &h2, &opts2, &user2)
 	assert.NotNil(err)
-	assert.Equal(err.Error(), DecommissionStaticHostError)
+	assert.Contains(err.Error(), DecommissionStaticHostError)
 
 	user3 := user.DBUser{Id: "user3"}
 	h3 := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
@@ -56,5 +56,5 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 
 	_, err = modifyHostStatus(env.LocalQueue(), &h3, &opts3, &user3)
 	assert.NotNil(err)
-	assert.Equal(err.Error(), fmt.Sprintf(InvalidStatusError, "undefined"))
+	assert.Contains(err.Error(), fmt.Sprintf(InvalidStatusError, "undefined"))
 }

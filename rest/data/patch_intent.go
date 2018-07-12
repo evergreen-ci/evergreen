@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -21,20 +21,20 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
 	if err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "failed to fetch project_ref",
 		}
 	}
 	if projectRef == nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusUnprocessableEntity,
 			Message:    "cannot map pull request to project",
 		}
 	}
 
 	if err := intent.Insert(); err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "couldn't insert patch intent",
 		}
@@ -49,7 +49,7 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 			"intent_id": intent.ID(),
 		}))
 
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "failed to queue patch intent for processing",
 		}

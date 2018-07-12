@@ -558,3 +558,64 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	lookup = settings.ContainerPools.GetContainerPool("test-pool-3")
 	s.Nil(lookup)
 }
+
+func (s *AdminSuite) TestJIRANotificationsConfig() {
+	c := JIRANotificationsConfig{
+		CustomFields: JIRACustomFieldsByProject{
+			{
+				Project: "this",
+				Fields: []JIRANotificationsCustomField{
+					{
+						Field:    "should",
+						Template: "disappear",
+					},
+				},
+			},
+		},
+	}
+	s.NoError(c.Get())
+	s.NotNil(c)
+	s.Nil(c.CustomFields)
+	s.NotPanics(func() {
+		s.NoError(c.ValidateAndDefault())
+	})
+
+	c.CustomFields = JIRACustomFieldsByProject{
+		{
+			Project: "EVG",
+			Fields: []JIRANotificationsCustomField{
+				{
+					Field:    "customfield_12345",
+					Template: "magical{{.Template.Expansion}}",
+				},
+			},
+		},
+	}
+	s.NoError(c.Set())
+
+	c = JIRANotificationsConfig{}
+	s.NoError(c.Get())
+	s.NoError(c.ValidateAndDefault())
+	m, err := c.CustomFields.ToMap()
+	s.NoError(err)
+	s.Require().Len(m, 1)
+	s.Require().Len(m["EVG"], 1)
+	s.Equal("magical{{.Template.Expansion}}", m["EVG"]["customfield_12345"])
+	s.NoError(c.ValidateAndDefault())
+
+	c = JIRANotificationsConfig{}
+	s.NoError(c.Set())
+	s.NoError(c.ValidateAndDefault())
+	c.CustomFields = JIRACustomFieldsByProject{
+		{
+			Project: "this",
+			Fields: []JIRANotificationsCustomField{
+				{
+					Field:    "is",
+					Template: "{{.Invalid}",
+				},
+			},
+		},
+	}
+	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: unexpected \"}\" in operand")
+}

@@ -8,7 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -36,7 +36,7 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) 
 		return nil, err
 	}
 	if p == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch with id %s not found", patchId),
 		}
@@ -52,7 +52,7 @@ func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
 		return err
 	}
 	if p == nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch with id %s not found", patchId),
 		}
@@ -98,7 +98,7 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 	err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
 		owner, repo, *event.Number)
 	if err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error aborting patches",
 		}
@@ -153,7 +153,7 @@ func (pc *MockPatchConnector) FindPatchById(patchId string) (*patch.Patch, error
 			return &pc.CachedPatches[idx], nil
 		}
 	}
-	return nil, &rest.APIError{
+	return nil, gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("patch with id %s not found", patchId),
 	}
@@ -171,7 +171,7 @@ func (pc *MockPatchConnector) AbortPatch(patchId string, user string) error {
 		}
 	}
 	if foundPatch == nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("patch with id %s not found", patchId),
 		}
@@ -238,7 +238,7 @@ func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, str
 	if event.Number == nil || event.Repo == nil ||
 		event.Repo.FullName == nil || event.PullRequest == nil ||
 		event.PullRequest.ClosedAt == nil {
-		return "", "", &rest.APIError{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "pull request data is malformed",
 		}
@@ -246,7 +246,7 @@ func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, str
 
 	baseRepo := strings.Split(*event.Repo.FullName, "/")
 	if len(baseRepo) != 2 {
-		return "", "", &rest.APIError{
+		return "", "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "repository name is invalid",
 		}

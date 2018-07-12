@@ -3,9 +3,10 @@
   body{ background: #f5f6f7; }
 </style>
 <script type="text/javascript">
-  window.plugins = {{.PluginContent.Data}}
-  window.jiraHost = {{.JiraHost}}
-  window.hasBanner = {{ne .Banner ""}}
+  window.plugins = {{.PluginContent.Data}};
+  window.jiraHost = {{.JiraHost}};
+  window.hasBanner = {{ne .Banner ""}};
+  window.isAdmin = {{.IsProjectAdmin}};
 </script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
@@ -129,6 +130,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       </li>
                       <li>
                         <a tabindex="-1" href="#" ng-click="addSubscription()">Add Notification</a>
+                      </li>
+                      <li ng-show="isAdmin && task.depends_on && task.depends_on.length > 0">
+                        <a tabindex="-1" href="#" ng-click="overrideDependencies()">Override Dependencies</a>
                       </li>
                     </ul>
                 </div>
@@ -304,6 +308,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   </tr>
                 </tbody>
               </table>
+              <div ng-show="task.override_dependencies" style="margin-top:10px;">
+                Dependencies for this task have been overridden. It will not wait for its dependencies to finish before running.
+              </div>
             </div>
           </div>
         </div>
@@ -334,7 +341,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
               <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                 <li role="presentation" class="dropdown-header">Sort Options</li>
                 <li role="presentation" ng-repeat="order in sortOrders">
-                  <a role="menuitem" ng-click="setSortBy(order)">
+                  <a role="menuitem" ng-click="setSortBy(order);" href="javascript:return false;">
                     [[order.name]]
                   </a>
                 </li>
@@ -375,7 +382,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 </tr>
               </thead>
               <tbody data-test-results="task.test_results">
-                <tr ng-repeat="test in sortedTests"
+                <tr ng-repeat="test in task.test_results | orderBy:sortBy.by:sortBy.reverse"
                     ng-show="test.test_result.status != 'skip'"
                     class="test-result-row"
                     ng-class="test.test_result.display_name == hash.test | conditional:'highlight-bg':''">

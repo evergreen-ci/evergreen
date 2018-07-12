@@ -261,11 +261,13 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
       });
 
-      mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash, $mdDialog, mciSubscriptionsService, notificationService, $mdToast) {
+      mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window,
+      $http, $locationHash, $mdDialog, mciSubscriptionsService, notificationService, $mdToast, mciTasksRestService) {
         $scope.userTz = $window.userTz;
         $scope.haveUser = $window.have_user;
         $scope.taskHost = $window.taskHost;
         $scope.jiraHost = $window.jiraHost;
+        $scope.isAdmin = $window.isAdmin;
         $scope.subscriptions = [];
 
         $scope.triggers = [
@@ -328,6 +330,22 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           mciSubscriptionsService.post($scope.subscriptions, { success: success, error: failure });
         }
 
+        $scope.overrideDependencies = function() {
+          mciTasksRestService.takeActionOnTask(
+            $scope.task.id,
+            'override_dependencies',
+            {},
+            {
+              success: function(resp) {
+                $window.location.reload();
+              },
+              error: function(resp) {
+                notificationService.pushNotification('Error overriding dependencies: ' + resp.data, 'errorModal');
+              }
+            }
+          );
+        }
+
         // Returns true if 'testResult' represents a test failure, and returns false otherwise.
         $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {
           var failureStatuses = ['fail', 'silentfail'];
@@ -383,10 +401,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       }
 
       $scope.setSortBy = function(order) {
-        // Storing sorted results for future use in multiple places
-        $scope.sortedTests = $filter('orderBy')(
-          $scope.task.test_results, order.by, order.reverse
-        )
         $scope.sortBy = order;
         hash.sort = order.name;
         $locationHash.set(hash);
@@ -454,7 +468,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           $scope.otherExecutions = _.range(task.total_executions + 1)
         }
 
-        $scope.setSortBy($scope.sortOrders[0])
+        $scope.sortBy = $scope.sortOrders[0];
 
         $scope.isMet = function(dependency) {
           // check if a dependency is met, unmet, or in progress
@@ -681,11 +695,11 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       var isFinished = function(status) {
         switch (status) {
           case "success":
-            return true
+          return true;
           case "failed":
-            return true
+          return true;
           default:
-            return false
+          return false;
         }
       }
 

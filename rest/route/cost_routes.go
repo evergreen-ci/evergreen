@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -51,19 +50,13 @@ func (cbvh *costByVersionHandler) ParseAndValidate(ctx context.Context, r *http.
 func (cbvh *costByVersionHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundVersionCost, err := sc.FindCostByVersionId(cbvh.versionId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	versionCostModel := &model.APIVersionCost{}
 	err = versionCostModel.BuildFromService(foundVersionCost)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 	return ResponseData{
 		Result: []model.Model{versionCostModel},
@@ -102,7 +95,7 @@ func parseTime(r *http.Request) (time.Time, time.Duration, error) {
 
 	// Invalid if not both starttime and duration are given.
 	if startTime == "" || duration == "" {
-		return time.Time{}, 0, rest.APIError{
+		return time.Time{}, 0, gimlet.ErrorResponse{
 			Message:    "both starttime and duration must be given as form values",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -111,7 +104,7 @@ func parseTime(r *http.Request) (time.Time, time.Duration, error) {
 	// Parse time information.
 	st, err := time.Parse(time.RFC3339, startTime)
 	if err != nil {
-		return time.Time{}, 0, rest.APIError{
+		return time.Time{}, 0, gimlet.ErrorResponse{
 			Message: fmt.Sprintf("problem parsing time from '%s' (%s). Time must be given in the following format: %s",
 				startTime, err.Error(), time.RFC3339),
 			StatusCode: http.StatusBadRequest,
@@ -119,7 +112,7 @@ func parseTime(r *http.Request) (time.Time, time.Duration, error) {
 	}
 	d, err := time.ParseDuration(duration)
 	if err != nil {
-		return time.Time{}, 0, rest.APIError{
+		return time.Time{}, 0, gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("problem parsing duration from '%s' (%s). Duration must be given in the following format: 4h, 2h45m, etc.", duration, err.Error()),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -146,19 +139,13 @@ func (cbvh *costByDistroHandler) ParseAndValidate(ctx context.Context, r *http.R
 func (cbvh *costByDistroHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundDistroCost, err := sc.FindCostByDistroId(cbvh.distroId, cbvh.startTime, cbvh.duration)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	distroCostModel := &model.APIDistroCost{}
 	err = distroCostModel.BuildFromService(foundDistroCost)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 	return ResponseData{
 		Result: []model.Model{distroCostModel},
@@ -228,19 +215,13 @@ func costTasksByProjectPaginator(key string, limit int, args interface{},
 
 	tasks, err := sc.FindCostTaskByProject(project, key, starttime, endttime, limit*2, 1)
 	if err != nil {
-		if _, ok := err.(rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	// Make the previous page
 	prevTasks, err := sc.FindCostTaskByProject(project, key, starttime, endttime, limit, -1)
 	if err != nil {
-		if _, ok := err.(rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	// Populate page info
@@ -267,7 +248,7 @@ func costTasksByProjectPaginator(key string, limit int, args interface{},
 	for _, t := range tasks {
 		taskCostModel := &model.APITaskCost{}
 		if err = taskCostModel.BuildFromService(t); err != nil {
-			return []model.Model{}, nil, rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    "problem converting task to APITaskCost",
 				StatusCode: http.StatusInternalServerError,
 			}

@@ -34,34 +34,34 @@ func makeHostCreateRouteManager(sc data.Connector) gimlet.RouteHandler {
 
 func (h *hostCreateHandler) Factory() gimlet.RouteHandler { return &hostCreateHandler{sc: h.sc} }
 
-func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
 	if taskID == "" {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "must provide task ID",
 		}
 	}
 	h.taskID = taskID
 	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    "task is invalid",
 		}
 	}
 	if _, code, err := dbModel.ValidateHost("", r); err != nil {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    "host is invalid",
 		}
 	}
 	if err := util.ReadJSONInto(r.Body, h.createHost); err != nil {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
 		}
 	}
-	return ctx, nil
+	return nil
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
@@ -178,16 +178,16 @@ func makeHostListRouteManager(sc data.Connector) gimlet.RouteHandler {
 
 func (h *hostListHandler) Factory() gimlet.RouteHandler { return &hostListHandler{sc: h.sc} }
 
-func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
 	if taskID == "" {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "must provide task ID",
 		}
 	}
 	h.taskID = taskID
-	return ctx, nil
+	return nil
 }
 
 func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {

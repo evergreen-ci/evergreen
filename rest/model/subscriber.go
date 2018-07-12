@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -80,7 +80,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 	case event.GithubPullRequestSubscriberType:
 		apiModel := APIGithubPRSubscriber{}
 		if err := mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return nil, rest.APIError{
+			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Subscriber target is malformed",
 			}
@@ -93,7 +93,7 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 	case event.EvergreenWebhookSubscriberType:
 		apiModel := APIWebhookSubscriber{}
 		if err := mapstructure.Decode(s.Target, &apiModel); err != nil {
-			return nil, rest.APIError{
+			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf("webhook subscriber is malformed: %s", err.Error()),
 			}
