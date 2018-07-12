@@ -26,6 +26,11 @@ type JiraOptions struct {
 	BaseURL  string // URL of the JIRA instance
 	Username string
 	Password string
+	// UseBasicAuth, if true, indicates that authentication should be
+	// handled using HTTP Basic authentication, instead of Cookie
+	// authenatication. Consult your JIRA administrator regarding API
+	// settings
+	UseBasicAuth bool
 
 	HTTPClient *http.Client
 	client     jiraClient
@@ -53,7 +58,7 @@ func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
 		return nil, err
 	}
 
-	if err := j.opts.client.Authenticate(opts.Username, opts.Password); err != nil {
+	if err := j.opts.client.Authenticate(opts.UseBasicAuth, opts.Username, opts.Password); err != nil {
 		return nil, fmt.Errorf("jira authentication error: %v", err)
 	}
 
@@ -188,7 +193,7 @@ func getFields(m message.Composer) *jira.IssueFields {
 
 type jiraClient interface {
 	CreateClient(*http.Client, string) error
-	Authenticate(string, string) error
+	Authenticate(bool, string, string) error
 	PostIssue(*jira.IssueFields) error
 	PostComment(string, string) error
 }
@@ -203,14 +208,22 @@ func (c *jiraClientImpl) CreateClient(client *http.Client, baseURL string) error
 	return err
 }
 
-func (c *jiraClientImpl) Authenticate(username string, password string) error {
-	authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
-	if err != nil {
-		return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
-	}
+func (c *jiraClientImpl) Authenticate(useBasicAuth bool, username string, password string) error {
+	if useBasicAuth {
+		c.Client.Authentication.SetBasicAuth(username, password)
+		if !c.Client.Authentication.Authenticated() {
+			return fmt.Errorf("problem authenticating to jira with basic auth as '%s'", username)
+		}
 
-	if !authed {
-		return fmt.Errorf("problem authenticating to jira as '%s'", username)
+	} else {
+		authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
+		if err != nil {
+			return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
+		}
+
+		if !authed {
+			return fmt.Errorf("problem authenticating to jira as '%s'", username)
+		}
 	}
 	return nil
 }

@@ -211,3 +211,21 @@ func (j *JiraSuite) TestCustomFields() {
 	j.Equal([]string{"hi", "bye"}, mock.lastFields.Unknowns["customfield_12345"])
 	j.Equal("test", mock.lastFields.Summary)
 }
+
+func (j *JiraSuite) TestBasicAuth() {
+	j.opts.UseBasicAuth = true
+	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	j.NotNil(sender)
+	j.NoError(err, "")
+
+	j.opts.Password = ""
+	sender, err = NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	j.Nil(sender)
+	j.EqualError(err, "no password specified")
+
+	j.opts.Password = "Something!@#1"
+	j.opts.Username = ""
+	sender, err = NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	j.Nil(sender)
+	j.EqualError(err, "no username specified")
+}
