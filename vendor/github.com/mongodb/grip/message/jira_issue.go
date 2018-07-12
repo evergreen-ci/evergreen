@@ -79,7 +79,7 @@ func NewJiraMessage(project, summary string, fields ...JiraField) Composer {
 
 func (m *jiraMessage) String() string   { return m.issue.Summary }
 func (m *jiraMessage) Raw() interface{} { return m.issue }
-func (m *jiraMessage) Loggable() bool   { return m.issue.Summary != "" }
+func (m *jiraMessage) Loggable() bool   { return m.issue.Summary != "" && m.issue.Type != "" }
 func (m *jiraMessage) Annotate(k string, v interface{}) error {
 	if m.issue.Fields == nil {
 		m.issue.Fields = map[string]interface{}{}
