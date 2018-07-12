@@ -7,13 +7,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -341,7 +339,6 @@ func TestJIRADescription(t *testing.T) {
 }
 
 func TestCustomFields(t *testing.T) {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	const (
 		jiraFailingTasksField     = "customfield_12950"
 		jiraFailingTestsField     = "customfield_15756"
@@ -418,9 +415,4 @@ func TestCustomFields(t *testing.T) {
 	assert.Len(customFields[jiraFailingTestsField], 2)
 	assert.Contains(customFields[jiraFailingTestsField], testName1)
 	assert.Contains(customFields[jiraFailingTestsField], testName2)
-
-	msg, err := j.build()
-	assert.NoError(err)
-	assert.NotNil(msg)
-	assert.Equal("Build Failure", msg.Type)
 }
