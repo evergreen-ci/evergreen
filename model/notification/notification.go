@@ -119,7 +119,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return message.NewEmailMessage(level.Notice, *payload), nil
 
 	case event.JIRAIssueSubscriberType:
-		project, ok := n.Subscriber.Target.(*string)
+		jiraIssue, ok := n.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {
 			return nil, errors.New("jira-issue subscriber is invalid")
 		}
@@ -128,7 +128,8 @@ func (n *Notification) Composer() (message.Composer, error) {
 			return nil, errors.New("jira-issue payload is invalid")
 		}
 
-		payload.Project = *project
+		payload.Project = jiraIssue.Project
+		payload.Type = jiraIssue.IssueType
 
 		return message.MakeJiraMessage(*payload), nil
 

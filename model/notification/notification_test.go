@@ -230,14 +230,16 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 func (s *notificationSuite) TestJIRAIssuePayload() {
 	s.n.ID = "1"
 	s.n.Subscriber.Type = event.JIRAIssueSubscriberType
-	issue := "1234"
+	issue := event.JIRAIssueSubscriber{
+		Project:   "ABC",
+		IssueType: "Magic",
+	}
 	s.n.Subscriber.Target = &issue
 	s.n.Payload = &message.JiraIssue{
 		Summary:     "1",
 		Description: "2",
 		Reporter:    "3",
 		Assignee:    "4",
-		Type:        "5",
 		Components:  []string{"6"},
 		Labels:      []string{"7"},
 		Fields: map[string]interface{}{
