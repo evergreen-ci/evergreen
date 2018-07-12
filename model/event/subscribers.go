@@ -95,9 +95,9 @@ func (s *Subscriber) String() string {
 		subscriberStr = v.String()
 
 	case JIRAIssueSubscriber:
-		v.String()
+		subscriberStr = v.String()
 	case *JIRAIssueSubscriber:
-		v.String()
+		subscriberStr = v.String()
 
 	case string:
 		subscriberStr = v

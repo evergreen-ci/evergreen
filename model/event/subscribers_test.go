@@ -37,8 +37,11 @@ func TestSubscribers(t *testing.T) {
 			Target: &email,
 		},
 		{
-			Type:   JIRAIssueSubscriberType,
-			Target: &targetProject,
+			Type: JIRAIssueSubscriberType,
+			Target: &JIRAIssueSubscriber{
+				Project:   targetProject,
+				IssueType: "Fail",
+			},
 		},
 		{
 			Type:   JIRACommentSubscriberType,
@@ -47,7 +50,7 @@ func TestSubscribers(t *testing.T) {
 	}
 	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad",
 		"evergreen-webhook-https://example.com", "email-hi@example.com",
-		"jira-issue-BF", "jira-comment-BF-1234"}
+		"jira-issue-BF-Fail", "jira-comment-BF-1234"}
 	for i := range subs {
 		assert.NoError(db.Insert(SubscriptionsCollection, subs[i]))
 		assert.Equal(expected[i], subs[i].String())

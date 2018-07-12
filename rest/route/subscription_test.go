@@ -297,9 +297,12 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 			"type": "object",
 			"data": "version",
 		}},
-		"subscriber": map[string]string{
-			"type":   "jira-issue",
-			"target": "ABC",
+		"subscriber": map[string]interface{}{
+			"type": "jira-issue",
+			"target": map[string]string{
+				"project":    "ABC",
+				"issue_type": "Test",
+			},
 		},
 	}}
 	jsonBody, err := json.Marshal(body)
@@ -319,9 +322,12 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 			"type": "project",
 			"data": "mci",
 		}},
-		"subscriber": map[string]string{
-			"type":   "jira-issue",
-			"target": "ABC",
+		"subscriber": map[string]interface{}{
+			"type": "jira-issue",
+			"target": map[string]string{
+				"project":    "ABC",
+				"issue_type": "Test",
+			},
 		},
 	}}
 	jsonBody, err = json.Marshal(body)

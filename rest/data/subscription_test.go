@@ -28,7 +28,7 @@ func TestGetSubscriptions(t *testing.T) {
 				},
 			},
 			Subscriber: event.Subscriber{
-				Type:   event.JIRAIssueSubscriberType,
+				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
 			},
 		},
@@ -45,7 +45,7 @@ func TestGetSubscriptions(t *testing.T) {
 				},
 			},
 			Subscriber: event.Subscriber{
-				Type:   event.JIRAIssueSubscriberType,
+				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
 			},
 		},
