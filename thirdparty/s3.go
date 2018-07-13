@@ -17,7 +17,6 @@ import (
 	"time"
 
 	awsSDK "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	awsS3 "github.com/aws/aws-sdk-go/service/s3"
@@ -228,10 +227,9 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		return errors.Wrapf(err, "Error getting stats for file %s", localFilePath)
 	}
 	size := fileInfo.Size()
-	buffer := make([]byte, size)
-	_, err = file.Read(buffer)
+	buffer, err := ioutil.ReadAll(file)
 	if err != nil {
-		return errors.Wrapf(err, "Error reading bytes of file %S", localFilePath)
+		return errors.Wrapf(err, "Error reading bytes of file %s", localFilePath)
 	}
 
 	// Step 1: initiate multipart upload
@@ -283,12 +281,6 @@ func createPart(svc *awsS3.S3, bucket awsS3.CreateBucketInput, localFilePath,
 
 	result, err := svc.CreateMultipartUpload(creationInput)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				return nil, aerr
-			}
-		}
 		return nil, errors.Wrap(err, "Error creating part for multipart upload")
 	}
 	return result, nil
@@ -308,12 +300,6 @@ func uploadPart(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOutput,
 	}
 	uploadResult, err := svc.UploadPart(uploadInput)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				return nil, aerr
-			}
-		}
 		return nil, errors.Wrap(err, "Error uploading parts to multipart upload")
 	}
 	uploadedPart := &awsS3.CompletedPart{
@@ -337,12 +323,6 @@ func completeMultipartUpload(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOut
 	}
 	_, err := svc.CompleteMultipartUpload(completeInput)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				return aerr
-			}
-		}
 		return errors.Wrap(err, "Error completing multipart upload")
 	}
 	return nil
@@ -358,12 +338,6 @@ func abortMultipartUpload(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOutput
 	}
 	_, err := svc.AbortMultipartUpload(abortInput)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				return aerr
-			}
-		}
 		return errors.Wrap(err, "Error aborting multipart upload")
 	}
 	return nil

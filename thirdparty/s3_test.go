@@ -40,6 +40,29 @@ func TestPutS3File(t *testing.T) {
 	assert.Equal(randStr, string(data[:]))
 }
 
+func TestPutS3FileMultiPart(t *testing.T) {
+	assert := assert.New(t)
+
+	bigBuff := make([]byte, 6000000)
+	ioutil.WriteFile("bigfile.test", bigBuff, 0666)
+
+	// put the test file on S3
+	auth := &aws.Auth{
+		AccessKey: testConfig.Providers.AWS.Id,
+		SecretKey: testConfig.Providers.AWS.Secret,
+	}
+	err := PutS3File(auth, "bigfile.test", sourceURL, "application/x-tar", "public-read")
+	assert.NoError(err)
+
+	// get s3 file and read contents
+	rc, err := GetS3File(auth, sourceURL, "bigfile.test")
+	assert.NoError(err)
+	data, err := ioutil.ReadAll(rc)
+	defer rc.Close()
+	assert.NoError(err)
+	assert.Equal(6000000, len(data))
+}
+
 func TestLegacyGetS3FileWithLegacyPut(t *testing.T) {
 	assert := assert.New(t)
 	//Make a test file with some random content.
