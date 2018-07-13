@@ -44,14 +44,15 @@ func TestPutS3FileMultiPart(t *testing.T) {
 	assert := assert.New(t)
 
 	bigBuff := make([]byte, 6000000)
-	ioutil.WriteFile("bigfile.test", bigBuff, 0666)
+	err := ioutil.WriteFile("bigfile.test", bigBuff, 0666)
+	assert.NoError(err)
 
 	// put the test file on S3
 	auth := &aws.Auth{
 		AccessKey: testConfig.Providers.AWS.Id,
 		SecretKey: testConfig.Providers.AWS.Secret,
 	}
-	err := PutS3File(auth, "bigfile.test", sourceURL, "application/x-tar", "public-read")
+	err = PutS3File(auth, "bigfile.test", sourceURL, "application/x-tar", "public-read")
 	assert.NoError(err)
 
 	// get s3 file and read contents
