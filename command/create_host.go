@@ -52,6 +52,7 @@ func (c *createHost) populateUserdata() error {
 	if err != nil {
 		return errors.Wrap(err, "error opening UserData file")
 	}
+	defer file.Close()
 	fileData, err := ioutil.ReadAll(file)
 	if err != nil {
 		return errors.Wrap(err, "error reading UserData file")
