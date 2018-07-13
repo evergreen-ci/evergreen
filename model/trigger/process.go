@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -15,6 +16,15 @@ import (
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification, error) {
+	grip.Info(message.Fields{
+		"source":              "events-processing",
+		"message":             "processed event",
+		"event_id":            e.Id.Hex(),
+		"event_type":          e.EventType,
+		"event_resource_type": e.ResourceType,
+		"event_resource":      e.ResourceId,
+		"num_notifications":   len(subscriptions),
+	})
 	h := registry.eventHandler(e.ResourceType, e.EventType)
 	if h == nil {
 		return nil, errors.Errorf("unknown event ResourceType '%s' or EventType '%s'", e.ResourceType, e.EventType)
@@ -28,6 +38,15 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	if err != nil {
 		return nil, errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
 	}
+	grip.Info(message.Fields{
+		"source":              "events-processing",
+		"message":             "processing event",
+		"event_id":            e.Id.Hex(),
+		"event_type":          e.EventType,
+		"event_resource_type": e.ResourceType,
+		"event_resource":      e.ResourceId,
+		"num_subscriptions":   len(subscriptions),
+	})
 	if len(subscriptions) == 0 {
 		return nil, nil
 	}
