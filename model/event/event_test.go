@@ -131,6 +131,14 @@ func (s *eventSuite) TestWithRealData() {
 		s.NoError(err)
 		s.Equal(expectedJSON, string(bytes))
 	})
+
+	// check that string IDs are preserved in the DB
+	data[idKey] = "elephant"
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: "elephant"}))
+	s.NoError(err)
+	s.Len(entries, 1)
+	s.Equal("elephant", entries[0].ID)
 }
 
 func (s *eventSuite) TestEventWithNilData() {
