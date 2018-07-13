@@ -233,7 +233,7 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 	}
 
 	// Step 1: initiate multipart upload
-	resp, err := createPart(svc, bucket, localFilePath, contentType)
+	resp, err := createPart(svc, bucket, urlParsed.Path, contentType)
 	if err != nil {
 		return errors.Wrap(err, "Error initiating part")
 	}
@@ -271,11 +271,11 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 }
 
 // createPart initiates a multipart upload
-func createPart(svc *awsS3.S3, bucket awsS3.CreateBucketInput, localFilePath,
+func createPart(svc *awsS3.S3, bucket awsS3.CreateBucketInput, path,
 	contentType string) (*awsS3.CreateMultipartUploadOutput, error) {
 	creationInput := &awsS3.CreateMultipartUploadInput{
 		Bucket:      awsSDK.String(*bucket.Bucket),
-		Key:         awsSDK.String(localFilePath),
+		Key:         awsSDK.String(path),
 		ContentType: awsSDK.String(contentType),
 	}
 
@@ -358,7 +358,7 @@ func legacyGetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 	return bucket.GetReader(urlParsed.Path)
 }
 
-func GetS3File(auth *aws.Auth, s3URL, filePath string) (io.ReadCloser, error) {
+func GetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 	if !newCode {
 		return legacyGetS3File(auth, s3URL)
 	}
@@ -384,7 +384,7 @@ func GetS3File(auth *aws.Auth, s3URL, filePath string) (io.ReadCloser, error) {
 
 	input := &awsS3.GetObjectInput{
 		Bucket: bucket.Bucket,
-		Key:    awsSDK.String(filePath),
+		Key:    awsSDK.String(urlParsed.Path),
 	}
 	rc, err := svc.GetObject(input)
 	if err != nil {

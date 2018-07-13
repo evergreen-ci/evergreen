@@ -32,7 +32,7 @@ func TestPutS3File(t *testing.T) {
 	assert.NoError(err)
 
 	// get s3 file and read contents
-	rc, err := GetS3File(auth, sourceURL, tempfile.Name())
+	rc, err := GetS3File(auth, sourceURL)
 	assert.NoError(err)
 	data, err := ioutil.ReadAll(rc)
 	defer rc.Close()
@@ -56,7 +56,7 @@ func TestPutS3FileMultiPart(t *testing.T) {
 	assert.NoError(err)
 
 	// get s3 file and read contents
-	rc, err := GetS3File(auth, sourceURL, "bigfile.test")
+	rc, err := GetS3File(auth, sourceURL)
 	assert.NoError(err)
 	data, err := ioutil.ReadAll(rc)
 	defer rc.Close()
