@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -40,6 +41,9 @@ type dockerClientImpl struct {
 	httpClient *http.Client
 	client     *docker.Client
 }
+
+// template string for new images with agent
+const newImageName string = "%s-agent"
 
 // generateClient generates a Docker client that can talk to the specified host
 // machine. The Docker client must be exposed and available for requests at the
@@ -83,6 +87,10 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	c.httpClient = util.GetHTTPClient()
 
 	// allow connections to Docker daemon with self-signed certificates
+	_, ok := c.httpClient.Transport.(*http.Transport)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold a *http.Transport")
+	}
 	c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true
 
 	return nil
@@ -99,13 +107,17 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	}
 
 	// modify tag for new image
-	newImage := baseImage + "-agent"
+	newImage := fmt.Sprintf(newImageName, baseImage)
 
 	executableSubPath := h.Distro.ExecutableSubPath()
 	binaryName := h.Distro.BinaryName()
 
 	// build dockerfile route
-	dockerfileUrl := settings.ApiUrl + dockerfileRoute
+	dockerfileUrl := strings.Join([]string{
+		settings.ApiUrl,
+		evergreen.APIRoutePrefixV2,
+		dockerfileRoute,
+	}, "")
 
 	options := types.ImageBuildOptions{
 		BuildArgs: map[string]*string{

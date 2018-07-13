@@ -33,7 +33,7 @@ type apiVersion string
 
 const (
 	apiVersion1 apiVersion = "/api/2"
-	apiVersion2 apiVersion = "/rest/v2"
+	apiVersion2 apiVersion = evergreen.APIRoutePrefixV2
 )
 
 // Method is an "enum" for the supported HTTP methods
