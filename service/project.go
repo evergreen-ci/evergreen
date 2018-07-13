@@ -210,7 +210,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		SetupGithubHook      bool                        `json:"setup_github_hook"`
 		ForceRepotrackerRun  bool                        `json:"force_repotracker_run"`
 		Subscriptions        []restModel.APISubscription `json:"subscriptions"`
-		DeleteSubscriptions  []bson.ObjectId             `json:"delete_subscriptions"`
+		DeleteSubscriptions  []string                    `json:"delete_subscriptions"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {

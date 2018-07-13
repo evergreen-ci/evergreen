@@ -34,17 +34,17 @@ func (s *notificationSuite) SetupTest() {
 
 	events := []event.EventLogEntry{
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 		},
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeHost,
 			Data:         event.HostEventData{},
 			ProcessedAt:  s.expectedTime,

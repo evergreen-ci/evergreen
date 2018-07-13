@@ -218,7 +218,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	subs := []event.Subscription{
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    e.ResourceType,
 			Trigger: "outcome",
 			Selectors: []event.Selector{
@@ -236,7 +236,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    e.ResourceType,
 			Trigger: "outcome",
 			Selectors: []event.Selector{

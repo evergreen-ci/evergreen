@@ -93,11 +93,11 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	defer func() {
 		if r := recover(); r != nil {
 			n = nil
-			err = errors.Errorf("panicked while processing event %s", e.ID.Hex())
+			err = errors.Errorf("panicked while processing event %s", e.ID)
 			grip.Alert(message.WrapError(err, message.Fields{
 				"job":         eventMetaJobName,
 				"source":      "events-processing",
-				"event_id":    e.ID.Hex(),
+				"event_id":    e.ID,
 				"event_type":  e.ResourceType,
 				"panic_value": r,
 			}))
@@ -109,7 +109,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		"job":        eventMetaJobName,
 		"source":     "events-processing",
 		"message":    "errors processing triggers for event",
-		"event_id":   e.ID.Hex(),
+		"event_id":   e.ID,
 		"event_type": e.ResourceType,
 	}))
 
