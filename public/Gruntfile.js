@@ -8,17 +8,20 @@ module.exports = function(grunt) {
           options: {
             sourceMap: true,
             plugins: ['transform-react-jsx'],
-            presets: ['es2015', 'react'],
-          },
-          dist: {
+            presets: ['es2015', 'react']
+          }
+        },
+
+        react: {
+          dynamic_mappings: {
             files: [{
               expand: true,
-              cwd: 'static/app',
+              cwd: 'static/js/jsx',
               src: ['**/*.jsx'],
-              dest: 'static/dist/js',
-              ext: '.js',
+              dest: 'static/js',
+              ext: '.js'
             }]
-          },
+          }
         },
 
         watch: {
@@ -27,8 +30,8 @@ module.exports = function(grunt) {
             tasks: ['css']
           },
           react: {
-            files: ['static/app/**/*.jsx'],
-            tasks: ['babel']
+            files: ['static/js/jsx/**'],
+            tasks: ['react']
           }
         },
         

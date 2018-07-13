@@ -31,23 +31,13 @@ type amboyStatsCollector struct {
 	logger        grip.Journaler
 }
 
-// NewAmboyStatsCollector reports the status of the local and remote
-// queues registered in the evergreen service Environment.
-func NewAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
-	j := makeAmboyStatsCollector()
-	j.env = env
-	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
-
-	return j
-}
-
 // NewLocalAmboyStatsCollector reports the status of only the local queue
 // registered in the evergreen service Environment.
 func NewLocalAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
 	j := makeAmboyStatsCollector()
 	j.ExcludeRemote = true
 	j.env = env
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
 	return j
 }
 
@@ -57,7 +47,7 @@ func NewRemoteAmboyStatsCollector(env evergreen.Environment, id string) amboy.Jo
 	j := makeAmboyStatsCollector()
 	j.ExcludeLocal = true
 	j.env = env
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
 	return j
 }
 
