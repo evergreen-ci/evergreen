@@ -503,14 +503,6 @@ func durationNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAl
 	return numNewHosts, nil
 }
 
-// sortDistrosByNumStaticHosts returns a sorted slice of distros where the
-// distro with the greatest number of static host is first - at index position 0
-func sortDistrosByNumStaticHosts(distros []distro.Distro) []distro.Distro {
-	sortableDistroObj := &sortableDistroByNumStaticHost{distros}
-	sort.Sort(sortableDistroObj)
-	return sortableDistroObj.distros
-}
-
 // helpers for sorting the distros by the number of their static hosts
 func (sd *sortableDistroByNumStaticHost) Len() int {
 	return len(sd.distros)
