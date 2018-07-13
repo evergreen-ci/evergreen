@@ -200,7 +200,7 @@ func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *event.JIRAIssueSubscriber:
 		s.Project = ToAPIString(v.Project)
-		s.IssueType = ToAPIString(string(v.IssueType))
+		s.IssueType = ToAPIString(v.IssueType)
 
 	default:
 		return errors.New("unknown type for APIWebhookSubscriber")
