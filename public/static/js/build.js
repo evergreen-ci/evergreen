@@ -81,19 +81,16 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       trigger: "outcome",
       resource_type: "BUILD",
       label: "this build finishes",
-      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
       label: "this build fails",
-      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "success",
       resource_type: "BUILD",
       label: "this build succeeds",
-      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "exceeds-duration",
@@ -102,7 +99,6 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       extraFields: [
         {text: "Build duration (seconds)", key: "build-duration-secs", validator: validateDuration}
       ],
-      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "runtime-change",
@@ -111,7 +107,6 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       extraFields: [
         {text: "Percent change", key: "build-percent-change", validator: validatePercentage}
       ],
-      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "outcome",
