@@ -97,11 +97,10 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return errors.Wrap(err, "problem finding distro")
 	}
 
-	hostsSpawned, err := spawnHosts(ctx, newHosts, pool)
+	hostsSpawned, err := spawnHosts(ctx, distroSpec, newHosts, pool)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
-	hostList := hostsSpawned[conf.DistroID]
 
 	event.LogSchedulerEvent(event.SchedulerEventData{
 		TaskQueueInfo: res.schedulerEvent,
@@ -109,9 +108,8 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	})
 
 	var makespan time.Duration
-	numHosts := time.Duration(len(distroHosts) + len(hostsSpawned))
-	if numHosts != 0 {
-		makespan = res.schedulerEvent.ExpectedDuration / numHosts
+	if len(hostsSpawned) != 0 {
+		makespan = res.schedulerEvent.ExpectedDuration / time.Duration(len(hostsSpawned))
 	} else if res.schedulerEvent.TaskQueueLength > 0 {
 		makespan = res.schedulerEvent.ExpectedDuration
 	}
@@ -122,8 +120,8 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"distro":                 conf.DistroID,
 		"provider":               distroSpec.Provider,
 		"max_hosts":              distroSpec.PoolSize,
-		"new_hosts":              hostList,
-		"num_hosts":              len(hostList),
+		"new_hosts":              hostsSpawned,
+		"num_hosts":              len(hostsSpawned),
 		"queue":                  res.schedulerEvent,
 		"total_runtime":          res.schedulerEvent.ExpectedDuration.String(),
 		"predicted_makespan":     makespan.String(),

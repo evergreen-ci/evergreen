@@ -145,9 +145,8 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 func (s *HostAllocatorFuzzerSuite) TestHeuristics() {
 	for i := 0; i < s.settings.numIterations; i++ {
 		s.randomizeData()
-		hosts, err := s.allocator(s.ctx, s.testData)
+		newHosts, err := s.allocator(s.ctx, s.testData)
 		s.NoError(err)
-		newHosts := hosts[s.distroName]
 		queue := s.testData.taskQueueItems
 		queueSize := len(queue)
 		queueDuration := calcScheduledTasksDuration(queue)

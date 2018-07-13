@@ -22,11 +22,9 @@ type taskGroupData struct {
 	tasks []model.TaskQueueItem
 }
 
-func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (map[string]int, error) {
-	newHostsNeeded := make(map[string]int)
-
+func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
-	hostsNeeded := 0
+	newHostsNeeded := 0
 	groupedData := groupByTaskGroup(hostAllocatorData.existingHosts, hostAllocatorData.taskQueueItems)
 	for tg, data := range groupedData {
 		var maxHosts int
@@ -49,19 +47,17 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 			maxHosts)
 
 		if err != nil {
-			return nil, errors.Wrapf(err, "error calculating hosts for distro %s", hostAllocatorData.distro.Id)
+			return 0, errors.Wrapf(err, "error calculating hosts for distro %s", hostAllocatorData.distro.Id)
 		}
 
 		// add up total number of hosts needed for all groups
-		hostsNeeded += newHosts
+		newHostsNeeded += newHosts
 	}
-
-	newHostsNeeded[hostAllocatorData.distro.Id] = hostsNeeded
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
 		"distro":        hostAllocatorData.distro.Id,
-		"num_new_hosts": hostsNeeded,
+		"num_new_hosts": newHostsNeeded,
 		"message":       "requesting new hosts",
 	})
 

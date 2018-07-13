@@ -99,7 +99,7 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				// only distros with only static hosts should be zero
-				So(newHostsNeeded[distroIds[0]], ShouldEqual, 0)
+				So(newHostsNeeded, ShouldEqual, 0)
 			})
 	})
 }
@@ -831,7 +831,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				tasksAccountedFor := make(map[string]bool)
 				distroScheduleData := make(map[string]DistroScheduleData)
 
-				newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+				newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 					tasksAccountedFor, distroScheduleData)
 				So(err, ShouldBeNil)
 				So(newHosts, ShouldEqual, 0)
@@ -855,7 +855,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			tasksAccountedFor := make(map[string]bool)
 			distroScheduleData := make(map[string]DistroScheduleData)
 
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -873,7 +873,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			tasksAccountedFor = make(map[string]bool)
 			distroScheduleData = make(map[string]DistroScheduleData)
 
-			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -903,7 +903,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			tasksAccountedFor := make(map[string]bool)
 			distroScheduleData := make(map[string]DistroScheduleData)
 
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -931,7 +931,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			tasksAccountedFor := make(map[string]bool)
 			distroScheduleData := make(map[string]DistroScheduleData)
 
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -968,7 +968,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				So(t.Insert(), ShouldBeNil)
 			}
 
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -1029,7 +1029,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 
 			// total running duration here is
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
@@ -1044,7 +1044,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			tasksAccountedFor = make(map[string]bool)
 			distroScheduleData = make(map[string]DistroScheduleData)
 
-			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
@@ -1058,7 +1058,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			tasksAccountedFor = make(map[string]bool)
 			distroScheduleData = make(map[string]DistroScheduleData)
 
-			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 2)
@@ -1072,7 +1072,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 			tasksAccountedFor = make(map[string]bool)
 
-			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err = durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 1)
@@ -1110,7 +1110,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			tasksAccountedFor := make(map[string]bool)
 			distroScheduleData := make(map[string]DistroScheduleData)
 
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -1154,7 +1154,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				So(t.Insert(), ShouldBeNil)
 			}
 
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
@@ -1203,7 +1203,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			// duration estimate: 11
 			// max new hosts allowed: 15
 			// 'one-host-per-scheduled-task': 3
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
@@ -1254,7 +1254,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			// duration estimate: 2
 			// max new hosts allowed: 15
 			// 'one-host-per-scheduled-task': 3
-			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData, dist,
+			newHosts, err := durationNumNewHostsForDistro(ctx, hostAllocatorData,
 				tasksAccountedFor, distroScheduleData)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 2)

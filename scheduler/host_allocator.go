@@ -17,7 +17,7 @@ import (
 //  projectTaskDurations: the expected duration of tasks by project and variant
 //  taskRunDistros: a map of task id -> distros the task is allowed to run on
 // Returns a map of distro name -> how many hosts need to be spun up for that distro.
-type HostAllocator func(context.Context, HostAllocatorData) (map[string]int, error)
+type HostAllocator func(context.Context, HostAllocatorData) (int, error)
 
 // HostAllocatorData is the set of parameters passed to a HostAllocator.
 type HostAllocatorData struct {
@@ -39,6 +39,6 @@ func GetHostAllocator(name string) HostAllocator {
 	case "utilization":
 		return UtilizationBasedHostAllocator
 	default:
-		return DurationBasedHostAllocator
+		return UtilizationBasedHostAllocator
 	}
 }
