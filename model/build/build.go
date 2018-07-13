@@ -185,13 +185,3 @@ func (b *Build) MarkFinished(status string, finishTime time.Time) error {
 func (b *Build) Insert() error {
 	return db.Insert(Collection, b)
 }
-
-// Checks if the build is active (has any active task)
-func (b *Build) IsActive() bool {
-	for _, task := range b.Tasks {
-		if task.Activated {
-			return true
-		}
-	}
-	return false
-}
