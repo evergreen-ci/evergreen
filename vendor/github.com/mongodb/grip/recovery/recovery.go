@@ -96,7 +96,7 @@ func AnnotateMessageWithStackTraceAndContinue(m interface{}) {
 	}
 }
 
-// SendStackTraceAndContinue is similar to
+// SendStackTraceAndContinueis similar to
 // AnnotateMessageWithStackTraceAndContinue, but allows you to inject a
 // grip.Journaler interface to receive the log message.
 func SendStackTraceAndContinue(logger grip.Journaler, m interface{}) {
@@ -117,7 +117,7 @@ func AnnotateMessageWithStackTraceAndExit(m interface{}) {
 	}
 }
 
-// SendStackTraceMessageAndExit is similar to
+// SendStackTraceAndExit is similar to
 // AnnotateMessageWithStackTraceAndExit, but allows you to inject a
 // grip.Journaler interface.
 func SendStackTraceMessageAndExit(logger grip.Journaler, m interface{}) {
