@@ -50,7 +50,7 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(ctx context.Context, env evergreen.Environment, h host.Host, id string, CurrentAttempt int, MaxAttempts int) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, CurrentAttempt int, MaxAttempts int) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
@@ -162,7 +162,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 func (j *createHostJob) tryRequeue(ctx context.Context) {
 	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Started() {
-		job := NewHostCreateJob(ctx, j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts)
+		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts)
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: j.start.Add(time.Minute),
 			MaxTime:   j.TimeInfo().MaxTime - (time.Now().Sub(j.start)) - time.Minute,
