@@ -126,108 +126,90 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 // Call out to the embedded Manager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func spawnHosts(ctx context.Context, newHostsNeeded map[string]int, pool *evergreen.ContainerPool) (map[string][]host.Host, error) {
+func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
+
 	startTime := time.Now()
+
+	if newHostsNeeded == 0 {
+		return []host.Host{}, nil
+	}
 
 	// loop over the distros, spawning up the appropriate number of hosts
 	// for each distro
-	hostsSpawnedPerDistro := make(map[string][]host.Host)
 
-	for distroId, numHostsToSpawn := range newHostsNeeded {
-		distroStartTime := time.Now()
+	hostsSpawned := []host.Host{}
 
-		if numHostsToSpawn == 0 {
-			continue
-		}
+	distroStartTime := time.Now()
 
-		if ctx.Err() != nil {
-			return nil, errors.New("scheduling run canceled.")
-		}
+	if ctx.Err() != nil {
+		return nil, errors.New("scheduling run canceled")
+	}
 
-		d, err := distro.FindOne(distro.ById(distroId))
+	// if distro is container distro, check if there are enough parent hosts to
+	// support new containers
+	if pool != nil {
+		// find all running parents with the specified container pool
+		currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to find distro %s", distroId)
+			return nil, errors.Wrap(err, "could not find running parents")
 		}
 
-		hostsSpawnedPerDistro[distroId] = make([]host.Host, 0, numHostsToSpawn)
-
-		// if distro is container distro, check if there are enough parent hosts to
-		// support new containers
-		if pool != nil {
-
-			// find all running parents with the specified container pool
-			currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not find running parents")
-			}
-
-			// find all child containers running on those parents
-			existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
-			if err != nil {
-				return nil, errors.Wrap(err, "could not find running containers")
-			}
-
-			// compute number of parents needed
-			numNewParents := numNewParentsNeeded(len(currentParents), numHostsToSpawn,
-				len(existingContainers), pool.MaxContainers)
-
-			// only want to spawn amount of parents allowed based on pool size
-			numNewParentsToSpawn, err := parentCapacity(d, numNewParents, len(currentParents), pool)
-			if err != nil {
-				return nil, errors.Wrap(err, "could not calculate number of parents needed to spawn")
-			}
-			// create parent host intent documents
-			if numNewParentsToSpawn > 0 {
-				parentIntentHosts, err := insertParents(d, numNewParentsToSpawn, pool)
-				if err != nil {
-					return nil, err
-				}
-				hostsSpawnedPerDistro[pool.Distro] = append(hostsSpawnedPerDistro[pool.Distro], parentIntentHosts...)
-
-				grip.Info(message.Fields{
-					"runner":      RunnerName,
-					"distro":      distroId,
-					"num_parents": numNewParentsToSpawn,
-					"operation":   "spawning new parents",
-					"span":        time.Since(distroStartTime).String(),
-					"duration":    time.Since(distroStartTime),
-				})
-			}
-			// only want to spawn amount of containers we can fit on currently running parents
-			numHostsToSpawn = containerCapacity(len(currentParents), len(existingContainers), numHostsToSpawn, pool.MaxContainers)
+		// find all child containers running on those parents
+		existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not find running containers")
 		}
 
-		// host.create intent documents for non-parent hosts
-		for i := 0; i < numHostsToSpawn; i++ {
-			intentHost, err := insertIntent(d)
+		// compute number of parents needed
+		numNewParents := numNewParentsNeeded(len(currentParents), newHostsNeeded, len(existingContainers), pool.MaxContainers)
+
+		// only want to spawn amount of parents allowed based on pool size
+		numNewParentsToSpawn, err := parentCapacity(d, numNewParents, len(currentParents), pool)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not calculate number of parents needed to spawn")
+		}
+		// create parent host intent documents
+		if numNewParentsToSpawn > 0 {
+			parentIntentHosts, err := insertParents(d, numNewParentsToSpawn, pool)
 			if err != nil {
 				return nil, err
 			}
-			hostsSpawnedPerDistro[distroId] = append(hostsSpawnedPerDistro[distroId], *intentHost)
+			hostsSpawned = append(hostsSpawned, parentIntentHosts...)
 
-		}
-		// if none were spawned successfully
-		if len(hostsSpawnedPerDistro[distroId]) == 0 {
-			delete(hostsSpawnedPerDistro, distroId)
+			grip.Info(message.Fields{
+				"runner":          RunnerName,
+				"distro":          d.Id,
+				"pool":            pool.Id,
+				"pool_distro":     pool.Distro,
+				"num_new_parents": numNewParentsToSpawn,
+				"operation":       "spawning new parents",
+				"duration_secs":   time.Since(distroStartTime).Seconds(),
+			})
 		}
 
-		grip.Info(message.Fields{
-			"runner":    RunnerName,
-			"distro":    distroId,
-			"number":    numHostsToSpawn,
-			"operation": "spawning instances",
-			"span":      time.Since(distroStartTime).String(),
-			"duration":  time.Since(distroStartTime),
-		})
+		// only want to spawn amount of containers we can fit on currently running parents
+		newHostsNeeded = containerCapacity(len(currentParents), len(existingContainers), newHostsNeeded, pool.MaxContainers)
+	}
+
+	// host.create intent documents for non-parent hosts
+	for i := 0; i < newHostsNeeded; i++ {
+		intentHost, err := insertIntent(d)
+		if err != nil {
+			return nil, err
+		}
+
+		hostsSpawned = append(hostsSpawned, *intentHost)
+
 	}
 
 	grip.Info(message.Fields{
-		"runner":    RunnerName,
-		"operation": "host query and processing",
-		"span":      time.Since(startTime).String(),
-		"duration":  time.Since(startTime),
+		"runner":        RunnerName,
+		"distro":        d.Id,
+		"operation":     "spawning instances",
+		"duration_secs": time.Since(startTime).Seconds(),
 	})
-	return hostsSpawnedPerDistro, nil
+
+	return hostsSpawned, nil
 }
 
 // generateHostOptions generates host options based on what kind of host it is:
@@ -372,7 +354,7 @@ func insertIntent(d distro.Distro) (*host.Host, error) {
 
 // Finds live hosts in the DB and organizes them by distro. Pass the
 // empty string to retrieve all distros
-func findUsableHosts(distroID string) (map[string][]host.Host, error) {
+func findUsableHosts(distroID string) ([]host.Host, error) {
 	// fetch all hosts, split by distro
 	query := host.IsLive()
 	if distroID != "" {
@@ -385,14 +367,7 @@ func findUsableHosts(distroID string) (map[string][]host.Host, error) {
 		return nil, errors.Wrap(err, "Error finding live hosts")
 	}
 
-	// figure out all hosts we have up - per distro
-	hostsByDistro := make(map[string][]host.Host)
-	for _, liveHost := range allHosts {
-		hostsByDistro[liveHost.Distro.Id] = append(hostsByDistro[liveHost.Distro.Id],
-			liveHost)
-	}
-
-	return hostsByDistro, nil
+	return allHosts, nil
 }
 
 // pass 'allDistros' or the empty string to unchedule all distros.

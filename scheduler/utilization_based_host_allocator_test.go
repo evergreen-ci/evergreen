@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -200,75 +201,52 @@ func (s *UtilizationAllocatorSuite) TestCalcHostsForLongTasks() {
 	}
 }
 
-// unit tests for the host allocator
-func (s *UtilizationAllocatorSuite) TestErrorIfMultipleDistros() {
-	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-			"otherDistro": distro.Distro{
-				PoolSize: 50,
-			},
-		},
-	}
-
-	_, err := UtilizationBasedHostAllocator(s.ctx, data)
-	s.EqualError(err, "more than 1 distro sent to UtilizationBasedHostAllocator")
-}
-
 func (s *UtilizationAllocatorSuite) TestNoExistingHosts() {
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
+		distro:           s.distro,
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 20 * time.Minute,
-				},
-				{
-					ExpectedDuration: 3 * time.Minute,
-				},
-				{
-					ExpectedDuration: 45 * time.Second,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 25 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 20 * time.Minute,
+			},
+			{
+				ExpectedDuration: 3 * time.Minute,
+			},
+			{
+				ExpectedDuration: 45 * time.Second,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 25 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(2, hosts[s.distroName])
+	s.Equal(2, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestStaticDistro() {
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: distro.Distro{
-				Provider: evergreen.ProviderNameStatic,
-			},
+		distro: distro.Distro{
+			Provider: evergreen.ProviderNameStatic,
 		},
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 20 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 20 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(0, hosts[s.distroName])
+	s.Equal(0, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
@@ -301,31 +279,25 @@ func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
 	}
 	s.NoError(t2.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Second,
-				},
-				{
-					ExpectedDuration: 3 * time.Minute,
-				},
-				{
-					ExpectedDuration: 5 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Second,
+			},
+			{
+				ExpectedDuration: 3 * time.Minute,
+			},
+			{
+				ExpectedDuration: 5 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(0, hosts[s.distroName])
+	s.Equal(0, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
@@ -354,37 +326,31 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 	}
 	s.NoError(t2.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(5, hosts[s.distroName])
+	s.Equal(5, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
@@ -413,43 +379,37 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 	}
 	s.NoError(t2.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 3 * time.Minute,
-				},
-				{
-					ExpectedDuration: 10 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 3 * time.Minute,
+			},
+			{
+				ExpectedDuration: 10 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(5, hosts[s.distroName])
+	s.Equal(5, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
@@ -478,52 +438,47 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 	}
 	s.NoError(t2.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: distro.Distro{
-				Provider: evergreen.ProviderNameEc2Auto,
-				PoolSize: 10,
-			},
+		distro: distro.Distro{
+			Provider: evergreen.ProviderNameEc2Auto,
+			PoolSize: 10,
 		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2},
-		},
+		existingHosts:    []host.Host{h1, h2},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(8, hosts[s.distroName])
+	fmt.Println(hosts)
+	s.Equal(8, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
@@ -552,28 +507,22 @@ func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
 	}
 	s.NoError(t2.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Second,
-				},
-				{
-					ExpectedDuration: 5 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Second,
+			},
+			{
+				ExpectedDuration: 5 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(1, hosts[s.distroName])
+	s.Equal(1, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestOverrunTask() {
@@ -590,34 +539,28 @@ func (s *UtilizationAllocatorSuite) TestOverrunTask() {
 	}
 	s.NoError(t1.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 20 * time.Minute,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 25 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 20 * time.Minute,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 25 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(2, hosts[s.distroName])
+	s.Equal(2, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
@@ -682,40 +625,34 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 	}
 	s.NoError(t5.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3, h4, h5},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3, h4, h5},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(5, hosts[s.distroName])
+	s.Equal(5, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestExcessHosts() {
@@ -732,25 +669,19 @@ func (s *UtilizationAllocatorSuite) TestExcessHosts() {
 		RunningTask: "",
 	}
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 29 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 29 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(0, hosts[s.distroName])
+	s.Equal(0, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
@@ -807,50 +738,44 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 	}
 	s.NoError(t4.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3, h4, h5},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3, h4, h5},
 		freeHostFraction: s.freeHostFraction,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				// 3 long tasks + 37min of new tasks
-				// these should need 4 total hosts, but there is 1 idle host
-				// and 2 hosts soon to be idle (1 after scaling by a factor of 0.5)
-				// so we only need 2 new hosts
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 5 * time.Minute,
-				},
-				{
-					ExpectedDuration: 45 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Second,
-				},
-				{
-					ExpectedDuration: 10 * time.Minute,
-				},
-				{
-					ExpectedDuration: 1 * time.Hour,
-				},
-				{
-					ExpectedDuration: 1 * time.Minute,
-				},
-				{
-					ExpectedDuration: 20 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			// 3 long tasks + 37min of new tasks
+			// these should need 4 total hosts, but there is 1 idle host
+			// and 2 hosts soon to be idle (1 after scaling by a factor of 0.5)
+			// so we only need 2 new hosts
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 5 * time.Minute,
+			},
+			{
+				ExpectedDuration: 45 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Second,
+			},
+			{
+				ExpectedDuration: 10 * time.Minute,
+			},
+			{
+				ExpectedDuration: 1 * time.Hour,
+			},
+			{
+				ExpectedDuration: 1 * time.Minute,
+			},
+			{
+				ExpectedDuration: 20 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(2, hosts[s.distroName])
+	s.Equal(2, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
@@ -915,49 +840,43 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 	}
 	s.NoError(t5.Insert())
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3, h4, h5},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3, h4, h5},
 		freeHostFraction: 1,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				// 1 long task + 68 minutes of tasks should need 3 hosts
-				// 3.0 free hosts in the next 30 mins (factor = 1)
-				// so we need 0 hosts
-				{
-					ExpectedDuration: 30 * time.Minute,
-				},
-				{
-					ExpectedDuration: 20 * time.Minute,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Second,
-				},
-				{
-					ExpectedDuration: 10 * time.Minute,
-				},
-				{
-					ExpectedDuration: 50 * time.Second,
-				},
-				{
-					ExpectedDuration: 1 * time.Minute,
-				},
-				{
-					ExpectedDuration: 20 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			// 1 long task + 68 minutes of tasks should need 3 hosts
+			// 3.0 free hosts in the next 30 mins (factor = 1)
+			// so we need 0 hosts
+			{
+				ExpectedDuration: 30 * time.Minute,
+			},
+			{
+				ExpectedDuration: 20 * time.Minute,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Second,
+			},
+			{
+				ExpectedDuration: 10 * time.Minute,
+			},
+			{
+				ExpectedDuration: 50 * time.Second,
+			},
+			{
+				ExpectedDuration: 1 * time.Minute,
+			},
+			{
+				ExpectedDuration: 20 * time.Minute,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(0, hosts[s.distroName])
+	s.Equal(0, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
@@ -1036,36 +955,30 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 	s.NoError(t5.Insert())
 
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3, h4, h5, h6, h7},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3, h4, h5, h6, h7},
 		freeHostFraction: 1,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				// 2 long tasks + 9 minutes of tasks should need 3 hosts
-				// there are 2 idle tasks and 2 free hosts in the next 5 mins (factor = 1)
-				// so we need 0 hosts
-				{
-					ExpectedDuration: 5 * time.Minute,
-				},
-				{
-					ExpectedDuration: 2 * time.Minute,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Second,
-				},
-				{
-					ExpectedDuration: 10 * time.Minute,
-				},
-				{
-					ExpectedDuration: 50 * time.Second,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			// 2 long tasks + 9 minutes of tasks should need 3 hosts
+			// there are 2 idle tasks and 2 free hosts in the next 5 mins (factor = 1)
+			// so we need 0 hosts
+			{
+				ExpectedDuration: 5 * time.Minute,
+			},
+			{
+				ExpectedDuration: 2 * time.Minute,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Second,
+			},
+			{
+				ExpectedDuration: 10 * time.Minute,
+			},
+			{
+				ExpectedDuration: 50 * time.Second,
 			},
 		},
 		usesContainers: true,
@@ -1073,7 +986,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(0, hosts[s.distroName])
+	s.Equal(0, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
@@ -1152,42 +1065,36 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 	s.NoError(t5.Insert())
 
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3, h4, h5, h6, h7},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3, h4, h5, h6, h7},
 		freeHostFraction: 1,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				// 3 long tasks + 10 minutes of tasks should need 5 hosts
-				// there is 1 idle task and 3 free hosts in the next 5 mins (factor = 1)
-				// so we need 1 host
-				{
-					ExpectedDuration: 5 * time.Minute,
-				},
-				{
-					ExpectedDuration: 2 * time.Minute,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 30 * time.Second,
-				},
-				{
-					ExpectedDuration: 10 * time.Minute,
-				},
-				{
-					ExpectedDuration: 50 * time.Second,
-				},
-				{
-					ExpectedDuration: 50 * time.Second,
-				},
-				{
-					ExpectedDuration: 7 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			// 3 long tasks + 10 minutes of tasks should need 5 hosts
+			// there is 1 idle task and 3 free hosts in the next 5 mins (factor = 1)
+			// so we need 1 host
+			{
+				ExpectedDuration: 5 * time.Minute,
+			},
+			{
+				ExpectedDuration: 2 * time.Minute,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 30 * time.Second,
+			},
+			{
+				ExpectedDuration: 10 * time.Minute,
+			},
+			{
+				ExpectedDuration: 50 * time.Second,
+			},
+			{
+				ExpectedDuration: 50 * time.Second,
+			},
+			{
+				ExpectedDuration: 7 * time.Minute,
 			},
 		},
 		usesContainers: true,
@@ -1195,78 +1102,72 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(1, hosts[s.distroName])
+	s.Equal(1, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{},
 		freeHostFraction: 1,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				// a long queue of task group tasks with max hosts=2 should request 2
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "tg1",
-					GroupMaxHosts:    2,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			// a long queue of task group tasks with max hosts=2 should request 2
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "tg1",
+				GroupMaxHosts:    2,
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(2, hosts[s.distroName])
+	s.Equal(2, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
@@ -1326,62 +1227,56 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 	s.NoError(t3.Insert())
 
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3},
 		freeHostFraction: 1,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 15 * time.Minute,
-					Group:            "g1",
-					GroupMaxHosts:    3,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g2",
-					GroupMaxHosts:    1,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g2",
-					GroupMaxHosts:    1,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g2",
-					GroupMaxHosts:    1,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g2",
-					GroupMaxHosts:    1,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 15 * time.Minute,
+				Group:            "g1",
+				GroupMaxHosts:    3,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g2",
+				GroupMaxHosts:    1,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g2",
+				GroupMaxHosts:    1,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g2",
+				GroupMaxHosts:    1,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g2",
+				GroupMaxHosts:    1,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(0, hosts[s.distroName])
+	s.Equal(0, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
@@ -1495,65 +1390,59 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 	s.NoError(t7.Insert())
 
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3, h4, h5, h6, h7},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3, h4, h5, h6, h7},
 		freeHostFraction: 1,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g1",
-					GroupMaxHosts:    3,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g1",
-					GroupMaxHosts:    3,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g2",
-					GroupMaxHosts:    1,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g2",
-					GroupMaxHosts:    1,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 5 * time.Minute,
-				},
-				{
-					ExpectedDuration: 20 * time.Minute,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 15 * time.Minute,
-				},
-				{
-					ExpectedDuration: 5 * time.Minute,
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g1",
+				GroupMaxHosts:    3,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g1",
+				GroupMaxHosts:    3,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g2",
+				GroupMaxHosts:    1,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g2",
+				GroupMaxHosts:    1,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 5 * time.Minute,
+			},
+			{
+				ExpectedDuration: 20 * time.Minute,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 15 * time.Minute,
+			},
+			{
+				ExpectedDuration: 5 * time.Minute,
 			},
 		},
 	}
@@ -1561,7 +1450,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
 	// robust handling of task groups would request 2 hosts rather than 1 here
-	s.Equal(1, hosts[s.distroName])
+	s.Equal(1, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
@@ -1576,44 +1465,38 @@ func (s *UtilizationAllocatorSuite) TestTaskGroupsWithExcessFreeHosts() {
 	}
 
 	data := HostAllocatorData{
-		distros: map[string]distro.Distro{
-			s.distroName: s.distro,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			s.distroName: []host.Host{h1, h2, h3},
-		},
+		distro:           s.distro,
+		existingHosts:    []host.Host{h1, h2, h3},
 		freeHostFraction: 1,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			s.distroName: []model.TaskQueueItem{
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g1",
-					GroupMaxHosts:    3,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g1",
-					GroupMaxHosts:    3,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
-				{
-					ExpectedDuration: 30 * time.Minute,
-					Group:            "g1",
-					GroupMaxHosts:    3,
-					BuildVariant:     "bv1",
-					Project:          s.projectName,
-					Version:          "v1",
-				},
+		taskQueueItems: []model.TaskQueueItem{
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g1",
+				GroupMaxHosts:    3,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g1",
+				GroupMaxHosts:    3,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
+			},
+			{
+				ExpectedDuration: 30 * time.Minute,
+				Group:            "g1",
+				GroupMaxHosts:    3,
+				BuildVariant:     "bv1",
+				Project:          s.projectName,
+				Version:          "v1",
 			},
 		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(0, hosts[s.distroName])
+	s.Equal(0, hosts)
 }
