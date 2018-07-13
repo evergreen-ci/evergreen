@@ -195,7 +195,7 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 
 	urlParsed, err := url.Parse(s3URL)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Error parsing URL: %s", s3URL)
 	}
 
 	if urlParsed.Scheme != "s3" {
@@ -364,7 +364,7 @@ func GetS3File(auth *aws.Auth, s3URL, filePath string) (io.ReadCloser, error) {
 
 	urlParsed, err := url.Parse(s3URL)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Error parsing URL: %s", s3URL)
 	}
 
 	config := &awsSDK.Config{
