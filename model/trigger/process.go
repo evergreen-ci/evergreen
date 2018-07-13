@@ -26,7 +26,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	}
 
 	subscriptions, err := event.FindSubscriptions(e.ResourceType, h.Selectors())
-	grip.Info(message.Fields{
+	msg := message.Fields{
 		"source":              "events-processing",
 		"message":             "processing event",
 		"event_id":            e.ID.Hex(),
@@ -34,11 +34,13 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 		"event_resource_type": e.ResourceType,
 		"event_resource":      e.ResourceId,
 		"num_subscriptions":   len(subscriptions),
-		"had_error":           err != nil,
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
 	}
+	if err != nil {
+		err = errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+		grip.Error(message.WrapError(err, msg))
+		return nil, err
+	}
+	grip.Info(msg)
 	if len(subscriptions) == 0 {
 		return nil, nil
 	}
@@ -48,7 +50,22 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	catcher := grip.NewSimpleCatcher()
 	for i := range subscriptions {
 		n, err := h.Process(&subscriptions[i])
+		msg := message.Fields{
+			"source":              "events-processing",
+			"message":             "processing subscription",
+			"event_id":            e.ID.Hex(),
+			"event_type":          e.EventType,
+			"event_resource_type": e.ResourceType,
+			"event_resource":      e.ResourceId,
+			"subscription_id":     subscriptions[i].ID,
+			"notification_is_nil": n == nil,
+		}
 		catcher.Add(err)
+		if err != nil {
+			grip.Error(message.WrapError(err, msg))
+		} else {
+			grip.Info(msg)
+		}
 		if n == nil {
 			continue
 		}
