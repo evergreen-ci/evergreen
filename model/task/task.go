@@ -610,6 +610,23 @@ func (t *Task) MarkFailed() error {
 	)
 }
 
+func (t *Task) MarkSystemFailed() {
+	t.Status = evergreen.TaskSystemFailed
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey: evergreen.TaskSystemFailed,
+			},
+		},
+	)
+
+}
+
 // SetAborted sets the abort field of task to aborted
 func (t *Task) SetAborted() error {
 	t.Aborted = true

@@ -108,8 +108,9 @@ const (
 
 // evergreen package names
 const (
-	UIPackage     = "EVERGREEN_UI"
-	RESTV2Package = "EVERGREEN_REST_V2"
+	UIPackage      = "EVERGREEN_UI"
+	RESTV2Package  = "EVERGREEN_REST_V2"
+	MonitorPackage = "EVERGREEN_MONITOR"
 )
 
 const (

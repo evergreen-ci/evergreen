@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -114,6 +117,14 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
 		})
+
+		var t *task.Task
+
+		t, err = task.FindOne(task.ById(j.host.RunningTask))
+		if err != nil {
+			j.AddError(err)
+		}
+
 		if err = j.host.ClearRunningTask(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
@@ -121,9 +132,17 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"provider": j.host.Distro.Provider,
 				"host":     j.host.Id,
 				"job":      j.ID(),
-				"task":     j.host.RunningTask,
+				"task":     t.Id,
 			}))
 		}
+
+		if !t.IsFinished() {
+			j.AddError(model.TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+				Type:   "system",
+			}))
+		}
+
 	}
 
 	// convert the host to a cloud host
@@ -145,7 +164,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if err != nil {
 		// host may still be an intent host
 		if j.host.Status == evergreen.HostUninitialized {
-			if err := j.host.Terminate(evergreen.User); err != nil {
+			if err = j.host.Terminate(evergreen.User); err != nil {
 				j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
 				grip.Error(message.WrapError(err, message.Fields{
 					"host":     j.host.Id,

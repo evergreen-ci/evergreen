@@ -958,6 +958,26 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
+func FindTerminatedHostsRunningTasks() ([]Host, error) {
+	hosts, err := Find(db.Query(bson.M{
+		StatusKey: bson.M{"$in": evergreen.UphostStatus},
+		RunningTaskKey: bson.M{"$and": []bson.M{
+			{"$exists": true},
+			{"$ne": ""},
+		}},
+	}))
+
+	if err == mgo.ErrNotFound {
+		err = nil
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding terminated hosts")
+	}
+
+	return hosts, nil
+}
+
 // CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
