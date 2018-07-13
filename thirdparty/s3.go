@@ -1,6 +1,7 @@
 package thirdparty
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
@@ -15,6 +16,10 @@ import (
 	"strings"
 	"time"
 
+	awsSDK "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	awsS3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
@@ -48,6 +53,10 @@ const (
 	s3ConnectTimeout = 2 * time.Minute
 	s3ReadTimeout    = 10 * time.Minute
 	s3WriteTimeout   = 10 * time.Minute
+	newCode          = true
+	region           = "us-east-1"
+	// Minimum 5MB per chunk except for last part http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
+	maxPartSize = 1024 * 1024 * 5
 )
 
 // For our S3 copy operations, S3 either returns an CopyObjectResult or
@@ -147,7 +156,7 @@ func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path, toS3Bucket, toS3Pat
 
 // PutS3File writes the specified file to an s3 bucket using the given permissions and content type.
 // The details of where to put the file are included in the s3URL
-func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permissionACL string) error {
+func legacyPutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permissionACL string) error {
 	urlParsed, err := url.Parse(s3URL)
 	if err != nil {
 		return err
@@ -179,7 +188,162 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		"problem putting %s to bucket", localFilePath)
 }
 
-func GetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
+func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permissionACL string) error {
+	if !newCode {
+		return legacyPutS3File(pushAuth, localFilePath, s3URL, contentType, permissionACL)
+	}
+
+	urlParsed, err := url.Parse(s3URL)
+	if err != nil {
+		return errors.Wrapf(err, "Error parsing URL: %s", s3URL)
+	}
+
+	if urlParsed.Scheme != "s3" {
+		return errors.Errorf("Don't know how to use URL with scheme %v", urlParsed.Scheme)
+	}
+
+	config := &awsSDK.Config{
+		Credentials: credentials.NewStaticCredentials(pushAuth.AccessKey, pushAuth.SecretKey, pushAuth.Token()),
+		Region:      awsSDK.String(region),
+	}
+	session, err := session.NewSession(config)
+	if err != nil {
+		return errors.Wrap(err, "error creating new session")
+	}
+	svc := awsS3.New(session)
+	bucket := awsS3.CreateBucketInput{
+		Bucket: &urlParsed.Host,
+	}
+
+	file, err := os.Open(localFilePath)
+	if err != nil {
+		return errors.Wrapf(err, "Error opening file %s", localFilePath)
+	}
+	defer file.Close()
+
+	// Get size of file to read into buffer
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return errors.Wrapf(err, "Error getting stats for file %s", localFilePath)
+	}
+	size := fileInfo.Size()
+	buffer, err := ioutil.ReadAll(file)
+	if err != nil {
+		return errors.Wrapf(err, "Error reading bytes of file %s", localFilePath)
+	}
+
+	// Step 1: initiate multipart upload
+	resp, err := createPart(svc, bucket, localFilePath, contentType)
+	if err != nil {
+		return errors.Wrap(err, "Error initiating part")
+	}
+
+	// Step 2: upload each part
+	completedParts := make([]*awsS3.CompletedPart, 0)
+	partNum := int64(1)
+	remaining := size
+	var partLength int64
+	// Keep uploading until there are no many bytes remaining
+	for i := int64(0); remaining != 0; i += partLength {
+		// Abide by 5MB per part limit
+		if remaining < maxPartSize {
+			partLength = remaining
+		} else {
+			partLength = maxPartSize
+		}
+
+		uploadedPart, err := uploadPart(svc, resp, buffer[i:i+partLength], partNum)
+		if err != nil {
+			//  If an error occurs, abort upload to not get charged by Amazon
+			abortErr := abortMultipartUpload(svc, resp)
+			if abortErr != nil {
+				return errors.Wrapf(abortErr, "Error aborting multipart upload for %s", localFilePath)
+			}
+			return errors.Wrapf(err, "Error uploading part in S3 multipart upload for %s", localFilePath)
+		}
+		remaining -= partLength
+		partNum++
+		completedParts = append(completedParts, uploadedPart)
+	}
+
+	// Step 3: complete upload by assembling all uploaded parts
+	return completeMultipartUpload(svc, resp, completedParts)
+}
+
+// createPart initiates a multipart upload
+func createPart(svc *awsS3.S3, bucket awsS3.CreateBucketInput, localFilePath,
+	contentType string) (*awsS3.CreateMultipartUploadOutput, error) {
+	creationInput := &awsS3.CreateMultipartUploadInput{
+		Bucket:      awsSDK.String(*bucket.Bucket),
+		Key:         awsSDK.String(localFilePath),
+		ContentType: awsSDK.String(contentType),
+	}
+
+	result, err := svc.CreateMultipartUpload(creationInput)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error creating part for multipart upload")
+	}
+	return result, nil
+}
+
+// uploadPart uploads a part by identifying a partNum and its position within the
+// object being created
+func uploadPart(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOutput,
+	fileBytes []byte, partNum int64) (*awsS3.CompletedPart, error) {
+	uploadInput := &awsS3.UploadPartInput{
+		Body:          bytes.NewReader(fileBytes),
+		Bucket:        awsSDK.String(*resp.Bucket),
+		Key:           awsSDK.String(*resp.Key),
+		PartNumber:    awsSDK.Int64(partNum),
+		UploadId:      awsSDK.String(*resp.UploadId),
+		ContentLength: awsSDK.Int64(int64(len(fileBytes))),
+	}
+	uploadResult, err := svc.UploadPart(uploadInput)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error uploading parts to multipart upload")
+	}
+	uploadedPart := &awsS3.CompletedPart{
+		ETag:       awsSDK.String(*uploadResult.ETag),
+		PartNumber: awsSDK.Int64(partNum),
+	}
+	return uploadedPart, nil
+}
+
+// completeMultipartUpload completes a multipart upload by assembling previously
+// uploaded parts in order of ascending part number
+func completeMultipartUpload(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOutput,
+	completedParts []*awsS3.CompletedPart) error {
+	completeInput := &awsS3.CompleteMultipartUploadInput{
+		Bucket: awsSDK.String(*resp.Bucket),
+		Key:    awsSDK.String(*resp.Key),
+		MultipartUpload: &awsS3.CompletedMultipartUpload{
+			Parts: completedParts,
+		},
+		UploadId: awsSDK.String(*resp.UploadId),
+	}
+	_, err := svc.CompleteMultipartUpload(completeInput)
+	if err != nil {
+		return errors.Wrap(err, "Error completing multipart upload")
+	}
+	return nil
+}
+
+// abortMultipartUpload aborts a multipart upload to stop getting charged for
+// storage of the uploaded parts
+func abortMultipartUpload(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOutput) error {
+	abortInput := &awsS3.AbortMultipartUploadInput{
+		Bucket:   awsSDK.String(*resp.Bucket),
+		Key:      awsSDK.String(*resp.Key),
+		UploadId: awsSDK.String(*resp.UploadId),
+	}
+	_, err := svc.AbortMultipartUpload(abortInput)
+	if err != nil {
+		return errors.Wrap(err, "Error aborting multipart upload")
+	}
+	return nil
+}
+
+func legacyGetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 	urlParsed, err := url.Parse(s3URL)
 	if err != nil {
 		return nil, err
@@ -191,6 +355,41 @@ func GetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 
 	bucket := session.Bucket(urlParsed.Host)
 	return bucket.GetReader(urlParsed.Path)
+}
+
+func GetS3File(auth *aws.Auth, s3URL, filePath string) (io.ReadCloser, error) {
+	if !newCode {
+		return legacyGetS3File(auth, s3URL)
+	}
+
+	urlParsed, err := url.Parse(s3URL)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error parsing URL: %s", s3URL)
+	}
+
+	config := &awsSDK.Config{
+		Credentials: credentials.NewStaticCredentials(auth.AccessKey, auth.SecretKey, auth.Token()),
+		Region:      awsSDK.String(region),
+	}
+	session, err := session.NewSession(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating new session")
+	}
+
+	svc := awsS3.New(session)
+	bucket := awsS3.CreateBucketInput{
+		Bucket: &urlParsed.Host,
+	}
+
+	input := &awsS3.GetObjectInput{
+		Bucket: bucket.Bucket,
+		Key:    awsSDK.String(filePath),
+	}
+	rc, err := svc.GetObject(input)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error getting s3 file")
+	}
+	return rc.Body, nil
 }
 
 //Taken from https://github.com/mitchellh/goamz/blob/master/s3/sign.go
