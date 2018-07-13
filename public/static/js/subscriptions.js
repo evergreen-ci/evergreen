@@ -186,7 +186,8 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
 
     $scope.bindTrigger = function() {
       _.each($scope.c.triggers, function(trigger){
-        if (trigger.trigger === $scope.trigger.trigger) {
+        if (trigger.resource_type === $scope.trigger.resource_type &&
+              trigger.trigger === $scope.trigger.trigger) {
           $scope.extraFields = trigger.extraFields;
           $scope.regexSelectorOptions = trigger.regex_selectors;
           $scope.addCustomValidation(trigger.extraFields);
@@ -222,9 +223,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       if (!$scope.tempRegexSelector.type || !$scope.tempRegexSelector.data) {
           return;
       }
-      var typeLabel = _.find($scope.trigger.regex_selectors, function(selector) {
-        return selector.type === $scope.tempRegexSelector.type;
-      });
+      var typeLabel = _.where($scope.trigger.regex_selectors, {type: $scope.tempRegexSelector.type })[0];
       $scope.regexSelectors[$scope.tempRegexSelector.type] = {type_label: typeLabel.type_label, data: $scope.tempRegexSelector.data};
       $scope.tempRegexSelector = {};
     }
