@@ -248,6 +248,10 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 }
 
 func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHost) error {
+	if h.Distro.Teardown == "" {
+		return nil
+	}
+
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
