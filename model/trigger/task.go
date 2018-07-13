@@ -411,8 +411,7 @@ func shouldSendTaskRegression(t *task.Task, previousTask *task.Task) (bool, erro
 		// check if enough time has passed since our last transition alert
 		q := alertrecord.ByLastFailureTransition(t.DisplayName, t.BuildVariant, t.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
-
-		if err != nil || lastAlerted == nil {
+		if err != nil {
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			if err != nil {
@@ -422,6 +421,9 @@ func shouldSendTaskRegression(t *task.Task, previousTask *task.Task) (bool, erro
 			errMessage["outcome"] = "not sending alert"
 			grip.Error(errMessage)
 			return false, err
+		}
+		if lastAlerted == nil {
+			return true, nil
 		}
 
 		if lastAlerted.TaskId == "" {
