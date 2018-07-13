@@ -26,6 +26,7 @@ type dockerClientMock struct {
 
 	// Other options
 	hasOpenPorts bool
+	baseImage    string
 }
 
 func (c *dockerClientMock) generateContainerID() string {
@@ -43,7 +44,7 @@ func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, stri
 	if c.failBuild {
 		return "", errors.New("failed to build image with agent")
 	}
-	return "ubuntu:18.04-agent", nil
+	return c.baseImage, nil
 }
 
 func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, string, *dockerSettings) error {
