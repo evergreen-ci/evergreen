@@ -321,7 +321,8 @@ func completeMultipartUpload(svc *awsS3.S3, resp *awsS3.CreateMultipartUploadOut
 		},
 		UploadId: awsSDK.String(*resp.UploadId),
 	}
-	_, err := svc.CompleteMultipartUpload(completeInput)
+	result, err := svc.CompleteMultipartUpload(completeInput)
+	grip.Info(result)
 	if err != nil {
 		return errors.Wrap(err, "Error completing multipart upload")
 	}
