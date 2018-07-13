@@ -1,6 +1,6 @@
 mciModule.factory('PerfDiscoveryDataService', function(
   $q, $window, ApiV1, ApiV2, ApiTaskdata, BF, EVG, MPA_UI,
-  PERF_DISCOVERY, Stitch, STITCH_CONFIG,
+  PERF_DISCOVERY, Stitch, STITCH_CONFIG
 ) {
   var PD = PERF_DISCOVERY
 

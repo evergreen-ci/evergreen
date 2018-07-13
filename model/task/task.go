@@ -76,13 +76,14 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated     bool         `bson:"activated" json:"activated"`
-	ActivatedBy   string       `bson:"activated_by" json:"activated_by"`
-	BuildId       string       `bson:"build_id" json:"build_id"`
-	DistroId      string       `bson:"distro" json:"distro"`
-	BuildVariant  string       `bson:"build_variant" json:"build_variant"`
-	DependsOn     []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	Activated            bool         `bson:"activated" json:"activated"`
+	ActivatedBy          string       `bson:"activated_by" json:"activated_by"`
+	BuildId              string       `bson:"build_id" json:"build_id"`
+	DistroId             string       `bson:"distro" json:"distro"`
+	BuildVariant         string       `bson:"build_variant" json:"build_variant"`
+	DependsOn            []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents        int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -226,7 +227,7 @@ func IsAbortable(t Task) bool {
 }
 
 // IsFinished returns true if the project is no longer running
-func (t Task) IsFinished() bool {
+func (t *Task) IsFinished() bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
 		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
@@ -272,13 +273,28 @@ func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
+func (t *Task) SetOverrideDependencies(userID string) error {
+	t.OverrideDependencies = true
+	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				OverrideDependenciesKey: true,
+			},
+		},
+	)
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 
-	if len(t.DependsOn) == 0 {
+	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return true, nil
 	}
 
@@ -749,6 +765,14 @@ func (t *Task) UpdateDisplayTask() error {
 		sort.Sort(byPriority(statuses))
 		status = statuses[0]
 	}
+
+	grip.InfoWhen(status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime, message.Fields{
+		"lookhere":                      "evg-3345",
+		"message":                       "update display tasks",
+		"task_id":                       t.Id,
+		"status":                        status,
+		"dispatch_time_is_go_zero_time": t.DispatchTime.IsZero(),
+	})
 
 	update := bson.M{
 		StatusKey:    status,

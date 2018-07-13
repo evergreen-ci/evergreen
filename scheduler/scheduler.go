@@ -172,7 +172,10 @@ func spawnHosts(ctx context.Context, newHostsNeeded map[string]int, pool *evergr
 				len(existingContainers), pool.MaxContainers)
 
 			// only want to spawn amount of parents allowed based on pool size
-			numNewParentsToSpawn := parentCapacity(d, numNewParents, len(currentParents))
+			numNewParentsToSpawn, err := parentCapacity(d, numNewParents, len(currentParents), pool)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not calculate number of parents needed to spawn")
+			}
 			// create parent host intent documents
 			if numNewParentsToSpawn > 0 {
 				parentIntentHosts, err := insertParents(d, numNewParentsToSpawn, pool)
@@ -291,23 +294,27 @@ func numNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingCont
 
 // parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
-func parentCapacity(d distro.Distro, numNewParents, numCurrentParents int) int {
-	// if looking at a static docker provider, do not spawn any more parents
-	if d.Provider == evergreen.ProviderNameDockerStatic {
-		return 0
+func parentCapacity(d distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
+	// if looking to spawn on a static docker provider, do not spawn any more parents
+	parent, err := distro.FindOne(distro.ById(pool.Distro))
+	if err != nil {
+		return 0, errors.Wrapf(err, "could not find parent distro for pool %s", pool.Id)
+	}
+	if parent.Provider == evergreen.ProviderNameStatic {
+		return 0, nil
 	}
 	// if there are already maximum numbers of parents running, do not spawn
 	// any more parents
-	if numCurrentParents >= d.PoolSize {
+	if numCurrentParents >= parent.PoolSize {
 		numNewParents = 0
 	}
 	// if adding all new parents results in more parents than allowed, only add
 	// enough parents to fill to capacity
-	if numNewParents+numCurrentParents > d.PoolSize {
-		numNewParents = d.PoolSize - numCurrentParents
+	if numNewParents+numCurrentParents > parent.PoolSize {
+		numNewParents = parent.PoolSize - numCurrentParents
 	}
 
-	return numNewParents
+	return numNewParents, nil
 }
 
 // containerCapacity calculates how many containers to make

@@ -223,7 +223,7 @@ func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot change subscriptions for anyone other than yourself")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "401 (Unauthorized): Cannot change subscriptions for anyone other than yourself")
 }
 
 func (s *SubscriptionRouteSuite) TestGet() {
@@ -254,15 +254,15 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 
 	r, err := http.NewRequest(http.MethodDelete, "/subscriptions", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "Must specify an ID to delete")
+	s.EqualError(d.ParseAndValidate(ctx, r), "400 (Bad Request): Must specify an ID to delete")
 
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=soul", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "soul is not a valid ObjectID")
+	s.EqualError(d.ParseAndValidate(ctx, r), "500 (Internal Server Error): soul is not a valid ObjectID")
 
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9704fdd202da", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "Subscription not found")
+	s.EqualError(d.ParseAndValidate(ctx, r), "404 (Not Found): Subscription not found")
 
 	subscription := event.Subscription{
 		ID:    bson.ObjectIdHex("5949645c9acd9604fdd202da"),
@@ -274,7 +274,7 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	s.NoError(subscription.Upsert())
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9604fdd202da", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "Cannot delete subscriptions for someone other than yourself")
+	s.EqualError(d.ParseAndValidate(ctx, r), "401 (Unauthorized): Cannot delete subscriptions for someone other than yourself")
 }
 
 func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
@@ -307,7 +307,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot notify by jira-issue for version")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Cannot notify by jira-issue for version")
 
 	//test that project-level subscriptions are allowed
 	body = []map[string]interface{}{{
@@ -357,7 +357,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: foo must be a number")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Error validating subscription: foo must be a number")
 
 	body = []map[string]interface{}{{
 		"resource_type": "atype",
@@ -381,7 +381,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: -2 cannot be negative")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Error validating subscription: -2 cannot be negative")
 
 	body = []map[string]interface{}{{
 		"resource_type": "atype",
@@ -405,5 +405,5 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
 }

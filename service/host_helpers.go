@@ -7,9 +7,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
@@ -25,7 +25,7 @@ const (
 	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
-func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.DBUser) (string, *rest.APIError) {
+func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.DBUser) (string, error) {
 	env := evergreen.GetEnvironment()
 
 	switch opts.Action {
@@ -33,14 +33,14 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 		currentStatus := h.Status
 		newStatus := opts.Status
 		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
-			return "", &rest.APIError{
+			return "", gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    fmt.Sprintf(InvalidStatusError, newStatus),
 			}
 		}
 
 		if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
-			return "", &rest.APIError{
+			return "", gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    DecommissionStaticHostError,
 			}
@@ -48,14 +48,14 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 
 		if newStatus == evergreen.HostTerminated {
 			if !queue.Started() {
-				return "", &rest.APIError{
+				return "", gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    HostTerminationQueueingError,
 				}
 			}
 
 			if err := queue.Put(units.NewHostTerminationJob(env, *h)); err != nil {
-				return "", &rest.APIError{
+				return "", gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    HostTerminationQueueingError,
 				}
@@ -65,14 +65,14 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 
 		err := h.SetStatus(newStatus, u.Id, opts.Notes)
 		if err != nil {
-			return "", &rest.APIError{
+			return "", gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrap(err, HostUpdateError).Error(),
 			}
 		}
 		return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), nil
 	default:
-		return "", &rest.APIError{
+		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf(UnrecognizedAction, opts.Action),
 		}

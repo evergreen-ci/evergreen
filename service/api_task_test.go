@@ -146,6 +146,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				Id: distroId,
 			},
 			Secret: hostSecret,
+			Status: evergreen.HostRunning,
 		}
 		So(sampleHost.Insert(), ShouldBeNil)
 
@@ -232,6 +233,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 						Id: distroId,
 					},
 					Secret: hostSecret,
+					Status: evergreen.HostRunning,
 				}
 				So(h2.Insert(), ShouldBeNil)
 

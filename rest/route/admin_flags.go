@@ -5,60 +5,44 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
-// this manages the /admin/service_flags route, which allows setting the service flags
-func getServiceFlagsRouteManager(route string, version int) *RouteManager {
-	fph := &flagsPostHandler{}
-	flagsPost := MethodHandler{
-		Authenticator:  &SuperUserAuthenticator{},
-		RequestHandler: fph.Handler(),
-		MethodType:     http.MethodPost,
+func makeSetServiceFlagsRouteManager(sc data.Connector) gimlet.RouteHandler {
+	return &flagsPostHandler{
+		sc: sc,
 	}
-
-	flagsRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{flagsPost},
-		Version: version,
-	}
-	return &flagsRoute
 }
 
 type flagsPostHandler struct {
 	Flags model.APIServiceFlags `json:"service_flags"`
+	sc    data.Connector
 }
 
-func (h *flagsPostHandler) Handler() RequestHandler {
-	return &flagsPostHandler{}
+func (h *flagsPostHandler) Factory() gimlet.RouteHandler {
+	return &flagsPostHandler{
+		sc: h.sc,
+	}
 }
 
-func (h *flagsPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	return errors.WithStack(util.ReadJSONInto(r.Body, h))
+func (h *flagsPostHandler) Parse(ctx context.Context, r *http.Request) error {
+	return errors.Wrap(gimlet.GetJSON(r.Body, h), "problem parsing request body")
 }
 
-func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *flagsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	flags, err := h.Flags.ToService()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	err = sc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
+	err = h.sc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
-	return ResponseData{
-		Result: []model.Model{&h.Flags},
-	}, nil
+
+	return gimlet.NewJSONResponse(h.Flags)
 }

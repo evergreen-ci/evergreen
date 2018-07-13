@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -160,7 +159,7 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 			s.Len(a, 0)
 			s.Nil(b)
 			s.Error(err)
-			apiErr, ok := err.(*rest.APIError)
+			apiErr, ok := err.(gimlet.ErrorResponse)
 			s.True(ok)
 			s.Contains(apiErr.Message, i)
 		}
@@ -452,7 +451,7 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 			s.Len(a, 0)
 			s.Nil(b)
 			s.Error(err)
-			apiErr, ok := err.(*rest.APIError)
+			apiErr, ok := err.(gimlet.ErrorResponse)
 			s.True(ok)
 			s.Contains(apiErr.Message, i)
 		}

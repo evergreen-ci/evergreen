@@ -131,6 +131,9 @@ type SpawnOptions struct {
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
 	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
 
+	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
+	TimeoutSetup time.Time `bson:"setup_setup" json:"setup_setup"`
+
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
@@ -138,6 +141,9 @@ type SpawnOptions struct {
 	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
+
+	// Retries is the number of times Evergreen should try to spawn this host.
+	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
 }
 
 const (
@@ -431,7 +437,8 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	}
 
 	selector := bson.M{
-		IdKey: h.Id,
+		IdKey:     h.Id,
+		StatusKey: evergreen.HostRunning,
 	}
 
 	update := bson.M{

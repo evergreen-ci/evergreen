@@ -42,30 +42,28 @@ func (in KeyValuePairSlice) NestedMap() (map[string]map[string]string, error) {
 			if err != nil {
 				return nil, errors.Wrapf(err, "error parsing key '%s'", pair.Key)
 			}
-			for k, v := range outMap {
-				out[pair.Key] = map[string]string{}
-				out[pair.Key][k] = v
-			}
+			out[pair.Key] = outMap
+
 		default:
-			return nil, fmt.Errorf("unrecognized type in key '%s'", pair.Key)
+			return nil, fmt.Errorf("unrecognized type '%T' in key '%s'", v, pair.Key)
 		}
 
 	}
 	return out, nil
 }
 
-func MakeKeyValuePair(in map[string]string) []KeyValuePair {
-	out := []KeyValuePair{}
+func MakeKeyValuePair(in map[string]string) KeyValuePairSlice {
+	out := KeyValuePairSlice{}
 	for k, v := range in {
 		out = append(out, KeyValuePair{Key: k, Value: v})
 	}
 	return out
 }
 
-func MakeNestedKeyValuePair(in map[string]map[string]string) []KeyValuePair {
-	out := []KeyValuePair{}
+func MakeNestedKeyValuePair(in map[string]map[string]string) KeyValuePairSlice {
+	out := KeyValuePairSlice{}
 	for k1, v1 := range in {
-		tempKvSlice := []KeyValuePair{}
+		tempKvSlice := KeyValuePairSlice{}
 		for k2, v2 := range v1 {
 			tempKvSlice = append(tempKvSlice, KeyValuePair{Key: k2, Value: v2})
 		}

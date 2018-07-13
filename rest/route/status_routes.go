@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -67,10 +66,7 @@ func (h *recentTasksGetHandler) ParseAndValidate(ctx context.Context, r *http.Re
 func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	tasks, stats, err := sc.FindRecentTasks(h.minutes)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	if h.taskType != "" {
@@ -84,10 +80,7 @@ func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) 
 			taskModel := model.APITask{}
 			err = taskModel.BuildFromService(&t)
 			if err != nil {
-				if _, ok := err.(*rest.APIError); !ok {
-					err = errors.Wrap(err, "API model error")
-				}
-				return ResponseData{}, err
+				return ResponseData{}, errors.Wrap(err, "API model error")
 			}
 
 			response[i] = &taskModel
@@ -137,10 +130,7 @@ func (h *hostStatsByDistroHandler) ParseAndValidate(ctx context.Context, r *http
 func (h *hostStatsByDistroHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	stats, err := sc.GetHostStatsByDistro()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	statsModel := &model.APIHostStatsByDistro{}

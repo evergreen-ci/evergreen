@@ -11,9 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -98,7 +98,7 @@ func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		errMsg := rest.APIError{}
+		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem terminating host and parsing error message")
 		}
@@ -124,7 +124,7 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		errMsg := rest.APIError{}
+		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem changing host RDP password and parsing error message")
 		}
@@ -149,7 +149,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		errMsg := rest.APIError{}
+		errMsg := gimlet.ErrorResponse{}
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem changing host expiration and parsing error message")
 		}
@@ -415,7 +415,7 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		errMsg := rest.APIError{}
+		errMsg := gimlet.ErrorResponse{}
 
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem fetching key list and parsing error message")
@@ -451,7 +451,7 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		errMsg := rest.APIError{}
+		errMsg := gimlet.ErrorResponse{}
 
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem adding key and parsing error message")
@@ -475,7 +475,7 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		errMsg := rest.APIError{}
+		errMsg := gimlet.ErrorResponse{}
 
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem deleting key and parsing error message")
@@ -572,7 +572,7 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 		return nil, errors.Wrap(err, "failed to read response")
 	}
 	if resp.StatusCode != http.StatusOK {
-		restErr := &rest.APIError{
+		restErr := gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "Unknown error",
 		}

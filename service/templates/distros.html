@@ -3,6 +3,7 @@
 <script type="text/javascript">
   window.distros = {{ .Distros }};
   window.keys = {{ .Keys }};
+  window.containerPools = {{ .ContainerPools}};
   window.containerPoolDistros = {{ .ContainerPoolDistros }};
   window.containerPoolIds = {{ .ContainerPoolIds }};
 </script>
@@ -95,8 +96,13 @@ Evergreen - Distros
         </div>
         <div>
           <label class="distro-label">Pool ID:</label>
-          <input type="text" ng-required="activeDistro.provider == 'docker'" name="poolID" class="form-control" ng-model="activeDistro.settings.pool_id" placeholder="Pool ID to put containers on" ng-readonly="readOnly">
-          <div class="icon fa fa-warning distro-error" ng-show="!checkPoolID(form.poolID.$modelValue)">An existing pool ID is required.</div>
+          <select ng-readonly="readOnly" name="poolID" ng-model="activeDistro.settings.pool_id" ng-required="activeDistro.provider == 'docker'">
+            <option ng-repeat="pool in containerPoolIds" value=[[pool]]>[[pool]]</option>
+          </select>
+          <div ng-show="checkPoolID(form.poolID.$modelValue)">
+            <label class="distro-label"> Pool Mapping Information:</label>
+            <p style="font-family:courier new, courier, monospace;" ng-repeat="(key, value) in displayContainerPool(form.poolID.$modelValue)">[[key]]: [[value]]</p>
+          </div>
       </div>
     </div>
       <div ng-show="activeDistro.provider.startsWith('ec2')">

@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -17,10 +17,10 @@ type DBCreateHostConnector struct{}
 func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, error) {
 	t, err := task.FindOneId(taskID)
 	if err != nil {
-		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: "error finding task"}
+		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: "error finding task"}
 	}
 	if t == nil {
-		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: "no task found"}
+		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: "no task found"}
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -29,7 +29,7 @@ func (*DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, erro
 	hostsSpawnedByBuild, err := host.FindHostsSpawnedByBuild(t.BuildId)
 	catcher.Add(err)
 	if catcher.HasErrors() {
-		return nil, rest.APIError{StatusCode: http.StatusInternalServerError, Message: catcher.String()}
+		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: catcher.String()}
 	}
 	hosts := []host.Host{}
 	for _, h := range hostsSpawnedByBuild {

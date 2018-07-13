@@ -3,8 +3,10 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -15,7 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const hostStatsName = "host-status-alerting"
+const (
+	longRunningHostThreshold = 24 * time.Hour
+	hostStatsName            = "host-status-alerting"
+)
 
 func init() {
 	registry.AddJobType(hostStatsName, func() amboy.Job {
@@ -90,4 +95,18 @@ func (j *hostStatsJob) Run(_ context.Context) {
 		"message": "hosts spawned by tasks",
 		"hosts":   hosts,
 	})
+
+	for _, h := range taskSpawned {
+		if !util.IsZeroTime(h.StartTime) && h.StartTime.Add(longRunningHostThreshold).Before(time.Now()) {
+			j.logger.Warning(message.Fields{
+				"message":         "long running host spawned by task",
+				"id":              h.Id,
+				"duration":        time.Now().Sub(h.StartTime).Seconds(),
+				"duration_string": time.Now().Sub(h.StartTime).String(),
+				"spawned_by":      h.User,
+				"task_scope":      h.SpawnOptions.TaskID,
+				"build_scope":     h.SpawnOptions.BuildID,
+			})
+		}
+	}
 }

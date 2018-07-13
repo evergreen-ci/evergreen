@@ -32,6 +32,12 @@ type EC2ProviderSettings struct {
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
+	// If set, overrides key from credentials
+	AWSKeyID string `mapstructure:"aws_access_key_id" bson:"aws_access_key_id,omitempty"`
+
+	// If set, overrides secret from credentials
+	AWSSecret string `mapstructure:"aws_secret_access_key" bson:"aws_secret_access_key,omitempty"`
+
 	// InstanceType is the EC2 instance type.
 	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
 
@@ -355,6 +361,13 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	})
 	if err := ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
+	}
+
+	if ec2Settings.AWSKeyID != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     ec2Settings.AWSKeyID,
+			SecretAccessKey: ec2Settings.AWSSecret,
+		})
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)

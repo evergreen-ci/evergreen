@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -62,7 +61,7 @@ func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data
 
 	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.UTC)
 	if err != nil {
-		return []model.Model{}, nil, rest.APIError{
+		return []model.Model{}, nil, gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -71,18 +70,12 @@ func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data
 	// fetch required data from the service layer
 	metrics, err := sc.FindTaskSystemMetrics(task, ts, limit*2, 1)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "database error")
 
 	}
 	prevData, err := sc.FindTaskSystemMetrics(task, ts, limit, -1)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	// populate the page info structure
@@ -111,7 +104,7 @@ func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data
 	for idx, info := range metrics {
 		sysinfoModel := &model.APISystemMetrics{}
 		if err = sysinfoModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    "problem converting metrics document",
 				StatusCode: http.StatusInternalServerError,
 			}
@@ -167,7 +160,7 @@ func taskProcessMetricsPaginator(key string, limit int, args interface{}, sc dat
 
 	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
 	if err != nil {
-		return []model.Model{}, nil, rest.APIError{
+		return []model.Model{}, nil, gimlet.ErrorResponse{
 			Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
 			StatusCode: http.StatusBadRequest,
 		}
@@ -176,18 +169,12 @@ func taskProcessMetricsPaginator(key string, limit int, args interface{}, sc dat
 	// fetch required data from the service layer
 	data, err := sc.FindTaskProcessMetrics(task, ts, limit*2, 1)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "database error")
 
 	}
 	prevData, err := sc.FindTaskProcessMetrics(task, ts, limit, -1)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "database error")
 	}
 
 	// populate the page info structure
@@ -216,7 +203,7 @@ func taskProcessMetricsPaginator(key string, limit int, args interface{}, sc dat
 	for idx, info := range data {
 		procModel := &model.APIProcessMetrics{}
 		if err = procModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    "problem converting metrics document",
 				StatusCode: http.StatusInternalServerError,
 			}

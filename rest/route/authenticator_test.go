@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
@@ -72,7 +71,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				ctx = context.WithValue(ctx, RequestContext, &opCtx)
 				err := author.Authenticate(ctx, serviceContext)
 
-				errToResemble := rest.APIError{
+				errToResemble := gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
 					Message:    "Not found",
 				}
@@ -110,7 +109,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 				ctx = gimlet.AttachUser(ctx, &u)
 				err := author.Authenticate(ctx, serviceContext)
 
-				errToResemble := rest.APIError{
+				errToResemble := gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
 					Message:    "Not found",
 				}

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -62,7 +61,7 @@ func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 	}
 
 	if p.Activated == nil && p.Priority == nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Must set 'activated' or 'priority'",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -75,7 +74,7 @@ func (p *patchChangeStatusHandler) Execute(ctx context.Context, sc data.Connecto
 	if p.Priority != nil {
 		priority := *p.Priority
 		if ok := validPriority(priority, user, sc); !ok {
-			return ResponseData{}, &rest.APIError{
+			return ResponseData{}, gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
@@ -98,10 +97,7 @@ func (p *patchChangeStatusHandler) Execute(ctx context.Context, sc data.Connecto
 	patchModel := &model.APIPatch{}
 	err = patchModel.BuildFromService(*foundPatch)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	return ResponseData{
 		Result: []model.Model{patchModel},
@@ -124,19 +120,13 @@ func (p *patchByIdHandler) ParseAndValidate(ctx context.Context, r *http.Request
 func (p *patchByIdHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundPatch, err := sc.FindPatchById(p.patchId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	patchModel := &model.APIPatch{}
 	err = patchModel.BuildFromService(*foundPatch)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{
@@ -198,7 +188,7 @@ func patchesByUserPaginator(key string, limit int, args interface{}, sc data.Con
 	} else {
 		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.UTC)
 		if err != nil {
-			return []model.Model{}, nil, &rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
 				StatusCode: http.StatusBadRequest,
 			}
@@ -207,26 +197,19 @@ func patchesByUserPaginator(key string, limit int, args interface{}, sc data.Con
 	// sortAsc set to false in order to display patches in desc chronological order
 	patches, err := sc.FindPatchesByUser(user, ts, limit*2, false)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 	if len(patches) <= 0 {
-		err = rest.APIError{
+		return []model.Model{}, nil, gimlet.ErrorResponse{
 			Message:    "no patches found",
 			StatusCode: http.StatusNotFound,
 		}
-		return []model.Model{}, nil, err
 	}
 
 	// Make the previous page
 	prevPatches, err := sc.FindPatchesByUser(user, ts, limit, true)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 	// populate the page info structure
 	pages := &PageResult{}
@@ -253,7 +236,7 @@ func patchesByUserPaginator(key string, limit int, args interface{}, sc data.Con
 	for _, info := range patches {
 		patchModel := &model.APIPatch{}
 		if err = patchModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, &rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    "problem converting patch document",
 				StatusCode: http.StatusInternalServerError,
 			}
@@ -319,7 +302,7 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	} else {
 		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.UTC)
 		if err != nil {
-			return []model.Model{}, nil, &rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
 				StatusCode: http.StatusBadRequest,
 			}
@@ -328,26 +311,19 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	// sortDir is set to -1 in order to display patches in reverse chronological order
 	patches, err := sc.FindPatchesByProject(proj, ts, limit*2, false)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 	if len(patches) <= 0 {
-		err = rest.APIError{
+		return []model.Model{}, nil, gimlet.ErrorResponse{
 			Message:    "no patches found",
 			StatusCode: http.StatusNotFound,
 		}
-		return []model.Model{}, nil, err
 	}
 
 	// Make the previous page
 	prevPatches, err := sc.FindPatchesByProject(proj, ts, limit, true)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 	// populate the page info structure
 	pages := &PageResult{}
@@ -374,7 +350,7 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	for _, info := range patches {
 		patchModel := &model.APIPatch{}
 		if err = patchModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, &rest.APIError{
+			return []model.Model{}, nil, gimlet.ErrorResponse{
 				Message:    "problem converting patch document",
 				StatusCode: http.StatusInternalServerError,
 			}
@@ -424,28 +400,19 @@ func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	usr := MustHaveUser(ctx)
 	err := sc.AbortPatch(p.patchId, usr.Id)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Abort error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Abort error")
 	}
 
 	// Patch may be deleted by abort (eg not finalized) and not found here
 	foundPatch, err := sc.FindPatchById(p.patchId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	patchModel := &model.APIPatch{}
 	err = patchModel.BuildFromService(*foundPatch)
 
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{
@@ -493,27 +460,18 @@ func (p *patchRestartHandler) Execute(ctx context.Context, sc data.Connector) (R
 	usr := MustHaveUser(ctx)
 	err := sc.RestartVersion(p.patchId, usr.Id)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Restart error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Restart error")
 	}
 
 	foundPatch, err := sc.FindPatchById(p.patchId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	patchModel := &model.APIPatch{}
 	err = patchModel.BuildFromService(*foundPatch)
 
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{

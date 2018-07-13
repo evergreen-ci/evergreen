@@ -5,7 +5,9 @@ import (
 	"math"
 	"net/url"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
@@ -367,4 +369,8 @@ func (projectRef *ProjectRef) HTTPLocation() (*url.URL, error) {
 		Host:   "github.com",
 		Path:   fmt.Sprintf("/%s/%s.git", projectRef.Owner, projectRef.Repo),
 	}, nil
+}
+
+func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {
+	return util.StringSliceContains(p.Admins, userID) || util.StringSliceContains(settings.SuperUsers, userID)
 }

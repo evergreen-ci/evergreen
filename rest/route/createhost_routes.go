@@ -3,15 +3,20 @@ package route
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	dbModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -29,42 +34,136 @@ func makeHostCreateRouteManager(sc data.Connector) gimlet.RouteHandler {
 
 func (h *hostCreateHandler) Factory() gimlet.RouteHandler { return &hostCreateHandler{sc: h.sc} }
 
-func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
 	if taskID == "" {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "must provide task ID",
 		}
 	}
 	h.taskID = taskID
 	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    "task is invalid",
 		}
 	}
 	if _, code, err := dbModel.ValidateHost("", r); err != nil {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: code,
 			Message:    "host is invalid",
 		}
 	}
 	if err := util.ReadJSONInto(r.Body, h.createHost); err != nil {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
 		}
 	}
-	return ctx, nil
+	return nil
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
-	j := units.NewTaskHostCreateJob(h.taskID, h.createHost)
-	if err := evergreen.GetEnvironment().RemoteQueue().Put(j); err != nil {
+	intentHost, err := h.makeIntentHost()
+	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
+	catcher := grip.NewBasicCatcher()
+	for i := 0; i < h.createHost.NumHosts; i++ {
+		if err := intentHost.Insert(); err != nil {
+			catcher.Add(err)
+		}
+	}
+	if catcher.HasErrors() {
+		gimlet.MakeJSONErrorResponder(catcher.Resolve())
+	}
 	return gimlet.NewJSONResponse(struct{}{})
+}
+
+func (h *hostCreateHandler) makeIntentHost() (*host.Host, error) {
+	provider := evergreen.ProviderNameEc2OnDemand
+	if h.createHost.Spot {
+		provider = evergreen.ProviderNameEc2Spot
+	}
+
+	// get distro if it is set
+	d := distro.Distro{}
+	ec2Settings := cloud.EC2ProviderSettings{}
+	var err error
+	if distroID := h.createHost.Distro; distroID != "" {
+		d, err = distro.FindOne(distro.ById(distroID))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem finding distro")
+		}
+		if err := mapstructure.Decode(d.ProviderSettings, &ec2Settings); err != nil {
+			return nil, errors.Wrap(err, "problem unmarshaling provider settings")
+		}
+	}
+
+	// set provider settings
+	if h.createHost.AMI != "" {
+		ec2Settings.AMI = h.createHost.AMI
+	}
+	if h.createHost.AWSKeyID != "" {
+		ec2Settings.AWSKeyID = h.createHost.AWSKeyID
+		ec2Settings.AWSSecret = h.createHost.AWSSecret
+	}
+
+	for _, mount := range h.createHost.EBSDevices {
+		ec2Settings.MountPoints = append(ec2Settings.MountPoints, cloud.MountPoint{
+			DeviceName: mount.DeviceName,
+			Size:       int64(mount.SizeGiB),
+			Iops:       int64(mount.IOPS),
+			SnapshotID: mount.SnapshotID,
+		})
+	}
+	if h.createHost.InstanceType != "" {
+		ec2Settings.InstanceType = h.createHost.InstanceType
+	}
+	if h.createHost.KeyName != "" {
+		ec2Settings.KeyName = h.createHost.KeyName
+	}
+	if h.createHost.Region != "" {
+		ec2Settings.Region = h.createHost.Region
+	}
+	if len(h.createHost.SecurityGroups) > 0 {
+		ec2Settings.SecurityGroupIDs = h.createHost.SecurityGroups
+	}
+	if h.createHost.Subnet != "" {
+		ec2Settings.SubnetId = h.createHost.Subnet
+	}
+	if h.createHost.UserdataFile != "" {
+		ec2Settings.UserData = h.createHost.UserdataFile
+	}
+	if h.createHost.VPC != "" {
+		ec2Settings.VpcName = h.createHost.VPC
+	}
+	if err := mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {
+		return nil, errors.Wrap(err, "error marshaling provider settings")
+	}
+
+	// scope and teardown options
+	options := cloud.HostOptions{}
+	options.UserName = h.taskID
+	if h.createHost.Scope == "build" {
+		t, err := task.FindOneId(h.taskID)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not find task")
+		}
+		if t == nil {
+			return nil, errors.New("no task returned")
+		}
+		options.SpawnOptions.BuildID = t.BuildId
+	}
+	if h.createHost.Scope == "task" {
+		options.SpawnOptions.TaskID = h.taskID
+	}
+	options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(h.createHost.TeardownTimeoutSecs) * time.Second)
+	options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(h.createHost.SetupTimeoutSecs) * time.Second)
+	options.SpawnOptions.Retries = h.createHost.Retries
+
+	return cloud.NewIntent(d, d.GenerateName(), provider, options), nil
 }
 
 type hostListHandler struct {
@@ -79,16 +178,16 @@ func makeHostListRouteManager(sc data.Connector) gimlet.RouteHandler {
 
 func (h *hostListHandler) Factory() gimlet.RouteHandler { return &hostListHandler{sc: h.sc} }
 
-func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) (context.Context, error) {
+func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
 	if taskID == "" {
-		return ctx, gimlet.ErrorResponse{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "must provide task ID",
 		}
 	}
 	h.taskID = taskID
-	return ctx, nil
+	return nil
 }
 
 func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {

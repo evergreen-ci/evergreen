@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -23,7 +23,7 @@ func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 		return nil, err
 	}
 	if distros == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("no distros found"),
 		}

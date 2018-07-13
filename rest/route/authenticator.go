@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -45,7 +44,7 @@ func (s *SuperUserAuthenticator) Authenticate(ctx context.Context, sc data.Conne
 	if auth.IsSuperUser(sc.GetSuperUsers(), u) {
 		return nil
 	}
-	return rest.APIError{
+	return gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    "Not found",
 	}
@@ -69,7 +68,7 @@ func (p *ProjectAdminAuthenticator) Authenticate(ctx context.Context, sc data.Co
 		}
 	}
 
-	return rest.APIError{
+	return gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    "Not found",
 	}
@@ -84,7 +83,7 @@ type RequireUserAuthenticator struct{}
 func (rua *RequireUserAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
 	u := gimlet.GetUser(ctx)
 	if u == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Not found",
 		}

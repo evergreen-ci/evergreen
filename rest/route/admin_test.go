@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -23,10 +24,11 @@ import (
 )
 
 type AdminRouteSuite struct {
-	sc data.Connector
+	sc          data.Connector
+	getHandler  gimlet.RouteHandler
+	postHandler gimlet.RouteHandler
+
 	suite.Suite
-	getHandler  MethodHandler
-	postHandler MethodHandler
 }
 
 func TestAdminRouteSuiteWithDB(t *testing.T) {
@@ -50,16 +52,10 @@ func TestAdminRouteSuiteWithMock(t *testing.T) {
 
 func (s *AdminRouteSuite) SetupSuite() {
 	// test getting the route handler
-	const route = "/admin/settings"
-	const version = 2
-	routeManager := getAdminSettingsManager(route, version)
-	s.NotNil(routeManager)
-	s.Equal(route, routeManager.Route)
-	s.Equal(version, routeManager.Version)
-	s.getHandler = routeManager.Methods[0]
-	s.postHandler = routeManager.Methods[1]
-	s.IsType(&adminGetHandler{}, s.getHandler.RequestHandler)
-	s.IsType(&adminPostHandler{}, s.postHandler.RequestHandler)
+	s.getHandler = makeFetchAdminSettings(s.sc)
+	s.postHandler = makeSetAdminSettings(s.sc)
+	s.IsType(&adminGetHandler{}, s.getHandler)
+	s.IsType(&adminPostHandler{}, s.postHandler)
 }
 
 func (s *AdminRouteSuite) TestAdminRoute() {
@@ -84,19 +80,18 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/settings", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 
 	// test executing the POST request
-	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	resp := s.postHandler.Run(ctx)
 	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 
 	// test getting the settings
-	s.NoError(s.getHandler.RequestHandler.ParseAndValidate(ctx, nil))
-	resp, err = s.getHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	s.NoError(s.getHandler.Parse(ctx, nil))
+	resp = s.getHandler.Run(ctx)
 	s.NotNil(resp)
-	settingsResp, err := resp.Result[0].ToService()
+	settingsResp, err := resp.Data().(restModel.Model).ToService()
 	s.NoError(err)
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
@@ -143,10 +138,10 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.Contains(err.Error(), "API hostname must not be empty")
-	s.Contains(err.Error(), "CSRF key must be 32 characters long")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp = s.postHandler.Run(ctx)
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "API hostname must not be empty")
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "CSRF key must be 32 characters long")
 	s.NotNil(resp)
 
 	// test that invalid container pools errors
@@ -173,43 +168,11 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.Contains(err.Error(), "container pool test-pool-2 has invalid distro")
-	s.Contains(err.Error(), "error finding distro for container pool test-pool-3")
+	s.NoError(s.postHandler.Parse(ctx, request))
+	resp = s.postHandler.Run(ctx)
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "container pool test-pool-2 has invalid distro")
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "error finding distro for container pool test-pool-3")
 	s.NotNil(resp)
-}
-
-func (s *AdminRouteSuite) TestGetAuthentication() {
-	superUser := user.DBUser{
-		Id: "super_user",
-	}
-	normalUser := user.DBUser{
-		Id: "normal_user",
-	}
-	s.sc.SetSuperUsers([]string{"super_user"})
-
-	superCtx := gimlet.AttachUser(context.Background(), &superUser)
-	normalCtx := gimlet.AttachUser(context.Background(), &normalUser)
-
-	s.NoError(s.getHandler.Authenticate(superCtx, s.sc))
-	s.Error(s.getHandler.Authenticate(normalCtx, s.sc))
-}
-
-func (s *AdminRouteSuite) TestPostAuthentication() {
-	superUser := user.DBUser{
-		Id: "super_user",
-	}
-	normalUser := user.DBUser{
-		Id: "normal_user",
-	}
-	s.sc.SetSuperUsers([]string{"super_user"})
-
-	superCtx := gimlet.AttachUser(context.Background(), &superUser)
-	normalCtx := gimlet.AttachUser(context.Background(), &normalUser)
-
-	s.NoError(s.postHandler.Authenticate(superCtx, s.sc))
-	s.Error(s.postHandler.Authenticate(normalCtx, s.sc))
 }
 
 func (s *AdminRouteSuite) TestRevertRoute() {
@@ -240,7 +203,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/revert", buffer)
 	s.NoError(err)
-	ctx, err = routeManager.Parse(ctx, request)
+	err = routeManager.Parse(ctx, request)
 	s.NoError(err)
 	resp := routeManager.Run(ctx)
 	s.NotNil(resp)
@@ -253,7 +216,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/revert", buffer)
 	s.NoError(err)
-	ctx, err = routeManager.Parse(ctx, request)
+	err = routeManager.Parse(ctx, request)
 	s.Error(err)
 	s.NotNil(ctx)
 }
@@ -262,16 +225,13 @@ func TestRestartRoute(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
-	const route = "/admin/restart"
-	const version = 2
 
 	queue := evergreen.GetEnvironment().LocalQueue()
+	sc := &data.MockConnector{}
+	handler := makeRestartRoute(sc, queue)
 
-	routeManager := getRestartRouteManager(queue)(route, version)
-	assert.NotNil(routeManager)
-	assert.Equal(route, routeManager.Route)
-	assert.Equal(version, routeManager.Version)
-	handler := routeManager.Methods[0]
+	assert.NotNil(handler)
+
 	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
 	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
 
@@ -286,7 +246,7 @@ func TestRestartRoute(t *testing.T) {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/restart", buffer)
 	assert.NoError(err)
-	assert.Error(handler.ParseAndValidate(ctx, request))
+	assert.Error(handler.Parse(ctx, request))
 
 	// test a valid request
 	body = struct {
@@ -299,11 +259,10 @@ func TestRestartRoute(t *testing.T) {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/restart", buffer)
 	assert.NoError(err)
-	assert.NoError(handler.ParseAndValidate(ctx, request))
-	resp, err := handler.Execute(ctx, &data.MockConnector{})
-	assert.NoError(err)
+	assert.NoError(handler.Parse(ctx, request))
+	resp := handler.Run(ctx)
 	assert.NotNil(resp)
-	model, ok := resp.Result[0].(*restModel.RestartTasksResponse)
+	model, ok := resp.Data().(*restModel.RestartTasksResponse)
 	assert.True(ok)
 	assert.True(len(model.TasksRestarted) > 0)
 	assert.Nil(model.TasksErrored)
@@ -318,33 +277,34 @@ func TestAdminEventRoute(t *testing.T) {
 	// log some changes in the event log with the /admin/settings route
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	routeManager := getAdminSettingsManager("/admin/settings", 2)
+	routeManager := makeSetAdminSettings(&data.DBConnector{})
+
 	testSettings := testutil.MockConfig()
 	jsonBody, err := json.Marshal(testSettings)
 	assert.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/settings", buffer)
 	assert.NoError(err)
-	assert.NoError(routeManager.Methods[1].RequestHandler.ParseAndValidate(ctx, request))
+	assert.NoError(routeManager.Parse(ctx, request))
 	now := time.Now()
-	resp, err := routeManager.Methods[1].RequestHandler.Execute(ctx, &data.DBConnector{})
-	assert.NoError(err)
+	resp := routeManager.Run(ctx)
 	assert.NotNil(resp)
-
-	// wait a bit before retrieving results because by default the route uses time.Now to search
-	time.Sleep(1 * time.Second)
+	assert.Equal(http.StatusOK, resp.Status())
 
 	// get the changes with the /admin/events route
 	ctx = context.Background()
-	routeManager = getAdminEventRouteManager("/admin/events", 2)
-	request, err = http.NewRequest("GET", "/admin/settings?limit=10", nil)
+	route := makeFetchAdminEvents(&data.DBConnector{
+		URL: "http://evergreen.example.net",
+	})
+	request, err = http.NewRequest("GET", "/admin/events?limit=10&ts=2026-01-02T15%3A04%3A05Z", nil)
 	assert.NoError(err)
-	assert.NoError(routeManager.Methods[0].RequestHandler.ParseAndValidate(ctx, request))
-	resp, err = routeManager.Methods[0].RequestHandler.Execute(ctx, &data.DBConnector{})
-	assert.NoError(err)
+	assert.NoError(route.Parse(ctx, request))
+	response := route.Run(ctx)
 	assert.NotNil(resp)
 	count := 0
-	for _, model := range resp.Result {
+	fmt.Printf("%+v\n", response)
+	data := response.Data().([]interface{})
+	for _, model := range data {
 		evt, ok := model.(*restModel.APIAdminEvent)
 		assert.True(ok)
 		count++
@@ -354,20 +314,21 @@ func TestAdminEventRoute(t *testing.T) {
 		assert.Equal("user", evt.User)
 	}
 	assert.Equal(10, count)
-	pagination := resp.Metadata.(*PaginationMetadata)
+	pagination := response.Pages().Next
 	assert.Equal("ts", pagination.KeyQueryParam)
 	assert.Equal("limit", pagination.LimitQueryParam)
-	assert.NotNil(pagination.Pages.Next)
-	assert.Equal("next", pagination.Pages.Next.Relation)
-	assert.Equal(10, pagination.Pages.Next.Limit)
-	ts, err := time.Parse(time.RFC3339, pagination.Pages.Next.Key)
+	assert.Equal("next", pagination.Relation)
+	assert.Equal(10, pagination.Limit)
+	ts, err := time.Parse(time.RFC3339, pagination.Key)
 	assert.NoError(err)
 	assert.InDelta(now.Unix(), ts.Unix(), float64(time.Millisecond.Nanoseconds()))
 }
 
 func TestClearTaskQueueRoute(t *testing.T) {
 	assert := assert.New(t)
-	route := clearTaskQueueHandler{}
+	route := &clearTaskQueueHandler{
+		sc: &data.DBConnector{},
+	}
 	distro := "d1"
 	tasks := []model.TaskQueueItem{
 		{
@@ -385,9 +346,8 @@ func TestClearTaskQueueRoute(t *testing.T) {
 	assert.NoError(queue.Save())
 
 	route.distro = distro
-	sc := &data.DBConnector{}
-	_, err := route.Execute(context.Background(), sc)
-	assert.NoError(err)
+	resp := route.Run(context.Background())
+	assert.Equal(http.StatusOK, resp.Status())
 
 	queueFromDb, err := model.LoadTaskQueue(distro)
 	assert.NoError(err)

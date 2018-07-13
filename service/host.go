@@ -119,10 +119,10 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentStatus := h.Status
-	modifyResult, restErr := modifyHostStatus(queue, h, opts, u)
+	modifyResult, err := modifyHostStatus(queue, h, opts, u)
 
-	if restErr != nil {
-		uis.LoggedError(w, r, restErr.StatusCode, restErr)
+	if err != nil {
+		gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
 		return
 	}
 

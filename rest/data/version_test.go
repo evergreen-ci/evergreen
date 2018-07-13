@@ -13,9 +13,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/rest"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -58,8 +58,8 @@ func TestFindCostByVersionId(t *testing.T) {
 	found, err := sc.FindCostByVersionId("fake_version")
 	assert.NotNil(err)
 	assert.Nil(found)
-	assert.IsType(err, &rest.APIError{})
-	apiErr, ok := err.(*rest.APIError)
+	assert.IsType(err, gimlet.ErrorResponse{})
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	assert.Equal(ok, true)
 	assert.Equal(apiErr.StatusCode, http.StatusNotFound)
 }
