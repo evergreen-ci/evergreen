@@ -998,3 +998,13 @@ func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 	}).Sort([]string{LastContainerFinishTimeKey})
 	return Find(query)
 }
+
+func InsertMany(hosts []Host) error {
+	docs := make([]interface{}, len(hosts))
+	for idx := range hosts {
+		docs[idx] = hosts[idx]
+	}
+
+	return errors.WithStack(db.InsertMany(Collection, docs...))
+
+}

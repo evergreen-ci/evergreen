@@ -193,13 +193,17 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 
 	// host.create intent documents for non-parent hosts
 	for i := 0; i < newHostsNeeded; i++ {
-		intentHost, err := insertIntent(d)
+		intent, err := getIntentHost(d)
 		if err != nil {
 			return nil, err
 		}
 
-		hostsSpawned = append(hostsSpawned, *intentHost)
+		hostsSpawned = append(hostsSpawned, *intent)
 
+	}
+
+	if err := host.InsertMany(hostsSpawned); err != nil {
+		return nil, errors.Wrap(err, "problem inserting host documents")
 	}
 
 	grip.Info(message.Fields{
@@ -207,6 +211,7 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		"distro":        d.Id,
 		"operation":     "spawning instances",
 		"duration_secs": time.Since(startTime).Seconds(),
+		"num_hosts":     len(hostsSpawned),
 	})
 
 	return hostsSpawned, nil
@@ -332,24 +337,13 @@ func insertParents(d distro.Distro, numNewParents int, pool *evergreen.Container
 }
 
 // insertIntent creates a host intent document for a regular host or container
-func insertIntent(d distro.Distro) (*host.Host, error) {
+func getIntentHost(d distro.Distro) (*host.Host, error) {
 	hostOptions, err := generateHostOptions(d)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not generate host options for distro %s", d.Id)
 	}
 
-	intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
-	if err := intentHost.Insert(); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"distro":   d.Id,
-			"runner":   RunnerName,
-			"host":     intentHost.Id,
-			"provider": d.Provider,
-		}))
-
-		return nil, errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
-	}
-	return intentHost, nil
+	return cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
 }
 
 // Finds live hosts in the DB and organizes them by distro. Pass the
