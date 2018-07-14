@@ -23,8 +23,8 @@ const (
 	edgesKey = "edges"
 	taskKey  = "task"
 
-	// tasks should be unscheduled after ~2 weeks
-	unschedulableThreshold = 7 * 24 * time.Hour
+	// tasks should be unscheduled after ~a week
+	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
@@ -576,7 +576,7 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	}
 
 	query["$and"] = []bson.M{
-		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
+		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
 		{CreateTimeKey: bson.M{"$gt": util.ZeroTime}},
 	}
 
@@ -610,8 +610,9 @@ func (t *Task) MarkFailed() error {
 	)
 }
 
-func (t *Task) MarkSystemFailed() {
+func (t *Task) MarkSystemFailed() error {
 	t.Status = evergreen.TaskSystemFailed
+
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 
 	return UpdateOne(
@@ -624,7 +625,6 @@ func (t *Task) MarkSystemFailed() {
 			},
 		},
 	)
-
 }
 
 // SetAborted sets the abort field of task to aborted

@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -118,31 +116,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"task":     j.host.RunningTask,
 		})
 
-		var t *task.Task
-
-		t, err = task.FindOne(task.ById(j.host.RunningTask))
-		if err != nil {
-			j.AddError(err)
-		}
-
-		if err = j.host.ClearRunningTask(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"job_type": j.Type().Name,
-				"message":  "Error clearing running task for host",
-				"provider": j.host.Distro.Provider,
-				"host":     j.host.Id,
-				"job":      j.ID(),
-				"task":     t.Id,
-			}))
-		}
-
-		if !t.IsFinished() {
-			j.AddError(model.TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &apimodels.TaskEndDetail{
-				Status: evergreen.TaskFailed,
-				Type:   "system",
-			}))
-		}
-
+		j.AddError(model.ClearAndResetStrandedTask(j.host))
 	}
 
 	// convert the host to a cloud host

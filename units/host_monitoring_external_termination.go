@@ -5,12 +5,10 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -128,25 +126,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 			"distro":  j.host.Distro.Id,
 		})
 
-		if j.host.RunningTask != "" {
-			t, err = task.FindOne(task.ById(j.host.RunningTask))
-			if err != nil {
-				j.AddError(err)
-			}
-
-			if err = j.host.ClearRunningTask(); err != nil {
-				j.AddError(errors.Wrapf(err, "problem clearing running task '%s' from previously running host '%s'",
-					j.host.RunningTask, j.HostID))
-			}
-
-			if !t.IsFinished() {
-				j.AddError(model.TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &apimodels.TaskEndDetail{
-					Status: evergreen.TaskFailed,
-					Type:   "system",
-				}))
-			}
-
-		}
+		j.AddError(model.ClearAndResetStrandedTask(j.host))
 
 		event.LogHostTerminatedExternally(j.HostID)
 
