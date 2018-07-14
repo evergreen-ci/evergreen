@@ -2,11 +2,9 @@ package scheduler
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -388,42 +386,6 @@ func TestOrderedScheduleNumNewHosts(t *testing.T) {
 			}
 			So(orderedScheduleNumNewHosts(distroScheduleData, distroOne,
 				maxDurationPerDistroHost, 1.0), ShouldEqual, 30)
-		})
-	})
-}
-
-func TestSortDistrosByNumStaticHosts(t *testing.T) {
-	Convey("When calling sortDistrosByNumStaticHosts...", t, func() {
-		Convey("distro hosts should be sorted by the number of static hosts", func() {
-			getDistro := func(j int) (d distro.Distro) {
-				r := []interface{}{}
-				for i := 0; i < j; i++ {
-					r = append(r, map[interface{}]interface{}{"name": strconv.Itoa(i)})
-				}
-				d.Id = strconv.Itoa(j)
-				d.Provider = evergreen.HostTypeStatic
-				d.ProviderSettings = &map[string]interface{}{"hosts": r}
-				return d
-			}
-
-			order := []int{0, 2, 1, 4, 6, 3, 5}
-			distros := make([]distro.Distro, 0, len(order))
-			hosts := make([]string, 0, len(order))
-			for i, o := range order {
-				distros = append(distros, getDistro(o))
-				hosts = append(hosts, strconv.Itoa(i))
-			}
-
-			newDistros := sortDistrosByNumStaticHosts(distros)
-
-			So(len(distros), ShouldEqual, len(newDistros))
-			So(newDistros[0].Id, ShouldEqual, hosts[6])
-			So(newDistros[1].Id, ShouldEqual, hosts[5])
-			So(newDistros[2].Id, ShouldEqual, hosts[4])
-			So(newDistros[3].Id, ShouldEqual, hosts[3])
-			So(newDistros[4].Id, ShouldEqual, hosts[2])
-			So(newDistros[5].Id, ShouldEqual, hosts[1])
-			So(newDistros[6].Id, ShouldEqual, hosts[0])
 		})
 	})
 }
