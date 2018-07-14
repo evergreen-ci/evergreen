@@ -29,6 +29,7 @@ var (
 	ScheduledTimeKey        = bsonutil.MustHaveTag(Task{}, "ScheduledTime")
 	StartTimeKey            = bsonutil.MustHaveTag(Task{}, "StartTime")
 	FinishTimeKey           = bsonutil.MustHaveTag(Task{}, "FinishTime")
+	ActivatedTimeKey        = bsonutil.MustHaveTag(Task{}, "ActivatedTime")
 	VersionKey              = bsonutil.MustHaveTag(Task{}, "Version")
 	ProjectKey              = bsonutil.MustHaveTag(Task{}, "Project")
 	RevisionKey             = bsonutil.MustHaveTag(Task{}, "Revision")

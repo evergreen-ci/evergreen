@@ -371,7 +371,7 @@ func AverageTaskLatency(since time.Duration) (*AverageTimes, error) {
 			},
 			"average_time": bson.M{
 				"$avg": bson.M{
-					"$subtract": []interface{}{"$" + task.StartTimeKey, "$" + task.ScheduledTimeKey},
+					"$subtract": []interface{}{"$" + task.StartTimeKey, "$" + task.ActivatedTime},
 				},
 			},
 		}},

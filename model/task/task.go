@@ -63,6 +63,7 @@ type Task struct {
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
 
 	Version           string `bson:"version" json:"version,omitempty"`
 	Project           string `bson:"branch" json:"branch,omitempty"`
@@ -629,14 +630,16 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
+	t.ActivatedTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:   true,
-				ActivatedByKey: caller,
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: t.ActivatedTime,
 			},
 		})
 }
