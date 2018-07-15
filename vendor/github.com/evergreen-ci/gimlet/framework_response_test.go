@@ -26,7 +26,7 @@ func TestResponderImplSuite(t *testing.T) {
 
 func TestResponderBuilderSuite(t *testing.T) {
 	s := new(ResponderSuite)
-	s.factory = func() Responder { return NewResponseBuilder() }
+	s.factory = func() Responder { return &responseBuilder{} }
 	suite.Run(t, s)
 }
 
@@ -79,23 +79,36 @@ func (s *ResponderSuite) TestSetData() {
 
 	// setting should work
 	s.NoError(s.resp.AddData(1))
-	s.Equal(1, s.resp.Data())
+	s.NotNil(s.resp.Data())
+
+	switch val := s.resp.Data().(type) {
+	case int:
+		s.True(val == 1)
+	case []interface{}:
+		s.Len(val, 1)
+		s.Equal(1, val[0])
+	default:
+		// should never get here
+		s.True(false)
+	}
 
 	// nil should error and not not rest error
 	s.Error(s.resp.AddData(nil))
-	s.Equal(1, s.resp.Data())
-}
 
-func (s *ResponderSuite) TestValidatior() {
-	// this is a placeholder; these implementations should in the
-	// future provide some validation, but this would require more
-	// changes to the test.
-	s.Nil(s.resp.Validate())
+	switch val := s.resp.Data().(type) {
+	case int:
+		s.True(val == 1)
+	case []interface{}:
+		s.Len(val, 1)
+		s.Equal(1, val[0])
+	default:
+		// should never get here
+		s.True(false)
+	}
 }
 
 func (s *ResponderSuite) TestMutabilityOfData() {
 	s.NoError(s.resp.AddData(1))
-	s.Equal(1, s.resp.Data())
 
 	switch r := s.resp.(type) {
 	case *responderImpl:
@@ -154,6 +167,25 @@ func TestResponseBuilderConstructor(t *testing.T) {
 	resp, err = NewBasicResponder(42, OutputFormat(100), nil)
 	assert.Error(err)
 	assert.Nil(resp)
+
+	resp = NewResponseBuilder()
+	assert.NotNil(resp)
+	assert.NoError(resp.Validate())
+
+	resp = &responseBuilder{format: 11}
+	assert.Error(resp.Validate())
+
+	resp = &responseBuilder{pages: &ResponsePages{Next: &Page{}}}
+	resp.SetFormat(TEXT)
+	resp.SetStatus(http.StatusTeapot)
+	assert.Error(resp.Validate())
+
+	resp = &responseBuilder{}
+	assert.Error(resp.Validate())
+	resp.SetFormat(TEXT)
+	resp.SetStatus(http.StatusTeapot)
+	assert.NoError(resp.Validate())
+
 }
 
 func TestSimpleResponseBuilder(t *testing.T) {
@@ -178,6 +210,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 				MakeTextInternalErrorResponder(err),
 			} {
 				assert.Equal(t, TEXT, resp.Format(), "%d", idx)
+				assert.NoError(t, resp.Validate())
 			}
 		})
 		t.Run(fmt.Sprintf("HTMLConstructorCase%d", idx), func(t *testing.T) {
@@ -187,6 +220,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 				NewHTMLInternalErrorResponse("foo"),
 			} {
 				assert.Equal(t, HTML, resp.Format(), "%d", idx)
+				assert.NoError(t, resp.Validate())
 			}
 		})
 		t.Run(fmt.Sprintf("BinaryConstructorCase%d", idx), func(t *testing.T) {
@@ -196,6 +230,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 				NewBinaryInternalErrorResponse(f),
 			} {
 				assert.Equal(t, BINARY, resp.Format(), "%d", idx)
+				assert.NoError(t, resp.Validate())
 			}
 		})
 		t.Run(fmt.Sprintf("JSONConstructorValidCase%d", idx), func(t *testing.T) {
@@ -208,6 +243,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 				MakeJSONInternalErrorResponder(err),
 			} {
 				assert.Equal(t, JSON, resp.Format(), "%d", idx)
+				assert.NoError(t, resp.Validate())
 			}
 		})
 		t.Run(fmt.Sprintf("YAMLConstructorValid%d", idx), func(t *testing.T) {
@@ -220,6 +256,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 				MakeYAMLErrorResponder(er),
 			} {
 				assert.Equal(t, YAML, resp.Format(), "%d", idx)
+				assert.NoError(t, resp.Validate())
 			}
 		})
 	}
@@ -234,6 +271,7 @@ func TestSimpleResponseBuilder(t *testing.T) {
 			MakeTextInternalErrorResponder(er),
 		} {
 			assert.Equal(t, resp.Status(), 418, "%d", idx)
+			assert.NoError(t, resp.Validate())
 		}
 	})
 }

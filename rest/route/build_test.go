@@ -2,6 +2,8 @@ package route
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"testing"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -20,7 +22,7 @@ import (
 type BuildByIdSuite struct {
 	sc   *data.MockConnector
 	data data.MockBuildConnector
-
+	rm   gimlet.RouteHandler
 	suite.Suite
 }
 
@@ -44,39 +46,38 @@ func (s *BuildByIdSuite) SetupSuite() {
 	}
 }
 
-func (s *BuildByIdSuite) TestFindByIdProjFound() {
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build1"
-	res, err := rm.Methods[0].Execute(context.TODO(), s.sc)
-	s.NoError(err)
-	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+func (s *BuildByIdSuite) SetupTest() {
+	s.rm = makeGetBuildByID(s.sc)
+}
 
-	b, ok := (res.Result[0]).(*model.APIBuild)
+func (s *BuildByIdSuite) TestFindByIdProjFound() {
+	s.rm.(*buildGetHandler).buildId = "build1"
+	resp := s.rm.Run(context.TODO())
+	s.Equal(resp.Status(), http.StatusOK)
+	s.NotNil(resp.Data())
+
+	b, ok := (resp.Data()).(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.ToAPIString("build1"), b.Id)
 	s.Equal(model.ToAPIString("project"), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build2"
-	res, err := rm.Methods[0].Execute(context.TODO(), s.sc)
-	s.NoError(err)
-	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.rm.(*buildGetHandler).buildId = "build2"
+	resp := s.rm.Run(context.TODO())
+	s.Equal(resp.Status(), http.StatusOK)
+	s.NotNil(resp.Data())
 
-	b, ok := (res.Result[0]).(*model.APIBuild)
+	b, ok := (resp.Data()).(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.ToAPIString("build2"), b.Id)
 	s.Equal(model.ToAPIString(""), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdFail() {
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build3"
-	_, err := rm.Methods[0].Execute(context.TODO(), s.sc)
-	s.Error(err)
+	s.rm.(*buildGetHandler).buildId = "build3"
+	resp := s.rm.Run(context.TODO())
+	s.NotEqual(resp.Status(), http.StatusOK)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -86,7 +87,7 @@ func (s *BuildByIdSuite) TestFindByIdFail() {
 type BuildChangeStatusSuite struct {
 	sc   *data.MockConnector
 	data data.MockBuildConnector
-
+	rm   gimlet.RouteHandler
 	suite.Suite
 }
 
@@ -104,23 +105,21 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 	s.sc = &data.MockConnector{
 		MockBuildConnector: s.data,
 	}
+	s.rm = makeChangeStatusForBuild(s.sc)
 }
 
 func (s *BuildChangeStatusSuite) TestSetActivation() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
-	var tmp_true = true
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Activated = &tmp_true
+	s.rm.(*buildChangeStatusHandler).buildId = "build1"
+	var tmpTrue = true
+	s.rm.(*buildChangeStatusHandler).Activated = &tmpTrue
 
-	res, err := rm.Methods[1].Execute(ctx, s.sc)
-	s.NoError(err)
+	res := s.rm.Run(ctx)
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
 
-	b, ok := (res.Result[0]).(*model.APIBuild)
+	b, ok := res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.True(b.Activated)
 	s.Equal(model.ToAPIString("user1"), b.ActivatedBy)
@@ -130,30 +129,27 @@ func (s *BuildChangeStatusSuite) TestSetActivationFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "zzz"
-	var tmp_true = true
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Activated = &tmp_true
+	s.rm.(*buildChangeStatusHandler).buildId = "zzz"
+	var tmpTrue = true
+	s.rm.(*buildChangeStatusHandler).Activated = &tmpTrue
 
-	_, err := rm.Methods[1].Execute(ctx, s.sc)
-	s.Error(err)
-	s.Contains(err.Error(), "not found")
+	resp := s.rm.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
+	s.Contains(fmt.Sprint(resp.Data()), "not found")
 }
 
 func (s *BuildChangeStatusSuite) TestSetPriority() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
-	var tmp_seven = int64(7)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Priority = &tmp_seven
+	s.rm.(*buildChangeStatusHandler).buildId = "build1"
+	var tmpSeven = int64(7)
+	s.rm.(*buildChangeStatusHandler).Priority = &tmpSeven
 
-	res, err := rm.Methods[1].Execute(ctx, s.sc)
-	s.NoError(err)
+	res := s.rm.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
-	_, ok := (res.Result[0]).(*model.APIBuild)
+	_, ok := (res.Data()).(*model.APIBuild)
 	s.True(ok)
 }
 
@@ -161,13 +157,12 @@ func (s *BuildChangeStatusSuite) TestSetPriorityManualFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
+	s.rm.(*buildChangeStatusHandler).buildId = "build1"
 	s.sc.FailOnChangePriority = true
-	tmp_int := int64(7)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Priority = &tmp_int
-	_, err := rm.Methods[1].Execute(ctx, s.sc)
-	s.Error(err)
+	tmpInt := int64(7)
+	s.rm.(*buildChangeStatusHandler).Priority = &tmpInt
+	resp := s.rm.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 	s.sc.FailOnChangePriority = false
 }
 
@@ -177,14 +172,12 @@ func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 
 	s.sc.SetSuperUsers([]string{"admin"})
 
-	rm := getBuildByIdRouteManager("", 2)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
-	tmp_int := int64(1000)
-	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Priority = &tmp_int
-	_, err := rm.Methods[1].Execute(ctx, s.sc)
-
-	s.Error(err)
-	s.Contains(err.Error(), "Insufficient privilege to set priority")
+	s.rm.(*buildChangeStatusHandler).buildId = "build1"
+	tmpInt := int64(1000)
+	s.rm.(*buildChangeStatusHandler).Priority = &tmpInt
+	resp := s.rm.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
+	s.Contains(fmt.Sprint(resp.Data()), "Insufficient privilege to set priority")
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -193,6 +186,7 @@ func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 
 type BuildAbortSuite struct {
 	sc   *data.MockConnector
+	rm   gimlet.RouteHandler
 	data data.MockBuildConnector
 
 	suite.Suite
@@ -218,28 +212,30 @@ func (s *BuildAbortSuite) SetupSuite() {
 	}
 }
 
+func (s *BuildAbortSuite) SetupTest() {
+	s.rm = makeAbortBuild(s.sc)
+}
+
 func (s *BuildAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildAbortRouteManager("", 2)
-	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-
-	s.NoError(err)
+	s.rm.(*buildAbortHandler).buildId = "build1"
+	res := s.rm.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
+
 	s.Equal("user1", s.data.CachedAborted["build1"])
 	s.Equal("", s.data.CachedAborted["build2"])
-	b, ok := (res.Result[0]).(*model.APIBuild)
+	b, ok := res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.ToAPIString("build1"), b.Id)
 
-	res, err = rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	res = s.rm.Run(ctx)
 	s.NotNil(res)
 	s.Equal("user1", s.data.CachedAborted["build1"])
 	s.Equal("", s.data.CachedAborted["build2"])
-	b, ok = (res.Result[0]).(*model.APIBuild)
+	b, ok = res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.ToAPIString("build1"), b.Id)
 }
@@ -248,12 +244,10 @@ func (s *BuildAbortSuite) TestAbortFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildAbortRouteManager("", 2)
-	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
+	s.rm.(*buildAbortHandler).buildId = "build1"
 	s.sc.MockBuildConnector.FailOnAbort = true
-	_, err := rm.Methods[0].Execute(ctx, s.sc)
-
-	s.Error(err)
+	resp := s.rm.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -262,6 +256,7 @@ func (s *BuildAbortSuite) TestAbortFail() {
 
 type BuildRestartSuite struct {
 	sc   *data.MockConnector
+	rm   gimlet.RouteHandler
 	data data.MockBuildConnector
 
 	suite.Suite
@@ -283,24 +278,27 @@ func (s *BuildRestartSuite) SetupSuite() {
 	}
 }
 
+func (s *BuildRestartSuite) SetupTest() {
+	s.rm = makeRestartBuild(s.sc)
+}
+
 func (s *BuildRestartSuite) TestRestart() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildRestartManager("", 2)
-	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"
+	s.rm.(*buildRestartHandler).buildId = "build1"
 
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	res := s.rm.Run(ctx)
 	s.NotNil(res)
-	b, ok := (res.Result[0]).(*model.APIBuild)
+	b, ok := res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.ToAPIString("build1"), b.Id)
 
-	res, err = rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	res = s.rm.Run(ctx)
 	s.NotNil(res)
-	b, ok = (res.Result[0]).(*model.APIBuild)
+	s.Equal(http.StatusOK, res.Status())
+
+	b, ok = res.Data().(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.ToAPIString("build1"), b.Id)
 }
@@ -309,10 +307,8 @@ func (s *BuildRestartSuite) TestRestartFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getBuildRestartManager("", 2)
-	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"
+	s.rm.(*buildRestartHandler).buildId = "build1"
 	s.sc.FailOnRestart = true
-	_, err := rm.Methods[0].Execute(ctx, s.sc)
-
-	s.Error(err)
+	resp := s.rm.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
