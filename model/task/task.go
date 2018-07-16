@@ -611,7 +611,13 @@ func (t *Task) MarkFailed() error {
 }
 
 func (t *Task) MarkSystemFailed() error {
-	t.Status = evergreen.TaskSystemFailed
+	t.Status = evergreen.TaskFailed
+	t.FinishTime = time.Now()
+
+	t.Details = apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   evergreen.CommandTypeSystem,
+	}
 
 	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 
@@ -621,7 +627,9 @@ func (t *Task) MarkSystemFailed() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.TaskSystemFailed,
+				StatusKey:     evergreen.TaskFailed,
+				FinishTimeKey: t.FinishTime,
+				DetailsKey:    t.Details,
 			},
 		},
 	)
