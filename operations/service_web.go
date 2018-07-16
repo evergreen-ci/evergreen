@@ -155,7 +155,6 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue) (http.Han
 	functionOptions := service.TemplateFunctionOptions{
 		WebHome:  filepath.Join(home, "public"),
 		HelpHome: settings.Ui.HelpUrl,
-		IsProd:   !settings.IsNonProd,
 	}
 
 	uis, err := service.NewUIServer(settings, queue, home, functionOptions)

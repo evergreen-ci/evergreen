@@ -61,7 +61,6 @@ type Settings struct {
 	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
-	IsNonProd          bool                      `yaml:"isnonprod" bson:"isnonprod" json:"isnonprod"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	JIRANotifications  JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
 	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
@@ -107,7 +106,6 @@ func (c *Settings) Set() error {
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
-			isNonProdKey:          c.IsNonProd,
 			keysKey:               c.Keys,
 			keysNewKey:            c.KeysNew,
 			logPathKey:            c.LogPath,
