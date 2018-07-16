@@ -170,11 +170,7 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		}
 		// create parent host intent documents
 		if numNewParentsToSpawn > 0 {
-			parentIntentHosts, err := insertParents(d, numNewParentsToSpawn, pool)
-			if err != nil {
-				return nil, err
-			}
-			hostsSpawned = append(hostsSpawned, parentIntentHosts...)
+			hostsSpawned = append(hostsSpawned, createParents(d, numNewParentsToSpawn, pool)...)
 
 			grip.Info(message.Fields{
 				"runner":          RunnerName,
@@ -316,24 +312,15 @@ func containerCapacity(numCurrentParents, numCurrentContainers, numContainersToS
 	return numContainersToSpawn
 }
 
-// insertParents creates host intent documents for each parent
-func insertParents(d distro.Distro, numNewParents int, pool *evergreen.ContainerPool) ([]host.Host, error) {
-	hostsSpawned := make([]host.Host, 0)
-	for j := 0; j < numNewParents; j++ {
-		parentHostOptions := generateParentHostOptions(pool)
+// createParents creates host intent documents for each parent
+func createParents(d distro.Distro, numNewParents int, pool *evergreen.ContainerPool) []host.Host {
+	hostsSpawned := make([]host.Host, numNewParents)
 
-		intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, parentHostOptions)
-		if err := intentHost.Insert(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"runner":   RunnerName,
-				"host":     intentHost.Id,
-				"provider": d.Provider,
-			}))
-			return nil, errors.Wrapf(err, "Could not insert parent '%s'", intentHost.Id)
-		}
-		hostsSpawned = append(hostsSpawned, *intentHost)
+	for idx := range hostsSpawned {
+		hostsSpawned[idx] = *cloud.NewIntent(d, d.GenerateName(), d.Provider, generateParentHostOptions(pool))
 	}
-	return hostsSpawned, nil
+
+	return hostsSpawned
 }
 
 // insertIntent creates a host intent document for a regular host or container
