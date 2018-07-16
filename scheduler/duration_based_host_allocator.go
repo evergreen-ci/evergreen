@@ -6,13 +6,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -495,44 +492,4 @@ func durationNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAl
 	})
 
 	return numNewHosts, nil
-}
-
-// helpers for sorting the distros by the number of their static hosts
-func (sd *sortableDistroByNumStaticHost) Len() int {
-	return len(sd.distros)
-}
-
-func (sd *sortableDistroByNumStaticHost) Less(i, j int) bool {
-	if sd.distros[i].Provider != evergreen.HostTypeStatic &&
-		sd.distros[j].Provider != evergreen.HostTypeStatic {
-		return false
-	}
-	if sd.distros[i].Provider == evergreen.HostTypeStatic &&
-		sd.distros[j].Provider != evergreen.HostTypeStatic {
-		return true
-	}
-	if sd.distros[i].Provider != evergreen.HostTypeStatic &&
-		sd.distros[j].Provider == evergreen.HostTypeStatic {
-		return false
-	}
-
-	h1 := &cloud.StaticSettings{}
-	h2 := &cloud.StaticSettings{}
-
-	err := mapstructure.Decode(sd.distros[i].ProviderSettings, h1)
-	if err != nil {
-		return false
-	}
-
-	err = mapstructure.Decode(sd.distros[j].ProviderSettings, h2)
-	if err != nil {
-		return false
-	}
-
-	return len(h1.Hosts) > len(h2.Hosts)
-}
-
-func (sd *sortableDistroByNumStaticHost) Swap(i, j int) {
-	sd.distros[i], sd.distros[j] =
-		sd.distros[j], sd.distros[i]
 }
