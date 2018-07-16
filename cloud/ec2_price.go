@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -264,9 +265,9 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	vpcs, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
-				Name: makeStringPtr("tag:Name"),
+				Name: aws.String("tag:Name"),
 				Values: []*string{
-					makeStringPtr(vpcName),
+					aws.String(vpcName),
 				},
 			},
 		},
@@ -279,16 +280,16 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	subnets, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
-				Name:   makeStringPtr("vpc-id"),
-				Values: []*string{makeStringPtr(vpcID)},
+				Name:   aws.String("vpc-id"),
+				Values: []*string{aws.String(vpcID)},
 			},
 			&ec2.Filter{
-				Name:   makeStringPtr("availability-zone"),
-				Values: []*string{makeStringPtr(azName)},
+				Name:   aws.String("availability-zone"),
+				Values: []*string{aws.String(azName)},
 			},
 			&ec2.Filter{
-				Name:   makeStringPtr("tag:Name"),
-				Values: []*string{makeStringPtr(vpcName + ".subnet_" + strings.Split(azName, "-")[2])},
+				Name:   aws.String("tag:Name"),
+				Values: []*string{aws.String(vpcName + ".subnet_" + strings.Split(azName, "-")[2])},
 			},
 		},
 	})
