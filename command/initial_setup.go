@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 )
@@ -11,7 +12,7 @@ import (
 type initialSetup struct{}
 
 func initialSetupFactory() Command                                    { return &initialSetup{} }
-func (*initialSetup) Type() string                                    { return model.SystemCommandType }
+func (*initialSetup) Type() string                                    { return evergreen.CommandTypeSystem }
 func (*initialSetup) SetType(s string)                                {}
 func (*initialSetup) DisplayName() string                             { return "initial task setup" }
 func (*initialSetup) SetDisplayName(s string)                         {}

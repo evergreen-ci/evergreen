@@ -184,9 +184,9 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 			if result.TaskTimedOut {
 				taskStatus = model.TaskTimeout
 			}
-			if result.TaskDetailsType == model.SystemCommandType {
+			if result.TaskDetailsType == evergreen.CommandTypeSystem {
 				taskStatus = model.TaskSystemFailure
-			} else if result.TaskDetailsType == model.SetupCommandType {
+			} else if result.TaskDetailsType == evergreen.CommandTypeSetup {
 				taskStatus = model.TaskSetupFailure
 			}
 		}
