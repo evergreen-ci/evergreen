@@ -17,10 +17,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	incorrectArgsTypeErrorMessage = "programmer error: incorrect type for paginator args"
-)
-
 func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	trh := &taskRestartHandler{}
 	taskRestart := MethodHandler{

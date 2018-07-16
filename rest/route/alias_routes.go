@@ -45,7 +45,9 @@ func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
 		if err := aliasModel.BuildFromService(a); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
-		resp.AddData(aliasModel)
+		if err := resp.AddData(aliasModel); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(err)
+		}
 	}
 
 	return resp
