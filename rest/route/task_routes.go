@@ -17,10 +17,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	incorrectArgsTypeErrorMessage = "programmer error: incorrect type for paginator args"
-)
-
 func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	trh := &taskRestartHandler{}
 	taskRestart := MethodHandler{
@@ -33,22 +29,6 @@ func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	taskRoute := RouteManager{
 		Route:   route,
 		Methods: []MethodHandler{taskRestart},
-		Version: version,
-	}
-	return &taskRoute
-}
-
-func getTasksByBuildRouteManager(route string, version int) *RouteManager {
-	tbh := &tasksByBuildHandler{}
-	tasksByBuild := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: tbh.Handler(),
-		MethodType:     http.MethodGet,
-	}
-
-	taskRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{tasksByBuild},
 		Version: version,
 	}
 	return &taskRoute
@@ -297,109 +277,6 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 
 func (trh *taskGetHandler) Handler() RequestHandler {
 	return &taskGetHandler{}
-}
-
-type tasksByBuildHandler struct {
-	*PaginationExecutor
-}
-
-type tasksByBuildArgs struct {
-	buildId            string
-	status             string
-	fetchAllExecutions bool
-}
-
-func (tbh *tasksByBuildHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	args := tasksByBuildArgs{
-		buildId: gimlet.GetVars(r)["build_id"],
-		status:  r.URL.Query().Get("status"),
-	}
-	if args.buildId == "" {
-		return gimlet.ErrorResponse{
-			Message:    "buildId cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	_, args.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
-	tbh.Args = args
-	return tbh.PaginationExecutor.ParseAndValidate(ctx, r)
-}
-
-func tasksByBuildPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
-	*PageResult, error) {
-	btArgs, ok := args.(tasksByBuildArgs)
-	if !ok {
-		panic(incorrectArgsTypeErrorMessage)
-	}
-	// Fetch all of the tasks to be returned in this page plus the tasks used for
-	// calculating information about the next page. Here the limit is multiplied
-	// by two to fetch the next page.
-	tasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit*2, 1)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
-	}
-
-	// fetch tasks to get information about the previous page.
-	prevTasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit, -1)
-	if err != nil {
-		if apiErr, ok := err.(gimlet.ErrorResponse); !ok || apiErr.StatusCode != http.StatusNotFound {
-			return []model.Model{}, nil, errors.Wrap(err, "Database error")
-		}
-	}
-
-	nextPage := makeNextTasksPage(tasks, limit)
-	pageResults := &PageResult{
-		Next: nextPage,
-		Prev: makePrevTasksPage(prevTasks),
-	}
-
-	lastIndex := len(tasks)
-	if nextPage != nil {
-		lastIndex = limit
-	}
-
-	// Truncate the tasks to just those that will be returned, removing the
-	// tasks that would be used to create the next page.
-	tasks = tasks[:lastIndex]
-
-	// Create an array of models which will be returned.
-	models := make([]model.Model, len(tasks))
-	for ix, st := range tasks {
-		taskModel := &model.APITask{}
-		// Build an APIModel from the task and place it into the array.
-		err = taskModel.BuildFromService(&st)
-		if err != nil {
-			return []model.Model{}, nil, errors.Wrap(err, "API model error")
-		}
-		err = taskModel.BuildFromService(sc.GetURL())
-		if err != nil {
-			return []model.Model{}, nil, errors.Wrap(err, "API model error")
-		}
-
-		if btArgs.fetchAllExecutions {
-			oldTasks, err := sc.FindOldTasksByIDWithDisplayTasks(st.Id)
-			if err != nil {
-				return []model.Model{}, nil, errors.Wrap(err, "error fetching old tasks")
-			}
-			if err = taskModel.BuildPreviousExecutions(oldTasks); err != nil {
-				return []model.Model{}, nil, errors.Wrap(err, "API model error")
-			}
-		}
-		models[ix] = taskModel
-	}
-	return models, pageResults, nil
-}
-
-func (hgh *tasksByBuildHandler) Handler() RequestHandler {
-	taskPaginationExecutor := &PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       tasksByBuildPaginator,
-
-		Args: tasksByBuildArgs{},
-	}
-
-	return &tasksByBuildHandler{taskPaginationExecutor}
 }
 
 // taskRestartHandler implements the route POST /task/{task_id}/restart. It

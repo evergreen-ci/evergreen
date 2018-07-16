@@ -251,8 +251,7 @@ func (mtc *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, err
 // FindTaskByBuildId provides a mock implementation of the function for the
 // Connector interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
-func (mtc *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit,
-	sortDir int) ([]task.Task, error) {
+func (mtc *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit, sortDir int) ([]task.Task, error) {
 	if mtc.StoredError != nil {
 		return []task.Task{}, mtc.StoredError
 	}
