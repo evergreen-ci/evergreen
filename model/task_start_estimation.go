@@ -1,0 +1,150 @@
+package model
+
+import (
+	"sort"
+	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
+)
+
+const (
+	HostInitializingDelay  = 4 * time.Minute
+	HostStartingDelay      = 3 * time.Minute
+	HostProvisiongingDelay = 1 * time.Minute
+)
+
+type estimatedTask struct {
+	duration time.Duration
+}
+
+type estimatedHost struct {
+	timeToCompletion time.Duration
+}
+
+type estimatedHostPool []estimatedHost
+
+type estimatedTimeSimulator struct {
+	tasks       util.Queue
+	hosts       estimatedHostPool
+	timeElapsed time.Duration
+	currentPos  int
+}
+
+func (h *estimatedHost) decrementTime(t time.Duration) {
+	h.timeToCompletion -= t
+}
+
+func (p estimatedHostPool) Len() int { return len(p) }
+func (p estimatedHostPool) Swap(i, j int) {
+	temp := p[j]
+	p[j] = p[i]
+	p[i] = temp
+}
+func (p estimatedHostPool) Less(i, j int) bool { return p[i].timeToCompletion < p[j].timeToCompletion }
+
+func (s *estimatedTimeSimulator) simulate(pos int) time.Duration {
+	if len(s.hosts) == 0 {
+		return -1
+	}
+	if s.tasks.IsEmpty() {
+		return -1
+	}
+	sort.Sort(s.hosts)
+	for s.currentPos <= pos {
+		s.dispatchNextTask()
+		s.currentPos++
+	}
+
+	return s.timeElapsed
+}
+
+func (s *estimatedTimeSimulator) dispatchNextTask() {
+	count := len(s.hosts)
+	// fast forward time until the soonest host completes its task
+	fastForwardTime := s.hosts[0].timeToCompletion
+	s.timeElapsed += fastForwardTime
+	s.hosts = s.hosts[1:]
+	for i := range s.hosts {
+		s.hosts[i].decrementTime(fastForwardTime)
+	}
+
+	// dequeue the next task
+	nextTask := s.tasks.Dequeue().(estimatedTask)
+	newlyDispatched := estimatedHost{timeToCompletion: nextTask.duration}
+
+	// assign it to the host that just completed and move it back into the pool in order
+	for i := 0; i < count; i++ {
+		if i < count-2 {
+			if s.hosts[i].timeToCompletion <= nextTask.duration &&
+				s.hosts[i+1].timeToCompletion >= nextTask.duration {
+				s.hosts = append(s.hosts[:i], append([]estimatedHost{newlyDispatched}, s.hosts[i:]...)...)
+				return
+			}
+		} else {
+			s.hosts = append(s.hosts, newlyDispatched)
+			return
+		}
+	}
+}
+
+// GetEstimatedStartTime returns the estimated start time for a task
+func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
+	queue, err := LoadTaskQueue(t.DistroId)
+	if err != nil {
+		return -1, errors.Wrap(err, "error retrieving task queue")
+	}
+	queuePos := -1
+	for i, q := range queue.Queue {
+		if q.Id == t.Id {
+			queuePos = i
+			break
+		}
+	}
+	if queuePos == -1 {
+		return -1, errors.Errorf("task %s is not in a queue", t.Id)
+	}
+	hosts, err := host.Find(host.ByDistroId(t.DistroId))
+	if err != nil {
+		return -1, errors.Wrap(err, "error retrieving hosts")
+	}
+	return createSimulatorModel(*queue, hosts).simulate(queuePos), nil
+}
+
+func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTimeSimulator {
+	estimator := estimatedTimeSimulator{}
+	for i := 0; i < len(taskQueue.Queue); i++ {
+		_ = estimator.tasks.Enqueue(estimatedTask{duration: taskQueue.Queue[i].ExpectedDuration})
+	}
+	for _, h := range hosts {
+		switch h.Status {
+		case evergreen.HostUninitialized:
+			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: HostInitializingDelay})
+		case evergreen.HostStarting:
+			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: HostStartingDelay})
+		case evergreen.HostProvisioning:
+			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: HostProvisiongingDelay})
+		case evergreen.HostRunning:
+			if h.RunningTask == "" {
+				estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: 0})
+			} else {
+				t, err := task.FindOneNoMerge(task.ById(h.RunningTask))
+				if err != nil {
+					grip.Error(message.WrapError(err, message.Fields{
+						"message": "retieving tasks for task simulator",
+					}))
+					return &estimator
+				}
+				elapsed := time.Since(t.DispatchTime)
+				estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: t.ExpectedDuration - elapsed})
+			}
+		}
+	}
+
+	return &estimator
+}
