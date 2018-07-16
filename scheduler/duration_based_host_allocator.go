@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -85,11 +84,6 @@ type ScheduledDistroTasksData struct {
 
 	// the name of the distro whose task queue items data this represents
 	currentDistroId string
-}
-
-// helper type to sort distros by the number of static hosts they have
-type sortableDistroByNumStaticHost struct {
-	distros []distro.Distro
 }
 
 // NewHostsNeeded decides if new hosts are needed for a

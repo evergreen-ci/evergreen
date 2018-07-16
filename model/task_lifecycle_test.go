@@ -795,7 +795,7 @@ func TestMarkEnd(t *testing.T) {
 
 		detail := &apimodels.TaskEndDetail{
 			Status: evergreen.TaskFailed,
-			Type:   SystemCommandType,
+			Type:   evergreen.CommandTypeSystem,
 		}
 		So(MarkEnd(t1, "test", time.Now(), detail, false, &updates), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
@@ -1343,7 +1343,7 @@ func TestFailedTaskRestart(t *testing.T) {
 		Project:   "sample",
 		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:    evergreen.TaskFailed,
-		Details:   apimodels.TaskEndDetail{Type: SystemCommandType},
+		Details:   apimodels.TaskEndDetail{Type: evergreen.CommandTypeSystem},
 	}
 	testTask2 := &task.Task{
 		Id:        "taskThatSucceeded",
