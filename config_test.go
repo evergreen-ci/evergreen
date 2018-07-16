@@ -129,7 +129,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
-		IsNonProd:          true,
 		Keys:               map[string]string{"k3": "v3"},
 		LogPath:            "logpath",
 		Plugins:            map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
@@ -155,7 +154,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
-	s.Equal(config.IsNonProd, settings.IsNonProd)
 	s.Equal(config.Keys, settings.Keys)
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)

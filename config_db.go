@@ -42,7 +42,6 @@ var (
 	expansionsNewKey      = bsonutil.MustHaveTag(Settings{}, "ExpansionsNew")
 	pluginsKey            = bsonutil.MustHaveTag(Settings{}, "Plugins")
 	pluginsNewKey         = bsonutil.MustHaveTag(Settings{}, "PluginsNew")
-	isNonProdKey          = bsonutil.MustHaveTag(Settings{}, "IsNonProd")
 	loggerConfigKey       = bsonutil.MustHaveTag(Settings{}, "LoggerConfig")
 	logPathKey            = bsonutil.MustHaveTag(Settings{}, "LogPath")
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")

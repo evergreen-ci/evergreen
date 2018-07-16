@@ -98,7 +98,6 @@ func MockConfig() *evergreen.Settings {
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
 		},
-		IsNonProd: true,
 		Jira: evergreen.JiraConfig{
 			Host:           "host",
 			Username:       "username",
