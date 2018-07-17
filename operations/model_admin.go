@@ -21,7 +21,7 @@ func (c ClientAdminConf) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
 	if c.Port < 1024 || c.Port == 8080 || c.Port == 9090 {
-		catcher.Add(errors.Errorsf("'%d' is not a valid port number".c.Port))
+		catcher.Add(errors.Errorf("'%d' is not a valid port number", c.Port))
 	}
 
 	for _, srv := range c.AppServers {
