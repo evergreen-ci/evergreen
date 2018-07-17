@@ -16,7 +16,7 @@ import (
 
 // the cases in this file attempt to test the behavior of the remote tasks.
 
-func TestSmokeRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
+func TestSmokeRemoteQueueRunsJobsOnlyOnce(t *testing.T) {
 	mockJobCounters.Reset()
 
 	assert := assert.New(t)
@@ -45,7 +45,7 @@ func TestSmokeRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
 	assert.Equal(single, mockJobCounters.Count())
 }
 
-func TestSmokeRemoteMultipleQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
+func TestSmokeRemoteMultipleQueueRunsJobsOnlyOnce(t *testing.T) {
 	// case two
 
 	mockJobCounters.Reset()
@@ -53,7 +53,7 @@ func TestSmokeRemoteMultipleQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.
 	assert := assert.New(t) // nolint
 	opts := DefaultMongoDBOptions()
 	name := uuid.NewV4().String()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	defer cleanupMongoDB(name, opts)
 	defer cancel()
@@ -72,27 +72,28 @@ func TestSmokeRemoteMultipleQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.
 	assert.NoError(q2.Start(ctx))
 
 	const (
-		inside  = 25
+		inside  = 15
 		outside = 10
 	)
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < outside; i++ {
 		wg.Add(1)
-		go func() {
+		go func(i int) {
 			for ii := 0; ii < inside; ii++ {
 				j := newMockJob()
-				jobID := fmt.Sprintf("%d", job.GetNumber())
+				jobID := fmt.Sprintf("%d-%d-%d", i, ii, job.GetNumber())
 				j.SetID(jobID)
 				assert.NoError(q2.Put(j))
 			}
 			wg.Done()
-		}()
+		}(i)
 	}
 	grip.Notice("waiting to add all jobs")
 	wg.Wait()
 
 	grip.Notice("waiting to run jobs")
+
 	amboy.WaitCtxInterval(ctx, q, 100*time.Millisecond)
 	amboy.WaitCtxInterval(ctx, q2, 100*time.Millisecond)
 
