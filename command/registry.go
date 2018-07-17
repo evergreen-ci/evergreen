@@ -27,6 +27,7 @@ func init() {
 		"attach.xunit_results":          xunitResultsFactory,
 		"attach.artifacts":              attachArtifactsFactory,
 		evergreen.CreateHostCommandName: createHostFactory,
+		"host.list":                     listHostFactory,
 		"expansions.fetch_vars":         fetchVarsFactory,
 		"expansions.update":             updateExpansionsFactory,
 		"expansions.write":              writeExpansionsFactory,

@@ -64,20 +64,21 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	return h.createHost.Validate()
 }
 
-func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
-	intentHost, err := h.makeIntentHost()
-	if err != nil {
+func (h *hostCreateHandler) Run(ctx contextnContext) gimlet.Responder {
+	hosts := []host.Host{}
+	for i := 0; i < h.createHost.NumHosts; i++ {
+		intentHost, err := h.makeIntentHost()
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+
+		hosts = append(hosts, *intentHost)
+	}
+
+	if err := host.InsertMany(hosts); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	catcher := grip.NewBasicCatcher()
-	for i := 0; i < h.createHost.NumHosts; i++ {
-		if err := intentHost.Insert(); err != nil {
-			catcher.Add(err)
-		}
-	}
-	if catcher.HasErrors() {
-		gimlet.MakeJSONErrorResponder(catcher.Resolve())
-	}
+
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -187,6 +188,13 @@ func (h *hostListHandler) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 	h.taskID = taskID
+	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: code,
+			Message:    "task is invalid",
+		}
+	}
+
 	return nil
 }
 
