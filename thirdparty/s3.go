@@ -53,7 +53,7 @@ const (
 	s3ConnectTimeout = 2 * time.Minute
 	s3ReadTimeout    = 10 * time.Minute
 	s3WriteTimeout   = 10 * time.Minute
-	newCode          = true
+	newCode          = false
 	region           = "us-east-1"
 	// Minimum 5MB per chunk except for last part http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
 	maxPartSize = 1024 * 1024 * 5
