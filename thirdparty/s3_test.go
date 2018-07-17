@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"io/ioutil"
+	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -10,7 +11,8 @@ import (
 )
 
 var (
-	sourceURL = "s3://build-push-testing/test/source/testfile"
+	sourceURL   = "s3://build-push-testing/test/source/testfile"
+	downloadURL = "https://s3.amazonaws.com/build-push-testing/test/source/testfile"
 )
 
 func TestPutS3File(t *testing.T) {
@@ -62,6 +64,11 @@ func TestPutS3FileMultiPart(t *testing.T) {
 	defer rc.Close()
 	assert.NoError(err)
 	assert.Equal(6000000, len(data))
+
+	// download file directly
+	resp, err := http.Get(downloadURL)
+	assert.NoError(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
 }
 
 func TestLegacyGetS3FileWithLegacyPut(t *testing.T) {
@@ -88,5 +95,14 @@ func TestLegacyGetS3FileWithLegacyPut(t *testing.T) {
 	data, err := ioutil.ReadAll(rc)
 	defer rc.Close()
 	assert.NoError(err)
+	assert.Equal(randStr, string(data[:]))
+
+	// download file directly
+	resp, err := http.Get(downloadURL)
+	assert.NoError(err)
+	defer resp.Body.Close()
+	data, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(err)
+	assert.Equal(http.StatusOK, resp.StatusCode)
 	assert.Equal(randStr, string(data[:]))
 }
