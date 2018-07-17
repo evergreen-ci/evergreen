@@ -53,7 +53,7 @@ const (
 	s3ConnectTimeout = 2 * time.Minute
 	s3ReadTimeout    = 10 * time.Minute
 	s3WriteTimeout   = 10 * time.Minute
-	newCode          = false
+	newCode          = true
 	region           = "us-east-1"
 	// Minimum 5MB per chunk except for last part http://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
 	maxPartSize = 1024 * 1024 * 5
@@ -211,9 +211,10 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		return errors.Wrap(err, "error creating new session")
 	}
 	svc := awsS3.New(session)
-	bucket := awsS3.CreateBucketInput{
+	bucket := &awsS3.CreateBucketInput{
 		Bucket: &urlParsed.Host,
 	}
+	bucket = bucket.SetACL(permissionACL)
 
 	file, err := os.Open(localFilePath)
 	if err != nil {
@@ -271,7 +272,7 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 }
 
 // createPart initiates a multipart upload
-func createPart(svc *awsS3.S3, bucket awsS3.CreateBucketInput, path,
+func createPart(svc *awsS3.S3, bucket *awsS3.CreateBucketInput, path,
 	contentType string) (*awsS3.CreateMultipartUploadOutput, error) {
 	creationInput := &awsS3.CreateMultipartUploadInput{
 		Bucket:      awsSDK.String(*bucket.Bucket),
