@@ -272,10 +272,10 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 }
 
 // createPart initiates a multipart upload
-func createPart(svc *awsS3.S3, bucket *awsS3.CreateBucketInput, path,
-	contentType string) (*awsS3.CreateMultipartUploadOutput, error) {
+func createPart(svc *awsS3.S3, bucket *awsS3.CreateBucketInput, path, contentType string) (*awsS3.CreateMultipartUploadOutput, error) {
 	creationInput := &awsS3.CreateMultipartUploadInput{
-		Bucket:      awsSDK.String(*bucket.Bucket),
+		ACL:         bucket.ACL,
+		Bucket:      bucket.Bucket,
 		Key:         awsSDK.String(path),
 		ContentType: awsSDK.String(contentType),
 	}
