@@ -61,8 +61,8 @@ func (s *estimatorSuite) TestCreateModel() {
 
 func (s *estimatorSuite) TestNoHosts() {
 	s.simulator.hosts = []estimatedHost{}
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute})
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute}))
 	s.EqualValues(-1, s.simulator.simulate(1))
 }
 
@@ -77,8 +77,8 @@ func (s *estimatorSuite) TestManyFreeHosts() {
 	s.simulator.hosts = []estimatedHost{
 		{timeToCompletion: 0}, {timeToCompletion: 0},
 	}
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute})
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute}))
 	s.Equal(0*time.Minute, s.simulator.simulate(1))
 }
 
@@ -86,10 +86,10 @@ func (s *estimatorSuite) TestSingleFreeHost() {
 	s.simulator.hosts = []estimatedHost{
 		{timeToCompletion: 0},
 	}
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 2 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 3 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 4 * time.Minute})
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 2 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 3 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 4 * time.Minute}))
 
 	s.Equal(0*time.Minute, s.simulator.simulate(0))
 	s.Equal(1*time.Minute, s.simulator.simulate(1))
@@ -101,10 +101,10 @@ func (s *estimatorSuite) TestSingleOccupiedHost() {
 	s.simulator.hosts = []estimatedHost{
 		{timeToCompletion: 7 * time.Minute},
 	}
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 2 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 3 * time.Minute})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 4 * time.Minute})
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 2 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 3 * time.Minute}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 4 * time.Minute}))
 
 	s.Equal(7*time.Minute, s.simulator.simulate(0))
 	s.Equal(8*time.Minute, s.simulator.simulate(1))
@@ -116,10 +116,10 @@ func (s *estimatorSuite) TestMultipleHosts() {
 	s.simulator.hosts = []estimatedHost{
 		{timeToCompletion: 5 * time.Second}, {timeToCompletion: 0 * time.Second}, {timeToCompletion: 15 * time.Second},
 	}
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 5 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 15 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 30 * time.Second})
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 5 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 15 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 30 * time.Second}))
 
 	s.Equal(0*time.Second, s.simulator.simulate(0))
 	s.Equal(1*time.Second, s.simulator.simulate(1))
@@ -131,10 +131,10 @@ func (s *estimatorSuite) TestMultipleHostsUnordered() {
 	s.simulator.hosts = []estimatedHost{
 		{timeToCompletion: 5 * time.Second}, {timeToCompletion: 0 * time.Second}, {timeToCompletion: 15 * time.Second},
 	}
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 5 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 30 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 15 * time.Second})
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 5 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 1 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 30 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 15 * time.Second}))
 
 	s.Equal(0*time.Second, s.simulator.simulate(0))
 	s.Equal(5*time.Second, s.simulator.simulate(1))
@@ -146,10 +146,10 @@ func (s *estimatorSuite) TestRunningHosts() {
 	s.simulator.hosts = []estimatedHost{
 		{timeToCompletion: 25 * time.Second}, {timeToCompletion: 10 * time.Second}, {timeToCompletion: 15 * time.Second},
 	}
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 30 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 15 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 10 * time.Second})
-	s.simulator.tasks.Enqueue(estimatedTask{duration: 5 * time.Second})
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 30 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 15 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 10 * time.Second}))
+	s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 5 * time.Second}))
 
 	s.Equal(10*time.Second, s.simulator.simulate(0))
 	s.Equal(15*time.Second, s.simulator.simulate(1))
@@ -166,7 +166,7 @@ func (s *estimatorSuite) TestEvenDistribution() {
 		{timeToCompletion: 10 * time.Second},
 	}
 	for i := 0; i < 14; i++ {
-		s.simulator.tasks.Enqueue(estimatedTask{duration: 10 * time.Second})
+		s.NoError(s.simulator.tasks.Enqueue(estimatedTask{duration: 10 * time.Second}))
 	}
 
 	for i := 0; i < 14; i++ {
