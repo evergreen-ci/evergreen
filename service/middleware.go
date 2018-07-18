@@ -172,6 +172,19 @@ func (uis *UIServer) isSuperUser(u gimlet.User) bool {
 	return false
 }
 
+func (uis *UIServer) setCORSHeaders(allowedOrigins string) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if len(allowedOrigins) > 0 {
+				w.Header().Add("Access-Control-Allow-Origin", allowedOrigins)
+				w.Header().Add("Access-Control-Allow-Credentials", "true")
+				w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader))
+			}
+			next(w, r)
+		}
+	}
+}
+
 // isAdmin returns false if the user is nil or if its id is not
 // located in ProjectRef's Admins field.
 func isAdmin(u gimlet.User, project *model.ProjectRef) bool {
