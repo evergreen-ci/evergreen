@@ -119,3 +119,5 @@ imports:
     version: 713b8d22b5e93a0c25a9f71ca944c86d7ecefe84
   - name: github.com/evergreen-ci/shrub
     version: 7f4c682246a052cb61b758561ccf3276301d3e6f
+  - name: gopkg.in/ldap.v2
+    version: c6ce48312dc899d500d77926d9d3c33a0e01259c 
