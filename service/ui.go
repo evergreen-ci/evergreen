@@ -186,7 +186,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
 	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
-	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders("https://logkeeper.mongodb.org"))
+	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
 
 	app := gimlet.NewApp()
 	app.NoVersions = true
