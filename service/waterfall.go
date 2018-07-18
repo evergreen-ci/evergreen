@@ -128,6 +128,7 @@ type waterfallVersion struct {
 	CreateTimes         []time.Time `json:"create_times"`
 	Revisions           []string    `json:"revisions"`
 	RevisionOrderNumber int         `json:"revision_order"`
+	Cost                float64     `json:"cost"`
 
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
@@ -330,6 +331,10 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				Warnings:            []waterfallVersionError{{versionFromDB.Warnings}},
 				Ignoreds:            []bool{versionFromDB.Ignored},
 				RevisionOrderNumber: versionFromDB.RevisionOrderNumber,
+			}
+
+			if cost, err := getCostForVersion(versionFromDB.Id); err == nil && cost.SumEstimatedCost > 0 {
+				activeVersion.Cost = cost.SumEstimatedCost
 			}
 
 			// add the builds to the waterfall row
@@ -593,4 +598,15 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		JiraHost string
 		ViewData
 	}{finalData, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
+}
+
+func getCostForVersion(versionId string) (*task.VersionCost, error) {
+	cost := []task.VersionCost{}
+	if err := task.Aggregate(task.CostDataByVersionIdPipeline(versionId), &cost); err != nil {
+		return nil, errors.Wrap(err, "error finding cost for version")
+	}
+	if len(cost) != 1 {
+		return nil, errors.New("cost for version aggregation did not return a single result")
+	}
+	return &cost[0], nil
 }
