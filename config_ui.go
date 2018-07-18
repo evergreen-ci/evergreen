@@ -4,7 +4,6 @@ import (
 	"net/url"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -47,7 +46,6 @@ func (c *UIConfig) Get() error {
 }
 
 func (c *UIConfig) Set() error {
-	pp.Println(c)
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"url":              c.Url,
