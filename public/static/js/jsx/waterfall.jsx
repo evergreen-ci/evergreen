@@ -356,6 +356,9 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
   var commit = version.revisions[0].substring(0,5);
   var message = version.messages[0]; 
   var formatted_time = getFormattedTime(version.create_times[0], userTz, 'M/D/YY h:mm A' );
+  if (version.cost > 0) {
+      var cost = "($" + version.cost.toFixed(2) + ")";
+  }
   const maxChars = 44 
   var button;
   if (message.length > maxChars) {
@@ -379,7 +382,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
           </div>
           <div className="col-xs-12">
             <div className="row">
-              <strong>{author}</strong> - <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
+              <strong>{author}</strong> - <JiraLink jiraHost={jiraHost}>{message}</JiraLink> {cost}
               {button}
             </div>
           </div>
