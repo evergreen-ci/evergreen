@@ -510,6 +510,16 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 	return nil
 }
 
+func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
+	if td.ID == "" {
+		return errors.New("no task ID sent to CreateHost")
+	}
+	if td.Secret == "" {
+		return errors.New("no task secret sent to CreateHost")
+	}
+	return options.Validate()
+}
+
 func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error) {
 	if c.GetSubscriptionsFail {
 		return nil, errors.New("failed to fetch subscriptions")
