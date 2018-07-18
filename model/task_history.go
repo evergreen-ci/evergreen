@@ -589,7 +589,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 					"$ne": true,
 				},
 				task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-					"$ne": SystemCommandType,
+					"$ne": evergreen.CommandTypeSystem,
 				},
 			})
 	}
@@ -603,7 +603,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	if isSysFail {
 		statusQuery = append(statusQuery, bson.M{
 			task.StatusKey:                                 evergreen.TaskFailed,
-			task.DetailsKey + "." + task.TaskEndDetailType: SystemCommandType,
+			task.DetailsKey + "." + task.TaskEndDetailType: evergreen.CommandTypeSystem,
 		})
 	}
 
@@ -886,7 +886,7 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 					"$ne": true,
 				},
 				task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-					"$ne": SystemCommandType,
+					"$ne": evergreen.CommandTypeSystem,
 				},
 			})
 	}
@@ -900,7 +900,7 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 	if isSysFail {
 		statusQuery = append(statusQuery, bson.M{
 			task.StatusKey:                                 evergreen.TaskFailed,
-			task.DetailsKey + "." + task.TaskEndDetailType: SystemCommandType,
+			task.DetailsKey + "." + task.TaskEndDetailType: evergreen.CommandTypeSystem,
 		})
 	}
 	if isSuccess {

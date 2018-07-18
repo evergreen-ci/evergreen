@@ -593,7 +593,7 @@ func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 		if err != nil {
 			return errors.Wrap(err, "unable to retrieve user")
 		}
-		if author.Settings.Notifications.BuildBreakID.Valid() {
+		if author.Settings.Notifications.BuildBreakID != "" {
 			return nil
 		}
 	}

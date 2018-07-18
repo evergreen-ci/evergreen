@@ -22,53 +22,42 @@ type taskGroupData struct {
 	tasks []model.TaskQueueItem
 }
 
-func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (map[string]int, error) {
-	distroCount := 0
-	var distroName string
-	newHostsNeeded := make(map[string]int)
+func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
+	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
+	newHostsNeeded := 0
+	groupedData := groupByTaskGroup(hostAllocatorData.existingHosts, hostAllocatorData.taskQueueItems)
+	for tg, data := range groupedData {
+		var maxHosts int
+		if tg == "" {
+			maxHosts = hostAllocatorData.distro.PoolSize
+		} else {
+			if len(data.tasks) == 0 {
+				continue // skip this group if there are no tasks in the queue for it
+			}
+			maxHosts = data.tasks[0].GroupMaxHosts
+		}
+		// calculate number of hosts needed for this group
+		newHosts, err := evalHostUtilization(ctx,
+			hostAllocatorData.distro,
+			data.tasks,
+			data.hosts,
+			hostAllocatorData.freeHostFraction,
+			hostAllocatorData.usesContainers,
+			hostAllocatorData.containerPool,
+			maxHosts)
 
-	// once the input format changes this loop can be removed - should only have 1 distro
-	for name, d := range hostAllocatorData.distros {
-		distroName = name
-		if distroCount > 0 {
-			msg := "more than 1 distro sent to UtilizationBasedHostAllocator"
-			grip.Emergency(message.Fields{
-				"message": msg,
-				"distros": hostAllocatorData.distros,
-			})
-			return nil, errors.New(msg)
+		if err != nil {
+			return 0, errors.Wrapf(err, "error calculating hosts for distro %s", hostAllocatorData.distro.Id)
 		}
 
-		// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
-		hostsNeeded := 0
-		groupedData := groupByTaskGroup(hostAllocatorData.existingDistroHosts[name], hostAllocatorData.taskQueueItems[name])
-		for tg, data := range groupedData {
-			var maxHosts int
-			if tg == "" {
-				maxHosts = d.PoolSize
-			} else {
-				if len(data.tasks) == 0 {
-					continue // skip this group if there are no tasks in the queue for it
-				}
-				maxHosts = data.tasks[0].GroupMaxHosts
-			}
-			// calculate number of hosts needed for this group
-			newHosts, err := evalHostUtilization(ctx, d, data.tasks, data.hosts, hostAllocatorData.freeHostFraction,
-				hostAllocatorData.usesContainers, hostAllocatorData.containerPool, maxHosts)
-			if err != nil {
-				return nil, errors.Wrapf(err, "error calculating hosts for distro %s", name)
-			}
-
-			// add up total number of hosts needed for all groups
-			hostsNeeded += newHosts
-		}
-		newHostsNeeded[name] = hostsNeeded
-		distroCount++
+		// add up total number of hosts needed for all groups
+		newHostsNeeded += newHosts
 	}
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
-		"num_new_hosts": newHostsNeeded[distroName],
+		"distro":        hostAllocatorData.distro.Id,
+		"num_new_hosts": newHostsNeeded,
 		"message":       "requesting new hosts",
 	})
 

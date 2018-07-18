@@ -95,7 +95,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 		c.httpClient = util.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
-			Region:      makeStringPtr(region),
+			Region:      aws.String(region),
 			Credentials: creds,
 		})
 		if err != nil {
@@ -270,7 +270,7 @@ func (c *awsClientImpl) DescribeSpotRequestsAndSave(ctx context.Context, hosts [
 		if h == nil {
 			return nil, errors.New("unable to describe spot request for nil host")
 		}
-		spotRequestIds = append(spotRequestIds, makeStringPtr(h.Id))
+		spotRequestIds = append(spotRequestIds, aws.String(h.Id))
 	}
 	apiInput := &ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: spotRequestIds,
@@ -439,7 +439,7 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 		return nil, errors.Errorf("id appears to be a spot instance request ID, not a host ID (%s)", id)
 	}
 	resp, err := c.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{makeStringPtr(id)},
+		InstanceIds: []*string{aws.String(id)},
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "EC2 API returned error for DescribeInstances")
@@ -493,8 +493,8 @@ func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstance
 	return &ec2.Reservation{
 		Instances: []*ec2.Instance{
 			&ec2.Instance{
-				InstanceId: makeStringPtr("instance_id"),
-				KeyName:    makeStringPtr("keyName"),
+				InstanceId: aws.String("instance_id"),
+				KeyName:    aws.String("keyName"),
 			},
 		},
 	}, nil
@@ -511,12 +511,12 @@ func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.Descri
 			&ec2.Reservation{
 				Instances: []*ec2.Instance{
 					&ec2.Instance{
-						InstanceId:   makeStringPtr("instance_id"),
-						InstanceType: makeStringPtr("instance_type"),
+						InstanceId:   aws.String("instance_id"),
+						InstanceType: aws.String("instance_type"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
-						PublicDnsName: makeStringPtr("public_dns_name"),
+						PublicDnsName: aws.String("public_dns_name"),
 					},
 				},
 			},
@@ -542,9 +542,9 @@ func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	return &ec2.RequestSpotInstancesOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
-				InstanceId: makeStringPtr("instance_id"),
-				State:      makeStringPtr(SpotStatusOpen),
-				SpotInstanceRequestId: makeStringPtr("instance_id"),
+				InstanceId: aws.String("instance_id"),
+				State:      aws.String(SpotStatusOpen),
+				SpotInstanceRequestId: aws.String("instance_id"),
 			},
 		},
 	}, nil
@@ -559,9 +559,9 @@ func (c *awsClientMock) DescribeSpotInstanceRequests(ctx context.Context, input 
 	return &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
-				InstanceId: makeStringPtr("instance_id"),
-				State:      makeStringPtr(SpotStatusActive),
-				SpotInstanceRequestId: makeStringPtr("instance_id"),
+				InstanceId: aws.String("instance_id"),
+				State:      aws.String(SpotStatusActive),
+				SpotInstanceRequestId: aws.String("instance_id"),
 			},
 		},
 	}, nil
@@ -571,7 +571,7 @@ func (c *awsClientMock) DescribeSpotRequestsAndSave(ctx context.Context, hosts [
 	spotRequestIds := []*string{}
 	for idx := range hosts {
 		h := hosts[idx]
-		spotRequestIds = append(spotRequestIds, makeStringPtr(h.Id))
+		spotRequestIds = append(spotRequestIds, aws.String(h.Id))
 	}
 	apiInput := &ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: spotRequestIds,
@@ -628,8 +628,8 @@ func (c *awsClientMock) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 	return &ec2.DescribeSpotPriceHistoryOutput{
 		SpotPriceHistory: []*ec2.SpotPrice{
 			&ec2.SpotPrice{
-				SpotPrice:        makeStringPtr("1.0"),
-				AvailabilityZone: makeStringPtr("us-east-1a"),
+				SpotPrice:        aws.String("1.0"),
+				AvailabilityZone: aws.String("us-east-1a"),
 			},
 		},
 	}, nil
@@ -641,7 +641,7 @@ func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.Describe
 	return &ec2.DescribeSubnetsOutput{
 		Subnets: []*ec2.Subnet{
 			&ec2.Subnet{
-				SubnetId: makeStringPtr("subnet-654321"),
+				SubnetId: aws.String("subnet-654321"),
 			},
 		},
 	}, nil
@@ -652,7 +652,7 @@ func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 	c.DescribeVpcsInput = input
 	return &ec2.DescribeVpcsOutput{
 		Vpcs: []*ec2.Vpc{
-			&ec2.Vpc{VpcId: makeStringPtr("vpc-123456")},
+			&ec2.Vpc{VpcId: aws.String("vpc-123456")},
 		},
 	}, nil
 }
@@ -660,12 +660,12 @@ func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
 	instance := &ec2.Instance{}
 	instance.Placement = &ec2.Placement{}
-	instance.Placement.AvailabilityZone = makeStringPtr("us-east-1a")
-	instance.InstanceType = makeStringPtr("m3.4xlarge")
-	instance.LaunchTime = makeTimePtr(time.Now())
-	instance.PublicDnsName = makeStringPtr("public_dns_name")
+	instance.Placement.AvailabilityZone = aws.String("us-east-1a")
+	instance.InstanceType = aws.String("m3.4xlarge")
+	instance.LaunchTime = aws.Time(time.Now())
+	instance.PublicDnsName = aws.String("public_dns_name")
 	instance.State = &ec2.InstanceState{}
-	instance.State.Name = makeStringPtr("running")
+	instance.State.Name = aws.String("running")
 	return instance, nil
 }
 

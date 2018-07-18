@@ -8,6 +8,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 var ErrUnauthorized = errors.New("Unauthorized")
@@ -77,11 +81,22 @@ func (self *Client) GetUser(username string) (*User, error) {
 	req.Header.Add("Content-Type", "application/json")
 	req.SetBasicAuth(self.crowdUsername, self.crowdPassword)
 	client := &http.Client{}
+	start := time.Now()
+	msg := message.Fields{
+		"message":  "starting request to crowd",
+		"path":     subUrl.String(),
+		"method":   "GET",
+		"function": "GetUser",
+	}
+	grip.Debug(msg)
 	resp, err := client.Do(req)
 
 	if err != nil {
 		return nil, fmt.Errorf("Error making http request: %v", err)
 	}
+	msg["message"] = "crowd request finished"
+	msg["duration"] = time.Since(start)
+	grip.Debug(msg)
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return nil, ErrUnauthorized
@@ -126,10 +141,21 @@ func (self *Client) GetUserFromToken(token string) (*User, error) {
 	req.Header.Add("Content-Type", "application/json")
 	req.SetBasicAuth(self.crowdUsername, self.crowdPassword)
 	client := &http.Client{}
+	start := time.Now()
+	msg := message.Fields{
+		"message":  "starting request to crowd",
+		"path":     subUrl.String(),
+		"method":   "GET",
+		"function": "GetUserFromToken",
+	}
+	grip.Debug(msg)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("Error making http request: %v", err)
 	}
+	msg["message"] = "crowd request finished"
+	msg["duration"] = time.Since(start)
+	grip.Debug(msg)
 
 	defer resp.Body.Close()
 
@@ -176,10 +202,21 @@ func (self *Client) CreateSession(username, password string) (*Session, error) {
 	req.SetBasicAuth(self.crowdUsername, self.crowdPassword)
 
 	client := &http.Client{}
+	start := time.Now()
+	msg := message.Fields{
+		"message":  "starting request to crowd",
+		"path":     subUrl.String(),
+		"method":   "POST",
+		"function": "CreateSession",
+	}
+	grip.Debug(msg)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making http request: %v", err)
 	}
+	msg["message"] = "crowd request finished"
+	msg["duration"] = time.Since(start)
+	grip.Debug(msg)
 	if resp == nil {
 		return nil, fmt.Errorf("received nil response from %v", subUrl.String())
 	}

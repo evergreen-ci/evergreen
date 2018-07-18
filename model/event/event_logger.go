@@ -50,7 +50,7 @@ func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 }
 
 func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
-	if !event.ID.Valid() {
+	if event.ID == "" {
 		return errors.New("event has no ID")
 	}
 	event.ProcessedAt = time.Now()

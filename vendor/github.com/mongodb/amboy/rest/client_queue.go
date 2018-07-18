@@ -21,46 +21,36 @@ const (
 	maxClientPort         = 65535
 )
 
-// Client provides an interface for interacting with a remote amboy
+// QueueClient provides an interface for interacting with a remote amboy
 // Service.
-type Client struct {
+type QueueClient struct {
 	host   string
 	prefix string
 	port   int
 	client *http.Client
 }
 
-// NewClient takes host, port, and URI prefix information and
-// constructs a new Client.
-func NewClient(host string, port int, prefix string) (*Client, error) {
-	c := &Client{client: &http.Client{}}
+// NewQueueClient takes host, port, and URI prefix information and
+// constructs a new QueueClient.
+func NewQueueClient(host string, port int, prefix string) (*QueueClient, error) {
+	c := &QueueClient{client: &http.Client{}}
 
 	return c.initClient(host, port, prefix)
 }
 
-// NewClientFromExisting takes an existing http.Client object and
-// produces a new Client object.
-func NewClientFromExisting(client *http.Client, host string, port int, prefix string) (*Client, error) {
+// NewQueueClientFromExisting takes an existing http.Client object and
+// produces a new QueueClient object.
+func NewQueueClientFromExisting(client *http.Client, host string, port int, prefix string) (*QueueClient, error) {
 	if client == nil {
 		return nil, errors.New("must use a non-nil existing client")
 	}
 
-	c := &Client{client: client}
+	c := &QueueClient{client: client}
 
 	return c.initClient(host, port, prefix)
 }
 
-// Copy takes an existing Client object and returns a new client
-// object with the same settings that uses a *new* http.Client.
-func (c *Client) Copy() *Client {
-	new := &Client{}
-	*new = *c
-	new.client = &http.Client{}
-
-	return new
-}
-
-func (c *Client) initClient(host string, port int, prefix string) (*Client, error) {
+func (c *QueueClient) initClient(host string, port int, prefix string) (*QueueClient, error) {
 	err := c.SetHost(host)
 	if err != nil {
 		return nil, err
@@ -85,15 +75,10 @@ func (c *Client) initClient(host string, port int, prefix string) (*Client, erro
 //
 ////////////////////////////////////////////////////////////////////////
 
-// Client returns a pointer to embedded http.Client object.
-func (c *Client) Client() *http.Client {
-	return c.client
-}
-
 // SetHost allows callers to change the hostname (including leading
 // "http(s)") for the Client. Returns an error if the specified host
 // does not start with "http".
-func (c *Client) SetHost(h string) error {
+func (c *QueueClient) SetHost(h string) error {
 	if !strings.HasPrefix(h, "http") {
 		return errors.Errorf("host '%s' is malformed. must start with 'http'", h)
 	}
@@ -108,14 +93,14 @@ func (c *Client) SetHost(h string) error {
 }
 
 // Host returns the current host.
-func (c *Client) Host() string {
+func (c *QueueClient) Host() string {
 	return c.host
 }
 
 // SetPort allows callers to change the port used for the client. If
 // the port is invalid, returns an error and sets the port to the
 // default value. (3000)
-func (c *Client) SetPort(p int) error {
+func (c *QueueClient) SetPort(p int) error {
 	if p <= 0 || p >= maxClientPort {
 		c.port = defaultClientPort
 		return errors.Errorf("cannot set the port to %d, using %d instead", p, defaultClientPort)
@@ -125,24 +110,24 @@ func (c *Client) SetPort(p int) error {
 	return nil
 }
 
-// Port returns the current port value for the Client.
-func (c *Client) Port() int {
+// Port returns the current port value for the QueueClient.
+func (c *QueueClient) Port() int {
 	return c.port
 }
 
 // SetPrefix allows callers to modify the prefix, for this client,
-func (c *Client) SetPrefix(p string) error {
+func (c *QueueClient) SetPrefix(p string) error {
 	c.prefix = strings.Trim(p, "/")
 	return nil
 }
 
 // Prefix accesses the prefix for the client, The prefix is the part
 // of the URI between the end-point and the hostname, of the API.
-func (c *Client) Prefix() string {
+func (c *QueueClient) Prefix() string {
 	return c.prefix
 }
 
-func (c *Client) getURL(endpoint string) string {
+func (c *QueueClient) getURL(endpoint string) string {
 	var url []string
 
 	if c.port == 80 || c.port == 0 {
@@ -168,7 +153,7 @@ func (c *Client) getURL(endpoint string) string {
 //
 ////////////////////////////////////////////////////////////////////////
 
-func (c *Client) getStats(ctx context.Context) (*status, error) {
+func (c *QueueClient) getStats(ctx context.Context) (*status, error) {
 
 	req, err := http.NewRequest(http.MethodGet, c.getURL("/v1/status"), nil)
 	if err != nil {
@@ -193,7 +178,7 @@ func (c *Client) getStats(ctx context.Context) (*status, error) {
 // Running is true when the underlying queue is running and accepting
 // jobs, and false when the queue is not runner or if there's a
 // problem connecting to the queue.
-func (c *Client) Running(ctx context.Context) (bool, error) {
+func (c *QueueClient) Running(ctx context.Context) (bool, error) {
 	s, err := c.getStats(ctx)
 	if err != nil {
 		return false, err
@@ -204,7 +189,7 @@ func (c *Client) Running(ctx context.Context) (bool, error) {
 
 // PendingJobs reports on the total number of jobs currently dispatched
 // by the queue to workers.
-func (c *Client) PendingJobs(ctx context.Context) (int, error) {
+func (c *QueueClient) PendingJobs(ctx context.Context) (int, error) {
 	s, err := c.getStats(ctx)
 	if err != nil {
 		return -1, err
@@ -214,7 +199,7 @@ func (c *Client) PendingJobs(ctx context.Context) (int, error) {
 }
 
 // SubmitJob adds a job to a remote queue connected to the rest interface.
-func (c *Client) SubmitJob(ctx context.Context, j amboy.Job) (string, error) {
+func (c *QueueClient) SubmitJob(ctx context.Context, j amboy.Job) (string, error) {
 	ji, err := registry.MakeJobInterchange(j, amboy.JSON)
 	if err != nil {
 		return "", err
@@ -253,7 +238,7 @@ func (c *Client) SubmitJob(ctx context.Context, j amboy.Job) (string, error) {
 
 // FetchJob takes the name of a queue, and returns if possible a
 // representation of that job object.
-func (c *Client) FetchJob(ctx context.Context, name string) (amboy.Job, error) {
+func (c *QueueClient) FetchJob(ctx context.Context, name string) (amboy.Job, error) {
 	req, err := http.NewRequest(http.MethodGet, c.getURL(fmt.Sprintf("/v1/job/%s", name)), nil)
 	if err != nil {
 		return nil, err
@@ -279,7 +264,7 @@ func (c *Client) FetchJob(ctx context.Context, name string) (amboy.Job, error) {
 	return j, nil
 }
 
-func (c *Client) jobStatus(ctx context.Context, name string) (*jobStatusResponse, error) {
+func (c *QueueClient) jobStatus(ctx context.Context, name string) (*jobStatusResponse, error) {
 	req, err := http.NewRequest(http.MethodGet, c.getURL(fmt.Sprintf("/v1/job/status/%s", name)), nil)
 	if err != nil {
 		return nil, err
@@ -303,7 +288,7 @@ func (c *Client) jobStatus(ctx context.Context, name string) (*jobStatusResponse
 // JobComplete checks the stats of a job, by name, and returns true if
 // that job is complete. When false, check the second return value to
 // ensure that the job exists in the remote queue.
-func (c *Client) JobComplete(ctx context.Context, name string) (bool, error) {
+func (c *QueueClient) JobComplete(ctx context.Context, name string) (bool, error) {
 	st, err := c.jobStatus(ctx, name)
 	if err != nil {
 		return false, err
@@ -314,7 +299,7 @@ func (c *Client) JobComplete(ctx context.Context, name string) (bool, error) {
 
 // Wait blocks until the job identified by the name argument is
 // complete. Does not handle the case where a job does not exist.
-func (c *Client) Wait(ctx context.Context, name string) bool {
+func (c *QueueClient) Wait(ctx context.Context, name string) bool {
 	timeout := 20 * time.Second
 	deadline, ok := ctx.Deadline()
 	if ok {
@@ -337,7 +322,7 @@ func (c *Client) Wait(ctx context.Context, name string) bool {
 }
 
 // WaitAll waits for *all* pending jobs in the queue to complete.
-func (c *Client) WaitAll(ctx context.Context) bool {
+func (c *QueueClient) WaitAll(ctx context.Context) bool {
 	timeout := 20 * time.Second
 	deadline, ok := ctx.Deadline()
 	if ok {

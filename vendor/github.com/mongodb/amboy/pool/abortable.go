@@ -22,6 +22,10 @@ type abortablePool struct {
 	started bool
 }
 
+// NewAbortablePool produces a simple implementation of a worker pool
+// that provides access to cancel running jobs. The cancellation
+// functions work by creating context cancelation function and then
+// canceling the contexts passed to the jobs specifically.
 func NewAbortablePool(size int, q amboy.Queue) amboy.AbortableRunner {
 	p := &abortablePool{
 		queue: q,
@@ -67,9 +71,11 @@ func (p *abortablePool) Close() {
 
 	if p.canceler != nil {
 		p.canceler()
+		p.canceler = nil
+		p.started = false
+		p.wg.Wait()
 	}
 
-	p.wg.Wait()
 }
 
 func (p *abortablePool) Start(ctx context.Context) error {
@@ -98,13 +104,17 @@ func (p *abortablePool) Start(ctx context.Context) error {
 	return nil
 }
 
-func (p *abortablePool) worker(ctx context.Context, jobs <-chan amboy.Job) {
+func (p *abortablePool) worker(ctx context.Context, jobs <-chan workUnit) {
 	var (
-		err error
-		job amboy.Job
+		err    error
+		job    amboy.Job
+		cancel context.CancelFunc
 	)
 
+	p.mu.Lock()
 	p.wg.Add(1)
+	p.mu.Unlock()
+
 	defer p.wg.Done()
 	defer func() {
 		// if we hit a panic we want to add an error to the job;
@@ -114,8 +124,13 @@ func (p *abortablePool) worker(ctx context.Context, jobs <-chan amboy.Job) {
 				job.AddError(err)
 				p.queue.Complete(ctx, job)
 			}
+
 			// start a replacement worker.
 			go p.worker(ctx, jobs)
+		}
+
+		if cancel != nil {
+			cancel()
 		}
 	}()
 
@@ -123,25 +138,31 @@ func (p *abortablePool) worker(ctx context.Context, jobs <-chan amboy.Job) {
 		select {
 		case <-ctx.Done():
 			return
-		case job = <-jobs:
-			if job == nil {
+		case wu := <-jobs:
+			if wu.job == nil {
 				continue
 			}
 
+			job = wu.job
+			cancel = wu.cancel
 			p.runJob(ctx, job)
+			cancel()
 		}
 	}
+}
+
+func (p *abortablePool) addCanceler(id string, cancel context.CancelFunc) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.jobs[id] = cancel
 }
 
 func (p *abortablePool) runJob(ctx context.Context, job amboy.Job) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
-	func() {
-		p.mu.Lock()
-		defer p.mu.Unlock()
 
-		p.jobs[job.ID()] = cancel
-	}()
+	p.addCanceler(job.ID(), cancel)
 
 	defer func() {
 		p.mu.Lock()
@@ -174,7 +195,7 @@ func (p *abortablePool) RunningJobs() []string {
 	return out
 }
 
-func (p *abortablePool) Abort(id string) error {
+func (p *abortablePool) Abort(ctx context.Context, id string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -185,15 +206,30 @@ func (p *abortablePool) Abort(id string) error {
 	cancel()
 	delete(p.jobs, id)
 
+	job, ok := p.queue.Get(id)
+	if !ok {
+		return errors.Errorf("could not find '%s' in the queue", id)
+	}
+
+	p.queue.Complete(ctx, job)
+
 	return nil
 }
 
-func (p *abortablePool) AbortAll() {
+func (p *abortablePool) AbortAll(ctx context.Context) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	for id, cancel := range p.jobs {
+		if ctx.Err() != nil {
+			break
+		}
 		cancel()
 		delete(p.jobs, id)
+		job, ok := p.queue.Get(id)
+		if !ok {
+			continue
+		}
+		p.queue.Complete(ctx, job)
 	}
 }

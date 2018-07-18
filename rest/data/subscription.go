@@ -46,7 +46,7 @@ func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType even
 }
 
 func (dc *DBSubscriptionConnector) DeleteSubscription(id string) error {
-	return event.RemoveSubscriptionID(id)
+	return event.RemoveSubscription(id)
 }
 
 type MockSubscriptionConnector struct {

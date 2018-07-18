@@ -10,12 +10,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-type lockPings map[string]time.Time
+type lockPings map[string]lockPingOp
+
+type lockPingOp struct {
+	ts  time.Time
+	ctx context.Context
+}
+
+// LockTimeout reflects the distributed lock timeout period.
+const LockTimeout = 5 * time.Minute
 
 // LockManager describes the component of the Driver interface that
 // handles job mutexing.
 type LockManager interface {
-	Lock(amboy.Job) error
+	Lock(context.Context, amboy.Job) error
 	Unlock(amboy.Job) error
 }
 
@@ -23,7 +31,7 @@ type LockManager interface {
 // methods to be composed by amboy/queue.Driver implementations.
 //
 // lockManagers open a single background process that updates all
-// tracked locks at an interval, less than the configured lockTimeout
+// tracked locks at an interval, less than the configured LockTimeout
 // to avoid locks growing stale.
 type lockManager struct {
 	name    string
@@ -47,7 +55,7 @@ func newLockManager(name string, d Driver) *lockManager {
 		name:    name,
 		d:       d,
 		ops:     make(chan func(lockPings)),
-		timeout: lockTimeout,
+		timeout: LockTimeout,
 	}
 }
 
@@ -58,7 +66,6 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -68,15 +75,15 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 		case <-timer.C:
 			startAt := time.Now()
 			nextLoopAt := time.Now().Add(l.timeout / 2)
-			for name, ts := range activeLocks {
-				if nextLoopAt.After(ts) {
+			for name, op := range activeLocks {
+				if nextLoopAt.After(op.ts) {
 					// make sure that we loop
 					// again when at least one of the
 					// locks will be ready for an update.
-					nextLoopAt = ts
+					nextLoopAt = op.ts
 				}
 
-				if ts.Before(startAt) {
+				if op.ts.Before(startAt) {
 					// don't update locks that are too fresh.
 					continue
 				}
@@ -91,7 +98,29 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 				}
 
 				stat := j.Status()
-				if !stat.InProgress || stat.Owner != l.name {
+				if !stat.InProgress {
+					grip.Debug(message.Fields{
+						"message":  "removing locally tracked lock",
+						"cause":    "job complete",
+						"job_id":   name,
+						"stat":     stat,
+						"job_type": j.Type().Name,
+						"service":  "amboy.queue.locker",
+					})
+
+					delete(activeLocks, name)
+					continue
+				} else if stat.Owner != l.name {
+					grip.Debug(message.Fields{
+						"message":  "removing locally tracked lock",
+						"cause":    "lock held by other service",
+						"self":     l.name,
+						"job_id":   name,
+						"stat":     stat,
+						"job_type": j.Type().Name,
+						"service":  "amboy.queue.locker",
+					})
+
 					delete(activeLocks, name)
 					continue
 				}
@@ -100,11 +129,34 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 					return
 				}
 
-				if err := l.d.SaveStatus(j, stat); err != nil {
+				if op.ctx.Err() != nil {
+					grip.Debug(message.Fields{
+						"message":  "removing locally tracked lock",
+						"cause":    "context canceled",
+						"job_id":   name,
+						"stat":     stat,
+						"job_type": j.Type().Name,
+						"service":  "amboy.queue.locker",
+					})
+					delete(activeLocks, name)
 					continue
 				}
 
-				activeLocks[name] = time.Now().Add(l.timeout / 2)
+				if err := l.d.SaveStatus(j, stat); err != nil {
+					grip.Debug(message.WrapError(err, message.Fields{
+						"message":  "problem updating lock",
+						"job_id":   name,
+						"stat":     stat,
+						"job_type": j.Type().Name,
+						"service":  "amboy.queue.locker",
+					}))
+					continue
+				}
+
+				activeLocks[name] = lockPingOp{
+					ts:  time.Now().Add(l.timeout / 2),
+					ctx: op.ctx,
+				}
 			}
 
 			timer.Reset(-time.Since(nextLoopAt))
@@ -112,12 +164,16 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 	}
 }
 
-func (l *lockManager) addPing(name string) {
+func (l *lockManager) addPing(ctx context.Context, name string) {
 	wait := make(chan struct{})
 	l.ops <- func(pings lockPings) {
-		pings[name] = time.Now().Add(l.timeout)
+		pings[name] = lockPingOp{
+			ts:  time.Now().Add(l.timeout),
+			ctx: ctx,
+		}
 		close(wait)
 	}
+
 	<-wait
 }
 
@@ -135,7 +191,7 @@ func (l *lockManager) removePing(name string) {
 //
 // Returns an error if the Lock is already locked or if there's a
 // problem updating the document.
-func (l *lockManager) Lock(j amboy.Job) error {
+func (l *lockManager) Lock(ctx context.Context, j amboy.Job) error {
 	if j == nil {
 		return errors.New("cannot unlock nil job")
 	}
@@ -144,7 +200,12 @@ func (l *lockManager) Lock(j amboy.Job) error {
 	// function and the query handle the "do we own this? is the
 	// lock active? has it changed since we last saw it?"
 
-	stat := j.Status()
+	job, err := l.d.Get(j.ID())
+	if err != nil {
+		return errors.Wrapf(err, "couldn't find job named %s", j.ID())
+	}
+
+	stat := job.Status()
 
 	// previous versions of this allowed operation allowed one
 	// client to "take" the lock more than once. This covered a
@@ -152,19 +213,19 @@ func (l *lockManager) Lock(j amboy.Job) error {
 	// complete, *and* allowed queues implementations with more
 	// than one worker, to potentially repeat work.
 	if stat.InProgress && stat.ModificationTime.Add(l.timeout).After(time.Now()) {
-		return errors.Errorf("cannot take lock, job locked at %s by %s, for job: '%s'",
-			stat.ModificationTime, stat.Owner, j.ID())
+		return errors.Errorf("cannot take lock, for job: '%s', job locked at %s by %s",
+			j.ID(), stat.ModificationTime, stat.Owner)
 	}
 
 	stat.Owner = l.name
 	stat.InProgress = true
-	j.SetStatus(stat)
+	job.SetStatus(stat)
 
-	if err := l.d.SaveStatus(j, stat); err != nil {
+	if err := l.d.SaveStatus(job, stat); err != nil {
 		return errors.Wrap(err, "problem saving stat")
 	}
 
-	l.addPing(j.ID())
+	l.addPing(ctx, j.ID())
 
 	return nil
 }

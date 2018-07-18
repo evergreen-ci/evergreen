@@ -59,7 +59,6 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
 	assert.Equal(testSettings.ConfigDir, *apiSettings.ConfigDir)
 	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
-	assert.Equal(testSettings.IsNonProd, *apiSettings.IsNonProd)
 	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
 	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
 	for k, v := range testSettings.Credentials {

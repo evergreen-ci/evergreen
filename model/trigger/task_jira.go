@@ -113,9 +113,9 @@ func (j *jiraBuilder) getSummary() (string, error) {
 	switch {
 	case j.data.Task.Details.TimedOut:
 		subj.WriteString("Timed Out: ")
-	case j.data.Task.Details.Type == model.SystemCommandType:
+	case j.data.Task.Details.Type == evergreen.CommandTypeSystem:
 		subj.WriteString("System Failure: ")
-	case j.data.Task.Details.Type == model.SetupCommandType:
+	case j.data.Task.Details.Type == evergreen.CommandTypeSetup:
 		subj.WriteString("Setup Failure: ")
 	case len(failed) == 1:
 		subj.WriteString("Failure: ")

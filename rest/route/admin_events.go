@@ -91,7 +91,6 @@ func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	catcher := grip.NewBasicCatcher()
 	for i := range events {
 		catcher.Add(resp.AddData(model.Model(&events[i])))
-
 	}
 
 	if catcher.HasErrors() {

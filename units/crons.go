@@ -184,6 +184,8 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 			catcher.Add(queue.Put(job))
 		}
 
+		catcher.Add(queue.Put(NewStrandedTaskCleanupJob(ts)))
+
 		return catcher.Resolve()
 	}
 }

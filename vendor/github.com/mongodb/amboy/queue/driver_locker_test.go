@@ -11,11 +11,10 @@ import (
 )
 
 type LockManagerSuite struct {
-	lm          *lockManager
-	driver      *priorityDriver
-	testCancel  context.CancelFunc
-	suiteCancel context.CancelFunc
-
+	lm         *lockManager
+	driver     *priorityDriver
+	testCancel context.CancelFunc
+	ctx        context.Context
 	suite.Suite
 }
 
@@ -25,18 +24,14 @@ func TestLockManagerSuite(t *testing.T) {
 }
 
 func (s *LockManagerSuite) SetupSuite() {
-	var ctx context.Context
 	s.driver = NewPriorityDriver().(*priorityDriver)
-	ctx, s.suiteCancel = context.WithCancel(context.Background())
-	s.Require().NoError(s.driver.Open(ctx))
 }
 
 func (s *LockManagerSuite) SetupTest() {
-	var ctx context.Context
-	ctx, s.testCancel = context.WithCancel(context.Background())
+	s.ctx, s.testCancel = context.WithCancel(context.Background())
 	s.lm = newLockManager("test", s.driver)
-	s.lm.timeout = time.Second
-	s.lm.start(ctx)
+	s.lm.timeout = 300 * time.Millisecond
+	s.lm.start(s.ctx)
 }
 
 func (s *LockManagerSuite) TearDownTest() {
@@ -44,15 +39,14 @@ func (s *LockManagerSuite) TearDownTest() {
 }
 
 func (s *LockManagerSuite) TearDownSuite() {
-	s.suiteCancel()
 	s.driver.Close()
 }
 
 func (s *LockManagerSuite) TestCannotLockOrUnlockANilJob() {
-	s.Error(s.lm.Lock(nil))
+	s.Error(s.lm.Lock(s.ctx, nil))
 	s.Error(s.lm.Unlock(nil))
 	var j amboy.Job
-	s.Error(s.lm.Lock(j))
+	s.Error(s.lm.Lock(s.ctx, j))
 	s.Error(s.lm.Unlock(j))
 }
 
@@ -60,10 +54,10 @@ func (s *LockManagerSuite) TestSuccessiveAttemptsToTakeALockAreErrors() {
 	j := job.NewShellJob("echo hi", "")
 	s.NoError(s.driver.Put(j))
 
-	s.NoError(s.lm.Lock(j))
+	s.NoError(s.lm.Lock(s.ctx, j))
 
 	for i := 0; i < 10; i++ {
-		s.Error(s.lm.Lock(j))
+		s.Error(s.lm.Lock(s.ctx, j))
 	}
 }
 
@@ -72,7 +66,7 @@ func (s *LockManagerSuite) TestLockAndUnlockCylcesWorkForOneJob() {
 	s.NoError(s.driver.Put(j))
 
 	for i := 0; i < 10; i++ {
-		s.NoError(s.lm.Lock(j))
+		s.NoError(s.lm.Lock(s.ctx, j))
 		s.NoError(s.lm.Unlock(j))
 	}
 }
@@ -84,16 +78,64 @@ func (s *LockManagerSuite) TestLocksArePerJob() {
 	s.NoError(s.driver.Put(jtwo))
 	s.NotEqual(jone.ID(), jtwo.ID())
 
-	s.NoError(s.lm.Lock(jone))
-	s.NoError(s.lm.Lock(jtwo))
+	s.NoError(s.lm.Lock(s.ctx, jone))
+	s.NoError(s.lm.Lock(s.ctx, jtwo))
 }
 
 func (s *LockManagerSuite) TestLockReachesTimeout() {
 	j := job.NewShellJob("echo hello", "")
 	s.NoError(s.driver.Put(j))
 
-	s.NoError(s.lm.Lock(j))
-	time.Sleep(s.lm.timeout * 2)
-	s.NoError(s.lm.Lock(j))
-	s.Error(s.lm.Lock(j))
+	s.NoError(s.lm.Lock(s.ctx, j))
+	time.Sleep(s.lm.timeout * 3)
+	s.NoError(s.lm.Lock(s.ctx, j))
+	s.Error(s.lm.Lock(s.ctx, j))
+}
+
+func (s *LockManagerSuite) TestPanicJobIsUnlocked() {
+	j := &jobThatPanics{
+		sleep: time.Second,
+	}
+	j.SetID("foo")
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	lastMod := j.Status().ModificationCount
+	s.Equal(0, lastMod)
+	s.NoError(s.driver.Put(j))
+	lastMod = j.Status().ModificationCount
+	s.Equal(0, lastMod)
+
+	s.NoError(s.lm.Lock(ctx, j), "%+v", j)
+
+	for i := 0; i < 10; i++ {
+		s.Error(s.lm.Lock(ctx, j), "idx=%d => %+v", i, j)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	lastMod = j.Status().ModificationCount
+	s.True(lastMod >= 1)
+
+	for i := 0; i < 10; i++ {
+		s.Error(s.lm.Lock(ctx, j), "idx=%d => %+v", i, j)
+	}
+
+	s.False(j.Status().Completed)
+	cancel()
+	time.Sleep(500 * time.Millisecond)
+
+	s.NoError(s.lm.Lock(ctx, j), "%+v", j)
+
+	lastMod = j.Status().ModificationCount
+
+	time.Sleep(200 * time.Millisecond)
+	s.Equal(lastMod, j.Status().ModificationCount)
+	s.False(j.Status().Completed)
+	time.Sleep(200 * time.Millisecond)
+
+	s.NoError(s.lm.Lock(s.ctx, j))
+
+	for i := 0; i < 10; i++ {
+		s.Error(s.lm.Lock(s.ctx, j), "idx=%d => %+v", i, j)
+	}
 }

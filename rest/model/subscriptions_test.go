@@ -11,7 +11,7 @@ import (
 func TestSubscriptionModels(t *testing.T) {
 	assert := assert.New(t)
 	subscription := event.Subscription{
-		ID:        bson.NewObjectId(),
+		ID:        bson.NewObjectId().Hex(),
 		Type:      "atype",
 		Trigger:   "atrigger",
 		Owner:     "me",

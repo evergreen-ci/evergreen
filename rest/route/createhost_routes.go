@@ -61,7 +61,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    err.Error(),
 		}
 	}
-	return nil
+	return h.createHost.Validate()
 }
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
@@ -133,8 +133,8 @@ func (h *hostCreateHandler) makeIntentHost() (*host.Host, error) {
 	if h.createHost.Subnet != "" {
 		ec2Settings.SubnetId = h.createHost.Subnet
 	}
-	if h.createHost.UserdataFile != "" {
-		ec2Settings.UserData = h.createHost.UserdataFile
+	if h.createHost.UserdataCommand != "" {
+		ec2Settings.UserData = h.createHost.UserdataCommand
 	}
 	if h.createHost.VPC != "" {
 		ec2Settings.VpcName = h.createHost.VPC
