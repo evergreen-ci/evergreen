@@ -79,7 +79,6 @@ mciModule.factory('MDBQueryAdaptor', function() {
         inner[mdbOp] = predicate.term
       }
       outer[field] = inner
-      //console.log(field, predicate, inner, outer)
       return outer
     }
   }
