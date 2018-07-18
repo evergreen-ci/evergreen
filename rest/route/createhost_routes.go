@@ -64,7 +64,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 	return h.createHost.Validate()
 }
 
-func (h *hostCreateHandler) Run(ctx contextnContext) gimlet.Responder {
+func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts := []host.Host{}
 	for i := 0; i < h.createHost.NumHosts; i++ {
 		intentHost, err := h.makeIntentHost()
