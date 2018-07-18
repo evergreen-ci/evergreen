@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	HostInitializingDelay  = 4 * time.Minute
-	HostStartingDelay      = 3 * time.Minute
-	HostProvisiongingDelay = 1 * time.Minute
+	// average observed time for host to go from this status to running
+	hostInitializingDelay  = 4 * time.Minute
+	hostStartingDelay      = 3 * time.Minute
+	hostProvisiongingDelay = 1 * time.Minute
 )
 
 type estimatedTask struct {
@@ -124,11 +125,11 @@ func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTime
 	for _, h := range hosts {
 		switch h.Status {
 		case evergreen.HostUninitialized:
-			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: HostInitializingDelay})
+			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: hostInitializingDelay})
 		case evergreen.HostStarting:
-			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: HostStartingDelay})
+			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: hostStartingDelay})
 		case evergreen.HostProvisioning:
-			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: HostProvisiongingDelay})
+			estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: hostProvisiongingDelay})
 		case evergreen.HostRunning:
 			if h.RunningTask == "" {
 				estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: 0})

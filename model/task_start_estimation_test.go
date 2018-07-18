@@ -56,7 +56,7 @@ func (s *estimatorSuite) TestCreateModel() {
 	model := createSimulatorModel(queue, hosts)
 	s.InDelta(1*time.Minute, model.hosts[0].timeToCompletion, float64(100*time.Millisecond))
 	s.InDelta(20*time.Minute, model.hosts[1].timeToCompletion, float64(100*time.Millisecond))
-	s.InDelta(HostStartingDelay, model.hosts[2].timeToCompletion, float64(100*time.Millisecond))
+	s.InDelta(hostStartingDelay, model.hosts[2].timeToCompletion, float64(100*time.Millisecond))
 }
 
 func (s *estimatorSuite) TestNoHosts() {

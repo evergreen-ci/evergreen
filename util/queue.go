@@ -43,12 +43,16 @@ func (q *Queue) IsEmpty() bool {
 }
 
 func (q *Queue) Peek() interface{} {
-	if len(q.Items) == 0 {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	if q.IsEmpty() {
 		return nil
 	}
 	return q.Items[0]
 }
 
 func (q *Queue) Length() int {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	return len(q.Items)
 }
