@@ -44,8 +44,10 @@ func (s *eventMetaJobSuite) TearDownTest() {
 
 func (s *eventMetaJobSuite) SetupTest() {
 	evergreen.ResetEnvironment()
+	env := evergreen.GetEnvironment()
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.Require().NoError(evergreen.GetEnvironment().Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.Require().NoError(env.RemoteQueue().Start(s.ctx))
 
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 
