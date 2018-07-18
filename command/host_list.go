@@ -32,7 +32,6 @@ func (c *listHosts) ParseParams(params map[string]interface{}) error {
 
 	if c.Wait && c.NumHosts == 0 {
 		return errors.New("cannot reasonably wait for 0 hosts")
-
 	}
 
 	if c.Path == "" && c.Silent && !c.Wait {
@@ -47,7 +46,6 @@ func (c *listHosts) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
-	// expand the S3 copy parameters before running the task
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.WithStack(err)
 	}
