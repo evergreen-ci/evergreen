@@ -639,15 +639,14 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 		method:   get,
 		taskData: &td,
 		version:  apiVersion2,
-		path:     fmt.Sprintf("host/list/%s", t.ID),
+		path:     fmt.Sprintf("host/list/%s", td.ID),
 	}
 
 	hosts := []restmodel.APIHost{}
 
 	if _, err := c.retryRequest(ctx, info, &hosts); err != nil {
-		return nil, errors.Wrapf(err, "problem listing hosts for task '%s'", t.ID)
+		return nil, errors.Wrapf(err, "problem listing hosts for task '%s'", td.ID)
 	}
 
 	return hosts, nil
->>>>>>> EVG-3508: host.list command
 }

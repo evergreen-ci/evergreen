@@ -26,7 +26,7 @@ type listHosts struct {
 func listHostFactory() Command  { return &listHosts{} }
 func (*listHosts) Name() string { return "host.list" }
 func (c *listHosts) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c.CreateHost); err != nil {
+	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrapf(err, "error parsing '%s' params", c.Name())
 	}
 
@@ -59,14 +59,14 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 	}
 
 	if c.Path != "" {
-		if !filepath.IsAbs(c.LocalFile) {
+		if !filepath.IsAbs(c.Path) {
 			c.Path = filepath.Join(conf.WorkDir, c.Path)
 		}
 	}
 
 	if c.TimeoutSecs > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, c.TimeoutSecs*time.Second)
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(c.TimeoutSecs)*time.Second)
 		defer cancel()
 	}
 
@@ -99,7 +99,7 @@ waitForHosts:
 			} else if err == nil {
 				break waitForHosts
 			}
-			timer.Reset(backoffCounter.Reset())
+			timer.Reset(backoffCounter.Duration())
 		}
 	}
 
