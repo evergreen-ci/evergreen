@@ -342,7 +342,7 @@ tasks:
     tags: ["db", "test"]
     name: test-alerts
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
