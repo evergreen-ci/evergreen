@@ -100,6 +100,9 @@ func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
 	if err != nil {
 		return -1, errors.Wrap(err, "error retrieving task queue")
 	}
+	if queue == nil {
+		return -1, nil
+	}
 	queuePos := -1
 	for i, q := range queue.Queue {
 		if q.Id == t.Id {
