@@ -9,11 +9,18 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
 
 const taskStrandedCleanupJobName = "task-stranded-cleanup"
+
+func init() {
+	registry.AddJobType(taskStrandedCleanupJobName, func() amboy.Job {
+		return makeStrandedTaskCleanupJob()
+	})
+}
 
 type taskStrandedCleanupJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
