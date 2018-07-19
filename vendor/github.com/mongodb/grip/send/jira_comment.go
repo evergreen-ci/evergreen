@@ -66,6 +66,9 @@ func (j *jiraCommentJournal) Send(m message.Composer) {
 		if c, ok := m.Raw().(*message.JIRAComment); ok {
 			issue = c.IssueID
 		}
+		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password); err != nil {
+			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
+		}
 		if err := j.opts.client.PostComment(issue, m.String()); err != nil {
 			j.ErrorHandler(err, m)
 		}
