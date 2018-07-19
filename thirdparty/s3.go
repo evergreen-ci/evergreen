@@ -228,10 +228,7 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		return errors.Wrapf(err, "Error getting stats for file %s", localFilePath)
 	}
 	size := fileInfo.Size()
-	buffer, err := ioutil.ReadAll(file)
-	if err != nil {
-		return errors.Wrapf(err, "Error reading bytes of file %s", localFilePath)
-	}
+	buffer := make([]byte, maxPartSize)
 
 	// Step 1: initiate multipart upload
 	resp, err := createPart(svc, bucket, urlParsed.Path, contentType)
@@ -253,7 +250,16 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 			partLength = maxPartSize
 		}
 
-		uploadedPart, err := uploadPart(svc, resp, buffer[i:i+partLength], partNum)
+		// read file in chunks until EOF
+		bytesread, err := file.Read(buffer)
+		if err != nil {
+			if err != io.EOF {
+				return errors.Wrapf(err, "Error reading bytes of file %s", localFilePath)
+			}
+			break
+		}
+
+		uploadedPart, err := uploadPart(svc, resp, buffer[:bytesread], partNum)
 		if err != nil {
 			//  If an error occurs, abort upload to not get charged by Amazon
 			abortErr := abortMultipartUpload(svc, resp)
