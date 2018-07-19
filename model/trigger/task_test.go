@@ -69,7 +69,7 @@ func (s *taskSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeTask,
 			Trigger: "outcome",
 			Selectors: []event.Selector{
@@ -88,7 +88,7 @@ func (s *taskSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeTask,
 			Trigger: "success",
 			Selectors: []event.Selector{
@@ -107,7 +107,7 @@ func (s *taskSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeTask,
 			Trigger: "failure",
 			Selectors: []event.Selector{
@@ -126,7 +126,7 @@ func (s *taskSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeTask,
 			Trigger: triggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -145,7 +145,7 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeTask,
 			Trigger: triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -38,6 +39,13 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		}
 
 		if t.DispatchTime != util.ZeroTime && t.Status == evergreen.TaskUndispatched {
+			grip.Info(message.Fields{
+				"lookhere":                "evg-3455",
+				"message":                 "task reset with zero time",
+				"task_id":                 t.Id,
+				"dispatchtime_is_go_zero": t.DispatchTime.IsZero(),
+				"caller":                  caller,
+			})
 			if err = resetTask(t.Id, caller); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
@@ -45,6 +53,7 @@ func SetActiveState(taskId string, caller string, active bool) error {
 			if err = t.ActivateTask(caller); err != nil {
 				return errors.Wrap(err, "error while activating task")
 			}
+			event.LogTaskActivated(taskId, t.Execution, caller)
 		}
 
 		if t.DistroId == "" {
@@ -78,14 +87,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		if err != nil {
 			return errors.Wrap(err, "error deactivating task")
 		}
+		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	} else {
 		return nil
-	}
-
-	if active {
-		event.LogTaskActivated(taskId, t.Execution, caller)
-	} else {
-		event.LogTaskDeactivated(taskId, t.Execution, caller)
 	}
 
 	if t.IsPartOfDisplay() {
@@ -809,4 +813,39 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskRes
 	results.TasksErrored = tasksErrored
 
 	return results
+}
+
+func ClearAndResetStrandedTask(h *host.Host) error {
+	if h.RunningTask == "" {
+		return nil
+	}
+
+	t, err := task.FindOne(task.ById(h.RunningTask))
+	if err != nil {
+		return errors.Wrapf(err, "database error clearing task '%s' from host '%s'",
+			t.Id, h.Id)
+	} else if t == nil {
+		return nil
+	}
+
+	if err = h.ClearRunningTask(); err != nil {
+		return errors.Wrapf(err, "problem clearing running task from host '%s'", h.Id)
+	}
+
+	if t.IsFinished() {
+		return nil
+	}
+
+	if err = t.MarkSystemFailed(); err != nil {
+		return errors.Wrap(err, "problem marking task failed")
+	}
+
+	if time.Since(t.StartTime) < task.UnschedulableThreshold {
+		return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &apimodels.TaskEndDetail{
+			Status: evergreen.TaskFailed,
+			Type:   "system",
+		}), "problem resetting task")
+	}
+
+	return nil
 }

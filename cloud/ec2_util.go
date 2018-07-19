@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -43,11 +44,11 @@ type MountPoint struct {
 
 var (
 	// bson fields for the EC2ProviderSettings struct
-	AMIKey           = bsonutil.MustHaveTag(EC2ProviderSettings{}, "AMI")
-	InstanceTypeKey  = bsonutil.MustHaveTag(EC2ProviderSettings{}, "InstanceType")
-	SecurityGroupKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroup")
-	KeyNameKey       = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
-	MountPointsKey   = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
+	AMIKey            = bsonutil.MustHaveTag(EC2ProviderSettings{}, "AMI")
+	InstanceTypeKey   = bsonutil.MustHaveTag(EC2ProviderSettings{}, "InstanceType")
+	SecurityGroupsKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroupIDs")
+	KeyNameKey        = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
+	MountPointsKey    = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
 )
 
 var (
@@ -266,7 +267,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			mappings = append(mappings, &ec2aws.BlockDeviceMapping{
 				DeviceName: &mounts[i].DeviceName,
 				Ebs: &ec2aws.EbsBlockDevice{
-					DeleteOnTermination: makeBoolPtr(true),
+					DeleteOnTermination: aws.Bool(true),
 					Iops:                &mounts[i].Iops,
 					SnapshotId:          &mounts[i].SnapshotID,
 					VolumeSize:          &mounts[i].Size,
@@ -281,24 +282,4 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 		})
 	}
 	return mappings, nil
-}
-
-// makeInt64Ptr is necessary because Go does not allow you to write `&int64(1)`.
-func makeInt64Ptr(i int64) *int64 {
-	return &i
-}
-
-// makeStringPtr is necessary because Go does not allow you to write `&"foo"`.
-func makeStringPtr(s string) *string {
-	return &s
-}
-
-// makeBoolPtr is necessary because Go does not allow you to write `&true`.
-func makeBoolPtr(b bool) *bool {
-	return &b
-}
-
-// makeTimePtr is necessary because Go does not allow you to write `&time.Time`.
-func makeTimePtr(t time.Time) *time.Time {
-	return &t
 }

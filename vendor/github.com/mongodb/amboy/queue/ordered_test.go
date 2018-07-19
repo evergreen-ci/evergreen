@@ -177,10 +177,8 @@ func (s *OrderedQueueSuite) TestPuttingAJobIntoAQueueImpactsStats() {
 	s.True(ok)
 
 	jActual := jReturn.(*job.ShellJob)
-	j.Base.Errors = jActual.Base.Errors
-	j.Base.SetDependency(jActual.Dependency())
 
-	s.Exactly(jActual, j)
+	j.Base.SetDependency(jActual.Dependency())
 
 	stats = s.queue.Stats()
 	s.Equal(1, stats.Total)
@@ -226,8 +224,7 @@ func (s *OrderedQueueSuite) TestResultsChannelProducesPointersToConsistentJobObj
 	amboy.WaitCtxInterval(ctx, s.queue, 250*time.Millisecond)
 	grip.Critical(s.queue.Stats())
 
-	result, ok := <-s.queue.Results(ctx)
-	if s.True(ok, "%+v", s.queue.Stats()) {
+	for result := range s.queue.Results(ctx) {
 		s.Equal(j.ID(), result.ID())
 		s.True(result.Status().Completed)
 	}
@@ -278,10 +275,12 @@ func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {
 	j1Refreshed, ok1 := s.queue.Get(j1.ID())
 	j2Refreshed, ok2 := s.queue.Get(j2.ID())
 	if s.True(ok1) {
-		s.False(j1Refreshed.Status().Completed)
+		stat := j1Refreshed.Status()
+		s.False(stat.Completed || stat.InProgress)
 	}
 	if s.True(ok2) {
-		s.True(j2Refreshed.Status().Completed, "%+v", j2Refreshed.Status())
+		stat := j2Refreshed.Status()
+		s.True(stat.Completed || stat.InProgress, "%+v", j2Refreshed.Status())
 	}
 }
 

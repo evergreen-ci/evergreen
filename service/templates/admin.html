@@ -79,6 +79,7 @@ Admin Settings
             <li class="link" ng-click="scrollTo('credentials')">Credentials</li>
             <li class="link" ng-click="scrollTo('expansions')">Expansions</li>
             <li class="link" ng-click="scrollTo('plugins')">Plugins</li>
+            <li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
             <div>Non-Configuration</div>
             <li class="link" ng-click="scrollTo('restart')">Restart Tasks</li>
             <a class="link" href="/admin/events" style="margin-left:10px;">Event Log</a>
@@ -249,7 +250,6 @@ Admin Settings
                 </md-card>
               </section>
             </section>
-
             <section layout="row" flex>
               <md-card flex=50 id="alerts">
                 <md-card-title>
@@ -970,11 +970,6 @@ Admin Settings
                   <textarea ng-model="Settings.superusers" ng-list="&#10;"
                   ng-trim="false" rows="3" md-select-on-focus></textarea>
                 </md-input-container>
-                <md-input-container class="control" style="width:200px; margin-left:50px;">
-                  <md-checkbox ng-model="Settings.isnonprod">
-                    Non-production mode
-                  </md-checkbox>
-                </md-input-container>
               </md-card-content>
             </md-card>
 
@@ -1029,6 +1024,59 @@ Admin Settings
             </md-card>
 
           </section>
+          <section layout="row" flex>
+            <md-card flex=100 id="jira_notifications">
+              <md-card-title>
+                <md-card-title-text>
+                  <span>JIRA Notifications Custom Field Mappings</span>
+                </md-card-title-text>
+                <md-button ng-click="clearSection('jira_notifications')">
+                  <i class="fa fa-trash"></i>
+                </md-button>
+              </md-card-title>
+              <md-card-content>
+                <div ng-repeat="(project, fields) in Settings.jira_notifications.custom_fields">
+                  <div>
+                    <span>JIRA Project: [[project]]</span>
+                    <span>
+                      <md-button ng-click="deleteJIRAProject(project)">
+                        <i class="fa fa-trash"></i>
+                      </md-button>
+                    </span>
+                  </div>
+                  <span ng-repeat="(fieldName, tmpl) in fields">
+                    <md-input-container class="control" style="width: 200px;">
+                      <label>[[fieldName]]</label>
+                      <input type="text" ng-model="Settings.jira_notifications.custom_fields[project][fieldName]">
+                    </md-input-container>
+                    <md-button ng-click="deleteJIRAFieldFromProject(project, fieldName)">
+                      <i class="fa fa-trash"></i>
+                    </md-button>
+                  </span>
+                  <div>
+                    <md-input-container class="control" style="width:45%;">
+                      <label>Add new field</label>
+                      <input type="text" default="ABC" ng-model="jiraMapping.newField[project]" />
+                    </md-input-container>
+                    <md-button ng-click="addJIRAFieldToProject(project)">
+                      <i class="fa fa-plus"></i>
+                    </md-button>
+                  </div>
+                  <hr />
+                </div>
+                <div>
+                  <md-input-container class="control" style="width: 200px;">
+                    <label>Add new JIRA Project</label>
+                    <input type="text" default="ABC" ng-model="jiraMapping.newProject" />
+                  </md-input-container>
+                  <md-button ng-click="addJIRAProject()">
+                    <i class="fa fa-plus"></i>
+                  </md-button>
+                </div>
+              </md-card-content>
+            </md-card>
+          </section>
+
 
         </md-card-content>
 

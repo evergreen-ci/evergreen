@@ -10,16 +10,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
-)
-
-const (
-	incorrectArgsTypeErrorMessage = "programmer error: incorrect type for paginator args"
 )
 
 func getTaskRestartRouteManager(route string, version int) *RouteManager {
@@ -34,22 +29,6 @@ func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	taskRoute := RouteManager{
 		Route:   route,
 		Methods: []MethodHandler{taskRestart},
-		Version: version,
-	}
-	return &taskRoute
-}
-
-func getTasksByBuildRouteManager(route string, version int) *RouteManager {
-	tbh := &tasksByBuildHandler{}
-	tasksByBuild := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: tbh.Handler(),
-		MethodType:     http.MethodGet,
-	}
-
-	taskRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{tasksByBuild},
 		Version: version,
 	}
 	return &taskRoute
@@ -132,14 +111,14 @@ func (tph *tasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.
 		status:     r.URL.Query().Get("status"),
 	}
 	if args.projectId == "" {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "ProjectId cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
 	if args.commitHash == "" {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Revision cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -156,16 +135,13 @@ func tasksByProjectPaginator(key string, limit int, args interface{}, sc data.Co
 	}
 	tasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit*2, 1)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	// Make the previous page
 	prevTasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit, -1)
 	if err != nil {
-		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(gimlet.ErrorResponse); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -257,31 +233,23 @@ func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request
 func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundTask, err := sc.FindTaskById(tgh.taskID)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(foundTask)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	err = taskModel.BuildFromService(sc.GetURL())
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	if tgh.fetchAllExecutions {
-		tasks, err := sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
+		var tasks []task.Task
+		tasks, err = sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "API model error")
 		}
@@ -311,112 +279,6 @@ func (trh *taskGetHandler) Handler() RequestHandler {
 	return &taskGetHandler{}
 }
 
-type tasksByBuildHandler struct {
-	*PaginationExecutor
-}
-
-type tasksByBuildArgs struct {
-	buildId            string
-	status             string
-	fetchAllExecutions bool
-}
-
-func (tbh *tasksByBuildHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	args := tasksByBuildArgs{
-		buildId: gimlet.GetVars(r)["build_id"],
-		status:  r.URL.Query().Get("status"),
-	}
-	if args.buildId == "" {
-		return rest.APIError{
-			Message:    "buildId cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
-	_, args.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
-	tbh.Args = args
-	return tbh.PaginationExecutor.ParseAndValidate(ctx, r)
-}
-
-func tasksByBuildPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
-	*PageResult, error) {
-	btArgs, ok := args.(tasksByBuildArgs)
-	if !ok {
-		panic(incorrectArgsTypeErrorMessage)
-	}
-	// Fetch all of the tasks to be returned in this page plus the tasks used for
-	// calculating information about the next page. Here the limit is multiplied
-	// by two to fetch the next page.
-	tasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit*2, 1)
-	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
-	}
-
-	// Fetch tasks to get information about the previous page.
-	prevTasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit, -1)
-	if err != nil {
-		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
-			return []model.Model{}, nil, errors.Wrap(err, "Database error")
-		}
-	}
-
-	nextPage := makeNextTasksPage(tasks, limit)
-	pageResults := &PageResult{
-		Next: nextPage,
-		Prev: makePrevTasksPage(prevTasks),
-	}
-
-	lastIndex := len(tasks)
-	if nextPage != nil {
-		lastIndex = limit
-	}
-
-	// Truncate the tasks to just those that will be returned, removing the
-	// tasks that would be used to create the next page.
-	tasks = tasks[:lastIndex]
-
-	// Create an array of models which will be returned.
-	models := make([]model.Model, len(tasks))
-	for ix, st := range tasks {
-		taskModel := &model.APITask{}
-		// Build an APIModel from the task and place it into the array.
-		err = taskModel.BuildFromService(&st)
-		if err != nil {
-			return []model.Model{}, nil, errors.Wrap(err, "API model error")
-		}
-		err = taskModel.BuildFromService(sc.GetURL())
-		if err != nil {
-			return []model.Model{}, nil, errors.Wrap(err, "API model error")
-		}
-
-		if btArgs.fetchAllExecutions {
-			oldTasks, err := sc.FindOldTasksByIDWithDisplayTasks(st.Id)
-			if err != nil {
-				return []model.Model{}, nil, errors.Wrap(err, "error fetching old tasks")
-			}
-			if err = taskModel.BuildPreviousExecutions(oldTasks); err != nil {
-				return []model.Model{}, nil, errors.Wrap(err, "API model error")
-			}
-		}
-		models[ix] = taskModel
-	}
-	return models, pageResults, nil
-}
-
-func (hgh *tasksByBuildHandler) Handler() RequestHandler {
-	taskPaginationExecutor := &PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       tasksByBuildPaginator,
-
-		Args: tasksByBuildArgs{},
-	}
-
-	return &tasksByBuildHandler{taskPaginationExecutor}
-}
-
 // taskRestartHandler implements the route POST /task/{task_id}/restart. It
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
@@ -431,13 +293,13 @@ type taskRestartHandler struct {
 func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
 	if projCtx.ProjectRef == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Project not found",
 			StatusCode: http.StatusNotFound,
 		}
@@ -453,11 +315,10 @@ func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Req
 func (trh *taskRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	err := sc.ResetTask(trh.taskId, trh.username)
 	if err != nil {
-		return ResponseData{},
-			rest.APIError{
-				Message:    err.Error(),
-				StatusCode: http.StatusBadRequest,
-			}
+		return ResponseData{}, gimlet.ErrorResponse{
+			Message:    err.Error(),
+			StatusCode: http.StatusBadRequest,
+		}
 	}
 
 	refreshedTask, err := sc.FindTaskById(trh.taskId)
@@ -468,10 +329,7 @@ func (trh *taskRestartHandler) Execute(ctx context.Context, sc data.Connector) (
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(refreshedTask)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	return ResponseData{
@@ -504,13 +362,13 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(ctx context.Context, r *h
 	decoder := json.NewDecoder(body)
 	if err := decoder.Decode(tep); err != nil {
 		if err == io.EOF {
-			return rest.APIError{
+			return gimlet.ErrorResponse{
 				Message:    "No request body sent",
 				StatusCode: http.StatusBadRequest,
 			}
 		}
 		if e, ok := err.(*json.UnmarshalTypeError); ok {
-			return rest.APIError{
+			return gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
 					"but receieved '%s'",
 					e.Type, e.Value),
@@ -521,14 +379,14 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(ctx context.Context, r *h
 	}
 
 	if tep.Activated == nil && tep.Priority == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Must set 'activated' or 'priority'",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
-		return rest.APIError{
+		return gimlet.ErrorResponse{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
@@ -547,7 +405,7 @@ func (tep *TaskExecutionPatchHandler) Execute(ctx context.Context, sc data.Conne
 		priority := *tep.Priority
 		if priority > evergreen.MaxTaskPriority &&
 			!auth.IsSuperUser(sc.GetSuperUsers(), tep.user) {
-			return ResponseData{}, rest.APIError{
+			return ResponseData{}, gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
@@ -571,10 +429,7 @@ func (tep *TaskExecutionPatchHandler) Execute(ctx context.Context, sc data.Conne
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(refreshedTask)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 
 	return ResponseData{
@@ -602,26 +457,17 @@ func (t *taskAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request
 func (t *taskAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	err := sc.AbortTask(t.taskId, MustHaveUser(ctx).Id)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Abort error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Abort error")
 	}
 
 	foundTask, err := sc.FindTaskById(t.taskId)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(foundTask)
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "API model error")
 	}
 
 	return ResponseData{

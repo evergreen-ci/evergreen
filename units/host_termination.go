@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -114,16 +115,8 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
 		})
-		if err = j.host.ClearRunningTask(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"job_type": j.Type().Name,
-				"message":  "Error clearing running task for host",
-				"provider": j.host.Distro.Provider,
-				"host":     j.host.Id,
-				"job":      j.ID(),
-				"task":     j.host.RunningTask,
-			}))
-		}
+
+		j.AddError(model.ClearAndResetStrandedTask(j.host))
 	}
 
 	// convert the host to a cloud host
@@ -145,7 +138,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if err != nil {
 		// host may still be an intent host
 		if j.host.Status == evergreen.HostUninitialized {
-			if err := j.host.Terminate(evergreen.User); err != nil {
+			if err = j.host.Terminate(evergreen.User); err != nil {
 				j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
 				grip.Error(message.WrapError(err, message.Fields{
 					"host":     j.host.Id,
@@ -248,6 +241,10 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 }
 
 func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHost) error {
+	if h.Distro.Teardown == "" {
+		return nil
+	}
+
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)

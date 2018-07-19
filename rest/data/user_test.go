@@ -91,13 +91,13 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
 	pref := s.getNotificationSettings(0)
 	s.NotNil(pref)
-	s.False(pref.PatchFinishID.Valid())
+	s.Equal("", pref.PatchFinishID)
 
 	// Should create a new subscription
 	settings.Notifications.PatchFinish = user.PreferenceSlack
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
 	pref = s.getNotificationSettings(0)
-	s.True(pref.PatchFinishID.Valid())
+	s.NotEqual("", pref.PatchFinishID)
 	sub, err := event.FindSubscriptionByID(pref.PatchFinishID)
 	s.NoError(err)
 	s.Require().NotNil(sub)
@@ -109,7 +109,7 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
 	pref = s.getNotificationSettings(0)
 	s.NotNil(pref)
-	s.True(pref.PatchFinishID.Valid())
+	s.NotEqual("", pref.PatchFinishID)
 	sub, err = event.FindSubscriptionByID(pref.PatchFinishID)
 	s.NoError(err)
 	s.Require().NotNil(sub)
@@ -121,11 +121,11 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	s.NoError(s.sc.UpdateSettings(s.users[0], settings))
 	pref = s.getNotificationSettings(0)
 	s.NotNil(pref)
-	s.False(pref.PatchFinishID.Valid())
+	s.Equal("", pref.PatchFinishID)
 	settings.Notifications = *pref
 
 	settings.SlackUsername = "#Test"
-	s.EqualError(s.sc.UpdateSettings(s.users[0], settings), "expected a Slack username, but got a channel")
+	s.EqualError(s.sc.UpdateSettings(s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
 }
 
 func TestDBUserConnector(t *testing.T) {

@@ -18,8 +18,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const lockTimeout = 5 * time.Minute
-
 // mongoDB is a type that represents and wraps a queues
 // persistence of jobs *and* locks to a mongoDB instance.
 type mongoDB struct {
@@ -205,8 +203,8 @@ func (d *mongoDB) Get(name string) (amboy.Job, error) {
 	return output, nil
 }
 
-func (d *mongoDB) getAtomicQuery(jobName string, stat amboy.JobStatusInfo) bson.M {
-	timeoutTs := time.Now().Add(-lockTimeout)
+func (d *mongoDB) getAtomicQuery(jobName string, modCount int) bson.M {
+	timeoutTs := time.Now().Add(-LockTimeout)
 
 	return bson.M{
 		"_id": jobName,
@@ -217,7 +215,7 @@ func (d *mongoDB) getAtomicQuery(jobName string, stat amboy.JobStatusInfo) bson.
 			// means there's an active lock but we own it.
 			bson.M{
 				"status.owner":     d.instanceID,
-				"status.mod_count": stat.ModificationCount,
+				"status.mod_count": modCount,
 				"status.mod_ts":    bson.M{"$gt": timeoutTs},
 			},
 			// modtime is older than the lock timeout,
@@ -260,7 +258,6 @@ func (d *mongoDB) Save(j amboy.Job) error {
 	defer session.Close()
 
 	stat := j.Status()
-	query := d.getAtomicQuery(name, stat)
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
 	j.SetStatus(stat)
@@ -270,9 +267,22 @@ func (d *mongoDB) Save(j amboy.Job) error {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
 
+	query := d.getAtomicQuery(name, stat.ModificationCount)
 	info, err := jobs.Upsert(query, job)
 	if err != nil {
-		return errors.Wrapf(err, "problem updating %s: %+v", name, info)
+		if mgo.IsDup(errors.Cause(err)) {
+			grip.Debug(message.Fields{
+				"id":        d.instanceID,
+				"service":   "amboy.queue.mongodb",
+				"operation": "save job",
+				"name":      name,
+				"outcome":   "duplicate key error, ignoring stale job",
+			})
+
+			return nil
+		}
+
+		return errors.Wrapf(err, "problem saving document %s: %+v", name, info)
 	}
 
 	grip.Debug(message.Fields{
@@ -295,7 +305,7 @@ func (d *mongoDB) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
 	defer session.Close()
 
 	id := j.ID()
-	query := d.getAtomicQuery(id, stat)
+	query := d.getAtomicQuery(id, stat.ModificationCount)
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
 
@@ -403,8 +413,8 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 			},
 			{
 				"status.completed": false,
+				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-LockTimeout)},
 				"status.in_prog":   true,
-				"status.mod_ts":    bson.M{"$lte": time.Now().Add(-lockTimeout)},
 			},
 		},
 	}

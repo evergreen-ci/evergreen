@@ -57,7 +57,7 @@ func TestEmailSubject(t *testing.T) {
 			})
 		})
 		Convey("a task that failed on a system command should return a subject", func() {
-			ctx.Task.Details.Type = model.SystemCommandType
+			ctx.Task.Details.Type = evergreen.CommandTypeSystem
 			subj := getSubject(ctx)
 			So(subj, ShouldNotEqual, "")
 			Convey("denoting the system failure and showing the task name", func() {

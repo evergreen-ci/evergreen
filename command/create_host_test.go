@@ -1,20 +1,48 @@
 package command
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
+)
+
+const (
+	userdataFileName = "TestPopulateUserdata.sh"
 )
 
 type createHostSuite struct {
 	params map[string]interface{}
 	cmd    createHost
+	conf   *model.TaskConfig
+	comm   client.Communicator
+	logger client.LoggerProducer
 
 	suite.Suite
 }
 
 func TestCreateHostSuite(t *testing.T) {
 	suite.Run(t, &createHostSuite{})
+}
+
+func (s *createHostSuite) SetupSuite() {
+	s.comm = client.NewMock("http://localhost.com")
+	s.conf = &model.TaskConfig{
+		Expansions: &util.Expansions{},
+		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
+		Project:    &model.Project{}}
+	s.logger = s.comm.GetLoggerProducer(context.Background(), client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
+}
+
+func (s *createHostSuite) TearDownSuite() {
+	s.NoError(os.Remove(userdataFileName))
 }
 
 func (s *createHostSuite) SetupTest() {
@@ -27,9 +55,9 @@ func (s *createHostSuite) SetupTest() {
 
 func (s *createHostSuite) TestParamDefaults() {
 	s.NoError(s.cmd.ParseParams(s.params))
-	s.Equal(ProviderEC2, s.cmd.CloudProvider)
-	s.Equal(DefaultSetupTimeoutSecs, s.cmd.SetupTimeoutSecs)
-	s.Equal(DefaultTeardownTimeoutSecs, s.cmd.TeardownTimeoutSecs)
+	s.Equal(apimodels.ProviderEC2, s.cmd.CreateHost.CloudProvider)
+	s.Equal(apimodels.DefaultSetupTimeoutSecs, s.cmd.CreateHost.SetupTimeoutSecs)
+	s.Equal(apimodels.DefaultTeardownTimeoutSecs, s.cmd.CreateHost.TeardownTimeoutSecs)
 }
 
 func (s *createHostSuite) TestParamValidation() {
@@ -66,4 +94,17 @@ func (s *createHostSuite) TestParamValidation() {
 	s.Contains(s.cmd.ParseParams(s.params).Error(), "scope must be build or task")
 	s.params["timeout_teardown_secs"] = 55
 	s.Contains(s.cmd.ParseParams(s.params).Error(), "timeout_teardown_secs must be between 60 and 604800")
+}
+
+func (s *createHostSuite) TestPopulateUserdata() {
+	userdataFile := []byte("some commands")
+	s.NoError(ioutil.WriteFile(userdataFileName, userdataFile, 0644))
+	s.cmd.CreateHost = &apimodels.CreateHost{UserdataFile: userdataFileName}
+	s.NoError(s.cmd.populateUserdata())
+	s.Equal("some commands", s.cmd.CreateHost.UserdataCommand)
+}
+
+func (s *createHostSuite) TestExecuteCommand() {
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -105,8 +105,8 @@ func TestFindTestsByTaskId(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(len(foundTests), ShouldEqual, 0)
 
-			So(err, ShouldHaveSameTypeAs, &rest.APIError{})
-			apiErr, ok := err.(*rest.APIError)
+			So(err, ShouldHaveSameTypeAs, gimlet.ErrorResponse{})
+			apiErr, ok := err.(gimlet.ErrorResponse)
 			So(ok, ShouldBeTrue)
 			So(apiErr.StatusCode, ShouldEqual, http.StatusNotFound)
 		})

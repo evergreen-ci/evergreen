@@ -56,7 +56,11 @@ type Mock struct {
 	TaskExecution          int
 	GetSubscriptionsFail   bool
 
-	AttachedFiles map[string][]*artifact.File
+	AttachedFiles    map[string][]*artifact.File
+	LogID            string
+	LocalTestResults *task.LocalTestResults
+	TestLogs         []*serviceModel.TestLog
+	TestLogCount     int
 
 	// metrics collection
 	ProcInfo map[string][]*message.ProcessInfo
@@ -360,6 +364,7 @@ func (c *Mock) RevertSettings(ctx context.Context, guid string) error { return n
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
 func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.LocalTestResults) error {
+	c.LocalTestResults = results
 	return nil
 }
 
@@ -377,7 +382,11 @@ func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifa
 // SendTestLog posts a test log for a communicator's task. Is a
 // noop if the test Log is nil.
 func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *serviceModel.TestLog) (string, error) {
-	return "", nil
+	c.TestLogs = append(c.TestLogs, log)
+	c.TestLogs[len(c.TestLogs)-1].Id = c.LogID
+	c.TestLogCount += 1
+	c.LogID = fmt.Sprintf("%s-%d", c.LogID, c.TestLogCount)
+	return c.LogID, nil
 }
 
 func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
@@ -499,6 +508,16 @@ func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.
 		return errors.New("mock failed, wrong secret")
 	}
 	return nil
+}
+
+func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
+	if td.ID == "" {
+		return errors.New("no task ID sent to CreateHost")
+	}
+	if td.Secret == "" {
+		return errors.New("no task secret sent to CreateHost")
+	}
+	return options.Validate()
 }
 
 func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error) {

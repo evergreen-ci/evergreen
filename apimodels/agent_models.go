@@ -1,5 +1,19 @@
 package apimodels
 
+import (
+	"errors"
+
+	"github.com/mongodb/grip"
+)
+
+const (
+	ProviderEC2                = "ec2"
+	ScopeTask                  = "task"
+	ScopeBuild                 = "build"
+	DefaultSetupTimeoutSecs    = 600
+	DefaultTeardownTimeoutSecs = 21600
+)
+
 // TaskStartRequest holds information sent by the agent to the
 // API server at the beginning of each task run.
 type TaskStartRequest struct {
@@ -57,4 +71,99 @@ type NextTaskResponse struct {
 // EndTaskResponse is what is returned when the task ends
 type EndTaskResponse struct {
 	ShouldExit bool `json:"should_exit,omitempty"`
+}
+
+type CreateHost struct {
+	// EC2-related settings
+	AMI             string      `mapstructure:"ami" json:"ami"`
+	Distro          string      `mapstructure:"distro" json:"distro"`
+	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device"`
+	InstanceType    string      `mapstructure:"instance_type" json:"instance_type"`
+	Region          string      `mapstructure:"region" json:"region"`
+	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids"`
+	Spot            bool        `mapstructure:"spot" json:"spot"`
+	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id"`
+	UserdataFile    string      `mapstructure:"userdata_file" json:"-"`
+	UserdataCommand string      `json:"userdata_command"`
+	VPC             string      `mapstructure:"vpc_id" json:"vpc_id"`
+
+	// authentication settings
+	AWSKeyID  string `mapstructure:"aws_access_key_id" json:"aws_access_key_id"`
+	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key"`
+	KeyName   string `mapstructure:"key_name" json:"key_name"`
+
+	// agent-controlled settings
+	CloudProvider       string `mapstructure:"provider" json:"provider"`
+	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts"`
+	Scope               string `mapstructure:"scope" json:"scope"`
+	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
+	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
+	Retries             int    `mapstructure:"retries" json:"retries"`
+}
+
+type EbsDevice struct {
+	DeviceName string `mapstructure:"device_name" json:"device_name"`
+	IOPS       int    `mapstructure:"ebs_iops" json:"ebs_iops"`
+	SizeGiB    int    `mapstructure:"ebs_size" json:"ebs_size"`
+	SnapshotID string `mapstructure:"ebs_snapshot_id" json:"ebs_snapshot_id"`
+}
+
+func (ch *CreateHost) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	if (ch.AMI != "" && ch.Distro != "") || (ch.AMI == "" && ch.Distro == "") {
+		catcher.Add(errors.New("must set exactly one of ami or distro"))
+	}
+	if ch.AMI != "" {
+		if ch.InstanceType == "" {
+			catcher.Add(errors.New("instance_type must be set if ami is set"))
+		}
+		if len(ch.SecurityGroups) == 0 {
+			catcher.Add(errors.New("must specify security_group_ids if ami is set"))
+		}
+		if ch.Subnet == "" {
+			catcher.Add(errors.New("subnet_id must be set if ami is set"))
+		}
+		if ch.VPC == "" {
+			catcher.Add(errors.New("vpc_id must be set if ami is set"))
+		}
+	}
+
+	if !(ch.AWSKeyID == "" && ch.AWSSecret == "" && ch.KeyName == "") &&
+		!(ch.AWSKeyID != "" && ch.AWSSecret != "" && ch.KeyName != "") {
+		catcher.Add(errors.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset"))
+	}
+
+	if ch.NumHosts > 10 || ch.NumHosts < 0 {
+		catcher.Add(errors.New("num_hosts must be between 1 and 10"))
+	} else if ch.NumHosts == 0 {
+		ch.NumHosts = 1
+	}
+	if ch.CloudProvider == "" {
+		ch.CloudProvider = ProviderEC2
+	}
+	if ch.CloudProvider != ProviderEC2 {
+		catcher.Add(errors.New("only 'ec2' is supported for providers"))
+	}
+	if ch.Retries > 10 {
+		catcher.Add(errors.New("retries must not be greater than 10"))
+	}
+	if ch.Retries < 1 {
+		ch.Retries = 1
+	}
+	if ch.Scope != ScopeTask && ch.Scope != ScopeBuild {
+		catcher.Add(errors.New("scope must be build or task"))
+	}
+	if ch.SetupTimeoutSecs == 0 {
+		ch.SetupTimeoutSecs = DefaultSetupTimeoutSecs
+	}
+	if ch.SetupTimeoutSecs < 60 || ch.SetupTimeoutSecs > 3600 {
+		catcher.Add(errors.New("timeout_setup_secs must be between 60 and 3600"))
+	}
+	if ch.TeardownTimeoutSecs == 0 {
+		ch.TeardownTimeoutSecs = DefaultTeardownTimeoutSecs
+	}
+	if ch.TeardownTimeoutSecs < 60 || ch.TeardownTimeoutSecs > 604800 {
+		catcher.Add(errors.New("timeout_teardown_secs must be between 60 and 604800"))
+	}
+	return catcher.Resolve()
 }

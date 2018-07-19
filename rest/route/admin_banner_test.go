@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -14,19 +15,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAdminBannerRoute(t *testing.T) {
+func TestSetBanner(t *testing.T) {
 	assert := assert.New(t)
 	sc := &data.MockConnector{}
 
 	// test getting the route handler
 	const route = "/admin/banner"
-	const version = 2
-	routeManager := getBannerRouteManager(route, version)
+	routeManager := makeSetAdminBanner(sc)
 	assert.NotNil(routeManager)
-	assert.Equal(route, routeManager.Route)
-	assert.Equal(version, routeManager.Version)
-	postHandler := routeManager.Methods[0]
-	assert.IsType(&bannerPostHandler{}, postHandler.RequestHandler)
+	assert.IsType(&bannerPostHandler{}, routeManager)
 
 	// run the route
 	ctx := context.Background()
@@ -41,12 +38,15 @@ func TestAdminBannerRoute(t *testing.T) {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/banner", buffer)
 	assert.NoError(err)
-	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	h := postHandler.RequestHandler.(*bannerPostHandler)
+	err = routeManager.Parse(ctx, request)
+	assert.NoError(err)
+	h := routeManager.(*bannerPostHandler)
 	assert.Equal(body.Text, h.Banner)
-	resp, err := postHandler.RequestHandler.Execute(ctx, sc)
+	resp := routeManager.Run(ctx)
 	assert.NoError(err)
 	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
 	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
 	assert.Equal(model.FromAPIString(body.Text), settings.Banner)
@@ -61,12 +61,13 @@ func TestAdminBannerRoute(t *testing.T) {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/banner", buffer)
 	assert.NoError(err)
-	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	h = postHandler.RequestHandler.(*bannerPostHandler)
-	assert.Equal(body.Theme, h.Theme)
-	resp, err = postHandler.RequestHandler.Execute(ctx, sc)
+	err = routeManager.Parse(ctx, request)
 	assert.NoError(err)
+	h = routeManager.(*bannerPostHandler)
+	assert.Equal(body.Theme, h.Theme)
+	resp = routeManager.Run(ctx)
 	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
 	settings, err = sc.GetEvergreenSettings()
 	assert.NoError(err)
 	assert.Equal(model.FromAPIString(body.Theme), string(settings.BannerTheme))
@@ -81,9 +82,45 @@ func TestAdminBannerRoute(t *testing.T) {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest("POST", "/admin/banner", buffer)
 	assert.NoError(err)
-	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	h = postHandler.RequestHandler.(*bannerPostHandler)
+	err = routeManager.Parse(ctx, request)
+	assert.NoError(err)
+	h = routeManager.(*bannerPostHandler)
 	assert.Equal(body.Theme, h.Theme)
-	_, err = postHandler.RequestHandler.Execute(ctx, sc)
-	assert.Error(err)
+	resp = routeManager.Run(ctx)
+	assert.NotNil(resp)
+	assert.Equal(http.StatusBadRequest, resp.Status())
+}
+
+func TestFetchBanner(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
+	const route = "/admin/banner"
+	const version = 2
+	connector := &data.MockConnector{
+		MockAdminConnector: data.MockAdminConnector{
+			MockSettings: &evergreen.Settings{
+				Banner:      "foo",
+				BannerTheme: "warning",
+			},
+		},
+	}
+	routeManager := makeFetchAdminBanner(connector)
+	assert.NotNil(routeManager)
+
+	// test getting what we just sets
+	request, err := http.NewRequest("GET", "/admin/banner", nil)
+	assert.NoError(err)
+	err = routeManager.Parse(ctx, request)
+	assert.NoError(err)
+
+	resp := routeManager.Run(ctx)
+	assert.NoError(err)
+	assert.NotNil(resp)
+
+	modelInterface, err := resp.Data().(model.Model).ToService()
+	assert.NoError(err)
+	banner := modelInterface.(*model.APIBanner)
+	assert.Equal("foo", model.FromAPIString(banner.Text))
+	assert.Equal("warning", model.FromAPIString(banner.Theme))
 }

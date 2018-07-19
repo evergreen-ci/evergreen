@@ -69,7 +69,6 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app := gimlet.NewApp()
 	rest := &restAPI{evgService}
 	middleware := &restV1middleware{rest}
-	app.ResetMiddleware()
 	app.SetPrefix(evergreen.RestRoutePrefix)
 
 	// REST routes

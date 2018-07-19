@@ -19,6 +19,7 @@ func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) 
 	mws := []Middleware{}
 
 	seenPrefixes := make(map[string]struct{})
+
 	for _, app := range apps {
 		if app.prefix != "" {
 			if _, ok := seenPrefixes[app.prefix]; ok {
@@ -46,10 +47,6 @@ func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) 
 		return nil, catcher.Resolve()
 	}
 
-	if len(apps) == 1 {
-		router.StrictSlash(apps[0].StrictSlash)
-	}
-
 	n := negroni.New()
 	for _, m := range mws {
 		n.Use(m)
@@ -57,4 +54,14 @@ func AssembleHandler(router *mux.Router, apps ...*APIApp) (http.Handler, error) 
 	n.UseHandler(router)
 
 	return n, nil
+}
+
+// MergeApplications takes a number of gimlet applications and
+// resolves them, returning an http.Handler.
+func MergeApplications(apps ...*APIApp) (http.Handler, error) {
+	if len(apps) == 0 {
+		return nil, errors.New("must specify at least one application")
+	}
+
+	return AssembleHandler(mux.NewRouter(), apps...)
 }

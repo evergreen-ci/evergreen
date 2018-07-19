@@ -66,7 +66,7 @@ lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
-lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
+lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"
 lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
@@ -244,10 +244,9 @@ lint-%:$(buildDir)/output.%.lint
 # start vendoring configuration
 vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/urfave/negroni/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/gorilla/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/gopkg.in/yaml.v2/
+	rm -rf vendor/github.com/evergreen-ci/go-test2json/vendor
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/

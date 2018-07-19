@@ -34,6 +34,11 @@ const (
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
 
+	// Task Command Types
+	CommandTypeTest   = "test"
+	CommandTypeSystem = "system"
+	CommandTypeSetup  = "setup"
+
 	// Task Statuses used only in TaskEndDetails
 	// TaskFailed and TaskSucceeded are also used here
 	TaskSetupFailed      = "setup-failed"
@@ -108,8 +113,9 @@ const (
 
 // evergreen package names
 const (
-	UIPackage     = "EVERGREEN_UI"
-	RESTV2Package = "EVERGREEN_REST_V2"
+	UIPackage      = "EVERGREEN_UI"
+	RESTV2Package  = "EVERGREEN_REST_V2"
+	MonitorPackage = "EVERGREEN_MONITOR"
 )
 
 const (
@@ -126,17 +132,16 @@ const (
 
 // cloud provider related constants
 const (
-	ProviderNameEc2Auto       = "ec2-auto"
-	ProviderNameEc2OnDemand   = "ec2-ondemand"
-	ProviderNameEc2Spot       = "ec2-spot"
-	ProviderNameDocker        = "docker"
-	ProviderNameDockerStatic  = "docker-static"
-	ProviderNameDockerDynamic = "docker-dynamic"
-	ProviderNameGce           = "gce"
-	ProviderNameStatic        = "static"
-	ProviderNameOpenstack     = "openstack"
-	ProviderNameVsphere       = "vsphere"
-	ProviderNameMock          = "mock"
+	ProviderNameEc2Auto     = "ec2-auto"
+	ProviderNameEc2OnDemand = "ec2-ondemand"
+	ProviderNameEc2Spot     = "ec2-spot"
+	ProviderNameDocker      = "docker"
+	ProviderNameDockerMock  = "docker-mock"
+	ProviderNameGce         = "gce"
+	ProviderNameStatic      = "static"
+	ProviderNameOpenstack   = "openstack"
+	ProviderNameVsphere     = "vsphere"
+	ProviderNameMock        = "mock"
 
 	// TODO: This can be removed when no more hosts with provider ec2 are running.
 	ProviderNameEc2Legacy = "ec2"
@@ -173,7 +178,7 @@ const (
 
 const (
 	GenerateTasksCommandName = "generate.tasks"
-	CreateHostCommandName    = "create.host"
+	CreateHostCommandName    = "host.create"
 )
 
 type SenderKey int
@@ -228,6 +233,8 @@ var (
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
+
+	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 )
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.

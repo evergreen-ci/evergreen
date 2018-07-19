@@ -7,6 +7,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Remote queues extend the queue interface to allow a
@@ -55,8 +56,16 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 		case job := <-q.channel:
 			job, err = q.driver.Get(job.ID())
 			if err != nil {
-				grip.CatchNotice(q.driver.Unlock(job))
-				grip.Warning(err)
+				grip.Notice(message.WrapError(err, message.Fields{
+					"id":        job.ID(),
+					"operation": "problem refreshing job in dispatching from remote queue",
+				}))
+
+				grip.Warning(message.WrapError(q.driver.Unlock(job),
+					message.Fields{
+						"id":        job.ID(),
+						"operation": "unlocking job, may leave a stale job",
+					}))
 				continue
 			}
 
@@ -64,7 +73,7 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
-			if err := q.driver.Lock(job); err != nil {
+			if err := q.driver.Lock(ctx, job); err != nil {
 				grip.Warning(err)
 				continue
 			}

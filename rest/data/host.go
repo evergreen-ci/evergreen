@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -28,7 +27,7 @@ func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int, sor
 		return nil, err
 	}
 	if len(hostRes) == 0 {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no hosts found",
 		}
@@ -43,7 +42,7 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 		return nil, err
 	}
 	if h == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host with id %s not found", id),
 		}
@@ -184,7 +183,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 			return &h, nil
 		}
 	}
-	return nil, &rest.APIError{
+	return nil, gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("host with id %s not found", id),
 	}
@@ -260,13 +259,13 @@ func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User)
 func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
 	host, err := c.FindHostById(hostID)
 	if err != nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error fetching host information",
 		}
 	}
 	if host == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "host does not exist",
 		}
@@ -274,7 +273,7 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 
 	if user.Username() != host.StartedBy {
 		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
-			return nil, &rest.APIError{
+			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to modify host",
 			}

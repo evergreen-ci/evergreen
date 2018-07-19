@@ -101,6 +101,8 @@ type Host struct {
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
 	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
+	// ContainerPoolSettings
+	ContainerPoolSettings *evergreen.ContainerPool `bson:"container_pool_settings,omitempty" json:"container_pool_settings,omitempty"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
@@ -129,6 +131,9 @@ type SpawnOptions struct {
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
 	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
 
+	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
+	TimeoutSetup time.Time `bson:"timeout_setup" json:"timeout_setup"`
+
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
@@ -136,6 +141,12 @@ type SpawnOptions struct {
 	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
+
+	// Retries is the number of times Evergreen should try to spawn this host.
+	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
+
+	// SpawnedByTask indicates that this host has been spawned by a task.
+	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
 }
 
 const (
@@ -429,7 +440,8 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	}
 
 	selector := bson.M{
-		IdKey: h.Id,
+		IdKey:     h.Id,
+		StatusKey: evergreen.HostRunning,
 	}
 
 	update := bson.M{
@@ -949,6 +961,26 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
+func FindTerminatedHostsRunningTasks() ([]Host, error) {
+	hosts, err := Find(db.Query(bson.M{
+		StatusKey: bson.M{"$in": evergreen.UphostStatus},
+		RunningTaskKey: bson.M{"$and": []bson.M{
+			{"$exists": true},
+			{"$ne": ""},
+		}},
+	}))
+
+	if err == mgo.ErrNotFound {
+		err = nil
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding terminated hosts")
+	}
+
+	return hosts, nil
+}
+
 // CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
@@ -959,6 +991,16 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	return Count(query)
 }
 
+// FindRunningContainersOnParents returns the containers that are children of the given hosts
+func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
+	ids := hosts.GetHostIds()
+	query := db.Query(bson.M{
+		StatusKey:   evergreen.HostRunning,
+		ParentIDKey: bson.M{"$in": ids},
+	})
+	return Find(query)
+}
+
 // GetHostIds returns a slice of host IDs for the given group of hosts
 func (hosts HostGroup) GetHostIds() []string {
 	var ids []string
@@ -966,4 +1008,26 @@ func (hosts HostGroup) GetHostIds() []string {
 		ids = append(ids, h.Id)
 	}
 	return ids
+}
+
+// FindAllRunningParentsByContainerPool returns a slice of hosts that are parents
+// of the container pool specified by the given ID
+func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
+	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
+	query := db.Query(bson.M{
+		HasContainersKey:    true,
+		StatusKey:           evergreen.HostRunning,
+		hostContainerPoolId: poolId,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	return Find(query)
+}
+
+func InsertMany(hosts []Host) error {
+	docs := make([]interface{}, len(hosts))
+	for idx := range hosts {
+		docs[idx] = hosts[idx]
+	}
+
+	return errors.WithStack(db.InsertMany(Collection, docs...))
+
 }

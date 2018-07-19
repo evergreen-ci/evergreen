@@ -88,6 +88,7 @@ func MockConfig() *evergreen.Settings {
 					Distro:        "valid-distro",
 					Id:            "test-pool-1",
 					MaxContainers: 100,
+					Port:          9999,
 				},
 			},
 		},
@@ -97,7 +98,6 @@ func MockConfig() *evergreen.Settings {
 		HostInit: evergreen.HostInitConfig{
 			SSHTimeoutSeconds: 10,
 		},
-		IsNonProd: true,
 		Jira: evergreen.JiraConfig{
 			Host:           "host",
 			Username:       "username",

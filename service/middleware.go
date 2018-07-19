@@ -20,36 +20,34 @@ import (
 )
 
 // Key used for storing variables in request context with type safety.
-type (
-	reqCtxKey int
-)
-
-type (
-	// projectContext defines the set of common fields required across most UI requests.
-	projectContext struct {
-		model.Context
-
-		// AllProjects is a list of all available projects, limited to only the set of fields
-		// necessary for display. If user is logged in, this will include private projects.
-		AllProjects []UIProjectFields
-
-		// AuthRedirect indicates whether or not redirecting during authentication is necessary.
-		AuthRedirect bool
-
-		// IsAdmin indicates if the user is an admin for at least one of the projects
-		// listed in AllProjects.
-		IsAdmin bool
-
-		PluginNames []string
-	}
-)
+type reqCtxKey int
 
 const (
+	ProjectCookieName string = "mci-project-cookie"
+
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
 	RequestTask reqCtxKey = iota
 	RequestProjectContext
 )
+
+// projectContext defines the set of common fields required across most UI requests.
+type projectContext struct {
+	model.Context
+
+	// AllProjects is a list of all available projects, limited to only the set of fields
+	// necessary for display. If user is logged in, this will include private projects.
+	AllProjects []UIProjectFields
+
+	// AuthRedirect indicates whether or not redirecting during authentication is necessary.
+	AuthRedirect bool
+
+	// IsAdmin indicates if the user is an admin for at least one of the projects
+	// listed in AllProjects.
+	IsAdmin bool
+
+	PluginNames []string
+}
 
 // MustHaveProjectContext gets the projectContext from the request,
 // or panics if it does not exist.
@@ -158,6 +156,10 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (uis *UIServer) requireLogin(next http.HandlerFunc) http.HandlerFunc {
+	return requireUser(next, uis.RedirectToLogin)
+}
+
 // isSuperUser verifies that a given user has super user permissions.
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
@@ -234,6 +236,10 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 	pc.AllProjects = make([]UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
+		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
+			pc.IsAdmin = true
+		}
+
 		if !p.Enabled {
 			continue
 		}
@@ -245,10 +251,6 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 				Owner:       p.Owner,
 			}
 			pc.AllProjects = append(pc.AllProjects, uiProj)
-		}
-
-		if includePrivate && (isSuperUser || isAdmin(user, &p)) {
-			pc.IsAdmin = true
 		}
 	}
 	return nil

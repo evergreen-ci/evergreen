@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -115,8 +114,8 @@ func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.NotNil(err)
-	s.IsType(new(rest.APIError), err)
-	apiErr := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr := err.(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[0].Status)
 }
@@ -209,7 +208,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecute() {
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.Equal("Error constructing host RDP password: No known provider for ''", err.Error())
+	s.Contains(err.Error(), "Error constructing host RDP password: No known provider for ''")
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFails() {
@@ -251,8 +250,8 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPa
 		err := s.tryParseAndValidate(mod)
 
 		s.Error(err)
-		s.IsType(new(rest.APIError), err)
-		apiErr := err.(*rest.APIError)
+		s.IsType(gimlet.ErrorResponse{}, err)
+		apiErr := err.(gimlet.ErrorResponse)
 		s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	}
 }
@@ -267,7 +266,7 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.Equal("Error constructing host RDP password: No known provider for ''", err.Error())
+	s.Contains(err.Error(), "Error constructing host RDP password: No known provider for ''")
 }
 func (s *hostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost() {
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
@@ -340,8 +339,8 @@ func (s *hostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExp
 
 		err := s.tryParseAndValidate(mod)
 		s.Error(err)
-		s.IsType(new(rest.APIError), err)
-		apiErr := err.(*rest.APIError)
+		s.IsType(gimlet.ErrorResponse{}, err)
+		apiErr := err.(gimlet.ErrorResponse)
 		s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	}
 }
@@ -356,8 +355,8 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails()
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
-	s.IsType(new(rest.APIError), err)
-	apiErr := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr := err.(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -96,7 +97,7 @@ func (s *LocalWorkersSuite) TestPoolStartsAndProcessesJobs() {
 	s.True(s.pool.Started())
 	s.True(s.queue.Started())
 
-	amboy.Wait(s.queue)
+	amboy.WaitInterval(s.queue, 100*time.Millisecond)
 
 	counter := 0
 	for j := range s.queue.Results(ctx) {
@@ -158,8 +159,8 @@ func TestPanicJobPanics(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	for j := range jobsChanWithPanicingJobs(ctx, 8) {
-		assert.Panics(func() { j.Run(ctx) })
+	for wu := range jobsChanWithPanicingJobs(ctx, 8) {
+		assert.Panics(func() { wu.job.Run(ctx) })
 	}
 
 }

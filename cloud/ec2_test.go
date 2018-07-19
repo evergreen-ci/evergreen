@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -78,10 +79,10 @@ func (s *EC2Suite) TestConstructor() {
 
 func (s *EC2Suite) TestValidateProviderSettings() {
 	p := &EC2ProviderSettings{
-		AMI:           "ami",
-		InstanceType:  "type",
-		SecurityGroup: "sg-123456",
-		KeyName:       "keyName",
+		AMI:              "ami",
+		InstanceType:     "type",
+		SecurityGroupIDs: []string{"sg-123456"},
+		KeyName:          "keyName",
 	}
 	s.NoError(p.Validate())
 	p.AMI = ""
@@ -94,12 +95,9 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	p.InstanceType = "type"
 
 	s.NoError(p.Validate())
-	p.SecurityGroup = ""
-	s.Error(p.Validate())
-	p.SecurityGroup = "sg-123456"
-	p.SecurityGroupIDs = []string{"sg-123456"}
-	s.Error(p.Validate())
 	p.SecurityGroupIDs = nil
+	s.Error(p.Validate())
+	p.SecurityGroupIDs = []string{"sg-123456"}
 
 	s.NoError(p.Validate())
 	p.KeyName = ""
@@ -228,9 +226,9 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -286,10 +284,10 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"is_vpc":         true,
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -345,9 +343,9 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -401,10 +399,10 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"is_vpc":         true,
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -644,9 +642,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
-				InstanceId: makeStringPtr("sir-1"),
-				State:      makeStringPtr(SpotStatusActive),
-				SpotInstanceRequestId: makeStringPtr("1"),
+				InstanceId: aws.String("sir-1"),
+				State:      aws.String(SpotStatusActive),
+				SpotInstanceRequestId: aws.String("1"),
 			},
 		},
 	}
@@ -661,13 +659,13 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			// This host returns with no id
 			&ec2.SpotInstanceRequest{
-				SpotInstanceRequestId: makeStringPtr("sir-1"),
-				State: makeStringPtr(ec2.SpotInstanceStateFailed),
+				SpotInstanceRequestId: aws.String("sir-1"),
+				State: aws.String(ec2.SpotInstanceStateFailed),
 			},
 			&ec2.SpotInstanceRequest{
-				InstanceId: makeStringPtr("i-3"),
-				State:      makeStringPtr(SpotStatusActive),
-				SpotInstanceRequestId: makeStringPtr("sir-3"),
+				InstanceId: aws.String("i-3"),
+				State:      aws.String(SpotStatusActive),
+				SpotInstanceRequestId: aws.String("sir-3"),
 			},
 		},
 	}
@@ -676,9 +674,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-3"),
+						InstanceId: aws.String("i-3"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 					},
 				},
@@ -686,9 +684,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-2"),
+						InstanceId: aws.String("i-2"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 					},
 				},
@@ -696,9 +694,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-4"),
+						InstanceId: aws.String("i-4"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 					},
 				},
@@ -706,9 +704,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-5"),
+						InstanceId: aws.String("i-5"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameTerminated),
+							Name: aws.String(ec2.InstanceStateNameTerminated),
 						},
 					},
 				},
@@ -716,9 +714,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-6"),
+						InstanceId: aws.String("i-6"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameShuttingDown),
+							Name: aws.String(ec2.InstanceStateNameShuttingDown),
 						},
 					},
 				},
@@ -786,15 +784,15 @@ func (s *EC2Suite) TestUserDataExpand() {
 
 func (s *EC2Suite) TestGetSecurityGroup() {
 	settings := EC2ProviderSettings{
-		SecurityGroup: "sg-1",
+		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
+	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
+	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1"), makeStringPtr("sg-2")}, settings.getSecurityGroups())
+	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
 }

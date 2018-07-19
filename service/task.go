@@ -33,31 +33,32 @@ const (
 var NumTestsToSearchForTestNames = 100
 
 type uiTaskData struct {
-	Id               string                  `json:"id"`
-	DisplayName      string                  `json:"display_name"`
-	Revision         string                  `json:"gitspec"`
-	BuildVariant     string                  `json:"build_variant"`
-	Distro           string                  `json:"distro"`
-	BuildId          string                  `json:"build_id"`
-	Status           string                  `json:"status"`
-	TaskWaiting      string                  `json:"task_waiting"`
-	Activated        bool                    `json:"activated"`
-	Restarts         int                     `json:"restarts"`
-	Execution        int                     `json:"execution"`
-	TotalExecutions  int                     `json:"total_executions"`
-	StartTime        int64                   `json:"start_time"`
-	DispatchTime     int64                   `json:"dispatch_time"`
-	FinishTime       int64                   `json:"finish_time"`
-	Requester        string                  `json:"r"`
-	ExpectedDuration time.Duration           `json:"expected_duration"`
-	Priority         int64                   `json:"priority"`
-	TimeTaken        time.Duration           `json:"time_taken"`
-	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	TestResults      []uiTestResult          `json:"test_results"`
-	Aborted          bool                    `json:"abort"`
-	MinQueuePos      int                     `json:"min_queue_pos"`
-	DependsOn        []uiDep                 `json:"depends_on"`
-	IngestTime       time.Time               `json:"ingest_time"`
+	Id                   string                  `json:"id"`
+	DisplayName          string                  `json:"display_name"`
+	Revision             string                  `json:"gitspec"`
+	BuildVariant         string                  `json:"build_variant"`
+	Distro               string                  `json:"distro"`
+	BuildId              string                  `json:"build_id"`
+	Status               string                  `json:"status"`
+	TaskWaiting          string                  `json:"task_waiting"`
+	Activated            bool                    `json:"activated"`
+	Restarts             int                     `json:"restarts"`
+	Execution            int                     `json:"execution"`
+	TotalExecutions      int                     `json:"total_executions"`
+	StartTime            int64                   `json:"start_time"`
+	DispatchTime         int64                   `json:"dispatch_time"`
+	FinishTime           int64                   `json:"finish_time"`
+	Requester            string                  `json:"r"`
+	ExpectedDuration     time.Duration           `json:"expected_duration"`
+	Priority             int64                   `json:"priority"`
+	TimeTaken            time.Duration           `json:"time_taken"`
+	TaskEndDetails       apimodels.TaskEndDetail `json:"task_end_details"`
+	TestResults          []uiTestResult          `json:"test_results"`
+	Aborted              bool                    `json:"abort"`
+	MinQueuePos          int                     `json:"min_queue_pos"`
+	DependsOn            []uiDep                 `json:"depends_on"`
+	OverrideDependencies bool                    `json:"override_dependencies"`
+	IngestTime           time.Time               `json:"ingest_time"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -108,9 +109,10 @@ type uiDep struct {
 }
 
 type uiExecTask struct {
-	Id     string `json:"id"`
-	Name   string `json:"display_name"`
-	Status string `json:"status"`
+	Id        string        `json:"id"`
+	Name      string        `json:"display_name"`
+	Status    string        `json:"status"`
+	TimeTaken time.Duration `json:"time_taken"`
 }
 
 type uiTestResult struct {
@@ -197,39 +199,40 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uiTask := uiTaskData{
-		Id:                  tId,
-		DisplayName:         projCtx.Task.DisplayName,
-		Revision:            projCtx.Task.Revision,
-		Status:              projCtx.Task.Status,
-		TaskEndDetails:      projCtx.Task.Details,
-		Distro:              projCtx.Task.DistroId,
-		BuildVariant:        projCtx.Task.BuildVariant,
-		BuildId:             projCtx.Task.BuildId,
-		Activated:           projCtx.Task.Activated,
-		Restarts:            projCtx.Task.Restarts,
-		Execution:           projCtx.Task.Execution,
-		Requester:           projCtx.Task.Requester,
-		StartTime:           projCtx.Task.StartTime.UnixNano(),
-		DispatchTime:        projCtx.Task.DispatchTime.UnixNano(),
-		FinishTime:          projCtx.Task.FinishTime.UnixNano(),
-		ExpectedDuration:    projCtx.Task.ExpectedDuration,
-		TimeTaken:           projCtx.Task.TimeTaken,
-		Priority:            projCtx.Task.Priority,
-		Aborted:             projCtx.Task.Aborted,
-		DisplayOnly:         projCtx.Task.DisplayOnly,
-		IngestTime:          projCtx.Task.IngestTime,
-		CurrentTime:         time.Now().UnixNano(),
-		BuildVariantDisplay: projCtx.Build.DisplayName,
-		Message:             projCtx.Version.Message,
-		Project:             projCtx.Version.Identifier,
-		Author:              projCtx.Version.Author,
-		AuthorEmail:         projCtx.Version.AuthorEmail,
-		VersionId:           projCtx.Version.Id,
-		RepoOwner:           projCtx.ProjectRef.Owner,
-		Repo:                projCtx.ProjectRef.Repo,
-		Archived:            archived,
-		TotalExecutions:     totalExecutions,
-		PartOfDisplay:       projCtx.Task.IsPartOfDisplay(),
+		Id:                   tId,
+		DisplayName:          projCtx.Task.DisplayName,
+		Revision:             projCtx.Task.Revision,
+		Status:               projCtx.Task.Status,
+		TaskEndDetails:       projCtx.Task.Details,
+		Distro:               projCtx.Task.DistroId,
+		BuildVariant:         projCtx.Task.BuildVariant,
+		BuildId:              projCtx.Task.BuildId,
+		Activated:            projCtx.Task.Activated,
+		Restarts:             projCtx.Task.Restarts,
+		Execution:            projCtx.Task.Execution,
+		Requester:            projCtx.Task.Requester,
+		StartTime:            projCtx.Task.StartTime.UnixNano(),
+		DispatchTime:         projCtx.Task.DispatchTime.UnixNano(),
+		FinishTime:           projCtx.Task.FinishTime.UnixNano(),
+		ExpectedDuration:     projCtx.Task.ExpectedDuration,
+		TimeTaken:            projCtx.Task.TimeTaken,
+		Priority:             projCtx.Task.Priority,
+		Aborted:              projCtx.Task.Aborted,
+		DisplayOnly:          projCtx.Task.DisplayOnly,
+		IngestTime:           projCtx.Task.IngestTime,
+		OverrideDependencies: projCtx.Task.OverrideDependencies,
+		CurrentTime:          time.Now().UnixNano(),
+		BuildVariantDisplay:  projCtx.Build.DisplayName,
+		Message:              projCtx.Version.Message,
+		Project:              projCtx.Version.Identifier,
+		Author:               projCtx.Version.Author,
+		AuthorEmail:          projCtx.Version.AuthorEmail,
+		VersionId:            projCtx.Version.Id,
+		RepoOwner:            projCtx.ProjectRef.Owner,
+		Repo:                 projCtx.ProjectRef.Repo,
+		Archived:             archived,
+		TotalExecutions:      totalExecutions,
+		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
@@ -287,7 +290,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{Id: et.Id, Name: et.DisplayName, Status: et.ResultStatus()})
+			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
+				Id:        et.Id,
+				Name:      et.DisplayName,
+				TimeTaken: et.TimeTaken,
+				Status:    et.ResultStatus(),
+			})
 			for _, tr := range et.LocalTestResults {
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: &et.Id, TaskName: &et.DisplayName})
 			}
@@ -305,15 +313,19 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
+	isAdmin := false
+	if usr != nil {
+		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
+	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Task          uiTaskData
-		Host          *host.Host
-		PluginContent pluginData
-		JiraHost      string
+		Task           uiTaskData
+		Host           *host.Host
+		PluginContent  pluginData
+		JiraHost       string
+		IsProjectAdmin bool
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
-		"task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
@@ -696,6 +708,18 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		}
+		gimlet.WriteJSON(w, projCtx.Task)
+		return
+	case "override_dependencies":
+		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) {
+			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
+			return
+		}
+		err = projCtx.Task.SetOverrideDependencies(authUser.Username())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		gimlet.WriteJSON(w, projCtx.Task)
 		return

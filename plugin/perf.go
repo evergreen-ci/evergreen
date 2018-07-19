@@ -14,11 +14,6 @@ func init() {
 	Publish(&PerfPlugin{})
 }
 
-var includes = []template.HTML{
-	`<script type="text/javascript" src="/static/plugins/perf/js/trend_chart.js"></script>`,
-	`<script type="text/javascript" src="/static/plugins/perf/js/perf.js"></script>`,
-}
-
 // PerfPlugin displays performance statistics in the UI.
 type PerfPlugin struct {
 	Projects []string `yaml:"string"`
@@ -44,7 +39,10 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 	return &PanelConfig{
 		Panels: []UIPanel{
 			{
-				Includes:  includes,
+				Includes: []template.HTML{
+					`<script type="text/javascript" src="/static/plugins/perf/js/trend_chart.js"></script>`,
+					`<script type="text/javascript" src="/static/plugins/perf/js/perf.js"></script>`,
+				},
 				Page:      TaskPage,
 				Position:  PageCenter,
 				PanelHTML: template.HTML(panelHTML),

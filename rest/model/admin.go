@@ -12,26 +12,27 @@ import (
 
 func NewConfigModel() *APIAdminSettings {
 	return &APIAdminSettings{
-		Alerts:         &APIAlertsConfig{},
-		Amboy:          &APIAmboyConfig{},
-		Api:            &APIapiConfig{},
-		AuthConfig:     &APIAuthConfig{},
-		ContainerPools: &APIContainerPoolsConfig{},
-		Credentials:    map[string]string{},
-		Expansions:     map[string]string{},
-		HostInit:       &APIHostInitConfig{},
-		Jira:           &APIJiraConfig{},
-		Keys:           map[string]string{},
-		LoggerConfig:   &APILoggerConfig{},
-		Notify:         &APINotifyConfig{},
-		Plugins:        map[string]map[string]interface{}{},
-		Providers:      &APICloudProviders{},
-		RepoTracker:    &APIRepoTrackerConfig{},
-		Scheduler:      &APISchedulerConfig{},
-		ServiceFlags:   &APIServiceFlags{},
-		Slack:          &APISlackConfig{},
-		Splunk:         &APISplunkConnectionInfo{},
-		Ui:             &APIUIConfig{},
+		Alerts:            &APIAlertsConfig{},
+		Amboy:             &APIAmboyConfig{},
+		Api:               &APIapiConfig{},
+		AuthConfig:        &APIAuthConfig{},
+		ContainerPools:    &APIContainerPoolsConfig{},
+		Credentials:       map[string]string{},
+		Expansions:        map[string]string{},
+		HostInit:          &APIHostInitConfig{},
+		Jira:              &APIJiraConfig{},
+		JIRANotifications: &APIJIRANotificationsConfig{},
+		Keys:              map[string]string{},
+		LoggerConfig:      &APILoggerConfig{},
+		Notify:            &APINotifyConfig{},
+		Plugins:           map[string]map[string]interface{}{},
+		Providers:         &APICloudProviders{},
+		RepoTracker:       &APIRepoTrackerConfig{},
+		Scheduler:         &APISchedulerConfig{},
+		ServiceFlags:      &APIServiceFlags{},
+		Slack:             &APISlackConfig{},
+		Splunk:            &APISplunkConnectionInfo{},
+		Ui:                &APIUIConfig{},
 	}
 }
 
@@ -51,7 +52,6 @@ type APIAdminSettings struct {
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
-	IsNonProd          *bool                             `json:"isnonprod,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
 	Keys               map[string]string                 `json:"keys,omitempty"`
 	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
@@ -67,6 +67,7 @@ type APIAdminSettings struct {
 	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
 	SuperUsers         []string                          `json:"superusers,omitempty"`
 	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
+	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -103,7 +104,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
-		as.IsNonProd = &v.IsNonProd
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
 		as.PprofPort = &v.PprofPort
@@ -143,9 +143,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
-	}
-	if as.IsNonProd != nil {
-		settings.IsNonProd = *as.IsNonProd
 	}
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath
@@ -785,6 +782,7 @@ type APIContainerPool struct {
 	Distro        APIString `json:"distro"`
 	Id            APIString `json:"id"`
 	MaxContainers int       `json:"max_containers"`
+	Port          uint16    `json:"port"`
 }
 
 func (a *APIContainerPool) BuildFromService(h interface{}) error {
@@ -793,6 +791,7 @@ func (a *APIContainerPool) BuildFromService(h interface{}) error {
 		a.Distro = ToAPIString(v.Distro)
 		a.Id = ToAPIString(v.Id)
 		a.MaxContainers = v.MaxContainers
+		a.Port = v.Port
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -804,6 +803,7 @@ func (a *APIContainerPool) ToService() (interface{}, error) {
 		Distro:        FromAPIString(a.Distro),
 		Id:            FromAPIString(a.Id),
 		MaxContainers: a.MaxContainers,
+		Port:          a.Port,
 	}, nil
 }
 
@@ -1295,4 +1295,45 @@ func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
 	}
 
 	return out, nil
+}
+
+type APIJIRANotificationsConfig struct {
+	CustomFields map[string]map[string]string `json:"custom_fields,omitempty"`
+}
+
+func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
+	var config *evergreen.JIRANotificationsConfig
+	switch v := h.(type) {
+	case *evergreen.JIRANotificationsConfig:
+		config = v
+	case evergreen.JIRANotificationsConfig:
+		config = &v
+	default:
+		return errors.Errorf("expected *evergreen.APIJIRANotificationsConfig, but got %T instead", h)
+	}
+
+	if len(config.CustomFields) == 0 {
+		return nil
+	}
+
+	m, err := config.CustomFields.ToMap()
+	if err != nil {
+		return errors.Wrap(err, "failed to build jira custom field configuration")
+	}
+
+	j.CustomFields = m
+
+	return nil
+}
+func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
+	if j.CustomFields == nil || len(j.CustomFields) == 0 {
+		return evergreen.JIRANotificationsConfig{}, nil
+	}
+	config := evergreen.JIRANotificationsConfig{
+		CustomFields: evergreen.JIRACustomFieldsByProject{},
+	}
+
+	config.CustomFields.FromMap(j.CustomFields)
+
+	return config, nil
 }

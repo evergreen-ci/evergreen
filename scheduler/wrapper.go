@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -20,7 +21,7 @@ type Configuration struct {
 	FreeHostFraction float64
 }
 
-func PlanDistro(ctx context.Context, conf Configuration) error {
+func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
 	startAt := time.Now()
 	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
@@ -67,23 +68,27 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
 
-	distroHostsMap, err := findUsableHosts(conf.DistroID)
+	distroHosts, err := findUsableHosts(conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "with host query")
 	}
 
 	allocatorArgs := HostAllocatorData{
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			conf.DistroID: res.taskQueueItem,
-		},
-		existingDistroHosts: distroHostsMap,
-		distros: map[string]distro.Distro{
-			conf.DistroID: distroSpec,
-		},
+		taskQueueItems:   res.taskQueueItem,
+		existingHosts:    distroHosts,
+		distro:           distroSpec,
 		freeHostFraction: conf.FreeHostFraction,
 	}
-	if distroSpec.MaxContainers > 0 {
+
+	// retrieve container pool information for container distros
+	var pool *evergreen.ContainerPool
+	if distroSpec.ContainerPool != "" {
+		pool = s.ContainerPools.GetContainerPool(distroSpec.ContainerPool)
+		if pool == nil {
+			return errors.Wrap(err, "problem retrieving container pool")
+		}
 		allocatorArgs.usesContainers = true
+		allocatorArgs.containerPool = pool
 	}
 
 	allocator := GetHostAllocator(conf.HostAllocator)
@@ -92,11 +97,10 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		return errors.Wrap(err, "problem finding distro")
 	}
 
-	hostsSpawned, err := spawnHosts(ctx, newHosts)
+	hostsSpawned, err := spawnHosts(ctx, distroSpec, newHosts, pool)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
-	hostList := hostsSpawned[conf.DistroID]
 
 	event.LogSchedulerEvent(event.SchedulerEventData{
 		TaskQueueInfo: res.schedulerEvent,
@@ -104,9 +108,8 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 	})
 
 	var makespan time.Duration
-	numHosts := time.Duration(len(distroHostsMap) + len(hostsSpawned))
-	if numHosts != 0 {
-		makespan = res.schedulerEvent.ExpectedDuration / numHosts
+	if len(hostsSpawned) != 0 {
+		makespan = res.schedulerEvent.ExpectedDuration / time.Duration(len(hostsSpawned))
 	} else if res.schedulerEvent.TaskQueueLength > 0 {
 		makespan = res.schedulerEvent.ExpectedDuration
 	}
@@ -116,9 +119,9 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		"runner":                 RunnerName,
 		"distro":                 conf.DistroID,
 		"provider":               distroSpec.Provider,
-		"max_hsots":              distroSpec.PoolSize,
-		"new_hosts":              hostList,
-		"num_hosts":              len(hostList),
+		"max_hosts":              distroSpec.PoolSize,
+		"new_hosts":              hostsSpawned,
+		"num_hosts":              len(hostsSpawned),
 		"queue":                  res.schedulerEvent,
 		"total_runtime":          res.schedulerEvent.ExpectedDuration.String(),
 		"predicted_makespan":     makespan.String(),

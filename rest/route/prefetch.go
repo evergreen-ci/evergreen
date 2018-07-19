@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -46,14 +45,14 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 
 	if opCtx.ProjectRef != nil && opCtx.ProjectRef.Private && user == nil {
 		// Project is private and user is not authorized so return not found
-		return ctx, rest.APIError{
+		return ctx, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Project not found",
 		}
 	}
 
 	if opCtx.Patch != nil && user == nil {
-		return ctx, rest.APIError{
+		return ctx, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Not found",
 		}

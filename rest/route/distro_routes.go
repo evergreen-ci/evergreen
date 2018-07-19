@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
@@ -37,10 +36,7 @@ func (dgh *distroGetHandler) ParseAndValidate(ctx context.Context, r *http.Reque
 func (dgh *distroGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	distros, err := sc.FindAllDistros()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "Database error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "Database error")
 	}
 	models := make([]model.Model, len(distros))
 	for i, d := range distros {
@@ -54,8 +50,4 @@ func (dgh *distroGetHandler) Execute(ctx context.Context, sc data.Connector) (Re
 	return ResponseData{
 		Result: models,
 	}, nil
-}
-
-type clearTaskQueueHandler struct {
-	distro string
 }

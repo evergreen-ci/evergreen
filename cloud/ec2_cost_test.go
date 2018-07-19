@@ -188,7 +188,9 @@ func (s *CostIntegrationSuite) SetupSuite() {
 }
 
 func (s *CostIntegrationSuite) TestSpotPriceHistory() {
-	cpf := cachingPriceFetcher{}
+	cpf := cachingPriceFetcher{
+		spotPrices: make(map[string]cachedSpotRate),
+	}
 	input := hourlySpotPriceHistoryInput{
 		iType: "m3.large",
 		zone:  "us-east-1a",
@@ -202,7 +204,7 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 
 	ps, err := cpf.describeHourlySpotPriceHistory(ctx, s.client, input)
 	s.NoError(err)
-	s.True(len(ps) > 2)
+	s.Require().True(len(ps) > 2)
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
 	s.True(ps[len(ps)-1].Time.After(time.Now().Add(-10 * time.Minute)))
 	s.True(ps[0].Price > 0.0)
@@ -218,7 +220,7 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 	}
 	ps, err = cpf.describeHourlySpotPriceHistory(ctx, s.client, input)
 	s.NoError(err)
-	s.True(len(ps) > 240)
+	s.True(len(ps) > 240, "num_elems: %d", len(ps))
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
 	s.True(ps[len(ps)-1].Time.After(time.Now().Add(-30 * time.Minute)))
 	s.True(ps[0].Time.After(time.Now().Add(-242 * time.Hour)))
@@ -226,6 +228,11 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 	s.True(ps[0].Price > 0.0)
 	s.True(ps[0].Price < 2.0)
 	s.True(ps[0].Time.Before(ps[1].Time))
+
+	input.zone = ""
+	ps, err = cpf.describeHourlySpotPriceHistory(ctx, s.client, input)
+	s.NoError(err)
+	s.True(len(ps) > 5, "num_elems: %d", len(ps))
 }
 
 func (s *CostIntegrationSuite) TestFetchEBSPricing() {

@@ -37,12 +37,8 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				dist.PoolSize = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
-					existingDistroHosts: map[string][]host.Host{
-						"": hosts,
-					},
-					distros: map[string]distro.Distro{
-						"": dist,
-					},
+					existingHosts: hosts,
+					distro:        dist,
 				}
 
 				So(deficitNumNewHostsForDistro(ctx, hostAllocatorData,
@@ -60,10 +56,8 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = 0
 
 			hostAllocatorData := &HostAllocatorData{
-				existingDistroHosts: map[string][]host.Host{},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				existingHosts: []host.Host{},
+				distro:        dist,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -74,15 +68,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = len(hosts)
 
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -105,15 +93,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = 1
 
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -135,15 +117,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = len(hosts) + 5
 
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -166,15 +142,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = len(hosts) + 5
 
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -201,15 +171,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = 9
 
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
@@ -217,43 +181,25 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 			dist.PoolSize = 8
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 			dist.PoolSize = 7
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 2)
 			dist.PoolSize = 6
 			hostAllocatorData = &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 1)
@@ -272,15 +218,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			dist.PoolSize = 20
 			dist.Provider = "static"
 			hostAllocatorData := &HostAllocatorData{
-				taskQueueItems: map[string][]model.TaskQueueItem{
-					"": taskQueueItems,
-				},
-				existingDistroHosts: map[string][]host.Host{
-					"": hosts,
-				},
-				distros: map[string]distro.Distro{
-					"": dist,
-				},
+				taskQueueItems: taskQueueItems,
+				existingHosts:  hosts,
+				distro:         dist,
 			}
 			So(deficitNumNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)

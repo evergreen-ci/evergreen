@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/rest"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -22,7 +22,7 @@ func (dc *DBSubscriptionConnector) SaveSubscriptions(subscriptions []event.Subsc
 
 func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
 	if len(owner) == 0 {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "no subscription owner provided",
 		}
@@ -46,7 +46,7 @@ func (dc *DBSubscriptionConnector) GetSubscriptions(owner string, ownerType even
 }
 
 func (dc *DBSubscriptionConnector) DeleteSubscription(id string) error {
-	return event.RemoveSubscriptionID(id)
+	return event.RemoveSubscription(id)
 }
 
 type MockSubscriptionConnector struct {

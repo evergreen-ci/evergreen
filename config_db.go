@@ -42,7 +42,6 @@ var (
 	expansionsNewKey      = bsonutil.MustHaveTag(Settings{}, "ExpansionsNew")
 	pluginsKey            = bsonutil.MustHaveTag(Settings{}, "Plugins")
 	pluginsNewKey         = bsonutil.MustHaveTag(Settings{}, "PluginsNew")
-	isNonProdKey          = bsonutil.MustHaveTag(Settings{}, "IsNonProd")
 	loggerConfigKey       = bsonutil.MustHaveTag(Settings{}, "LoggerConfig")
 	logPathKey            = bsonutil.MustHaveTag(Settings{}, "LogPath")
 	pprofPortKey          = bsonutil.MustHaveTag(Settings{}, "PprofPort")
@@ -71,6 +70,9 @@ var (
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")
+
+	// ContainerPool keys
+	ContainerPoolIdKey = bsonutil.MustHaveTag(ContainerPool{}, "Id")
 )
 
 func byId(id string) bson.M {

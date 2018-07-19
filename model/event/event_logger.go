@@ -50,7 +50,7 @@ func (l *DBEventLogger) LogManyEvents(events []EventLogEntry) error {
 }
 
 func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
-	if !event.ID.Valid() {
+	if event.ID == "" {
 		return errors.New("event has no ID")
 	}
 	event.ProcessedAt = time.Now()
@@ -71,14 +71,4 @@ func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	}
 
 	return nil
-}
-
-// MarkAllEventsProcessed marks all events processed with the current time
-func MarkAllEventsProcessed(collection string) error {
-	_, err := db.UpdateAll(collection, unprocessedEvents(), bson.M{
-		"$set": bson.M{
-			processedAtKey: time.Now(),
-		},
-	})
-	return err
 }

@@ -36,17 +36,23 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	containerPools := make([]evergreen.ContainerPool, 0)
 	containerPoolDistros := make([]string, 0)
+	containerPoolIds := make([]string, 0)
 	for _, p := range settings.ContainerPools.Pools {
+		containerPools = append(containerPools, p)
 		containerPoolDistros = append(containerPoolDistros, p.Distro)
+		containerPoolIds = append(containerPoolIds, p.Id)
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distros []distro.Distro
 		Keys    map[string]string
 		ViewData
+		ContainerPools       []evergreen.ContainerPool
 		ContainerPoolDistros []string
-	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPoolDistros},
+		ContainerPoolIds     []string
+	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 
