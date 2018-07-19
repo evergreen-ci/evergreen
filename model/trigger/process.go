@@ -61,11 +61,8 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 			"notification_is_nil": n == nil,
 		}
 		catcher.Add(err)
-		if err != nil {
-			grip.Error(message.WrapError(err, msg))
-		} else {
-			grip.Info(msg)
-		}
+		grip.Error(message.WrapError(err, msg))
+		grip.InfoWhen(err == nil, msg)
 		if n == nil {
 			continue
 		}
