@@ -38,6 +38,10 @@ func (q *remoteBase) Put(j amboy.Job) error {
 		return errors.New("cannot add jobs with versions less than 0")
 	}
 
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
+
 	return q.driver.Put(j)
 }
 
@@ -99,8 +103,10 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 
 	startAt := time.Now()
 	id := j.ID()
+	count := 0
 
 	for {
+		count++
 		select {
 		case <-ctx.Done():
 			return
@@ -117,15 +123,25 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			})
 
 			if err := q.driver.Save(j); err != nil {
-				grip.Warningf("problem persisting job '%s', %+v", j.ID(), err)
 				timer.Reset(retryInterval)
-				if time.Since(startAt) > time.Minute+lockTimeout {
+				if time.Since(startAt) > time.Minute+LockTimeout {
+					grip.Error(message.WrapError(err, message.Fields{
+						"job_id":      id,
+						"job_type":    j.Type().Name,
+						"driver_type": fmt.Sprintf("%T", q.driver),
+						"retry_count": count,
+						"driver_id":   q.driver.ID(),
+						"message":     "job took too long to mark complete",
+					}))
+					return
+				} else if count > 10 {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
 						"driver_type": fmt.Sprintf("%T", q.driver),
 						"driver_id":   q.driver.ID(),
-						"message":     "job took too long to mark complete",
+						"retry_count": count,
+						"message":     " after 10 retries, aborting marking job complete",
 					}))
 					return
 				}
@@ -158,7 +174,6 @@ func (q *remoteBase) Results(ctx context.Context) <-chan amboy.Job {
 			if j.Status().Completed {
 				output <- j
 			}
-
 		}
 	}()
 	return output
@@ -286,7 +301,7 @@ func isDispatchable(stat amboy.JobStatusInfo) bool {
 
 	// don't return an inprogress job if the mod
 	// time is less than the lock timeout
-	if stat.InProgress && time.Since(stat.ModificationTime) < lockTimeout {
+	if stat.InProgress && time.Since(stat.ModificationTime) < LockTimeout {
 		return false
 	}
 

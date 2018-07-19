@@ -118,6 +118,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.checkRealData(&entries[0], loc)
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+		s.Equal("5949645c9acd9604fdd202d9", entries[0].ID)
 		s.IsType(&HostEventData{}, entries[0].Data)
 		s.Equal("HOST", entries[0].ResourceType)
 
@@ -130,12 +131,20 @@ func (s *eventSuite) TestWithRealData() {
 		s.NoError(err)
 		s.Equal(expectedJSON, string(bytes))
 	})
+
+	// check that string IDs are preserved in the DB
+	data[idKey] = "elephant"
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: "elephant"}))
+	s.NoError(err)
+	s.Len(entries, 1)
+	s.Equal("elephant", entries[0].ID)
 }
 
 func (s *eventSuite) TestEventWithNilData() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
-		ID:         bson.NewObjectId(),
+		ID:         bson.NewObjectId().Hex(),
 		ResourceId: "TEST1",
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -268,7 +277,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.Zero(ptime)
 
 	s.EqualError(logger.MarkProcessed(&event), "event has no ID")
-	event.ID = bson.NewObjectId()
+	event.ID = bson.NewObjectId().Hex()
 	s.EqualError(logger.MarkProcessed(&event), "failed to update 'processed at' time: not found")
 
 	s.NoError(logger.LogEvent(&event))
@@ -411,7 +420,7 @@ func (s *eventSuite) TestTaskEventLogLegacyEvents() {
 func (s *eventSuite) TestFindLastProcessedEvent() {
 	events := []EventLogEntry{
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -423,7 +432,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -435,7 +444,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -459,7 +468,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 func (s *eventSuite) TestCountUnprocessedEvents() {
 	events := []EventLogEntry{
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-2 * time.Hour),
 			ResourceId:   "macos.example.com",
 			EventType:    "HOST_TASK_FINISHED",
@@ -470,7 +479,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com2",
 			EventType:    "HOST_TASK_FINISHED",
@@ -482,7 +491,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 			},
 		},
 		{
-			ID:           bson.NewObjectId(),
+			ID:           bson.NewObjectId().Hex(),
 			Timestamp:    time.Now().Add(-1 * time.Hour),
 			ResourceId:   "macos.example.com3",
 			EventType:    "HOST_TASK_FINISHED",
@@ -550,7 +559,7 @@ func findResourceTypeIn(data interface{}) (bool, string) {
 func (s *eventSuite) TestLogManyEvents() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event1 := EventLogEntry{
-		ID:           bson.NewObjectId(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -558,7 +567,7 @@ func (s *eventSuite) TestLogManyEvents() {
 		ResourceType: "TASK",
 	}
 	event2 := EventLogEntry{
-		ID:           bson.NewObjectId(),
+		ID:           bson.NewObjectId().Hex(),
 		ResourceId:   "resource_id_1",
 		EventType:    "some_type",
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),

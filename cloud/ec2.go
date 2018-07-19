@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -94,7 +95,7 @@ func (s *EC2ProviderSettings) getSecurityGroups() []*string {
 	groups := []*string{}
 	if len(s.SecurityGroupIDs) > 0 {
 		for _, group := range s.SecurityGroupIDs {
-			groups = append(groups, makeStringPtr(group))
+			groups = append(groups, aws.String(group))
 		}
 		return groups
 	}
@@ -163,8 +164,8 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	input := &ec2.RunInstancesInput{
-		MinCount:            makeInt64Ptr(1),
-		MaxCount:            makeInt64Ptr(1),
+		MinCount:            aws.Int64(1),
+		MaxCount:            aws.Int64(1),
 		ImageId:             &ec2Settings.AMI,
 		KeyName:             &ec2Settings.KeyName,
 		InstanceType:        &ec2Settings.InstanceType,
@@ -174,8 +175,8 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if ec2Settings.IsVpc {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{
-				AssociatePublicIpAddress: makeBoolPtr(true),
-				DeviceIndex:              makeInt64Ptr(0),
+				AssociatePublicIpAddress: aws.Bool(true),
+				DeviceIndex:              aws.Int64(0),
 				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
@@ -280,12 +281,12 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	spotRequest := &ec2.RequestSpotInstancesInput{
-		SpotPrice:     makeStringPtr(fmt.Sprintf("%v", ec2Settings.BidPrice)),
-		InstanceCount: makeInt64Ptr(1),
+		SpotPrice:     aws.String(fmt.Sprintf("%v", ec2Settings.BidPrice)),
+		InstanceCount: aws.Int64(1),
 		LaunchSpecification: &ec2.RequestSpotLaunchSpecification{
-			ImageId:             makeStringPtr(ec2Settings.AMI),
-			KeyName:             makeStringPtr(ec2Settings.KeyName),
-			InstanceType:        makeStringPtr(ec2Settings.InstanceType),
+			ImageId:             aws.String(ec2Settings.AMI),
+			KeyName:             aws.String(ec2Settings.KeyName),
+			InstanceType:        aws.String(ec2Settings.InstanceType),
 			BlockDeviceMappings: blockDevices,
 		},
 	}
@@ -293,8 +294,8 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	if ec2Settings.IsVpc {
 		spotRequest.LaunchSpecification.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{
-				AssociatePublicIpAddress: makeBoolPtr(true),
-				DeviceIndex:              makeInt64Ptr(0),
+				AssociatePublicIpAddress: aws.Bool(true),
+				DeviceIndex:              aws.Int64(0),
 				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
@@ -619,7 +620,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 		return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{makeStringPtr(instanceId)},
+		InstanceIds: []*string{aws.String(instanceId)},
 	})
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -663,7 +664,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 		return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 	}
 	if _, err = m.client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
+		SpotInstanceRequestIds: []*string{aws.String(h.Id)},
 	}); err != nil {
 		if ec2err, ok := err.(awserr.Error); ok {
 			if ec2err.Code() == EC2ErrorSpotRequestNotFound {

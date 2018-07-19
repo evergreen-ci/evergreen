@@ -23,8 +23,8 @@ const (
 	edgesKey = "edges"
 	taskKey  = "task"
 
-	// tasks should be unscheduled after ~2 weeks
-	unschedulableThreshold = 7 * 24 * time.Hour
+	// tasks should be unscheduled after ~a week
+	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
@@ -63,6 +63,7 @@ type Task struct {
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
 
 	Version           string `bson:"version" json:"version,omitempty"`
 	Project           string `bson:"branch" json:"branch,omitempty"`
@@ -576,7 +577,7 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	}
 
 	query["$and"] = []bson.M{
-		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
+		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
 		{CreateTimeKey: bson.M{"$gt": util.ZeroTime}},
 	}
 
@@ -610,6 +611,31 @@ func (t *Task) MarkFailed() error {
 	)
 }
 
+func (t *Task) MarkSystemFailed() error {
+	t.Status = evergreen.TaskFailed
+	t.FinishTime = time.Now()
+
+	t.Details = apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   evergreen.CommandTypeSystem,
+	}
+
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:     evergreen.TaskFailed,
+				FinishTimeKey: t.FinishTime,
+				DetailsKey:    t.Details,
+			},
+		},
+	)
+}
+
 // SetAborted sets the abort field of task to aborted
 func (t *Task) SetAborted() error {
 	t.Aborted = true
@@ -629,14 +655,16 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
+	t.ActivatedTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:   true,
-				ActivatedByKey: caller,
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: t.ActivatedTime,
 			},
 		})
 }

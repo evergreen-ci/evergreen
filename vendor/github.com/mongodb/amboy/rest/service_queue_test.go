@@ -7,12 +7,26 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
+func init() {
+	grip.SetName("amboy.rest.tests")
+	grip.CatchError(grip.SetSender(send.MakeNative()))
+
+	lvl := grip.GetSender().Level()
+	lvl.Threshold = level.Warning
+	_ = grip.GetSender().SetLevel(lvl)
+
+	job.RegisterDefaultJobs()
+}
+
 type RestServiceSuite struct {
-	service *Service
+	service *QueueService
 	require *require.Assertions
 	suite.Suite
 }
@@ -29,7 +43,7 @@ func (s *RestServiceSuite) SetupSuite() {
 }
 
 func (s *RestServiceSuite) SetupTest() {
-	s.service = NewService()
+	s.service = NewQueueService()
 }
 
 func (s *RestServiceSuite) TearDownTest() {
@@ -37,7 +51,7 @@ func (s *RestServiceSuite) TearDownTest() {
 }
 
 func (s *RestServiceSuite) TestInitialListOfRegisteredJobs() {
-	defaultJob := &Service{}
+	defaultJob := &QueueService{}
 	s.Len(defaultJob.registeredTypes, 0)
 
 	count := 0
@@ -61,12 +75,4 @@ func (s *RestServiceSuite) TestServiceOpenMethodInitializesResources() {
 
 	s.NotNil(s.service.queue)
 	s.NotNil(s.service.closer)
-}
-
-func (s *RestServiceSuite) TestIfNilAppMethodInitializesApp() {
-	s.Nil(s.service.app)
-
-	app := s.service.App()
-	s.NotNil(app)
-	s.Equal(app, s.service.app)
 }

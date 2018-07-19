@@ -78,7 +78,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task that failed on a system command should return a subject", func() {
-			j.data.Task.Details.Type = model.SystemCommandType
+			j.data.Task.Details.Type = evergreen.CommandTypeSystem
 			subj, err := j.getSummary()
 			So(subj, ShouldNotEqual, "")
 			So(err, ShouldBeNil)

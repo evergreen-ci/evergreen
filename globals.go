@@ -34,6 +34,11 @@ const (
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
 
+	// Task Command Types
+	CommandTypeTest   = "test"
+	CommandTypeSystem = "system"
+	CommandTypeSetup  = "setup"
+
 	// Task Statuses used only in TaskEndDetails
 	// TaskFailed and TaskSucceeded are also used here
 	TaskSetupFailed      = "setup-failed"
@@ -108,8 +113,9 @@ const (
 
 // evergreen package names
 const (
-	UIPackage     = "EVERGREEN_UI"
-	RESTV2Package = "EVERGREEN_REST_V2"
+	UIPackage      = "EVERGREEN_UI"
+	RESTV2Package  = "EVERGREEN_REST_V2"
+	MonitorPackage = "EVERGREEN_MONITOR"
 )
 
 const (
@@ -227,6 +233,8 @@ var (
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
+
+	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 )
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.

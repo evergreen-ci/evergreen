@@ -32,14 +32,14 @@ func (s *BaseCheckSuite) SetupTest() {
 
 func (s *BaseCheckSuite) TestInitialValuesOfBaseObject() {
 	s.False(s.base.status.Completed)
-	s.Len(s.base.Errors, 0)
+	s.Len(s.base.status.Errors, 0)
 }
 
 func (s *BaseCheckSuite) TestAddErrorWithNilObjectDoesNotChangeErrorState() {
 	for i := 0; i < 100; i++ {
 		s.base.AddError(nil)
 		s.NoError(s.base.Error())
-		s.Len(s.base.Errors, 0)
+		s.Len(s.base.status.Errors, 0)
 		s.False(s.base.HasErrors())
 	}
 }
@@ -48,7 +48,7 @@ func (s *BaseCheckSuite) TestAddErrorsPersistsErrorsInJob() {
 	for i := 1; i <= 100; i++ {
 		s.base.AddError(errors.New("foo"))
 		s.Error(s.base.Error())
-		s.Len(s.base.Errors, i)
+		s.Len(s.base.status.Errors, i)
 		s.True(s.base.HasErrors())
 		s.Len(strings.Split(s.base.Error().Error(), "\n"), i)
 	}

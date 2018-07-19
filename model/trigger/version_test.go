@@ -63,7 +63,7 @@ func (s *VersionSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeVersion,
 			Trigger: triggerOutcome,
 			Selectors: []event.Selector{
@@ -82,7 +82,7 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeVersion,
 			Trigger: triggerSuccess,
 			Selectors: []event.Selector{
@@ -101,7 +101,7 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeVersion,
 			Trigger: triggerFailure,
 			Selectors: []event.Selector{
@@ -120,7 +120,7 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeVersion,
 			Trigger: triggerRegression,
 			Selectors: []event.Selector{
@@ -139,7 +139,7 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeVersion,
 			Trigger: triggerExceedsDuration,
 			Selectors: []event.Selector{
@@ -158,7 +158,7 @@ func (s *VersionSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId(),
+			ID:      bson.NewObjectId().Hex(),
 			Type:    event.ResourceTypeVersion,
 			Trigger: triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{

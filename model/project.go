@@ -21,15 +21,9 @@ import (
 )
 
 const (
-	TestCommandType   = "test"
-	SystemCommandType = "system"
-	SetupCommandType  = "setup"
-)
-
-const (
 	// DefaultCommandType is a system configuration option that is used to
 	// differentiate between setup related commands and actual testing commands.
-	DefaultCommandType = TestCommandType
+	DefaultCommandType = evergreen.CommandTypeTest
 )
 
 type Project struct {

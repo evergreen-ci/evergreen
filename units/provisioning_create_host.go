@@ -26,11 +26,14 @@ func init() {
 }
 
 type createHostJob struct {
-	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	HostID         string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	CurrentAttempt int    `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
+	MaxAttempts    int    `bson:"max_attempts" json:"max_attempts" yaml:"max_attempts"`
+	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
 
-	host *host.Host
-	env  evergreen.Environment
+	start time.Time
+	host  *host.Host
+	env   evergreen.Environment
 }
 
 func makeCreateHostJob() *createHostJob {
@@ -47,19 +50,33 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, CurrentAttempt int, MaxAttempts int) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, j.HostID, id))
+	j.CurrentAttempt = CurrentAttempt
+	if MaxAttempts > 0 {
+		j.MaxAttempts = MaxAttempts
+	} else if j.host.SpawnOptions.Retries > 0 {
+		j.MaxAttempts = j.host.SpawnOptions.Retries
+	} else {
+		j.MaxAttempts = 1
+	}
 	return j
 }
 
 func (j *createHostJob) Run(ctx context.Context) {
 	var err error
 	defer j.MarkComplete()
+
+	j.start = time.Now()
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -73,66 +90,97 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
+	if j.TimeInfo().MaxTime == 0 && !j.host.SpawnOptions.TimeoutSetup.IsZero() {
+		j.UpdateTimeInfo(amboy.JobTimeInfo{
+			MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
+		})
 	}
 
-	settings := j.env.Settings()
-
-	err = j.createHost(ctx, j.host, settings)
-	j.AddError(err)
+	j.AddError(j.createHost(ctx))
 }
 
-func (j *createHostJob) createHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
-	hostStartTime := time.Now()
+func (j *createHostJob) createHost(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, "canceling create host because context is canceled")
+	}
+	hostStartTime := j.start
 	grip.Info(message.Fields{
-		"message": "attempting to start host",
-		"hostid":  h.Id,
-		"job":     j.ID(),
+		"message":      "attempting to start host",
+		"hostid":       j.host.Id,
+		"job":          j.ID(),
+		"attempt":      j.CurrentAttempt,
+		"max_attempts": j.MaxAttempts,
 	})
 
-	cloudManager, err := cloud.GetManager(ctx, h.Provider, settings)
+	cloudManager, err := cloud.GetManager(ctx, j.host.Provider, j.env.Settings())
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",
-			"host":    h.Id,
+			"host":    j.host.Id,
 			"job":     j.ID(),
 		}))
-		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
-	if err = h.Remove(); err != nil {
-		grip.Notice(message.WrapError(err, message.Fields{
-			"message": "problem removing intent host",
-			"job":     j.ID(),
-			"host":    h.Id,
-		}))
-		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+	// On the first attempt, remove the intent document so no other create host job tries to create this intent.
+	if j.CurrentAttempt == 1 {
+		if err := j.host.Remove(); err != nil {
+			grip.Notice(message.WrapError(err, message.Fields{
+				"message": "problem removing intent host",
+				"job":     j.ID(),
+				"host":    j.host.Id,
+			}))
+			return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.host.Id, err.Error())
+		}
 	}
 
-	_, err = cloudManager.SpawnHost(ctx, h)
-	if err != nil {
-		return errors.Wrapf(err, "error spawning host %s", h.Id)
+	defer j.tryRequeue(ctx)
+	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
+		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
 
-	h.Status = evergreen.HostStarting
+	j.host.Status = evergreen.HostStarting
 
-	// Provisionally set h.StartTime to now. Cloud providers may override
+	// Provisionally set j.host.StartTime to now. Cloud providers may override
 	// this value with the time the host was created.
-	h.StartTime = time.Now()
+	j.host.StartTime = j.start
 
-	_, err = h.Upsert()
-	if err != nil {
-		return errors.Wrapf(err, "error updating host %v", h.Id)
+	if err := j.host.Insert(); err != nil {
+		return errors.Wrapf(err, "error updating host %v", j.host.Id)
 	}
 
 	grip.Info(message.Fields{
 		"message": "successfully started host",
-		"hostid":  h.Id,
+		"hostid":  j.host.Id,
 		"job":     j.ID(),
-		"DNS":     h.Host,
+		"DNS":     j.host.Host,
 		"runtime": time.Since(hostStartTime),
 	})
 
 	return nil
+}
+
+func (j *createHostJob) tryRequeue(ctx context.Context) {
+	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Started() {
+		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts)
+		job.UpdateTimeInfo(amboy.JobTimeInfo{
+			WaitUntil: j.start.Add(time.Minute),
+			MaxTime:   j.TimeInfo().MaxTime - (time.Now().Sub(j.start)) - time.Minute,
+		})
+		err := j.env.RemoteQueue().Put(job)
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message":  "failed to requeue setup job",
+			"host":     j.host.Id,
+			"job":      j.ID(),
+			"distro":   j.host.Distro.Id,
+			"attempts": j.host.ProvisionAttempts,
+		}))
+		j.AddError(err)
+	}
+}
+
+func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
+	return j.CurrentAttempt < j.MaxAttempts &&
+		j.host.Status != evergreen.HostStarting &&
+		ctx.Err() == nil
 }

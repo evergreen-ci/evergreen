@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -67,7 +68,7 @@ func (s *SingleRunnerSuite) TestPoolStartsAndProcessesJobs() {
 	s.True(s.pool.Started())
 	s.True(s.queue.Started())
 
-	amboy.Wait(s.queue)
+	amboy.WaitInterval(s.queue, 100*time.Millisecond)
 
 	for _, job := range jobs {
 		s.True(job.Status().Completed)

@@ -22,11 +22,6 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/alias/{name}":                      getAliasRouteManager,
-		"/builds/{build_id}":                 getBuildByIdRouteManager,
-		"/builds/{build_id}/abort":           getBuildAbortRouteManager,
-		"/builds/{build_id}/restart":         getBuildRestartManager,
-		"/builds/{build_id}/tasks":           getTasksByBuildRouteManager,
 		"/cost/distro/{distro_id}":           getCostByDistroIdRouteManager,
 		"/cost/project/{project_id}/tasks":   getCostTaskByProjectRouteManager,
 		"/cost/version/{version_id}":         getCostByVersionIdRouteManager,
@@ -85,6 +80,12 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(superUser).RouteHandler(makeSetServiceFlagsRouteManager(sc))
 	app.AddRoute("/admin/settings").Version(2).Get().Wrap(superUser).RouteHandler(makeFetchAdminSettings(sc))
 	app.AddRoute("/admin/settings").Version(2).Post().Wrap(superUser).RouteHandler(makeSetAdminSettings(sc))
+	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases(sc))
 	app.AddRoute("/hosts/create/{task_id}").Version(2).Post().RouteHandler(makeHostCreateRouteManager(sc))
 	app.AddRoute("/hosts/list/{task_id}").Version(2).Get().RouteHandler(makeHostListRouteManager(sc))
+	app.AddRoute("/builds/{build_id}").Version(2).Get().RouteHandler(makeGetBuildByID(sc))
+	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeStatusForBuild(sc))
+	app.AddRoute("/builds/{build_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortBuild(sc))
+	app.AddRoute("/builds/{build_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartBuild(sc))
+	app.AddRoute("/builds/{build_id}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchTasksByBuild(sc))
 }

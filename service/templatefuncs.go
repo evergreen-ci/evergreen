@@ -16,7 +16,6 @@ const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Re
 type TemplateFunctionOptions struct {
 	WebHome  string
 	HelpHome string
-	IsProd   bool
 }
 
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
@@ -44,12 +43,6 @@ func MakeTemplateFuncs(fo TemplateFunctionOptions, superUsers []string) map[stri
 		// Static returns a link to a static file.
 		"Static": func(filetype, filename string) string {
 			return fmt.Sprintf("/static/%s/%s", filetype, filename)
-		},
-
-		// Is Prod returns whether or not Evergreen is running in "production."
-		// Currently this is only used to toggle the use of minified css files.
-		"IsProd": func() bool {
-			return fo.IsProd
 		},
 
 		// GetTimezone returns the timezone for a user.
