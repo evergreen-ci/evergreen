@@ -520,6 +520,8 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 	return options.Validate()
 }
 
+func (c *Mock) ListHosts(_ context.Context, _ TaskData) ([]model.APIHost, error) { return nil, nil }
+
 func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error) {
 	if c.GetSubscriptionsFail {
 		return nil, errors.New("failed to fetch subscriptions")

@@ -19,6 +19,7 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -631,4 +632,21 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 		return errors.Wrap(err, "problem reading body from `create.host` response")
 	}
 	return errors.Errorf("error executing `create.host`: %s", string(body))
+}
+
+func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.APIHost, error) {
+	info := requestInfo{
+		method:   get,
+		taskData: &td,
+		version:  apiVersion2,
+		path:     fmt.Sprintf("host/list/%s", td.ID),
+	}
+
+	hosts := []restmodel.APIHost{}
+
+	if _, err := c.retryRequest(ctx, info, &hosts); err != nil {
+		return nil, errors.Wrapf(err, "problem listing hosts for task '%s'", td.ID)
+	}
+
+	return hosts, nil
 }
