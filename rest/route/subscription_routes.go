@@ -90,6 +90,19 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 			}
 		}
 
+		if ok, msg := validateSelectors(dbSubscription.Subscriber, dbSubscription.Selectors); !ok {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("Invalid selectors: %s", msg),
+			}
+		}
+		if ok, msg := validateSelectors(dbSubscription.Subscriber, dbSubscription.RegexSelectors); !ok {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("Invalid regex selectors: %s", msg),
+			}
+		}
+
 		err = dbSubscription.Validate()
 		if err != nil {
 			return gimlet.ErrorResponse{
@@ -114,7 +127,16 @@ func isSubscriptionAllowed(sub event.Subscription) (bool, string) {
 				}
 			}
 		}
+	}
 
+	return true, ""
+}
+
+func validateSelectors(subscriber event.Subscriber, selectors []event.Selector) (bool, string) {
+	for i := range selectors {
+		if len(selectors[i].Type) == 0 || len(selectors[i].Data) == 0 {
+			return false, "Selector had empty type or data"
+		}
 	}
 
 	return true, ""

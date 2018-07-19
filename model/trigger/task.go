@@ -172,6 +172,10 @@ func (t *taskTriggers) Selectors() []event.Selector {
 			Type: selectorRequester,
 			Data: t.task.Requester,
 		},
+		{
+			Type: selectorDisplayName,
+			Data: t.task.DisplayName,
+		},
 	}
 }
 

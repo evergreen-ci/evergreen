@@ -26,57 +26,66 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     {
       trigger: "outcome",
       resource_type: "VERSION",
-      label: "any version finishes"
+      label: "any version finishes",
     },
     {
       trigger: "failure",
       resource_type: "VERSION",
-      label: "any version fails"
+      label: "any version fails",
     },
     {
       trigger: "outcome",
       resource_type: "BUILD",
       label: "any build finishes",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
       label: "any build fails",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "outcome",
       resource_type: "TASK",
       label: "any task finishes",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "failure",
       resource_type: "TASK",
       label: "any task fails",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "first-failure-in-version",
       resource_type: "TASK",
       label: "the first task failure occurs",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "first-failure-in-build",
       resource_type: "TASK",
       label: "the first failure in each build occurs",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "first-failure-in-version-with-name",
       resource_type: "TASK",
       label: "the first failure in each version for each task name occurs",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "regression",
       resource_type: "TASK",
       label: "a previously passing task fails",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "regression-by-test",
       resource_type: "TASK",
       label: "a previously passing test in a task fails",
+      regex_selectors: taskRegexSelectors(),
     },
   ];
 

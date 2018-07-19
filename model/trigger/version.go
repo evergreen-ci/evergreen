@@ -235,10 +235,6 @@ func MakeVersionSelectors(v version.Version) []event.Selector {
 			Type: selectorRequester,
 			Data: v.Requester,
 		},
-		{
-			Type: selectorProject,
-			Data: v.Branch,
-		},
 	}
 	if v.AuthorID != "" {
 		selectors = append(selectors, event.Selector{Type: selectorOwner, Data: v.AuthorID})

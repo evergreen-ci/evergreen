@@ -7,14 +7,16 @@ import (
 )
 
 const (
-	selectorID        = "id"
-	selectorObject    = "object"
-	selectorProject   = "project"
-	selectorOwner     = "owner"
-	selectorRequester = "requester"
-	selectorStatus    = "status"
-	selectorInVersion = "in-version"
-	selectorInBuild   = "in-build"
+	selectorID           = "id"
+	selectorObject       = "object"
+	selectorProject      = "project"
+	selectorOwner        = "owner"
+	selectorRequester    = "requester"
+	selectorStatus       = "status"
+	selectorDisplayName  = "display-name"
+	selectorBuildVariant = "build-variant"
+	selectorInVersion    = "in-version"
+	selectorInBuild      = "in-build"
 
 	triggerOutcome                = "outcome"
 	triggerFailure                = "failure"
