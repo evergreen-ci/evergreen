@@ -2,12 +2,12 @@ package model
 
 import (
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -31,7 +31,7 @@ type estimatedHost struct {
 type estimatedHostPool []estimatedHost
 
 type estimatedTimeSimulator struct {
-	tasks       util.Queue
+	tasks       estimatedTaskQueue
 	hosts       estimatedHostPool
 	timeElapsed time.Duration
 	currentPos  int
@@ -76,7 +76,7 @@ func (s *estimatedTimeSimulator) dispatchNextTask() {
 	}
 
 	// dequeue the next task
-	nextTask := s.tasks.Dequeue().(estimatedTask)
+	nextTask := s.tasks.Dequeue()
 	newlyDispatched := estimatedHost{timeToCompletion: nextTask.duration}
 
 	// assign it to the host that just completed and move it back into the pool in order
@@ -151,4 +151,53 @@ func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTime
 	}
 
 	return &estimator
+}
+
+type estimatedTaskQueue struct {
+	Items []estimatedTask
+	mu    sync.RWMutex
+}
+
+func NewQueue() estimatedTaskQueue {
+	return estimatedTaskQueue{
+		Items: []estimatedTask{},
+	}
+}
+
+func (q *estimatedTaskQueue) Enqueue(item estimatedTask) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.Items = append(q.Items, item)
+
+	return nil
+}
+
+func (q *estimatedTaskQueue) Dequeue() *estimatedTask {
+	if q.IsEmpty() {
+		return nil
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	item := q.Items[0]
+	q.Items = q.Items[1:]
+	return &item
+}
+
+func (q *estimatedTaskQueue) IsEmpty() bool {
+	return q.Length() == 0
+}
+
+func (q *estimatedTaskQueue) Peek() *estimatedTask {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	if q.IsEmpty() {
+		return nil
+	}
+	return &q.Items[0]
+}
+
+func (q *estimatedTaskQueue) Length() int {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return len(q.Items)
 }

@@ -2,6 +2,7 @@ package model
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -24,7 +24,7 @@ func TestEstimatorSuite(t *testing.T) {
 
 func (s *estimatorSuite) SetupTest() {
 	s.simulator = estimatedTimeSimulator{}
-	s.simulator.tasks = util.NewQueue()
+	s.simulator.tasks = NewQueue()
 	s.NoError(db.Clear(task.Collection))
 }
 
@@ -172,4 +172,88 @@ func (s *estimatorSuite) TestEvenDistribution() {
 	for i := 0; i < 14; i++ {
 		s.Equal(time.Duration((i/5+1)*10)*time.Second, s.simulator.simulate(i), strconv.Itoa(i))
 	}
+}
+
+type QueueSuite struct {
+	q estimatedTaskQueue
+	suite.Suite
+}
+
+func TestQueueSuite(t *testing.T) {
+	suite.Run(t, &QueueSuite{})
+}
+
+func (s *QueueSuite) SetupTest() {
+	s.q = NewQueue()
+}
+
+func (s *QueueSuite) TestQueueOperations() {
+	s.True(s.q.IsEmpty())
+
+	s.NoError(s.q.Enqueue(estimatedTask{duration: 1 * time.Minute}))
+	s.False(s.q.IsEmpty())
+	s.Equal(1*time.Minute, s.q.Peek().duration)
+	s.Equal(1, s.q.Length())
+
+	s.NoError(s.q.Enqueue(estimatedTask{duration: 2 * time.Minute}))
+	s.False(s.q.IsEmpty())
+	s.Equal(1*time.Minute, s.q.Peek().duration)
+	s.Equal(2, s.q.Length())
+
+	s.NoError(s.q.Enqueue(estimatedTask{duration: 3 * time.Minute}))
+	s.False(s.q.IsEmpty())
+	s.Equal(1*time.Minute, s.q.Peek().duration)
+	s.Equal(3, s.q.Length())
+
+	s.Equal(1*time.Minute, s.q.Dequeue().duration)
+	s.False(s.q.IsEmpty())
+	s.Equal(2*time.Minute, s.q.Peek().duration)
+	s.Equal(2, s.q.Length())
+
+	s.Equal(2*time.Minute, s.q.Dequeue().duration)
+	s.False(s.q.IsEmpty())
+	s.Equal(3*time.Minute, s.q.Peek().duration)
+	s.Equal(1, s.q.Length())
+
+	s.Equal(3*time.Minute, s.q.Dequeue().duration)
+	s.True(s.q.IsEmpty())
+	s.Nil(s.q.Peek())
+	s.Equal(0, s.q.Length())
+}
+
+func (s *QueueSuite) TestQueueThreadsafe() {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		for i := 0; i < 100; i++ {
+			s.NoError(s.q.Enqueue(estimatedTask{}))
+		}
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		for i := 0; i < 200; i++ {
+			s.NoError(s.q.Enqueue(estimatedTask{}))
+		}
+		wg.Done()
+	}()
+	wg.Wait()
+	s.Equal(300, s.q.Length())
+
+	wg.Add(1)
+	go func() {
+		for i := 0; i < 200; i++ {
+			s.q.Dequeue()
+		}
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		for i := 0; i < 100; i++ {
+			s.q.Dequeue()
+		}
+		wg.Done()
+	}()
+	wg.Wait()
+	s.Equal(0, s.q.Length())
 }
