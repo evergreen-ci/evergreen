@@ -17,49 +17,15 @@ func init() {
 }
 
 type spawnHostTriggers struct {
-	event    *event.EventLogEntry
-	data     *event.HostEventData
-	host     *host.Host
-	uiConfig evergreen.UIConfig
-
-	base
+	hostBase
 }
 
 func makeSpawnHostTriggers() eventHandler {
 	t := &spawnHostTriggers{}
-	t.base.triggers = map[string]trigger{
+	t.triggers = map[string]trigger{
 		triggerOutcome: t.hostSpawnOutcome,
 	}
 	return t
-}
-
-func (t *spawnHostTriggers) Fetch(e *event.EventLogEntry) error {
-	var err error
-	if err = t.uiConfig.Get(); err != nil {
-		return errors.Wrap(err, "Failed to fetch ui config")
-	}
-
-	t.host, err = host.FindOneId(e.ResourceId)
-	if err != nil {
-		return errors.Wrapf(err, "failed to fetch host '%s'", e.ResourceId)
-	}
-	if t.host == nil {
-		return errors.Wrapf(err, "can't find host'%s'", e.ResourceId)
-	}
-
-	data, ok := e.Data.(*event.HostEventData)
-	if !ok {
-		return errors.Wrapf(err, "patch '%s' contains unexpected data with type '%T'", e.ResourceId, e.Data)
-	}
-
-	t.data = data
-	t.event = e
-
-	return nil
-}
-
-func (t *spawnHostTriggers) Selectors() []event.Selector {
-	return hostSelectors(t.host)
 }
 
 func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {
