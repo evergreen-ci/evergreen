@@ -162,6 +162,7 @@ func (h *hostCreateHandler) makeIntentHost() (*host.Host, error) {
 	options.SpawnOptions.TimeoutTeardown = time.Now().Add(time.Duration(h.createHost.TeardownTimeoutSecs) * time.Second)
 	options.SpawnOptions.TimeoutSetup = time.Now().Add(time.Duration(h.createHost.SetupTimeoutSecs) * time.Second)
 	options.SpawnOptions.Retries = h.createHost.Retries
+	options.SpawnOptions.SpawnedByTask = true
 
 	return cloud.NewIntent(d, d.GenerateName(), provider, options), nil
 }

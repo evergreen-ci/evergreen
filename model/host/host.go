@@ -132,7 +132,7 @@ type SpawnOptions struct {
 	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
 
 	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
-	TimeoutSetup time.Time `bson:"setup_setup" json:"setup_setup"`
+	TimeoutSetup time.Time `bson:"timeout_setup" json:"timeout_setup"`
 
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
@@ -144,6 +144,9 @@ type SpawnOptions struct {
 
 	// Retries is the number of times Evergreen should try to spawn this host.
 	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
+
+	// SpawnedByTask indicates that this host has been spawned by a task.
+	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
 }
 
 const (
