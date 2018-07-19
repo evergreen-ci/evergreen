@@ -13,7 +13,7 @@
 mciModule.factory('MDBQueryAdaptor', function() {
   var mdbOpMapping = {
     '>': '$gt',
-    '>=': '$gt',
+    '>=': '$gte',
     '<': '$lt',
     '<=': '$lte',
     '==': '$eq',
@@ -39,6 +39,7 @@ mciModule.factory('MDBQueryAdaptor', function() {
     var t = tokens // shorthand
     var op
 
+    // if the first token is either < either >
     if (_.contains('<>', t[0])) {
       if (t.length == 1) return // Parsing error
       op = t[0]
