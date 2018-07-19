@@ -184,9 +184,13 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *
 			newTVPairsForNewVariants = appendTasks(newTVPairsForNewVariants, bv, p)
 		}
 	}
+	dependencies := IncludePatchDependencies(p, newTVPairsForExistingVariants.ExecTasks)
+	newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, dependencies...)
 	if err := AddNewTasks(true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
-		return errors.Wrap(err, "errors adding new builds")
+		return errors.Wrap(err, "errors adding new tasks")
 	}
+	dependencies = IncludePatchDependencies(p, newTVPairsForNewVariants.ExecTasks)
+	newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, dependencies...)
 	if err := AddNewBuilds(true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}
