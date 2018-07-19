@@ -29,7 +29,7 @@ func TestHostParseAndValidate(t *testing.T) {
 	Convey("With a hostGetHandler and request", t, func() {
 		testStatus := "testStatus"
 		hgh := &hostGetHandler{}
-		hgh, ok := hgh.Handler().(*hostGetHandler)
+		hgh, ok := hgh.Factory().(*hostGetHandler)
 		So(ok, ShouldBeTrue)
 		u := url.URL{
 			RawQuery: fmt.Sprintf("status=%s", testStatus),
@@ -40,11 +40,10 @@ func TestHostParseAndValidate(t *testing.T) {
 		ctx := context.Background()
 
 		Convey("parsing request should fetch status", func() {
-			err := hgh.ParseAndValidate(ctx, &r)
+			err := hgh.Parse(ctx, &r)
 			So(err, ShouldBeNil)
-			hga, ok := hgh.PaginationExecutor.Args.(hostGetArgs)
 			So(ok, ShouldBeTrue)
-			So(hga.status, ShouldEqual, testStatus)
+			So(hgh.status, ShouldEqual, testStatus)
 		})
 	})
 }
@@ -52,7 +51,9 @@ func TestHostParseAndValidate(t *testing.T) {
 func TestHostPaginator(t *testing.T) {
 	numHostsInDB := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{}
+		serviceContext := data.MockConnector{
+			URL: "http://evergreen.example.net",
+		}
 		Convey("and there are hosts to be found", func() {
 			cachedHosts := []host.Host{}
 			for i := 0; i < numHostsInDB; i++ {
@@ -73,21 +74,18 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
 						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("host%d", hostToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
-					},
 				}
-				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
-
+				handler := &hostGetHandler{
+					sc:  &serviceContext,
+					key: cachedHosts[hostToStartAt].Id,
+				}
+				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
 			Convey("then finding a key in the near the end of the set should produce"+
 				" a limited next and full previous page and a full set of models", func() {
@@ -100,21 +98,19 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
 						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
 						Limit:    50,
 						Relation: "next",
 					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("host%d", hostToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
-					},
 				}
-				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
+				handler := &hostGetHandler{
+					key: cachedHosts[hostToStartAt].Id,
+					sc:  &serviceContext,
+				}
 
+				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
 			Convey("then finding a key in the near the beginning of the set should produce"+
 				" a full next and a limited previous page and a full set of models", func() {
@@ -127,43 +123,18 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
 						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("host%d", 0),
-						Limit:    50,
-						Relation: "prev",
-					},
 				}
-				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
-
-			})
-			Convey("then finding a key in the last page should produce only a previous"+
-				" page and a limited set of models", func() {
-				hostToStartAt := 299
-				limit := 100
-				expectedHosts := []model.Model{}
-				for i := hostToStartAt; i < numHostsInDB; i++ {
-					nextModelHost := &model.APIHost{
-						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
-					}
-					expectedHosts = append(expectedHosts, nextModelHost)
+				handler := &hostGetHandler{
+					sc:  &serviceContext,
+					key: cachedHosts[hostToStartAt].Id,
 				}
-				expectedPages := &PageResult{
-					Prev: &Page{
-						Key:      fmt.Sprintf("host%d", hostToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
-					},
-				}
-				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
-
+				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
 			Convey("then finding the first key should produce only a next"+
 				" page and a full set of models", func() {
@@ -176,16 +147,18 @@ func TestHostPaginator(t *testing.T) {
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
 						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
 						Limit:    limit,
 						Relation: "next",
 					},
 				}
-				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
-
+				handler := &hostGetHandler{
+					sc:  &serviceContext,
+					key: cachedHosts[hostToStartAt].Id,
+				}
+				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
 		})
 	})
@@ -1151,14 +1124,15 @@ func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
 }
 
 func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []model.Model, pages *gimlet.ResponsePages) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	if !assert.NotNil(t, h) {
 		return
 	}
 	if !assert.NotNil(t, pages) {
 		return
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
@@ -1168,6 +1142,7 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []m
 	if !assert.NotNil(t, rpg) {
 		return
 	}
+	fmt.Printf("%+v\n", resp)
 
 	assert.True(t, pages.Next != nil || pages.Prev != nil)
 	assert.True(t, rpg.Next != nil || rpg.Prev != nil)

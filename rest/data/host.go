@@ -21,8 +21,8 @@ type DBHostConnector struct{}
 
 // FindHostsById uses the service layer's host type to query the backing database for
 // the hosts.
-func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int, sortDir int) ([]host.Host, error) {
-	hostRes, err := host.GetHostsByFromIdWithStatus(id, status, user, limit, sortDir)
+func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
+	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -108,23 +108,16 @@ type MockHostConnector struct {
 }
 
 // FindHostsById searches the mock hosts slice for hosts and returns them
-func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int, sort int) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
 	if id != "" && user == "" && status == "" {
-		return hc.FindHostsByIdOnly(id, status, user, limit, sort)
+		return hc.FindHostsByIdOnly(id, status, user, limit)
 	}
 
 	var hostsToReturn []host.Host
 	for ix := range hc.CachedHosts {
-		var h host.Host
-		if sort < 0 {
-			h = hc.CachedHosts[len(hc.CachedHosts)-1-ix]
-		} else {
-			h = hc.CachedHosts[ix]
-		}
+		h := hc.CachedHosts[ix]
 		if id != "" {
-			if (sort < 0 && h.Id > id) || (sort > 0 && h.Id < id) {
-				continue
-			}
+			continue
 		}
 		if user != "" && h.StartedBy != user {
 			continue
@@ -153,23 +146,15 @@ func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int, s
 	return hostsToReturn, nil
 }
 
-func (hc *MockHostConnector) FindHostsByIdOnly(id, status, user string, limit int, sort int) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsByIdOnly(id, status, user string, limit int) ([]host.Host, error) {
 	for ix, h := range hc.CachedHosts {
 		if h.Id == id {
 			// We've found the host
 			var hostsToReturn []host.Host
-			if sort < 0 {
-				if ix-limit > 0 {
-					hostsToReturn = hc.CachedHosts[ix-(limit) : ix]
-				} else {
-					hostsToReturn = hc.CachedHosts[:ix]
-				}
+			if ix+limit > len(hc.CachedHosts) {
+				hostsToReturn = hc.CachedHosts[ix:]
 			} else {
-				if ix+limit > len(hc.CachedHosts) {
-					hostsToReturn = hc.CachedHosts[ix:]
-				} else {
-					hostsToReturn = hc.CachedHosts[ix : ix+limit]
-				}
+				hostsToReturn = hc.CachedHosts[ix : ix+limit]
 			}
 			return hostsToReturn, nil
 		}

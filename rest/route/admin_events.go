@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -44,16 +43,9 @@ func (h *adminEventsGet) Parse(ctx context.Context, r *http.Request) error {
 		}
 	}
 
-	if l, ok := vals["limit"]; ok && len(l) > 0 {
-		h.Limit, err = strconv.Atoi(l[0])
-		if err != nil {
-			return errors.Wrap(err, "problem parsing limit")
-		}
-	}
-
-	// if user asks for a limit of 0 we should override.
-	if h.Limit == 0 {
-		h.Limit = 10
+	h.Limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	return errors.WithStack(err)
@@ -62,14 +54,13 @@ func (h *adminEventsGet) Parse(ctx context.Context, r *http.Request) error {
 func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 
-	events, err := h.sc.GetAdminEventLog(h.Timestamp, h.Limit)
+	events, err := h.sc.GetAdminEventLog(h.Timestamp, h.Limit+1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
 	}
 
 	lastIndex := len(events)
-
-	if len(events) == h.Limit {
+	if len(events) > h.Limit {
 		lastIndex = h.Limit
 		err = resp.SetPages(&gimlet.ResponsePages{
 			Next: &gimlet.Page{

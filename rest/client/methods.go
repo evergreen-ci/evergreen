@@ -618,7 +618,7 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 		taskData: &td,
 		version:  apiVersion2,
 	}
-	info.path = fmt.Sprintf("hosts/create/%s", td.ID)
+	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
 	resp, err := c.retryRequest(ctx, info, options)
 	if err != nil {
 		return errors.Wrap(err, "problem sending `create.host` request")
@@ -639,7 +639,7 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 		method:   get,
 		taskData: &td,
 		version:  apiVersion2,
-		path:     fmt.Sprintf("host/list/%s", td.ID),
+		path:     fmt.Sprintf("host/%s/list", td.ID),
 	}
 
 	hosts := []restmodel.APIHost{}

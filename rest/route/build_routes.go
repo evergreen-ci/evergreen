@@ -65,6 +65,10 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(buildModel)
 }
 
+////////////////////////////////////////////////////////////////////////
+//
+// PATH /builds/{build_id}
+
 type buildChangeStatusHandler struct {
 	Activated *bool  `json:"activated"`
 	Priority  *int64 `json:"priority"`
