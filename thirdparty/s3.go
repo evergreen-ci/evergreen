@@ -211,9 +211,10 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		return errors.Wrap(err, "error creating new session")
 	}
 	svc := awsS3.New(session)
-	bucket := awsS3.CreateBucketInput{
+	bucket := &awsS3.CreateBucketInput{
 		Bucket: &urlParsed.Host,
 	}
+	bucket = bucket.SetACL(permissionACL)
 
 	file, err := os.Open(localFilePath)
 	if err != nil {
@@ -227,7 +228,7 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		return errors.Wrapf(err, "Error getting stats for file %s", localFilePath)
 	}
 	size := fileInfo.Size()
-	buffer := make([]byte, maxPartSize*1000000)
+	buffer := make([]byte, maxPartSize)
 
 	// Step 1: initiate multipart upload
 	resp, err := createPart(svc, bucket, urlParsed.Path, contentType)
@@ -248,12 +249,17 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		} else {
 			partLength = maxPartSize
 		}
-		_, err = file.Read(buffer)
+
+		// read file in chunks until EOF
+		bytesread, err := file.Read(buffer)
 		if err != nil {
-			return errors.Wrapf(err, "Error reading bytes of file %s", localFilePath)
+			if err != io.EOF {
+				return errors.Wrapf(err, "Error reading bytes of file %s", localFilePath)
+			}
+			break
 		}
 
-		uploadedPart, err := uploadPart(svc, resp, buffer[i:i+partLength], partNum)
+		uploadedPart, err := uploadPart(svc, resp, buffer[:bytesread], partNum)
 		if err != nil {
 			//  If an error occurs, abort upload to not get charged by Amazon
 			abortErr := abortMultipartUpload(svc, resp)
@@ -272,10 +278,10 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 }
 
 // createPart initiates a multipart upload
-func createPart(svc *awsS3.S3, bucket awsS3.CreateBucketInput, path,
-	contentType string) (*awsS3.CreateMultipartUploadOutput, error) {
+func createPart(svc *awsS3.S3, bucket *awsS3.CreateBucketInput, path, contentType string) (*awsS3.CreateMultipartUploadOutput, error) {
 	creationInput := &awsS3.CreateMultipartUploadInput{
-		Bucket:      awsSDK.String(*bucket.Bucket),
+		ACL:         bucket.ACL,
+		Bucket:      bucket.Bucket,
 		Key:         awsSDK.String(path),
 		ContentType: awsSDK.String(contentType),
 	}
