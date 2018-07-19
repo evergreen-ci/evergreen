@@ -109,7 +109,7 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		"job":           eventMetaJobName,
 		"source":        "events-processing",
 		"message":       "event processed",
-		"event_id":      e.ID.Hex(),
+		"event_id":      e.ID,
 		"event_type":    e.ResourceType,
 		"notifications": len(n),
 	})
