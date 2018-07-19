@@ -89,7 +89,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	// allow connections to Docker daemon with self-signed certificates
 	transport, ok := c.httpClient.Transport.(*http.Transport)
 	if !ok {
-		return errors.Errorf("Type assertion failed: type %T does not hold a *http.Transport")
+		return errors.Errorf("Type assertion failed: type %T does not hold a *http.Transport", c.httpClient.Transport)
 	}
 	transport.TLSClientConfig.InsecureSkipVerify = true
 
