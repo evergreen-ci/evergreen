@@ -30,6 +30,12 @@ var (
 						Command: "shell.exec",
 					},
 				},
+				DependsOn: []parserDependency{
+					{TaskSelector: taskSelector{
+						Name:    "a-depended-on-task",
+						Variant: &variantSelector{stringSelector: "*"},
+					}},
+				},
 			},
 		},
 		BuildVariants: []parserBV{
@@ -88,12 +94,16 @@ tasks:
   - name: say-bye
     commands:
       - command: shell.exec
+  - name: a-depended-on-task
+    command:
+      - command: shell.exec
 
 buildvariants:
   - name: a_variant
     display_name: Variant Number One
     tasks:
-    - name: "say-hi"
+    - name: say-hi
+    - name: a-depended-on-task
 
 functions:
   a_function:
@@ -449,6 +459,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Q{}, &tasks)
 	s.NoError(err)
-	s.Len(builds, 2)
-	s.Len(tasks, 5)
+	s.Len(builds, 3)
+	s.Len(tasks, 6)
 }
