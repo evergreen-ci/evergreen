@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -218,31 +217,4 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(catcher.Resolve())
 	}
 	return gimlet.NewJSONResponse(results)
-}
-
-// HostDockerfile route returns Dockerfile in text response.
-type hostDockerfileHandler struct {
-}
-
-func makeHostDockerfileRouteManager() gimlet.RouteHandler {
-	return &hostDockerfileHandler{}
-}
-
-func (h *hostDockerfileHandler) Factory() gimlet.RouteHandler { return &hostDockerfileHandler{} }
-
-func (h *hostDockerfileHandler) Parse(ctx context.Context, r *http.Request) error { return nil }
-
-func (h *hostDockerfileHandler) Run(ctx context.Context) gimlet.Responder {
-	parts := []string{
-		"ARG BASE_IMAGE",
-		"FROM $BASE_IMAGE",
-		"ARG URL",
-		"ARG EXECUTABLE_SUB_PATH",
-		"ARG BINARY_NAME",
-		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
-		"RUN chmod +x /root/${BINARY_NAME}",
-	}
-	file := strings.Join(parts, "\n")
-
-	return gimlet.NewTextResponse(file)
 }

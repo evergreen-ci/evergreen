@@ -26,7 +26,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
-	BuildImageWithAgent(context.Context, *host.Host, string, *evergreen.Settings) (string, error)
+	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, string, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
@@ -38,8 +38,9 @@ type dockerClientImpl struct {
 	// apiVersion specifies the version of the Docker API.
 	apiVersion string
 	// httpDockerClient for making HTTP requests within the Docker dockerClient wrapper.
-	httpClient *http.Client
-	client     *docker.Client
+	httpClient        *http.Client
+	client            *docker.Client
+	evergreenSettings *evergreen.Settings
 }
 
 // template string for new images with agent
@@ -98,8 +99,8 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 
 // BuildImageWithAgent takes a base image and builds a new image on the specified
 // host from a Dockfile in the root directory, which adds the Evergreen binary
-func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string, settings *evergreen.Settings) (string, error) {
-	const dockerfileRoute = "/hosts/dockerfile"
+func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
+	const dockerfileRoute = "/dockerfile"
 
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
@@ -114,7 +115,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 
 	// build dockerfile route
 	dockerfileUrl := strings.Join([]string{
-		settings.ApiUrl,
+		c.evergreenSettings.ApiUrl,
 		evergreen.APIRoutePrefixV2,
 		dockerfileRoute,
 	}, "")
@@ -124,7 +125,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 			"BASE_IMAGE":          &baseImage,
 			"EXECUTABLE_SUB_PATH": &executableSubPath,
 			"BINARY_NAME":         &binaryName,
-			"URL":                 &settings.Ui.Url,
+			"URL":                 &c.evergreenSettings.Ui.Url,
 		},
 		Remove:        true,
 		RemoteContext: dockerfileUrl,
@@ -157,15 +158,10 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, s *dockerSettings) error {
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, ds *dockerSettings) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
-	}
-
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "Error retrieving Evergreen settings")
 	}
 
 	// List all containers to find ports that are already taken.
@@ -183,9 +179,9 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	}
 
 	// Build image containing Evergreen executable.
-	newImage, err := c.BuildImageWithAgent(ctx, h, s.ImageID, settings)
+	newImage, err := c.BuildImageWithAgent(ctx, h, ds.ImageID)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", s.ImageID, h.Id)
+		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", ds.ImageID, h.Id)
 	}
 
 	// Build path to Evergreen executable.
@@ -198,7 +194,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	agentCmdParts := []string{
 		pathToExecutable,
 		"agent",
-		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
+		fmt.Sprintf("--api_server='%s'", c.evergreenSettings.ApiUrl),
 		fmt.Sprintf("--host_id='%s'", h.Id),
 		fmt.Sprintf("--host_secret='%s'", h.Secret),
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(h.Distro.WorkDir, "agent")),
