@@ -29,7 +29,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	msg := message.Fields{
 		"source":              "events-processing",
 		"message":             "processing event",
-		"event_id":            e.ID.Hex(),
+		"event_id":            e.ID,
 		"event_type":          e.EventType,
 		"event_resource_type": e.ResourceType,
 		"event_resource":      e.ResourceId,
@@ -53,7 +53,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 		msg := message.Fields{
 			"source":              "events-processing",
 			"message":             "processing subscription",
-			"event_id":            e.ID.Hex(),
+			"event_id":            e.ID,
 			"event_type":          e.EventType,
 			"event_resource_type": e.ResourceType,
 			"event_resource":      e.ResourceId,
