@@ -59,20 +59,7 @@ func (t *spawnHostTriggers) Fetch(e *event.EventLogEntry) error {
 }
 
 func (t *spawnHostTriggers) Selectors() []event.Selector {
-	return []event.Selector{
-		{
-			Type: selectorID,
-			Data: t.host.Id,
-		},
-		{
-			Type: selectorObject,
-			Data: "host",
-		},
-		{
-			Type: selectorOwner,
-			Data: t.host.StartedBy,
-		},
-	}
+	return hostSelectors(t.host)
 }
 
 func (t *spawnHostTriggers) hostSpawnOutcome(sub *event.Subscription) (*notification.Notification, error) {

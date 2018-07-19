@@ -27,6 +27,23 @@ const (
 	expiringHostBody  = `Your {{.Distro}} host with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit {{.URL}} to extend its lifetime.`
 )
 
+func hostSelectors(h *host.Host) []event.Selector {
+	return []event.Selector{
+		{
+			Type: selectorID,
+			Data: h.Id,
+		},
+		{
+			Type: selectorObject,
+			Data: "host",
+		},
+		{
+			Type: selectorOwner,
+			Data: h.StartedBy,
+		},
+	}
+}
+
 type hostTemplateData struct {
 	ID             string
 	Distro         string
@@ -84,20 +101,7 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 }
 
 func (t *hostTriggers) Selectors() []event.Selector {
-	return []event.Selector{
-		{
-			Type: selectorID,
-			Data: t.host.Id,
-		},
-		{
-			Type: selectorObject,
-			Data: objectHost,
-		},
-		{
-			Type: selectorOwner,
-			Data: t.host.StartedBy,
-		},
-	}
+	return hostSelectors(t.host)
 }
 
 func (t *hostTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl string) (*notification.Notification, error) {

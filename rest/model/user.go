@@ -139,7 +139,7 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 			n.PatchFinishID = ToAPIString(v.PatchFinishID)
 		}
 		if v.SpawnHostOutcomeID != "" {
-			n.SpawnHostOutcomeID = ToAPIString(v.SpawnHostOutcomeID.Hex())
+			n.SpawnHostOutcomeID = ToAPIString(v.SpawnHostOutcomeID)
 		}
 		if v.SpawnHostExpirationID != "" {
 			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID)
@@ -176,21 +176,10 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		SpawnHostOutcome:    user.UserSubscriptionPreference(spawnHostOutcome),
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
 	}
-	if n.BuildBreakID != nil {
-		preferences.BuildBreakID = FromAPIString(n.BuildBreakID)
-	}
-	if n.PatchFinishID != nil {
-		preferences.PatchFinishID = FromAPIString(n.PatchFinishID)
-	}
-	if n.SpawnHostOutcomeID != nil {
-		preferences.SpawnHostOutcomeID, err = user.FormatObjectID(FromAPIString(n.SpawnHostOutcomeID))
-		if err != nil {
-			return nil, err
-		}
-	}
-	if n.SpawnHostExpirationID != nil {
-		preferences.SpawnHostExpirationID = FromAPIString(n.SpawnHostExpirationID)
-	}
+	preferences.BuildBreakID = FromAPIString(n.BuildBreakID)
+	preferences.PatchFinishID = FromAPIString(n.PatchFinishID)
+	preferences.SpawnHostOutcomeID = FromAPIString(n.PatchFinishID)
+	preferences.SpawnHostExpirationID = FromAPIString(n.SpawnHostExpirationID)
 	return preferences, nil
 }
 
