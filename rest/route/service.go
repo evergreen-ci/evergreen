@@ -22,19 +22,21 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
+		"/hosts":                             getHostRouteManager,
+		"/versions/{version_id}":             getVersionIdRouteManager,
+		"/versions/{version_id}/builds":      getBuildsForVersionRouteManager,
+		"/patches/{patch_id}":                getPatchByIdManager,
 		"/cost/distro/{distro_id}":           getCostByDistroIdRouteManager,
 		"/cost/project/{project_id}/tasks":   getCostTaskByProjectRouteManager,
 		"/cost/version/{version_id}":         getCostByVersionIdRouteManager,
 		"/distros":                           getDistroRouteManager,
 		"/hooks/github":                      getGithubHooksRouteManager(queue, githubSecret),
-		"/hosts":                             getHostRouteManager,
 		"/hosts/{host_id}":                   getHostIDRouteManager,
 		"/hosts/{host_id}/change_password":   getHostChangeRDPPasswordRouteManager,
 		"/hosts/{host_id}/extend_expiration": getHostExtendExpirationRouteManager,
 		"/hosts/{host_id}/terminate":         getHostTerminateRouteManager,
 		"/keys":                                                getKeysRouteManager,
 		"/keys/{key_name}":                                     getKeysDeleteRouteManager,
-		"/patches/{patch_id}":                                  getPatchByIdManager,
 		"/patches/{patch_id}/abort":                            getPatchAbortManager,
 		"/patches/{patch_id}/restart":                          getPatchRestartManager,
 		"/projects":                                            getProjectRouteManager,
@@ -56,9 +58,7 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		"/user/settings":                                       getUserSettingsRouteManager,
 		"/users/{user_id}/hosts":                               getHostsByUserManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,
-		"/versions/{version_id}":                               getVersionIdRouteManager,
 		"/versions/{version_id}/abort":                         getAbortVersionRouteManager,
-		"/versions/{version_id}/builds":                        getBuildsForVersionRouteManager,
 		"/versions/{version_id}/restart":                       getRestartVersionRouteManager,
 	}
 
