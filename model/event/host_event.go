@@ -15,6 +15,8 @@ import (
 func init() {
 	registry.AddType(ResourceTypeHost, hostEventDataFactory)
 	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
+	registry.AllowSubscription(ResourceTypeHost, EventHostProvisioned)
+	registry.AllowSubscription(ResourceTypeHost, EventHostProvisionFailed)
 }
 
 const (
@@ -98,6 +100,7 @@ func LogHostAgentDeployFailed(hostId string, err error) {
 	LogHostEvent(hostId, EventHostAgentDeployFailed, HostEventData{Logs: err.Error()})
 }
 
+// LogHostProvisionError is used to log each failed provision attempt
 func LogHostProvisionError(hostId string) {
 	LogHostEvent(hostId, EventHostProvisionError, HostEventData{})
 }
@@ -141,6 +144,8 @@ func LogHostTaskPidSet(hostId string, taskPid string) {
 	LogHostEvent(hostId, EventHostTaskPidSet, HostEventData{TaskPid: taskPid})
 }
 
+// LogProvisionFailed is used when Evergreen gives up on spawning a host after
+// several retries
 func LogProvisionFailed(hostId string, setupLogs string) {
 	LogHostEvent(hostId, EventHostProvisionFailed, HostEventData{Logs: setupLogs})
 }

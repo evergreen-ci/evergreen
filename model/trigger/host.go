@@ -27,32 +27,16 @@ const (
 	expiringHostBody  = `Your {{.Distro}} host with id {{.ID}} will be terminated at {{.ExpirationTime}}. Visit {{.URL}} to extend its lifetime.`
 )
 
-type hostTemplateData struct {
-	ID             string
-	Distro         string
-	ExpirationTime time.Time
-	URL            string
-}
-
-func makeHostTriggers() eventHandler {
-	t := &hostTriggers{}
-	t.base.triggers = map[string]trigger{
-		triggerExpiration: t.hostExpiration,
-	}
-
-	return t
-}
-
-type hostTriggers struct {
-	event        *event.EventLogEntry
-	data         *event.HostEventData
-	host         *host.Host
-	templateData hostTemplateData
+type hostBase struct {
+	event    *event.EventLogEntry
+	data     *event.HostEventData
+	host     *host.Host
+	uiConfig evergreen.UIConfig
 
 	base
 }
 
-func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
+func (t *hostBase) Fetch(e *event.EventLogEntry) error {
 	var ok bool
 	var err error
 	t.data, ok = e.Data.(*event.HostEventData)
@@ -68,22 +52,15 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.New("couldn't find host")
 	}
 
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return errors.Wrap(err, "error retrieving settings")
+	if err = t.uiConfig.Get(); err != nil {
+		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 
-	t.templateData = hostTemplateData{
-		ID:             t.host.Id,
-		Distro:         t.host.Distro.Id,
-		ExpirationTime: t.host.ExpirationTime,
-		URL:            fmt.Sprintf("%s/ui/spawn", settings.Ui.Url),
-	}
 	t.event = e
 	return nil
 }
 
-func (t *hostTriggers) Selectors() []event.Selector {
+func (t *hostBase) Selectors() []event.Selector {
 	return []event.Selector{
 		{
 			Type: selectorID,
@@ -91,13 +68,51 @@ func (t *hostTriggers) Selectors() []event.Selector {
 		},
 		{
 			Type: selectorObject,
-			Data: objectHost,
+			Data: "host",
 		},
 		{
 			Type: selectorOwner,
 			Data: t.host.StartedBy,
 		},
 	}
+}
+
+type hostTemplateData struct {
+	ID             string
+	Distro         string
+	ExpirationTime time.Time
+	URL            string
+}
+
+func makeHostTriggers() eventHandler {
+	t := &hostTriggers{}
+	t.hostBase.base.triggers = map[string]trigger{
+		triggerExpiration: t.hostExpiration,
+	}
+
+	return t
+}
+
+type hostTriggers struct {
+	templateData hostTemplateData
+
+	hostBase
+}
+
+func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
+	err := t.hostBase.Fetch(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch host data")
+	}
+
+	t.templateData = hostTemplateData{
+		ID:             t.host.Id,
+		Distro:         t.host.Distro.Id,
+		ExpirationTime: t.host.ExpirationTime,
+		URL:            fmt.Sprintf("%s/ui/spawn", t.hostBase.uiConfig.Url),
+	}
+	t.event = e
+	return nil
 }
 
 func (t *hostTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl string) (*notification.Notification, error) {

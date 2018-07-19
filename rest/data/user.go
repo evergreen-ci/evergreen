@@ -44,6 +44,8 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 	}
 	settings.SlackUsername = strings.TrimPrefix(settings.SlackUsername, "@")
 	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
+	settings.Notifications.SpawnHostOutcomeID = dbUser.Settings.Notifications.SpawnHostOutcomeID
+	settings.Notifications.SpawnHostExpirationID = dbUser.Settings.Notifications.SpawnHostExpirationID
 
 	var patchSubscriber event.Subscriber
 	switch settings.Notifications.PatchFinish {
@@ -97,6 +99,24 @@ func (u *DBUserConnector) UpdateSettings(dbUser *user.DBUser, settings user.User
 		settings.Notifications.SpawnHostExpirationID = spawnhostSubscription.ID
 	} else {
 		settings.Notifications.SpawnHostExpirationID = ""
+	}
+
+	var spawnHostOutcomeSubscriber event.Subscriber
+	switch settings.Notifications.SpawnHostOutcome {
+	case user.PreferenceSlack:
+		spawnHostOutcomeSubscriber = event.NewSlackSubscriber(fmt.Sprintf("@%s", settings.SlackUsername))
+	case user.PreferenceEmail:
+		spawnHostOutcomeSubscriber = event.NewEmailSubscriber(dbUser.Email())
+	}
+	spawnHostOutcomeSubscription, err := event.CreateOrUpdateImplicitSubscription(event.ImplicitSubscriptionSpawnHostOutcome,
+		dbUser.Settings.Notifications.SpawnHostOutcomeID, spawnHostOutcomeSubscriber, dbUser.Id)
+	if err != nil {
+		return errors.Wrap(err, "failed to create spawn host outcome subscription")
+	}
+	if spawnHostOutcomeSubscription != nil {
+		settings.Notifications.SpawnHostOutcomeID = spawnHostOutcomeSubscription.ID
+	} else {
+		settings.Notifications.SpawnHostOutcomeID = ""
 	}
 
 	return model.SaveUserSettings(dbUser.Id, settings)

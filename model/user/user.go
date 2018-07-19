@@ -51,6 +51,8 @@ type NotificationPreferences struct {
 	PatchFinishID         string                     `bson:"patch_finish_id,omitempty" json:"-"`
 	SpawnHostExpiration   UserSubscriptionPreference `bson:"spawn_host_expiration" json:"spawn_host_expiration"`
 	SpawnHostExpirationID string                     `bson:"spawn_host_expiration_id,omitempty" json:"-"`
+	SpawnHostOutcome      UserSubscriptionPreference `bson:"spawn_host_outcome" json:"spawn_host_outcome"`
+	SpawnHostOutcomeID    string                     `bson:"spawn_host_outcome_id,omitempty" json:"-"`
 }
 
 type UserSubscriptionPreference string

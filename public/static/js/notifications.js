@@ -27,7 +27,7 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       });
     };
     var failure = function(resp) {
-      notificationService.pushNotification("Failed to get subscriptions: " + resp.data,'errorHeader');
+      notificationService.pushNotification("Failed to get subscriptions: " + resp.data.error, 'errorHeader');
     };
     mciSubscriptionsService.get(user, "person", {success: success, error: failure});
   };
@@ -37,7 +37,7 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       window.location.reload();
     };
     var failure = function(resp) {
-      notificationService.pushNotification("Failed to save changes: " + resp.data,'errorHeader');
+      notificationService.pushNotification("Failed to save changes: " + resp.data.error, 'errorHeader');
     };
     mciUserSettingsService.saveUserSettings($scope.settings, {success: success, error: failure});
   };
@@ -47,7 +47,7 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       $scope.getSubscriptions();
     };
     var failure = function(resp) {
-      notificationService.pushNotification("Failed to delete subscription: " + resp.data,'errorHeader');
+      notificationService.pushNotification("Failed to delete subscription: " + resp.data.error, 'errorHeader');
     };
     mciSubscriptionsService.delete(id, {success: success, error: failure});
   }
