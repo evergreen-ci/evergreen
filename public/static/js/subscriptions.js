@@ -33,7 +33,8 @@ function subscriberLabel(subscriber) {
         return "Post a comment on JIRA issue " + subscriber.target;
 
     }else if (subscriber.type === SUBSCRIPTION_JIRA_ISSUE) {
-        return "Create a JIRA issue in " + subscriber.target;
+        return "Create a JIRA issue in " + subscriber.target.project +
+            " with issue type " + subscriber.target.issue_type;
 
     }else if (subscriber.type === SUBSCRIPTION_SLACK) {
         return "Send a slack message to " + subscriber.target;
@@ -160,7 +161,12 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             return $scope.targets[SUBSCRIPTION_JIRA_COMMENT].match(".+-[0-9]+") !== null
 
         }else if ($scope.method.value === SUBSCRIPTION_JIRA_ISSUE) {
-            return $scope.targets[SUBSCRIPTION_JIRA_ISSUE].match(".+") !== null
+            if (!$scope.targets[SUBSCRIPTION_JIRA_ISSUE]) {
+                return false;
+            }
+
+            return $scope.targets[SUBSCRIPTION_JIRA_ISSUE]['project'].match(".+") !== null &&
+                $scope.targets[SUBSCRIPTION_JIRA_ISSUE]['issue_type'].match(".+") !== null;
 
         }else if ($scope.method.value === SUBSCRIPTION_SLACK) {
             return $scope.targets[SUBSCRIPTION_SLACK].match("(#|@).+") !== null

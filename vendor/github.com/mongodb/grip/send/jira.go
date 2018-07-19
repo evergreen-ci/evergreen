@@ -82,6 +82,9 @@ func (j *jiraJournal) Send(m message.Composer) {
 		if len(issueFields.Summary) > 254 {
 			issueFields.Summary = issueFields.Summary[:254]
 		}
+		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password); err != nil {
+			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
+		}
 		if err := j.opts.client.PostIssue(issueFields); err != nil {
 			j.errHandler(err, message.NewFormattedMessage(m.Priority(), m.String()))
 		}

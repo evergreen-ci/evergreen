@@ -105,6 +105,14 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	}()
 
 	n, err = trigger.NotificationsFromEvent(e)
+	grip.Info(message.Fields{
+		"job":           eventMetaJobName,
+		"source":        "events-processing",
+		"message":       "event processed",
+		"event_id":      e.ID,
+		"event_type":    e.ResourceType,
+		"notifications": len(n),
+	})
 	grip.Error(message.WrapError(err, message.Fields{
 		"job":        eventMetaJobName,
 		"source":     "events-processing",

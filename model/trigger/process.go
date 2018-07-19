@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -25,9 +26,21 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	}
 
 	subscriptions, err := event.FindSubscriptions(e.ResourceType, h.Selectors())
-	if err != nil {
-		return nil, errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+	msg := message.Fields{
+		"source":              "events-processing",
+		"message":             "processing event",
+		"event_id":            e.ID,
+		"event_type":          e.EventType,
+		"event_resource_type": e.ResourceType,
+		"event_resource":      e.ResourceId,
+		"num_subscriptions":   len(subscriptions),
 	}
+	if err != nil {
+		err = errors.Wrapf(err, "error fetching subscriptions for event: %s (%s, %s)", e.ID, e.ResourceType, e.EventType)
+		grip.Error(message.WrapError(err, msg))
+		return nil, err
+	}
+	grip.Info(msg)
 	if len(subscriptions) == 0 {
 		return nil, nil
 	}
@@ -37,7 +50,19 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	catcher := grip.NewSimpleCatcher()
 	for i := range subscriptions {
 		n, err := h.Process(&subscriptions[i])
+		msg := message.Fields{
+			"source":              "events-processing",
+			"message":             "processing subscription",
+			"event_id":            e.ID,
+			"event_type":          e.EventType,
+			"event_resource_type": e.ResourceType,
+			"event_resource":      e.ResourceId,
+			"subscription_id":     subscriptions[i].ID,
+			"notification_is_nil": n == nil,
+		}
 		catcher.Add(err)
+		grip.Error(message.WrapError(err, msg))
+		grip.InfoWhen(err == nil, msg)
 		if n == nil {
 			continue
 		}

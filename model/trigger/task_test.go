@@ -366,9 +366,13 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskFailed
 	s.task.Status = evergreen.TaskFailed
+	s.task.RevisionOrderNumber = 0
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// brand new task fails should generate
+	s.task.RevisionOrderNumber = 1
+	s.task.Id = "task1"
+	s.NoError(s.task.Insert())
 	n, err := s.t.taskRegression(&s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)

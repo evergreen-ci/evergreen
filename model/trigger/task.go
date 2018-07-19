@@ -222,12 +222,12 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
 	var payload interface{}
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
-		project, ok := sub.Subscriber.Target.(*string)
+		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {
 			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
 		}
 		var err error
-		payload, err = t.makeJIRATaskPayload(*project)
+		payload, err = t.makeJIRATaskPayload(issueSub.Project)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create jira payload for task")
 		}
@@ -251,6 +251,9 @@ func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertTyp
 	n, err := t.generate(sub, pastTenseOverride)
 	if err != nil {
 		return nil, err
+	}
+	if n == nil {
+		return nil, nil
 	}
 
 	rec := newAlertRecord(t.task, alertType)
@@ -357,61 +360,13 @@ func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
 	}
-	if previousTask != nil {
-		q := alertrecord.ByLastFailureTransition(t.DisplayName, t.BuildVariant, t.Project)
-		var lastAlerted *alertrecord.AlertRecord
-		lastAlerted, err = alertrecord.FindOne(q)
-		if err != nil {
-			errMessage := getShouldExecuteError(t, previousTask)
-			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
-			errMessage["error"] = err.Error()
-			grip.Error(errMessage)
-			return false, nil, errors.Wrap(err, "failed to process regression trigger")
-		}
 
-		if previousTask.Status == evergreen.TaskSucceeded {
-			// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
-			// a sent alert for a transition after the same previously passing task.
-			if lastAlerted != nil && (lastAlerted.RevisionOrderNumber >= previousTask.RevisionOrderNumber) {
-				return false, nil, nil
-			}
-
-		} else if previousTask.Status == evergreen.TaskFailed {
-			if lastAlerted == nil {
-				errMessage := getShouldExecuteError(t, previousTask)
-				errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
-				if err != nil {
-					errMessage["error"] = err.Error()
-				}
-				errMessage["lastAlert"] = lastAlerted
-				errMessage["outcome"] = "not sending alert"
-				grip.Error(errMessage)
-				return false, nil, errors.Wrap(err, "failed to process regression trigger")
-			}
-
-			// TODO: EVG-3407 how is this even possible?
-			if lastAlerted.TaskId == "" {
-				shouldSend := sometimes.Quarter()
-				errMessage := getShouldExecuteError(t, previousTask)
-				errMessage[message.FieldsMsgName] = "empty last alert task_id"
-				errMessage["lastAlert"] = lastAlerted
-				if shouldSend {
-					errMessage["outcome"] = "sending alert (25%)"
-				} else {
-					errMessage["outcome"] = "not sending alert (75%)"
-				}
-				grip.Warning(errMessage)
-				if !shouldSend {
-					return false, nil, nil
-				}
-
-			} else {
-				var old bool
-				if old, err = taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId); !old {
-					return false, nil, errors.Wrap(err, "failed to process regression trigger")
-				}
-			}
-		}
+	shouldSend, err := shouldSendTaskRegression(t, previousTask)
+	if err != nil {
+		return false, nil, errors.Wrap(err, "failed to determine if we should send notification")
+	}
+	if !shouldSend {
+		return false, nil, nil
 	}
 
 	rec := newAlertRecord(t, alertrecord.TaskFailTransitionId)
@@ -421,6 +376,79 @@ func isTaskRegression(t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 	}
 
 	return true, rec, nil
+}
+
+func shouldSendTaskRegression(t *task.Task, previousTask *task.Task) (bool, error) {
+	if t.Status != evergreen.TaskFailed {
+		return false, nil
+	}
+	if previousTask == nil {
+		return true, nil
+	}
+
+	if previousTask.Status == evergreen.TaskSucceeded {
+		// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
+		// a sent alert for a transition after the same previously passing task.
+		q := alertrecord.ByLastFailureTransition(t.DisplayName, t.BuildVariant, t.Project)
+		lastAlerted, err := alertrecord.FindOne(q)
+		if err != nil {
+			errMessage := getShouldExecuteError(t, previousTask)
+			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
+			errMessage["error"] = err.Error()
+			grip.Error(errMessage)
+			return false, err
+		}
+
+		if lastAlerted == nil || (lastAlerted.RevisionOrderNumber < previousTask.RevisionOrderNumber) {
+			// Either this alert has never been triggered before, or it was triggered for a
+			// transition from failure after an older success than this one - so we need to
+			// execute this trigger again.
+			errMessage := getShouldExecuteError(t, previousTask)
+			errMessage["outcome"] = "sending alert"
+			errMessage[message.FieldsMsgName] = "identified transition to failure!"
+			grip.Info(errMessage)
+
+			return true, nil
+		}
+	}
+	if previousTask.Status == evergreen.TaskFailed {
+		// check if enough time has passed since our last transition alert
+		q := alertrecord.ByLastFailureTransition(t.DisplayName, t.BuildVariant, t.Project)
+		lastAlerted, err := alertrecord.FindOne(q)
+		if err != nil {
+			errMessage := getShouldExecuteError(t, previousTask)
+			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
+			if err != nil {
+				errMessage["error"] = err.Error()
+			}
+			errMessage["lastAlert"] = lastAlerted
+			errMessage["outcome"] = "not sending alert"
+			grip.Error(errMessage)
+			return false, err
+		}
+		if lastAlerted == nil {
+			return true, nil
+		}
+
+		if lastAlerted.TaskId == "" {
+			maybeSend := sometimes.Quarter()
+			errMessage := getShouldExecuteError(t, previousTask)
+			errMessage[message.FieldsMsgName] = "empty last alert task_id"
+			errMessage["lastAlert"] = lastAlerted
+			if maybeSend {
+				errMessage["outcome"] = "sending alert (25%)"
+			} else {
+				errMessage["outcome"] = "not sending alert (75%)"
+
+			}
+			grip.Warning(errMessage)
+
+			return maybeSend, nil
+		}
+
+		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId)
+	}
+	return false, nil
 }
 
 func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notification.Notification, error) {

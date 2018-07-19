@@ -102,8 +102,11 @@ func (s *eventNotificationSuite) SetupTest() {
 		{
 			ID: "jira-issue",
 			Subscriber: event.Subscriber{
-				Type:   event.JIRAIssueSubscriberType,
-				Target: "SERVER",
+				Type: event.JIRAIssueSubscriberType,
+				Target: event.JIRAIssueSubscriber{
+					Project:   "SERVER",
+					IssueType: "Build Failure",
+				},
 			},
 			Payload: message.JiraIssue{
 				Summary:     "Tell the evergreen team that they're awesome",

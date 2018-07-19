@@ -198,6 +198,7 @@ func (j *JiraSuite) TestCustomFields() {
 
 	jiraIssue := message.JiraIssue{
 		Summary: "test",
+		Type:    "type",
 		Fields: map[string]interface{}{
 			"customfield_12345": []string{"hi", "bye"},
 		},
