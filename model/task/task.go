@@ -23,8 +23,8 @@ const (
 	edgesKey = "edges"
 	taskKey  = "task"
 
-	// tasks should be unscheduled after ~2 weeks
-	unschedulableThreshold = 7 * 24 * time.Hour
+	// tasks should be unscheduled after ~a week
+	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
@@ -63,6 +63,7 @@ type Task struct {
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
 
 	Version           string `bson:"version" json:"version,omitempty"`
 	Project           string `bson:"branch" json:"branch,omitempty"`
@@ -76,13 +77,14 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated     bool         `bson:"activated" json:"activated"`
-	ActivatedBy   string       `bson:"activated_by" json:"activated_by"`
-	BuildId       string       `bson:"build_id" json:"build_id"`
-	DistroId      string       `bson:"distro" json:"distro"`
-	BuildVariant  string       `bson:"build_variant" json:"build_variant"`
-	DependsOn     []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	Activated            bool         `bson:"activated" json:"activated"`
+	ActivatedBy          string       `bson:"activated_by" json:"activated_by"`
+	BuildId              string       `bson:"build_id" json:"build_id"`
+	DistroId             string       `bson:"distro" json:"distro"`
+	BuildVariant         string       `bson:"build_variant" json:"build_variant"`
+	DependsOn            []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents        int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -272,13 +274,28 @@ func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
+func (t *Task) SetOverrideDependencies(userID string) error {
+	t.OverrideDependencies = true
+	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				OverrideDependenciesKey: true,
+			},
+		},
+	)
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 
-	if len(t.DependsOn) == 0 {
+	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return true, nil
 	}
 
@@ -560,7 +577,7 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	}
 
 	query["$and"] = []bson.M{
-		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
+		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
 		{CreateTimeKey: bson.M{"$gt": util.ZeroTime}},
 	}
 
@@ -594,6 +611,31 @@ func (t *Task) MarkFailed() error {
 	)
 }
 
+func (t *Task) MarkSystemFailed() error {
+	t.Status = evergreen.TaskFailed
+	t.FinishTime = time.Now()
+
+	t.Details = apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   evergreen.CommandTypeSystem,
+	}
+
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:     evergreen.TaskFailed,
+				FinishTimeKey: t.FinishTime,
+				DetailsKey:    t.Details,
+			},
+		},
+	)
+}
+
 // SetAborted sets the abort field of task to aborted
 func (t *Task) SetAborted() error {
 	t.Aborted = true
@@ -613,14 +655,16 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
+	t.ActivatedTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:   true,
-				ActivatedByKey: caller,
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: t.ActivatedTime,
 			},
 		})
 }

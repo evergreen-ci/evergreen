@@ -31,6 +31,7 @@ func startWebService() cli.Command {
 
 			env := evergreen.GetEnvironment()
 			grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, confPath, db), "problem configuring application environment"))
+			grip.CatchEmergencyFatal(errors.Wrap(env.RemoteQueue().Start(ctx), "problem starting remote queue"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(env)
@@ -155,7 +156,6 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue) (http.Han
 	functionOptions := service.TemplateFunctionOptions{
 		WebHome:  filepath.Join(home, "public"),
 		HelpHome: settings.Ui.HelpUrl,
-		IsProd:   !settings.IsNonProd,
 	}
 
 	uis, err := service.NewUIServer(settings, queue, home, functionOptions)

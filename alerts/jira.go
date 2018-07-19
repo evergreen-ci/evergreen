@@ -146,9 +146,9 @@ func getSummary(ctx AlertContext) string {
 	switch {
 	case ctx.Task.Details.TimedOut:
 		subj.WriteString("Timed Out: ")
-	case ctx.Task.Details.Type == model.SystemCommandType:
+	case ctx.Task.Details.Type == evergreen.CommandTypeSystem:
 		subj.WriteString("System Failure: ")
-	case ctx.Task.Details.Type == model.SetupCommandType:
+	case ctx.Task.Details.Type == evergreen.CommandTypeSetup:
 		subj.WriteString("Setup Failure: ")
 	case len(failed) == 1:
 		subj.WriteString("Failure: ")

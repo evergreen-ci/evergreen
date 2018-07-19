@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -91,7 +92,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NoError(m.OnUp(ctx, h))
 	foundHost := foundHosts[0]
 	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{makeStringPtr(foundHost.Id)},
+		InstanceIds: []*string{aws.String(foundHost.Id)},
 	})
 	assert.NoError(err)
 	tags := out.Reservations[0].Instances[0].Tags

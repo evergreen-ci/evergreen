@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -812,4 +813,39 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskRes
 	results.TasksErrored = tasksErrored
 
 	return results
+}
+
+func ClearAndResetStrandedTask(h *host.Host) error {
+	if h.RunningTask == "" {
+		return nil
+	}
+
+	t, err := task.FindOne(task.ById(h.RunningTask))
+	if err != nil {
+		return errors.Wrapf(err, "database error clearing task '%s' from host '%s'",
+			t.Id, h.Id)
+	} else if t == nil {
+		return nil
+	}
+
+	if err = h.ClearRunningTask(); err != nil {
+		return errors.Wrapf(err, "problem clearing running task from host '%s'", h.Id)
+	}
+
+	if t.IsFinished() {
+		return nil
+	}
+
+	if err = t.MarkSystemFailed(); err != nil {
+		return errors.Wrap(err, "problem marking task failed")
+	}
+
+	if time.Since(t.StartTime) < task.UnschedulableThreshold {
+		return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, &apimodels.TaskEndDetail{
+			Status: evergreen.TaskFailed,
+			Type:   "system",
+		}), "problem resetting task")
+	}
+
+	return nil
 }

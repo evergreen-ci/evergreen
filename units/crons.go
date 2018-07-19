@@ -184,6 +184,8 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 			catcher.Add(queue.Put(job))
 		}
 
+		catcher.Add(queue.Put(NewStrandedTaskCleanupJob(ts)))
+
 		return catcher.Resolve()
 	}
 }
@@ -546,7 +548,7 @@ func PopulateHostCreationJobs(env evergreen.Environment, part int) amboy.QueueOp
 				break
 			}
 
-			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts)))
+			catcher.Add(queue.Put(NewHostCreateJob(env, h, ts, 1, 0)))
 		}
 
 		return catcher.Resolve()
@@ -614,7 +616,7 @@ func PopulateBackgroundStatsJobs(env evergreen.Environment, part int) amboy.Queu
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfMinute(part).Format(tsFormat)
 
-		catcher.Add(queue.Put(NewAmboyStatsCollector(env, ts)))
+		catcher.Add(queue.Put(NewRemoteAmboyStatsCollector(env, ts)))
 		catcher.Add(queue.Put(NewHostStatsCollector(ts)))
 		catcher.Add(queue.Put(NewTaskStatsCollector(ts)))
 		catcher.Add(queue.Put(NewLatencyStatsCollector(ts, time.Minute)))

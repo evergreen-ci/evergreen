@@ -609,3 +609,26 @@ func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	_, err := c.retryRequest(ctx, info, jsonBytes)
 	return errors.Wrap(err, "problem sending `generate.tasks` request")
 }
+
+// CreateHost requests a new host be created
+func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
+	info := requestInfo{
+		method:   post,
+		taskData: &td,
+		version:  apiVersion2,
+	}
+	info.path = fmt.Sprintf("hosts/create/%s", td.ID)
+	resp, err := c.retryRequest(ctx, info, options)
+	if err != nil {
+		return errors.Wrap(err, "problem sending `create.host` request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrap(err, "problem reading body from `create.host` response")
+	}
+	return errors.Errorf("error executing `create.host`: %s", string(body))
+}

@@ -16,6 +16,7 @@ package queue
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
@@ -86,6 +87,10 @@ func (q *unorderedLocal) Put(j amboy.Job) error {
 	if _, ok := q.tasks.m[name]; ok {
 		return errors.Errorf("cannot add %s, because a job exists with that name", name)
 	}
+
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
 
 	q.tasks.m[name] = j
 	q.numStarted++

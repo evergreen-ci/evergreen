@@ -62,7 +62,7 @@ imports:
     version: 01857ac33766ce0c93856370626f9799281c14f4
 
   - name: github.com/evergreen-ci/crowd
-    version: 6a36a6c2429fd96e4420e17c5c580b5be6f1fadb
+    version: 4eeec3d0ebc1dc804dd28d9067fc233c51c3ceed
 
   - name: github.com/kardianos/osext
     version: 6e7f843663477789fac7c02def0d0909e969b4e5
@@ -114,6 +114,6 @@ imports:
   - name: github.com/mongodb/anser
     version: 6a21a3cf64774e98ca28f7ca205cc27b342a3fdd
   - name: github.com/mongodb/amboy
-    version: d1e174d349e86cfe074824d06cc3d58018a27257
+    version: a0574d2d6bc226fab607a16d1e67d64cc685259e
   - name: github.com/evergreen-ci/gimlet
-    version: eee2e53245290e991b0e30b8f6a788d77dc0fa4a
+    version: c379b5c0905cce7cc84384d68c6b050ee4898390

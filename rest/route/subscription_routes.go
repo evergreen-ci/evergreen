@@ -220,7 +220,7 @@ func (s *subscriptionDeleteHandler) ParseAndValidate(ctx context.Context, r *htt
 		}
 	}
 	s.id = idString
-	subscription, err := event.FindSubscriptionByIDString(s.id)
+	subscription, err := event.FindSubscriptionByID(s.id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

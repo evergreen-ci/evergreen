@@ -52,7 +52,6 @@ type APIAdminSettings struct {
 	Expansions         map[string]string                 `json:"expansions,omitempty"`
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
-	IsNonProd          *bool                             `json:"isnonprod,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
 	Keys               map[string]string                 `json:"keys,omitempty"`
 	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
@@ -105,7 +104,6 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		as.ClientBinariesDir = &v.ClientBinariesDir
 		as.ConfigDir = &v.ConfigDir
 		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
-		as.IsNonProd = &v.IsNonProd
 		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
 		as.PprofPort = &v.PprofPort
@@ -145,9 +143,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	if as.GithubPRCreatorOrg != nil {
 		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
-	}
-	if as.IsNonProd != nil {
-		settings.IsNonProd = *as.IsNonProd
 	}
 	if as.LogPath != nil {
 		settings.LogPath = *as.LogPath

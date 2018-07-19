@@ -130,13 +130,13 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 		n.PatchFinish = ToAPIString(string(v.PatchFinish))
 		n.SpawnHostExpiration = ToAPIString(string(v.SpawnHostExpiration))
 		if v.BuildBreakID != "" {
-			n.BuildBreakID = ToAPIString(v.BuildBreakID.Hex())
+			n.BuildBreakID = ToAPIString(v.BuildBreakID)
 		}
 		if v.PatchFinishID != "" {
-			n.PatchFinishID = ToAPIString(v.PatchFinishID.Hex())
+			n.PatchFinishID = ToAPIString(v.PatchFinishID)
 		}
 		if v.SpawnHostExpirationID != "" {
-			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID.Hex())
+			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID)
 		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
@@ -162,24 +162,14 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 		PatchFinish:         user.UserSubscriptionPreference(patchFinish),
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
 	}
-	var err error
 	if n.BuildBreakID != nil {
-		preferences.BuildBreakID, err = user.FormatObjectID(FromAPIString(n.BuildBreakID))
-		if err != nil {
-			return nil, err
-		}
+		preferences.BuildBreakID = FromAPIString(n.BuildBreakID)
 	}
 	if n.PatchFinishID != nil {
-		preferences.PatchFinishID, err = user.FormatObjectID(FromAPIString(n.PatchFinishID))
-		if err != nil {
-			return nil, err
-		}
+		preferences.PatchFinishID = FromAPIString(n.PatchFinishID)
 	}
 	if n.SpawnHostExpirationID != nil {
-		preferences.SpawnHostExpirationID, err = user.FormatObjectID(FromAPIString(n.SpawnHostExpirationID))
-		if err != nil {
-			return nil, err
-		}
+		preferences.SpawnHostExpirationID = FromAPIString(n.SpawnHostExpirationID)
 	}
 	return preferences, nil
 }

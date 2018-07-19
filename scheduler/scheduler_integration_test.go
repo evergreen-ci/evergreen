@@ -50,8 +50,8 @@ func (s *SchedulerConnectorSuite) TestFindUsableHosts() {
 	s.NoError(err)
 	s.NotNil(hostMap)
 
-	for _, foundHost := range hostMap[testDistroID] {
+	for _, foundHost := range hostMap {
 		s.NotEqual(evergreen.HostTerminated, foundHost.Status)
 	}
-	s.Equal(3, len(hostMap[testDistroID]))
+	s.Len(hostMap, 3)
 }

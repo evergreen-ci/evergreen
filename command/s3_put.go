@@ -295,7 +295,7 @@ retryLoop:
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
-					if os.IsNotExist(err) {
+					if os.IsNotExist(errors.Cause(err)) {
 						if s3pc.isMulti() {
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.

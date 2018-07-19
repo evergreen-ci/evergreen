@@ -64,10 +64,20 @@ type simpleRateLimited struct {
 	queue    amboy.Queue
 	canceler context.CancelFunc
 	wg       sync.WaitGroup
+	mu       sync.Mutex
 }
 
-func (p *simpleRateLimited) Started() bool { return p.canceler != nil }
+func (p *simpleRateLimited) Started() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.canceler != nil
+}
+
 func (p *simpleRateLimited) Start(ctx context.Context) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if p.canceler != nil {
 		return nil
 	}
@@ -87,12 +97,17 @@ func (p *simpleRateLimited) Start(ctx context.Context) error {
 	return nil
 }
 
-func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
+func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan workUnit) {
 	var (
-		err error
-		job amboy.Job
+		err    error
+		cancel context.CancelFunc
+		job    amboy.Job
 	)
+
+	p.mu.Lock()
 	p.wg.Add(1)
+	p.mu.Unlock()
+
 	defer p.wg.Done()
 
 	defer func() {
@@ -104,6 +119,9 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 			}
 			// start a replacement worker.
 			go p.worker(ctx, jobs)
+		}
+		if cancel != nil {
+			cancel()
 		}
 	}()
 
@@ -117,10 +135,12 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 			select {
 			case <-ctx.Done():
 				return
-			case job := <-jobs:
-				if job == nil {
+			case wu := <-jobs:
+				if wu.job == nil {
 					continue
 				}
+				job = wu.job
+				cancel = wu.cancel
 
 				ti := amboy.JobTimeInfo{
 					Start: time.Now(),
@@ -148,8 +168,12 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 
 				if err := job.Error(); err != nil {
 					r["error"] = err.Error()
+					grip.Error(r)
+				} else {
+					grip.Debug(r)
 				}
-				grip.Debug(r)
+
+				cancel()
 
 				timer.Reset(p.interval)
 			}
@@ -158,6 +182,9 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 }
 
 func (p *simpleRateLimited) SetQueue(q amboy.Queue) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if p.canceler != nil {
 		return errors.New("cannot change queue on active runner")
 	}
@@ -167,8 +194,12 @@ func (p *simpleRateLimited) SetQueue(q amboy.Queue) error {
 }
 
 func (p *simpleRateLimited) Close() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if p.canceler != nil {
 		p.canceler()
+		p.canceler = nil
 	}
 
 	// because of the timer+2 contexts in the worker

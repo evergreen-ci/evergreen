@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -264,9 +265,9 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	vpcs, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
-				Name: makeStringPtr("tag:Name"),
+				Name: aws.String("tag:Name"),
 				Values: []*string{
-					makeStringPtr(vpcName),
+					aws.String(vpcName),
 				},
 			},
 		},
@@ -279,16 +280,16 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	subnets, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
-				Name:   makeStringPtr("vpc-id"),
-				Values: []*string{makeStringPtr(vpcID)},
+				Name:   aws.String("vpc-id"),
+				Values: []*string{aws.String(vpcID)},
 			},
 			&ec2.Filter{
-				Name:   makeStringPtr("availability-zone"),
-				Values: []*string{makeStringPtr(azName)},
+				Name:   aws.String("availability-zone"),
+				Values: []*string{aws.String(azName)},
 			},
 			&ec2.Filter{
-				Name:   makeStringPtr("tag:Name"),
-				Values: []*string{makeStringPtr(vpcName + ".subnet_" + strings.Split(azName, "-")[2])},
+				Name:   aws.String("tag:Name"),
+				Values: []*string{aws.String(vpcName + ".subnet_" + strings.Split(azName, "-")[2])},
 			},
 		},
 	})
@@ -549,33 +550,40 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 	// decreasing time order. We iterate backwards through the list to
 	// pretend the ordering to increasing time.
 	prices := []spotRate{}
-	i := len(history) - 1
-	for i >= 0 {
-		// add the current hourly price if we're in the last result bucket
-		// OR our billing hour starts the same time as the data (very rare)
-		// OR our billing hour starts after the current bucket but before the next one
-		if i == 0 || input.start.Equal(*history[i].Timestamp) ||
-			input.start.After(*history[i].Timestamp) && input.start.Before(*history[i-1].Timestamp) {
-			price, err := strconv.ParseFloat(*history[i].SpotPrice, 64)
-			if err != nil {
-				return nil, errors.Wrap(err, "parsing spot price")
-			}
-			var zone string
-			if history[i].AvailabilityZone != nil {
-				zone = *history[i].AvailabilityZone
-			}
+	if input.zone != "" {
+		i := len(history) - 1
+		for i >= 0 {
+			// add the current hourly price if we're in the last result bucket
+			// OR our billing hour starts the same time as the data (very rare)
+			// OR our billing hour starts after the current bucket but before the next one
+			if i == 0 || input.start.Equal(*history[i].Timestamp) ||
+				input.start.After(*history[i].Timestamp) && input.start.Before(*history[i-1].Timestamp) {
+				price, err := strconv.ParseFloat(*history[i].SpotPrice, 64)
+				if err != nil {
+					return nil, errors.Wrap(err, "parsing spot price")
+				}
+				var zone string
+				if history[i].AvailabilityZone != nil {
+					zone = *history[i].AvailabilityZone
+				}
 
-			prices = append(prices, spotRate{Time: input.start, Price: price, Zone: zone})
-			// we increment the hour but stay on the same price history index
-			// in case the current spot price spans more than one hour
-			input.start = input.start.Add(time.Hour)
-			if input.start.After(input.end) {
-				break
+				prices = append(prices, spotRate{Time: input.start, Price: price, Zone: zone})
+				// we increment the hour but stay on the same price history index
+				// in case the current spot price spans more than one hour
+				input.start = input.start.Add(time.Hour)
+				if input.start.After(input.end) {
+					break
+				}
+			} else {
+				// continue iterating through our price history whenever we
+				// aren't matching the next billing hour
+				i--
 			}
-		} else {
-			// continue iterating through our price history whenever we
-			// aren't matching the next billing hour
-			i--
+		}
+	} else {
+		for _, item := range history {
+			p, _ := strconv.ParseFloat(*item.SpotPrice, 64)
+			prices = append(prices, spotRate{Time: time.Now(), Price: p, Zone: *item.AvailabilityZone})
 		}
 	}
 

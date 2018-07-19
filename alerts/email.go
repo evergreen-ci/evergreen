@@ -190,9 +190,9 @@ func taskFailureSubject(ctx AlertContext) string {
 		subj.WriteString("Test Failures: ")
 	case ctx.Task.Details.Description == task.AgentHeartbeat:
 		subj.WriteString("Task System Failure: ")
-	case ctx.Task.Details.Type == model.SystemCommandType:
+	case ctx.Task.Details.Type == evergreen.CommandTypeSystem:
 		subj.WriteString("Task System Failure: ")
-	case ctx.Task.Details.Type == model.SetupCommandType:
+	case ctx.Task.Details.Type == evergreen.CommandTypeSetup:
 		subj.WriteString("Task Setup Failure: ")
 	default:
 		subj.WriteString("Task Failed: ")

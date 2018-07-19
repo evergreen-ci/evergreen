@@ -356,9 +356,7 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 	}
 
 	if project.CommandType != "" {
-		if project.CommandType != model.SystemCommandType &&
-			project.CommandType != model.TestCommandType &&
-			project.CommandType != model.SetupCommandType {
+		if !util.StringSliceContains(evergreen.ValidCommandTypes, project.CommandType) {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("project '%v' contains an invalid "+
@@ -603,9 +601,7 @@ func validateCommands(section string, project *model.Project,
 			errs = append(errs, ValidationError{Message: fmt.Sprintf("%v section in %v: %v", section, commandName, err)})
 		}
 		if cmd.Type != "" {
-			if cmd.Type != model.SystemCommandType &&
-				cmd.Type != model.TestCommandType &&
-				cmd.Type != model.SetupCommandType {
+			if !util.StringSliceContains(evergreen.ValidCommandTypes, cmd.Type) {
 				msg := fmt.Sprintf("%v section in '%v': invalid command type: '%v'", section, commandName, cmd.Type)
 				errs = append(errs, ValidationError{Message: msg})
 			}

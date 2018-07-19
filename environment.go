@@ -75,7 +75,8 @@ type Environment interface {
 	// to distribute work amongst the application tier.
 	//
 	// The LocalQueue is not durable, and results aren't available
-	// between process restarts.
+	// between process restarts. The RemoteQueue is not
+	// (generally) started by default.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
 
@@ -302,7 +303,6 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(e.localQueue.Start(ctx))
-	catcher.Add(e.remoteQueue.Start(ctx))
 	catcher.Add(e.notificationsQueue.Start(ctx))
 
 	return catcher.Errors()
