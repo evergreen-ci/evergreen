@@ -59,7 +59,9 @@ type ContainerManager interface {
 
 	// GetContainers returns the IDs of all running containers on a specified host
 	GetContainers(context.Context, *host.Host) ([]string, error)
+	// RemoveLeastRecentlyUsedImageID removes the earliest create image on a specified host
 	RemoveLeastRecentlyUsedImageID(ctx context.Context, h *host.Host) error
+	// CalculateImageSpaceUsage returns the total space taken up by docker images on a specified host
 	CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error)
 }
 
