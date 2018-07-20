@@ -5,13 +5,17 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -22,6 +26,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
+	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, string, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
@@ -33,9 +38,13 @@ type dockerClientImpl struct {
 	// apiVersion specifies the version of the Docker API.
 	apiVersion string
 	// httpDockerClient for making HTTP requests within the Docker dockerClient wrapper.
-	httpClient *http.Client
-	client     *docker.Client
+	httpClient        *http.Client
+	client            *docker.Client
+	evergreenSettings *evergreen.Settings
 }
+
+// template string for new images with agent
+const newImageName string = "%s-agent"
 
 // generateClient generates a Docker client that can talk to the specified host
 // machine. The Docker client must be exposed and available for requests at the
@@ -77,7 +86,66 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 
 	// Create HTTP client
 	c.httpClient = util.GetHTTPClient()
+
+	// allow connections to Docker daemon with self-signed certificates
+	transport, ok := c.httpClient.Transport.(*http.Transport)
+	if !ok {
+		return errors.Errorf("Type assertion failed: type %T does not hold a *http.Transport", c.httpClient.Transport)
+	}
+	transport.TLSClientConfig.InsecureSkipVerify = true
+
 	return nil
+}
+
+// BuildImageWithAgent takes a base image and builds a new image on the specified
+// host from a Dockfile in the root directory, which adds the Evergreen binary
+func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
+	const dockerfileRoute = "/dockerfile"
+
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return "", errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	// modify tag for new image
+	newImage := fmt.Sprintf(newImageName, baseImage)
+
+	executableSubPath := h.Distro.ExecutableSubPath()
+	binaryName := h.Distro.BinaryName()
+
+	// build dockerfile route
+	dockerfileUrl := strings.Join([]string{
+		c.evergreenSettings.ApiUrl,
+		evergreen.APIRoutePrefixV2,
+		dockerfileRoute,
+	}, "")
+
+	options := types.ImageBuildOptions{
+		BuildArgs: map[string]*string{
+			"BASE_IMAGE":          &baseImage,
+			"EXECUTABLE_SUB_PATH": &executableSubPath,
+			"BINARY_NAME":         &binaryName,
+			"URL":                 &c.evergreenSettings.Ui.Url,
+		},
+		Remove:        true,
+		RemoteContext: dockerfileUrl,
+		Tags:          []string{newImage},
+	}
+
+	// build the image
+	resp, err := dockerClient.ImageBuild(ctx, nil, options)
+	if err != nil {
+		return "", errors.Wrapf(err, "Error building Docker image from base image %s", baseImage)
+	}
+
+	// wait for ImageBuild to complete -- success response otherwise returned
+	// before building from Dockerfile is over, and next ContainerCreate will fail
+	_, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "Error reading ImageBuild response")
+	}
+
+	return newImage, nil
 }
 
 // CreateContainer creates a new Docker container that runs an SSH daemon, and binds the
@@ -90,7 +158,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, s *dockerSettings) error {
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, ds *dockerSettings) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
@@ -110,13 +178,38 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		return err
 	}
 
-	// Populate container settings.
+	// Build image containing Evergreen executable.
+	newImage, err := c.BuildImageWithAgent(ctx, h, ds.ImageID)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", ds.ImageID, h.Id)
+	}
+
+	// Build path to Evergreen executable.
+	pathToExecutable := filepath.Join("root", "evergreen")
+	if h.Distro.IsWindows() {
+		pathToExecutable += ".exe"
+	}
+
+	// Build Evergreen agent command.
+	agentCmdParts := []string{
+		pathToExecutable,
+		"agent",
+		fmt.Sprintf("--api_server='%s'", c.evergreenSettings.ApiUrl),
+		fmt.Sprintf("--host_id='%s'", h.Id),
+		fmt.Sprintf("--host_secret='%s'", h.Secret),
+		fmt.Sprintf("--log_prefix='%s'", filepath.Join(h.Distro.WorkDir, "agent")),
+		fmt.Sprintf("--working_directory='%s'", h.Distro.WorkDir),
+		"--cleanup",
+	}
+
+	// Populate container settings with command and new image.
 	containerConf := &container.Config{
 		// ExposedPorts exposes the default SSH port to external connections.
 		ExposedPorts: nat.PortSet{
 			sshdPort: {},
 		},
-		Image: s.ImageID,
+		Cmd:   agentCmdParts,
+		Image: newImage,
 	}
 	networkConf := &network.NetworkingConfig{}
 

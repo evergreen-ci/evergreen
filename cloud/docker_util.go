@@ -34,6 +34,9 @@ func makeHostConfig(h *host.Host, containers []types.Container) (*container.Host
 		}
 	}
 
+	// mark dockerd port as reserved
+	reservedPorts[h.ContainerPoolSettings.Port] = true
+
 	hostConfig.PortBindings = make(nat.PortMap)
 	for i := h.ContainerPoolSettings.Port; i <= h.ContainerPoolSettings.Port+uint16(h.ContainerPoolSettings.MaxContainers); i++ {
 		// if port is not already in use, bind it to sshd exposed container port

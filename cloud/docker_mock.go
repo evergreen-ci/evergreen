@@ -16,6 +16,7 @@ import (
 type dockerClientMock struct {
 	// API call options
 	failInit   bool
+	failBuild  bool
 	failCreate bool
 	failGet    bool
 	failList   bool
@@ -24,6 +25,7 @@ type dockerClientMock struct {
 
 	// Other options
 	hasOpenPorts bool
+	baseImage    string
 }
 
 func (c *dockerClientMock) generateContainerID() string {
@@ -35,6 +37,13 @@ func (c *dockerClientMock) Init(string) error {
 		return errors.New("failed to initialize client")
 	}
 	return nil
+}
+
+func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, string) (string, error) {
+	if c.failBuild {
+		return "", errors.New("failed to build image with agent")
+	}
+	return c.baseImage, nil
 }
 
 func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, string, *dockerSettings) error {

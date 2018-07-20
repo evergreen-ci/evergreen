@@ -578,6 +578,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Prefix("/spawns").Wrap(checkUser).Route("/").Handler(as.requestHost).Put()
 	app.Route().Prefix("/spawns").Wrap(checkUser).Route("/{user}/").Handler(as.hostsInfoForUser).Get()
 	app.Route().Prefix("/spawns").Wrap(checkUser).Route("/distros/list/").Handler(as.listDistros).Get()
+	app.AddRoute("/dockerfile").Handler(getDockerfile).Get()
 
 	// Agent routes
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()

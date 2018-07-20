@@ -101,7 +101,8 @@ const (
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
-	AgentAPIVersion = 2
+	AgentAPIVersion  = 2
+	APIRoutePrefixV2 = "/rest/v2"
 
 	DegradedLoggingPercent = 10
 
