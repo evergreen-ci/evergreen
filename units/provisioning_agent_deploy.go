@@ -172,6 +172,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		"message": "prepping host for agent",
 		"host":    hostObj.Id})
 	if err = j.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
+		event.LogHostAgentDeployFailed(hostObj.Id, err)
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 
