@@ -468,7 +468,7 @@ func (s *DockerSuite) TestGetContainers() {
 func (s *DockerSuite) TestRemoveLeastRecentlyUsedImageID() {
 	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
-	s.False(mock.failList)
+	s.False(mock.failRemove)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
