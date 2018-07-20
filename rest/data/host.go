@@ -56,7 +56,7 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser, providerSettings *map[string]interface{}) (*host.Host, error) {
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -66,11 +66,12 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, 
 	}
 
 	spawnOptions := cloud.SpawnOptions{
-		Distro:    distroID,
-		UserName:  user.Username(),
-		PublicKey: keyVal,
-		TaskId:    taskID,
-		Owner:     user,
+		DistroId:         distroID,
+		ProviderSettings: providerSettings,
+		UserName:         user.Username(),
+		PublicKey:        keyVal,
+		TaskId:           taskID,
+		Owner:            user,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
@@ -176,7 +177,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser, providerSettings *map[string]interface{}) (*host.Host, error) {
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -186,7 +187,7 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string
 	}
 
 	spawnOptions := cloud.SpawnOptions{
-		Distro:    distroID,
+		DistroId:  distroID,
 		UserName:  user.Username(),
 		PublicKey: keyVal,
 		TaskId:    taskID,

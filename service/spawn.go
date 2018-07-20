@@ -107,7 +107,8 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData  string `json:"userdata"`
 	}{}
 
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &putParams); err != nil {
+	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
+	if err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -120,8 +121,17 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
+	var d distro.Distro
+	if putParams.UserData != "" {
+		d, err = distro.FindOne(distro.ById(putParams.Distro))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding distro"))
+			return
+		}
+		(*d.ProviderSettings)["user_data"] = putParams.UserData
+	}
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, authedUser)
+	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, authedUser, d.ProviderSettings)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
