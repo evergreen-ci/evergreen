@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	sourceURL   = "s3://build-push-testing/test/source/testfile"
-	downloadURL = "https://s3.amazonaws.com/build-push-testing/test/source/testfile"
+	sourceURL   = "s3://build-push-testing/test/source/"
+	downloadURL = "https://s3.amazonaws.com/build-push-testing/test/source/"
 )
 
 func TestPutS3File(t *testing.T) {
@@ -30,11 +30,13 @@ func TestPutS3File(t *testing.T) {
 		AccessKey: testConfig.Providers.AWS.Id,
 		SecretKey: testConfig.Providers.AWS.Secret,
 	}
-	err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
+
+	uniqueID := util.RandomString()
+	err = PutS3File(auth, tempfile.Name(), sourceURL+uniqueID, "application/x-tar", "public-read")
 	assert.NoError(err)
 
 	// get s3 file and read contents
-	rc, err := GetS3File(auth, sourceURL)
+	rc, err := GetS3File(auth, sourceURL+uniqueID)
 	assert.NoError(err)
 	data, err := ioutil.ReadAll(rc)
 	defer rc.Close()
@@ -54,13 +56,15 @@ func TestPutS3FileMultiPart(t *testing.T) {
 		AccessKey: testConfig.Providers.AWS.Id,
 		SecretKey: testConfig.Providers.AWS.Secret,
 	}
-	err = PutS3File(auth, "bigfile.test0", sourceURL, "application/x-tar", "public-read")
+
+	uniqueID := util.RandomString()
+	err = PutS3File(auth, "bigfile.test0", sourceURL+uniqueID, "application/x-tar", "public-read")
 	if !assert.NoError(err) {
 		return
 	}
 
 	// get s3 file and read contents
-	rc, err := GetS3File(auth, sourceURL)
+	rc, err := GetS3File(auth, sourceURL+uniqueID)
 	if !assert.NoError(err) {
 		return
 	}
@@ -70,7 +74,7 @@ func TestPutS3FileMultiPart(t *testing.T) {
 	assert.Equal(6000000, len(data))
 
 	// download file directly
-	resp, err := http.Get(downloadURL)
+	resp, err := http.Get(downloadURL + uniqueID)
 	assert.NoError(err)
 	assert.Equal(http.StatusOK, resp.StatusCode)
 }
@@ -90,11 +94,13 @@ func TestLegacyGetS3FileWithLegacyPut(t *testing.T) {
 		AccessKey: testConfig.Providers.AWS.Id,
 		SecretKey: testConfig.Providers.AWS.Secret,
 	}
-	err = legacyPutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
+
+	uniqueID := util.RandomString()
+	err = legacyPutS3File(auth, tempfile.Name(), sourceURL+uniqueID, "application/x-tar", "public-read")
 	assert.NoError(err)
 
 	// get s3 file and read contents
-	rc, err := legacyGetS3File(auth, sourceURL)
+	rc, err := legacyGetS3File(auth, sourceURL+uniqueID)
 	assert.NoError(err)
 	data, err := ioutil.ReadAll(rc)
 	defer rc.Close()
@@ -102,7 +108,7 @@ func TestLegacyGetS3FileWithLegacyPut(t *testing.T) {
 	assert.Equal(randStr, string(data[:]))
 
 	// download file directly
-	resp, err := http.Get(downloadURL)
+	resp, err := http.Get(downloadURL + uniqueID)
 	assert.NoError(err)
 	defer resp.Body.Close()
 	data, err = ioutil.ReadAll(resp.Body)
