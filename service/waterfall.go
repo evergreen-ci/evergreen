@@ -8,10 +8,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -128,6 +130,7 @@ type waterfallVersion struct {
 	CreateTimes         []time.Time `json:"create_times"`
 	Revisions           []string    `json:"revisions"`
 	RevisionOrderNumber int         `json:"revision_order"`
+	Cost                float64     `json:"cost"`
 
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
@@ -200,7 +203,7 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskSt
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func getVersionsAndVariants(skip, numVersionElements int, project *model.Project) (versionVariantData, error) {
+func getVersionsAndVariants(skip, numVersionElements int, project *model.Project, isSuperUser bool) (versionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []waterfallVersion{}
 
@@ -330,6 +333,12 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				Warnings:            []waterfallVersionError{{versionFromDB.Warnings}},
 				Ignoreds:            []bool{versionFromDB.Ignored},
 				RevisionOrderNumber: versionFromDB.RevisionOrderNumber,
+			}
+
+			if isSuperUser {
+				if cost, err := getCostForVersion(versionFromDB.Id); err == nil {
+					activeVersion.Cost = cost.SumEstimatedCost
+				}
 			}
 
 			// add the builds to the waterfall row
@@ -535,6 +544,7 @@ func countOnPreviousPage(skip int, numVersionElements int,
 // Http handler for the waterfall page
 func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	isSuperUser := auth.IsSuperUser(uis.Settings.SuperUsers, gimlet.GetUser(r.Context()))
 	project, err := projCtx.GetProject()
 	if err != nil || project == nil {
 		uis.ProjectNotFound(projCtx, w, r)
@@ -549,8 +559,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	finalData := waterfallData{}
 
 	// first, get all of the versions and variants we will need
-	vvData, err := getVersionsAndVariants(skip,
-		VersionItemsToCreate, project)
+	vvData, err := getVersionsAndVariants(skip, VersionItemsToCreate, project, isSuperUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -593,4 +602,15 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		JiraHost string
 		ViewData
 	}{finalData, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
+}
+
+func getCostForVersion(versionId string) (*task.VersionCost, error) {
+	cost := []task.VersionCost{}
+	if err := task.Aggregate(task.CostDataByVersionIdPipeline(versionId), &cost); err != nil {
+		return nil, errors.Wrap(err, "error finding cost for version")
+	}
+	if len(cost) != 1 {
+		return nil, errors.New("cost for version aggregation did not return a single result")
+	}
+	return &cost[0], nil
 }
