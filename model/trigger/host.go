@@ -19,6 +19,7 @@ func init() {
 }
 
 const (
+	objectHost        = "host"
 	triggerExpiration = "expiration"
 
 	// notification templates
@@ -67,7 +68,7 @@ func (t *hostBase) Selectors() []event.Selector {
 		},
 		{
 			Type: selectorObject,
-			Data: "host",
+			Data: objectHost,
 		},
 		{
 			Type: selectorOwner,
