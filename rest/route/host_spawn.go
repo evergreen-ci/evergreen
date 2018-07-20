@@ -17,36 +17,44 @@ import (
 	"github.com/pkg/errors"
 )
 
+func makeSpawnHostCreateRoute(sc data.Connector) gimlet.RouteHandler {
+	return &hostPostHandler{
+		sc: sc,
+	}
+}
+
 type hostPostHandler struct {
 	Distro  string `json:"distro"`
 	KeyName string `json:"keyname"`
+
+	sc data.Connector
 }
 
-func (hph *hostPostHandler) Handler() RequestHandler {
-	return &hostPostHandler{}
+func (hph *hostPostHandler) Factory() gimlet.RouteHandler {
+	return &hostPostHandler{
+		sc: hph.sc,
+	}
 }
 
-func (hph *hostPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	return errors.WithStack(util.ReadJSONInto(r.Body, hph))
 }
 
-func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	intentHost, err := sc.NewIntentHost(hph.Distro, hph.KeyName, "", user)
+	intentHost, err := hph.sc.NewIntentHost(hph.Distro, hph.KeyName, "", user)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "error spawning host")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error spawning host"))
 	}
 
 	hostModel := &model.APIHost{}
 	err = hostModel.BuildFromService(intentHost)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{hostModel},
-	}, nil
+	return gimlet.NewJSONResponse(hostModel)
 }
 
 func getHostTerminateRouteManager(route string, version int) *RouteManager {
@@ -279,43 +287,6 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	}
 
 	return ResponseData{}, nil
-}
-
-func getHostsByUserManager(route string, version int) *RouteManager {
-	h := &hostsByUserHandler{}
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodGet,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: h.Handler(),
-			},
-		},
-	}
-}
-
-type hostsByUserHandler struct {
-	PaginationExecutor
-}
-
-// Handler for the GET /users/{user_id}/hosts route to return a user's hosts
-func (h *hostsByUserHandler) Handler() RequestHandler {
-	return &hostsByUserHandler{PaginationExecutor{
-		KeyQueryParam:   "host_id",
-		LimitQueryParam: "limit",
-		Paginator:       hostPaginator,
-		Args:            hostGetArgs{},
-	}}
-}
-
-func (h *hostsByUserHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	h.Args = hostGetArgs{
-		status: r.URL.Query().Get("status"),
-		user:   gimlet.GetVars(r)["user_id"],
-	}
-	return h.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 
 ////////////////////////////////////////////////////////////////////////

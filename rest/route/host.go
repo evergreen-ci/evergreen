@@ -2,9 +2,11 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -12,148 +14,139 @@ import (
 	"github.com/pkg/errors"
 )
 
-type hostGetHandler struct {
-	*PaginationExecutor
-}
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/hosts/{host_id}
 
-func getHostRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &hostGetHandler{},
-				MethodType:     http.MethodGet,
-			},
-			{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &hostPostHandler{},
-				MethodType:     http.MethodPost,
-			},
-		},
-	}
-}
-
-func getHostIDRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &hostIDGetHandler{},
-				MethodType:     http.MethodGet,
-			},
-		},
+func makeGetHostByID(sc data.Connector) gimlet.RouteHandler {
+	return &hostIDGetHandler{
+		sc: sc,
 	}
 }
 
 type hostIDGetHandler struct {
 	hostId string
+	sc     data.Connector
 }
 
-func (high *hostIDGetHandler) Handler() RequestHandler {
-	return &hostIDGetHandler{}
+func (high *hostIDGetHandler) Factory() gimlet.RouteHandler {
+	return &hostIDGetHandler{
+		sc: high.sc,
+	}
 }
 
 // ParseAndValidate fetches the hostId from the http request.
-func (high *hostIDGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (high *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	high.hostId = gimlet.GetVars(r)["host_id"]
+
 	return nil
 }
 
 // Execute calls the data FindHostById function and returns the host
 // from the provider.
-func (high *hostIDGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundHost, err := sc.FindHostById(high.hostId)
+func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
+	foundHost, err := high.sc.FindHostById(high.hostId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	hostModel := &model.APIHost{}
 	if err = hostModel.BuildFromService(*foundHost); err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
 	if foundHost.RunningTask != "" {
-		runningTask, err := sc.FindTaskById(foundHost.RunningTask)
+		runningTask, err := high.sc.FindTaskById(foundHost.RunningTask)
 		if err != nil {
 			if apiErr, ok := err.(gimlet.ErrorResponse); !ok || (ok && apiErr.StatusCode != http.StatusNotFound) {
-				return ResponseData{}, errors.Wrap(err, "Database error")
+				return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 			}
 		}
 
 		if err = hostModel.BuildFromService(runningTask); err != nil {
-			return ResponseData{}, errors.Wrap(err, "problem adding task data to host response")
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "problem adding task data to host response"))
 		}
 	}
 
-	return ResponseData{
-		Result: []model.Model{hostModel},
-	}, nil
+	return gimlet.NewJSONResponse(hostModel)
 }
 
-func (hgh *hostGetHandler) Handler() RequestHandler {
+////////////////////////////////////////////////////////////////////////
+//
+// GET /hosts
+// GET /users/{user_id}/hosts
+
+func makeFetchHosts(sc data.Connector) gimlet.RouteHandler {
 	return &hostGetHandler{
-		&PaginationExecutor{
-			KeyQueryParam:   "host_id",
-			LimitQueryParam: "limit",
-			Paginator:       hostPaginator,
-			Args:            hostGetArgs{},
-		},
+		sc: sc,
 	}
 }
 
-type hostGetArgs struct {
+type hostGetHandler struct {
+	limit  int
+	key    string
 	status string
 	user   string
+
+	sc data.Connector
+	*PaginationExecutor
 }
 
-func (hgh *hostGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	hgh.Args = hostGetArgs{
-		status: r.URL.Query().Get("status"),
+func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
+	return &hostGetHandler{
+		sc: hgh.sc,
 	}
-	return hgh.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 
-// hostPaginator is an instance of a PaginatorFunc that defines how to paginate on
-// the host collection.
-func hostPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
-	*PageResult, error) {
-	// Fetch this page of hosts, plus the next one
-	// Perhaps these could be cached in case user is making multiple calls idk?
-	hpArgs, ok := args.(hostGetArgs)
-	if !ok {
-		panic("Wrong args type passed in for host paginator")
-	}
-	hosts, err := sc.FindHostsById(key, hpArgs.status, hpArgs.user, limit*2, 1)
+func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	vals := r.URL.Query()
+	hgh.status = vals.Get("status")
+	var err error
+
+	hgh.limit, err = getLimit(vals)
 	if err != nil {
-		if apiErr, ok := err.(gimlet.ErrorResponse); !ok || apiErr.StatusCode != http.StatusNotFound {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
-	}
-	nextPage := makeNextHostsPage(hosts, limit)
-
-	// Make the previous page
-	prevHosts, err := sc.FindHostsById(key, hpArgs.status, hpArgs.user, limit, -1)
-	if err != nil && hosts == nil {
-		if apiErr, ok := err.(gimlet.ErrorResponse); !ok || apiErr.StatusCode != http.StatusNotFound {
-			return []model.Model{}, nil, errors.Wrap(err, "Database error")
-		}
+		return errors.WithStack(err)
 	}
 
-	prevPage := makePrevHostsPage(prevHosts)
+	k, ok := vals["host_id"]
+	if ok && len(k) >= 1 {
+		hgh.key = k[0]
+	}
 
-	pageResults := &PageResult{
-		Next: nextPage,
-		Prev: prevPage,
+	// only populated in the case of the /users/{user}/hosts route
+	hgh.user = gimlet.GetVars(r)["user_id"]
+
+	return nil
+}
+
+func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
+	hosts, err := hgh.sc.FindHostsById(hgh.key, hgh.status, hgh.user, hgh.limit+1)
+	if err != nil {
+		gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	lastIndex := len(hosts)
-	if nextPage != nil {
-		lastIndex = limit
+	if len(hosts) > hgh.limit {
+		lastIndex = hgh.limit
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				BaseURL:         hgh.sc.GetURL(),
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "host_id",
+				Relation:        "next",
+				Key:             hosts[hgh.limit].Id,
+				Limit:           hgh.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
+		}
 	}
 
 	// Truncate the hosts to just those that will be returned.
@@ -167,73 +160,60 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 		}
 	}
 
-	tasks, err := sc.FindTasksByIds(taskIds)
+	tasks, err := hgh.sc.FindTasksByIds(taskIds)
 	if err != nil {
-		if apiErr, ok := err.(gimlet.ErrorResponse); !ok ||
-			(ok && apiErr.StatusCode != http.StatusNotFound) {
-			return []model.Model{}, nil, errors.Wrap(err, "Database error")
-		}
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
-	models, err := makeHostModelsWithTasks(hosts, tasks)
-	if err != nil {
-		return []model.Model{}, &PageResult{}, err
-	}
-	return models, pageResults, nil
-}
 
-func makeHostModelsWithTasks(hosts []host.Host, tasks []task.Task) ([]model.Model, error) {
-	// Build a map of tasks indexed by their Id to make them easily referenceable.
 	tasksById := make(map[string]task.Task, len(tasks))
 	for _, t := range tasks {
 		tasksById[t.Id] = t
 	}
-	// Create a list of host models.
-	models := make([]model.Model, len(hosts))
-	for ix, h := range hosts {
-		apiHost := model.APIHost{}
-		err := apiHost.BuildFromService(h)
-		if err != nil {
-			return []model.Model{}, err
+
+	for _, h := range hosts {
+		apiHost := &model.APIHost{}
+		if err = apiHost.BuildFromService(h); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
 		}
+
 		if h.RunningTask != "" {
 			runningTask, ok := tasksById[h.RunningTask]
 			if !ok {
 				continue
 			}
 			// Add the task information to the host document.
-			err := apiHost.BuildFromService(runningTask)
-			if err != nil {
-				return []model.Model{}, err
+
+			if err = apiHost.BuildFromService(runningTask); err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
 			}
 		}
-		// Put the model into the array
-		models[ix] = &apiHost
-	}
-	return models, nil
-
-}
-
-func makeNextHostsPage(hosts []host.Host, limit int) *Page {
-	var nextPage *Page
-	if len(hosts) > limit {
-		nextLimit := len(hosts) - limit
-		nextPage = &Page{
-			Relation: "next",
-			Key:      hosts[limit].Id,
-			Limit:    nextLimit,
+		if err = resp.AddData(apiHost); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
-	return nextPage
+
+	return resp
 }
 
-func makePrevHostsPage(hosts []host.Host) *Page {
-	var prevPage *Page
-	if len(hosts) > 1 {
-		prevPage = &Page{
-			Relation: "prev",
-			Key:      hosts[0].Id,
-			Limit:    len(hosts),
+func getLimit(vals url.Values) (int, error) {
+	var (
+		limit int
+		err   error
+	)
+
+	if l, ok := vals["limit"]; ok && len(l) > 0 {
+		limit, err = strconv.Atoi(l[0])
+		if err != nil {
+			return 0, gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("invalid Limit Specified: %s", err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
 		}
 	}
-	return prevPage
+
+	if limit == 0 {
+		return defaultLimit, nil
+	}
+
+	return limit, nil
 }

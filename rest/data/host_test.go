@@ -149,7 +149,7 @@ func (s *HostConnectorSuite) TestFindByIdFail() {
 }
 
 func (s *HostConnectorSuite) TestFindByUser() {
-	hosts, err := s.ctx.FindHostsById("", "", testUser, 100, 1)
+	hosts, err := s.ctx.FindHostsById("", "", testUser, 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -158,7 +158,7 @@ func (s *HostConnectorSuite) TestFindByUser() {
 }
 
 func (s *HostConnectorSuite) TestStatusFiltering() {
-	hosts, err := s.ctx.FindHostsById("", "", "", 100, 1)
+	hosts, err := s.ctx.FindHostsById("", "", "", 100)
 	s.NoError(err)
 	s.NotNil(hosts)
 	for _, h := range hosts {
@@ -172,20 +172,18 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 	}
 }
 
-func (s *HostConnectorSuite) TestLimitAndSort() {
-	hosts, err := s.ctx.FindHostsById("", evergreen.HostTerminated, "", 2, 1)
+func (s *HostConnectorSuite) TestLimit() {
+	hosts, err := s.ctx.FindHostsById("", evergreen.HostTerminated, "", 2)
 	s.NoError(err)
 	s.NotNil(hosts)
 	s.Equal(2, len(hosts))
 	s.Equal("host2", hosts[0].Id)
 	s.Equal("host3", hosts[1].Id)
 
-	hosts, err = s.ctx.FindHostsById("host4", evergreen.HostTerminated, "", 2, -1)
+	hosts, err = s.ctx.FindHostsById("", evergreen.HostTerminated, "", 3)
 	s.NoError(err)
 	s.NotNil(hosts)
-	s.Equal(2, len(hosts))
-	s.Equal("host4", hosts[0].Id)
-	s.Equal("host3", hosts[1].Id)
+	s.Equal(3, len(hosts))
 }
 
 func (s *HostConnectorSuite) TestSpawnHost() {

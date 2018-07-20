@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -113,13 +114,12 @@ func (s *VersionSuite) SetupSuite() {
 
 // TestFindByVersionId tests the route for finding version by its ID.
 func (s *VersionSuite) TestFindByVersionId() {
-	handler := &versionHandler{versionId: "versionId"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &versionHandler{versionId: "versionId", sc: s.sc}
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
-	version := res.Result[0]
-	h, ok := (version).(*model.APIVersion)
+	s.Equal(http.StatusOK, res.Status())
+
+	h, ok := res.Data().(*model.APIVersion)
 	s.True(ok)
 	s.Equal(model.ToAPIString(versionId), h.Id)
 	s.Equal(model.NewTime(timeField), h.CreateTime)
@@ -136,15 +136,20 @@ func (s *VersionSuite) TestFindByVersionId() {
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
 func (s *VersionSuite) TestFindAllBuildsForVersion() {
-	handler := &buildsForVersionHandler{versionId: "versionId"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &buildsForVersionHandler{versionId: "versionId", sc: s.sc}
+	res := handler.Run(context.TODO())
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	s.Equal(2, len(res.Result))
 
-	for idx, build := range res.Result {
+	builds, ok := res.Data().([]model.Model)
+	s.True(ok)
+
+	s.Equal(2, len(builds))
+
+	for idx, build := range builds {
 		b, ok := (build).(*model.APIBuild)
 		s.True(ok)
+
 		s.Equal(model.ToAPIString(s.bi[idx]), b.Id)
 		s.Equal(model.NewTime(timeField), b.CreateTime)
 		s.Equal(model.NewTime(timeField), b.StartTime)

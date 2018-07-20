@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -49,15 +48,9 @@ func (tbh *tasksByBuildHandler) Parse(ctx context.Context, r *http.Request) erro
 	tbh.key = vals.Get("start_at")
 
 	var err error
-	limitVal := vals.Get("limit")
-	if limitVal != "" {
-		tbh.limit, err = strconv.Atoi(limitVal)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "invalid limit specified",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
+	tbh.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	_, tbh.fetchAllExecutions = vals["fetch_all_executions"]
@@ -95,7 +88,6 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
 				"problem paginating response"))
-
 		}
 	}
 

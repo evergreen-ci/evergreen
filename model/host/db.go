@@ -486,13 +486,7 @@ func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
 	)
 }
 
-func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]Host, error) {
-	sort := []string{IdKey}
-	sortOperator := "$gte"
-	if sortDir < 0 {
-		sortOperator = "$lte"
-		sort = []string{"-" + IdKey}
-	}
+func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, error) {
 	var statusMatch interface{}
 	if status != "" {
 		statusMatch = status
@@ -501,18 +495,16 @@ func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]
 	}
 
 	filter := bson.M{
-		IdKey:     bson.M{sortOperator: id},
+		IdKey:     bson.M{"$gte": id},
 		StatusKey: statusMatch,
 	}
+
 	if user != "" {
 		filter[StartedByKey] = user
 	}
-	query := db.Q{}
-	query = query.Filter(filter)
-	query = query.Sort(sort)
-	query = query.Limit(limit)
 
-	hosts, err := Find(query)
+	var query db.Q
+	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying database")
 	}

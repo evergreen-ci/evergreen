@@ -20,8 +20,9 @@ import (
 )
 
 type HostSuite struct {
-	sc   *data.MockConnector
-	data data.MockHostConnector
+	route *hostIDGetHandler
+	sc    *data.MockConnector
+	data  data.MockHostConnector
 
 	suite.Suite
 }
@@ -40,34 +41,47 @@ func (s *HostSuite) SetupSuite() {
 	}
 }
 
-func (s *HostSuite) TestFindByIdFirst() {
-	handler := &hostIDGetHandler{hostId: "host1"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
-	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+func (s *HostSuite) SetupTest() {
+	s.route = &hostIDGetHandler{
+		sc: s.sc,
+	}
+}
 
-	h, ok := (res.Result[0]).(*model.APIHost)
+func (s *HostSuite) TestFindByIdFirst() {
+	s.route.hostId = "host1"
+	res := s.route.Run(context.TODO())
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
+	h, ok := res.Data().(*model.APIHost)
+	s.True(ok)
+	s.NotNil(res)
+
 	s.True(ok)
 	s.Equal(model.ToAPIString("host1"), h.Id)
 }
 
 func (s *HostSuite) TestFindByIdLast() {
-	handler := &hostIDGetHandler{hostId: "host2"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	s.route.hostId = "host2"
+	res := s.route.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.Equal(http.StatusOK, res.Status())
 
-	h, ok := (res.Result[0]).(*model.APIHost)
+	h, ok := res.Data().(*model.APIHost)
+	s.True(ok)
+	s.NotNil(res)
+
 	s.True(ok)
 	s.Equal(model.ToAPIString("host2"), h.Id)
+
 }
 
 func (s *HostSuite) TestFindByIdFail() {
-	handler := &hostIDGetHandler{hostId: "host3"}
-	_, ok := handler.Execute(context.TODO(), s.sc)
-	s.Error(ok)
+	s.route.hostId = "host3"
+	res := s.route.Run(context.TODO())
+	s.NotNil(res)
+	s.Equal(http.StatusNotFound, res.Status(), "%+v", res)
+
 }
 
 type hostTerminateHostHandlerSuite struct {

@@ -22,16 +22,11 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/hosts":                             getHostRouteManager,
-		"/versions/{version_id}":             getVersionIdRouteManager,
-		"/versions/{version_id}/builds":      getBuildsForVersionRouteManager,
-		"/patches/{patch_id}":                getPatchByIdManager,
 		"/cost/distro/{distro_id}":           getCostByDistroIdRouteManager,
 		"/cost/project/{project_id}/tasks":   getCostTaskByProjectRouteManager,
 		"/cost/version/{version_id}":         getCostByVersionIdRouteManager,
 		"/distros":                           getDistroRouteManager,
 		"/hooks/github":                      getGithubHooksRouteManager(queue, githubSecret),
-		"/hosts/{host_id}":                   getHostIDRouteManager,
 		"/hosts/{host_id}/change_password":   getHostChangeRDPPasswordRouteManager,
 		"/hosts/{host_id}/extend_expiration": getHostExtendExpirationRouteManager,
 		"/hosts/{host_id}/terminate":         getHostTerminateRouteManager,
@@ -56,7 +51,6 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 		"/tasks/{task_id}/restart":                             getTaskRestartRouteManager,
 		"/tasks/{task_id}/tests":                               getTestRouteManager,
 		"/user/settings":                                       getUserSettingsRouteManager,
-		"/users/{user_id}/hosts":                               getHostsByUserManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,
 		"/versions/{version_id}/abort":                         getAbortVersionRouteManager,
 		"/versions/{version_id}/restart":                       getRestartVersionRouteManager,
@@ -81,11 +75,19 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 	app.AddRoute("/admin/settings").Version(2).Get().Wrap(superUser).RouteHandler(makeFetchAdminSettings(sc))
 	app.AddRoute("/admin/settings").Version(2).Post().Wrap(superUser).RouteHandler(makeSetAdminSettings(sc))
 	app.AddRoute("/alias/{name}").Version(2).Get().RouteHandler(makeFetchAliases(sc))
-	app.AddRoute("/hosts/create/{task_id}").Version(2).Post().RouteHandler(makeHostCreateRouteManager(sc))
-	app.AddRoute("/hosts/list/{task_id}").Version(2).Get().RouteHandler(makeHostListRouteManager(sc))
+	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
+	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc))
+	app.AddRoute("/hosts/{host_id}").Version(2).Get().RouteHandler(makeGetHostByID(sc))
+	app.AddRoute("/hosts/{task_id}/create").Version(2).Post().RouteHandler(makeHostCreateRouteManager(sc))
+	app.AddRoute("/hosts/{task_id}/list").Version(2).Get().RouteHandler(makeHostListRouteManager(sc))
 	app.AddRoute("/builds/{build_id}").Version(2).Get().RouteHandler(makeGetBuildByID(sc))
 	app.AddRoute("/builds/{build_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangeStatusForBuild(sc))
 	app.AddRoute("/builds/{build_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortBuild(sc))
 	app.AddRoute("/builds/{build_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartBuild(sc))
 	app.AddRoute("/builds/{build_id}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchTasksByBuild(sc))
+	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHosts(sc))
+	app.AddRoute("/versions/{version_id}").Version(2).Get().RouteHandler(makeGetVersionByID(sc))
+	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().RouteHandler(makeGetVersionByID(sc))
+	app.AddRoute("/patches/{patch_id}").Version(2).Get().RouteHandler(makeFetchPatchByID(sc))
+	app.AddRoute("/patches/{patch_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makeChangePatchStatus(sc))
 }

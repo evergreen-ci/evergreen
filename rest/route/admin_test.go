@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -302,7 +301,7 @@ func TestAdminEventRoute(t *testing.T) {
 	response := route.Run(ctx)
 	assert.NotNil(resp)
 	count := 0
-	fmt.Printf("%+v\n", response)
+
 	data := response.Data().([]interface{})
 	for _, model := range data {
 		evt, ok := model.(*restModel.APIAdminEvent)
@@ -314,12 +313,14 @@ func TestAdminEventRoute(t *testing.T) {
 		assert.Equal("user", evt.User)
 	}
 	assert.Equal(10, count)
-	pagination := response.Pages().Next
-	assert.Equal("ts", pagination.KeyQueryParam)
-	assert.Equal("limit", pagination.LimitQueryParam)
-	assert.Equal("next", pagination.Relation)
-	assert.Equal(10, pagination.Limit)
-	ts, err := time.Parse(time.RFC3339, pagination.Key)
+	pagination := response.Pages()
+	assert.NotNil(pagination)
+	assert.NotNil(pagination.Next)
+	assert.NotZero(pagination.Next.KeyQueryParam)
+	assert.Equal("limit", pagination.Next.LimitQueryParam)
+	assert.Equal("next", pagination.Next.Relation)
+	assert.Equal(10, pagination.Next.Limit)
+	ts, err := time.Parse(time.RFC3339, pagination.Next.Key)
 	assert.NoError(err)
 	assert.InDelta(now.Unix(), ts.Unix(), float64(time.Millisecond.Nanoseconds()))
 }
