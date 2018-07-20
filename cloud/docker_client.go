@@ -190,6 +190,13 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		pathToExecutable += ".exe"
 	}
 
+	// Generate the host secret for container if none exists.
+	if h.Secret == "" {
+		if err = h.CreateSecret(); err != nil {
+			return errors.Wrapf(err, "creating secret for %s", h.Id)
+		}
+	}
+
 	// Build Evergreen agent command.
 	agentCmdParts := []string{
 		pathToExecutable,
