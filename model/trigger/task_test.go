@@ -156,11 +156,41 @@ func (s *taskSuite) SetupTest() {
 			},
 			Subscriber: event.Subscriber{
 				Type:   event.JIRACommentSubscriberType,
-				Target: "A-1",
+				Target: "A-2",
 			},
 			Owner: "someone",
 			TriggerData: map[string]string{
 				event.TaskPercentChangeKey: "50",
+			},
+		},
+		{
+			ID:      bson.NewObjectId().Hex(),
+			Type:    event.ResourceTypeTask,
+			Trigger: triggerRuntimeChangeByPercent,
+			Selectors: []event.Selector{
+				{
+					Type: "project",
+					Data: "test_project",
+				},
+				{
+					Type: "requester",
+					Data: evergreen.RepotrackerVersionRequester,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.EmailSubscriberType,
+				Target: "email",
+			},
+			RegexSelectors: []event.Selector{
+				{
+					Type: selectorDisplayName,
+					Data: "test-display-name",
+				},
+			},
+			Owner:     "test_project",
+			OwnerType: event.OwnerTypeProject,
+			TriggerData: map[string]string{
+				event.TaskPercentChangeKey: "10",
 			},
 		},
 	}
@@ -847,4 +877,23 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 	n, err = s.t.taskRuntimeChange(&s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func (s *taskSuite) TestProjectTrigger() {
+	lastGreen := task.Task{
+		Id:                  "test1",
+		BuildVariant:        "test_build_variant",
+		DistroId:            "test_distro_id",
+		Project:             "test_project",
+		DisplayName:         "test-display-name",
+		StartTime:           s.task.StartTime.Add(-time.Hour),
+		RevisionOrderNumber: -1,
+		Status:              evergreen.TaskSucceeded,
+	}
+	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
+	s.NoError(lastGreen.Insert())
+
+	n, err := NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 3)
 }
