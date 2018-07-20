@@ -148,7 +148,6 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 				"problem paginating response"))
 		}
 	}
-	fmt.Println(len(hosts), lastIndex)
 
 	// Truncate the hosts to just those that will be returned.
 	hosts = hosts[:lastIndex]
@@ -170,7 +169,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, t := range tasks {
 		tasksById[t.Id] = t
 	}
-	fmt.Println(len(hosts), hosts)
+
 	for _, h := range hosts {
 		apiHost := &model.APIHost{}
 		if err = apiHost.BuildFromService(h); err != nil {
@@ -188,7 +187,6 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 		}
-		fmt.Println(apiHost)
 		if err = resp.AddData(apiHost); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}

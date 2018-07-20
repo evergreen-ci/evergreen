@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -477,7 +476,6 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	fmt.Println(hosts)
 	s.Equal(8, hosts)
 }
 

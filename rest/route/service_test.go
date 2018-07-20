@@ -70,20 +70,33 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
+						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToAPIString(""),
+						Distro: model.DistroInfo{
+							Id:       model.ToAPIString(""),
+							Provider: model.ToAPIString(""),
+						},
+						StartedBy: model.ToAPIString(""),
+						Type:      model.ToAPIString(""),
+						User:      model.ToAPIString(""),
+						Status:    model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
+						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "host_id",
+						LimitQueryParam: "limit",
 					},
 				}
 				handler := &hostGetHandler{
-					sc:  &serviceContext,
-					key: cachedHosts[hostToStartAt].Id,
+					sc:    &serviceContext,
+					key:   cachedHosts[hostToStartAt].Id,
+					limit: limit,
 				}
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
@@ -94,20 +107,33 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
+						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToAPIString(""),
+						Distro: model.DistroInfo{
+							Id:       model.ToAPIString(""),
+							Provider: model.ToAPIString(""),
+						},
+						StartedBy: model.ToAPIString(""),
+						Type:      model.ToAPIString(""),
+						User:      model.ToAPIString(""),
+						Status:    model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
-						Limit:    50,
-						Relation: "next",
+						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "host_id",
+						LimitQueryParam: "limit",
 					},
 				}
 				handler := &hostGetHandler{
-					key: cachedHosts[hostToStartAt].Id,
-					sc:  &serviceContext,
+					key:   cachedHosts[hostToStartAt].Id,
+					limit: limit,
+					sc:    &serviceContext,
 				}
 
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
@@ -119,20 +145,33 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
+						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToAPIString(""),
+						Distro: model.DistroInfo{
+							Id:       model.ToAPIString(""),
+							Provider: model.ToAPIString(""),
+						},
+						StartedBy: model.ToAPIString(""),
+						Type:      model.ToAPIString(""),
+						User:      model.ToAPIString(""),
+						Status:    model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
+						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "host_id",
+						LimitQueryParam: "limit",
 					},
 				}
 				handler := &hostGetHandler{
-					sc:  &serviceContext,
-					key: cachedHosts[hostToStartAt].Id,
+					sc:    &serviceContext,
+					key:   cachedHosts[hostToStartAt].Id,
+					limit: limit,
 				}
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
@@ -143,20 +182,33 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.ToAPIString(fmt.Sprintf("host%d", i)),
+						Id:      model.ToAPIString(fmt.Sprintf("host%d", i)),
+						HostURL: model.ToAPIString(""),
+						Distro: model.DistroInfo{
+							Id:       model.ToAPIString(""),
+							Provider: model.ToAPIString(""),
+						},
+						StartedBy: model.ToAPIString(""),
+						Type:      model.ToAPIString(""),
+						User:      model.ToAPIString(""),
+						Status:    model.ToAPIString(""),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
 				expectedPages := &gimlet.ResponsePages{
 					Next: &gimlet.Page{
-						Key:      fmt.Sprintf("host%d", hostToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
+						Key:             fmt.Sprintf("host%d", hostToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "host_id",
+						LimitQueryParam: "limit",
 					},
 				}
 				handler := &hostGetHandler{
-					sc:  &serviceContext,
-					key: cachedHosts[hostToStartAt].Id,
+					sc:    &serviceContext,
+					key:   cachedHosts[hostToStartAt].Id,
+					limit: limit,
 				}
 				validatePaginatedResponse(t, handler, expectedHosts, expectedPages)
 			})
@@ -1136,13 +1188,12 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []m
 
 	resp := h.Run(ctx)
 	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status(), "%+v", resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
 
 	rpg := resp.Pages()
 	if !assert.NotNil(t, rpg) {
 		return
 	}
-	fmt.Printf("%+v\n", resp)
 
 	assert.True(t, pages.Next != nil || pages.Prev != nil)
 	assert.True(t, rpg.Next != nil || rpg.Prev != nil)
@@ -1164,6 +1215,7 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []m
 	if !assert.Equal(t, len(expected), len(data)) {
 		return
 	}
+
 	for idx := range expected {
 		m, ok := data[idx].(model.Model)
 

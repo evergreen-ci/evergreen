@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -302,7 +301,7 @@ func TestAdminEventRoute(t *testing.T) {
 	response := route.Run(ctx)
 	assert.NotNil(resp)
 	count := 0
-	fmt.Printf("%+v\n", response)
+
 	data := response.Data().([]interface{})
 	for _, model := range data {
 		evt, ok := model.(*restModel.APIAdminEvent)
