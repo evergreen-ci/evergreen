@@ -19,7 +19,6 @@ func init() {
 }
 
 const (
-	objectHost        = "host"
 	triggerExpiration = "expiration"
 
 	// notification templates
