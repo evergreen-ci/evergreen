@@ -111,7 +111,7 @@ func GetEstimatedStartTime(t task.Task) (time.Duration, error) {
 		}
 	}
 	if queuePos == -1 {
-		return -1, errors.Errorf("task %s is not in a queue", t.Id)
+		return -1, nil
 	}
 	hosts, err := host.Find(host.ByDistroId(t.DistroId))
 	if err != nil {
