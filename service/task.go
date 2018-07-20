@@ -59,6 +59,7 @@ type uiTaskData struct {
 	DependsOn            []uiDep                 `json:"depends_on"`
 	OverrideDependencies bool                    `json:"override_dependencies"`
 	IngestTime           time.Time               `json:"ingest_time"`
+	EstWaitTime          time.Duration           `json:"wait_time"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -250,6 +251,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if uiTask.MinQueuePos < 0 {
 		uiTask.MinQueuePos = 0
+	}
+	if uiTask.Status == evergreen.TaskUndispatched {
+		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(*projCtx.Task)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	var taskHost *host.Host
