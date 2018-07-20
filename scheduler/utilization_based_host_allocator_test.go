@@ -40,6 +40,7 @@ func TestGroupByTaskGroup(t *testing.T) {
 	tasks = []model.TaskQueueItem{
 		{Id: "t1", Group: "g2"},
 		{Id: "t2"},
+	}{Id: "t2"},
 	}
 	groups = groupByTaskGroup(hosts, tasks)
 	assert.Len(groups, 3)

@@ -22,8 +22,6 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 // http handler which can be given more functions.
 func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, githubSecret []byte) {
 	routes := map[string]routeManagerFactory{
-		"/versions/{version_id}":             getVersionIdRouteManager,
-		"/versions/{version_id}/builds":      getBuildsForVersionRouteManager,
 		"/patches/{patch_id}":                getPatchByIdManager,
 		"/cost/distro/{distro_id}":           getCostByDistroIdRouteManager,
 		"/cost/project/{project_id}/tasks":   getCostTaskByProjectRouteManager,
@@ -89,4 +87,6 @@ func GetHandler(app *gimlet.APIApp, sc data.Connector, queue amboy.Queue, github
 	app.AddRoute("/builds/{build_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartBuild(sc))
 	app.AddRoute("/builds/{build_id}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchTasksByBuild(sc))
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHosts(sc))
+	app.AddRoute("/versions/{version_id}").Version(2).Get().RouteHandler(makeGetVersionByID(sc))
+	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().RouteHandler(makeGetVersionByID(sc))
 }
