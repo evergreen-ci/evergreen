@@ -249,3 +249,42 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 
 	return ids, nil
 }
+
+func (m *dockerManager) RemoveLeastRecentlyUsedImageID(ctx context.Context, h *host.Host) error {
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "Error listing images")
+	}
+	// get earliest created image ID
+	earliest := time.Now()
+	id := ""
+	for _, image := range images {
+		if time.Unix(image.Created, 0).Before(earliest) {
+			earliest = time.Unix(image.Created, 0)
+			id = image.ID
+		}
+	}
+
+	if id == "" {
+		return errors.Errorf("No images to delete on host '%s'", h.Id)
+	}
+	// remove image based on ID
+	err = m.client.RemoveImage(ctx, h, id)
+	if err != nil {
+		return errors.Wrapf(err, "Error removing image '%s'", id)
+	}
+	return nil
+}
+
+func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error) {
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error listing images")
+	}
+
+	space := int64(0)
+	for _, image := range images {
+		space += image.Size
+	}
+	return space, nil
+}

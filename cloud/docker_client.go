@@ -30,8 +30,10 @@ type dockerClient interface {
 	CreateContainer(context.Context, *host.Host, string, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
+	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
 	StartContainer(context.Context, *host.Host, string) error
+	ListImages(context.Context, *host.Host) ([]types.ImageSummary, error)
 }
 
 type dockerClientImpl struct {
@@ -264,6 +266,46 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 	}
 
 	return containers, nil
+}
+
+// ListImages lists all images on the specified host machine.
+func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]types.ImageSummary, error) {
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	// Get all container images
+	opts := types.ImageListOptions{All: false}
+	images, err := dockerClient.ImageList(ctx, opts)
+	if err != nil {
+		err = errors.Wrap(err, "Docker list API call failed")
+		grip.Error(err)
+		return nil, err
+	}
+
+	return images, nil
+}
+
+// RemoveImage forcibly removes an image from its host machine
+func (c *dockerClientImpl) RemoveImage(ctx context.Context, h *host.Host, imageID string) error {
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	opts := types.ImageRemoveOptions{Force: true}
+	removed, err := dockerClient.ImageRemove(ctx, imageID, opts)
+	if err != nil {
+		err = errors.Wrapf(err, "Failed to remove image '%s'", imageID)
+		grip.Error(err)
+		return err
+	}
+	// check to make sure an image was removed
+	if len(removed) <= 0 {
+		return errors.Errorf("Failed to remove image '%s'", imageID)
+	}
+	return nil
 }
 
 // RemoveContainer forcibly removes a running or stopped container by ID from its host machine.

@@ -59,6 +59,8 @@ type ContainerManager interface {
 
 	// GetContainers returns the IDs of all running containers on a specified host
 	GetContainers(context.Context, *host.Host) ([]string, error)
+	RemoveLeastRecentlyUsedImageID(ctx context.Context, h *host.Host) error
+	CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error)
 }
 
 // CostCalculator is an interface for cloud providers that can estimate what a span of time on a

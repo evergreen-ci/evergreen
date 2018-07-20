@@ -464,3 +464,19 @@ func (s *DockerSuite) TestGetContainers() {
 	s.Equal(1, len(containers))
 	s.Equal("container-1", containers[0])
 }
+
+func (s *DockerSuite) TestRemoveLeastRecentlyUsedImageID() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failList)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.RemoveLeastRecentlyUsedImageID(ctx, parent)
+	s.NoError(err)
+}
