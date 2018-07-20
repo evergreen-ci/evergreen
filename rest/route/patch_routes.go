@@ -17,41 +17,29 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Handler for fetching patches by id and changing patch status
-//
-//    /patches/{patch_id}
-
-func getPatchByIdManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodGet,
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &patchByIdHandler{},
-			},
-			{
-				MethodType:     http.MethodPatch,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &patchChangeStatusHandler{},
-			},
-		},
-	}
-}
+// PATCH /rest/v2/patches/{patch_id}
 
 type patchChangeStatusHandler struct {
 	Activated *bool  `json:"activated"`
 	Priority  *int64 `json:"priority"`
 
 	patchId string
+	sc      data.Connector
 }
 
-func (p *patchChangeStatusHandler) Handler() RequestHandler {
-	return &patchChangeStatusHandler{}
+func makeChangePatchStatus(sc data.Connector) gimlet.RouteHandler {
+	return &patchChangeStatusHandler{
+		sc: sc,
+	}
 }
 
-func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (p *patchChangeStatusHandler) Factory() gimlet.RouteHandler {
+	return &patchChangeStatusHandler{
+		sc: p.sc,
+	}
+}
+
+func (p *patchChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
@@ -69,69 +57,76 @@ func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 	return nil
 }
 
-func (p *patchChangeStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
+
 	if p.Priority != nil {
 		priority := *p.Priority
-		if ok := validPriority(priority, user, sc); !ok {
-			return ResponseData{}, gimlet.ErrorResponse{
+		if ok := validPriority(priority, user, p.sc); !ok {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
-			}
+			})
 		}
-		if err := sc.SetPatchPriority(p.patchId, priority); err != nil {
-			return ResponseData{}, errors.Wrap(err, "Database error")
+		if err := p.sc.SetPatchPriority(p.patchId, priority); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 	if p.Activated != nil {
-		if err := sc.SetPatchActivated(p.patchId, user.Username(), *p.Activated); err != nil {
-			return ResponseData{}, errors.Wrap(err, "Database error")
+		if err := p.sc.SetPatchActivated(p.patchId, user.Username(), *p.Activated); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
-	foundPatch, err := sc.FindPatchById(p.patchId)
+	foundPatch, err := p.sc.FindPatchById(p.patchId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	patchModel := &model.APIPatch{}
-	err = patchModel.BuildFromService(*foundPatch)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+	if err = patchModel.BuildFromService(*foundPatch); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
-	return ResponseData{
-		Result: []model.Model{patchModel},
-	}, nil
+	return gimlet.NewJSONResponse(patchModel)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/patches/{patch_id}
 
 type patchByIdHandler struct {
 	patchId string
+	sc      data.Connector
 }
 
-func (p *patchByIdHandler) Handler() RequestHandler {
-	return &patchByIdHandler{}
+func makeFetchPatchByID(sc data.Connector) gimlet.RouteHandler {
+	return &patchByIdHandler{
+		sc: sc,
+	}
 }
 
-func (p *patchByIdHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (p *patchByIdHandler) Factory() gimlet.RouteHandler {
+	return &patchByIdHandler{sc: p.sc}
+}
+
+func (p *patchByIdHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
-func (p *patchByIdHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundPatch, err := sc.FindPatchById(p.patchId)
+func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
+	foundPatch, err := p.sc.FindPatchById(p.patchId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	patchModel := &model.APIPatch{}
 	err = patchModel.BuildFromService(*foundPatch)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{patchModel},
-	}, nil
+	return gimlet.NewJSONResponse(patchModel)
 }
 
 ////////////////////////////////////////////////////////////////////////

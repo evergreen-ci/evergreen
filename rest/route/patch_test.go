@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ type PatchByIdSuite struct {
 	sc     *data.MockConnector
 	objIds []bson.ObjectId
 	data   data.MockPatchConnector
-
+	route  *patchByIdHandler
 	suite.Suite
 }
 
@@ -45,28 +46,29 @@ func (s *PatchByIdSuite) SetupSuite() {
 	}
 }
 
-func (s *PatchByIdSuite) TestFindById() {
-	rm := getPatchByIdManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = s.objIds[0].Hex()
-	res, err := rm.Methods[0].Execute(context.TODO(), s.sc)
-	s.NoError(err)
-	s.NotNil(res)
-	s.Len(res.Result, 1)
+func (s *PatchByIdSuite) SetupTest() {
+	s.route = makeFetchPatchByID(s.sc).(*patchByIdHandler)
+}
 
-	p, ok := (res.Result[0]).(*model.APIPatch)
+func (s *PatchByIdSuite) TestFindById() {
+	s.route.patchId = s.objIds[0].Hex()
+	res := s.route.Run(context.TODO())
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status(), "%+v", res.Data())
+
+	p, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
 	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
-	rm := getPatchByIdManager("", 2)
 	new_id := bson.NewObjectId()
 	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
 	}
-	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = new_id.Hex()
-	res, err := rm.Methods[0].Execute(context.TODO(), s.sc)
-	s.Error(err)
-	s.Len(res.Result, 0)
+
+	s.route.patchId = new_id.Hex()
+	res := s.route.Run(context.TODO())
+	s.Equal(http.StatusNotFound, res.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -292,19 +294,18 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getPatchByIdManager("", 2)
-	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).patchId = s.objIds[0].Hex()
+	rm := makeChangePatchStatus(s.sc).(*patchChangeStatusHandler)
+
+	rm.patchId = s.objIds[0].Hex()
 	var tmp_true = true
-	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).Activated = &tmp_true
+	rm.Activated = &tmp_true
 	var tmp_seven = int64(7)
-	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).Priority = &tmp_seven
-	res, err := rm.Methods[1].Execute(ctx, s.sc)
-	s.NoError(err)
+	rm.Priority = &tmp_seven
+	res := rm.Run(ctx)
 	s.NotNil(res)
 	s.Equal(int64(7), s.data.CachedPriority[s.objIds[0].Hex()])
 	s.Equal(int64(0), s.data.CachedPriority[s.objIds[1].Hex()])
-	s.Len(res.Result, 1)
-	p, ok := (res.Result[0]).(*model.APIPatch)
+	p, ok := res.Data().(*model.APIPatch)
 	s.True(ok)
 	s.True(p.Activated)
 }
