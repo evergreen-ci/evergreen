@@ -225,12 +225,26 @@ var drawSingleTrendChart = function(params) {
 
   // Array with combinations combinations of {level, changePoint}
   var changePointForLevel = []
-  _.each(levelsMeta, function(level) {
-    _.each(visibleChangePoints, function(point) {
-      changePointForLevel.push({
-        level: level,
-        changePoint: point
+  _.each(visibleChangePoints, function(point) {
+    var level = _.findWhere(levelsMeta, {name: point.thread_level})
+    var levels = level ? [level] : levelsMeta
+
+    _.each(levels, function(level) {
+      // Check if there is existing point for this revision/level
+      // Mostly for MAXONLY mode
+      var existing = _.find(changePointForLevel, function(d) {
+        return d.level == level && d.changePoint.revision == point.revision
       })
+      // If the point already exists, increase count meta property
+      if (existing) {
+        existing.count++
+      } else {
+        changePointForLevel.push({
+          level: level,
+          changePoint: point,
+          count: 1,
+        })
+      }
     })
   })
 
@@ -628,12 +642,17 @@ var drawSingleTrendChart = function(params) {
         .attr({
           class: 'point change-point',
         })
-      .append('image') // Plus sign image for change points
+      .append('path') // Plus sign image for change points
         .attr({
-          width: cfg.points.changePointSize,
-          height: cfg.points.changePointSize,
-          transform: d3Translate(-cfg.points.changePointSize / 2),
-          'xlink:href': '/static/img/plus_sign.png',
+          // plus-sign stroke
+          class: 'change-point',
+          d: 'M-7,3.5h4v4h6v-4h4v-6h-4v-4h-6v4h-4z',
+        }).style({
+          fill: function(d) {
+            return d.count == 1 ? 'yellow' :
+                   d.count == 2 ? 'orange' :
+                   'red'
+          },
         })
 
     changePoints
