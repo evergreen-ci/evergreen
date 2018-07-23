@@ -106,10 +106,10 @@ Notifications Preferences
               <td class="col-lg-3">
                   <span ng-repeat="s in subscription.selectors">
                     <p ng-show="s.type === 'object'">when a [[s.data]] with:</p>
-                    <p ng-show="s.type !== 'object' && s.type === 'id'"><b>[[s.type]]</b> of
+                    <p ng-show="s.type !== 'object' && (s.type === 'id' || s.type.startsWith('in-'))"><b>[[s.type]]</b> of
                       <span style="width: 50%; display: block; overflow: hidden; text-overflow: ellipsis;"><a href="javascript:void(0);" ng-click="selectorClick([[subscription.selectors]])">[[s.data]]</a></span>
                     </p>
-                    <p ng-show="s.type !== 'object' && s.type !== 'id'"><b>[[s.type]]</b> of
+                    <p ng-show="s.type !== 'object' && s.type !== 'id' && !s.type.startsWith('in-')"><b>[[s.type]]</b> of
                       <span style="width: 50%; display: block; overflow: hidden; text-overflow: ellipsis;">[[s.data]]</span>
                     </p>
                   </span>
