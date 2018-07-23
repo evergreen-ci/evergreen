@@ -46,8 +46,8 @@ func (s *DockerSuite) SetupTest() {
 		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"image_name": "docker_image",
-			"pool_id":    "pool_id",
+			"image_url": "http://0.0.0.0:8000/docker_image.tgz",
+			"pool_id":   "pool_id",
 		},
 	}
 	s.parentHost = host.Host{
@@ -68,13 +68,13 @@ func (s *DockerSuite) TearDownTest() {
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
-		ImageID: "docker_image",
+		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
 	}
 	s.NoError(settingsOk.Validate())
 
-	// error when missing image id
-	settingsNoImageID := &dockerSettings{}
-	s.Error(settingsNoImageID.Validate())
+	// error when missing image url
+	settingsNoImageURL := &dockerSettings{}
+	s.Error(settingsNoImageURL.Validate())
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -437,7 +437,7 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	delete(*s.distro.ProviderSettings, "image_name")
+	delete(*s.distro.ProviderSettings, "image_url")
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 

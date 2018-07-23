@@ -15,13 +15,14 @@ import (
 
 type dockerClientMock struct {
 	// API call options
-	failInit   bool
-	failBuild  bool
-	failCreate bool
-	failGet    bool
-	failList   bool
-	failRemove bool
-	failStart  bool
+	failInit     bool
+	failDownload bool
+	failBuild    bool
+	failCreate   bool
+	failGet      bool
+	failList     bool
+	failRemove   bool
+	failStart    bool
 
 	// Other options
 	hasOpenPorts bool
@@ -39,11 +40,18 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
+func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, string) (string, error) {
+	if c.failDownload {
+		return "", errors.New("failed to download image")
+	}
+	return c.baseImage, nil
+}
+
 func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, string) (string, error) {
 	if c.failBuild {
 		return "", errors.New("failed to build image with agent")
 	}
-	return c.baseImage, nil
+	return fmt.Sprintf(provisionedImageTag, c.baseImage), nil
 }
 
 func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, string, *dockerSettings) error {
