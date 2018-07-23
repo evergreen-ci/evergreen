@@ -22,20 +22,20 @@ type dockerManager struct {
 
 // ProviderSettings specifies the settings used to configure a host instance.
 type dockerSettings struct {
-	// ImageID is the Docker image ID already loaded on the host machine.
-	ImageID string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	// ImageURL is the url of the Docker image to use when building the container.
+	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
 }
 
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
-	imageIDKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageID")
+	imageURLKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageURL")
 )
 
 //Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
-	if settings.ImageID == "" {
-		return errors.New("ImageName must not be blank")
+	if settings.ImageURL == "" {
+		return errors.New("ImageURL must not be blank")
 	}
 
 	return nil
@@ -79,7 +79,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		"message":   "decoded Docker container settings",
 		"container": h.Id,
 		"host_ip":   hostIP,
-		"image_id":  settings.ImageID,
+		"image_url": settings.ImageURL,
 	})
 
 	// Create container

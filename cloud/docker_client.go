@@ -191,7 +191,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, ds *dockerSettings) error {
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, settings *dockerSettings) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
@@ -210,7 +210,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	}
 
 	// Import correct base image if not already on host.
-	image, err := c.EnsureImageDownloaded(ctx, h, ds.ImageID)
+	image, err := c.EnsureImageDownloaded(ctx, h, settings.ImageURL)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", h.Id)
 	}
@@ -218,7 +218,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	// Build image containing Evergreen executable.
 	provisionedImage, err := c.BuildImageWithAgent(ctx, h, image)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", ds.ImageID, h.Id)
+		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", image, h.Id)
 	}
 
 	// Build path to Evergreen executable.
