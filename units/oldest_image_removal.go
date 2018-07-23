@@ -100,7 +100,7 @@ func (j *oldestImageRemovalJob) Run(ctx context.Context) {
 	}
 
 	if diskUsage >= maxDiskUsage {
-		err = containerMgr.RemoveOldestImageID(ctx, j.host)
+		err = containerMgr.RemoveOldestImage(ctx, j.host)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "error removing least recently used image ID on parent %s from Docker", j.HostID))
 			return
