@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -480,71 +479,4 @@ func (s *DockerSuite) TestRemoveOldestImageID() {
 
 	err = s.manager.RemoveOldestImageID(ctx, parent)
 	s.NoError(err)
-}
-func (s *DockerSuite) TestRemoveImage() {
-	ctx, cancel := context.WithCancel(context.Background())
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-
-	defer cancel()
-
-	host := &host.Host{
-		Id:            "parent",
-		HasContainers: true,
-		Host:          "ec2-34-229-92-221.compute-1.amazonaws.com",
-		ContainerPoolSettings: &evergreen.ContainerPool{
-			Port: 2376,
-		},
-	}
-
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			Docker: evergreen.DockerConfig{
-				APIVersion: "v1.37",
-			},
-		},
-	}
-
-	mgr := &dockerManager{}
-	err := mgr.Configure(ctx, settings)
-	if err != nil {
-		grip.Error(err)
-	}
-
-	err = mgr.RemoveOldestImageID(ctx, host)
-	grip.Error(err)
-}
-
-func (s *DockerSuite) TestGetContainersRunningImage() {
-	ctx, cancel := context.WithCancel(context.Background())
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-
-	defer cancel()
-
-	host := &host.Host{
-		Id:            "parent",
-		HasContainers: true,
-		Host:          "ec2-34-229-92-221.compute-1.amazonaws.com",
-		ContainerPoolSettings: &evergreen.ContainerPool{
-			Port: 2376,
-		},
-	}
-
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			Docker: evergreen.DockerConfig{
-				APIVersion: "v1.37",
-			},
-		},
-	}
-
-	mgr := &dockerManager{}
-	err := mgr.Configure(ctx, settings)
-	if err != nil {
-		grip.Error(err)
-	}
-
-	containers, err := mgr.GetContainersRunningImage(ctx, host, "sha256:74f8760a2a8b28abade3fcbcdb6998543f1d9b4a6fb61463c10adc0765c3cb12")
-	s.Equal(1, len(containers))
-	grip.Info(containers)
-	grip.Error(err)
 }
