@@ -6,6 +6,7 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
   $scope.getData = function() {
     var success = function(resp) {
       $scope.settings = resp.data;
+        console.log($scope.settings);
       $scope.getSubscriptions();
     };
     var failure = function(resp) {
