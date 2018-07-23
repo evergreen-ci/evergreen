@@ -46,7 +46,7 @@ func (s *DockerSuite) SetupTest() {
 		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"image_url": "http:0.0.0.0:8000/docker_image.tgz",
+			"image_url": "http://0.0.0.0:8000/docker_image.tgz",
 			"pool_id":   "pool_id",
 		},
 	}
@@ -68,7 +68,7 @@ func (s *DockerSuite) TearDownTest() {
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
-		ImageURL: "0.0.0.0:8000/docker_image.tgz",
+		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
 	}
 	s.NoError(settingsOk.Validate())
 
