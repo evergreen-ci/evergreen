@@ -30,7 +30,7 @@ func (s *LockManagerSuite) SetupSuite() {
 func (s *LockManagerSuite) SetupTest() {
 	s.ctx, s.testCancel = context.WithCancel(context.Background())
 	s.lm = newLockManager("test", s.driver)
-	s.lm.timeout = 300 * time.Millisecond
+	s.lm.timeout = 100 * time.Millisecond
 	s.lm.start(s.ctx)
 }
 
@@ -112,17 +112,17 @@ func (s *LockManagerSuite) TestPanicJobIsUnlocked() {
 		s.Error(s.lm.Lock(ctx, j), "idx=%d => %+v", i, j)
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(s.lm.timeout)
+
 	lastMod = j.Status().ModificationCount
 	s.True(lastMod >= 1)
 
-	for i := 0; i < 10; i++ {
-		s.Error(s.lm.Lock(ctx, j), "idx=%d => %+v", i, j)
-	}
-
 	s.False(j.Status().Completed)
 	cancel()
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(10 * s.lm.timeout)
+
+	lastMod = j.Status().ModificationCount
+	s.True(lastMod >= 2, "%d", lastMod)
 
 	s.NoError(s.lm.Lock(ctx, j), "%+v", j)
 

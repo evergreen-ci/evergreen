@@ -54,7 +54,15 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 		case <-ctx.Done():
 			return nil
 		case job := <-q.channel:
+			if job == nil {
+				continue
+			}
+
 			job, err = q.driver.Get(job.ID())
+			if job == nil {
+				continue
+			}
+
 			if err != nil {
 				grip.Notice(message.WrapError(err, message.Fields{
 					"id":        job.ID(),

@@ -515,8 +515,7 @@ func (d *mongoDB) Stats() amboy.QueueStats {
 		"message":    "problem counting all jobs",
 	}))
 
-	completed, err := jobs.Find(bson.M{"status.completed": true}).Count()
-
+	pending, err := jobs.Find(bson.M{"status.completed": false}).Count()
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"service":    "amboy.queue.mongodb",
@@ -526,7 +525,6 @@ func (d *mongoDB) Stats() amboy.QueueStats {
 	}))
 
 	numLocked, err := jobs.Find(bson.M{"status.completed": false, "status.in_prog": true}).Count()
-
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,
 		"service":    "amboy.queue.mongodb",
@@ -537,8 +535,8 @@ func (d *mongoDB) Stats() amboy.QueueStats {
 
 	return amboy.QueueStats{
 		Total:     numJobs,
-		Pending:   numJobs - completed,
-		Completed: completed,
+		Pending:   pending,
+		Completed: numJobs - pending,
 		Running:   numLocked,
 	}
 }
