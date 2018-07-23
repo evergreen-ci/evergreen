@@ -174,7 +174,7 @@ func (uis *UIServer) isSuperUser(u gimlet.User) bool {
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if len(uis.Settings.Ui.CORSOrigin) > 0 {
+		if r.Method == http.MethodGet && len(uis.Settings.Ui.CORSOrigin) > 0 {
 			w.Header().Add("Access-Control-Allow-Origin", uis.Settings.Ui.CORSOrigin)
 			w.Header().Add("Access-Control-Allow-Credentials", "true")
 			w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader))
