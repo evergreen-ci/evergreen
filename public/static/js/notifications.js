@@ -45,6 +45,12 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
     mciUserSettingsService.saveUserSettings($scope.settings, {success: success, error: failure});
   };
 
+  $scope.clearAllSubscriptions = function() {
+    $scope.subscriptions.forEach(function(sub) {
+      $scope.deleteSubscription(sub.id);
+    });
+  }
+
   $scope.deleteSubscription = function(id) {
     var success = function() {
       $scope.getSubscriptions();

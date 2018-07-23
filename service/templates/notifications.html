@@ -129,7 +129,9 @@ Notifications Preferences
             </tr>
           </tbody>
         </table>
-
+        <md-input-container style="width:50%;" ng-show="subscriptions.length > 0">
+          <md-button class="md-raised md-warn" type="submit" ng-click="clearAllSubscriptions()">Clear all Subscriptions</md-button>
+        </md-input-container>
       </md-card-content>
     </md-card>
 
