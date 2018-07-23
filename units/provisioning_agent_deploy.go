@@ -172,7 +172,14 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		"message": "prepping host for agent",
 		"host":    hostObj.Id})
 	if err = j.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
-		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
+		event.LogHostAgentDeployFailed(hostObj.Id, err)
+		grip.Info(message.Fields{
+			"message": "error prepping remote host",
+			"host":    j.HostID,
+			"job":     j.ID(),
+			"error":   err.Error(),
+		})
+		return nil
 	}
 
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "prepping host finished successfully", "host": hostObj.Id})
@@ -197,8 +204,13 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		}
 
 		event.LogHostAgentDeployFailed(hostObj.Id, err)
-
-		return errors.WithStack(err)
+		grip.Info(message.Fields{
+			"message": "error starting agent on remote",
+			"host":    j.HostID,
+			"job":     j.ID(),
+			"error":   err.Error(),
+		})
+		return nil
 	}
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host": hostObj.Id})
 
