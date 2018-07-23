@@ -86,7 +86,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateParentDecommissionJobs(),
 		units.PopulatePeriodicNotificationJobs(1),
 		units.PopulateContainerStateJobs(env),
-		units.PopulateContainerImageRemovalJobs()))
+		units.PopulateOldestImageRemovalJobs()))
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Second, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateHostSetupJobs(env, 0),

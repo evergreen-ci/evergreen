@@ -37,7 +37,7 @@ func TestOldestImageJob(t *testing.T) {
 	assert.NoError(h2.Insert())
 	assert.NoError(h3.Insert())
 
-	j := NewOldestImageJob(h1, evergreen.ProviderNameDockerMock, "job-1")
+	j := NewOldestImageRemovalJob(h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())

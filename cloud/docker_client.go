@@ -297,7 +297,6 @@ func (c *dockerClientImpl) RemoveImage(ctx context.Context, h *host.Host, imageI
 	removed, err := dockerClient.ImageRemove(ctx, imageID, opts)
 	if err != nil {
 		err = errors.Wrapf(err, "Failed to remove image '%s'", imageID)
-		grip.Error(err)
 		return err
 	}
 	// check to make sure an image was removed

@@ -251,7 +251,7 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 }
 
 // GetContainersRunningImage returns all the containers that are running a particular image
-func (m *dockerManager) GetContainersRunningImage(ctx context.Context, h *host.Host, imageID string) ([]string, error) {
+func (m *dockerManager) getContainersRunningImage(ctx context.Context, h *host.Host, imageID string) ([]string, error) {
 	containers, err := m.GetContainers(ctx, h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error listing containers")
@@ -269,45 +269,30 @@ func (m *dockerManager) GetContainersRunningImage(ctx context.Context, h *host.H
 	return containersRunningImage, nil
 }
 
-// RemoveOldestImageID finds the oldest image and forcibly removes it
-func (m *dockerManager) RemoveOldestImageID(ctx context.Context, h *host.Host) error {
+// RemoveOldestImage finds the oldest image without running containers and forcibly removes it
+func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) error {
+	// list images in order of most to least recently created
 	images, err := m.client.ListImages(ctx, h)
 	if err != nil {
 		return errors.Wrap(err, "Error listing images")
 	}
-	// get oldest image ID
-	oldest := time.Now()
-	id := ""
-	for _, image := range images {
-		if time.Unix(image.Created, 0).Before(oldest) {
-			oldest = time.Unix(image.Created, 0)
-			id = image.ID
+
+	for i := len(images) - 1; i >= 0; i-- {
+		id := images[i].ID
+		containersRunningImage, err := m.getContainersRunningImage(ctx, h, id)
+		if err != nil {
+			return errors.Wrapf(err, "Error getting containers running on image '%s'", id)
 		}
-	}
-
-	if id == "" {
-		return errors.Errorf("No images to delete on host '%s'", h.Id)
-	}
-
-	// remove containers on image before removing the image
-	containersRunningImage, err := m.GetContainersRunningImage(ctx, h, id)
-	if err != nil {
-		return errors.Wrapf(err, "Error getting containers running on image '%s'", id)
-	}
-
-	if len(containersRunningImage) > 0 {
-		for _, containerID := range containersRunningImage {
-			if err := m.client.RemoveContainer(ctx, h, containerID); err != nil {
-				return errors.Wrapf(err, "Error removing container '%s'", containerID)
+		// remove image based on ID only if there are no containers running the image
+		if len(containersRunningImage) == 0 {
+			err = m.client.RemoveImage(ctx, h, id)
+			if err != nil {
+				return errors.Wrapf(err, "Error removing image '%s'", id)
 			}
+			return nil
 		}
 	}
 
-	// remove image based on ID
-	err = m.client.RemoveImage(ctx, h, id)
-	if err != nil {
-		return errors.Wrapf(err, "Error removing image '%s'", id)
-	}
 	return nil
 }
 

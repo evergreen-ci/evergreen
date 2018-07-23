@@ -15,19 +15,19 @@ import (
 )
 
 const (
-	oldestImageJobName = "oldest-image"
+	oldestImageRemovalJobName = "oldest-image-removal"
 	// if each image is around 11GB, allow 10 images at a time
 	maxDiskUsage = 1024 * 1024 * 1024 * 11 * 10
 )
 
 func init() {
-	registry.AddJobType(oldestImageJobName, func() amboy.Job {
-		return makeOldestImageTimeJob()
+	registry.AddJobType(oldestImageRemovalJobName, func() amboy.Job {
+		return makeOldestImageRemovalJob()
 	})
 
 }
 
-type oldestImageJob struct {
+type oldestImageRemovalJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
@@ -38,11 +38,11 @@ type oldestImageJob struct {
 	settings *evergreen.Settings
 }
 
-func makeOldestImageTimeJob() *oldestImageJob {
-	j := &oldestImageJob{
+func makeOldestImageRemovalJob() *oldestImageRemovalJob {
+	j := &oldestImageRemovalJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    oldestImageJobName,
+				Name:    oldestImageRemovalJobName,
 				Version: 0,
 			},
 		},
@@ -52,18 +52,18 @@ func makeOldestImageTimeJob() *oldestImageJob {
 	return j
 }
 
-func NewOldestImageJob(h *host.Host, providerName, id string) amboy.Job {
-	j := makeOldestImageTimeJob()
+func NewOldestImageRemovalJob(h *host.Host, providerName, id string) amboy.Job {
+	j := makeOldestImageRemovalJob()
 
 	j.host = h
 	j.provider = providerName
 	j.HostID = h.Id
 
-	j.SetID(fmt.Sprintf("%s.%s", oldestImageJobName, id))
+	j.SetID(fmt.Sprintf("%s.%s", oldestImageRemovalJobName, id))
 	return j
 }
 
-func (j *oldestImageJob) Run(ctx context.Context) {
+func (j *oldestImageRemovalJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	var err error
