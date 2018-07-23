@@ -59,6 +59,10 @@ type ContainerManager interface {
 
 	// GetContainers returns the IDs of all running containers on a specified host
 	GetContainers(context.Context, *host.Host) ([]string, error)
+	// RemoveOldestImage removes the earliest created image on a specified host
+	RemoveOldestImage(ctx context.Context, h *host.Host) error
+	// CalculateImageSpaceUsage returns the total space taken up by docker images on a specified host
+	CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error)
 }
 
 // CostCalculator is an interface for cloud providers that can estimate what a span of time on a

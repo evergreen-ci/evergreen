@@ -249,3 +249,63 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 
 	return ids, nil
 }
+
+// GetContainersRunningImage returns all the containers that are running a particular image
+func (m *dockerManager) getContainersRunningImage(ctx context.Context, h *host.Host, imageID string) ([]string, error) {
+	containers, err := m.GetContainers(ctx, h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error listing containers")
+	}
+	containersRunningImage := make([]string, 0)
+	for _, containerID := range containers {
+		container, err := m.client.GetContainer(ctx, h, containerID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error getting information for container '%s'", containerID)
+		}
+		if container.Image == imageID {
+			containersRunningImage = append(containersRunningImage, containerID)
+		}
+	}
+	return containersRunningImage, nil
+}
+
+// RemoveOldestImage finds the oldest image without running containers and forcibly removes it
+func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) error {
+	// list images in order of most to least recently created
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "Error listing images")
+	}
+
+	for i := len(images) - 1; i >= 0; i-- {
+		id := images[i].ID
+		containersRunningImage, err := m.getContainersRunningImage(ctx, h, id)
+		if err != nil {
+			return errors.Wrapf(err, "Error getting containers running on image '%s'", id)
+		}
+		// remove image based on ID only if there are no containers running the image
+		if len(containersRunningImage) == 0 {
+			err = m.client.RemoveImage(ctx, h, id)
+			if err != nil {
+				return errors.Wrapf(err, "Error removing image '%s'", id)
+			}
+			return nil
+		}
+	}
+
+	return nil
+}
+
+// CalculateImageSpaceUsage returns the amount of bytes that images take up on disk
+func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error) {
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error listing images")
+	}
+
+	spaceBytes := int64(0)
+	for _, image := range images {
+		spaceBytes += image.Size
+	}
+	return spaceBytes, nil
+}

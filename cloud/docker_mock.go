@@ -113,6 +113,31 @@ func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) 
 	return nil
 }
 
+func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]types.ImageSummary, error) {
+	if c.failList {
+		return nil, errors.New("failed to list images")
+	}
+	now := time.Now()
+	image1 := types.ImageSummary{
+		ID:         "image-1",
+		Containers: 2,
+		Created:    now.Unix(),
+	}
+	image2 := types.ImageSummary{
+		ID:         "image-2",
+		Containers: 2,
+		Created:    now.Add(-10 * time.Minute).Unix(),
+	}
+	return []types.ImageSummary{image1, image2}, nil
+}
+
+func (c *dockerClientMock) RemoveImage(context.Context, *host.Host, string) error {
+	if c.failRemove {
+		return errors.New("failed to remove image")
+	}
+	return nil
+}
+
 func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) error {
 	if c.failStart {
 		return errors.New("failed to start container")
