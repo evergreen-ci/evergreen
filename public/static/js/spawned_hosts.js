@@ -10,7 +10,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.selectedDistro = {};
     $scope.userKeys = [];
     $scope.selectedKey = {};
-    $scope.userData = {};
     $scope.spawnInfo = {};
     $scope.extensionLength = {};
     $scope.curHostData;
@@ -146,7 +145,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.spawnReqSent = true;
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
-      $scope.spawnInfo.userData = $scope.userData.text;
+      $scope.spawnInfo.userData = $scope.userdata;
       if($scope.spawnTaskChecked && !!$scope.spawnTask){
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }
@@ -236,7 +235,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             $scope.selectedDistro = $scope.spawnableDistros[selectedIndex].distro;
             $scope.spawnInfo.distroId = $scope.selectedDistro.name;
           }
-
         }
       };
     };

@@ -38,11 +38,12 @@ const (
 
 // Options holds the required parameters for spawning a host.
 type SpawnOptions struct {
-	Distro    string
-	UserName  string
-	PublicKey string
-	TaskId    string
-	Owner     *user.DBUser
+	DistroId         string
+	ProviderSettings *map[string]interface{}
+	UserName         string
+	PublicKey        string
+	TaskId           string
+	Owner            *user.DBUser
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -53,13 +54,13 @@ func (so *SpawnOptions) validate() error {
 		return errors.New("spawn options include nil user")
 	}
 
-	d, err := distro.FindOne(distro.ById(so.Distro))
+	d, err := distro.FindOne(distro.ById(so.DistroId))
 	if err != nil {
-		return errors.Errorf("Invalid spawn options: distro %v", so.Distro)
+		return errors.Errorf("Invalid spawn options: distro %v", so.DistroId)
 	}
 
 	if !d.SpawnAllowed {
-		return errors.Errorf("Invalid spawn options: spawning not allowed for distro  %v", so.Distro)
+		return errors.Errorf("Invalid spawn options: spawning not allowed for distro  %v", so.DistroId)
 	}
 
 	// if the user already has too many active spawned hosts, deny the request
@@ -106,10 +107,15 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	}
 
 	// load in the appropriate distro
-	d, err := distro.FindOne(distro.ById(so.Distro))
+	d, err := distro.FindOne(distro.ById(so.DistroId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	if so.ProviderSettings != nil {
+		d.ProviderSettings = so.ProviderSettings
+	}
+
 	// modify the setup script to add the user's public key
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
@@ -136,7 +142,7 @@ func CreateSpawnHost(so SpawnOptions) (*host.Host, error) {
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
-	return intentHost, errors.WithStack(err)
+	return intentHost, nil
 }
 
 func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) error {
