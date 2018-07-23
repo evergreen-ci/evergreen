@@ -91,7 +91,12 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	settings := j.env.Settings()
 
 	err = j.startAgentOnHost(ctx, settings, *j.host)
-	j.AddError(err)
+	grip.Info(message.Fields{
+		"message": "encountered error starting agent on host",
+		"error":   err.Error(),
+		"job_id":  j.ID(),
+		"host":    j.HostID,
+	})
 	if err != nil {
 		stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
 		j.AddError(err)
