@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -26,6 +27,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
+	EnsureImageDownloaded(context.Context, *host.Host, string) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, string, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
@@ -44,7 +46,7 @@ type dockerClientImpl struct {
 }
 
 // template string for new images with agent
-const newImageName string = "%s-agent"
+const provisionedImageTag string = "%s:provisioned"
 
 // generateClient generates a Docker client that can talk to the specified host
 // machine. The Docker client must be exposed and available for requests at the
@@ -97,6 +99,37 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	return nil
 }
 
+// EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
+// and if not, creates a new image from the remote tarball.
+func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, url string) (string, error) {
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return "", errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	// extract image name from url
+	baseName := path.Base(url)
+	imageName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+
+	// check if image already exists on host
+	_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
+	if err == nil {
+		// image already exists
+		return imageName, nil
+	} else if strings.Contains(err.Error(), "No such image") {
+		// image does not exist, import from remote tarball
+		source := types.ImageImportSource{SourceName: url}
+		_, err = dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
+		if err != nil {
+			return "", errors.Wrapf(err, "Error importing image from %s", url)
+		}
+		return imageName, nil
+	} else {
+		// other error
+		return "", errors.Wrapf(err, "Error inspecting image %s", imageName)
+	}
+}
+
 // BuildImageWithAgent takes a base image and builds a new image on the specified
 // host from a Dockfile in the root directory, which adds the Evergreen binary
 func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
@@ -108,7 +141,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	}
 
 	// modify tag for new image
-	newImage := fmt.Sprintf(newImageName, baseImage)
+	provisionedImage := fmt.Sprintf(provisionedImageTag, baseImage)
 
 	executableSubPath := h.Distro.ExecutableSubPath()
 	binaryName := h.Distro.BinaryName()
@@ -129,7 +162,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		},
 		Remove:        true,
 		RemoteContext: dockerfileUrl,
-		Tags:          []string{newImage},
+		Tags:          []string{provisionedImage},
 	}
 
 	// build the image
@@ -145,7 +178,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		return "", errors.Wrap(err, "Error reading ImageBuild response")
 	}
 
-	return newImage, nil
+	return provisionedImage, nil
 }
 
 // CreateContainer creates a new Docker container that runs an SSH daemon, and binds the
@@ -173,13 +206,17 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	// Create a host config to bind the SSH port to another open port.
 	hostConf, err := makeHostConfig(h, containers)
 	if err != nil {
-		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", h.Host)
-		grip.Error(err)
-		return err
+		return errors.Wrapf(err, "Unable to populate docker host config for host '%s'", h.Host)
+	}
+
+	// Import correct base image if not already on host.
+	image, err := c.EnsureImageDownloaded(ctx, h, ds.ImageID)
+	if err != nil {
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", h.Id)
 	}
 
 	// Build image containing Evergreen executable.
-	newImage, err := c.BuildImageWithAgent(ctx, h, ds.ImageID)
+	provisionedImage, err := c.BuildImageWithAgent(ctx, h, image)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", ds.ImageID, h.Id)
 	}
@@ -216,7 +253,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 			sshdPort: {},
 		},
 		Cmd:   agentCmdParts,
-		Image: newImage,
+		Image: provisionedImage,
 	}
 	networkConf := &network.NetworkingConfig{}
 
