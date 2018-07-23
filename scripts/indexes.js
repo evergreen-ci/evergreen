@@ -1,8 +1,9 @@
 //======alertrecord======//
-db.alertrecord.ensureIndex({ "host_id" : 1 })
-db.alertrecord.ensureIndex({ "version_id" : 1, "type" : 1 })
-db.alertrecord.ensureIndex({ "type" : 1, "version_id" : 1 })
-db.alertrecord.ensureIndex({ "type": 1, "project_id": 1, "variant": 1, "task_name": 1, "test_name": 1, "order": -1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "host_id" : 1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "version_id" : 1, "type" : 1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "type" : 1, "version_id" : 1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "type": 1, "project_id": 1, "variant": 1, "task_name": 1, "test_name": 1, "order": -1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "project_id": 1, "task_name": 1, "type": 1, "variant": 1, "order": -1 })
 
 //======artifact_files======//
 db.artifact_files.ensureIndex({ "task" : 1 })
