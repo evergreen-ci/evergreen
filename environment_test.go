@@ -65,6 +65,7 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 	err := s.env.initSettings("")
 	s.Error(err)
 	s.Contains(err.Error(), "validating settings")
+	s.Fail("testing")
 }
 
 func (s *EnvironmentSuite) TestGetClientConfig() {
