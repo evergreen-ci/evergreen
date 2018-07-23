@@ -259,7 +259,6 @@ func (m *dockerManager) GetContainersRunningImage(ctx context.Context, h *host.H
 	containersRunningImage := make([]string, 0)
 	for _, containerID := range containers {
 		container, err := m.client.GetContainer(ctx, h, containerID)
-		grip.Info(container.Image)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error getting information for container '%s'", containerID)
 		}
