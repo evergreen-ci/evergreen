@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLeastRecentlyUsedImageJob(t *testing.T) {
+func TestOldestImageJob(t *testing.T) {
 	assert := assert.New(t)
 	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
@@ -37,7 +37,7 @@ func TestLeastRecentlyUsedImageJob(t *testing.T) {
 	assert.NoError(h2.Insert())
 	assert.NoError(h3.Insert())
 
-	j := NewLeastRecentlyUsedImageJob(h1, evergreen.ProviderNameDockerMock, "job-1")
+	j := NewOldestImageJob(h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)
 
 	j.Run(context.Background())

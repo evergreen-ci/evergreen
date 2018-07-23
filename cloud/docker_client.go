@@ -280,7 +280,6 @@ func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]type
 	images, err := dockerClient.ImageList(ctx, opts)
 	if err != nil {
 		err = errors.Wrap(err, "Docker list API call failed")
-		grip.Error(err)
 		return nil, err
 	}
 

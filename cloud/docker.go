@@ -250,17 +250,38 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 	return ids, nil
 }
 
-func (m *dockerManager) RemoveLeastRecentlyUsedImageID(ctx context.Context, h *host.Host) error {
+// GetContainersRunningImage returns all the containers that are running a particular image
+func (m *dockerManager) GetContainersRunningImage(ctx context.Context, h *host.Host, imageID string) ([]string, error) {
+	containers, err := m.GetContainers(ctx, h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error listing containers")
+	}
+	containersRunningImage := make([]string, 0)
+	for _, containerID := range containers {
+		container, err := m.client.GetContainer(ctx, h, containerID)
+		grip.Info(container.Image)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error getting information for container '%s'", containerID)
+		}
+		if container.Image == imageID {
+			containersRunningImage = append(containersRunningImage, containerID)
+		}
+	}
+	return containersRunningImage, nil
+}
+
+// RemoveOldestImageID finds the oldest image and forcibly removes it
+func (m *dockerManager) RemoveOldestImageID(ctx context.Context, h *host.Host) error {
 	images, err := m.client.ListImages(ctx, h)
 	if err != nil {
 		return errors.Wrap(err, "Error listing images")
 	}
-	// get earliest created image ID
-	earliest := time.Now()
+	// get oldest image ID
+	oldest := time.Now()
 	id := ""
 	for _, image := range images {
-		if time.Unix(image.Created, 0).Before(earliest) {
-			earliest = time.Unix(image.Created, 0)
+		if time.Unix(image.Created, 0).Before(oldest) {
+			oldest = time.Unix(image.Created, 0)
 			id = image.ID
 		}
 	}
@@ -268,6 +289,21 @@ func (m *dockerManager) RemoveLeastRecentlyUsedImageID(ctx context.Context, h *h
 	if id == "" {
 		return errors.Errorf("No images to delete on host '%s'", h.Id)
 	}
+
+	// remove containers on image before removing the image
+	containersRunningImage, err := m.GetContainersRunningImage(ctx, h, id)
+	if err != nil {
+		return errors.Wrapf(err, "Error getting containers running on image '%s'", id)
+	}
+
+	if len(containersRunningImage) > 0 {
+		for _, containerID := range containersRunningImage {
+			if err := m.client.RemoveContainer(ctx, h, containerID); err != nil {
+				return errors.Wrapf(err, "Error removing container '%s'", containerID)
+			}
+		}
+	}
+
 	// remove image based on ID
 	err = m.client.RemoveImage(ctx, h, id)
 	if err != nil {
@@ -276,15 +312,16 @@ func (m *dockerManager) RemoveLeastRecentlyUsedImageID(ctx context.Context, h *h
 	return nil
 }
 
+// CalculateImageSpaceUsage returns the amount of bytes that images take up on disk
 func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error) {
 	images, err := m.client.ListImages(ctx, h)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error listing images")
 	}
 
-	space := int64(0)
+	spaceBytes := int64(0)
 	for _, image := range images {
-		space += image.Size
+		spaceBytes += image.Size
 	}
-	return space, nil
+	return spaceBytes, nil
 }

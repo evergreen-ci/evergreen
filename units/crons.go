@@ -382,9 +382,9 @@ func PopulateContainerImageRemovalJobs() amboy.QueueOperation {
 			return errors.Wrap(err, "Error finding parent hosts")
 		}
 
-		// Create leastRecentlyUsedImageJob when images take up too much disk space
+		// Create oldestImageJob when images take up too much disk space
 		for _, p := range parents {
-			catcher.Add(queue.Put(NewLeastRecentlyUsedImageJob(&p, evergreen.ProviderNameDocker, ts)))
+			catcher.Add(queue.Put(NewOldestImageJob(&p, evergreen.ProviderNameDocker, ts)))
 		}
 		return catcher.Resolve()
 	}

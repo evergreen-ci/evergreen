@@ -15,19 +15,19 @@ import (
 )
 
 const (
-	leastRecentlyUsedImageJobName = "least-recently-used-image"
+	oldestImageJobName = "oldest-image"
 	// if each image is around 11GB, allow 10 images at a time
 	maxDiskUsage = 1024 * 1024 * 1024 * 11 * 10
 )
 
 func init() {
-	registry.AddJobType(leastRecentlyUsedImageJobName, func() amboy.Job {
-		return makeLeastRecentlyUsedImageTimeJob()
+	registry.AddJobType(oldestImageJobName, func() amboy.Job {
+		return makeOldestImageTimeJob()
 	})
 
 }
 
-type leastRecentlyUsedImageJob struct {
+type oldestImageJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
@@ -38,11 +38,11 @@ type leastRecentlyUsedImageJob struct {
 	settings *evergreen.Settings
 }
 
-func makeLeastRecentlyUsedImageTimeJob() *leastRecentlyUsedImageJob {
-	j := &leastRecentlyUsedImageJob{
+func makeOldestImageTimeJob() *oldestImageJob {
+	j := &oldestImageJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    leastRecentlyUsedImageJobName,
+				Name:    oldestImageJobName,
 				Version: 0,
 			},
 		},
@@ -52,22 +52,18 @@ func makeLeastRecentlyUsedImageTimeJob() *leastRecentlyUsedImageJob {
 	return j
 }
 
-func NewLeastRecentlyUsedImageJob(h *host.Host, providerName, id string) amboy.Job {
-	j := makeLeastRecentlyUsedImageTimeJob()
+func NewOldestImageJob(h *host.Host, providerName, id string) amboy.Job {
+	j := makeOldestImageTimeJob()
 
 	j.host = h
 	j.provider = providerName
 	j.HostID = h.Id
 
-	j.SetID(fmt.Sprintf("%s.%s", leastRecentlyUsedImageJobName, id))
+	j.SetID(fmt.Sprintf("%s.%s", oldestImageJobName, id))
 	return j
 }
 
-func (j *leastRecentlyUsedImageJob) Run(ctx context.Context) {
-	var cancel context.CancelFunc
-
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
+func (j *oldestImageJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	var err error
@@ -104,7 +100,7 @@ func (j *leastRecentlyUsedImageJob) Run(ctx context.Context) {
 	}
 
 	if diskUsage >= maxDiskUsage {
-		err = containerMgr.RemoveLeastRecentlyUsedImageID(ctx, j.host)
+		err = containerMgr.RemoveOldestImageID(ctx, j.host)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "error removing least recently used image ID on parent %s from Docker", j.HostID))
 			return
