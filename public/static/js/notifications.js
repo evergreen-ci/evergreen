@@ -56,15 +56,15 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
   $scope.subscriberText = function(input) {
     switch (input.type) {
     case "jira-issue":
-      return "make a Jira issue in " + input.target;
+      return "making a Jira issue in " + input.target.project + ' with issue type ' + input.target.issue_type;
     case "jira-comment":
-      return "make a comment on Jira issue " + input.target;
+      return "making a comment on Jira issue " + input.target;
     case "evergreen-webhook":
-      return "post to server " + input.target;
+      return "posting to server " + input.target;
     case "email":
-      return "email " + input.target;
+      return "emailing " + input.target;
     case "slack":
-      return "send a Slack message to " + input.target;
+      return "sending a Slack message to " + input.target;
     }
     return input;
   };
