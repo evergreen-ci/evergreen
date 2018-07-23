@@ -95,18 +95,27 @@ Notifications Preferences
           <thead>
             <tr>
               <th class="col-lg-3">Selectors</th>
-              <th class="col-lg-3">Selectors</th>
-              <th class="col-lg-3">Trigger</th>
+              <th class="col-lg-3">Event</th>
               <th class="col-lg-3">Notify by</th>
-              <th class="col-lg-1"> </th>
+              <th class="col-lg-1"></th>
             </tr>
           </thead>
           <tbody>
             <tr ng-repeat="subscription in subscriptions"
                 class="test-result-row">
               <td class="col-lg-3">
-                <a href="javascript:void(0);" ng-click="selectorClick([[subscription.selectors]])"
-                 ng-bind="selectorText([[subscription.selectors]])"> </a>
+                  <span ng-repeat="s in subscription.selectors">
+                    <p ng-show="s.type === 'object'">when a [[s.data]] with:</p>
+                    <p ng-show="s.type !== 'object' && s.type === 'id'"><b>[[s.type]]</b> of
+                      <span style="width: 50%; display: block; overflow: hidden; text-overflow: ellipsis;"><a href="javascript:void(0);" ng-click="selectorClick([[subscription.selectors]])">[[s.data]]</a></span>
+                    </p>
+                    <p ng-show="s.type !== 'object' && s.type !== 'id'"><b>[[s.type]]</b> of
+                      <span style="width: 50%; display: block; overflow: hidden; text-overflow: ellipsis;">[[s.data]]</span>
+                    </p>
+                  </span>
+                  <span ng-show="subscription.regex_selectors.length > 0" ng-repeat="s in subscription.regex_selectors">
+                      <span><b>[[s.type]]</b> matching regex <span style="font-family: monospace;">/[[s.data]]/</span>
+                  </span>
               </td>
               <td class="col-lg-3">
                 [[subscription.trigger]]
