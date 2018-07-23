@@ -68,6 +68,7 @@ func newAlertRecord(t *task.Task, alertType string) *alertrecord.AlertRecord {
 		Variant:             t.BuildVariant,
 		TaskId:              t.Id,
 		HostId:              t.HostId,
+		AlertTime:           time.Now(),
 	}
 }
 
