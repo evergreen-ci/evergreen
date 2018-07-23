@@ -43,7 +43,7 @@ func (hph *hostPostHandler) Parse(ctx context.Context, r *http.Request) error {
 func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	intentHost, err := hph.sc.NewIntentHost(hph.Distro, hph.KeyName, "", user)
+	intentHost, err := hph.sc.NewIntentHost(hph.Distro, hph.KeyName, "", user, nil)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error spawning host"))
 	}
