@@ -29,6 +29,8 @@ const (
 	// These are private custom types to avoid key collisions.
 	RequestTask reqCtxKey = iota
 	RequestProjectContext
+
+	httpOriginHeader = "Origin"
 )
 
 // projectContext defines the set of common fields required across most UI requests.
@@ -174,11 +176,15 @@ func (uis *UIServer) isSuperUser(u gimlet.User) bool {
 
 func (uis *UIServer) setCORSHeaders(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && len(uis.Settings.Ui.CORSOrigin) > 0 {
-			w.Header().Add("Access-Control-Allow-Origin", uis.Settings.Ui.CORSOrigin)
+		if r.Method == http.MethodGet && len(r.Header.Get(httpOriginHeader)) > 0 {
+			w.Header().Add("Access-Control-Allow-Origin", r.Header.Get(httpOriginHeader))
 			w.Header().Add("Access-Control-Allow-Credentials", "true")
 			w.Header().Add("Access-Control-Allow-Headers", fmt.Sprintf("%s, %s", evergreen.APIKeyHeader, evergreen.APIUserHeader))
 		}
+		grip.ErrorWhen(r.Method != http.MethodGet, message.Fields{
+			"cause":   "programmer error",
+			"message": "attempted to send CORS headers on a route that is not idempotent and safe (cacheable)",
+		})
 		next(w, r)
 	}
 }

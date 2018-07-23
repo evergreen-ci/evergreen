@@ -1,8 +1,6 @@
 package evergreen
 
 import (
-	"net/url"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -30,8 +28,6 @@ type UIConfig struct {
 	SecureCookies bool `bson:"secure_cookies" json:"secure_cookies" yaml:"securecookies"`
 	// CsrfKey is a 32-byte key used to generate tokens that validate UI requests
 	CsrfKey string `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`
-	// CORSOrigin is the allowed CORS Origin for some UI Routes
-	CORSOrigin string `bson:"cors_origin" json:"cors_origin" yaml:"cors_origin"`
 }
 
 func (c *UIConfig) SectionId() string { return "ui" }
@@ -56,7 +52,6 @@ func (c *UIConfig) Set() error {
 			"cache_templates":  c.CacheTemplates,
 			"secure_cookies":   c.SecureCookies,
 			"csrf_key":         c.CsrfKey,
-			"cors_origin":      c.CORSOrigin,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
@@ -76,11 +71,5 @@ func (c *UIConfig) ValidateAndDefault() error {
 	if c.CsrfKey != "" && len(c.CsrfKey) != 32 {
 		catcher.Add(errors.New("CSRF key must be 32 characters long"))
 	}
-	if _, err := url.Parse(c.CORSOrigin); err != nil {
-		if c.CORSOrigin != "*" {
-			catcher.Add(errors.Wrap(err, "CORS Origin must be a valid URL or '*'"))
-		}
-	}
-
 	return catcher.Resolve()
 }
