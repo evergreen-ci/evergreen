@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestAlertRecord(t *testing.T) {
@@ -81,4 +82,46 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() 
 	s.Equal("variant", record.Variant)
 	s.Empty(record.TestName)
 	s.Equal(5, record.RevisionOrderNumber)
+}
+
+func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
+	oldStyle0 := bson.M{
+		"_id":                  bson.NewObjectId(),
+		TypeKey:                TaskFailTransitionId,
+		TaskNameKey:            "task",
+		VariantKey:             "variant",
+		ProjectIdKey:           "project",
+		RevisionOrderNumberKey: 0,
+	}
+	oldStyle1 := bson.M{
+		"_id":                  bson.NewObjectId(),
+		TypeKey:                TaskFailTransitionId,
+		TaskNameKey:            "task",
+		VariantKey:             "variant",
+		ProjectIdKey:           "project",
+		RevisionOrderNumberKey: 1,
+	}
+	s.NoError(db.Insert(Collection, &oldStyle0))
+	s.NoError(db.Insert(Collection, &oldStyle1))
+
+	rec, err := FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	s.NoError(err)
+	s.Require().NotNil(rec)
+
+	s.Equal(1, rec.RevisionOrderNumber)
+	newStyle := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		SubscriptionID:      legacyAlertsSubscription,
+		Type:                TaskFailTransitionId,
+		TaskName:            "task",
+		Variant:             "variant",
+		ProjectId:           "project",
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(newStyle.Insert())
+
+	rec, err = FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	s.NoError(err)
+	s.Require().NotNil(rec)
+	s.Equal(2, rec.RevisionOrderNumber)
 }
