@@ -57,9 +57,10 @@ func makeTaskTriggers() eventHandler {
 
 // newAlertRecord creates an instance of an alert record for the given alert type, populating it
 // with as much data from the triggerContext as possible
-func newAlertRecord(t *task.Task, alertType string) *alertrecord.AlertRecord {
+func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.AlertRecord {
 	return &alertrecord.AlertRecord{
 		Id:                  bson.NewObjectId(),
+		SubscriptionID:      subID,
 		Type:                alertType,
 		ProjectId:           t.Project,
 		VersionId:           t.Version,
@@ -256,7 +257,7 @@ func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertTyp
 		return nil, nil
 	}
 
-	rec := newAlertRecord(t.task, alertType)
+	rec := newAlertRecord(sub.ID, t.task, alertType)
 	grip.Error(message.WrapError(rec.Insert(), message.Fields{
 		"source":  "alert-record",
 		"type":    alertType,
@@ -369,7 +370,7 @@ func isTaskRegression(subID string, t *task.Task) (bool, *alertrecord.AlertRecor
 		return false, nil, nil
 	}
 
-	rec := newAlertRecord(t, alertrecord.TaskFailTransitionId)
+	rec := newAlertRecord(subID, t, alertrecord.TaskFailTransitionId)
 	rec.RevisionOrderNumber = -1
 	if previousTask != nil {
 		rec.RevisionOrderNumber = previousTask.RevisionOrderNumber

@@ -199,10 +199,11 @@ func TestTransitionResend(t *testing.T) {
 		}
 
 		pastAlert := alertrecord.AlertRecord{
-			Id:        bson.NewObjectId(),
-			Type:      alertrecord.TaskFailTransitionId,
-			TaskName:  ts[0].DisplayName,
-			ProjectId: ts[0].Project,
+			Id:             bson.NewObjectId(),
+			SubscriptionID: legacyAlertsSubscription,
+			Type:           alertrecord.TaskFailTransitionId,
+			TaskName:       ts[0].DisplayName,
+			ProjectId:      ts[0].Project,
 		}
 		So(testProject.Insert(), ShouldBeNil)
 		So(testVersion.Insert(), ShouldBeNil)

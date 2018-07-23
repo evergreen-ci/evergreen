@@ -323,7 +323,7 @@ func (s *VersionSuite) TestVersionRegression() {
 		RevisionOrderNumber: 1,
 	}
 	s.NoError(t3.Insert())
-	s.NoError(newAlertRecord(&t3, alertrecord.TaskFailTransitionId).Insert())
+	s.NoError(newAlertRecord(s.subs[3].ID, &t3, alertrecord.TaskFailTransitionId).Insert())
 	n, err = s.t.versionRegression(&s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
