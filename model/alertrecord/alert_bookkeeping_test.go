@@ -25,16 +25,19 @@ func (s *alertRecordSuite) SetupTest() {
 }
 
 func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
-	testName := "test"
-	taskDisplayName := "task"
-	variant := "variant"
-	projectID := "project"
+	const (
+		sub             = "test-sub"
+		testName        = "test"
+		taskDisplayName = "task"
+		variant         = "variant"
+		projectID       = "project"
+	)
 	beforeRevision := 2
-	s.NoError(InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestRecord(sub, testName, taskDisplayName, variant, projectID, beforeRevision))
 	beforeRevision = 5
-	s.NoError(InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestRecord(sub, testName, taskDisplayName, variant, projectID, beforeRevision))
 
-	record, err := FindByLastTaskRegressionByTest(testName, taskDisplayName, variant, projectID, beforeRevision)
+	record, err := FindByLastTaskRegressionByTest(sub, testName, taskDisplayName, variant, projectID, beforeRevision)
 	s.NoError(err)
 	s.Require().NotNil(record)
 	s.True(record.Id.Valid())
@@ -51,16 +54,19 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 }
 
 func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() {
-	taskDisplayName := "task"
-	taskStatus := "something"
-	variant := "variant"
-	projectID := "project"
+	const (
+		sub             = "test-sub"
+		taskDisplayName = "task"
+		taskStatus      = "something"
+		variant         = "variant"
+		projectID       = "project"
+	)
 	beforeRevision := 2
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(sub, taskDisplayName, taskStatus, variant, projectID, beforeRevision))
 	beforeRevision = 5
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(sub, taskDisplayName, taskStatus, variant, projectID, beforeRevision))
 
-	record, err := FindByLastTaskRegressionByTestWithNoTests(taskDisplayName, variant, projectID, beforeRevision)
+	record, err := FindByLastTaskRegressionByTestWithNoTests(sub, taskDisplayName, variant, projectID, beforeRevision)
 
 	s.NoError(err)
 	s.Require().NotNil(record)
