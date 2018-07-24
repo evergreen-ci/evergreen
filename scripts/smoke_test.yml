@@ -24,7 +24,7 @@ ui:
 api:
   "/":
     - "404"
-  "/rest/v2/distros":
+  "/rest/v2/hosts":
     - "localhost"
   "/rest/v2/status/cli_version":
     - "latest_revision"
