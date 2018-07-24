@@ -256,6 +256,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		},
 		Cmd:   agentCmdParts,
 		Image: provisionedImage,
+		User:  settings.User,
 	}
 	networkConf := &network.NetworkingConfig{}
 
