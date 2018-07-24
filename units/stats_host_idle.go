@@ -128,7 +128,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	}
 
 	if calc, ok := j.manager.(cloud.CostCalculator); ok {
-		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
+		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime, j.settings)
 		if err != nil {
 			j.AddError(err)
 		}

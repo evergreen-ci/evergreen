@@ -1029,3 +1029,33 @@ func InsertMany(hosts []Host) error {
 	return errors.WithStack(db.InsertMany(Collection, docs...))
 
 }
+
+// CountContainersRunningAtTime counts how many containers were running on the
+// given parent host at the specified time, using the host StartTime and
+// TerminationTime fields.
+func (h *Host) CountContainersRunningAtTime(timestamp time.Time) (int, error) {
+	query := db.Query(bson.M{
+		ParentIDKey:  h.Id,
+		StartTimeKey: bson.M{"$lt": timestamp},
+		"$or": []bson.M{
+			{TerminationTimeKey: bson.M{"$gt": timestamp}},
+			{TerminationTimeKey: time.Time{}},
+		},
+	})
+	return Count(query)
+}
+
+// EstimateNumberContainersForDuration estimates how many containers were running
+// on a given host during the specified time interval by averaging the counts
+// at the start and end. It is more accurate for shorter tasks.
+func EstimateNumContainersForDuration(h *Host, start, end time.Time) (float64, error) {
+	containersAtStart, err := h.CountContainersRunningAtTime(start)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error counting containers running at %v", start)
+	}
+	containersAtEnd, err := h.CountContainersRunningAtTime(end)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
+	}
+	return float64(containersAtStart+containersAtEnd) / 2, nil
+}

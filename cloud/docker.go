@@ -309,3 +309,36 @@ func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Ho
 	}
 	return spaceBytes, nil
 }
+
+// CostForDuration estimates the cost for a span of time on the given container
+// host. The method divides the cost of that span on the parent host by an
+// estimate of the number of containers running during the same interval.
+func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+	parent, err := h.GetParent()
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+	}
+
+	numContainers, err := host.EstimateNumContainersForDuration(parent, start, end)
+	if err != nil {
+		return 0, errors.Wrap(err, "Errors estimating number of containers running over interval")
+	}
+
+	// get cloud manager for parent
+	parentMgr, err := GetManager(ctx, parent.Provider, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
+	}
+
+	// get parent cost for time interval
+	calc, ok := parentMgr.(CostCalculator)
+	if !ok {
+		return 0, errors.Errorf("Type assertion failed: type %T does not hold a CostCaluclator", parentMgr)
+	}
+	cost, err := calc.CostForDuration(ctx, parent, start, end, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error calculating cost for parent host '%s'", parent.Id)
+	}
+
+	return cost / numContainers, nil
+}

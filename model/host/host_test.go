@@ -2242,3 +2242,113 @@ func TestFindByFirstProvisioningAttempt(t *testing.T) {
 	assert.NoError(err)
 	assert.Empty(hosts)
 }
+
+func TestCountContainersRunningAtTime(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	// time variables
+	now := time.Now()
+	startTimeBefore := now.Add(-10 * time.Minute)
+	terminationTimeBefore := now.Add(-5 * time.Minute)
+	startTimeAfter := now.Add(5 * time.Minute)
+	terminationTimeAfter := now.Add(10 * time.Minute)
+
+	parent := &Host{
+		Id:            "parent",
+		HasContainers: true,
+	}
+
+	containers := []Host{
+		{
+			Id:              "container1",
+			ParentID:        "parent",
+			StartTime:       startTimeBefore,
+			TerminationTime: terminationTimeBefore,
+		},
+		{
+			Id:              "container2",
+			ParentID:        "parent",
+			StartTime:       startTimeBefore,
+			TerminationTime: terminationTimeAfter,
+		},
+		{
+			Id:        "container3",
+			ParentID:  "parent",
+			StartTime: startTimeBefore,
+		},
+		{
+			Id:        "container4",
+			ParentID:  "parent",
+			StartTime: startTimeAfter,
+		},
+	}
+	for i := range containers {
+		assert.NoError(containers[i].Insert())
+	}
+
+	count1, err := parent.CountContainersRunningAtTime(now.Add(-15 * time.Minute))
+	assert.NoError(err)
+	assert.Equal(0, count1)
+
+	count2, err := parent.CountContainersRunningAtTime(now)
+	assert.NoError(err)
+	assert.Equal(2, count2)
+
+	count3, err := parent.CountContainersRunningAtTime(now.Add(15 * time.Minute))
+	assert.NoError(err)
+	assert.Equal(2, count3)
+}
+
+func TestEstimateNumContainersForDuration(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	// time variables
+	now := time.Now()
+	startTimeBefore := now.Add(-10 * time.Minute)
+	terminationTimeBefore := now.Add(-5 * time.Minute)
+	startTimeAfter := now.Add(5 * time.Minute)
+	terminationTimeAfter := now.Add(10 * time.Minute)
+
+	parent := &Host{
+		Id:            "parent",
+		HasContainers: true,
+	}
+
+	containers := []Host{
+		{
+			Id:              "container1",
+			ParentID:        "parent",
+			StartTime:       startTimeBefore,
+			TerminationTime: terminationTimeBefore,
+		},
+		{
+			Id:              "container2",
+			ParentID:        "parent",
+			StartTime:       startTimeBefore,
+			TerminationTime: terminationTimeAfter,
+		},
+		{
+			Id:        "container3",
+			ParentID:  "parent",
+			StartTime: startTimeBefore,
+		},
+		{
+			Id:        "container4",
+			ParentID:  "parent",
+			StartTime: startTimeAfter,
+		},
+	}
+	for i := range containers {
+		assert.NoError(containers[i].Insert())
+	}
+
+	estimate1, err := EstimateNumContainersForDuration(parent, now.Add(-15*time.Minute), now)
+	assert.NoError(err)
+	assert.Equal(1.0, estimate1)
+
+	estimate2, err := EstimateNumContainersForDuration(parent, now, now.Add(15*time.Minute))
+	assert.NoError(err)
+	assert.Equal(2.0, estimate2)
+}
