@@ -78,23 +78,17 @@ func FindOne(query db.Q) (*AlertRecord, error) {
 }
 
 func subscriptionIDQuery(subID string) bson.M {
-	if subID == legacyAlertsSubscription {
-		return bson.M{
-			"$or": []bson.M{
-				{
-					subscriptionIDKey: subID,
-				},
-				{
-					subscriptionIDKey: bson.M{
-						"$exists": false,
-					},
+	return bson.M{
+		"$or": []bson.M{
+			{
+				subscriptionIDKey: subID,
+			},
+			{
+				subscriptionIDKey: bson.M{
+					"$exists": false,
 				},
 			},
-		}
-	}
-
-	return bson.M{
-		subscriptionIDKey: subID,
+		},
 	}
 }
 
