@@ -147,7 +147,7 @@ func findBrowserCommand() ([]string, error) {
 	case "windows":
 		return []string{"cmd", "/c", "start"}, nil
 	default:
-		candidates := []string{"xdg-open", "cygstart", "x-www-browser", "firefox",
+		candidates := []string{"xdg-open", "gnome-open", "x-www-browser", "firefox",
 			"opera", "mozilla", "netscape"}
 		for _, b := range candidates {
 			path, err := exec.LookPath(b)
