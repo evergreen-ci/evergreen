@@ -101,8 +101,17 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 		ProjectIdKey:           "project",
 		RevisionOrderNumberKey: 1,
 	}
+	oldStyle3 := bson.M{
+		"_id":                  bson.NewObjectId(),
+		TypeKey:                TaskFailTransitionId,
+		TaskNameKey:            "othertask",
+		VariantKey:             "othervariant",
+		ProjectIdKey:           "otherproject",
+		RevisionOrderNumberKey: 2,
+	}
 	s.NoError(db.Insert(Collection, &oldStyle0))
 	s.NoError(db.Insert(Collection, &oldStyle1))
+	s.NoError(db.Insert(Collection, &oldStyle3))
 
 	rec, err := FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
 	s.NoError(err)
@@ -124,4 +133,9 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	s.NoError(err)
 	s.Require().NotNil(rec)
 	s.Equal(2, rec.RevisionOrderNumber)
+
+	records := []AlertRecord{}
+	err = db.FindAllQ(Collection, ByLastFailureTransition("legacy-alerts", "task", "variant", "project").Limit(999), &records)
+	s.NoError(err)
+	s.Len(records, 3)
 }
