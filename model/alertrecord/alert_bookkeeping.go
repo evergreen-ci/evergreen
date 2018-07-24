@@ -14,10 +14,11 @@ const (
 
 // Task triggers
 const (
-	FirstVersionFailureId  = "first_version_failure"
-	FirstVariantFailureId  = "first_variant_failure"
-	FirstTaskTypeFailureId = "first_tasktype_failure"
-	TaskFailTransitionId   = "task_transition_failure"
+	FirstVersionFailureId    = "first_version_failure"
+	FirstVariantFailureId    = "first_variant_failure"
+	FirstTaskTypeFailureId   = "first_tasktype_failure"
+	TaskFailTransitionId     = "task_transition_failure"
+	FirstRegressionInVersion = "first_regression_in_version"
 	// TODO: EVG-3408
 	TaskFailedId                    = "task_failed"
 	LastRevisionNotFound            = "last_revision_not_found"
@@ -119,6 +120,13 @@ func ByLastRevNotFound(projectId, versionId string) db.Q {
 	return db.Query(bson.M{
 		TypeKey:      LastRevisionNotFound,
 		ProjectIdKey: projectId,
+		VersionIdKey: versionId,
+	}).Limit(1)
+}
+
+func ByFirstRegressionInVersion(versionId string) db.Q {
+	return db.Query(bson.M{
+		TypeKey:      FirstRegressionInVersion,
 		VersionIdKey: versionId,
 	}).Limit(1)
 }

@@ -33,6 +33,7 @@ const (
 	triggerTaskFirstFailureInVersion         = "first-failure-in-version"
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegressionByTest              = "regression-by-test"
+	triggerBuildBreak                        = "build-break"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -50,6 +51,7 @@ func makeTaskTriggers() eventHandler {
 		triggerRuntimeChangeByPercent:            t.taskRuntimeChange,
 		triggerRegression:                        t.taskRegression,
 		triggerTaskRegressionByTest:              t.taskRegressionByTest,
+		triggerBuildBreak:                        t.buildBreak,
 	}
 
 	return t
@@ -114,6 +116,7 @@ type taskTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.TaskEventData
 	task     *task.Task
+	version  *version.Version
 	uiConfig evergreen.UIConfig
 
 	oldTestResults map[string]*task.TestResult
@@ -141,13 +144,21 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.New("couldn't find task")
 	}
 
+	t.version, err = version.FindOne(version.ById(t.task.Version))
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch version")
+	}
+	if t.version == nil {
+		return errors.New("couldn't find version")
+	}
+
 	t.event = e
 
 	return nil
 }
 
 func (t *taskTriggers) Selectors() []event.Selector {
-	return []event.Selector{
+	selectors := []event.Selector{
 		{
 			Type: selectorID,
 			Data: t.task.Id,
@@ -177,6 +188,14 @@ func (t *taskTriggers) Selectors() []event.Selector {
 			Data: t.task.DisplayName,
 		},
 	}
+	if t.version != nil && t.version.AuthorID != "" {
+		selectors = append(selectors, event.Selector{
+			Type: selectorOwner,
+			Data: t.version.AuthorID,
+		})
+	}
+
+	return selectors
 }
 
 func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
@@ -701,4 +720,33 @@ func detailStatusToHumanSpeak(status string) string {
 	default:
 		return fmt.Sprintf("because of something else (%s)", status)
 	}
+}
+
+// this is very similar to taskRegression, but different enough
+func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.Status != evergreen.TaskFailed || t.task.Requester != evergreen.RepotrackerVersionRequester {
+		return nil, nil
+	}
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
+	if err != nil {
+		return nil, errors.Wrap(err, "error fetching previous task")
+	}
+	if previousTask != nil && previousTask.Status == evergreen.TaskFailed {
+		return nil, nil
+	}
+
+	lastAlert, err := alertrecord.FindOne(alertrecord.ByFirstRegressionInVersion(t.task.Version)) //TODO add subscriber id
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding last alert")
+	}
+	if lastAlert != nil {
+		return nil, nil
+	}
+
+	n, err := t.generateWithAlertRecord(sub, alertrecord.FirstRegressionInVersion, "caused a regression")
+	if err != nil {
+		return nil, err
+	}
+	return n, nil
 }
