@@ -55,7 +55,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    "host is invalid",
 		}
 	}
-	if err := util.ReadJSONInto(r.Body, h.createHost); err != nil {
+	if err := util.ReadJSONInto(r.Body, &h.createHost); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
