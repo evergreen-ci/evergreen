@@ -167,10 +167,10 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	// does not change the host status.
 	if h.Status == evergreen.HostProvisioning {
 		grip.Info(message.Fields{
-			"attempts", h.ProvisionAttempts,
-			"host_id": h.Id,
-			"job", j.ID(),
-			"message": "retrying provisioning",
+			"attempts": h.ProvisionAttempts,
+			"host_id":  h.Id,
+			"job":      j.ID(),
+			"message":  "retrying provisioning",
 		})
 		return nil
 	}
