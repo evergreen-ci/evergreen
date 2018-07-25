@@ -452,7 +452,9 @@ func addFailedAndStartedTests(waterfallRows map[string]waterfallRow, failedAndSt
 // any of the builds are active.
 func anyActiveTasks(builds []build.Build) bool {
 	for _, build := range builds {
-		return build.IsActive()
+		if build.IsActive() {
+			return true
+		}
 	}
 	return false
 }
