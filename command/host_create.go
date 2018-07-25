@@ -12,16 +12,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-type createHost struct {
+type CreateHost struct {
 	CreateHost *apimodels.CreateHost
 	base
 }
 
-func createHostFactory() Command { return &createHost{} }
+func createHostFactory() Command { return &CreateHost{} }
 
-func (c *createHost) Name() string { return "host.create" }
+func (c *CreateHost) Name() string { return "host.create" }
 
-func (c *createHost) ParseParams(params map[string]interface{}) error {
+func (c *CreateHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
 	if err := mapstructure.Decode(params, c.CreateHost); err != nil {
 		return errors.Wrapf(err, "error parsing '%s' params", c.Name())
@@ -30,7 +30,7 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	return c.CreateHost.Validate()
 }
 
-func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
+func (c *CreateHost) Execute(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	taskData := client.TaskData{
@@ -47,7 +47,7 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	return comm.CreateHost(ctx, taskData, *c.CreateHost)
 }
 
-func (c *createHost) populateUserdata() error {
+func (c *CreateHost) populateUserdata() error {
 	file, err := os.Open(c.CreateHost.UserdataFile)
 	if err != nil {
 		return errors.Wrap(err, "error opening UserData file")

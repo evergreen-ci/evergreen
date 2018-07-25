@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -208,4 +209,6 @@ type Connector interface {
 
 	// ListHostsForTask lists running hosts scoped to the task or the task's build.
 	ListHostsForTask(string) ([]host.Host, error)
+	MakeIntentHost(string, string, string, apimodels.CreateHost) (*host.Host, error)
+	CreateHostsFromTask(*task.Task, user.DBUser, string) error
 }
