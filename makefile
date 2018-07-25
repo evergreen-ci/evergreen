@@ -58,7 +58,7 @@ lintArgs := --tests --deadline=10m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="maligned"
+lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --disable="maligned"
 lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
 lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"

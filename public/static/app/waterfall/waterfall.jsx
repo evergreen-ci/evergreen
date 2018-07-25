@@ -2,6 +2,10 @@
   ReactJS code for the Waterfall page. Grid calls the Variant class for each distro, and the Variant class renders each build variant for every version that exists. In each build variant we iterate through all the tasks and render them as well. The row of headers is just a placeholder at the moment.
  */
 
+// React doesn't provide own functionality for making http calls
+// window.fetch doesn't handle query params
+var http = angular.bootstrap().get('$http')
+
 // Returns string from datetime object in "5/7/96 1:15 AM" format
 // Used to display version headers
 function getFormattedTime(input, userTz, fmt) {
@@ -86,64 +90,83 @@ class JiraLink extends React.Component {
 class Root extends React.Component{
   constructor(props){
     super(props);
-    // Initialize newer|older buttons
-    var versionsOnPage = _.reduce(_.map(window.serverData.versions, function(version){
-      return version.authors.length; 
-    }), function(memo,num){
-      return memo + num;
-    });
 
-    this.baseURL = "/waterfall/" + this.props.project;
-    this.currentSkip = window.serverData.current_skip;
-    this.nextSkip = this.currentSkip + versionsOnPage; 
-    this.prevSkip = this.currentSkip - window.serverData.previous_page_count;
-
-    if (this.nextSkip >= window.serverData.total_versions) {
-      this.nextSkip = -1;
-    }
-    if (this.currentSkip <= 0) {
-      this.prevSkip = -1;
-    }
+    this.updatePaginationContext(window.serverData)
    
-    var buildVariantFilter = getParameterByName('bv_filter',window.location.href);
-    var taskFilter = getParameterByName('task_filter',window.location.href);
+    const href = window.location.href
+    var buildVariantFilter = getParameterByName('bv_filter', href) || ''
+    var taskFilter = getParameterByName('task_filter', href) || ''
 
-    buildVariantFilter = buildVariantFilter || '';
-    taskFilter = taskFilter || '';
-    
     var collapsed = localStorage.getItem("collapsed") == "true";
 
     this.state = {
       collapsed: collapsed,
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
-      taskFilter:taskFilter 
-    };
+      taskFilter: taskFilter,
+      data: this.props.data,
+    }
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
     this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
+    this.loadDataPortion = _.debounce(this.loadDataPortion, 100)
+  }
+
+  updatePaginationContext(data) {
+    // Initialize newer|older buttons
+    var versionsOnPage = _.reduce(data.versions, function(m, d) {
+      return m + d.authors.length
+    }, 0)
+
+    this.baseURL = "/waterfall/" + this.props.project
+    this.currentSkip = data.current_skip
+    this.nextSkip = this.currentSkip + versionsOnPage;
+    this.prevSkip = this.currentSkip - data.previous_page_count
+
+    if (this.nextSkip >= data.total_versions) {
+      this.nextSkip = -1;
+    }
+
+    if (this.currentSkip <= 0) {
+      this.prevSkip = -1;
+    }
+  }
+
+  loadDataPortion(filter) {
+    var params = filter ? {bv_filter: filter} : {}
+    http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
+      .then(({data}) => {
+        this.updatePaginationContext(data)
+        this.setState({data})
+        updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
+      })
   }
 
   handleCollapseChange(collapsed) {
     localStorage.setItem("collapsed", collapsed);
     this.setState({collapsed: collapsed});
   }
+
   handleBuildVariantFilter(filter) {
+    this.loadDataPortion(filter)
     updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
     this.setState({buildVariantFilter: filter});
   }
+
   handleTaskFilter(filter) {
     updateURLParams(this.state.buildVariantFilter, filter, this.currentSkip, this.baseURL);
     this.setState({taskFilter: filter});
   }
+
   handleHeaderLinkClick(shortenMessage) {
     this.setState({shortenCommitMessage: !shortenMessage});
   }
+
   render() {
-    if (this.props.data.rows.length == 0){
+    if (this.state.data.rows.length == 0){
       return (
         <div> 
           There are no builds for this project.
@@ -169,13 +192,13 @@ class Root extends React.Component{
         /> 
         <Headers 
           shortenCommitMessage={this.state.shortenCommitMessage} 
-          versions={this.props.data.versions} 
+          versions={this.state.data.versions} 
           onLinkClick={this.handleHeaderLinkClick} 
           userTz={this.props.userTz}
           jiraHost={this.props.jiraHost}
         /> 
         <Grid 
-          data={this.props.data} 
+          data={this.state.data} 
           collapseInfo={collapseInfo} 
           project={this.props.project} 
           buildVariantFilter={this.state.buildVariantFilter}
@@ -235,8 +258,8 @@ function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilt
   var nextURL= "";
   var prevURL= "";
 
-  prevURLParams = {};
-  nextURLParams = {};
+  var prevURLParams = {};
+  var nextURLParams = {};
 
   nextURLParams["skip"] = nextSkip;
   prevURLParams["skip"] = prevSkip;
