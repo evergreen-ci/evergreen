@@ -2344,11 +2344,11 @@ func TestEstimateNumContainersForDuration(t *testing.T) {
 		assert.NoError(containers[i].Insert())
 	}
 
-	estimate1, err := EstimateNumContainersForDuration(parent, now.Add(-15*time.Minute), now)
+	estimate1, err := parent.EstimateNumContainersForDuration(now.Add(-15*time.Minute), now)
 	assert.NoError(err)
 	assert.Equal(1.0, estimate1)
 
-	estimate2, err := EstimateNumContainersForDuration(parent, now, now.Add(15*time.Minute))
+	estimate2, err := parent.EstimateNumContainersForDuration(now, now.Add(15*time.Minute))
 	assert.NoError(err)
 	assert.Equal(2.0, estimate2)
 }

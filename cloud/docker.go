@@ -319,7 +319,7 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 		return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
 	}
 
-	numContainers, err := host.EstimateNumContainersForDuration(parent, start, end)
+	numContainers, err := parent.EstimateNumContainersForDuration(start, end)
 	if err != nil {
 		return 0, errors.Wrap(err, "Errors estimating number of containers running over interval")
 	}

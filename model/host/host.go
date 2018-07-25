@@ -1048,7 +1048,7 @@ func (h *Host) CountContainersRunningAtTime(timestamp time.Time) (int, error) {
 // EstimateNumberContainersForDuration estimates how many containers were running
 // on a given host during the specified time interval by averaging the counts
 // at the start and end. It is more accurate for shorter tasks.
-func EstimateNumContainersForDuration(h *Host, start, end time.Time) (float64, error) {
+func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, error) {
 	containersAtStart, err := h.CountContainersRunningAtTime(start)
 	if err != nil {
 		return 0, errors.Wrapf(err, "Error counting containers running at %v", start)
