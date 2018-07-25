@@ -58,6 +58,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	db := settings.Database
 	s.NoError(s.env.Configure(ctx, "", &db))
 	s.Equal(db, s.env.settings.Database)
+	s.Fail("test")
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {

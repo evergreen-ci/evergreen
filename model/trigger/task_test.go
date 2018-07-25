@@ -847,4 +847,5 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 	n, err = s.t.taskRuntimeChange(&s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
+	s.Fail("test")
 }
