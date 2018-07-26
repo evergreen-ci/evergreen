@@ -324,6 +324,11 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 		return 0, errors.Wrap(err, "Errors estimating number of containers running over interval")
 	}
 
+	// prevent division by zero error
+	if numContainers == 0 {
+		return 0, nil
+	}
+
 	// get cloud manager for parent
 	parentMgr, err := GetManager(ctx, parent.Provider, s)
 	if err != nil {
