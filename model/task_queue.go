@@ -137,7 +137,7 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 				catcher.Add(errors.Errorf("got nil task for %s", it.Id))
 				continue
 			}
-			t.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded})
+			catcher.Add(t.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
 		}
 	}
 	return catcher.Resolve()
