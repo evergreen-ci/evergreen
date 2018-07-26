@@ -26,7 +26,7 @@ func (sthw SpawnTwoHourWarning) ShouldExecute(ctx triggerContext) (bool, error) 
 	if ctx.host == nil || ctx.host.ExpirationTime.IsZero() || ctx.host.ExpirationTime.Sub(time.Now()) > (2*time.Hour) { // nolint
 		return false, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(ctx.host.Id, alertrecord.SpawnHostTwoHourWarning))
+	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(legacyAlertsSubscription, ctx.host.Id, alertrecord.SpawnHostTwoHourWarning))
 	if err != nil {
 		return false, err
 	}
@@ -50,7 +50,7 @@ func (sthw SpawnTwelveHourWarning) ShouldExecute(ctx triggerContext) (bool, erro
 	if ctx.host == nil || ctx.host.ExpirationTime.IsZero() || ctx.host.ExpirationTime.Sub(time.Now()) > (12*time.Hour) { // nolint
 		return false, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(ctx.host.Id, alertrecord.SpawnHostTwelveHourWarning))
+	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(legacyAlertsSubscription, ctx.host.Id, alertrecord.SpawnHostTwelveHourWarning))
 	if err != nil {
 		return false, err
 	}
@@ -92,7 +92,7 @@ func (sthw SlowProvisionWarning) ShouldExecute(ctx triggerContext) (bool, error)
 	if ctx.host.Provisioned || ctx.host.CreationTime.Before(time.Now().Add(-20*time.Minute)) {
 		return false, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(ctx.host.Id, alertrecord.SlowProvisionWarning))
+	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(legacyAlertsSubscription, ctx.host.Id, alertrecord.SlowProvisionWarning))
 	if err != nil {
 		return false, err
 	}

@@ -173,6 +173,7 @@ func storeTriggerBookkeeping(ctx triggerContext, triggers []Trigger) error {
 		if alertRecord == nil {
 			continue
 		}
+		alertRecord.SubscriptionID = legacyAlertsSubscription
 
 		err := alertRecord.Insert()
 		if err != nil {
