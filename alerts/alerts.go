@@ -26,6 +26,8 @@ const (
 	JiraProvider  = "jira"
 	SlackProvider = "slack"
 	RunnerName    = "alerter"
+
+	legacyAlertsSubscription = "legacy-alerts"
 )
 
 // QueueProcessor handles looping over any unprocessed alerts in the queue and delivers them.

@@ -51,6 +51,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal("task-id", h.SpawnOptions.TaskID)
 
 	// scope to build
@@ -97,6 +98,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
@@ -121,6 +123,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
@@ -148,6 +151,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("ami-654321", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
+	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	assert.Equal("my_aws_key", ec2Settings.AWSKeyID)
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)

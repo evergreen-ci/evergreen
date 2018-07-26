@@ -49,6 +49,7 @@ func (s *DockerSuite) SetupTest() {
 			"image_url": "http://0.0.0.0:8000/docker_image.tgz",
 			"pool_id":   "pool_id",
 		},
+		User: "root",
 	}
 	s.parentHost = host.Host{
 		Id:            "parent",
@@ -69,12 +70,21 @@ func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
 		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
+		User:     "root",
 	}
 	s.NoError(settingsOk.Validate())
 
 	// error when missing image url
-	settingsNoImageURL := &dockerSettings{}
-	s.Error(settingsNoImageURL.Validate())
+	settingsNoImageURL := &dockerSettings{
+		User: "root",
+	}
+	s.EqualError(settingsNoImageURL.Validate(), "ImageURL must not be blank")
+
+	// error when missing user
+	settingsNoUser := &dockerSettings{
+		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
+	}
+	s.EqualError(settingsNoUser.Validate(), "User must not be blank")
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
