@@ -24,8 +24,6 @@ type dockerManager struct {
 type dockerSettings struct {
 	// ImageURL is the url of the Docker image to use when building the container.
 	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
-	// User is the user that runs the Evergreen agent in the container.
-	User string `mapstructure:"user" json:"user" bson:"user"`
 }
 
 // nolint
@@ -38,9 +36,6 @@ var (
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageURL == "" {
 		return errors.New("ImageURL must not be blank")
-	}
-	if settings.User == "" {
-		return errors.New("User must not be blank")
 	}
 
 	return nil
@@ -65,7 +60,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 			return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", h.Distro.Id)
 		}
 	}
-	settings.User = h.Distro.User
 
 	// get parent of host
 	parent, err := h.GetParent()
@@ -89,7 +83,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, parent, h.Id, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, parent, h.Id, h.Distro.User, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
