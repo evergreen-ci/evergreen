@@ -27,16 +27,19 @@ func (s *alertRecordSuite) SetupTest() {
 }
 
 func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
-	testName := "test"
-	taskDisplayName := "task"
-	variant := "variant"
-	projectID := "project"
+	const (
+		sub             = "test-sub"
+		testName        = "test"
+		taskDisplayName = "task"
+		variant         = "variant"
+		projectID       = "project"
+	)
 	beforeRevision := 2
-	s.NoError(InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestRecord(sub, testName, taskDisplayName, variant, projectID, beforeRevision))
 	beforeRevision = 5
-	s.NoError(InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestRecord(sub, testName, taskDisplayName, variant, projectID, beforeRevision))
 
-	record, err := FindByLastTaskRegressionByTest(testName, taskDisplayName, variant, projectID, beforeRevision)
+	record, err := FindByLastTaskRegressionByTest(sub, testName, taskDisplayName, variant, projectID, beforeRevision)
 	s.NoError(err)
 	s.Require().NotNil(record)
 	s.True(record.Id.Valid())
@@ -54,16 +57,19 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 }
 
 func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() {
-	taskDisplayName := "task"
-	taskStatus := "something"
-	variant := "variant"
-	projectID := "project"
+	const (
+		sub             = "test-sub"
+		taskDisplayName = "task"
+		taskStatus      = "something"
+		variant         = "variant"
+		projectID       = "project"
+	)
 	beforeRevision := 2
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(sub, taskDisplayName, taskStatus, variant, projectID, beforeRevision))
 	beforeRevision = 5
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(sub, taskDisplayName, taskStatus, variant, projectID, beforeRevision))
 
-	record, err := FindByLastTaskRegressionByTestWithNoTests(taskDisplayName, variant, projectID, beforeRevision)
+	record, err := FindByLastTaskRegressionByTestWithNoTests(sub, taskDisplayName, variant, projectID, beforeRevision)
 
 	s.NoError(err)
 	s.Require().NotNil(record)
@@ -102,7 +108,7 @@ func (s *alertRecordSuite) ByLastFailureTransition() {
 		RevisionOrderNumber: 2,
 	}
 	s.NoError(alert2.Insert())
-	alert, err := FindOne(ByLastFailureTransition("t", "v", "p"))
+	alert, err := FindOne(ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t2", alert.TaskId)
 
@@ -116,7 +122,7 @@ func (s *alertRecordSuite) ByLastFailureTransition() {
 		RevisionOrderNumber: 3,
 	}
 	s.NoError(alert3.Insert())
-	alert, err = FindOne(ByLastFailureTransition("t", "v", "p"))
+	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
 
@@ -131,7 +137,7 @@ func (s *alertRecordSuite) ByLastFailureTransition() {
 		AlertTime:           time.Now(),
 	}
 	s.NoError(alert4.Insert())
-	alert, err = FindOne(ByLastFailureTransition("t", "v", "p"))
+	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t4", alert.TaskId)
 
@@ -146,7 +152,63 @@ func (s *alertRecordSuite) ByLastFailureTransition() {
 		AlertTime:           time.Now().Add(-1 * time.Hour),
 	}
 	s.NoError(alert5.Insert())
-	alert, err = FindOne(ByLastFailureTransition("t", "v", "p"))
+	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t4", alert.TaskId)
+}
+
+func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
+	oldStyle0 := bson.M{
+		"_id":                  bson.NewObjectId(),
+		TypeKey:                TaskFailTransitionId,
+		TaskNameKey:            "task",
+		VariantKey:             "variant",
+		ProjectIdKey:           "project",
+		RevisionOrderNumberKey: 0,
+	}
+	oldStyle1 := bson.M{
+		"_id":                  bson.NewObjectId(),
+		TypeKey:                TaskFailTransitionId,
+		TaskNameKey:            "task",
+		VariantKey:             "variant",
+		ProjectIdKey:           "project",
+		RevisionOrderNumberKey: 1,
+	}
+	oldStyle3 := bson.M{
+		"_id":                  bson.NewObjectId(),
+		TypeKey:                TaskFailTransitionId,
+		TaskNameKey:            "othertask",
+		VariantKey:             "othervariant",
+		ProjectIdKey:           "otherproject",
+		RevisionOrderNumberKey: 2,
+	}
+	s.NoError(db.Insert(Collection, &oldStyle0))
+	s.NoError(db.Insert(Collection, &oldStyle1))
+	s.NoError(db.Insert(Collection, &oldStyle3))
+
+	rec, err := FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	s.NoError(err)
+	s.Require().NotNil(rec)
+
+	s.Equal(1, rec.RevisionOrderNumber)
+	newStyle := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		SubscriptionID:      legacyAlertsSubscription,
+		Type:                TaskFailTransitionId,
+		TaskName:            "task",
+		Variant:             "variant",
+		ProjectId:           "project",
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(newStyle.Insert())
+
+	rec, err = FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	s.NoError(err)
+	s.Require().NotNil(rec)
+	s.Equal(2, rec.RevisionOrderNumber)
+
+	records := []AlertRecord{}
+	err = db.FindAllQ(Collection, ByLastFailureTransition("legacy-alerts", "task", "variant", "project").Limit(999), &records)
+	s.NoError(err)
+	s.Len(records, 3)
 }

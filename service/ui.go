@@ -186,6 +186,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	needsContext := gimlet.WrapperMiddleware(uis.loadCtx)
 	needsSuperUser := gimlet.WrapperMiddleware(uis.requireSuperUser)
 	needsAdmin := gimlet.WrapperMiddleware(uis.requireAdmin)
+	allowsCORS := gimlet.WrapperMiddleware(uis.setCORSHeaders)
 
 	app := gimlet.NewApp()
 	app.NoVersions = true
@@ -233,7 +234,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/tasks/{task_id}").Wrap(needsLogin, needsContext).Handler(uis.taskModify).Put()
 	app.AddRoute("/json/task_log/{task_id}").Wrap(needsContext).Handler(uis.taskLog).Get()
 	app.AddRoute("/json/task_log/{task_id}/{execution}").Wrap(needsContext).Handler(uis.taskLog).Get()
-	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsContext).Handler(uis.taskLogRaw).Get()
+	app.AddRoute("/task_log_raw/{task_id}/{execution}").Wrap(needsContext, allowsCORS).Handler(uis.taskLogRaw).Get()
 
 	// Performance Discovery pages
 	app.AddRoute("/perfdiscovery/").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
@@ -245,7 +246,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Test Logs
 	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext).Handler(uis.testLog).Get()
-	app.AddRoute("/test_log/{log_id}").Wrap(needsContext).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{log_id}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()
 
 	// Build page
 	app.AddRoute("/build/{build_id}").Wrap(needsContext).Handler(uis.buildPage).Get()

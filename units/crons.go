@@ -372,6 +372,24 @@ func PopulateContainerStateJobs(env evergreen.Environment) amboy.QueueOperation 
 	}
 }
 
+func PopulateOldestImageRemovalJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+
+		parents, err := host.FindAllRunningParents()
+		if err != nil {
+			return errors.Wrap(err, "Error finding parent hosts")
+		}
+
+		// Create oldestImageJob when images take up too much disk space
+		for _, p := range parents {
+			catcher.Add(queue.Put(NewOldestImageRemovalJob(&p, evergreen.ProviderNameDocker, ts)))
+		}
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()

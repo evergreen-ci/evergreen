@@ -110,7 +110,6 @@ func (j *setupHostJob) Run(ctx context.Context) {
 }
 
 var (
-	errRetryHost           = errors.New("host status is starting after running provisioning")
 	errIgnorableCreateHost = errors.New("host.create encountered internal error")
 )
 
@@ -167,8 +166,13 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 	// In these cases, ProvisionHost returns a nil error but
 	// does not change the host status.
 	if h.Status == evergreen.HostProvisioning {
-		return errors.Wrapf(errRetryHost, "retrying for '%s', after %d attempts",
-			h.Id, h.ProvisionAttempts)
+		grip.Info(message.Fields{
+			"attempts": h.ProvisionAttempts,
+			"host_id":  h.Id,
+			"job":      j.ID(),
+			"message":  "retrying provisioning",
+		})
+		return nil
 	}
 
 	grip.Info(message.Fields{
