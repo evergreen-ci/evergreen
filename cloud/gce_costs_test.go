@@ -5,6 +5,7 @@ package cloud
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
@@ -127,14 +128,15 @@ func (s *GCESuite) TestCostForDuration() {
 	start := time.Now()
 	end := time.Now()
 	h := &host.Host{Id: "id"}
+	settings := &evergreen.Settings{}
 
 	// end before start
-	cost, err := s.manager.CostForDuration(h, end, start)
+	cost, err := s.manager.CostForDuration(h, end, start, settings)
 	s.Error(err)
 	s.Zero(cost)
 
 	// valid input
-	cost, err = s.manager.CostForDuration(h, start, end)
+	cost, err = s.manager.CostForDuration(h, start, end, settings)
 	s.NoError(err)
 	s.NotZero(cost)
 }

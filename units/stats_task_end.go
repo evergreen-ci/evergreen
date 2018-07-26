@@ -103,7 +103,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
 	} else {
 		if calc, ok := manager.(cloud.CostCalculator); ok {
-			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
+			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime, settings)
 			if err != nil {
 				j.AddError(err)
 			} else {
