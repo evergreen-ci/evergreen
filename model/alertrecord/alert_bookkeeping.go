@@ -23,8 +23,6 @@ const (
 	LastRevisionNotFound            = "last_revision_not_found"
 	taskRegressionByTest            = "task-regression-by-test"
 	taskRegressionByTestWithNoTests = "task-regression-by-test-with-no-tests"
-
-	legacyAlertsSubscription = "legacy-alerts"
 )
 
 // Host triggers

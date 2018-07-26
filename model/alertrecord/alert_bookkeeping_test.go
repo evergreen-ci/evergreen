@@ -9,6 +9,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const legacyAlertsSubscription = "legacy-alerts"
+
 func TestAlertRecord(t *testing.T) {
 	suite.Run(t, &alertRecordSuite{})
 }
@@ -113,7 +115,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	s.NoError(db.Insert(Collection, &oldStyle1))
 	s.NoError(db.Insert(Collection, &oldStyle3))
 
-	rec, err := FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	rec, err := FindOne(ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
 	s.Require().NotNil(rec)
 
@@ -129,13 +131,13 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	}
 	s.NoError(newStyle.Insert())
 
-	rec, err = FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	rec, err = FindOne(ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
 	s.Require().NotNil(rec)
 	s.Equal(2, rec.RevisionOrderNumber)
 
 	records := []AlertRecord{}
-	err = db.FindAllQ(Collection, ByLastFailureTransition("legacy-alerts", "task", "variant", "project").Limit(999), &records)
+	err = db.FindAllQ(Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
 	s.NoError(err)
 	s.Len(records, 3)
 }
