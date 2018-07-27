@@ -102,6 +102,9 @@ func (h *hostCreateHandler) makeIntentHost() (*host.Host, error) {
 		}
 	}
 
+	// set provider
+	d.Provider = provider
+
 	// set provider settings
 	if h.createHost.AMI != "" {
 		ec2Settings.AMI = h.createHost.AMI

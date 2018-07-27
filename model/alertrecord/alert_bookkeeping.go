@@ -36,6 +36,7 @@ const (
 
 type AlertRecord struct {
 	Id                  bson.ObjectId `bson:"_id"`
+	SubscriptionID      string        `bson:"subscription_id"`
 	Type                string        `bson:"type"`
 	HostId              string        `bson:"host_id,omitempty"`
 	TaskId              string        `bson:"task_id,omitempty"`
@@ -51,6 +52,7 @@ type AlertRecord struct {
 //nolint: deadcode, megacheck
 var (
 	IdKey                  = bsonutil.MustHaveTag(AlertRecord{}, "Id")
+	subscriptionIDKey      = bsonutil.MustHaveTag(AlertRecord{}, "SubscriptionID")
 	TypeKey                = bsonutil.MustHaveTag(AlertRecord{}, "Type")
 	TaskIdKey              = bsonutil.MustHaveTag(AlertRecord{}, "TaskId")
 	taskStatusKey          = bsonutil.MustHaveTag(AlertRecord{}, "TaskStatus")
@@ -73,88 +75,104 @@ func FindOne(query db.Q) (*AlertRecord, error) {
 	return alertRec, err
 }
 
+func subscriptionIDQuery(subID string) bson.M {
+	return bson.M{
+		"$or": []bson.M{
+			{
+				subscriptionIDKey: subID,
+			},
+			{
+				subscriptionIDKey: bson.M{
+					"$exists": false,
+				},
+			},
+		},
+	}
+}
+
 // ByPreviousFailureTransition finds the last alert record that was stored for a task/variant
 // within a given project.
 // This can be used to determine whether or not a newly detected failure transition should trigger
 // an alert. If an alert was already sent for a failed task, which transitioned from a succsesfulwhose commit order number is
-func ByLastFailureTransition(taskName, variant, projectId string) db.Q {
-	return db.Query(bson.M{
-		TypeKey:      TaskFailTransitionId,
-		TaskNameKey:  taskName,
-		VariantKey:   variant,
-		ProjectIdKey: projectId,
-	}).Sort([]string{"-" + RevisionOrderNumberKey}).Limit(1)
+func ByLastFailureTransition(subscriptionID, taskName, variant, projectId string) db.Q {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = TaskFailTransitionId
+	q[TaskNameKey] = taskName
+	q[VariantKey] = variant
+	q[ProjectIdKey] = projectId
+	return db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}).Limit(1)
 }
 
-func ByFirstFailureInVersion(projectId, versionId string) db.Q {
-	return db.Query(bson.M{
-		TypeKey:      FirstVersionFailureId,
-		VersionIdKey: versionId,
-	}).Limit(1)
+func ByFirstFailureInVersion(subscriptionID, projectId, versionId string) db.Q {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = FirstVersionFailureId
+	q[VersionIdKey] = versionId
+	return db.Query(q).Limit(1)
 }
 
-func ByFirstFailureInVariant(versionId, variant string) db.Q {
-	return db.Query(bson.M{
-		TypeKey:      FirstVariantFailureId,
-		VersionIdKey: versionId,
-		VariantKey:   variant,
-	}).Limit(1)
+func ByFirstFailureInVariant(subscriptionID, versionId, variant string) db.Q {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = FirstVariantFailureId
+	q[VersionIdKey] = versionId
+	q[VariantKey] = variant
+	return db.Query(q).Limit(1)
 }
-func ByFirstFailureInTaskType(versionId, taskName string) db.Q {
-	return db.Query(bson.M{
-		TypeKey:      FirstTaskTypeFailureId,
-		VersionIdKey: versionId,
-		TaskNameKey:  taskName,
-	}).Limit(1)
-}
-
-func ByHostAlertRecordType(hostId, triggerId string) db.Q {
-	return db.Query(bson.M{
-		TypeKey:   triggerId,
-		HostIdKey: hostId,
-	}).Limit(1)
+func ByFirstFailureInTaskType(subscriptionID, versionId, taskName string) db.Q {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = FirstTaskTypeFailureId
+	q[VersionIdKey] = versionId
+	q[TaskNameKey] = taskName
+	return db.Query(q).Limit(1)
 }
 
-func ByLastRevNotFound(projectId, versionId string) db.Q {
-	return db.Query(bson.M{
-		TypeKey:      LastRevisionNotFound,
-		ProjectIdKey: projectId,
-		VersionIdKey: versionId,
-	}).Limit(1)
+func ByHostAlertRecordType(subscriptionID, hostId, triggerId string) db.Q {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = triggerId
+	q[HostIdKey] = hostId
+	return db.Query(q).Limit(1)
 }
 
-func FindByLastTaskRegressionByTest(testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {
-	return FindOne(db.Query(bson.M{
-		TypeKey:      taskRegressionByTest,
-		testNameKey:  testName,
-		TaskNameKey:  taskDisplayName,
-		VariantKey:   variant,
-		ProjectIdKey: projectID,
-		RevisionOrderNumberKey: bson.M{
-			"$lte": beforeRevision,
-		},
-	}).Sort([]string{"-" + RevisionOrderNumberKey}))
+func ByLastRevNotFound(subscriptionID, projectId, versionId string) db.Q {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = LastRevisionNotFound
+	q[ProjectIdKey] = projectId
+	q[VersionIdKey] = versionId
+	return db.Query(q).Limit(1)
 }
 
-func FindByLastTaskRegressionByTestWithNoTests(taskDisplayName, variant, projectID string, revision int) (*AlertRecord, error) {
-	return FindOne(db.Query(bson.M{
-		TypeKey:      taskRegressionByTestWithNoTests,
-		TaskNameKey:  taskDisplayName,
-		VariantKey:   variant,
-		ProjectIdKey: projectID,
-		RevisionOrderNumberKey: bson.M{
-			"$lte": revision,
-		},
-	}).Sort([]string{"-" + RevisionOrderNumberKey}))
+func FindByLastTaskRegressionByTest(subscriptionID, testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = taskRegressionByTest
+	q[testNameKey] = testName
+	q[TaskNameKey] = taskDisplayName
+	q[VariantKey] = variant
+	q[ProjectIdKey] = projectID
+	q[RevisionOrderNumberKey] = bson.M{
+		"$lte": beforeRevision,
+	}
+	return FindOne(db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
+}
+
+func FindByLastTaskRegressionByTestWithNoTests(subscriptionID, taskDisplayName, variant, projectID string, revision int) (*AlertRecord, error) {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = taskRegressionByTestWithNoTests
+	q[TaskNameKey] = taskDisplayName
+	q[VariantKey] = variant
+	q[ProjectIdKey] = projectID
+	q[RevisionOrderNumberKey] = bson.M{
+		"$lte": revision,
+	}
+	return FindOne(db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
 func (ar *AlertRecord) Insert() error {
 	return db.Insert(Collection, ar)
 }
 
-func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, projectID string, revision int) error {
+func InsertNewTaskRegressionByTestRecord(subscriptionID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  bson.NewObjectId(),
+		SubscriptionID:      subscriptionID,
 		Type:                taskRegressionByTest,
 		ProjectId:           projectID,
 		TaskName:            taskDisplayName,
@@ -166,9 +184,10 @@ func InsertNewTaskRegressionByTestRecord(testName, taskDisplayName, variant, pro
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTest)
 }
 
-func InsertNewTaskRegressionByTestWithNoTestsRecord(taskDisplayName, taskStatus, variant, projectID string, revision int) error {
+func InsertNewTaskRegressionByTestWithNoTestsRecord(subscriptionID, taskDisplayName, taskStatus, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  bson.NewObjectId(),
+		SubscriptionID:      subscriptionID,
 		Type:                taskRegressionByTestWithNoTests,
 		ProjectId:           projectID,
 		TaskName:            taskDisplayName,

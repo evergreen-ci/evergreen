@@ -62,36 +62,6 @@ describe('PerfDiscoveryDataServiceTest', function() {
     }])
 })
 
-  it('extracts storageEngine from build name', function() {
-    expect(
-      service._extractStorageEngine('build-wt', 'task')
-    ).toEqual({
-      build: 'build',
-      task: 'task',
-      storageEngine: 'wt',
-    })
-  })
-
-  it('extracts storageEngine from task name', function() {
-    expect(
-      service._extractStorageEngine('build', 'task-wiredtiger')
-    ).toEqual({
-      build: 'build',
-      task: 'task',
-      storageEngine: 'wiredtiger',
-    })
-  })
-
-  it('handles no storageEngine case', function() {
-    expect(
-      service._extractStorageEngine('build', 'task')
-    ).toEqual({
-      build: 'build',
-      task: 'task',
-      storageEngine: '(none)',
-    })
-  })
-
   it('processes single data item', function() {
     var item = {
       name: 'name',
@@ -101,11 +71,12 @@ describe('PerfDiscoveryDataServiceTest', function() {
       }
     }
     var ctx = {
-      buildName: 'b-wt',
+      buildName: 'b',
       taskName: 't',
       taskId: 'tid',
       buildId: 'bid',
       buildVariant: 'bv',
+      storageEngine: 'wt',
     }
     var receiver = {}
 
