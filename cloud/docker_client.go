@@ -29,7 +29,7 @@ type dockerClient interface {
 	Init(string) error
 	EnsureImageDownloaded(context.Context, *host.Host, string) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
-	CreateContainer(context.Context, *host.Host, string, *dockerSettings) error
+	CreateContainer(context.Context, *host.Host, string, string, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
@@ -193,7 +193,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name string, settings *dockerSettings) error {
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name, user string, settings *dockerSettings) error {
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
@@ -256,7 +256,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		},
 		Cmd:   agentCmdParts,
 		Image: provisionedImage,
-		User:  settings.User,
+		User:  user,
 	}
 	networkConf := &network.NetworkingConfig{}
 

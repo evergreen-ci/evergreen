@@ -2,6 +2,8 @@ package alerts
 
 import (
 	//"github.com/evergreen-ci/evergreen"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -63,8 +65,9 @@ var (
 // with as much data from the triggerContext as possible
 func newAlertRecord(ctx triggerContext, alertType string) *alertrecord.AlertRecord {
 	record := &alertrecord.AlertRecord{
-		Id:   bson.NewObjectId(),
-		Type: alertType,
+		Id:        bson.NewObjectId(),
+		Type:      alertType,
+		AlertTime: time.Now(),
 	}
 	if ctx.task != nil {
 		record.ProjectId = ctx.task.Project

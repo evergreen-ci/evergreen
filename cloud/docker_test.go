@@ -70,21 +70,12 @@ func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
 		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
-		User:     "root",
 	}
 	s.NoError(settingsOk.Validate())
 
 	// error when missing image url
-	settingsNoImageURL := &dockerSettings{
-		User: "root",
-	}
+	settingsNoImageURL := &dockerSettings{}
 	s.EqualError(settingsNoImageURL.Validate(), "ImageURL must not be blank")
-
-	// error when missing user
-	settingsNoUser := &dockerSettings{
-		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
-	}
-	s.EqualError(settingsNoUser.Validate(), "User must not be blank")
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {

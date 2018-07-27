@@ -2,12 +2,15 @@ package alertrecord
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
+
+const legacyAlertsSubscription = "legacy-alerts"
 
 func TestAlertRecord(t *testing.T) {
 	suite.Run(t, &alertRecordSuite{})
@@ -52,6 +55,7 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 	s.Equal("variant", record.Variant)
 	s.Equal("test", record.TestName)
 	s.Equal(5, record.RevisionOrderNumber)
+	s.InDelta(time.Now().UnixNano(), record.AlertTime.UnixNano(), float64(10*time.Millisecond))
 }
 
 func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() {
@@ -82,6 +86,77 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() 
 	s.Equal("variant", record.Variant)
 	s.Empty(record.TestName)
 	s.Equal(5, record.RevisionOrderNumber)
+	s.InDelta(time.Now().UnixNano(), record.AlertTime.UnixNano(), float64(10*time.Millisecond))
+}
+
+func (s *alertRecordSuite) ByLastFailureTransition() {
+	alert1 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                TaskFailTransitionId,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t1",
+		RevisionOrderNumber: 1,
+	}
+	s.NoError(alert1.Insert())
+	alert2 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                TaskFailTransitionId,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t2",
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(alert2.Insert())
+	alert, err := FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	s.NoError(err)
+	s.Equal("t2", alert.TaskId)
+
+	alert3 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                TaskFailTransitionId,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t3",
+		RevisionOrderNumber: 3,
+	}
+	s.NoError(alert3.Insert())
+	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	s.NoError(err)
+	s.Equal("t3", alert.TaskId)
+
+	alert4 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                TaskFailTransitionId,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t4",
+		RevisionOrderNumber: 4,
+		AlertTime:           time.Now(),
+	}
+	s.NoError(alert4.Insert())
+	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	s.NoError(err)
+	s.Equal("t4", alert.TaskId)
+
+	alert5 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                TaskFailTransitionId,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t5",
+		RevisionOrderNumber: 5,
+		AlertTime:           time.Now().Add(-1 * time.Hour),
+	}
+	s.NoError(alert5.Insert())
+	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	s.NoError(err)
+	s.Equal("t4", alert.TaskId)
 }
 
 func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
@@ -113,7 +188,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	s.NoError(db.Insert(Collection, &oldStyle1))
 	s.NoError(db.Insert(Collection, &oldStyle3))
 
-	rec, err := FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	rec, err := FindOne(ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
 	s.Require().NotNil(rec)
 
@@ -129,13 +204,13 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	}
 	s.NoError(newStyle.Insert())
 
-	rec, err = FindOne(ByLastFailureTransition("legacy-alerts", "task", "variant", "project"))
+	rec, err = FindOne(ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
 	s.Require().NotNil(rec)
 	s.Equal(2, rec.RevisionOrderNumber)
 
 	records := []AlertRecord{}
-	err = db.FindAllQ(Collection, ByLastFailureTransition("legacy-alerts", "task", "variant", "project").Limit(999), &records)
+	err = db.FindAllQ(Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
 	s.NoError(err)
 	s.Len(records, 3)
 }

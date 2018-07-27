@@ -5,7 +5,7 @@ nodeDir := public
 packages := $(name) agent operations cloud command db subprocess util plugin units
 packages += thirdparty alerts auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
-packages += model-grid rest-client rest-data rest-route rest-model migrations model-trigger model-alertrecord
+packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration

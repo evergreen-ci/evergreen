@@ -24,8 +24,6 @@ type dockerManager struct {
 type dockerSettings struct {
 	// ImageURL is the url of the Docker image to use when building the container.
 	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
-	// User is the user that runs the Evergreen agent in the container.
-	User string `mapstructure:"user" json:"user" bson:"user"`
 }
 
 // nolint
@@ -38,9 +36,6 @@ var (
 func (settings *dockerSettings) Validate() error {
 	if settings.ImageURL == "" {
 		return errors.New("ImageURL must not be blank")
-	}
-	if settings.User == "" {
-		return errors.New("User must not be blank")
 	}
 
 	return nil
@@ -65,7 +60,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 			return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", h.Distro.Id)
 		}
 	}
-	settings.User = h.Distro.User
 
 	// get parent of host
 	parent, err := h.GetParent()
@@ -89,7 +83,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, parent, h.Id, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, parent, h.Id, h.Distro.User, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
@@ -314,4 +308,42 @@ func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Ho
 		spaceBytes += image.Size
 	}
 	return spaceBytes, nil
+}
+
+// CostForDuration estimates the cost for a span of time on the given container
+// host. The method divides the cost of that span on the parent host by an
+// estimate of the number of containers running during the same interval.
+func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+	parent, err := h.GetParent()
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+	}
+
+	numContainers, err := parent.EstimateNumContainersForDuration(start, end)
+	if err != nil {
+		return 0, errors.Wrap(err, "Errors estimating number of containers running over interval")
+	}
+
+	// prevent division by zero error
+	if numContainers == 0 {
+		return 0, nil
+	}
+
+	// get cloud manager for parent
+	parentMgr, err := GetManager(ctx, parent.Provider, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
+	}
+
+	// get parent cost for time interval
+	calc, ok := parentMgr.(CostCalculator)
+	if !ok {
+		return 0, errors.Errorf("Type assertion failed: type %T does not hold a CostCaluclator", parentMgr)
+	}
+	cost, err := calc.CostForDuration(ctx, parent, start, end, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error calculating cost for parent host '%s'", parent.Id)
+	}
+
+	return cost / numContainers, nil
 }
