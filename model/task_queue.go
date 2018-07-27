@@ -127,7 +127,6 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	catcher := grip.NewBasicCatcher()
 	for _, it := range self.Queue {
 		if spec.Group == it.Group && spec.BuildVariant == it.BuildVariant && spec.Version == it.Version {
-			catcher.Add(errors.Wrapf(self.DequeueTask(it.Id), "problem dequeueing task %s", it.Id))
 			t, err := task.FindOneId(it.Id)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem finding task %s", it.Id))
@@ -138,6 +137,7 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 				continue
 			}
 			catcher.Add(t.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
+			catcher.Add(errors.Wrapf(self.DequeueTask(it.Id), "problem dequeueing task %s", it.Id))
 		}
 	}
 	return catcher.Resolve()
@@ -346,7 +346,8 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
-			taskQueueDistroKey: self.Distro,
+			taskQueueDistroKey:                                               self.Distro,
+			bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey): taskId,
 		},
 		bson.M{
 			"$pull": bson.M{

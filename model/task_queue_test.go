@@ -51,6 +51,16 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldNotBeNil)
 		})
 
+		Convey("if the task is present in the in-memory queue but not in the db queue"+
+			", an error should be thrown", func() {
+			taskQueue.Queue = append(taskQueue.Queue,
+				TaskQueueItem{Id: taskIds[1]})
+			So(taskQueue.Save(), ShouldBeNil)
+			taskQueue.Queue = append(taskQueue.Queue,
+				TaskQueueItem{Id: taskIds[0]})
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldNotBeNil)
+		})
+
 		Convey("if the task is present in the queue, it should be removed"+
 			" from the in-memory and db versions of the queue", func() {
 			taskQueue.Queue = []TaskQueueItem{
