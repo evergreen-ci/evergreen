@@ -580,6 +580,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// does not occur if there's a failed task)
 	if buildComplete {
 		grip.InfoWhen(b.Project == "mci" || b.Project == "lobster", message.Fields{
+			"lookhere":    "evg-3455",
 			"message":     "build complete",
 			"build_id":    b.Id,
 			"failed":      failedTask,
