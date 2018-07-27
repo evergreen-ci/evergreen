@@ -128,13 +128,6 @@ func ByFirstFailureInTaskType(subscriptionID, versionId, taskName string) db.Q {
 	return db.Query(q).Limit(1)
 }
 
-func ByFirstRegressionInVersion(subscriptionID, versionId string) db.Q {
-	q := subscriptionIDQuery(subscriptionID)
-	q[TypeKey] = FirstRegressionInVersion
-	q[VersionIdKey] = versionId
-	return db.Query(q).Limit(1)
-}
-
 func ByHostAlertRecordType(subscriptionID, hostId, triggerId string) db.Q {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = triggerId
@@ -148,6 +141,13 @@ func ByLastRevNotFound(subscriptionID, projectId, versionId string) db.Q {
 	q[ProjectIdKey] = projectId
 	q[VersionIdKey] = versionId
 	return db.Query(q).Limit(1)
+}
+
+func FindByFirstRegressionInVersion(subscriptionID, versionId string) (*AlertRecord, error) {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = FirstRegressionInVersion
+	q[VersionIdKey] = versionId
+	return FindOne(db.Query(q).Limit(1))
 }
 
 func FindByLastTaskRegressionByTest(subscriptionID, testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {

@@ -170,34 +170,10 @@ func (s *taskSuite) SetupTest() {
 				event.TaskPercentChangeKey: "50",
 			},
 		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: triggerBuildBreak,
-			Selectors: []event.Selector{
-				{
-					Type: selectorOwner,
-					Data: "me",
-				},
-				{
-					Type: selectorObject,
-					Data: objectTask,
-				},
-				{
-					Type: selectorProject,
-					Data: "test_project",
-				},
-				{
-					Type: selectorRequester,
-					Data: evergreen.RepotrackerVersionRequester,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type:   event.JIRACommentSubscriberType,
-				Target: "A-3",
-			},
-			Owner: "someone",
-		},
+		event.NewBuildBreakSubscriptionByOwner("me", event.Subscriber{
+			Type:   event.JIRACommentSubscriberType,
+			Target: "A-3",
+		}),
 	}
 
 	for i := range s.subs {

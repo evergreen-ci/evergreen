@@ -737,7 +737,7 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 		return nil, nil
 	}
 
-	lastAlert, err := alertrecord.FindOne(alertrecord.ByFirstRegressionInVersion(sub.ID, t.task.Version))
+	lastAlert, err := alertrecord.FindByFirstRegressionInVersion(sub.ID, t.task.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding last alert")
 	}
