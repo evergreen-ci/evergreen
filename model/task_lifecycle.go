@@ -579,6 +579,13 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// both completed in addition to a push (a push
 	// does not occur if there's a failed task)
 	if buildComplete {
+		grip.InfoWhen(b.Project == "mci", message.Fields{
+			"message":     "build complete",
+			"build_id":    b.Id,
+			"failed":      failedTask,
+			"is_finished": b.IsFinished(),
+			"is_active":   b.IsActive(),
+		})
 		if !failedTask {
 			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
 				err = errors.Wrap(err, "Error marking build as finished")
