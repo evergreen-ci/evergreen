@@ -116,4 +116,4 @@ imports:
   - name: github.com/mongodb/amboy
     version: 6c8902f4fecd2df49ff5e021e6bc324201aebb68
   - name: github.com/evergreen-ci/gimlet
-    version: c379b5c0905cce7cc84384d68c6b050ee4898390
+    version: 3d3722bb42e54b314579b28ca2c305be212cdef9
