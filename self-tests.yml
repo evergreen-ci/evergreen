@@ -346,7 +346,7 @@ tasks:
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-trigger
+    name: test-trigger
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-util
