@@ -5,7 +5,7 @@ nodeDir := public
 packages := $(name) agent operations cloud command db subprocess util plugin units
 packages += thirdparty alerts auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
-packages += model-grid rest-client rest-data rest-route rest-model migrations model-trigger model-alertrecord
+packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -58,7 +58,7 @@ lintArgs := --tests --deadline=10m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="maligned"
+lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --disable="maligned"
 lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
 lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"

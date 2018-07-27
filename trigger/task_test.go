@@ -61,6 +61,7 @@ func (s *taskSuite) SetupTest() {
 		Status: evergreen.TaskStarted,
 	}
 	s.event = event.EventLogEntry{
+		ID:           "event1234",
 		ResourceType: event.ResourceTypeTask,
 		EventType:    event.TaskFinished,
 		ResourceId:   "test",

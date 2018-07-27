@@ -109,6 +109,25 @@ functions:
   a_function:
     command: shell.exec
 `
+	sampleProjYmlNoFunctions = `
+tasks:
+  - name: say-hi
+    commands:
+      - command: shell.exec
+  - name: say-bye
+    commands:
+      - command: shell.exec
+  - name: a-depended-on-task
+    command:
+      - command: shell.exec
+
+buildvariants:
+  - name: a_variant
+    display_name: Variant Number One
+    tasks:
+    - name: say-hi
+    - name: a-depended-on-task
+`
 	sampleGenerateTasksYml = `
 {
     "functions": {
@@ -426,6 +445,16 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Contains(config, "new_buildvariant")
 	s.Contains(config, "a_function")
 	s.Contains(config, "new_function")
+	s.Contains(config, "say-bye")
+	s.Contains(config, "my_display_task_new_variant")
+	s.Contains(config, "my_display_task_old_variant")
+
+	config, err = g.addGeneratedProjectToConfig(sampleProjYmlNoFunctions, cachedProject)
+	s.NoError(err)
+	s.Contains(config, "say-hi")
+	s.Contains(config, "new_task")
+	s.Contains(config, "a_variant")
+	s.Contains(config, "new_buildvariant")
 	s.Contains(config, "say-bye")
 	s.Contains(config, "my_display_task_new_variant")
 	s.Contains(config, "my_display_task_old_variant")

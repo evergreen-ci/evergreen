@@ -345,6 +345,9 @@ tasks:
     tags: ["db", "test", "agent"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-trigger
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
@@ -380,9 +383,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-testresult
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-trigger
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-user
@@ -486,9 +486,6 @@ tasks:
     name: race-model-task
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-model-trigger
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-model-version
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
@@ -496,6 +493,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-plugin
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-trigger
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations

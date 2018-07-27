@@ -835,18 +835,19 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			})
 			Convey("alerts should be created for the build failure", func() {
 				dbAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
-					displayTask.DisplayName, displayTask.BuildVariant, displayTask.Project))
+					"legacy-alerts", displayTask.DisplayName, displayTask.BuildVariant, displayTask.Project))
 				So(err, ShouldBeNil)
 				if err != nil {
 					return
 				}
 
+				So(dbAlert, ShouldNotBeNil)
 				So(dbAlert.Type, ShouldEqual, alertrecord.TaskFailTransitionId)
 				So(dbAlert.TaskId, ShouldEqual, displayTask.Id)
 
 				// alerts should not have been created for the execution task
 				execTaskAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
-					execTask.DisplayName, execTask.BuildVariant, execTask.Project))
+					"legacy-alerts", execTask.DisplayName, execTask.BuildVariant, execTask.Project))
 				So(err, ShouldBeNil)
 				So(execTaskAlert, ShouldBeNil)
 			})

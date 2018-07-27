@@ -45,7 +45,7 @@ func (trig FirstFailureInVersion) ShouldExecute(ctx triggerContext) (bool, error
 	if ctx.task.Status != evergreen.TaskFailed {
 		return false, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(ctx.task.Project, ctx.task.Version))
+	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(legacyAlertsSubscription, ctx.task.Project, ctx.task.Version))
 	if err != nil {
 		return false, err
 	}
@@ -68,7 +68,7 @@ func (trig FirstFailureInVariant) ShouldExecute(ctx triggerContext) (bool, error
 	if ctx.task.Status != evergreen.TaskFailed {
 		return false, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVariant(ctx.task.Version, ctx.task.BuildVariant))
+	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInVariant(legacyAlertsSubscription, ctx.task.Version, ctx.task.BuildVariant))
 	if err != nil {
 		return false, nil
 	}
@@ -94,7 +94,7 @@ func (trig FirstFailureInTaskType) ShouldExecute(ctx triggerContext) (bool, erro
 	if ctx.task.Status != evergreen.TaskFailed {
 		return false, nil
 	}
-	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInTaskType(ctx.task.Version, ctx.task.DisplayName))
+	rec, err := alertrecord.FindOne(alertrecord.ByFirstFailureInTaskType(legacyAlertsSubscription, ctx.task.Version, ctx.task.DisplayName))
 	if err != nil {
 		return false, nil
 	}
@@ -124,7 +124,7 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 	if ctx.previousCompleted.Status == evergreen.TaskSucceeded {
 		// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
 		// a sent alert for a transition after the same previously passing task.
-		q := alertrecord.ByLastFailureTransition(ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
+		q := alertrecord.ByLastFailureTransition(legacyAlertsSubscription, ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
 		if err != nil {
 			errMessage := getShouldExecuteError(ctx)
@@ -148,7 +148,7 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 	}
 	if ctx.previousCompleted.Status == evergreen.TaskFailed {
 		// check if enough time has passed since our last transition alert
-		q := alertrecord.ByLastFailureTransition(ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
+		q := alertrecord.ByLastFailureTransition(legacyAlertsSubscription, ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
 
 		if err != nil || lastAlerted == nil {

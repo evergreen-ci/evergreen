@@ -22,20 +22,20 @@ type dockerManager struct {
 
 // ProviderSettings specifies the settings used to configure a host instance.
 type dockerSettings struct {
-	// ImageID is the Docker image ID already loaded on the host machine.
-	ImageID string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	// ImageURL is the url of the Docker image to use when building the container.
+	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
 }
 
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
-	imageIDKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageID")
+	imageURLKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageURL")
 )
 
 //Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
-	if settings.ImageID == "" {
-		return errors.New("ImageName must not be blank")
+	if settings.ImageURL == "" {
+		return errors.New("ImageURL must not be blank")
 	}
 
 	return nil
@@ -79,11 +79,11 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		"message":   "decoded Docker container settings",
 		"container": h.Id,
 		"host_ip":   hostIP,
-		"image_id":  settings.ImageID,
+		"image_url": settings.ImageURL,
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, parent, h.Id, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, parent, h.Id, h.Distro.User, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
@@ -248,4 +248,102 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 	}
 
 	return ids, nil
+}
+
+// GetContainersRunningImage returns all the containers that are running a particular image
+func (m *dockerManager) getContainersRunningImage(ctx context.Context, h *host.Host, imageID string) ([]string, error) {
+	containers, err := m.GetContainers(ctx, h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error listing containers")
+	}
+	containersRunningImage := make([]string, 0)
+	for _, containerID := range containers {
+		container, err := m.client.GetContainer(ctx, h, containerID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error getting information for container '%s'", containerID)
+		}
+		if container.Image == imageID {
+			containersRunningImage = append(containersRunningImage, containerID)
+		}
+	}
+	return containersRunningImage, nil
+}
+
+// RemoveOldestImage finds the oldest image without running containers and forcibly removes it
+func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) error {
+	// list images in order of most to least recently created
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "Error listing images")
+	}
+
+	for i := len(images) - 1; i >= 0; i-- {
+		id := images[i].ID
+		containersRunningImage, err := m.getContainersRunningImage(ctx, h, id)
+		if err != nil {
+			return errors.Wrapf(err, "Error getting containers running on image '%s'", id)
+		}
+		// remove image based on ID only if there are no containers running the image
+		if len(containersRunningImage) == 0 {
+			err = m.client.RemoveImage(ctx, h, id)
+			if err != nil {
+				return errors.Wrapf(err, "Error removing image '%s'", id)
+			}
+			return nil
+		}
+	}
+
+	return nil
+}
+
+// CalculateImageSpaceUsage returns the amount of bytes that images take up on disk
+func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error) {
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error listing images")
+	}
+
+	spaceBytes := int64(0)
+	for _, image := range images {
+		spaceBytes += image.Size
+	}
+	return spaceBytes, nil
+}
+
+// CostForDuration estimates the cost for a span of time on the given container
+// host. The method divides the cost of that span on the parent host by an
+// estimate of the number of containers running during the same interval.
+func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+	parent, err := h.GetParent()
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+	}
+
+	numContainers, err := parent.EstimateNumContainersForDuration(start, end)
+	if err != nil {
+		return 0, errors.Wrap(err, "Errors estimating number of containers running over interval")
+	}
+
+	// prevent division by zero error
+	if numContainers == 0 {
+		return 0, nil
+	}
+
+	// get cloud manager for parent
+	parentMgr, err := GetManager(ctx, parent.Provider, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
+	}
+
+	// get parent cost for time interval
+	calc, ok := parentMgr.(CostCalculator)
+	if !ok {
+		return 0, errors.Errorf("Type assertion failed: type %T does not hold a CostCaluclator", parentMgr)
+	}
+	cost, err := calc.CostForDuration(ctx, parent, start, end, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error calculating cost for parent host '%s'", parent.Id)
+	}
+
+	return cost / numContainers, nil
 }

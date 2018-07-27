@@ -21,38 +21,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     ].join('-')
   }
 
-  // TODO remove the line and related code once `storageEngine` will be added
-  // to the API (see EVG-2744)
-  var seRe = new RegExp('[_ -](wt|wiredtiger|mmapv1|inmemory)$', 'i')
-
-  // Takes build and task names
-  // Extrcts storage engine from build/tasks name
-  // :returns: dict of {storageEngine, task, build}
-  // returned task and build names could be different
-  function extractStorageEngine(build, task) {
-    var storageEngine,
-        attrs = {
-          build: build,
-          task: task,
-        }
-
-    if (build == undefined) return {}
-
-    _.any(attrs, function(v, k) {
-      var match = v.match(seRe)
-      if (match) {
-        storageEngine = match[1]
-        attrs[k] = attrs[k].slice(0, match.index)
-        return true
-      }
-    })
-
-    // Set default
-    if(!storageEngine) storageEngine = '(none)'
-
-    return _.extend({storageEngine: storageEngine}, attrs)
-  }
-
   // Calculates ratio for given test result `speed` and `baseSpeed` reference
   function ratio(speed, baseSpeed) {
     var ratio = speed / baseSpeed
@@ -141,19 +109,18 @@ mciModule.factory('PerfDiscoveryDataService', function(
     return _.chain(item.results)
       .omit(_.isString)
       .each(function(speed, threads) {
-        var extracted = extractStorageEngine(ctx.buildName, ctx.taskName)
         var data = {
-          build: extracted.build,
+          build: ctx.buildName,
           buildId: ctx.buildId,
           buildVariant: ctx.buildVariant,
-          task: extracted.task,
+          task: ctx.taskName,
           taskURL: MPA_UI.TASK_BY_ID({task_id: ctx.taskId}),
           buildURL: MPA_UI.BUILD_BY_ID({build_id: ctx.buildId}),
           taskId: ctx.taskId,
           test: item.name,
           threads: +threads,
           speed: speed.ops_per_sec,
-          storageEngine: extracted.storageEngine,
+          storageEngine: ctx.storageEngine,
         }
         receiver[slug(data)] =  data
       })
@@ -174,9 +141,13 @@ mciModule.factory('PerfDiscoveryDataService', function(
     _.each(data, function(d) {
       // Skip empty items
       if (d == null) return
+
       // TODO add group validation instead of individual
       // Process current (revision) data
       if (d.current) {
+        // Copy storageEngine to the context
+        d.ctx.storageEngine = d.current.data.storageEngine || '(none)'
+
         _.each(d.current.data.results, function(result) {
           processItem(result, now, d.ctx)
         })
@@ -486,7 +457,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
 
     // For teting
     _extractTasks: extractTasks,
-    _extractStorageEngine: extractStorageEngine,
     _processItem: processItem,
     _onProcessData: onProcessData,
     _onGetRows: onGetRows,

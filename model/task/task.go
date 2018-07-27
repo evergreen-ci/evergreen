@@ -288,6 +288,20 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 	)
 }
 
+func (t *Task) AddDependency(d Dependency) error {
+	t.DependsOn = append(t.DependsOn, d)
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$push": bson.M{
+				DependsOnKey: d,
+			},
+		},
+	)
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries

@@ -46,9 +46,10 @@ func (s *DockerSuite) SetupTest() {
 		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"image_name": "docker_image",
-			"pool_id":    "pool_id",
+			"image_url": "http://0.0.0.0:8000/docker_image.tgz",
+			"pool_id":   "pool_id",
 		},
+		User: "root",
 	}
 	s.parentHost = host.Host{
 		Id:            "parent",
@@ -68,13 +69,13 @@ func (s *DockerSuite) TearDownTest() {
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
-		ImageID: "docker_image",
+		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
 	}
 	s.NoError(settingsOk.Validate())
 
-	// error when missing image id
-	settingsNoImageID := &dockerSettings{}
-	s.Error(settingsNoImageID.Validate())
+	// error when missing image url
+	settingsNoImageURL := &dockerSettings{}
+	s.EqualError(settingsNoImageURL.Validate(), "ImageURL must not be blank")
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -437,7 +438,7 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	delete(*s.distro.ProviderSettings, "image_name")
+	delete(*s.distro.ProviderSettings, "image_url")
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 
@@ -463,4 +464,20 @@ func (s *DockerSuite) TestGetContainers() {
 	s.NoError(err)
 	s.Equal(1, len(containers))
 	s.Equal("container-1", containers[0])
+}
+
+func (s *DockerSuite) TestRemoveOldestImage() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failRemove)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.RemoveOldestImage(ctx, parent)
+	s.NoError(err)
 }

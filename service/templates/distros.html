@@ -90,9 +90,9 @@ Evergreen - Distros
       </div>
       <div ng-show="activeDistro.provider == 'docker'">
         <div>
-    <label class="distro-label">Docker Image ID:</label>
-    <input type="text" ng-required="activeDistro.provider == 'docker'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="Docker image ID preloaded on host machine" ng-readonly="readOnly">
-    <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image ID is required</div>
+    <label class="distro-label">Docker Image URL:</label>
+    <input type="text" ng-required="activeDistro.provider == 'docker'" name="imageUrl" class="form-control" ng-model="activeDistro.settings.image_url" placeholder="Docker image URL to import on host machine" ng-readonly="readOnly">
+    <div class="icon fa fa-warning distro-error" ng-show="form.imageUrl.$dirty && form.imageUrl.$error.required || form.imageUrl.$invalid">Image URL is required</div>
         </div>
         <div>
           <label class="distro-label">Pool ID:</label>

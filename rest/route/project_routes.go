@@ -153,7 +153,9 @@ func (h *versionsGetHandler) Handler() RequestHandler {
 func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	var err error
 	h.project = gimlet.GetVars(r)["project_id"]
-	limit := r.URL.Query().Get("limit")
+	var query = r.URL.Query()
+
+	limit := query.Get("limit")
 	if limit != "" {
 		h.limit, err = strconv.Atoi(limit)
 		if err != nil {
@@ -165,7 +167,8 @@ func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Reque
 	} else {
 		h.limit = 10
 	}
-	offset := r.URL.Query().Get("offset")
+
+	offset := query.Get("offset")
 	if offset != "" {
 		h.offset, err = strconv.Atoi(offset)
 		if err != nil {
@@ -177,6 +180,7 @@ func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Reque
 	} else {
 		h.offset = 0
 	}
+
 	return nil
 }
 

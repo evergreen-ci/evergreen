@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/trigger"
+	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -128,25 +128,16 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	// TODO: if this is a perf problem, it could be multithreaded. For now,
 	// we just log time
 	startTime := time.Now()
-	bulk, err := notification.BulkInserter(ctx)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
 	notifications := make([][]notification.Notification, len(j.events))
 
+	var err error
 	for i := range j.events {
 		notifications[i], err = tryProcessOneEvent(&j.events[i])
 		catcher.Add(err)
-
-		for _, n := range notifications[i] {
-			catcher.Add(bulk.Append(n))
-		}
-
+		catcher.Add(notification.InsertMany(notifications[i]...))
 	}
-	catcher.Add(bulk.Close())
 
 	for idx := range notifications {
 		catcher.Add(j.dispatch(notifications[idx]))

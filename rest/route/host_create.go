@@ -55,7 +55,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 			Message:    "host is invalid",
 		}
 	}
-	if err := util.ReadJSONInto(r.Body, h.createHost); err != nil {
+	if err := util.ReadJSONInto(r.Body, &h.createHost); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
@@ -101,6 +101,9 @@ func (h *hostCreateHandler) makeIntentHost() (*host.Host, error) {
 			return nil, errors.Wrap(err, "problem unmarshaling provider settings")
 		}
 	}
+
+	// set provider
+	d.Provider = provider
 
 	// set provider settings
 	if h.createHost.AMI != "" {

@@ -77,6 +77,9 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 }
 
 func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	ts, err := task.Find(task.ByIds(ids))
 	if err != nil {
 		return nil, err
