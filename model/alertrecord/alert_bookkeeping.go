@@ -1,6 +1,8 @@
 package alertrecord
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -47,6 +49,7 @@ type AlertRecord struct {
 	Variant             string        `bson:"variant,omitempty"`
 	TestName            string        `bson:"test_name,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty"`
+	AlertTime           time.Time     `bson:"alert_time,omitempty"`
 }
 
 //nolint: deadcode, megacheck
@@ -63,6 +66,7 @@ var (
 	VersionIdKey           = bsonutil.MustHaveTag(AlertRecord{}, "VersionId")
 	testNameKey            = bsonutil.MustHaveTag(AlertRecord{}, "TestName")
 	RevisionOrderNumberKey = bsonutil.MustHaveTag(AlertRecord{}, "RevisionOrderNumber")
+	AlertTimeKey           = bsonutil.MustHaveTag(AlertRecord{}, "AlertTime")
 )
 
 // FindOne gets one AlertRecord for the given query.
@@ -100,7 +104,7 @@ func ByLastFailureTransition(subscriptionID, taskName, variant, projectId string
 	q[TaskNameKey] = taskName
 	q[VariantKey] = variant
 	q[ProjectIdKey] = projectId
-	return db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}).Limit(1)
+	return db.Query(q).Sort([]string{"-" + AlertTimeKey, "-" + RevisionOrderNumberKey}).Limit(1)
 }
 
 func ByFirstFailureInVersion(subscriptionID, projectId, versionId string) db.Q {
@@ -179,6 +183,7 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, testName, taskDisplayNa
 		Variant:             variant,
 		TestName:            testName,
 		RevisionOrderNumber: revision,
+		AlertTime:           time.Now(),
 	}
 
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTest)
@@ -194,6 +199,7 @@ func InsertNewTaskRegressionByTestWithNoTestsRecord(subscriptionID, taskDisplayN
 		TaskStatus:          taskStatus,
 		Variant:             variant,
 		RevisionOrderNumber: revision,
+		AlertTime:           time.Now(),
 	}
 
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTestWithNoTests)
