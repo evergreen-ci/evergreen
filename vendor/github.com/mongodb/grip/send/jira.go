@@ -82,6 +82,10 @@ func (j *jiraJournal) Send(m message.Composer) {
 		if len(issueFields.Summary) > 254 {
 			issueFields.Summary = issueFields.Summary[:254]
 		}
+		if len(issueFields.Description) > 32767 {
+			issueFields.Description = issueFields.Description[:32767]
+		}
+
 		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password); err != nil {
 			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
 		}
@@ -135,7 +139,6 @@ func getFields(m message.Composer) *jira.IssueFields {
 			Project:     jira.Project{Key: msg.Project},
 			Summary:     msg.Summary,
 			Description: msg.Description,
-			Components:  []*jira.Component{},
 		}
 		if len(msg.Fields) != 0 {
 			unknownsMap := tcontainer.NewMarshalMap()
@@ -156,11 +159,14 @@ func getFields(m message.Composer) *jira.IssueFields {
 		if len(msg.Labels) > 0 {
 			issueFields.Labels = msg.Labels
 		}
-		for _, component := range msg.Components {
-			issueFields.Components = append(issueFields.Components,
-				&jira.Component{
-					Name: component,
-				})
+		if len(msg.Components) > 0 {
+			issueFields.Components = make([]*jira.Component, 0, len(msg.Components))
+			for _, component := range msg.Components {
+				issueFields.Components = append(issueFields.Components,
+					&jira.Component{
+						Name: component,
+					})
+			}
 		}
 	case message.Fields:
 		issueFields = &jira.IssueFields{
