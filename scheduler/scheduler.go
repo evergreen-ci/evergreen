@@ -163,14 +163,20 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		// compute number of parents needed
 		numNewParents := numNewParentsNeeded(len(currentParents), newHostsNeeded, len(existingContainers), pool.MaxContainers)
 
+		// get parent distro from pool
+		parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
+		if err != nil {
+			return nil, errors.Wrap(err, "error find parent distro")
+		}
+
 		// only want to spawn amount of parents allowed based on pool size
-		numNewParentsToSpawn, err := parentCapacity(d, numNewParents, len(currentParents), pool)
+		numNewParentsToSpawn, err := parentCapacity(parentDistro, numNewParents, len(currentParents), pool)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not calculate number of parents needed to spawn")
 		}
 		// create parent host intent documents
 		if numNewParentsToSpawn > 0 {
-			hostsSpawned = append(hostsSpawned, createParents(d, numNewParentsToSpawn, pool)...)
+			hostsSpawned = append(hostsSpawned, createParents(parentDistro, numNewParentsToSpawn, pool)...)
 
 			grip.Info(message.Fields{
 				"runner":          RunnerName,
@@ -277,12 +283,7 @@ func numNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingCont
 
 // parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
-func parentCapacity(d distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
-	// if looking to spawn on a static docker provider, do not spawn any more parents
-	parent, err := distro.FindOne(distro.ById(pool.Distro))
-	if err != nil {
-		return 0, errors.Wrapf(err, "could not find parent distro for pool %s", pool.Id)
-	}
+func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
 	if parent.Provider == evergreen.ProviderNameStatic {
 		return 0, nil
 	}
