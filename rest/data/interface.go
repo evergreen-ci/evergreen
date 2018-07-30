@@ -111,8 +111,8 @@ type Connector interface {
 
 	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
 	// access to the metrics data collected by agents during task execution
-	FindTaskSystemMetrics(string, time.Time, int, int) ([]*message.SystemInfo, error)
-	FindTaskProcessMetrics(string, time.Time, int, int) ([][]*message.ProcessInfo, error)
+	FindTaskSystemMetrics(string, time.Time, int) ([]*message.SystemInfo, error)
+	FindTaskProcessMetrics(string, time.Time, int) ([][]*message.ProcessInfo, error)
 
 	// FindCostByVersionId returns cost data of a version given its ID.
 	FindCostByVersionId(string) (*task.VersionCost, error)

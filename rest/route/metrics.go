@@ -2,20 +2,14 @@ package route
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
-
-type taskMetricsArgs struct {
-	task string
-}
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -23,97 +17,90 @@ type taskMetricsArgs struct {
 //
 //    /task/{task_id}/metrics/system
 
-func getTaskSystemMetricsManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodGet,
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &taskSystemMetricsHandler{},
-			},
-		},
+func makeFetchTaskSystmMetrics(sc data.Connector) gimlet.RouteHandler {
+	return &taskSystemMetricsHandler{
+		sc: sc,
 	}
 }
 
 type taskSystemMetricsHandler struct {
-	PaginationExecutor
+	taskID string
+	limit  int
+	key    time.Time
+	sc     data.Connector
 }
 
-func (p *taskSystemMetricsHandler) Handler() RequestHandler {
-	return &taskSystemMetricsHandler{PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       taskSystemMetricsPaginator,
-	}}
+func (p *taskSystemMetricsHandler) Factory() gimlet.RouteHandler {
+	return &taskSystemMetricsHandler{
+		sc: p.sc,
+	}
 }
 
-func (p *taskSystemMetricsHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = taskMetricsArgs{task: gimlet.GetVars(r)["task_id"]}
+func (p *taskSystemMetricsHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.taskID = gimlet.GetVars(r)["task_id"]
+	vals := r.URL.Query()
+	key := vals.Get("start_at")
 
-	return p.PaginationExecutor.ParseAndValidate(ctx, r)
-}
-
-func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
-	task := args.(taskMetricsArgs).task
-	grip.Debugln("getting results for task:", task)
-
-	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.UTC)
+	var err error
+	p.key, err = time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
 	if err != nil {
-		return []model.Model{}, nil, gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
-			StatusCode: http.StatusBadRequest,
+		return errors.WithStack(err)
+	}
+
+	p.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (p *taskSystemMetricsHandler) Run(ctx context.Context) gimlet.Responder {
+	metrics, err := p.sc.FindTaskSystemMetrics(p.taskID, p.key, p.limit+1)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	lastIndex := len(metrics)
+	if len(metrics) > p.limit {
+		lastIndex = p.limit
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         p.sc.GetURL(),
+				Key:             model.NewTime(metrics[p.limit].Base.Time).String(),
+				Limit:           p.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
 		}
 	}
 
-	// fetch required data from the service layer
-	metrics, err := sc.FindTaskSystemMetrics(task, ts, limit*2, 1)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "database error")
+	metrics = metrics[:lastIndex]
 
-	}
-	prevData, err := sc.FindTaskSystemMetrics(task, ts, limit, -1)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
-	}
-
-	// populate the page info structure
-	pages := &PageResult{}
-	if len(metrics) > limit {
-		pages.Next = &Page{
-			Relation: "next",
-			Key:      model.NewTime(metrics[limit].Base.Time).String(),
-			Limit:    len(metrics) - limit,
-		}
-	}
-	if len(prevData) > 1 {
-		pages.Prev = &Page{
-			Relation: "prev",
-			Key:      model.NewTime(metrics[0].Base.Time).String(),
-			Limit:    len(prevData),
-		}
-	}
-
-	// truncate results data if there's a next page.
-	if pages.Next != nil {
-		metrics = metrics[:limit]
-	}
-
-	models := make([]model.Model, len(metrics))
-	for idx, info := range metrics {
+	for _, info := range metrics {
 		sysinfoModel := &model.APISystemMetrics{}
+
 		if err = sysinfoModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
-				Message:    "problem converting metrics document",
-				StatusCode: http.StatusInternalServerError,
-			}
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem converting metrics document"))
 		}
 
-		models[idx] = sysinfoModel
+		err = resp.AddData(sysinfoModel)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
 
-	return models, pages, nil
+	return resp
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -122,95 +109,88 @@ func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data
 //
 //    /task/{task_id}/metrics/process
 
-func getTaskProcessMetricsManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodGet,
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &taskProcessMetricsHandler{},
-			},
-		},
+func makeFetchTaskProcessMetrics(sc data.Connector) gimlet.RouteHandler {
+	return &taskProcessMetricsHandler{
+		sc: sc,
 	}
 }
 
 type taskProcessMetricsHandler struct {
-	PaginationExecutor
+	taskID string
+	limit  int
+	key    time.Time
+	sc     data.Connector
 }
 
-func (p *taskProcessMetricsHandler) Handler() RequestHandler {
-	return &taskProcessMetricsHandler{PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       taskProcessMetricsPaginator,
-	}}
+func (p *taskProcessMetricsHandler) Factory() gimlet.RouteHandler {
+	return &taskProcessMetricsHandler{
+		sc: p.sc,
+	}
 }
 
-func (p *taskProcessMetricsHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = taskMetricsArgs{task: gimlet.GetVars(r)["task_id"]}
+func (p *taskProcessMetricsHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.taskID = gimlet.GetVars(r)["task_id"]
+	vals := r.URL.Query()
+	key := vals.Get("start_at")
 
-	return p.PaginationExecutor.ParseAndValidate(ctx, r)
-}
-
-func taskProcessMetricsPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
-	task := args.(taskMetricsArgs).task
-	grip.Debugln("getting results for task:", task)
-
-	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
+	var err error
+	p.key, err = time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
 	if err != nil {
-		return []model.Model{}, nil, gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
-			StatusCode: http.StatusBadRequest,
-		}
+		return errors.WithStack(err)
 	}
 
+	p.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (p *taskProcessMetricsHandler) Run(ctx context.Context) gimlet.Responder {
 	// fetch required data from the service layer
-	data, err := sc.FindTaskProcessMetrics(task, ts, limit*2, 1)
+	data, err := p.sc.FindTaskProcessMetrics(p.taskID, p.key, p.limit+1)
 	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "database error")
-
-	}
-	prevData, err := sc.FindTaskProcessMetrics(task, ts, limit, -1)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
 	}
 
-	// populate the page info structure
-	pages := &PageResult{}
-	if len(data) > limit && len(data[limit]) > 1 {
-		pages.Next = &Page{
-			Relation: "next",
-			Key:      model.NewTime(data[limit][0].Base.Time).String(),
-			Limit:    len(data) - limit,
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	lastIndex := len(data)
+	if len(data) > p.limit {
+		lastIndex = p.limit
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         p.sc.GetURL(),
+				Key:             model.NewTime(data[p.limit][0].Base.Time).String(),
+				Limit:           p.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
 		}
 	}
-	if len(prevData) > 1 && len(data[0]) > 1 {
-		pages.Prev = &Page{
-			Relation: "prev",
-			Key:      model.NewTime(data[0][0].Base.Time).String(),
-			Limit:    len(prevData),
-		}
-	}
 
-	// truncate results data if there's a next page.
-	if pages.Next != nil {
-		data = data[:limit]
-	}
+	data = data[:lastIndex]
 
-	models := make([]model.Model, len(data))
-	for idx, info := range data {
+	for _, info := range data {
 		procModel := &model.APIProcessMetrics{}
 		if err = procModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
-				Message:    "problem converting metrics document",
-				StatusCode: http.StatusInternalServerError,
-			}
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "problem converting metrics document"))
 		}
 
-		models[idx] = procModel
+		err = resp.AddData(procModel)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
 
-	return models, pages, nil
+	return resp
 }
