@@ -131,24 +131,21 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
 
-	notifications := [][]notification.Notification{}
+	notifications := []notification.Notification{}
 
 	for i := range j.events {
-		msgs, err = tryProcessOneEvent(&j.events[i])
+		msgs, err := tryProcessOneEvent(&j.events[i])
 		catcher.Add(err)
 		if err != nil {
 			continue
 		}
 
+		catcher.Add(logger.MarkProcessed(&j.events[i]))
 		notifications = append(notifications, msgs...)
 	}
 
 	catcher.Add(notification.InsertMany(notifications...))
-
-	for idx := range notifications {
-		catcher.Add(j.dispatch(notifications[idx]))
-		catcher.Add(logger.MarkProcessed(&j.events[idx]))
-	}
+	catcher.Add(j.dispatch(notifications))
 
 	endTime := time.Now()
 	totalDuration := endTime.Sub(startTime)
@@ -162,6 +159,7 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 		"end_time":   endTime.String(),
 		"duration":   totalDuration.String(),
 		"n":          len(j.events),
+		"num_errors": catcher.Len(),
 	})
 
 	return catcher.Resolve()
