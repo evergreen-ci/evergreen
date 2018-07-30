@@ -96,7 +96,7 @@ Evergreen - Distros
         </div>
         <div>
           <label class="distro-label">Pool ID:</label>
-          <select ng-readonly="readOnly" name="poolID" ng-model="activeDistro.settings.pool_id" ng-required="activeDistro.provider == 'docker'">
+          <select ng-readonly="readOnly" name="poolID" ng-model="activeDistro.container_pool" ng-required="activeDistro.provider == 'docker'">
             <option ng-repeat="pool in containerPoolIds" value=[[pool]]>[[pool]]</option>
           </select>
           <div ng-show="checkPoolID(form.poolID.$modelValue)">
