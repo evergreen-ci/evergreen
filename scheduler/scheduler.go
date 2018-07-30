@@ -314,11 +314,11 @@ func containerCapacity(numCurrentParents, numCurrentContainers, numContainersToS
 }
 
 // createParents creates host intent documents for each parent
-func createParents(d distro.Distro, numNewParents int, pool *evergreen.ContainerPool) []host.Host {
+func createParents(parent distro.Distro, numNewParents int, pool *evergreen.ContainerPool) []host.Host {
 	hostsSpawned := make([]host.Host, numNewParents)
 
 	for idx := range hostsSpawned {
-		hostsSpawned[idx] = *cloud.NewIntent(d, d.GenerateName(), d.Provider, generateParentHostOptions(pool))
+		hostsSpawned[idx] = *cloud.NewIntent(parent, parent.GenerateName(), parent.Provider, generateParentHostOptions(pool))
 	}
 
 	return hostsSpawned
