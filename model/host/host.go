@@ -1020,6 +1020,15 @@ func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 	return Find(query)
 }
 
+// CountUninitializedParents returns the number of initializing parent host intent documents
+func CountUninitializedParents() (int, error) {
+	query := db.Query(bson.M{
+		HasContainersKey: true,
+		StatusKey:        evergreen.HostUninitialized,
+	})
+	return Count(query)
+}
+
 func InsertMany(hosts []Host) error {
 	docs := make([]interface{}, len(hosts))
 	for idx := range hosts {

@@ -2352,3 +2352,44 @@ func TestEstimateNumContainersForDuration(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2.0, estimate2)
 }
+
+func TestCountUninitializedParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	h1 := Host{
+		Id:            "h1",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h2 := Host{
+		Id:            "h2",
+		Status:        evergreen.HostUninitialized,
+		HasContainers: true,
+	}
+	h3 := Host{
+		Id:            "h3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h4 := Host{
+		Id:            "h4",
+		Status:        evergreen.HostUninitialized,
+		HasContainers: true,
+	}
+	h5 := Host{
+		Id:       "h5",
+		Status:   evergreen.HostUninitialized,
+		ParentID: "h1",
+	}
+
+	assert.NoError(h1.Insert())
+	assert.NoError(h2.Insert())
+	assert.NoError(h3.Insert())
+	assert.NoError(h4.Insert())
+	assert.NoError(h5.Insert())
+
+	numUninitializedParents, err := CountUninitializedParents()
+	assert.NoError(err)
+	assert.Equal(2, numUninitializedParents)
+}

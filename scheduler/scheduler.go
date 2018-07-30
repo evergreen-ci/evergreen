@@ -160,8 +160,13 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 			return nil, errors.Wrap(err, "could not find running containers")
 		}
 
+		// find all uninitialized parent intent documents
+		numUninitializedParents, err := host.CountUninitializedParents()
+		if err != nil {
+			return nil, errors.Wrap(err, "could not count uninitialized parents")
+		}
 		// compute number of parents needed
-		numNewParents := numNewParentsNeeded(len(currentParents), newHostsNeeded, len(existingContainers), pool.MaxContainers)
+		numNewParents := numNewParentsNeeded(len(currentParents), numUninitializedParents, newHostsNeeded, len(existingContainers), pool.MaxContainers)
 
 		// get parent distro from pool
 		parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
@@ -274,9 +279,14 @@ func findAvailableParent(d distro.Distro) (host.Host, error) {
 
 // numNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
-func numNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingContainers, maxContainers int) int {
+func numNewParentsNeeded(numCurrentParents, numUninitializedParents, numContainersNeeded, numExistingContainers, maxContainers int) int {
 	if numCurrentParents*maxContainers < numExistingContainers+numContainersNeeded {
-		return int(math.Ceil(float64(numContainersNeeded) / float64(maxContainers)))
+		// subtract numUninitializedParents because they will soon come up as parents we can use
+		numTotalNewParents := int(math.Ceil(float64(numContainersNeeded)/float64(maxContainers))) - numUninitializedParents
+		if numTotalNewParents < 0 {
+			return 0
+		}
+		return numTotalNewParents
 	}
 	return 0
 }
