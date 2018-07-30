@@ -201,6 +201,9 @@ func (e *envState) initDB(settings DBSettings) error {
 func (e *envState) createQueues(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for local queue")
+	}
 
 	// configure the remote mongodb-backed amboy
 	// queue.
@@ -218,6 +221,10 @@ func (e *envState) createQueues(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 	e.remoteQueue = rq
+
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for remote queue")
+	}
 
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
