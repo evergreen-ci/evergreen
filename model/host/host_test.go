@@ -1008,10 +1008,7 @@ func TestHostFindingWithTask(t *testing.T) {
 	assert.NoError(host3.Insert())
 	assert.NoError(host4.Insert())
 
-	var hosts []Host
-	err := db.Aggregate(Collection, QueryWithFullTaskPipeline(
-		bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}),
-		&hosts)
+	hosts, err := FindRunningHosts(true)
 	assert.NoError(err)
 
 	assert.Equal(3, len(hosts))
