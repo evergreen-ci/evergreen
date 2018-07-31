@@ -17,7 +17,6 @@ import (
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -67,7 +66,7 @@ type Environment interface {
 	// Returns the settings object. The settings object is not
 	// necessarily safe for concurrent access.
 	Settings() *Settings
-	Session() db.Session
+	Session() *mgo.Session
 
 	// The Environment provides access to two queue's, a
 	// local-process level queue that is not persisted between
@@ -528,11 +527,11 @@ func (e *envState) RemoteQueue() amboy.Queue {
 	return e.remoteQueue
 }
 
-func (e *envState) Session() db.Session {
+func (e *envState) Session() *mgo.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return db.WrapSession(e.session.Copy())
+	return e.session.Copy()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {
