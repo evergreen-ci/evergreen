@@ -31,13 +31,13 @@ func (s *MetricsConnectorSuite) SetupTest() {
 }
 
 func (s *MetricsConnectorSuite) TestSystemsResultsShouldBeEmpty() {
-	sys, err := s.ctx.FindTaskSystemMetrics("foo", time.Now(), 100, -1)
+	sys, err := s.ctx.FindTaskSystemMetrics("foo", time.Now(), 100)
 	s.NoError(err)
 	s.Len(sys, 0)
 }
 
 func (s *MetricsConnectorSuite) TestProcessMetricsShouldBeEmpty() {
-	procs, err := s.ctx.FindTaskProcessMetrics("foo", time.Now(), 100, -1)
+	procs, err := s.ctx.FindTaskProcessMetrics("foo", time.Now(), 100)
 	s.NoError(err)
 	s.Len(procs, 0, "%d", len(procs))
 }
@@ -55,13 +55,13 @@ func (s *MetricsConnectorSuite) TestProcessLimitingFunctionalityConstrainsResult
 	event.LogTaskProcessData("foo", msgs)
 
 	for i := 1; i < 4; i++ {
-		procs, err := s.ctx.FindTaskProcessMetrics("foo", time.Now(), i, -1)
+		procs, err := s.ctx.FindTaskProcessMetrics("foo", time.Now().Add(-time.Second), i)
 		s.NoError(err)
 
 		s.Len(procs, i, "checking limit of %d", i)
 	}
 
-	procs, err := s.ctx.FindTaskProcessMetrics("foo", time.Now(), 900, -1)
+	procs, err := s.ctx.FindTaskProcessMetrics("foo", time.Now().Add(-time.Second), 900)
 	s.NoError(err)
 
 	s.Len(procs, 5, "checking unlimited")
@@ -73,18 +73,18 @@ func (s *MetricsConnectorSuite) TestSystemMetricsLimitConstrainsResults() {
 		event.LogTaskSystemData("foo", m.(*message.SystemInfo))
 	}
 
-	info, err := s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), 100, 1)
+	info, err := s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), 100)
 	s.NoError(err)
 	s.Len(info, 20)
 
 	for i := 1; i < 15; i++ {
-		info, err = s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), i, 1)
+		info, err = s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), i)
 		s.NoError(err)
 		s.Len(info, i)
 	}
 
 	// if limit is 0, then full results
-	info, err = s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), 0, 1)
+	info, err = s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), 0)
 	s.NoError(err)
 	s.Len(info, 20)
 
@@ -96,11 +96,7 @@ func (s *MetricsConnectorSuite) TestSystemMetricsReturnedInSortedOrder() {
 		event.LogTaskSystemData("foo", m.(*message.SystemInfo))
 	}
 
-	info, err := s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), 100, -1)
-	s.NoError(err)
-	s.Len(info, 0)
-
-	info, err = s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), 100, 1)
+	info, err := s.ctx.FindTaskSystemMetrics("foo", time.Now().Add(-2*time.Hour), 100)
 	s.NoError(err)
 	s.Len(info, 20)
 }

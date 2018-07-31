@@ -62,7 +62,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		})
 
 		Convey("the system data should persist in the database", func() {
-			events, err := event.Find(event.TaskLogCollection, event.TaskSystemInfoEvents(taskId, time.Now(), 0, -1))
+			events, err := event.Find(event.TaskLogCollection, event.TaskSystemInfoEvents(taskId, time.Now().Add(-time.Second), 0))
 			testutil.HandleTestingErr(err, t, "problem finding task event")
 			So(len(events), ShouldEqual, 1)
 			e := events[0]
@@ -89,7 +89,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		})
 
 		Convey("the process data should persist in the database", func() {
-			events, err := event.Find(event.TaskLogCollection, event.TaskProcessInfoEvents(taskId, time.Now(), 0, -1))
+			events, err := event.Find(event.TaskLogCollection, event.TaskProcessInfoEvents(taskId, time.Now().Add(-time.Second), 0))
 			testutil.HandleTestingErr(err, t, "problem finding task event")
 			So(len(events), ShouldEqual, 1)
 			e := events[0]

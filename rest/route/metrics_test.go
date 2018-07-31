@@ -1,6 +1,9 @@
 package route
 
 import (
+	"context"
+	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -12,9 +15,11 @@ import (
 )
 
 type TaskMetricsSuite struct {
+	routeName string
 	sc        *data.MockConnector
 	data      data.MockMetricsConnector
-	paginator PaginatorFunc
+	route     gimlet.RouteHandler
+	factory   func(data.Connector) gimlet.RouteHandler
 
 	procs     []*message.ProcessInfo
 	timestamp string
@@ -23,13 +28,15 @@ type TaskMetricsSuite struct {
 
 func TestTaskSystemMetricsSuite(t *testing.T) {
 	s := new(TaskMetricsSuite)
-	s.paginator = taskSystemMetricsPaginator
+	s.routeName = "/task/foo/metrics/system"
+	s.factory = makeFetchTaskSystmMetrics
 	suite.Run(t, s)
 }
 
 func TestTaskProcessMetricsSuite(t *testing.T) {
 	s := new(TaskMetricsSuite)
-	s.paginator = taskProcessMetricsPaginator
+	s.routeName = "/task/foo/metrics/process"
+	s.factory = makeFetchTaskProcessMetrics
 	suite.Run(t, s)
 }
 
@@ -53,11 +60,15 @@ func (s *TaskMetricsSuite) SetupTest() {
 			"one": []*message.SystemInfo{
 				message.CollectSystemInfo().(*message.SystemInfo),
 				message.CollectSystemInfo().(*message.SystemInfo),
+				message.CollectSystemInfo().(*message.SystemInfo),
+				message.CollectSystemInfo().(*message.SystemInfo),
 			},
 			"two": []*message.SystemInfo{},
 		},
 		Process: map[string][][]*message.ProcessInfo{
 			"one": [][]*message.ProcessInfo{
+				s.procs,
+				s.procs,
 				s.procs,
 				s.procs,
 			},
@@ -68,6 +79,8 @@ func (s *TaskMetricsSuite) SetupTest() {
 	s.sc = &data.MockConnector{
 		MockMetricsConnector: s.data,
 	}
+	s.sc.SetURL("https://example.evergreen.net/")
+	s.route = s.factory(s.sc)
 }
 
 func (s *TaskMetricsSuite) TestInvalidTimesAsKeyShouldError() {
@@ -78,15 +91,16 @@ func (s *TaskMetricsSuite) TestInvalidTimesAsKeyShouldError() {
 		"",
 	}
 
+	ctx := context.Background()
+
 	for _, i := range inputs {
 		for limit := 0; limit < 20; limit++ {
-			a, b, err := s.paginator(i, limit, taskMetricsArgs{}, s.sc)
-			s.Len(a, 0)
-			s.Nil(b)
+
+			r, err := http.NewRequest("GET", fmt.Sprintf("%s?start_at=%s&limit=%d", s.routeName, i, limit), nil)
+			s.NoError(err)
+			err = s.route.Parse(ctx, r)
 			s.Error(err)
-			apiErr, ok := err.(gimlet.ErrorResponse)
-			s.True(ok)
-			s.Contains(apiErr.Message, i)
+			s.Contains(err.Error(), i)
 		}
 	}
 }
@@ -95,50 +109,79 @@ func (s *TaskMetricsSuite) TestPaginatorShouldErrorIfNoResults() {
 	// the mock errors if there isn't a matching test. the DB may
 	// not error in this case.
 
-	a, b, err := s.paginator(s.timestamp, 10, taskMetricsArgs{}, s.sc)
-	s.Len(a, 0)
-	s.Nil(b)
-	s.Error(err)
-	s.Contains(err.Error(), "database error")
+	r, err := http.NewRequest("GET", fmt.Sprintf("%s?start_at=%s&limit=%d", s.routeName, s.timestamp, 10), nil)
+	ctx := r.Context()
+	s.NoError(err)
+	s.NoError(s.route.Parse(ctx, r))
+
+	resp := s.route.Run(ctx)
+	s.Contains(fmt.Sprint(resp.Data()), "database error")
+}
+
+func setMetricsTask(r gimlet.RouteHandler, id string) gimlet.RouteHandler {
+	switch h := r.(type) {
+	case *taskSystemMetricsHandler:
+		h.taskID = id
+		return h
+	case *taskProcessMetricsHandler:
+		h.taskID = id
+		return h
+	default:
+		panic(fmt.Sprintf("%T is not a valid metrics handler", r))
+	}
 }
 
 func (s *TaskMetricsSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	a, b, err := s.paginator(s.timestamp, 100, taskMetricsArgs{"one"}, s.sc)
 
-	s.True(len(a) > 1, "%d", len(a))
-	s.NotNil(b)
+	r, err := http.NewRequest("GET", fmt.Sprintf("%s?start_at=%s&limit=%d", s.routeName, s.timestamp, 1), nil)
+	ctx := r.Context()
 	s.NoError(err)
+	s.NoError(s.route.Parse(ctx, r))
 
-	s.Nil(b.Next)
-	s.NotNil(b.Prev)
+	s.route = setMetricsTask(s.route, "one")
+
+	resp := s.route.Run(ctx)
+
+	s.True(len(resp.Data().([]interface{})) == 1, "%d", len(resp.Data().([]interface{})))
+	pages := resp.Pages()
+	s.NotNil(pages)
+
+	s.Nil(pages.Prev)
+	s.NotNil(pages.Next)
 }
 
 func (s *TaskMetricsSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	a, b, err := s.paginator(s.timestamp, 10, taskMetricsArgs{"two"}, s.sc)
-
-	s.True(len(a) == 0)
-	s.NotNil(b)
+	r, err := http.NewRequest("GET", fmt.Sprintf("%s?start_at=%s&limit=%d", s.routeName, s.timestamp, 10), nil)
+	ctx := r.Context()
 	s.NoError(err)
+	s.NoError(s.route.Parse(ctx, r))
 
-	s.Nil(b.Next)
-	s.Nil(b.Prev)
+	s.route = setMetricsTask(s.route, "two")
+
+	resp := s.route.Run(ctx)
+
+	s.True(len(resp.Data().([]interface{})) == 0)
+	pages := resp.Pages()
+	s.Nil(pages)
 }
 
 func (s *TaskMetricsSuite) TestPaginatorShouldHavePreviousPaginatedResultsWithLaterTimeStamp() {
 	for i := 1; i < 3; i++ {
-		a, b, err := s.paginator(s.timestamp, i, taskMetricsArgs{"one"}, s.sc)
+		r, err := http.NewRequest("GET", fmt.Sprintf("%s?start_at=%s&limit=%d", s.routeName, s.timestamp, i), nil)
+		ctx := r.Context()
+		s.NoError(err)
+		s.NoError(s.route.Parse(ctx, r))
 
-		s.True(len(a) == i, "%d", len(a))
-		s.NoError(err, "%+v", err)
-		s.NotNil(b)
+		s.route = setMetricsTask(s.route, "one")
 
-		if i != 2 {
-			s.NotNil(b.Next)
-		} else {
-			s.Nil(b.Next)
+		resp := s.route.Run(ctx)
+		payload := resp.Data().([]interface{})
+		s.True(len(payload) == i, "%d", len(payload))
+		pages := resp.Pages()
+
+		if s.NotNil(pages, "iter=%d", i) {
+			s.NotNil(pages.Next)
 		}
-
-		s.NotNil(b.Prev)
 
 	}
 }

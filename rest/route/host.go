@@ -89,7 +89,6 @@ type hostGetHandler struct {
 	user   string
 
 	sc data.Connector
-	*PaginationExecutor
 }
 
 func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
@@ -101,16 +100,12 @@ func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
 	hgh.status = vals.Get("status")
+	hgh.key = vals.Get("host_id")
 	var err error
 
 	hgh.limit, err = getLimit(vals)
 	if err != nil {
 		return errors.WithStack(err)
-	}
-
-	k, ok := vals["host_id"]
-	if ok && len(k) >= 1 {
-		hgh.key = k[0]
 	}
 
 	// only populated in the case of the /users/{user}/hosts route
