@@ -49,6 +49,10 @@ type distroSchedueler struct {
 	TaskQueuePersister
 }
 
+type newParentsNeededParams struct {
+	numCurrentParents, numUninitializedParents, numContainersNeeded, numExistingContainers, maxContainers int
+}
+
 func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]version.Version) distroSchedulerResult {
 	res := distroSchedulerResult{
 		distroId: distroId,
@@ -165,8 +169,17 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		if err != nil {
 			return nil, errors.Wrap(err, "could not count uninitialized parents")
 		}
+
+		// create numParentsNeededParams struct
+		parentsParams := newParentsNeededParams{
+			numCurrentParents:       len(currentParents),
+			numUninitializedParents: numUninitializedParents,
+			numContainersNeeded:     newHostsNeeded,
+			numExistingContainers:   len(existingContainers),
+			maxContainers:           pool.MaxContainers,
+		}
 		// compute number of parents needed
-		numNewParents := numNewParentsNeeded(len(currentParents), numUninitializedParents, newHostsNeeded, len(existingContainers), pool.MaxContainers)
+		numNewParents := numNewParentsNeeded(parentsParams)
 
 		// get parent distro from pool
 		parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
@@ -279,10 +292,10 @@ func findAvailableParent(d distro.Distro) (host.Host, error) {
 
 // numNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
-func numNewParentsNeeded(numCurrentParents, numUninitializedParents, numContainersNeeded, numExistingContainers, maxContainers int) int {
-	if numCurrentParents*maxContainers < numExistingContainers+numContainersNeeded {
+func numNewParentsNeeded(params newParentsNeededParams) int {
+	if params.numCurrentParents*params.maxContainers < params.numExistingContainers+params.numContainersNeeded {
 		// subtract numUninitializedParents because they will soon come up as parents we can use
-		numTotalNewParents := int(math.Ceil(float64(numContainersNeeded)/float64(maxContainers))) - numUninitializedParents
+		numTotalNewParents := int(math.Ceil(float64(params.numContainersNeeded)/float64(params.maxContainers))) - params.numUninitializedParents
 		if numTotalNewParents < 0 {
 			return 0
 		}
