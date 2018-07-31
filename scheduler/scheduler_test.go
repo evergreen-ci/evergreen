@@ -555,7 +555,7 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 	numNewParents := numNewParentsNeeded(len(currentParents), 4, len(existingContainers), pool.MaxContainers)
-	numNewParentsToSpawn, err := parentCapacity(d, numNewParents, len(currentParents), pool)
+	numNewParentsToSpawn, err := parentCapacity(parent, numNewParents, len(currentParents), pool)
 	s.NoError(err)
 	s.Equal(0, numNewParentsToSpawn)
 	s.Len(newHostsSpawned, 3)

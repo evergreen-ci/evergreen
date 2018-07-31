@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -425,7 +426,26 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 }
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeVersion, "regression")
+	return Subscription{
+		ID:      bson.NewObjectId().Hex(),
+		Type:    ResourceTypeTask,
+		Trigger: "build-break",
+		Selectors: []Selector{
+			{
+				Type: "owner",
+				Data: owner,
+			},
+			{
+				Type: "object",
+				Data: "task",
+			},
+			{
+				Type: "requester",
+				Data: evergreen.RepotrackerVersionRequester,
+			},
+		},
+		Subscriber: sub,
+	}
 }
 
 func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {

@@ -80,7 +80,7 @@ func (o OutputFormat) ContentType() string {
 	case JSON:
 		return "application/json; charset=utf-8"
 	case TEXT:
-		return "plain/text; charset=utf-8"
+		return "text/plain; charset=utf-8"
 	case HTML:
 		return "application/html; charset=utf-8"
 	case BINARY:
@@ -88,6 +88,6 @@ func (o OutputFormat) ContentType() string {
 	case YAML:
 		return "application/yaml; charset=utf-8"
 	default:
-		return "plain/text; charset=utf-8"
+		return "text/plain; charset=utf-8"
 	}
 }

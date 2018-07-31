@@ -962,10 +962,9 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	hosts, err := Find(db.Query(bson.M{
 		StatusKey: bson.M{"$in": evergreen.UphostStatus},
-		RunningTaskKey: bson.M{"$and": []bson.M{
-			{"$exists": true},
-			{"$ne": ""},
-		}},
+		"$and": []bson.M{
+			{RunningTaskKey: bson.M{"$exists": true}},
+			{RunningTaskKey: bson.M{"$ne": ""}}},
 	}))
 
 	if err == mgo.ErrNotFound {
