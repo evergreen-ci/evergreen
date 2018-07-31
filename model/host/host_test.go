@@ -2352,3 +2352,25 @@ func TestEstimateNumContainersForDuration(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2.0, estimate2)
 }
+
+func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
+	t.Run("QueryExecutesProperly", func(t *testing.T) {
+		hosts, err := FindTerminatedHostsRunningTasks()
+		assert.NoError(t, err)
+		assert.Len(t, hosts, 0)
+	})
+	t.Run("QueryFindsResults", func(t *testing.T) {
+		h := Host{
+			Id:          "bar",
+			RunningTask: "foo",
+			Status:      evergreen.HostRunning,
+		}
+		assert.NoError(t, h.Insert())
+
+		hosts, err := FindTerminatedHostsRunningTasks()
+		assert.NoError(t, err)
+		assert.Len(t, hosts, 1)
+		assert.Equal(t, h.Id, hosts[0].Id)
+
+	})
+}
