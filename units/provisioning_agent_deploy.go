@@ -89,28 +89,25 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
+	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
 
-	err = j.startAgentOnHost(ctx, settings, *j.host)
+	stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
 	j.AddError(err)
 	if err != nil {
-		stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
-		j.AddError(err)
-		if err != nil {
-			return
-		}
-
-		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count == agentPutRetries {
-			msg := "error putting agent on host"
-			job := NewDecoHostNotifyJob(j.env, j.host, nil, msg)
-			grip.Critical(message.WrapError(j.env.RemoteQueue().Put(job),
-				message.Fields{
-					"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
-					"host_id": j.host.Id,
-					"distro":  j.host.Distro,
-				}))
-		}
-
+		return
 	}
+
+	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
+		msg := "error putting agent on host"
+		job := NewDecoHostNotifyJob(j.env, j.host, nil, msg)
+		grip.Critical(message.WrapError(j.env.RemoteQueue().Put(job),
+			message.Fields{
+				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro,
+			}))
+	}
+
 }
 
 // SSHTimeout defines the timeout for the SSH commands in this package.
