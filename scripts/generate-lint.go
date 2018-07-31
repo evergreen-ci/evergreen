@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/evergreen-ci/shrub"
 	"github.com/google/shlex"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -78,20 +79,12 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 }
 
 // makeTask returns a task map that can be marshaled into a JSON document.
-func makeTask(target string) map[string]interface{} {
-	name := makeTarget(target)
-	task := map[string]interface{}{
-		"name": name,
-		"commands": []map[string]interface{}{
-			map[string]interface{}{
-				"func": "run-make",
-				"vars": map[string]interface{}{
-					"target": name,
-				},
-			},
-		},
+func getDisplayTask(targets []string) shrub.DisplayTaskDefinition {
+	def := shrub.DisplayTaskDefinition{Name: lintPrefix}
+	for _, et := range targets {
+		def.Components = append(def.Components, et)
 	}
-	return task
+	return def
 }
 
 func makeTarget(target string) string {
@@ -99,7 +92,7 @@ func makeTarget(target string) string {
 }
 
 // generateTasks returns a map of tasks to generate.
-func generateTasks() (map[string][]map[string]interface{}, error) {
+func generateTasks() (*shrub.Configuration, error) {
 	changes, err := whatChanged()
 	if err != nil {
 		return nil, err
@@ -140,57 +133,29 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 			return nil, err
 		}
 	}
-	taskList := []map[string]interface{}{}
-	bvTasksList := []map[string]string{}
-	for _, t := range targets {
-		taskList = append(taskList, makeTask(t))
-		bvTasksList = append(bvTasksList, map[string]string{"name": makeTarget(t)})
-	}
-	executionTaskList := []string{}
-	for _, et := range taskList {
-		executionTaskList = append(executionTaskList, et["name"].(string))
-	}
-	if len(executionTaskList) == 0 {
+
+	if len(targets) == 0 {
 		return nil, nil
 	}
-	generate := map[string][]map[string]interface{}{}
-	generate["tasks"] = taskList
-	generate["task_groups"] = []map[string]interface{}{
-		map[string]interface{}{
-			"name":      lintGroup,
-			"max_hosts": maxHosts,
-			"tasks":     executionTaskList,
-			"setup_group": []map[string]interface{}{
-				map[string]interface{}{
-					"command": "git.get_project",
-					"type":    "system",
-					"params": map[string]string{
-						"directory": "gopath/src/github.com/evergreen-ci/evergreen",
-					},
-				},
-				map[string]interface{}{
-					"func": "set-up-credentials",
-				},
-			},
-			"teardown_task": []map[string]interface{}{
-				{"func": "attach-test-results"},
-				{"func": "remove-test-results"},
-			},
-		},
+
+	conf := &shrub.Configuration{}
+	lintGroup := []string{}
+	for _, t := range targets {
+		name := makeTarget(t)
+		conf.Task(name).FunctionWithVars("run-make", map[string]string{"target": name})
+		lintGroup = append(lintGroup, name)
 	}
-	generate["buildvariants"] = []map[string]interface{}{
-		map[string]interface{}{
-			"name":  lintVariant,
-			"tasks": []string{lintGroup},
-			"display_tasks": []map[string]interface{}{
-				map[string]interface{}{
-					"name":            lintPrefix,
-					"execution_tasks": executionTaskList,
-				},
-			},
-		},
-	}
-	return generate, nil
+
+	conf.Variant(lintVariant).DisplayTasks(getDisplayTask(lintGroup)).AddTasks(lintGroup...)
+
+	group := conf.TaskGroup(lintPrefix).SetMaxHosts(maxHosts)
+	group.SetupGroup.Command().Type("system").Command("git.get_project").Param("directory", "gopath/src/github.com/evergreen-ci/evergreen")
+	group.SetupGroup.Command().Function("set-up-credentials")
+	group.TeardownTask.Command().Function("attach-test-results")
+	group.TeardownTask.Command().Function("remove-test-results")
+	group.Task(lintGroup...)
+
+	return conf, nil
 }
 
 func main() {
