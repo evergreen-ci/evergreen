@@ -165,7 +165,7 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		}
 
 		// find all uphost parent intent documents
-		numUphostParents, err := host.CountUphostParents()
+		numUphostParents, err := host.CountUphostParentsByContainerPool(pool.Id)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not count uphost parents")
 		}

@@ -2388,11 +2388,21 @@ func TestCountUphostParents(t *testing.T) {
 		Id:            "h2",
 		Status:        evergreen.HostUninitialized,
 		HasContainers: true,
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Distro:        "d1",
+			Id:            "test-pool",
+			MaxContainers: 100,
+		},
 	}
 	h3 := Host{
 		Id:            "h3",
 		Status:        evergreen.HostRunning,
 		HasContainers: true,
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Distro:        "d1",
+			Id:            "test-pool",
+			MaxContainers: 100,
+		},
 	}
 	h4 := Host{
 		Id:            "h4",
@@ -2411,7 +2421,7 @@ func TestCountUphostParents(t *testing.T) {
 	assert.NoError(h4.Insert())
 	assert.NoError(h5.Insert())
 
-	numUphostParents, err := CountUphostParents()
+	numUphostParents, err := CountUphostParentsByContainerPool("test-pool")
 	assert.NoError(err)
-	assert.Equal(4, numUphostParents)
+	assert.Equal(2, numUphostParents)
 }
