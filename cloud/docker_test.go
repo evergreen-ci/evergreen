@@ -60,11 +60,10 @@ func (s *DockerSuite) SetupTest() {
 		ParentID: "parent",
 	}
 	s.NoError(s.parentHost.Insert())
-	s.NoError(s.distro.Insert())
 }
 
 func (s *DockerSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(host.Collection, distro.Collection))
+	s.NoError(db.Clear(host.Collection))
 }
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
