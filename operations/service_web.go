@@ -11,7 +11,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/amboy/reporting"
+	"github.com/mongodb/amboy/rest"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -53,15 +58,15 @@ func startWebService() cli.Command {
 				uiServer  *http.Server
 			)
 
-			pprof, err := service.GetHandlerPprof(settings)
-			if err != nil {
-				return errors.WithStack(err)
-			}
-
 			serviceHandler, err := getServiceRouter(settings, queue)
 			if err != nil {
 				return errors.WithStack(err)
 			}
+			adminHandler, err := getAdminService(env, settings)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
 			apiServer = service.GetServer(settings.Api.HttpListenAddr, serviceHandler)
 			uiServer = service.GetServer(settings.Ui.HttpListenAddr, serviceHandler)
 
@@ -80,24 +85,24 @@ func startWebService() cli.Command {
 				close(uiWait)
 			}()
 
-			pprofServer := service.GetServer(settings.PprofPort, pprof)
-			pprofWait := make(chan struct{})
+			adminServer := service.GetServer(settings.PprofPort, adminHandler)
+			adminWait := make(chan struct{})
 			go func() {
-				defer recovery.LogStackTraceAndContinue("proff server")
+				defer recovery.LogStackTraceAndContinue("admin server")
 
 				if settings.PprofPort != "" {
-					catcher.Add(pprofServer.ListenAndServe())
+					catcher.Add(adminServer.ListenAndServe())
 				}
 
-				close(pprofWait)
+				close(adminWait)
 			}()
 
 			gracefulWait := make(chan struct{})
-			go gracefulShutdownForSIGTERM(ctx, []*http.Server{pprofServer, uiServer, apiServer}, gracefulWait, catcher)
+			go gracefulShutdownForSIGTERM(ctx, []*http.Server{uiServer, apiServer, adminServer}, gracefulWait, catcher)
 
 			<-apiWait
 			<-uiWait
-			<-pprofWait
+			<-adminWait
 
 			grip.Notice("waiting for web services to terminate gracefully")
 			<-gracefulWait
@@ -169,4 +174,45 @@ func getServiceRouter(settings *evergreen.Settings, queue amboy.Queue) (http.Han
 	}
 
 	return service.GetRouter(as, uis)
+}
+
+func getAdminService(env evergreen.Environment, settings *evergreen.Settings) (http.Handler, error) {
+	localPool, ok := env.LocalQueue().Runner().(amboy.AbortableRunner)
+	if !ok {
+		return nil, errors.New("local pool is not configured with an abortable pool")
+	}
+	remotePool, ok := env.RemoteQueue().Runner().(amboy.AbortableRunner)
+	if !ok {
+		return nil, errors.New("remote pool is not configured with an abortable pool")
+	}
+
+	opts := queue.DefaultMongoDBOptions()
+	opts.URI = settings.Database.Url
+	opts.DB = settings.Amboy.DB
+	opts.Priority = true
+
+	remoteReporter, err := reporting.MakeDBQueueState(settings.Amboy.Name, opts, env.Session())
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building queue reporter")
+	}
+
+	localAbort := rest.NewManagementService(localPool).App()
+	localAbort.SetPrefix("/amboy/local/pool")
+	remoteAbort := rest.NewManagementService(remotePool).App()
+	remoteAbort.SetPrefix("/amboy/remote/pool")
+
+	localReporting := rest.NewReportingService(reporting.NewQueueReporter(env.LocalQueue())).App()
+	localReporting.SetPrefix("/amboy/local/reporting")
+	remoteReporting := rest.NewReportingService(remoteReporter).App()
+	remoteReporting.SetPrefix("/amboy/remote/reporting")
+
+	app := gimlet.NewApp()
+	app.AddMiddleware(gimlet.MakeRecoveryLogger())
+
+	handler, err := gimlet.MergeApplications(app, localAbort, remoteAbort, localReporting, remoteReporting, util.GetPprofApp())
+	if err != nil {
+		return nil, errors.Wrap(err, "problem assembling handler")
+	}
+
+	return handler, nil
 }
