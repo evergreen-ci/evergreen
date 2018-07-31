@@ -2375,7 +2375,7 @@ func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 	})
 }
 
-func TestCountUninitializedParents(t *testing.T) {
+func TestCountUphostParents(t *testing.T) {
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 
@@ -2411,7 +2411,7 @@ func TestCountUninitializedParents(t *testing.T) {
 	assert.NoError(h4.Insert())
 	assert.NoError(h5.Insert())
 
-	numUninitializedParents, err := CountUninitializedParents()
+	numUphostParents, err := CountUphostParents()
 	assert.NoError(err)
-	assert.Equal(2, numUninitializedParents)
+	assert.Equal(4, numUphostParents)
 }

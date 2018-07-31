@@ -1020,10 +1020,10 @@ func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 }
 
 // CountUninitializedParents returns the number of initializing parent host intent documents
-func CountUninitializedParents() (int, error) {
+func CountUphostParents() (int, error) {
 	return db.Count(Collection, bson.M{
 		HasContainersKey: true,
-		StatusKey:        evergreen.HostUninitialized,
+		StatusKey:        bson.M{"$in": evergreen.UphostStatus},
 	})
 }
 

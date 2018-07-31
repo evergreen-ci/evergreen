@@ -113,17 +113,16 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded() {
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(d.ContainerPool)
 	s.NoError(err)
-	numUninitializedParents, err := host.CountUninitializedParents()
+	numUphostParents, err := host.CountUphostParents()
 	s.NoError(err)
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
 	parentsParams := newParentsNeededParams{
-		numCurrentParents:       len(currentParents),
-		numUninitializedParents: numUninitializedParents,
-		numContainersNeeded:     1,
-		numExistingContainers:   len(existingContainers),
-		maxContainers:           pool.MaxContainers,
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
 	}
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(0, num)
@@ -162,17 +161,16 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded2() {
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(d.ContainerPool)
 	s.NoError(err)
-	numUninitializedParents, err := host.CountUninitializedParents()
+	numUphostParents, err := host.CountUphostParents()
 	s.NoError(err)
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
 	parentsParams := newParentsNeededParams{
-		numCurrentParents:       len(currentParents),
-		numUninitializedParents: numUninitializedParents,
-		numContainersNeeded:     1,
-		numExistingContainers:   len(existingContainers),
-		maxContainers:           pool.MaxContainers,
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
 	}
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(0, num)
@@ -215,17 +213,16 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
-	numUninitializedParents, err := host.CountUninitializedParents()
+	numUphostParents, err := host.CountUphostParents()
 	s.NoError(err)
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
 	parentsParams := newParentsNeededParams{
-		numCurrentParents:       len(currentParents),
-		numUninitializedParents: numUninitializedParents,
-		numContainersNeeded:     1,
-		numExistingContainers:   len(existingContainers),
-		maxContainers:           pool.MaxContainers,
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
 	}
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
@@ -288,17 +285,16 @@ func (s *SchedulerSuite) TestSpawnHostsContainers() {
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
-	numUninitializedParents, err := host.CountUninitializedParents()
+	numUphostParents, err := host.CountUphostParents()
 	s.NoError(err)
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
 	parentsParams := newParentsNeededParams{
-		numCurrentParents:       len(currentParents),
-		numUninitializedParents: numUninitializedParents,
-		numContainersNeeded:     1,
-		numExistingContainers:   len(existingContainers),
-		maxContainers:           pool.MaxContainers,
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
 	}
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(0, num)
@@ -344,17 +340,16 @@ func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
-	numUninitializedParents, err := host.CountUninitializedParents()
+	numUphostParents, err := host.CountUphostParents()
 	s.NoError(err)
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
 	parentsParams := newParentsNeededParams{
-		numCurrentParents:       len(currentParents),
-		numUninitializedParents: numUninitializedParents,
-		numContainersNeeded:     3,
-		numExistingContainers:   len(existingContainers),
-		maxContainers:           pool.MaxContainers,
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   3,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
 	}
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
@@ -409,17 +404,16 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
-	numUninitializedParents, err := host.CountUninitializedParents()
+	numUphostParents, err := host.CountUphostParents()
 	s.NoError(err)
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
 	parentsParams := newParentsNeededParams{
-		numCurrentParents:       len(currentParents),
-		numUninitializedParents: numUninitializedParents,
-		numContainersNeeded:     2,
-		numExistingContainers:   len(existingContainers),
-		maxContainers:           pool.MaxContainers,
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   2,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
 	}
 	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
@@ -616,17 +610,16 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
 	s.Equal(3, len(currentParents))
-	numUninitializedParents, err := host.CountUninitializedParents()
+	numUphostParents, err := host.CountUphostParents()
 	s.NoError(err)
 	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
 	parentsParams := newParentsNeededParams{
-		numCurrentParents:       len(currentParents),
-		numUninitializedParents: numUninitializedParents,
-		numContainersNeeded:     4,
-		numExistingContainers:   len(existingContainers),
-		maxContainers:           pool.MaxContainers,
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   4,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
 	}
 	numNewParents := numNewParentsNeeded(parentsParams)
 	numNewParentsToSpawn, err := parentCapacity(parent, numNewParents, len(currentParents), pool)

@@ -50,7 +50,7 @@ type distroSchedueler struct {
 }
 
 type newParentsNeededParams struct {
-	numCurrentParents, numUninitializedParents, numContainersNeeded, numExistingContainers, maxContainers int
+	numUphostParents, numContainersNeeded, numExistingContainers, maxContainers int
 }
 
 func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]version.Version) distroSchedulerResult {
@@ -164,19 +164,18 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 			return nil, errors.Wrap(err, "could not find running containers")
 		}
 
-		// find all uninitialized parent intent documents
-		numUninitializedParents, err := host.CountUninitializedParents()
+		// find all uphost parent intent documents
+		numUphostParents, err := host.CountUphostParents()
 		if err != nil {
-			return nil, errors.Wrap(err, "could not count uninitialized parents")
+			return nil, errors.Wrap(err, "could not count uphost parents")
 		}
 
 		// create numParentsNeededParams struct
 		parentsParams := newParentsNeededParams{
-			numCurrentParents:       len(currentParents),
-			numUninitializedParents: numUninitializedParents,
-			numContainersNeeded:     newHostsNeeded,
-			numExistingContainers:   len(existingContainers),
-			maxContainers:           pool.MaxContainers,
+			numUphostParents:      numUphostParents,
+			numContainersNeeded:   newHostsNeeded,
+			numExistingContainers: len(existingContainers),
+			maxContainers:         pool.MaxContainers,
 		}
 		// compute number of parents needed
 		numNewParents := numNewParentsNeeded(parentsParams)
@@ -293,9 +292,9 @@ func findAvailableParent(d distro.Distro) (host.Host, error) {
 // numNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
 func numNewParentsNeeded(params newParentsNeededParams) int {
-	if params.numCurrentParents*params.maxContainers < params.numExistingContainers+params.numContainersNeeded {
+	if params.numUphostParents*params.maxContainers < params.numExistingContainers+params.numContainersNeeded {
 		// subtract numUninitializedParents because they will soon come up as parents we can use
-		numTotalNewParents := int(math.Ceil(float64(params.numContainersNeeded)/float64(params.maxContainers))) - params.numUninitializedParents
+		numTotalNewParents := int(math.Ceil(float64(params.numContainersNeeded) / float64(params.maxContainers)))
 		if numTotalNewParents < 0 {
 			return 0
 		}
