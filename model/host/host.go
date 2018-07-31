@@ -1019,7 +1019,7 @@ func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 	return Find(query)
 }
 
-// CountUninitializedParents returns the number of initializing parent host intent documents
+// CountUphostParents returns the number of initializing parent host intent documents
 func CountUphostParents() (int, error) {
 	return db.Count(Collection, bson.M{
 		HasContainersKey: true,

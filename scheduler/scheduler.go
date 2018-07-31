@@ -293,7 +293,6 @@ func findAvailableParent(d distro.Distro) (host.Host, error) {
 // accommodate new containers
 func numNewParentsNeeded(params newParentsNeededParams) int {
 	if params.numUphostParents*params.maxContainers < params.numExistingContainers+params.numContainersNeeded {
-		// subtract numUninitializedParents because they will soon come up as parents we can use
 		numTotalNewParents := int(math.Ceil(float64(params.numContainersNeeded) / float64(params.maxContainers)))
 		if numTotalNewParents < 0 {
 			return 0
