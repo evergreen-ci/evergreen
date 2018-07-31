@@ -263,7 +263,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         $scope.extraData = $scope.c.subscription.trigger_data;
     }
 
-    loadFromSubscription($scope);
+    $scope.loadFromSubscription();
 }
 
 // Lookup a trigger with given (name, resource_type) pair in triggers, an
