@@ -201,6 +201,9 @@ func (e *envState) initDB(settings DBSettings) error {
 func (e *envState) createQueues(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for local queue")
+	}
 
 	// configure the remote mongodb-backed amboy
 	// queue.
@@ -216,6 +219,10 @@ func (e *envState) createQueues(ctx context.Context) error {
 	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
 	if err = rq.SetDriver(qmdb); err != nil {
 		return errors.WithStack(err)
+	}
+
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for remote queue")
 	}
 	e.remoteQueue = rq
 
