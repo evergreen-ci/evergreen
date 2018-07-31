@@ -214,9 +214,18 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 		subscriptionIDKey: id,
 	}), &out)
 	if err == mgo.ErrNotFound {
-		return nil, nil
-
-	} else if err != nil {
+		if bson.IsObjectIdHex(id) {
+			err = db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+				subscriptionIDKey: bson.ObjectIdHex(id),
+			}), &out)
+			if err == mgo.ErrNotFound {
+				return nil, nil
+			}
+		} else {
+			return nil, nil
+		}
+	}
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
 	}
 
