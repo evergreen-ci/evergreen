@@ -220,11 +220,11 @@ func (e *envState) createQueues(ctx context.Context) error {
 	if err = rq.SetDriver(qmdb); err != nil {
 		return errors.WithStack(err)
 	}
-	e.remoteQueue = rq
 
-	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote)); err != nil {
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
 		return errors.Wrap(err, "problem configuring worker pool for remote queue")
 	}
+	e.remoteQueue = rq
 
 	// Notifications queue w/ moving weight avg pool
 	e.notificationsQueue = queue.NewLocalLimitedSize(len(e.senders), e.settings.Amboy.LocalStorage)
