@@ -511,30 +511,6 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 	return hosts, nil
 }
 
-// QueryWithFullTaskPipeline returns a pipeline to match hosts and embeds the
-// task document within the host, if it's running a task
-func QueryWithFullTaskPipeline(match bson.M) []bson.M {
-	return []bson.M{
-		{
-			"$match": match,
-		},
-		{
-			"$lookup": bson.M{
-				"from":         task.Collection,
-				"localField":   RunningTaskKey,
-				"foreignField": task.IdKey,
-				"as":           "task_full",
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path": "$task_full",
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}
-}
-
 type InactiveHostCounts struct {
 	HostType string `bson:"_id"`
 	Count    int    `bson:"count"`
