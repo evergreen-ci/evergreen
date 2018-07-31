@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -104,6 +105,8 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
 func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, url string) (string, error) {
+	const maxImageInspectAttempts = 40
+
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to generate docker client")
@@ -119,11 +122,51 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 		// image already exists
 		return imageName, nil
 	} else if strings.Contains(err.Error(), "No such image") {
+
 		// image does not exist, import from remote tarball
 		source := types.ImageImportSource{SourceName: url}
+		msg := makeDockerLogMessage("ImageImport", h.Id, message.Fields{
+			"source":     source,
+			"image_name": imageName,
+			"image_url":  url,
+		})
 		_, err = dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
 		if err != nil {
 			return "", errors.Wrapf(err, "Error importing image from %s", url)
+		}
+		grip.Info(msg)
+
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+
+		// verify that ImageImport has succeeded
+	retryLoop:
+		for i := 1; i < maxImageInspectAttempts; i++ {
+			select {
+			case <-ctx.Done():
+				return "", errors.New("ImageImport canceled")
+			case <-timer.C:
+				_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
+				if err != nil {
+					// if image still not present, try again later
+					if strings.Contains(err.Error(), "No such image") {
+						msg := makeDockerLogMessage("ImageImport", h.Id, message.Fields{
+							"message":  "waiting for ImageImport",
+							"attempts": i,
+						})
+						grip.Info(msg)
+						timer.Reset(15 * time.Second)
+						continue
+					}
+					return "", errors.Wrapf(err, "Error verifying whether image import for %s succeeded", url)
+				}
+				// image found, ImportImage succeeded
+				break retryLoop
+			}
+		}
+		// time out after given number of attempts
+		if err != nil {
+			return "", errors.Errorf("Verifying image import for %s timed out", url)
 		}
 		return imageName, nil
 	} else {
@@ -167,11 +210,17 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		Tags:          []string{provisionedImage},
 	}
 
+	msg := makeDockerLogMessage("ImageBuild", h.Id, message.Fields{
+		"base_image":     options.BuildArgs["BASE_IMAGE"],
+		"dockerfile_url": options.RemoteContext,
+	})
+
 	// build the image
 	resp, err := dockerClient.ImageBuild(ctx, nil, options)
 	if err != nil {
 		return "", errors.Wrapf(err, "Error building Docker image from base image %s", baseImage)
 	}
+	grip.Info(msg)
 
 	// wait for ImageBuild to complete -- success response otherwise returned
 	// before building from Dockerfile is over, and next ContainerCreate will fail
@@ -260,10 +309,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	}
 	networkConf := &network.NetworkingConfig{}
 
-	grip.Info(message.Fields{
-		"message":       "Creating docker container",
-		"name":          name,
-		"image_id":      containerConf.Image,
+	msg := makeDockerLogMessage("ContainerCreate", h.Id, message.Fields{
+		"image":         containerConf.Image,
 		"exposed_ports": containerConf.ExposedPorts,
 		"port_bindings": hostConf.PortBindings,
 	})
@@ -274,6 +321,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		grip.Error(err)
 		return err
 	}
+	grip.Info(msg)
 
 	return nil
 }
@@ -381,4 +429,13 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 	}
 
 	return nil
+}
+
+func makeDockerLogMessage(name, parent string, data interface{}) message.Fields {
+	return message.Fields{
+		"message":  "Docker API call",
+		"api_name": name,
+		"parent":   parent,
+		"data":     data,
+	}
 }
