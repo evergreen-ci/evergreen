@@ -87,6 +87,24 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       label: "a previously passing test in a task fails",
       regex_selectors: taskRegexSelectors(),
     },
+    {
+      trigger: "exceeds-duration",
+      resource_type: "TASK",
+      label: "the runtime for a task exceeds some duration",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration}
+      ]
+    },
+    {
+      trigger: "runtime-change",
+      resource_type: "TASK",
+      label: "the runtime for a task changes by some percentage",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
+      ]
+    }
   ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
@@ -298,6 +316,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
           t = lookupTrigger($scope.triggers, v.trigger, v.resource_type);
+          if (!t) {
+            return v;
+          }
           v.trigger_label = t.label;
           v.subscriber.label = subscriberLabel(v.subscriber);
           return v;

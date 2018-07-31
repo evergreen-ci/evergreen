@@ -200,7 +200,9 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
           return;
         }
       });
-      $scope.regexSelectors = {};
+      if ($scope.regexSelectors === undefined) {
+        $scope.regexSelectors = {};
+      }
     };
     $scope.method = {};
     $scope.targets = {};
@@ -229,7 +231,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       if (!$scope.tempRegexSelector.type || !$scope.tempRegexSelector.data) {
           return;
       }
-      var typeLabel = _.where($scope.trigger.regex_selectors, {type: $scope.tempRegexSelector.type })[0];
+      var typeLabel = $scope.$scope.findRegexTypeLabel($scope.tempRegexSelector.type);
       $scope.regexSelectors[$scope.tempRegexSelector.type] = {type_label: typeLabel.type_label, data: $scope.tempRegexSelector.data};
       $scope.tempRegexSelector = {};
     }
@@ -245,6 +247,23 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
     $scope.hasSelectors = function() {
       return Object.keys($scope.regexSelectors).length !== 0;
     }
+
+
+    $scope.findRegexTypeLabel = function(type) { return _.where($scope.trigger.regex_selectors, {type: type })[0]; }
+
+    $scope.loadFromSubscription = function() {
+        if (!$scope.c.subscription) {
+          return;
+        }
+        $scope.bindTrigger();
+        _.each($scope.c.subscription.regex_selectors, function(selector){
+          var typeLabel = $scope.$scope.findRegexTypeLabel(selector.type);
+          $scope.regexSelectors[selector.type] = {type_label: typeLabel.type_label, data: selector.data};
+        });
+        $scope.extraData = $scope.c.subscription.trigger_data;
+    }
+
+    loadFromSubscription($scope);
 }
 
 // Lookup a trigger with given (name, resource_type) pair in triggers, an
