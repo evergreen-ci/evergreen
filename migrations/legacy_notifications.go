@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
@@ -15,13 +14,13 @@ const migrationLegacyNotificationsToSubscriptions = "legacy-notifications-to-sub
 
 func legacyNotificationsToSubscriptions(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 	const (
-		collection    = "project_refs"
+		collection    = "project_ref"
 		migrationName = "legacy-notifications-to-subscriptions"
 
-		alertSettings = "alert-settings"
+		alertSettings = "alert_settings"
 	)
 
-	if err := env.RegisterManualMigrationOperation(migrationName, makeGithubHooksMigration(args.db)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeLegacyNotificationsMigration(args.db)); err != nil {
 		return nil, err
 	}
 
@@ -31,13 +30,13 @@ func legacyNotificationsToSubscriptions(env anser.Environment, args migrationGen
 			Collection: collection,
 		},
 		Limit: args.limit,
-		Query: bson.M{
-			"$and": []bson.M{
+		Query: db.Document{
+			"$and": []db.Document{
 				{
-					alertSettings: {"$ne": bson.M{}},
+					alertSettings: db.Document{"$ne": db.Document{}},
 				},
 				{
-					alertSettings: {"$exists": true},
+					alertSettings: db.Document{"$exists": true},
 				},
 			},
 		},
@@ -47,38 +46,39 @@ func legacyNotificationsToSubscriptions(env anser.Environment, args migrationGen
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
-type legacyNotificationRecipient struct {
+type legacyNotificationSettings struct {
 	Recipient string `bson:"recipient"`
 	Project   string `bson:"project"`
 	IssueType string `bson:"issue"`
 }
 
-type legacyNotificationConfig struct {
-	Provider string                      `bson:"provider"`
-	Settings legacyNotificationRecipient `bson:"settings"`
+type legacyNotification struct {
+	Provider string                     `bson:"provider"`
+	Settings legacyNotificationSettings `bson:"settings"`
 }
 
 func makeLegacyNotificationsMigration(database string) db.MigrationOperation {
 	const (
-		projectRefCollection = "project_ref"
+		projectRefCollection    = "project_ref"
+		subscriptionsCollection = "subscriptions"
 
-		alertSettings = "alert-settings"
-		identifier    = "identifier"
+		alertSettingsKey = "alert_settings"
+		identifierKey    = "identifier"
 	)
 
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
 
-		settings := map[string][]legacyNotificationConfig{}
+		settings := map[string][]legacyNotification{}
 		projectID := ""
 		for _, raw := range rawD {
 			switch raw.Name {
-			case alertSettings:
+			case alertSettingsKey:
 				if err := raw.Value.Unmarshal(&settings); err != nil {
 					return errors.Wrap(err, "error unmarshaling alert_settings")
 				}
 
-			case identifier:
+			case identifierKey:
 				if err := raw.Value.Unmarshal(&projectID); err != nil {
 					return errors.Wrap(err, "error unmarshaling identifier")
 				}
@@ -93,84 +93,133 @@ func makeLegacyNotificationsMigration(database string) db.MigrationOperation {
 			return nil
 		}
 
+		catcher := grip.NewSimpleCatcher()
+		subsCollection := session.DB(database).C(subscriptionsCollection)
 		for trigger, config := range settings {
 			for i, recp := range config {
+				var sub *subscription
+				var err error
 				if recp.Provider == "jira" {
+					sub, err = legacyJIRAToSubscription(projectID, trigger, recp)
 				} else if recp.Provider == "email" {
-					if recp.Settings.Recipient == "" {
-						grip.Errorf("project '%s'; trigger: '%s'; index: %d has invalid email notification config", projectID, trigger, i)
-						continue
-					}
+					sub, err = legacyEmailToSubscription(projectID, trigger, recp)
+				}
+				if err != nil {
+					catcher.Add(errors.Wrapf(err, "%s, index %d", trigger, i))
+					continue
+				}
+				if err = subsCollection.Insert(sub); err != nil {
+					catcher.Add(err)
 				}
 			}
 		}
 
-		return session.DB(database).C(projectVarsCollection).UpdateId(projectVarsID,
-			bson.M{
-				"$unset": bson.M{
-					alertSettings: 1,
+		if err := catcher.Resolve(); err != nil {
+			return err
+		}
+
+		return session.DB(database).C(projectRefCollection).Update(
+			db.Document{
+				identifierKey: projectID,
+			},
+			db.Document{
+				"$unset": db.Document{
+					alertSettingsKey: 1,
 				},
 			})
 	}
 }
 
-func legacyJIRAToSubscription(projectID, trigger string, recp legacyNotificationRecipient) error {
-	if recp.Settings.Project == "" || recp.Settings.IssueType {
-		return errors.New("invalid jira notification config")
-	}
-
-	event.NewJIRASubscriber(recp)
-
-	event.Subscriber{
-		ID:   bson.NewObjectId().Hex(),
-		Type: "",
-		Selectors: []event.Selectors{
-			{
-				Type: "object",
-				Data: "",
-			},
-		},
-	}
+type subscription struct {
+	ID         string           `bson:"_id"`
+	Type       string           `bson:"type"`
+	Trigger    string           `bson:"trigger"`
+	Selectors  []selector       `bson:"selectors,omitempty"`
+	Subscriber event.Subscriber `bson:"subscriber"`
+	OwnerType  string           `bson:"owner_type"`
+	Owner      string           `bson:"owner"`
 }
 
-func oldTriggerToSubscription(projectID, trigger string, s event.Subscriber) (*event.Subscription, error) {
-	subscription := event.Subscription{
-		ID:         bson.NewObjectId().Hex(),
-		OwnerType:  event.OwnerTypeProject,
-		Owner:      projectID,
-		Subscriber: s,
-		Selectors: []event.Selector{
+type selector struct {
+	Type string `bson:"type"`
+	Data string `bson:"data"`
+}
+
+type subscriber struct {
+	Type   string      `bson:"type"`
+	Target interface{} `bson:"target"`
+}
+
+func oldTriggerToSubscription(projectID, trigger string, sub event.Subscriber) (*subscription, error) {
+	s := subscription{
+		ID:        bson.NewObjectId().Hex(),
+		OwnerType: "project",
+		Owner:     projectID,
+		Selectors: []selector{
 			{
 				Type: "project",
 				Data: projectID,
 			},
 			{
 				Type: "requester",
-				Data: evergreen.RepotrackerVersionRequester,
+				Data: "gitter_request",
 			},
 		},
+		Subscriber: sub,
 	}
 
 	switch trigger {
+	case "task_failed":
+		s.Type = event.ResourceTypeTask
+		s.Trigger = "failure"
+
 	case "first_version_failure":
-		subscription.Type = event.ResourceTypeTask
-		subscription.Trigger = "first-failure-in-version"
+		s.Type = event.ResourceTypeTask
+		s.Trigger = "first-failure-in-version"
 
 	case "first_variant_failure":
-		subscription.Type = event.ResourceTypeTask
-		subscription.Trigger = "first-failure-in-build"
+		s.Type = event.ResourceTypeTask
+		s.Trigger = "first-failure-in-build"
 
 	case "first_tasktype_failure":
-		subscription.Type = event.ResourceTypeTask
-		subscription.Trigger = "first-failure-in-version-with-name"
+		s.Type = event.ResourceTypeTask
+		s.Trigger = "first-failure-in-version-with-name"
 
 	case "task_transition_failure":
-		subscription.Type = event.ResourceTypeTask
-		subscription.Trigger = "task-regression"
+		s.Type = event.ResourceTypeTask
+		s.Trigger = "regression"
 
 	default:
-		return nil, errors.Errorf("unknown trigger %s", trigger)
+		return nil, errors.New("unknown trigger")
 	}
 
-	return &subscription, nil
+	return &s, nil
+}
+
+func legacyJIRAToSubscription(projectID, trigger string, recp legacyNotification) (*subscription, error) {
+	if recp.Settings.Project == "" || recp.Settings.IssueType == "" {
+		return nil, errors.New("invalid jira notification config")
+	}
+
+	subscriber := event.NewJIRASubscriber(recp.Settings.Project, recp.Settings.IssueType)
+	s, err := oldTriggerToSubscription(projectID, trigger, subscriber)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func legacyEmailToSubscription(projectID, trigger string, recp legacyNotification) (*subscription, error) {
+	if recp.Settings.Recipient == "" {
+		return nil, errors.New("invalid email notification config")
+	}
+
+	subscriber := event.NewEmailSubscriber(recp.Settings.Recipient)
+	s, err := oldTriggerToSubscription(projectID, trigger, subscriber)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
