@@ -214,7 +214,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	// Import correct base image if not already on host.
 	image, err := c.EnsureImageDownloaded(ctx, h, settings.ImageURL)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", h.Id)
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.ImageURL, h.Id)
 	}
 
 	// Build image containing Evergreen executable.
