@@ -1,0 +1,207 @@
+package route
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
+	"github.com/pkg/errors"
+)
+
+func getTaskRouteManager(route string, version int) *RouteManager {
+	tep := &TaskExecutionPatchHandler{}
+	taskExecutionPatch := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
+		Authenticator:     &NoAuthAuthenticator{},
+		RequestHandler:    tep.Handler(),
+		MethodType:        http.MethodPatch,
+	}
+
+	tgh := &taskGetHandler{}
+	taskGet := MethodHandler{
+		Authenticator:  &RequireUserAuthenticator{},
+		RequestHandler: tgh.Handler(),
+		MethodType:     http.MethodGet,
+	}
+
+	taskRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{taskExecutionPatch, taskGet},
+		Version: version,
+	}
+	return &taskRoute
+}
+
+// taskGetHandler implements the route GET /task/{task_id}. It fetches the associated
+// task and returns it to the user.
+type taskGetHandler struct {
+	taskID             string
+	fetchAllExecutions bool
+}
+
+// ParseAndValidate fetches the taskId from the http request.
+func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	tgh.taskID = gimlet.GetVars(r)["task_id"]
+	_, tgh.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
+	return nil
+}
+
+// Execute calls the data FindTaskById function and returns the task
+// from the provider.
+func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	foundTask, err := sc.FindTaskById(tgh.taskID)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Database error")
+	}
+
+	taskModel := &model.APITask{}
+	err = taskModel.BuildFromService(foundTask)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "API model error")
+	}
+
+	err = taskModel.BuildFromService(sc.GetURL())
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "API model error")
+	}
+
+	if tgh.fetchAllExecutions {
+		var tasks []task.Task
+		tasks, err = sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
+		if err != nil {
+			return ResponseData{}, errors.Wrap(err, "API model error")
+		}
+
+		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
+			return ResponseData{}, errors.Wrap(err, "API model error")
+		}
+
+		for i := range taskModel.PreviousExecutions {
+			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
+				return ResponseData{}, errors.Wrap(err, "failed to fetch artifacts for previous executions")
+			}
+		}
+	}
+
+	err = taskModel.GetArtifacts()
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "error retrieving artifacts")
+	}
+
+	return ResponseData{
+		Result: []model.Model{taskModel},
+	}, nil
+}
+
+func (trh *taskGetHandler) Handler() RequestHandler {
+	return &taskGetHandler{}
+}
+
+// TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
+// fetches the changes from request, changes in activation and priority, and
+// calls out to functions in the data to change these values.
+type TaskExecutionPatchHandler struct {
+	Activated *bool  `json:"activated"`
+	Priority  *int64 `json:"priority"`
+
+	user gimlet.User
+	task *task.Task
+}
+
+// ParseAndValidate fetches the needed data from the request and errors otherwise.
+// It fetches the task and user from the request context and fetches the changes
+// in activation and priority from the request body.
+func (tep *TaskExecutionPatchHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	decoder := json.NewDecoder(body)
+	if err := decoder.Decode(tep); err != nil {
+		if err == io.EOF {
+			return gimlet.ErrorResponse{
+				Message:    "No request body sent",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+		if e, ok := err.(*json.UnmarshalTypeError); ok {
+			return gimlet.ErrorResponse{
+				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
+					"but receieved '%s'",
+					e.Type, e.Value),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+		return errors.Wrap(err, "JSON unmarshal error")
+	}
+
+	if tep.Activated == nil && tep.Priority == nil {
+		return gimlet.ErrorResponse{
+			Message:    "Must set 'activated' or 'priority'",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	projCtx := MustHaveProjectContext(ctx)
+	if projCtx.Task == nil {
+		return gimlet.ErrorResponse{
+			Message:    "Task not found",
+			StatusCode: http.StatusNotFound,
+		}
+	}
+
+	tep.task = projCtx.Task
+	u := MustHaveUser(ctx)
+	tep.user = u
+	return nil
+}
+
+// Execute sets the Activated and Priority field of the given task and returns
+// an updated version of the task.
+func (tep *TaskExecutionPatchHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	if tep.Priority != nil {
+		priority := *tep.Priority
+		if priority > evergreen.MaxTaskPriority &&
+			!auth.IsSuperUser(sc.GetSuperUsers(), tep.user) {
+			return ResponseData{}, gimlet.ErrorResponse{
+				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
+					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
+				StatusCode: http.StatusForbidden,
+			}
+		}
+		if err := sc.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
+			return ResponseData{}, errors.Wrap(err, "Database error")
+		}
+	}
+	if tep.Activated != nil {
+		activated := *tep.Activated
+		if err := sc.SetTaskActivated(tep.task.Id, tep.user.Username(), activated); err != nil {
+			return ResponseData{}, errors.Wrap(err, "Database error")
+		}
+	}
+	refreshedTask, err := sc.FindTaskById(tep.task.Id)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Database error")
+	}
+
+	taskModel := &model.APITask{}
+	err = taskModel.BuildFromService(refreshedTask)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Database error")
+	}
+
+	return ResponseData{
+		Result: []model.Model{taskModel},
+	}, nil
+}
+
+func (tep *TaskExecutionPatchHandler) Handler() RequestHandler {
+	return &TaskExecutionPatchHandler{}
+}
