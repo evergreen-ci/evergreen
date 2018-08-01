@@ -2371,3 +2371,54 @@ func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 
 	})
 }
+
+func TestCountUphostParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	h1 := Host{
+		Id:            "h1",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h2 := Host{
+		Id:            "h2",
+		Status:        evergreen.HostUninitialized,
+		HasContainers: true,
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Distro:        "d1",
+			Id:            "test-pool",
+			MaxContainers: 100,
+		},
+	}
+	h3 := Host{
+		Id:            "h3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Distro:        "d1",
+			Id:            "test-pool",
+			MaxContainers: 100,
+		},
+	}
+	h4 := Host{
+		Id:            "h4",
+		Status:        evergreen.HostUninitialized,
+		HasContainers: true,
+	}
+	h5 := Host{
+		Id:       "h5",
+		Status:   evergreen.HostUninitialized,
+		ParentID: "h1",
+	}
+
+	assert.NoError(h1.Insert())
+	assert.NoError(h2.Insert())
+	assert.NoError(h3.Insert())
+	assert.NoError(h4.Insert())
+	assert.NoError(h5.Insert())
+
+	numUphostParents, err := CountUphostParentsByContainerPool("test-pool")
+	assert.NoError(err)
+	assert.Equal(2, numUphostParents)
+}

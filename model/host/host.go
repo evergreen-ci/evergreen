@@ -1056,6 +1056,16 @@ func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 	return Find(query)
 }
 
+// CountUphostParents returns the number of initializing parent host intent documents
+func CountUphostParentsByContainerPool(poolId string) (int, error) {
+	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
+	return db.Count(Collection, bson.M{
+		HasContainersKey:    true,
+		StatusKey:           bson.M{"$in": evergreen.UphostStatus},
+		hostContainerPoolId: poolId,
+	})
+}
+
 func InsertMany(hosts []Host) error {
 	docs := make([]interface{}, len(hosts))
 	for idx := range hosts {
