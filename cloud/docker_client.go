@@ -105,7 +105,10 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
 func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, url string) (string, error) {
-	const maxImageInspectAttempts = 40
+	const (
+		maxImageInspectAttempts = 40
+		retryInterval           = 15 * time.Second
+	)
 
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
@@ -155,7 +158,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 							"attempts": i,
 						})
 						grip.Info(msg)
-						timer.Reset(15 * time.Second)
+						timer.Reset(retryInterval)
 						continue
 					}
 					return "", errors.Wrapf(err, "Error verifying whether image import for %s succeeded", url)
