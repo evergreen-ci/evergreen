@@ -5,38 +5,26 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 )
 
-func getNotificationsStatusRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &notificationsStatusHandler{},
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
-	}
+func makeFetchNotifcationStatusRoute(sc data.Connector) gimlet.RouteHandler {
+	return &notificationsStatusHandler{sc: sc}
 }
 
-type notificationsStatusHandler struct{}
+type notificationsStatusHandler struct{ sc data.Connector }
 
-func (gh *notificationsStatusHandler) Handler() RequestHandler {
-	return &notificationsStatusHandler{}
+func (gh *notificationsStatusHandler) Factory() gimlet.RouteHandler {
+	return &notificationsStatusHandler{sc: gh.sc}
 }
 
-func (gh *notificationsStatusHandler) ParseAndValidate(_ context.Context, _ *http.Request) error {
-	return nil
-}
+func (gh *notificationsStatusHandler) Parse(_ context.Context, _ *http.Request) error { return nil }
 
-func (gh *notificationsStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	stats, err := sc.GetNotificationsStats()
+func (gh *notificationsStatusHandler) Run(ctx context.Context) gimlet.Responder {
+	stats, err := gh.sc.GetNotificationsStats()
 	if err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	return ResponseData{Result: []model.Model{stats}}, nil
+	return gimlet.NewJSONResponse(stats)
 }

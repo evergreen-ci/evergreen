@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -20,27 +21,22 @@ type recentTasksGetHandler struct {
 	minutes  int
 	verbose  bool
 	taskType string
+	sc       data.Connector
 }
 
-func getRecentTasksRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &recentTasksGetHandler{},
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
+func makeRecentTaskStatusHandler(sc data.Connector) gimlet.RouteHandler {
+	return &recentTasksGetHandler{
+		sc: sc,
 	}
 }
 
-func (h *recentTasksGetHandler) Handler() RequestHandler {
-	return &recentTasksGetHandler{}
+func (h *recentTasksGetHandler) Factory() gimlet.RouteHandler {
+	return &recentTasksGetHandler{
+		sc: h.sc,
+	}
 }
 
-func (h *recentTasksGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	minutesInt, err := util.GetIntValue(r, "minutes", defaultDurationStatusQuery)
 	if err != nil {
 		return err
@@ -63,10 +59,10 @@ func (h *recentTasksGetHandler) ParseAndValidate(ctx context.Context, r *http.Re
 	return nil
 }
 
-func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	tasks, stats, err := sc.FindRecentTasks(h.minutes)
+func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
+	tasks, stats, err := h.sc.FindRecentTasks(h.minutes)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	if h.taskType != "" {
@@ -80,64 +76,53 @@ func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) 
 			taskModel := model.APITask{}
 			err = taskModel.BuildFromService(&t)
 			if err != nil {
-				return ResponseData{}, errors.Wrap(err, "API model error")
+				return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 			}
 
 			response[i] = &taskModel
 
 		}
-		return ResponseData{
-			Result: response,
-		}, nil
+		return gimlet.NewJSONResponse(response)
 	}
 
 	models := make([]model.Model, 1)
 	statsModel := &model.APITaskStats{}
 	if err := statsModel.BuildFromService(stats); err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 	models[0] = statsModel
-	return ResponseData{
-		Result: models,
-	}, nil
+	return gimlet.NewJSONResponse(models)
 }
 
 // this is the route manager for /status/hosts/distros, which returns a count of up hosts grouped by distro
-type hostStatsByDistroHandler struct{}
+type hostStatsByDistroHandler struct {
+	sc data.Connector
+}
 
-func getHostStatsByDistroManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &hostStatsByDistroHandler{},
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
+func makeHostStatusByDistroRoute(sc data.Connector) gimlet.RouteHandler {
+	return &hostStatsByDistroHandler{
+		sc: sc,
 	}
 }
 
-func (h *hostStatsByDistroHandler) Handler() RequestHandler {
-	return &hostStatsByDistroHandler{}
+func (h *hostStatsByDistroHandler) Factory() gimlet.RouteHandler {
+	return &hostStatsByDistroHandler{sc: h.sc}
 }
 
-func (h *hostStatsByDistroHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *hostStatsByDistroHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (h *hostStatsByDistroHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	stats, err := sc.GetHostStatsByDistro()
+func (h *hostStatsByDistroHandler) Run(ctx context.Context) gimlet.Responder {
+	stats, err := h.sc.GetHostStatsByDistro()
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	statsModel := &model.APIHostStatsByDistro{}
 	if err := statsModel.BuildFromService(stats); err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	return ResponseData{
-		Result: []model.Model{statsModel},
-	}, nil
+
+	return gimlet.NewJSONResponse(statsModel)
 }

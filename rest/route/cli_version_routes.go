@@ -5,38 +5,34 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/gimlet"
 )
 
 type cliVersion struct {
+	sc data.Connector
 }
 
-func getCLIVersionRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			MethodHandler{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &cliVersion{},
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
+func makeFetchCLIVersionRoute(sc data.Connector) gimlet.RouteHandler {
+	return &cliVersion{
+		sc: sc,
 	}
 }
 
-func (gh *cliVersion) Handler() RequestHandler {
-	return &cliVersion{}
+func (gh *cliVersion) Factory() gimlet.RouteHandler {
+	return &cliVersion{
+		sc: gh.sc,
+	}
 }
 
-func (gh *cliVersion) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (gh *cliVersion) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (gh *cliVersion) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	version, err := sc.GetCLIUpdate()
-	resp := ResponseData{}
-	if err == nil && version != nil {
-		resp.Result = append(resp.Result, version)
+func (gh *cliVersion) Run(ctx context.Context) gimlet.Responder {
+	version, err := gh.sc.GetCLIUpdate()
+	if err != nil || version == nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
-	return resp, err
+
+	return gimlet.NewJSONResponse(version)
 }
