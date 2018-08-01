@@ -81,7 +81,7 @@ variables:
       - name: dist-test
     commands:
       - func: get-dist-test
-      - func: set-up-credentials
+      - func: set-up-cross-credentials
       - func: run-cross
         vars: { target: "${task_name}" }
   - &run-xc-test-suite-with-mongodb
@@ -90,7 +90,7 @@ variables:
       - name: dist-test
     commands:
       - func: get-dist-test
-      - func: set-up-credentials
+      - func: set-up-cross-credentials
       - func: set-up-mongodb
       - func: run-cross
         vars: { target: "${task_name}" }
@@ -177,7 +177,7 @@ functions:
       aws_secret: ${aws_secret}
       remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
       bucket: mciuploads
-      local_file: dist-test.tar.gz
+      extract_to: ${workddir}/
   run-cross:
     command: subprocess.exec
     params:
@@ -192,6 +192,21 @@ functions:
     params:
       silent: true
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      env:
+        GITHUB_TOKEN: ${github_token}
+        JIRA_SERVER: ${jiraserver}
+        CROWD_SERVER: ${crowdserver}
+        CROWD_USER: ${crowduser}
+        CROWD_PW: ${crowdpw}
+        AWS_KEY: ${aws_key}
+        AWS_SECRET: ${aws_secret}
+      command: bash scripts/setup-credentials.sh
+  set-up-cross-credentials:
+    command: subprocess.exec
+    type: setup
+    params:
+      silent: true
+      working_dir: evergreen-test
       env:
         GITHUB_TOKEN: ${github_token}
         JIRA_SERVER: ${jiraserver}
@@ -491,7 +506,6 @@ tasks:
     tags: ["db", "race"]
     name: race-rest-data
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-plugin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
@@ -656,4 +670,17 @@ buildvariants:
       - name: "dist-test"
         distros:
           - ubuntu1604-test
+      - name: ".xc"
+
+  - name: ubuntu1604-xc
+    display_name: Ubuntu 16.04 (cross)
+    run_on:
+      - ubuntu1604-test
+    expansions:
+      gobin: /opt/go1.8/go/bin/go
+      disable_coverage: yes
+      goroot: /opt/go1.8/go
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
+    tasks:
+      - name: "dist-test"
       - name: ".xc"
