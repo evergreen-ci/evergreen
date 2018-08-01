@@ -210,13 +210,24 @@ func (s *Subscription) Upsert() error {
 
 func FindSubscriptionByID(id string) (*Subscription, error) {
 	out := Subscription{}
-	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+	query := bson.M{
 		subscriptionIDKey: id,
-	}), &out)
+	}
+	if bson.IsObjectIdHex(id) {
+		query = bson.M{
+			"$or": []bson.M{
+				query,
+				bson.M{
+					subscriptionIDKey: bson.ObjectIdHex(id),
+				},
+			},
+		}
+	}
+	err := db.FindOneQ(SubscriptionsCollection, db.Query(query), &out)
 	if err == mgo.ErrNotFound {
 		return nil, nil
-
-	} else if err != nil {
+	}
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
 	}
 
