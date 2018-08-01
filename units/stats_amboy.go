@@ -97,12 +97,12 @@ func (j *amboyStatsCollector) Run(ctx context.Context) {
 		})
 
 		if enableExtendedRemoteStats {
-			j.AddError(j.collectExtendedRemoteStats())
+			j.AddError(j.collectExtendedRemoteStats(ctx))
 		}
 	}
 }
 
-func (j *amboyStatsCollector) collectExtendedRemoteStats() error {
+func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) error {
 	settings := j.env.Settings()
 
 	opts := queue.DefaultMongoDBOptions()
@@ -142,4 +142,5 @@ func (j *amboyStatsCollector) collectExtendedRemoteStats() error {
 	}
 
 	j.logger.InfoWhen(len(r) > 1, r)
+	return nil
 }
