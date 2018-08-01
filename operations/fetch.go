@@ -183,6 +183,7 @@ type cloneOptions struct {
 	repo     string
 	revision string
 	rootDir  string
+	branch   string
 	depth    uint
 }
 
@@ -191,6 +192,9 @@ func clone(opts cloneOptions) error {
 	cloneArgs := []string{"clone", opts.repo}
 	if opts.depth > 0 {
 		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))
+	}
+	if opts.branch != "" {
+		cloneArgs = append(cloneArgs, "-b", opts.branch)
 	}
 
 	cloneArgs = append(cloneArgs, opts.rootDir)
@@ -245,6 +249,7 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 		repo:     fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
 		revision: task.Revision,
 		rootDir:  cloneDir,
+		branch:   project.Branch,
 		depth:    defaultCloneDepth,
 	})
 
