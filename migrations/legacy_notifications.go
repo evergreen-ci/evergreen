@@ -11,7 +11,7 @@ import (
 
 const migrationLegacyNotificationsToSubscriptions = "legacy-notifications-to-subscriptions"
 
-func legacyNotificationsToSubscriptions(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
+func legacyNotificationsToSubscriptionsGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 	const (
 		collection    = "project_ref"
 		migrationName = "legacy-notifications-to-subscriptions"
@@ -30,14 +30,7 @@ func legacyNotificationsToSubscriptions(env anser.Environment, args migrationGen
 		},
 		Limit: args.limit,
 		Query: db.Document{
-			"$and": []db.Document{
-				{
-					alertSettings: db.Document{"$ne": db.Document{}},
-				},
-				{
-					alertSettings: db.Document{"$exists": true},
-				},
-			},
+			alertSettings: db.Document{"$exists": true},
 		},
 		JobID: args.id,
 	}
@@ -58,8 +51,7 @@ type legacyNotification struct {
 
 func makeLegacyNotificationsMigration(database string) db.MigrationOperation {
 	const (
-		projectRefCollection    = "project_ref"
-		subscriptionsCollection = "subscriptions"
+		projectRefCollection = "project_ref"
 
 		alertSettingsKey = "alert_settings"
 		identifierKey    = "identifier"
@@ -87,34 +79,11 @@ func makeLegacyNotificationsMigration(database string) db.MigrationOperation {
 		if projectID == "" {
 			return errors.New("project identifier was empty")
 		}
-		if len(settings) == 0 {
-			grip.Info("project '%s' has no config to migrate")
-			return nil
-		}
-
-		catcher := grip.NewSimpleCatcher()
-		subsCollection := session.DB(database).C(subscriptionsCollection)
-		for trigger, config := range settings {
-			for i, recp := range config {
-				var sub *subscription
-				var err error
-				if recp.Provider == "jira" {
-					sub, err = legacyJIRAToSubscription(projectID, trigger, recp)
-				} else if recp.Provider == "email" {
-					sub, err = legacyEmailToSubscription(projectID, trigger, recp)
-				}
-				if err != nil {
-					catcher.Add(errors.Wrapf(err, "%s, index %d", trigger, i))
-					continue
-				}
-				if err = subsCollection.Insert(sub); err != nil {
-					catcher.Add(err)
-				}
+		if len(settings) != 0 {
+			err := migrateLegacyNotifications(session.DB(database), projectID, settings)
+			if err != nil {
+				return err
 			}
-		}
-
-		if err := catcher.Resolve(); err != nil {
-			return err
 		}
 
 		return session.DB(database).C(projectRefCollection).Update(
@@ -127,6 +96,35 @@ func makeLegacyNotificationsMigration(database string) db.MigrationOperation {
 				},
 			})
 	}
+}
+
+func migrateLegacyNotifications(dbSess db.Database, projectID string, settings map[string][]legacyNotification) error {
+	const (
+		subscriptionsCollection = "subscriptions"
+	)
+	catcher := grip.NewSimpleCatcher()
+	subsCollection := dbSess.C(subscriptionsCollection)
+	for trigger, config := range settings {
+		for i, recp := range config {
+			var sub *subscription
+			var err error
+			if recp.Provider == "jira" {
+				sub, err = legacyJIRAToSubscription(projectID, trigger, recp)
+			} else if recp.Provider == "email" {
+				sub, err = legacyEmailToSubscription(projectID, trigger, recp)
+			}
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "%s, index %d", trigger, i))
+				continue
+			}
+			if err = subsCollection.Insert(sub); err != nil {
+				catcher.Add(err)
+			}
+		}
+	}
+
+	return catcher.Resolve()
+
 }
 
 type subscriber struct {

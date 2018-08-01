@@ -92,7 +92,10 @@ func (s *legacyNotificationsSuite) SetupTest() {
 }
 
 func (s *legacyNotificationsSuite) TestMigration() {
-	const subscriptionsCollection = "subscriptions"
+	const (
+		projectRefCollection    = "project_ref"
+		subscriptionsCollection = "subscriptions"
+	)
 	args := migrationGeneratorFactoryOptions{
 		db:    s.database,
 		limit: 50,
@@ -101,7 +104,7 @@ func (s *legacyNotificationsSuite) TestMigration() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	gen, err := legacyNotificationsToSubscriptions(anser.GetEnvironment(), args)
+	gen, err := legacyNotificationsToSubscriptionsGenerator(anser.GetEnvironment(), args)
 	s.Require().NoError(err)
 	gen.Run(ctx)
 	s.Require().NoError(gen.Error())
@@ -116,7 +119,7 @@ func (s *legacyNotificationsSuite) TestMigration() {
 			s.NoError(j.Error())
 		}
 	}
-	s.Equal(2, i)
+	s.Equal(3, i)
 
 	subsC := s.session.DB(s.database).C(subscriptionsCollection)
 	q := subsC.Find(db.Document{})
@@ -132,4 +135,17 @@ func (s *legacyNotificationsSuite) TestMigration() {
 	s.Len(senderType, 2)
 	s.Equal(senderType["jira-issue"], 5)
 	s.Equal(senderType["email"], 5)
+
+	projectsC := s.session.DB(s.database).C(projectRefCollection)
+	q = projectsC.Find(db.Document{
+		"alert_settings": db.Document{
+			"$exists": true,
+		},
+	})
+	projects := []db.Document{}
+	s.NoError(q.All(&projects))
+	s.Require().Len(projects, 1)
+
+	as := projects[0]["alert_settings"].(db.Document)
+	s.Len(as["something_invalid"], 1)
 }
