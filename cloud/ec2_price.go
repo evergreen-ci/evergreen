@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -197,7 +198,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 		zone: "",
 	}
 
-	prices, err := cpf.describeHourlySpotPriceHistory(ctx, client, args)
+	prices, err := cpf.describeSpotPriceHistory(ctx, client, args)
 	if err != nil {
 		return 0, "", errors.WithStack(err)
 	}
@@ -207,12 +208,18 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 
 	var min float64
 	var az string
+	pp.Print(prices)
 	for i := range prices {
-		if min == 0 || prices[i].Price < min {
-			min = prices[i].Price
-			az = prices[i].Zone
+		p, err := strconv.ParseFloat(*prices[i].SpotPrice, 64)
+		if err != nil {
+			return 0, "", errors.Wrapf(err, "problem parsing %s", *prices[i].SpotPrice)
+		}
+		if min == 0 || p < min {
+			min = p
+			az = *prices[i].AvailabilityZone
 		}
 	}
+	pp.Print(min, az)
 	return min, az, nil
 }
 
@@ -477,28 +484,10 @@ func (i hourlySpotPriceHistoryInput) String() string {
 	return fmt.Sprintln(i.iType, i.zone, i.os, i.start.Round(spotPriceCacheTTL).Unix())
 }
 
-// describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
-// simplifies that history into hourly billing rates starting from the supplied
-// start time. Returns a slice of hour-separated spot prices or any errors that occur.
-func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+// describeHourlySpotPriceHistory talks to Amazon to get spot price history
+func (cpf *cachingPriceFetcher) describeSpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]*ec2.SpotPrice, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
-
-	cacheKey := input.String()
-	cachedValue, ok := cpf.spotPrices[cacheKey]
-	if ok {
-		staleFor := time.Since(cachedValue.collectedAt)
-		if staleFor < spotPriceCacheTTL && len(cachedValue.values) > 0 {
-			grip.Debug(message.Fields{
-				"message":     "found spot price in cache",
-				"cached_secs": staleFor.Seconds(),
-				"key":         cacheKey,
-				"cache_size":  len(cpf.spotPrices),
-			})
-
-			return cachedValue.getCopy(), nil
-		}
-	}
 
 	cleanedNum := 0
 	for k, v := range cpf.spotPrices {
@@ -544,6 +533,32 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 			break
 		}
 	}
+	return history, nil
+}
+
+// describeHourlySpotPriceHistory simplifies that spot price history into hourly billing rates
+// starting from the supplied start time. Returns a slice of hour-separated spot prices.
+func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+	cacheKey := input.String()
+	cachedValue, ok := cpf.spotPrices[cacheKey]
+	if ok {
+		staleFor := time.Since(cachedValue.collectedAt)
+		if staleFor < spotPriceCacheTTL && len(cachedValue.values) > 0 {
+			grip.Debug(message.Fields{
+				"message":     "found spot price in cache",
+				"cached_secs": staleFor.Seconds(),
+				"key":         cacheKey,
+				"cache_size":  len(cpf.spotPrices),
+			})
+
+			return cachedValue.getCopy(), nil
+		}
+	}
+	history, err := cpf.describeSpotPriceHistory(ctx, client, input)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting spot price history")
+	}
+
 	// this loop samples the spot price history (which includes updates for every few minutes)
 	// into hourly billing periods. The price we are billed for an hour of spot time is the
 	// current price at the start of the hour. Amazon returns spot price history sorted in
@@ -585,7 +600,6 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 		values:      prices,
 	}
 	cpf.spotPrices[cacheKey] = cachedValue
-
 	return cachedValue.getCopy(), nil
 }
 
