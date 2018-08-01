@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"text/template"
 
@@ -52,6 +54,7 @@ type patchParams struct {
 	Alias       string
 	SkipConfirm bool
 	Finalize    bool
+	Browse      bool
 	Large       bool
 	ShowSummary bool
 }
@@ -109,7 +112,52 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 	grip.Info("Patch successfully created.")
 	grip.Info(patchDisp)
+
+	if p.Browse {
+		browserCmd, err := findBrowserCommand()
+		if err != nil || len(browserCmd) == 0 {
+			grip.Warningf("cannot find browser command: %s", err)
+			return nil
+		}
+
+		var url string
+		if newPatch.Activated {
+			url = conf.UIServerHost + "/version/" + newPatch.Id.Hex()
+		} else {
+			url = conf.UIServerHost + "/patch/" + newPatch.Id.Hex()
+		}
+
+		browserCmd = append(browserCmd, url)
+		cmd := exec.Command(browserCmd[0], browserCmd[1:]...)
+		return cmd.Run()
+	}
+
 	return nil
+}
+
+func findBrowserCommand() ([]string, error) {
+	browser := os.Getenv("BROWSER")
+	if browser != "" {
+		return []string{browser}, nil
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		return []string{"open"}, nil
+	case "windows":
+		return []string{"cmd", "/c", "start"}, nil
+	default:
+		candidates := []string{"xdg-open", "gnome-open", "x-www-browser", "firefox",
+			"opera", "mozilla", "netscape"}
+		for _, b := range candidates {
+			path, err := exec.LookPath(b)
+			if err == nil {
+				return []string{path}, nil
+			}
+		}
+	}
+
+	return nil, errors.New("unable to find a web browser, try setting $BROWSER")
 }
 
 // Performs validation for patch or patch-file
