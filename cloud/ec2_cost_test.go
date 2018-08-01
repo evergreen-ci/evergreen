@@ -228,11 +228,6 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 	s.True(ps[0].Price > 0.0)
 	s.True(ps[0].Price < 2.0)
 	s.True(ps[0].Time.Before(ps[1].Time))
-
-	input.zone = ""
-	ps, err = cpf.describeHourlySpotPriceHistory(ctx, s.client, input)
-	s.NoError(err)
-	s.True(len(ps) > 5, "num_elems: %d", len(ps))
 }
 
 func (s *CostIntegrationSuite) TestFetchEBSPricing() {
