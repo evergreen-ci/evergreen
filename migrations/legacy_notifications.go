@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
@@ -130,14 +129,26 @@ func makeLegacyNotificationsMigration(database string) db.MigrationOperation {
 	}
 }
 
-type subscription struct {
-	ID         string           `bson:"_id"`
-	Type       string           `bson:"type"`
-	Trigger    string           `bson:"trigger"`
-	Selectors  []selector       `bson:"selectors,omitempty"`
-	Subscriber event.Subscriber `bson:"subscriber"`
-	OwnerType  string           `bson:"owner_type"`
-	Owner      string           `bson:"owner"`
+type subscriber struct {
+	Type   string      `bson:"type"`
+	Target interface{} `bson:"target"`
+}
+
+func newJIRASubscriber(project, issueType string) subscriber {
+	return subscriber{
+		Type: "jira-issue",
+		Target: db.Document{
+			"project":    project,
+			"issue_type": issueType,
+		},
+	}
+}
+
+func newEmailSubscriber(t string) subscriber {
+	return subscriber{
+		Type:   "email",
+		Target: t,
+	}
 }
 
 type selector struct {
@@ -145,12 +156,17 @@ type selector struct {
 	Data string `bson:"data"`
 }
 
-type subscriber struct {
-	Type   string      `bson:"type"`
-	Target interface{} `bson:"target"`
+type subscription struct {
+	ID         string     `bson:"_id"`
+	Type       string     `bson:"type"`
+	Trigger    string     `bson:"trigger"`
+	Selectors  []selector `bson:"selectors,omitempty"`
+	Subscriber subscriber `bson:"subscriber"`
+	OwnerType  string     `bson:"owner_type"`
+	Owner      string     `bson:"owner"`
 }
 
-func oldTriggerToSubscription(projectID, trigger string, sub event.Subscriber) (*subscription, error) {
+func oldTriggerToSubscription(projectID, trigger string, sub subscriber) (*subscription, error) {
 	s := subscription{
 		ID:        bson.NewObjectId().Hex(),
 		OwnerType: "project",
@@ -170,23 +186,23 @@ func oldTriggerToSubscription(projectID, trigger string, sub event.Subscriber) (
 
 	switch trigger {
 	case "task_failed":
-		s.Type = event.ResourceTypeTask
+		s.Type = "TASK"
 		s.Trigger = "failure"
 
 	case "first_version_failure":
-		s.Type = event.ResourceTypeTask
+		s.Type = "TASK"
 		s.Trigger = "first-failure-in-version"
 
 	case "first_variant_failure":
-		s.Type = event.ResourceTypeTask
+		s.Type = "TASK"
 		s.Trigger = "first-failure-in-build"
 
 	case "first_tasktype_failure":
-		s.Type = event.ResourceTypeTask
+		s.Type = "TASK"
 		s.Trigger = "first-failure-in-version-with-name"
 
 	case "task_transition_failure":
-		s.Type = event.ResourceTypeTask
+		s.Type = "TASK"
 		s.Trigger = "regression"
 
 	default:
@@ -201,7 +217,7 @@ func legacyJIRAToSubscription(projectID, trigger string, recp legacyNotification
 		return nil, errors.New("invalid jira notification config")
 	}
 
-	subscriber := event.NewJIRASubscriber(recp.Settings.Project, recp.Settings.IssueType)
+	subscriber := newJIRASubscriber(recp.Settings.Project, recp.Settings.IssueType)
 	s, err := oldTriggerToSubscription(projectID, trigger, subscriber)
 	if err != nil {
 		return nil, err
@@ -215,7 +231,7 @@ func legacyEmailToSubscription(projectID, trigger string, recp legacyNotificatio
 		return nil, errors.New("invalid email notification config")
 	}
 
-	subscriber := event.NewEmailSubscriber(recp.Settings.Recipient)
+	subscriber := newEmailSubscriber(recp.Settings.Recipient)
 	s, err := oldTriggerToSubscription(projectID, trigger, subscriber)
 	if err != nil {
 		return nil, err

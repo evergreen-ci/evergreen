@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
@@ -119,13 +120,14 @@ func (s *legacyNotificationsSuite) TestMigration() {
 
 	subsC := s.session.DB(s.database).C(subscriptionsCollection)
 	q := subsC.Find(db.Document{})
-	out := []subscription{}
+	out := []event.Subscription{}
 	s.NoError(q.All(&out))
 	s.Len(out, 10)
 
 	senderType := map[string]int{}
 	for i := range out {
 		senderType[out[i].Subscriber.Type] += 1
+		s.NoError(out[i].Validate())
 	}
 	s.Len(senderType, 2)
 	s.Equal(senderType["jira-issue"], 5)
