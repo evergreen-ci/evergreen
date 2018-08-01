@@ -45,7 +45,7 @@ type ProjectRef struct {
 
 	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
 	// the set of alert deliveries to be processed for that trigger.
-	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
+	Alerts map[string][]AlertConfig `bson:"alert_settings,omitempty" json:"alert_config,omitempty"`
 
 	// TODO: remove the alerts field above
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
@@ -309,7 +309,6 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRemotePathKey:         projectRef.RemotePath,
 				ProjectRefTrackedKey:            projectRef.Tracked,
 				ProjectRefLocalConfig:           projectRef.LocalConfig,
-				ProjectRefAlertsKey:             projectRef.Alerts,
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,

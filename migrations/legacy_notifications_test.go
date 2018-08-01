@@ -148,4 +148,8 @@ func (s *legacyNotificationsSuite) TestMigration() {
 
 	as := projects[0]["alert_settings"].(db.Document)
 	s.Len(as["something_invalid"], 1)
+
+	q = projectsC.Find(db.Document{})
+	s.NoError(q.All(&projects))
+	s.Len(projects, 4)
 }
