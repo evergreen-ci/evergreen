@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -208,7 +207,6 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 
 	var min float64
 	var az string
-	pp.Print(prices)
 	for i := range prices {
 		p, err := strconv.ParseFloat(*prices[i].SpotPrice, 64)
 		if err != nil {
@@ -219,7 +217,6 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 			az = *prices[i].AvailabilityZone
 		}
 	}
-	pp.Print(min, az)
 	return min, az, nil
 }
 
