@@ -233,5 +233,9 @@ func getDescription(ctx AlertContext, uiRoot string) (string, error) {
 	if err := DescriptionTemplate.Execute(buf, args); err != nil {
 		return "", err
 	}
+	// Jira description length maximum
+	if buf.Len() > 32767 {
+		buf.Truncate(32767)
+	}
 	return buf.String(), nil
 }

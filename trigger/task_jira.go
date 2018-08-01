@@ -254,6 +254,10 @@ func (j *jiraBuilder) getDescription() (string, error) {
 	if err := descriptionTemplate.Execute(buf, &j.data); err != nil {
 		return "", err
 	}
+	// Jira description length maximum
+	if buf.Len() > 32767 {
+		buf.Truncate(32767)
+	}
 	return buf.String(), nil
 }
 
