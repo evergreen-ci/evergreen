@@ -13,7 +13,6 @@ const (
 	patchFinalizeFlagName    = "finalize"
 	patchVerboseFlagName     = "verbose"
 	patchAliasFlagName       = "alias"
-	patchBrowseFlagName      = "browse"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -29,10 +28,6 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		cli.BoolFlag{
 			Name:  joinFlagNames(patchFinalizeFlagName, "f"),
 			Usage: "schedule tasks immediately",
-		},
-		cli.BoolFlag{
-			Name:  joinFlagNames(patchBrowseFlagName, "b"),
-			Usage: "open patch url in browser",
 		},
 		cli.BoolFlag{
 			Name:  patchVerboseFlagName,
@@ -57,7 +52,6 @@ func Patch() cli.Command {
 				SkipConfirm: c.Bool(yesFlagName),
 				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
-				Browse:      c.Bool(patchBrowseFlagName),
 				ShowSummary: c.Bool(patchVerboseFlagName),
 				Large:       c.Bool(largeFlagName),
 				Alias:       c.String(patchAliasFlagName),
