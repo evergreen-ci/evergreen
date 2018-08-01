@@ -22,10 +22,11 @@ type jiraJournal struct {
 
 // JiraOptions include configurations for the JIRA client
 type JiraOptions struct {
-	Name     string // Name of the journaler
-	BaseURL  string // URL of the JIRA instance
-	Username string
-	Password string
+	Name         string // Name of the journaler
+	BaseURL      string // URL of the JIRA instance
+	Username     string
+	Password     string
+	UseBasicAuth bool
 
 	HTTPClient *http.Client
 	client     jiraClient
@@ -53,7 +54,7 @@ func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
 		return nil, err
 	}
 
-	if err := j.opts.client.Authenticate(opts.Username, opts.Password); err != nil {
+	if err := j.opts.client.Authenticate(opts.Username, opts.Password, opts.UseBasicAuth); err != nil {
 		return nil, fmt.Errorf("jira authentication error: %v", err)
 	}
 
@@ -86,7 +87,7 @@ func (j *jiraJournal) Send(m message.Composer) {
 			issueFields.Description = issueFields.Description[:32767]
 		}
 
-		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password); err != nil {
+		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password, j.opts.UseBasicAuth); err != nil {
 			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
 		}
 		if err := j.opts.client.PostIssue(issueFields); err != nil {
@@ -197,7 +198,7 @@ func getFields(m message.Composer) *jira.IssueFields {
 
 type jiraClient interface {
 	CreateClient(*http.Client, string) error
-	Authenticate(string, string) error
+	Authenticate(string, string, bool) error
 	PostIssue(*jira.IssueFields) error
 	PostComment(string, string) error
 }
@@ -212,14 +213,19 @@ func (c *jiraClientImpl) CreateClient(client *http.Client, baseURL string) error
 	return err
 }
 
-func (c *jiraClientImpl) Authenticate(username string, password string) error {
-	authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
-	if err != nil {
-		return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
-	}
+func (c *jiraClientImpl) Authenticate(username string, password string, useBasic bool) error {
+	if useBasic {
+		c.Client.Authentication.SetBasicAuth(username, password)
 
-	if !authed {
-		return fmt.Errorf("problem authenticating to jira as '%s'", username)
+	} else {
+		authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
+		if err != nil {
+			return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
+		}
+
+		if !authed {
+			return fmt.Errorf("problem authenticating to jira as '%s'", username)
+		}
 	}
 	return nil
 }
