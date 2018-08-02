@@ -171,13 +171,17 @@ functions:
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
   get-dist-test:
-    command: s3.get
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
-      bucket: mciuploads
-      extract_to: ${workdir}
+    - command: s3.get
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
+        bucket: mciuploads
+        extract_to: ${workdir}
+    - command: shell.exec
+      params: 
+        script: |
+          find .
   run-cross:
     command: subprocess.exec
     params:
@@ -675,7 +679,7 @@ buildvariants:
   - name: ubuntu1604-xc
     display_name: Ubuntu 16.04 (cross)
     run_on:
-      - ubuntu1604-test
+      - ubuntu1604-build
     expansions:
       gobin: /opt/go1.8/go/bin/go
       disable_coverage: yes
