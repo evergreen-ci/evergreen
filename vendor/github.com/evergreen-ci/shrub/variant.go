@@ -11,7 +11,7 @@ type Variant struct {
 }
 
 type DisplayTaskDefinition struct {
-	Name       string   `json:""`
+	Name       string   `json:"name"`
 	Components []string `json:"execution_tasks"`
 }
 

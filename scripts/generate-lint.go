@@ -99,7 +99,7 @@ func generateTasks() (*shrub.Configuration, error) {
 	}
 	var targets []string
 	var maxHosts int
-	if len(changes) == 0 {
+	if len(changes) != 0 {
 		maxHosts = commitMaxHosts
 		args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
 		cmd := exec.Command(args[0], args[1:]...)
@@ -134,26 +134,25 @@ func generateTasks() (*shrub.Configuration, error) {
 		}
 	}
 
-	if len(targets) == 0 {
-		return nil, nil
-	}
+	// if len(targets) == 0 {
+	// 	return nil, nil
+	// }
 
 	conf := &shrub.Configuration{}
-	lintGroup := []string{}
+	lintTargets := []string{}
 	for _, t := range targets {
 		name := makeTarget(t)
 		conf.Task(name).FunctionWithVars("run-make", map[string]string{"target": name})
-		lintGroup = append(lintGroup, name)
+		lintTargets = append(lintTargets, name)
 	}
 
-	conf.Variant(lintVariant).DisplayName(lintVariant).DisplayTasks(getDisplayTask(lintGroup)).AddTasks(lintGroup...)
-
-	group := conf.TaskGroup(lintPrefix).SetMaxHosts(maxHosts)
+	conf.Variant(lintVariant).DisplayName(lintVariant).DisplayTasks(getDisplayTask(lintTargets)).AddTasks(lintTargets...)
+	group := conf.TaskGroup(lintGroup).SetMaxHosts(maxHosts)
 	group.SetupGroup.Command().Type("system").Command("git.get_project").Param("directory", "gopath/src/github.com/evergreen-ci/evergreen")
 	group.SetupGroup.Command().Function("set-up-credentials")
 	group.TeardownTask.Command().Function("attach-test-results")
 	group.TeardownTask.Command().Function("remove-test-results")
-	group.Task(lintGroup...)
+	group.Task(targets...)
 
 	return conf, nil
 }
