@@ -181,7 +181,7 @@ functions:
   run-cross:
     command: subprocess.exec
     params:
-      working_dir: gopath/src/github.com/evergreen-ci/evergreen
+      working_dir: evergreen-tests
       env:
         EVGHOME: ${workdir}/evergreen-tests
         SETTINGS_OVERRIDE: ${workdir}/evergreen-tests/creds.yml
