@@ -170,7 +170,7 @@ functions:
         RACE_ENABLED: ${race_enabed}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
-        XC_BUILD: ${xc_build)
+        XC_BUILD: ${xc_build}
   get-dist-test:
     command: s3.get
     params:
