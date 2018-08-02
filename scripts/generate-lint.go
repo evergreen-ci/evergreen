@@ -91,6 +91,38 @@ func makeTarget(target string) string {
 	return fmt.Sprintf("%s-%s", lintPrefix, target)
 }
 
+func getAllTargets() []string {
+	var targets []string
+
+	args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
+	cmd := exec.Command(args[0], args[1:]...)
+	allPackages, err := cmd.Output()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting diff")
+	}
+	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
+	for _, p := range split {
+		if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
+			continue
+		}
+
+		if !strings.HasPrefix(p, packagePrefix) {
+			continue
+		}
+
+		if p == packagePrefix {
+			targets = append(targets, "evergreen")
+			continue
+		}
+		p = strings.TrimPrefix(p, packagePrefix)
+		p = strings.TrimPrefix(p, "/")
+		p = strings.Replace(p, "/", "-", -1)
+		targets = append(targets, p)
+	}
+
+	return targets
+}
+
 // generateTasks returns a map of tasks to generate.
 func generateTasks() (*shrub.Configuration, error) {
 	changes, err := whatChanged()
@@ -99,33 +131,9 @@ func generateTasks() (*shrub.Configuration, error) {
 	}
 	var targets []string
 	var maxHosts int
-	if len(changes) != 0 {
+	if len(changes) == 0 {
 		maxHosts = commitMaxHosts
-		args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
-		cmd := exec.Command(args[0], args[1:]...)
-		allPackages, err := cmd.Output()
-		if err != nil {
-			return nil, errors.Wrap(err, "problem getting diff")
-		}
-		split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
-		for _, p := range split {
-			if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
-				continue
-			}
-
-			if !strings.HasPrefix(p, packagePrefix) {
-				continue
-			}
-
-			if p == packagePrefix {
-				targets = append(targets, "evergreen")
-				continue
-			}
-			p = strings.TrimPrefix(p, packagePrefix)
-			p = strings.TrimPrefix(p, "/")
-			p = strings.Replace(p, "/", "-", -1)
-			targets = append(targets, p)
-		}
+		targets = getAllTargets()
 	} else {
 		maxHosts = patchMaxHosts
 		targets, err = targetsFromChangedFiles(changes)
@@ -134,9 +142,9 @@ func generateTasks() (*shrub.Configuration, error) {
 		}
 	}
 
-	// if len(targets) == 0 {
-	// 	return nil, nil
-	// }
+	if len(targets) == 0 {
+		targets = getAllTargets()
+	}
 
 	conf := &shrub.Configuration{}
 	lintTargets := []string{}
