@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -26,12 +27,18 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c.CreateHost); err != nil {
 		return errors.Wrapf(err, "error parsing '%s' params", c.Name())
 	}
-
-	return c.CreateHost.Validate()
 }
 
 func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *model.TaskConfig) error {
+
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+		return errors.Wrap(err, "error expanding params")
+	}
+
+	if err := c.CreateHost.Validate(); err != nil {
+		return errors.Wrap(err, "command is invalid")
+	}
 
 	taskData := client.TaskData{
 		ID:     conf.Task.Id,

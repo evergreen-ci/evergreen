@@ -75,30 +75,30 @@ type EndTaskResponse struct {
 
 type CreateHost struct {
 	// EC2-related settings
-	AMI             string      `mapstructure:"ami" json:"ami"`
-	Distro          string      `mapstructure:"distro" json:"distro"`
-	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device"`
-	InstanceType    string      `mapstructure:"instance_type" json:"instance_type"`
-	Region          string      `mapstructure:"region" json:"region"`
-	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids"`
-	Spot            bool        `mapstructure:"spot" json:"spot"`
-	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id"`
-	UserdataFile    string      `mapstructure:"userdata_file" json:"-"`
-	UserdataCommand string      `json:"userdata_command"`
-	VPC             string      `mapstructure:"vpc_id" json:"vpc_id"`
+	AMI             string      `mapstructure:"ami" json:"ami" plugin:"expand"`
+	Distro          string      `mapstructure:"distro" json:"distro" plugin:"expand"`
+	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" plugin:"expand"`
+	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" plugin:"expand"`
+	Region          string      `mapstructure:"region" json:"region" plugin:"expand"`
+	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" plugin:"expand"`
+	Spot            bool        `mapstructure:"spot" json:"spot" plugin:"expand"`
+	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" plugin:"expand"`
+	UserdataFile    string      `mapstructure:"userdata_file" json:"-" plugin:"expand"`
+	UserdataCommand string      `json:"userdata_command" plugin:"expand"`
+	VPC             string      `mapstructure:"vpc_id" json:"vpc_id" plugin:"expand"`
 
 	// authentication settings
-	AWSKeyID  string `mapstructure:"aws_access_key_id" json:"aws_access_key_id"`
-	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key"`
-	KeyName   string `mapstructure:"key_name" json:"key_name"`
+	AWSKeyID  string `mapstructure:"aws_access_key_id" json:"aws_access_key_id" plugin:"expand"`
+	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" plugin:"expand"`
+	KeyName   string `mapstructure:"key_name" json:"key_name" plugin:"expand"`
 
 	// agent-controlled settings
-	CloudProvider       string `mapstructure:"provider" json:"provider"`
-	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts"`
-	Scope               string `mapstructure:"scope" json:"scope"`
-	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
-	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
-	Retries             int    `mapstructure:"retries" json:"retries"`
+	CloudProvider       string `mapstructure:"provider" json:"provider" plugin:"expand"`
+	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts" plugin:"expand"`
+	Scope               string `mapstructure:"scope" json:"scope" plugin:"expand"`
+	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs" plugin:"expand"`
+	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs" plugin:"expand"`
+	Retries             int    `mapstructure:"retries" json:"retries" plugin:"expand"`
 }
 
 type EbsDevice struct {
