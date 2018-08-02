@@ -80,8 +80,8 @@ func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activ
 	return model.SetVersionActivation(patchId, activated, user)
 }
 
-func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit int, sortAsc bool) ([]patch.Patch, error) {
-	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit, sortAsc))
+func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit int1) ([]patch.Patch, error) {
+	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching patches for user %s", user)
 	}

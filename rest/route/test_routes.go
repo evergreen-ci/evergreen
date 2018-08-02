@@ -41,7 +41,7 @@ type testGetHandlerArgs struct {
 
 // testGetHandler is the MethodHandler for the GET /tasks/{task_id}/tests route.
 type testGetHandler struct {
-	*PaginationExecutor
+	*yPaginationExecutor
 }
 
 func (hgh *testGetHandler) Handler() RequestHandler {

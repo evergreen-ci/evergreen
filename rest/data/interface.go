@@ -79,7 +79,7 @@ type Connector interface {
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
 	// for paginating through the results.
-	FindTasksByProjectAndCommit(string, string, string, string, int, int) ([]task.Task, error)
+	FindTasksByProjectAndCommit(string, string, string, string, int) ([]task.Task, error)
 
 	// FindTestsByTaskId is a method to find a set of tests that correspond to
 	// a given task. It takes a taskId, testName to start from, test status to filter,

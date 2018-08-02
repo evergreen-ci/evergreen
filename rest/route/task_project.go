@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -14,140 +13,107 @@ import (
 // taskByProjectHandler implements the GET /projects/{project_id}/revisions/{commit_hash}/tasks.
 // It fetches the associated tasks and returns them to the user.
 type tasksByProjectHandler struct {
-	*PaginationExecutor
-}
-
-func getTasksByProjectAndCommitRouteManager(route string, version int) *RouteManager {
-	tph := &tasksByProjectHandler{}
-	tasksByProj := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: tph.Handler(),
-		MethodType:     http.MethodGet,
-	}
-
-	taskRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{tasksByProj},
-		Version: version,
-	}
-	return &taskRoute
-}
-
-type tasksByProjectArgs struct {
 	projectId  string
 	commitHash string
 	status     string
+	limit      int
+	key        string
+	sc         data.Connector
+}
+
+func makeTasksByProjectAndCommitHandler(sc data.Connector) gimlet.RouteHandler {
+	return &tasksByProjectHandler{
+		sc: sc,
+	}
+}
+
+func (tph *tasksByProjectHandler) Factory() gimlet.RouteHandler {
+	return &tasksByProjectHandler{sc: tph.sc}
 }
 
 // ParseAndValidate fetches the project context and task status from the request
 // and loads them into the arguments to be used by the execution.
-func (tph *tasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (tph *tasksByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
 	vars := gimlet.GetVars(r)
-	args := tasksByProjectArgs{
-		projectId:  vars["project_id"],
-		commitHash: vars["commit_hash"],
-		status:     r.URL.Query().Get("status"),
-	}
-	if args.projectId == "" {
+	tph.projectId = vars["project_id"]
+	tph.commitHash = vars["commit_hash"]
+	tph.status = r.URL.Query().Get("status")
+
+	if tph.projectId == "" {
 		return gimlet.ErrorResponse{
 			Message:    "ProjectId cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
-	if args.commitHash == "" {
+	if tph.commitHash == "" {
 		return gimlet.ErrorResponse{
 			Message:    "Revision cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	tph.Args = args
-	return tph.PaginationExecutor.ParseAndValidate(ctx, r)
+
+	vals := r.URL.Query()
+
+	tph.key = vals.Get("start_at")
+
+	var err error
+	tph.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
-func tasksByProjectPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
-	*PageResult, error) {
-	ptArgs, ok := args.(tasksByProjectArgs)
-	if !ok {
-		panic("ARGS HAD WRONG TYPE!")
-	}
-	tasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit*2, 1)
+func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
+	tasks, err := tph.sc.FindTasksByProjectAndCommit(tph.projectId, tph.commitHash, tph.key, tph.status, tph.limit+1)
 	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
 
-	// Make the previous page
-	prevTasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit, -1)
-	if err != nil {
-		if apiErr, ok := err.(gimlet.ErrorResponse); !ok || apiErr.StatusCode != http.StatusNotFound {
-			return []model.Model{}, nil, errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
-	}
-
-	nextPage := makeNextTasksPage(tasks, limit)
-
-	pageResults := &PageResult{
-		Next: nextPage,
-		Prev: makePrevTasksPage(prevTasks),
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	lastIndex := len(tasks)
-	if nextPage != nil {
-		lastIndex = limit
+	if len(tasks) > tph.limit {
+		lastIndex = tph.limit
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         tph.sc.GetURL(),
+				Key:             tasks[tph.limit].Id,
+				Limit:           tph.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
+		}
 	}
 
-	// Truncate the tasks to just those that will be returned.
 	tasks = tasks[:lastIndex]
 
-	models := make([]model.Model, len(tasks))
-	for ix, st := range tasks {
+	for _, t := range tasks {
 		taskModel := &model.APITask{}
-		err = taskModel.BuildFromService(&st)
+		err = taskModel.BuildFromService(&t)
 		if err != nil {
-			return []model.Model{}, nil, err
+			return gimlet.MakeJSONErrorResponder(err)
 		}
-		err = taskModel.BuildFromService(sc.GetURL())
+		err = taskModel.BuildFromService(tph.sc.GetURL())
 		if err != nil {
-			return []model.Model{}, nil, err
+			return gimlet.MakeJSONErrorResponder(err)
 		}
-		models[ix] = taskModel
-	}
-	return models, pageResults, nil
-}
 
-func makeNextTasksPage(tasks []task.Task, limit int) *Page {
-	var nextPage *Page
-	if len(tasks) > limit {
-		nextLimit := len(tasks) - limit
-		nextPage = &Page{
-			Relation: "next",
-			Key:      tasks[limit].Id,
-			Limit:    nextLimit,
+		err = resp.AddData(taskModel)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
-	return nextPage
-}
 
-func makePrevTasksPage(tasks []task.Task) *Page {
-	var prevPage *Page
-	if len(tasks) > 1 {
-		prevPage = &Page{
-			Relation: "prev",
-			Key:      tasks[0].Id,
-			Limit:    len(tasks),
-		}
-	}
-	return prevPage
-}
-
-func (tph *tasksByProjectHandler) Handler() RequestHandler {
-	taskPaginationExecutor := &PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       tasksByProjectPaginator,
-		Args:            tasksByProjectArgs{},
-	}
-
-	return &tasksByProjectHandler{taskPaginationExecutor}
+	return resp
 }
