@@ -32,11 +32,11 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 clientSource := main/evergreen.go
 
 xcPackages := agent command operations rest-client subprocess util
+distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/test.$(pkg))
+distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/race.$(pkg))
 
 distArtifacts :=  ./public ./service/templates ./alerts/templates
 distContents := $(clientBinaries) $(distArtifacts)
-distTestContents := $(foreach pkg,$(xcPackages),$(buildDir)/test.$(pkg))
-distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)

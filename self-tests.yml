@@ -170,6 +170,7 @@ functions:
         RACE_ENABLED: ${race_enabed}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
+        XC_BUILD: ${xc_build)
   get-dist-test:
     command: s3.get
     params:
@@ -646,6 +647,7 @@ buildvariants:
       - rhel71-power8-test
     expansions:
       disable_coverage: yes
+      xc_build: yes
       goarch: ppc64le
       gobin: /opt/go1.8/go/bin/go
       goos: linux
@@ -663,6 +665,7 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
+      xc_build: yes
       disable_coverage: yes
       goarch: s390x
       gobin: /opt/go1.8/go/bin/go
@@ -682,6 +685,7 @@ buildvariants:
       - ubuntu1604-arm64-small
     expansions:
       disable_coverage: yes
+      xc_build: yes
       goarch: arm64
       goos: linux
       gobin: /opt/go1.8/go/bin/go
@@ -691,17 +695,4 @@ buildvariants:
       - name: "dist-test"
         distros:
           - ubuntu1604-test
-      - name: ".xc"
-
-  - name: ubuntu1604-xc
-    display_name: Ubuntu 16.04 (cross)
-    run_on:
-      - ubuntu1604-build
-    expansions:
-      gobin: /opt/go1.8/go/bin/go
-      disable_coverage: yes
-      goroot: /opt/go1.8/go
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
-    tasks:
-      - name: "dist-test"
       - name: ".xc"
