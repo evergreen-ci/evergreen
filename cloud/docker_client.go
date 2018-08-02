@@ -49,7 +49,10 @@ type dockerClientImpl struct {
 }
 
 // template string for new images with agent
-const provisionedImageTag string = "%s:provisioned"
+const (
+	provisionedImageTag = "%s:provisioned"
+	imageImportTimeout  = 10 * time.Minute
+)
 
 // generateClient generates a Docker client that can talk to the specified host
 // machine. The Docker client must be exposed and available for requests at the
@@ -82,6 +85,17 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 	return c.client, nil
 }
 
+func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
+	c.client = nil
+	c.httpClient.Timeout = newTimeout
+	dockerClient, err := c.generateClient(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to generate docker client")
+	}
+
+	return dockerClient, nil
+}
+
 // Init sets the Docker API version to use for API calls to the Docker client.
 func (c *dockerClientImpl) Init(apiVersion string) error {
 	if apiVersion == "" {
@@ -105,75 +119,56 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
 func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, url string) (string, error) {
-	const (
-		maxImageInspectAttempts = 40
-		retryInterval           = 15 * time.Second
-	)
-
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	// extract image name from url
+	// Extract image name from url
 	baseName := path.Base(url)
 	imageName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
-	// check if image already exists on host
+	// Check if image already exists on host
 	_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
 	if err == nil {
-		// image already exists
+		// Image already exists
 		return imageName, nil
 	} else if strings.Contains(err.Error(), "No such image") {
 
-		// image does not exist, import from remote tarball
+		// Extend http client timeout for ImageImport
+		normalTimeout := c.httpClient.Timeout
+		dockerClient, err := c.changeTimeout(h, imageImportTimeout)
+		if err != nil {
+			return "", errors.Wrap(err, "Error changing http client timeout")
+		}
+
+		// Image does not exist, import from remote tarball
 		source := types.ImageImportSource{SourceName: url}
 		msg := makeDockerLogMessage("ImageImport", h.Id, message.Fields{
 			"source":     source,
 			"image_name": imageName,
 			"image_url":  url,
 		})
-		_, err = dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
+		resp, err := dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
 		if err != nil {
 			return "", errors.Wrapf(err, "Error importing image from %s", url)
 		}
 		grip.Info(msg)
 
-		timer := time.NewTimer(0)
-		defer timer.Stop()
-
-		// verify that ImageImport has succeeded
-	retryLoop:
-		for i := 1; i < maxImageInspectAttempts; i++ {
-			select {
-			case <-ctx.Done():
-				return "", errors.New("ImageImport canceled")
-			case <-timer.C:
-				_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
-				if err != nil {
-					// if image still not present, try again later
-					if strings.Contains(err.Error(), "No such image") {
-						msg := makeDockerLogMessage("ImageImport", h.Id, message.Fields{
-							"message":  "waiting for ImageImport",
-							"attempts": i,
-						})
-						grip.Info(msg)
-						timer.Reset(retryInterval)
-						continue
-					}
-					return "", errors.Wrapf(err, "Error verifying whether image import for %s succeeded", url)
-				}
-				// image found, ImportImage succeeded
-				break retryLoop
-			}
-		}
-		// time out after given number of attempts
+		// Wait until ImageImport finishes
+		_, err = ioutil.ReadAll(resp)
 		if err != nil {
-			return "", errors.Errorf("Verifying image import for %s timed out", url)
+			return "", errors.Wrap(err, "Error reading ImageImport response")
 		}
+
+		// Reset http client timeout
+		_, err = c.changeTimeout(h, normalTimeout)
+		if err != nil {
+			return "", errors.Wrap(err, "Error changing http client timeout")
+		}
+
 		return imageName, nil
 	} else {
-		// other error
 		return "", errors.Wrapf(err, "Error inspecting image %s", imageName)
 	}
 }
@@ -367,6 +362,8 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 // ListImages lists all images on the specified host machine.
 func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]types.ImageSummary, error) {
 	dockerClient, err := c.generateClient(h)
+	grip.Info(*c.httpClient)
+	grip.Info(c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
