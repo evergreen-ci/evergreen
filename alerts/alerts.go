@@ -312,9 +312,6 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 	if ctx.ProjectRef != nil {
 		// Project-specific alert - use alert configs defined on the project
 		// TODO(EVG-223) patch alerts should go to patch owner
-		if ctx.ProjectRef.Alerts == nil {
-			return nil
-		}
 		alertConfigs = ctx.ProjectRef.Alerts[req.Trigger]
 	} else if ctx.Host != nil {
 		// Host-specific alert - use superuser alert configs for now

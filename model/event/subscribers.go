@@ -171,13 +171,3 @@ func NewSlackSubscriber(t string) Subscriber {
 		Target: t,
 	}
 }
-
-func NewJIRASubscriber(project, issueType string) Subscriber {
-	return Subscriber{
-		Type: JIRAIssueSubscriberType,
-		Target: &JIRAIssueSubscriber{
-			Project:   project,
-			IssueType: issueType,
-		},
-	}
-}
