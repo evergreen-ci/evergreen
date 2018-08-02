@@ -25,7 +25,7 @@ type Configuration struct {
 	Functions map[string]*CommandSequence `json:"functions,omitempty"`
 	Tasks     []*Task                     `json:"tasks,omitempty"`
 	Groups    []*TaskGroup                `json:"groups,omitempty"`
-	Variants  []*Variant                  `json:"variants,omitempty"`
+	Variants  []*Variant                  `json:"buildvariants,omitempty"`
 	Pre       *CommandSequence            `json:"pre,omitempty"`
 	Post      *CommandSequence            `json:"post,omitempty"`
 	Timeout   *CommandSequence            `json:"timeout,omitempty"`
