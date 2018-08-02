@@ -27,15 +27,22 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(mapstructure.Decode(params, c.CreateHost), "error parsing '%s' params", c.Name())
 }
 
-func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
-	logger client.LoggerProducer, conf *model.TaskConfig) error {
-
+func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
 	}
 
 	if err := c.CreateHost.Validate(); err != nil {
 		return errors.Wrap(err, "command is invalid")
+	}
+	return nil
+}
+
+func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
+	logger client.LoggerProducer, conf *model.TaskConfig) error {
+
+	if err := c.expandAndValidate(conf); err != nil {
+		return err
 	}
 
 	taskData := client.TaskData{
