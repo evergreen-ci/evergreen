@@ -185,7 +185,8 @@ functions:
       env:
         EVGHOME: ${workdir}/evergreen-tests
         SETTINGS_OVERRIDE: ${workdir}/evergreen-tests/creds.yml
-      command: make crossTarget=${target} run-cross
+        CROSS_TARGET: ${target}
+      command: make run-cross
   set-up-credentials:
     command: subprocess.exec
     type: setup

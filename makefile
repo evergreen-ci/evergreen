@@ -222,9 +222,8 @@ phony += lint lint-deps build build-race race test coverage coverage-html list-r
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
-run-cross:dist-test
-	tar -zxvf dist-test.tar.gz
-	$(EVGHOME)/bin/test.$(echo $(crossTarget) | sed 's/-/./') --test.v --test.timeout=10m
+run-cross:
+	$(EVGHOME)/bin/test.$(subst xc-,,$(subst -,.,$(CROSS_TARGET))) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
 # end front-ends
 
 
