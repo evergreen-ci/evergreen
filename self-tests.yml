@@ -171,24 +171,20 @@ functions:
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
   get-dist-test:
-    - command: s3.get
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
-        bucket: mciuploads
-        extract_to: ${workdir}
-    - command: shell.exec
-      params: 
-        script: |
-          find .
+    command: s3.get
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
+      bucket: mciuploads
+      extract_to: ${workdir}
   run-cross:
     command: subprocess.exec
     params:
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
       env:
-        EVGHOME: ${workdir}/evergreen-test
-        SETTINGS_OVERRIDE: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
+        EVGHOME: ${workdir}/evergreen-tests
+        SETTINGS_OVERRIDE: ${workdir}/evergreen-tests/creds.yml
       command: make crossTarget=${target} run-cross
   set-up-credentials:
     command: subprocess.exec
@@ -210,7 +206,7 @@ functions:
     type: setup
     params:
       silent: true
-      working_dir: evergreen-test
+      working_dir: evergreen-tests
       env:
         GITHUB_TOKEN: ${github_token}
         JIRA_SERVER: ${jiraserver}
