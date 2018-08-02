@@ -237,6 +237,7 @@ func logURL(test task.TestResult, root string) string {
 
 // getDescription returns the body of the JIRA ticket, with links.
 func (j *jiraBuilder) getDescription() (string, error) {
+	const jiraMaxDescLength = 32767
 	// build a list of all failed tests to include
 	tests := []jiraTestFailure{}
 	for _, test := range j.data.Task.LocalTestResults {
@@ -255,8 +256,8 @@ func (j *jiraBuilder) getDescription() (string, error) {
 		return "", err
 	}
 	// Jira description length maximum
-	if buf.Len() > 32767 {
-		buf.Truncate(32767)
+	if buf.Len() > jiraMaxDescLength {
+		buf.Truncate(jiraMaxDescLength)
 	}
 	return buf.String(), nil
 }
