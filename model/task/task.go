@@ -229,12 +229,7 @@ func IsAbortable(t Task) bool {
 
 // IsFinished returns true if the project is no longer running
 func (t *Task) IsFinished() bool {
-	return t.Status == evergreen.TaskFailed ||
-		t.Status == evergreen.TaskSucceeded ||
-		t.Status == evergreen.TaskSystemFailed ||
-		t.Status == evergreen.TaskSystemTimedOut ||
-		t.Status == evergreen.TaskSystemUnresponse ||
-		t.Status == evergreen.TaskTestTimedOut
+	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
 // IsDispatchable return true if the task should be dispatched

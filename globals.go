@@ -112,6 +112,19 @@ const (
 	RoutePaginatorNextPageHeaderKey = "Link"
 )
 
+func IsFinishedTaskStatus(status string) bool {
+	if status == TaskFailed ||
+		status == TaskSucceeded ||
+		status == TaskSystemFailed ||
+		status == TaskSystemTimedOut ||
+		status == TaskSystemUnresponse ||
+		status == TaskTestTimedOut {
+		return true
+	}
+
+	return false
+}
+
 // evergreen package names
 const (
 	UIPackage      = "EVERGREEN_UI"

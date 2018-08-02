@@ -1656,6 +1656,38 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		StartTime:   time.Now().Add(-time.Hour),
 	}
 	assert.NoError(anotherTask.Insert())
+	displayTask := task.Task{
+		Id:             "three",
+		DisplayName:    "display task",
+		Activated:      true,
+		DisplayOnly:    true,
+		BuildId:        buildID,
+		Project:        "sample",
+		Status:         evergreen.TaskStarted,
+		StartTime:      time.Now().Add(-time.Hour),
+		ExecutionTasks: []string{"exe0", "exe1"},
+	}
+	assert.NoError(displayTask.Insert())
+	exeTask0 := task.Task{
+		Id:          "exe0",
+		DisplayName: "execution 0",
+		Activated:   true,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	assert.NoError(exeTask0.Insert())
+	exeTask1 := task.Task{
+		Id:          "exe1",
+		DisplayName: "execution 1",
+		Activated:   true,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	assert.NoError(exeTask1.Insert())
 
 	b := &build.Build{
 		Id:      buildID,
@@ -1668,6 +1700,18 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 			},
 			{
 				Id:     anotherTask.Id,
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     displayTask.Id,
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     exeTask0.Id,
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     exeTask1.Id,
 				Status: evergreen.TaskStarted,
 			},
 		},
@@ -1683,38 +1727,35 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status: evergreen.TaskFailed,
 		Type:   "system",
 	}
+
 	updates := StatusChanges{}
 	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
-	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
-	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	b, err := build.FindOneId(buildID)
+	assert.NoError(err)
+	assert.False(b.IsActive())
 
-	// test with compile task
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
-	testTask.Status = evergreen.TaskStarted
-	testTask.DisplayName = evergreen.CompileStage
-	b.Tasks[0].Status = evergreen.TaskStarted
-	require.NoError(testTask.Insert())
-	anotherTask.Status = evergreen.TaskUndispatched
-	anotherTask.DependsOn = []task.Dependency{
-		{
-			TaskId: testTask.Id,
-			Status: evergreen.TaskSucceeded,
-		},
-	}
-	b.Tasks[1].Status = evergreen.TaskUndispatched
-	require.NoError(anotherTask.Insert())
-	require.NoError(b.Insert())
-	require.NoError(v.Insert())
-
-	details = &apimodels.TaskEndDetail{
-		Status: evergreen.TaskFailed,
-		Type:   "test",
-	}
 	updates = StatusChanges{}
-	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
-	// TODO: EVG-3455 this should be empty
+	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
+	assert.Empty(updates.BuildNewStatus)
+	b, err = build.FindOneId(buildID)
+	assert.NoError(err)
+	assert.False(b.IsActive())
+
+	updates = StatusChanges{}
+	assert.NoError(MarkEnd(&exeTask0, "", time.Now(), details, false, &updates))
+	assert.Empty(updates.BuildNewStatus)
+	b, err = build.FindOneId(buildID)
+	assert.NoError(err)
+	// TODO: EVG-3455 wat?
+	assert.False(b.IsActive())
+
+	updates = StatusChanges{}
+	assert.NoError(MarkEnd(&exeTask1, "", time.Now(), details, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	b, err = build.FindOneId(buildID)
+	assert.NoError(err)
+	assert.False(b.IsActive())
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus2(t *testing.T) {

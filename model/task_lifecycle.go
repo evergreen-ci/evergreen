@@ -579,6 +579,21 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// both completed in addition to a push (a push
 	// does not occur if there's a failed task)
 	if buildComplete {
+		if !failedTask {
+			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
+				err = errors.Wrap(err, "Error marking build as finished")
+				grip.Error(err)
+				return err
+			}
+
+		} else {
+			// some task failed
+			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
+				err = errors.Wrap(err, "Error marking build as finished")
+				grip.Error(err)
+				return err
+			}
+		}
 		grip.InfoWhen(b.Project == "mci" || b.Project == "lobster", message.Fields{
 			"lookhere":     "evg-3455",
 			"message":      "build complete",
@@ -590,23 +605,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			"is_finished":  b.IsFinished(),
 			"is_active":    b.IsActive(),
 		})
-		if !failedTask {
-			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
-				err = errors.Wrap(err, "Error marking build as finished")
-				grip.Error(err)
-				return err
-			}
-			updates.BuildNewStatus = evergreen.BuildSucceeded
-
-		} else {
-			// some task failed
-			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
-				err = errors.Wrap(err, "Error marking build as finished")
-				grip.Error(err)
-				return err
-			}
-			updates.BuildNewStatus = evergreen.BuildFailed
-		}
+		updates.BuildNewStatus = b.Status
 
 		if evergreen.IsPatchRequester(b.Requester) {
 			if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {

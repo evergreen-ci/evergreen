@@ -63,6 +63,16 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
+func (b *Build) AreTasksFinished() bool {
+	for i := range b.Tasks {
+		if evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Find
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
