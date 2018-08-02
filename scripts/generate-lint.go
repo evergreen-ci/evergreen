@@ -91,7 +91,7 @@ func makeTarget(target string) string {
 	return fmt.Sprintf("%s-%s", lintPrefix, target)
 }
 
-func getAllTargets() []string {
+func getAllTargets() ([]string, error) {
 	var targets []string
 
 	args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
@@ -120,7 +120,7 @@ func getAllTargets() []string {
 		targets = append(targets, p)
 	}
 
-	return targets
+	return targets, nil
 }
 
 // generateTasks returns a map of tasks to generate.
@@ -133,7 +133,10 @@ func generateTasks() (*shrub.Configuration, error) {
 	var maxHosts int
 	if len(changes) == 0 {
 		maxHosts = commitMaxHosts
-		targets = getAllTargets()
+		targets, err = getAllTargets()
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		maxHosts = patchMaxHosts
 		targets, err = targetsFromChangedFiles(changes)
@@ -143,7 +146,10 @@ func generateTasks() (*shrub.Configuration, error) {
 	}
 
 	if len(targets) == 0 {
-		targets = getAllTargets()
+		targets, err = getAllTargets()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	conf := &shrub.Configuration{}
