@@ -91,7 +91,7 @@ variables:
     commands:
       - func: get-dist-test
       - func: set-up-cross-credentials
-      - func: set-up-mongodb
+      - func: set-up-cross-mongodb
       - func: run-cross
         vars: { target: "${task_name}" }
   - &run-smoke-test
@@ -235,6 +235,26 @@ functions:
       type: setup
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
+        command: make check-mongod
+  set-up-cross-mongodb:
+    - command: subprocess.exec
+      type: setup
+      params:
+        env:
+          MONGODB_URL: ${mongodb_url}
+          DECOMPRESS: ${decompress}
+        working_dir: evergreen-tests
+        command: make get-mongodb
+    - command: subprocess.exec
+      type: setup
+      params:
+        background: true
+        working_dir: evergreen-tests
+        command: make start-mongod
+    - command: subprocess.exec
+      type: setup
+      params:
+        working_dir: evergreen-tests
         command: make check-mongod
   attach-test-results:
     - command: gotest.parse_files
