@@ -644,9 +644,12 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
 	}
 
-	hostDoc, err := host.FindOneId(j.task.HostId)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
+	var hostDoc *host.Host
+	if len(j.task.HostId) != 0 {
+		hostDoc, err = host.FindOneId(j.task.HostId)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
+		}
 	}
 
 	versionDoc, err := version.FindOneId(j.task.Version)
@@ -662,7 +665,6 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 	builder := jiraBuilder{
 		project:  strings.ToUpper(project),
 		mappings: &evergreen.JIRANotificationsConfig{},
-
 		data: jiraTemplateData{
 			UIRoot:  j.uiConfig.Url,
 			Task:    j.task,
