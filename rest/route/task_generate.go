@@ -14,31 +14,25 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func getGenerateManager(route string, version int) *RouteManager {
-	h := &generateHandler{}
-	generate := MethodHandler{
-		Authenticator:  &NoAuthAuthenticator{},
-		RequestHandler: h.Handler(),
-		MethodType:     http.MethodPost,
-	}
-
-	return &RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{generate},
-		Version: version,
+func makeGenerateTasksHandler(sc data.Connector) gimlet.RouteHandler {
+	return &generateHandler{
+		sc: sc,
 	}
 }
 
 type generateHandler struct {
 	files  []json.RawMessage
 	taskID string
+	sc     data.Connector
 }
 
-func (h *generateHandler) Handler() RequestHandler {
-	return &generateHandler{}
+func (h *generateHandler) Factory() gimlet.RouteHandler {
+	return &generateHandler{
+		sc: h.sc,
+	}
 }
 
-func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	if h.files, err = parseJson(r); err != nil {
 		failedJson := []byte{}
@@ -69,13 +63,14 @@ func parseJson(r *http.Request) ([]json.RawMessage, error) {
 	return files, err
 }
 
-func (h *generateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	if err := sc.GenerateTasks(h.taskID, h.files); err != nil {
+func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
+	if err := h.sc.GenerateTasks(h.taskID, h.files); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error generating tasks",
 			"task_id": h.taskID,
 		}))
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
-	return ResponseData{}, nil
+
+	return gimlet.NewJSONResponse(struct{}{})
 }

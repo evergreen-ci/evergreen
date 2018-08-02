@@ -17,39 +17,28 @@ import (
 	"github.com/pkg/errors"
 )
 
-func getTaskRouteManager(route string, version int) *RouteManager {
-	tep := &TaskExecutionPatchHandler{}
-	taskExecutionPatch := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext},
-		Authenticator:     &NoAuthAuthenticator{},
-		RequestHandler:    tep.Handler(),
-		MethodType:        http.MethodPatch,
-	}
-
-	tgh := &taskGetHandler{}
-	taskGet := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: tgh.Handler(),
-		MethodType:     http.MethodGet,
-	}
-
-	taskRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{taskExecutionPatch, taskGet},
-		Version: version,
-	}
-	return &taskRoute
-}
-
 // taskGetHandler implements the route GET /task/{task_id}. It fetches the associated
 // task and returns it to the user.
 type taskGetHandler struct {
 	taskID             string
 	fetchAllExecutions bool
+	sc                 data.Connector
+}
+
+func makeGetTaskRoute(sc data.Connector) gimlet.RouteHandler {
+	return &taskGetHandler{
+		sc: sc,
+	}
+}
+
+func (tgh *taskGetHandler) Factory() gimlet.RouteHandler {
+	return &taskGetHandler{
+		sc: tgh.sc,
+	}
 }
 
 // ParseAndValidate fetches the taskId from the http request.
-func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (tgh *taskGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	tgh.taskID = gimlet.GetVars(r)["task_id"]
 	_, tgh.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
 	return nil
@@ -57,70 +46,78 @@ func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request
 
 // Execute calls the data FindTaskById function and returns the task
 // from the provider.
-func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundTask, err := sc.FindTaskById(tgh.taskID)
+func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
+	foundTask, err := tgh.sc.FindTaskById(tgh.taskID)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(foundTask)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	err = taskModel.BuildFromService(sc.GetURL())
+	err = taskModel.BuildFromService(tgh.sc.GetURL())
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
-		tasks, err = sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
+		tasks, err = tgh.sc.FindOldTasksByIDWithDisplayTasks(tgh.taskID)
 		if err != nil {
-			return ResponseData{}, errors.Wrap(err, "API model error")
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 
 		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
-			return ResponseData{}, errors.Wrap(err, "API model error")
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 		}
 
 		for i := range taskModel.PreviousExecutions {
 			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
-				return ResponseData{}, errors.Wrap(err, "failed to fetch artifacts for previous executions")
+				return gimlet.MakeJSONErrorResponder(errors.Wrap(err,
+					"failed to fetch artifacts for previous executions"))
 			}
 		}
 	}
 
 	err = taskModel.GetArtifacts()
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "error retrieving artifacts")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving artifacts"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{taskModel},
-	}, nil
-}
-
-func (trh *taskGetHandler) Handler() RequestHandler {
-	return &taskGetHandler{}
+	return gimlet.NewJSONResponse(taskModel)
 }
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
 // fetches the changes from request, changes in activation and priority, and
 // calls out to functions in the data to change these values.
-type TaskExecutionPatchHandler struct {
+type taskExecutionPatchHandler struct {
 	Activated *bool  `json:"activated"`
 	Priority  *int64 `json:"priority"`
 
 	user gimlet.User
 	task *task.Task
+	sc   data.Connector
+}
+
+func makeModifyTaskRoute(sc data.Connector) gimlet.RouteHandler {
+	return &taskExecutionPatchHandler{
+		sc: sc,
+	}
+}
+
+func (tep *taskExecutionPatchHandler) Factory() gimlet.RouteHandler {
+	return &taskExecutionPatchHandler{
+		sc: tep.sc,
+	}
 }
 
 // ParseAndValidate fetches the needed data from the request and errors otherwise.
 // It fetches the task and user from the request context and fetches the changes
 // in activation and priority from the request body.
-func (tep *TaskExecutionPatchHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (tep *taskExecutionPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -165,43 +162,37 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(ctx context.Context, r *h
 
 // Execute sets the Activated and Priority field of the given task and returns
 // an updated version of the task.
-func (tep *TaskExecutionPatchHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if tep.Priority != nil {
 		priority := *tep.Priority
 		if priority > evergreen.MaxTaskPriority &&
-			!auth.IsSuperUser(sc.GetSuperUsers(), tep.user) {
-			return ResponseData{}, gimlet.ErrorResponse{
+			!auth.IsSuperUser(tep.sc.GetSuperUsers(), tep.user) {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
-			}
+			})
 		}
-		if err := sc.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
-			return ResponseData{}, errors.Wrap(err, "Database error")
+		if err := tep.sc.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
 	if tep.Activated != nil {
 		activated := *tep.Activated
-		if err := sc.SetTaskActivated(tep.task.Id, tep.user.Username(), activated); err != nil {
-			return ResponseData{}, errors.Wrap(err, "Database error")
+		if err := tep.sc.SetTaskActivated(tep.task.Id, tep.user.Username(), activated); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 		}
 	}
-	refreshedTask, err := sc.FindTaskById(tep.task.Id)
+	refreshedTask, err := tep.sc.FindTaskById(tep.task.Id)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(refreshedTask)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{taskModel},
-	}, nil
-}
-
-func (tep *TaskExecutionPatchHandler) Handler() RequestHandler {
-	return &TaskExecutionPatchHandler{}
+	return gimlet.NewJSONResponse(taskModel)
 }
