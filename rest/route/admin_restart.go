@@ -21,11 +21,12 @@ func makeRestartRoute(sc data.Connector, queue amboy.Queue) gimlet.RouteHandler 
 }
 
 type restartHandler struct {
-	StartTime  time.Time `json:"start_time"`
-	EndTime    time.Time `json:"end_time"`
-	DryRun     bool      `json:"dry_run"`
-	OnlyRed    bool      `json:"only_red"`
-	OnlyPurple bool      `json:"only_purple"`
+	StartTime          time.Time `json:"start_time"`
+	EndTime            time.Time `json:"end_time"`
+	DryRun             bool      `json:"dry_run"`
+	IncludeTestFailed  bool      `json:"inc_test_failed"`
+	IncludeSysFailed   bool      `json:"inc_sys_failed"`
+	IncludeSetupFailed bool      `json:"inc_setup_failed"`
 
 	sc    data.Connector
 	queue amboy.Queue
@@ -56,12 +57,13 @@ func (h *restartHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *restartHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 	opts := dataModel.RestartTaskOptions{
-		DryRun:     h.DryRun,
-		OnlyRed:    h.OnlyRed,
-		OnlyPurple: h.OnlyPurple,
-		StartTime:  h.StartTime,
-		EndTime:    h.EndTime,
-		User:       u.Username(),
+		DryRun:             h.DryRun,
+		IncludeTestFailed:  h.IncludeTestFailed,
+		IncludeSysFailed:   h.IncludeSysFailed,
+		IncludeSetupFailed: h.IncludeSetupFailed,
+		StartTime:          h.StartTime,
+		EndTime:            h.EndTime,
+		User:               u.Username(),
 	}
 	resp, err := h.sc.RestartFailedTasks(h.queue, opts)
 	if err != nil {

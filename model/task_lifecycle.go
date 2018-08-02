@@ -732,12 +732,15 @@ func updateDisplayTask(t *task.Task) error {
 }
 
 type RestartTaskOptions struct {
-	DryRun     bool      `bson:"dry_run" json:"dry_run" yaml:"dry_run"`
-	OnlyRed    bool      `bson:"only_red" json:"only_red" yaml:"only_red"`
-	OnlyPurple bool      `bson:"only_purple" json:"only_purple" yaml:"only_purple"`
-	StartTime  time.Time `bson:"start_time" json:"start_time" yaml:"start_time"`
-	EndTime    time.Time `bson:"end_time" json:"end_time" yaml:"end_time"`
-	User       string    `bson:"user" json:"user" yaml:"user"`
+	DryRun    bool      `bson:"dry_run" json:"dry_run"`
+	StartTime time.Time `bson:"start_time" json:"start_time"`
+	EndTime   time.Time `bson:"end_time" json:"end_time"`
+	User      string    `bson:"user" json:"user"`
+
+	// note that the bson tags are not quite accurate, but are kept around for backwards compatibility
+	IncludeTestFailed  bool `bson:"only_red" json:"only_red"`
+	IncludeSysFailed   bool `bson:"only_purple" json:"only_purple"`
+	IncludeSetupFailed bool `bson:"inc_setup_failed" json:"inc_setup_failed"`
 }
 
 type RestartTaskResults struct {
@@ -753,22 +756,32 @@ type RestartTaskResults struct {
 // or due to the system, respectively
 func RestartFailedTasks(opts RestartTaskOptions) (RestartTaskResults, error) {
 	results := RestartTaskResults{}
-	if opts.OnlyRed && opts.OnlyPurple {
-		opts.OnlyRed = false
-		opts.OnlyPurple = false
+	if !opts.IncludeTestFailed && !opts.IncludeSysFailed && !opts.IncludeSetupFailed {
+		opts.IncludeTestFailed = true
+		opts.IncludeSysFailed = true
+		opts.IncludeSetupFailed = true
 	}
-	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime))
+	failedTasks, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime))
 	if err != nil {
 		return results, err
 	}
-	// if only want red or purple, remove the other color tasks from the slice
-	if opts.OnlyRed {
-		tasksToRestart = task.FilterTasksOnStatus(tasksToRestart, evergreen.TaskFailed,
-			evergreen.TaskTestTimedOut)
-	} else if opts.OnlyPurple {
-		tasksToRestart = task.FilterTasksOnStatus(tasksToRestart, evergreen.TaskSystemFailed,
-			evergreen.TaskSystemTimedOut,
-			evergreen.TaskSystemUnresponse)
+	// filter task list
+	tasksToRestart := []task.Task{}
+	for _, t := range failedTasks {
+		switch t.ResultStatus() {
+		case evergreen.TaskFailed, evergreen.TaskTestTimedOut:
+			if opts.IncludeTestFailed {
+				tasksToRestart = append(tasksToRestart, t)
+			}
+		case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
+			if opts.IncludeSysFailed {
+				tasksToRestart = append(tasksToRestart, t)
+			}
+		case evergreen.TaskSetupFailed:
+			if opts.IncludeSetupFailed {
+				tasksToRestart = append(tasksToRestart, t)
+			}
+		}
 	}
 
 	// if this is a dry run, immediately return the tasks found
