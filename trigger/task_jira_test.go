@@ -335,6 +335,14 @@ func TestJIRADescription(t *testing.T) {
 			So(len(taskURLs), ShouldEqual, 1)
 			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1/0")
 		})
+
+		Convey("can generate a description for a task with no host", func() {
+			j.data.Host = nil
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(len(desc), ShouldEqual, 490)
+			So(strings.Contains(desc, "Host: N/A"), ShouldBeTrue)
+		})
 	})
 }
 
