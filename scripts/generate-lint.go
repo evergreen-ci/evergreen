@@ -152,7 +152,7 @@ func generateTasks() (*shrub.Configuration, error) {
 	group.SetupGroup.Command().Function("set-up-credentials")
 	group.TeardownTask.Command().Function("attach-test-results")
 	group.TeardownTask.Command().Function("remove-test-results")
-	group.Task(targets...)
+	group.Task(lintTargets...)
 
 	return conf, nil
 }
