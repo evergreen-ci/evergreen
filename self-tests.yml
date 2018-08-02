@@ -177,7 +177,7 @@ functions:
       aws_secret: ${aws_secret}
       remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
       bucket: mciuploads
-      extract_to: ${workddir}/
+      extract_to: ${workdir}
   run-cross:
     command: subprocess.exec
     params:
