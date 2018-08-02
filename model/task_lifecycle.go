@@ -740,7 +740,7 @@ type RestartTaskOptions struct {
 	// note that the bson tags are not quite accurate, but are kept around for backwards compatibility
 	IncludeTestFailed  bool `bson:"only_red" json:"only_red"`
 	IncludeSysFailed   bool `bson:"only_purple" json:"only_purple"`
-	IncludeSetupFailed bool `bson:"inc_setup_failed" json:"inc_setup_failed"`
+	IncludeSetupFailed bool `bson:"include_setup_failed" json:"include_setup_failed"`
 }
 
 type RestartTaskResults struct {
@@ -761,27 +761,19 @@ func RestartFailedTasks(opts RestartTaskOptions) (RestartTaskResults, error) {
 		opts.IncludeSysFailed = true
 		opts.IncludeSetupFailed = true
 	}
-	failedTasks, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime))
+	failureTypes := []string{}
+	if opts.IncludeTestFailed {
+		failureTypes = append(failureTypes, evergreen.CommandTypeTest)
+	}
+	if opts.IncludeSysFailed {
+		failureTypes = append(failureTypes, evergreen.CommandTypeSystem)
+	}
+	if opts.IncludeSetupFailed {
+		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
+	}
+	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes))
 	if err != nil {
 		return results, err
-	}
-	// filter task list
-	tasksToRestart := []task.Task{}
-	for _, t := range failedTasks {
-		switch t.ResultStatus() {
-		case evergreen.TaskFailed, evergreen.TaskTestTimedOut:
-			if opts.IncludeTestFailed {
-				tasksToRestart = append(tasksToRestart, t)
-			}
-		case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
-			if opts.IncludeSysFailed {
-				tasksToRestart = append(tasksToRestart, t)
-			}
-		case evergreen.TaskSetupFailed:
-			if opts.IncludeSetupFailed {
-				tasksToRestart = append(tasksToRestart, t)
-			}
-		}
 	}
 
 	// if this is a dry run, immediately return the tasks found

@@ -326,12 +326,18 @@ func ByTimeRun(startTime, endTime time.Time) db.Q {
 }
 
 // ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
-func ByTimeStartedAndFailed(startTime, endTime time.Time) db.Q {
-	return db.Query(bson.M{
+func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) db.Q {
+	query := bson.M{
 		StartTimeKey: bson.M{"$lte": endTime},
 		StartTimeKey: bson.M{"$gte": startTime},
 		StatusKey:    evergreen.TaskFailed,
-	})
+	}
+	if len(commandTypes) > 0 {
+		query[bsonutil.GetDottedKeyName(DetailsKey, "type")] = bson.M{
+			"$in": commandTypes,
+		}
+	}
+	return db.Query(query)
 }
 
 func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) db.Q {

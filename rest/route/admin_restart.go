@@ -24,9 +24,9 @@ type restartHandler struct {
 	StartTime          time.Time `json:"start_time"`
 	EndTime            time.Time `json:"end_time"`
 	DryRun             bool      `json:"dry_run"`
-	IncludeTestFailed  bool      `json:"inc_test_failed"`
-	IncludeSysFailed   bool      `json:"inc_sys_failed"`
-	IncludeSetupFailed bool      `json:"inc_setup_failed"`
+	IncludeTestFailed  bool      `json:"include_test_failed"`
+	IncludeSysFailed   bool      `json:"include_sys_failed"`
+	IncludeSetupFailed bool      `json:"include_setup_failed"`
 
 	sc    data.Connector
 	queue amboy.Queue

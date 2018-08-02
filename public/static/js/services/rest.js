@@ -345,9 +345,9 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
         start_time: from,
         end_time: to,
         dry_run: isDryRun,
-        inc_test_failed: restartRed,
-        inc_sys_failed: restartPurple,
-        inc_setup_failed: restartLavender,
+        include_test_failed: restartRed,
+        include_sys_failed: restartPurple,
+        include_setup_failed: restartLavender,
       };
       baseSvc.postResource(resource + "/restart", [], config, callbacks);
     }
