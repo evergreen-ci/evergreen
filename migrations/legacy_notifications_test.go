@@ -64,6 +64,21 @@ func (s *legacyNotificationsSuite) SetupTest() {
 			"_id":        "p-notexist",
 			"identifier": "p-notexist",
 		},
+		{
+			"_id":        "mongodb-mongo-master",
+			"identifier": "mongodb-mongo-master",
+			"alert_settings": db.Document{
+				"task_transition_failure": []db.Document{
+					{
+						"provider": "jira",
+						"settings": db.Document{
+							"project": "BFG",
+							"issue":   "Build Failure",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	insertAt := rawProjectRefs[0]["alert_settings"].(db.Document)
@@ -119,13 +134,13 @@ func (s *legacyNotificationsSuite) TestMigration() {
 			s.NoError(j.Error())
 		}
 	}
-	s.Equal(3, i)
+	s.Equal(4, i)
 
 	subsC := s.session.DB(s.database).C(subscriptionsCollection)
 	q := subsC.Find(db.Document{})
 	out := []event.Subscription{}
 	s.NoError(q.All(&out))
-	s.Len(out, 10)
+	s.Len(out, 11)
 
 	senderType := map[string]int{}
 	for i := range out {
@@ -133,9 +148,10 @@ func (s *legacyNotificationsSuite) TestMigration() {
 		s.NoError(out[i].Validate())
 	}
 	s.Len(senderType, 2)
-	s.Equal(senderType["jira-issue"], 5)
+	s.Equal(senderType["jira-issue"], 6)
 	s.Equal(senderType["email"], 5)
 
+	// assert that all but 1 project ref had their alert_settings emptied
 	projectsC := s.session.DB(s.database).C(projectRefCollection)
 	q = projectsC.Find(db.Document{
 		"alert_settings": db.Document{
@@ -146,10 +162,35 @@ func (s *legacyNotificationsSuite) TestMigration() {
 	s.NoError(q.All(&projects))
 	s.Require().Len(projects, 1)
 
+	// assert that project refs with invalid notifications configs are
+	// left unscathed
 	as := projects[0]["alert_settings"].(db.Document)
 	s.Len(as["something_invalid"], 1)
 
 	q = projectsC.Find(db.Document{})
 	s.NoError(q.All(&projects))
-	s.Len(projects, 4)
+	s.Len(projects, 5)
+
+	// let's check that jira notifications look the way we think they should
+	q = subsC.Find(db.Document{
+		"owner_type": "project",
+		"owner":      "mongodb-mongo-master",
+	})
+	out = []event.Subscription{}
+	s.NoError(q.All(&out))
+	s.Require().Len(out, 1)
+
+	s.Equal("TASK", out[0].Type)
+	s.Equal("project", string(out[0].OwnerType))
+	s.Equal("mongodb-mongo-master", string(out[0].Owner))
+	s.Equal("regression", out[0].Trigger)
+	s.Equal("jira-issue", out[0].Subscriber.Type)
+	target := out[0].Subscriber.Target.(*event.JIRAIssueSubscriber)
+	s.Equal("Build Failure", target.IssueType)
+	s.Equal("BFG", target.Project)
+	s.Require().Len(out[0].Selectors, 2)
+	s.Equal("project", string(out[0].Selectors[0].Type))
+	s.Equal("mongodb-mongo-master", out[0].Selectors[0].Data)
+	s.Equal("requester", out[0].Selectors[1].Type)
+	s.Equal("gitter_request", out[0].Selectors[1].Data)
 }
