@@ -24,9 +24,7 @@ func (c *createHost) Name() string { return "host.create" }
 
 func (c *createHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
-	if err := mapstructure.Decode(params, c.CreateHost); err != nil {
-		return errors.Wrapf(err, "error parsing '%s' params", c.Name())
-	}
+	return errors.Wrapf(mapstructure.Decode(params, c.CreateHost), "error parsing '%s' params", c.Name())
 }
 
 func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
