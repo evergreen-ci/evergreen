@@ -17,13 +17,14 @@ import (
 const (
 	ProjectName     = "Test Project"
 	ProjectOwner    = "testprojowner"
+	ProjectRepo     = "testrepo"
 	ProjectId       = "testproject"
 	VersionRevision = "aaaaaaaaaaaaaaaaaaa"
 	VersionMessage  = "bbbbbbbbbb"
 	BuildName       = "Linux 64"
 	BuildId         = "b1"
 	TaskName        = "mainTests"
-	TaskId          = "t1"
+	TaskId          = "t1!"
 	TestName1       = "local/jstests/big_test.js"
 	TestName2       = "FunUnitTest"
 	TestName3       = `Windows\test\cool.exe`
