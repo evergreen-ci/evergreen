@@ -94,11 +94,11 @@ type CreateHost struct {
 
 	// agent-controlled settings
 	CloudProvider       string `mapstructure:"provider" json:"provider" plugin:"expand"`
-	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts" plugin:"expand"`
+	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts"`
 	Scope               string `mapstructure:"scope" json:"scope" plugin:"expand"`
-	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs" plugin:"expand"`
-	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs" plugin:"expand"`
-	Retries             int    `mapstructure:"retries" json:"retries" plugin:"expand"`
+	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
+	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
+	Retries             int    `mapstructure:"retries" json:"retries"`
 }
 
 type EbsDevice struct {
