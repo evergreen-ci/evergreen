@@ -160,13 +160,14 @@ func generateTasks() (*shrub.Configuration, error) {
 		lintTargets = append(lintTargets, name)
 	}
 
-	conf.Variant(lintVariant).DisplayName(lintVariant).DisplayTasks(getDisplayTask(lintTargets)).AddTasks(lintTargets...)
 	group := conf.TaskGroup(lintGroup).SetMaxHosts(maxHosts)
 	group.SetupGroup.Command().Type("system").Command("git.get_project").Param("directory", "gopath/src/github.com/evergreen-ci/evergreen")
 	group.SetupGroup.Command().Function("set-up-credentials")
 	group.TeardownTask.Command().Function("attach-test-results")
 	group.TeardownTask.Command().Function("remove-test-results")
 	group.Task(lintTargets...)
+
+	conf.Variant(lintVariant).DisplayTasks(getDisplayTask(lintTargets)).AddTasks(lintGroup)
 
 	return conf, nil
 }

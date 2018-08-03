@@ -2,7 +2,7 @@ package shrub
 
 type Variant struct {
 	BuildName        string                  `json:"name,omitempty"`
-	BuildDisplayName string                  `json:"display_name,"omitempty""`
+	BuildDisplayName string                  `json:"display_name,omitempty"`
 	BatchTimeSecs    int                     `json:"batchtime,omitempty"`
 	TaskSpecs        []TaskSpec              `json:"tasks,omitmepty"`
 	DistroRunOn      []string                `json:"run_on,omitempty"`
