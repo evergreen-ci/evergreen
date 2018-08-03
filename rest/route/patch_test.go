@@ -105,37 +105,34 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 }
 
 func (s *PatchesByProjectSuite) SetupTest() {
-	s.route = makeFetchPatchByID(s.sc).(*patchByIdHandler)
+	s.route = makeFetchPatchByID(s.sc).(*patchesByProjectHandler)
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
 	s.route.projectId = "project3"
 	s.route.key = s.now
-	s.route.limit = q
+	s.route.limit = 1
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
-
-	rd, err := executePatchesByProjectRequest("project3", s.now, 1, s.sc)
-	s.Error(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
-	s.Contains(err.Error(), "no patches found")
+	s.NotEqual(http.StatusNotFound, resp.Status())
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.route.projectId = "project1"
+	s.route.key = s.now.Add(time.Second * 7)
+	s.route.limit = 2
 
-	resp := route("project1", s.now.Add(time.Second*7), 2, s.sc)
+	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 
 	payload := resp.Data().([]interface{})
 	s.NotNil(payload)
 
-	s.Len(rd.Result, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
+	s.Len(payload, 2)
+	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
+	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
 
 	pages := resp.Pages()
 	s.NotNil(pages)
@@ -143,9 +140,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NotNil(pages.Next)
 
 	nextTime := s.now.Format(model.APITimeFormat)
-	s.Equal(nextTime, pageData.Next.Key)
-	prevTime := s.now.Add(time.Second * 10).Format(model.APITimeFormat)
-	s.Equal(prevTime, pageData.Prev.Key)
+	s.Equal(nextTime, pages.Next.Key)
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
