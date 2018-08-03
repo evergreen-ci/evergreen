@@ -22,7 +22,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.saveKey = false;
     $scope.currKeyName = '';
     $scope.newKey = {
-      'name': 'New Key...',
+      'name': '',
       'key': '',
     };
 
