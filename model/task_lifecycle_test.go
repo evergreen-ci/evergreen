@@ -1677,6 +1677,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 	}
+	assert.True(exeTask0.IsPartOfDisplay())
 	assert.NoError(exeTask0.Insert())
 	exeTask1 := task.Task{
 		Id:          "exe1",
@@ -1687,6 +1688,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 	}
+	assert.True(exeTask1.IsPartOfDisplay())
 	assert.NoError(exeTask1.Insert())
 
 	b := &build.Build{
@@ -1733,32 +1735,31 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.Empty(updates.BuildNewStatus)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	assert.False(b.IsActive())
+	assert.False(b.AllTasksFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	assert.False(b.IsActive())
+	assert.False(b.AllTasksFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&exeTask0, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	// TODO: EVG-3455 wat?
-	assert.False(b.IsActive())
+	assert.False(b.AllTasksFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&exeTask1, "", time.Now(), details, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	assert.False(b.IsActive())
+	assert.True(b.AllTasksFinished())
 }
 
-func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus2(t *testing.T) {
+func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -1823,8 +1824,10 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus2(t *testing.T) {
 	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
 	// TODO: EVG-3455 this should be empty
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.False(b.AllTasksFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.True(b.AllTasksFinished())
 }

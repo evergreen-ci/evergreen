@@ -419,6 +419,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		if err = build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, t.TimeTaken); err != nil {
 			return err
 		}
+		if err = build.UpdateCachedTask(t.BuildId, t.Id, t.Status, t.TimeTaken); err != nil {
+			return err
+		}
 	} else {
 		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail.Status, detail, t.TimeTaken)
 		if err != nil {

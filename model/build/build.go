@@ -63,14 +63,14 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
-func (b *Build) AreTasksFinished() bool {
+func (b *Build) AllTasksFinished() bool {
 	for i := range b.Tasks {
-		if evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
-			return true
+		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+			return false
 		}
 	}
 
-	return false
+	return true
 }
 
 // Find

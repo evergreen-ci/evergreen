@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -532,4 +533,53 @@ func TestBuildUpdateStatus(t *testing.T) {
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 		})
 	})
+}
+
+func TestAllTasksFinished(t *testing.T) {
+	assert := assert.New(t)
+
+	b := &Build{
+		Id:      "b1",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+		Tasks: []TaskCache{
+			{
+				Id:     "t1",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t2",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t3",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t4",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t5",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t6",
+				Status: evergreen.TaskStarted,
+			},
+		},
+	}
+	assert.False(b.AllTasksFinished())
+	b.Tasks[0].Status = evergreen.TaskFailed
+	assert.False(b.AllTasksFinished())
+	b.Tasks[1].Status = evergreen.TaskSucceeded
+	assert.False(b.AllTasksFinished())
+	b.Tasks[2].Status = evergreen.TaskSystemFailed
+	assert.False(b.AllTasksFinished())
+	b.Tasks[3].Status = evergreen.TaskSystemTimedOut
+	assert.False(b.AllTasksFinished())
+	b.Tasks[4].Status = evergreen.TaskSystemUnresponse
+	assert.False(b.AllTasksFinished())
+	b.Tasks[5].Status = evergreen.TaskTestTimedOut
+	assert.True(b.AllTasksFinished())
 }
