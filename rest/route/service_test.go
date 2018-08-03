@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
@@ -1086,23 +1085,6 @@ func TestTaskResetExecute(t *testing.T) {
 		})
 	})
 
-}
-
-func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
-	sc data.Connector, args interface{}, expectedPages *PageResult,
-	expectedModels []model.Model, expectedErr error) {
-
-	res, pages, err := paginator(key, limit, args, sc)
-	So(errors.Cause(err), ShouldResemble, expectedErr)
-	So(len(res), ShouldEqual, len(expectedModels))
-	for ix := range expectedModels {
-		dbModel, err := res[ix].ToService()
-		So(err, ShouldBeNil)
-		expectedModel, err := expectedModels[ix].ToService()
-		So(err, ShouldBeNil)
-		So(dbModel, ShouldResemble, expectedModel)
-	}
-	So(pages, ShouldResemble, expectedPages)
 }
 
 func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []model.Model, pages *gimlet.ResponsePages) {

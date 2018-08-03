@@ -105,10 +105,18 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 }
 
 func (s *PatchesByProjectSuite) SetupTest() {
-	s.route = makePatchesByProjectRoute(s.sc)
+	s.route = makeFetchPatchByID(s.sc).(*patchByIdHandler)
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
+	s.route.projectId = "project3"
+	s.route.key = s.now
+	s.route.limit = q
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+
 	rd, err := executePatchesByProjectRequest("project3", s.now, 1, s.sc)
 	s.Error(err)
 	s.NotNil(rd)
@@ -117,19 +125,22 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	rd, err := executePatchesByProjectRequest("project1", s.now.Add(time.Second*7), 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
+	s.route.projectId = "project1"
+
+	resp := route("project1", s.now.Add(time.Second*7), 2, s.sc)
+	s.NotNil(resp)
+
+	payload := resp.Data().([]interface{})
+	s.NotNil(payload)
+
 	s.Len(rd.Result, 2)
 	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
 	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
 
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.NotNil(pageData.Prev)
-	s.NotNil(pageData.Next)
+	pages := resp.Pages()
+	s.NotNil(pages)
+	s.Nil(pages.Prev)
+	s.NotNil(pages.Next)
 
 	nextTime := s.now.Format(model.APITimeFormat)
 	s.Equal(nextTime, pageData.Next.Key)

@@ -41,15 +41,17 @@ func (s *VersionCostSuite) SetupSuite() {
 // a single task of a version id
 func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	// Test that the handler executes properly
-	handler := &costByVersionHandler{versionId: "version1"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &costByVersionHandler{versionId: "version1", sc: s.sc}
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.Equal(http.StatusOK, res.Status())
+
+	payload := res.Data().([]interface{})
+	s.Equal(1, len(payload))
 
 	// Test that the handler returns the result with correct properties, i.e. that
 	// it is the right type (model.APIVersionCost) and has correct versionId and SumTimeTaken
-	versionCost := res.Result[0]
+	versionCost := payload[0]
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("version1"), h.VersionId)
@@ -60,15 +62,17 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 // multiple tasks of the same version id
 func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 	// Test that the handler executes properly
-	handler := &costByVersionHandler{versionId: "version2"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &costByVersionHandler{versionId: "version2", sc: s.sc}
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.Equal(http.StatusOK, res.Status())
+
+	payload := res.Data().([]interface{})
+	s.Equal(1, len(payload))
 
 	// Test that the handler returns the result with correct properties, i.e. that
 	// it is the right type (model.APIVersionCost) and has correct versionId and SumTimeTaken
-	versionCost := res.Result[0]
+	versionCost := payload[0]
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("version2"), h.VersionId)
@@ -78,10 +82,9 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 // TestFindCostByVersionFail tests that the handler correctly returns error when
 // incorrect query is passed in
 func (s *VersionCostSuite) TestFindCostByVersionIdFail() {
-	handler := &costByVersionHandler{versionId: "fake_version"}
-	res, ok := handler.Execute(context.TODO(), s.sc)
-	s.Nil(res.Result)
-	s.Error(ok)
+	handler := &costByVersionHandler{versionId: "fake_version", sc: s.sc}
+	res := handler.Run(context.TODO())
+	s.NotEqual(http.StatusOK, res.Status())
 }
 
 type DistroCostSuite struct {
@@ -164,16 +167,23 @@ func TestParseAndValidate(t *testing.T) {
 // a single task of a distro id
 func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	// Test that the handler executes properly
-	handler := &costByDistroHandler{distroId: "distro1", startTime: s.starttime,
-		duration: time.Millisecond}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &costByDistroHandler{
+		distroId:  "distro1",
+		startTime: s.starttime,
+		duration:  time.Millisecond,
+		sc:        s.sc,
+	}
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.Equal(http.StatusOK, res.Status())
+
+	payload := res.Data().([]interface{})
+
+	s.Equal(1, payload)
 
 	// Test that the handler returns the result with correct properties, i.e. that
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
-	distroCost := res.Result[0]
+	distroCost := payload[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro1"), h.DistroId)
@@ -186,16 +196,22 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 // multiple tasks of the same distro id
 func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	// Test that the handler executes properly
-	handler := &costByDistroHandler{distroId: "distro2", startTime: s.starttime,
-		duration: time.Millisecond}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &costByDistroHandler{
+		distroId:  "distro2",
+		startTime: s.starttime,
+		duration:  time.Millisecond,
+		sc:        s.sc,
+	}
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.Equal(http.StatusOK, res.Status())
+
+	payload := res.Data().([]interface{})
+	s.Equal(1, payload)
 
 	// Test that the handler returns the result with correct properties, i.e. that
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
-	distroCost := res.Result[0]
+	distroCost := payload[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro2"), h.DistroId)
@@ -207,14 +223,20 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 // TestFindCostByDistroIdNoResult tests that the handler correct returns
 // no information when a valid distroId contains no tasks of the given time range.
 func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
-	handler := &costByDistroHandler{distroId: "distro2",
-		startTime: time.Now().AddDate(0, -1, 0), duration: time.Millisecond}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &costByDistroHandler{
+		distroId:  "distro2",
+		startTime: time.Now().AddDate(0, -1, 0),
+		duration:  time.Millisecond,
+		sc:        s.sc,
+	}
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.Equal(http.StatusOK, res.Status())
 
-	distroCost := res.Result[0]
+	payload := res.Data().([]interface{})
+	s.Equal(1, len(payload))
+
+	distroCost := payload[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro2"), h.DistroId)
@@ -226,9 +248,13 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 // TestFindCostByDistroFail tests that the handler correctly returns error when
 // incorrect query is passed in
 func (s *DistroCostSuite) TestFindCostByDistroIdFail() {
-	handler := &costByDistroHandler{distroId: "fake_distro", startTime: s.starttime,
-		duration: 1}
-	res, ok := handler.Execute(context.TODO(), s.sc)
-	s.Nil(res.Result)
-	s.Error(ok)
+	handler := &costByDistroHandler{
+		distroId:  "fake_distro",
+		startTime: s.starttime,
+		duration:  1,
+		sc:        s.sc,
+	}
+
+	res := handler.Run(context.TODO())
+	s.NotEqual(http.StatusOK, res.Status())
 }
