@@ -118,4 +118,4 @@ imports:
   - name: github.com/evergreen-ci/gimlet
     version: 3d3722bb42e54b314579b28ca2c305be212cdef9
   - name: github.com/evergreen-ci/shrub
-    version: 80dbc7bca93387b172f96745b0606708fe44bdc9
+    version: 8c517f535886ae6cddafa19c93834c8af10420ba

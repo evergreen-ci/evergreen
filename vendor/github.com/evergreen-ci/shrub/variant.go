@@ -1,17 +1,17 @@
 package shrub
 
 type Variant struct {
-	BuildName        string                  `json:"name"`
+	BuildName        string                  `json:"name,omitempty"`
 	BuildDisplayName string                  `json:"display_name,"omitempty""`
 	BatchTimeSecs    int                     `json:"batchtime,omitempty"`
-	TaskSpecs        []TaskSpec              `json:"tasks"`
+	TaskSpecs        []TaskSpec              `json:"tasks,omitmepty"`
 	DistroRunOn      []string                `json:"run_on,omitempty"`
 	Expanisons       map[string]interface{}  `json:"expansions,omitempty"`
 	DisplayTaskSpecs []DisplayTaskDefinition `json:"display_tasks,omitempty"`
 }
 
 type DisplayTaskDefinition struct {
-	Name       string   `json:""`
+	Name       string   `json:"name"`
 	Components []string `json:"execution_tasks"`
 }
 
