@@ -2,6 +2,8 @@
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -107,8 +109,8 @@ var JiraLink = function (_React$Component) {
 // The one exception is the header, which is written in Angular and managed by menu.html
 
 
-var Root = function (_React$Component2) {
-  _inherits(Root, _React$Component2);
+var Root = function (_React$PureComponent) {
+  _inherits(Root, _React$PureComponent);
 
   function Root(props) {
     _classCallCheck(this, Root);
@@ -128,18 +130,26 @@ var Root = function (_React$Component2) {
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: _this2.props.data
+      data: _this2.props.data,
+      angular: null
+    };
 
-      // Handle state for a collapsed view, as well as shortened header commit messages
-    };_this2.handleCollapseChange = _this2.handleCollapseChange.bind(_this2);
+    // Handle state for a collapsed view, as well as shortened header commit messages
+    _this2.handleCollapseChange = _this2.handleCollapseChange.bind(_this2);
     _this2.handleHeaderLinkClick = _this2.handleHeaderLinkClick.bind(_this2);
     _this2.handleBuildVariantFilter = _this2.handleBuildVariantFilter.bind(_this2);
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
     _this2.loadDataPortion = _.debounce(_this2.loadDataPortion, 100);
+    _this2.injectAngular = _this2.injectAngular.bind(_this2);
     return _this2;
   }
 
   _createClass(Root, [{
+    key: "injectAngular",
+    value: function injectAngular(angular) {
+      this.setState({ angular: angular });
+    }
+  }, {
     key: "updatePaginationContext",
     value: function updatePaginationContext(data) {
       // Initialize newer|older buttons
@@ -224,7 +234,10 @@ var Root = function (_React$Component2) {
           buildVariantFilter: this.state.buildVariantFilter,
           taskFilter: this.state.taskFilter,
           buildVariantFilterFunc: this.handleBuildVariantFilter,
-          taskFilterFunc: this.handleTaskFilter
+          taskFilterFunc: this.handleTaskFilter,
+          isLoggedIn: this.props.user !== null,
+          angular: this.state.angular,
+          project: this.props.project
         }),
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage,
@@ -245,7 +258,7 @@ var Root = function (_React$Component2) {
   }]);
 
   return Root;
-}(React.Component);
+}(React.PureComponent);
 
 // Toolbar
 
@@ -259,7 +272,10 @@ function Toolbar(_ref2) {
       buildVariantFilter = _ref2.buildVariantFilter,
       taskFilter = _ref2.taskFilter,
       buildVariantFilterFunc = _ref2.buildVariantFilterFunc,
-      taskFilterFunc = _ref2.taskFilterFunc;
+      taskFilterFunc = _ref2.taskFilterFunc,
+      isLoggedIn = _ref2.isLoggedIn,
+      angular = _ref2.angular,
+      project = _ref2.project;
 
 
   var Form = ReactBootstrap.Form;
@@ -291,6 +307,11 @@ function Toolbar(_ref2) {
           baseURL: baseURL,
           buildVariantFilter: buildVariantFilter,
           taskFilter: taskFilter
+        }),
+        React.createElement(GearMenu, {
+          project: project,
+          angular: angular,
+          isLoggedIn: isLoggedIn
         })
       )
     )
@@ -350,8 +371,8 @@ function PageButton(_ref4) {
   );
 }
 
-var FilterBox = function (_React$Component3) {
-  _inherits(FilterBox, _React$Component3);
+var FilterBox = function (_React$PureComponent2) {
+  _inherits(FilterBox, _React$PureComponent2);
 
   function FilterBox(props) {
     _classCallCheck(this, FilterBox);
@@ -379,10 +400,10 @@ var FilterBox = function (_React$Component3) {
   }]);
 
   return FilterBox;
-}(React.Component);
+}(React.PureComponent);
 
-var CollapseButton = function (_React$Component4) {
-  _inherits(CollapseButton, _React$Component4);
+var CollapseButton = function (_React$PureComponent3) {
+  _inherits(CollapseButton, _React$PureComponent3);
 
   function CollapseButton(props) {
     _classCallCheck(this, CollapseButton);
@@ -421,7 +442,87 @@ var CollapseButton = function (_React$Component4) {
   }]);
 
   return CollapseButton;
-}(React.Component);
+}(React.PureComponent);
+
+var GearMenu = function (_React$PureComponent4) {
+  _inherits(GearMenu, _React$PureComponent4);
+
+  function GearMenu(props) {
+    _classCallCheck(this, GearMenu);
+
+    var _this6 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
+
+    _this6.addNotification = _this6.addNotification.bind(_this6);
+    _this6.dialog = _this6.dialog.bind(_this6);
+    _this6.triggers = {};
+    return _this6;
+  }
+
+  _createClass(GearMenu, [{
+    key: "addNotification",
+    value: function addNotification() {
+      // angular takes a bit to inject it's services into this react component,
+      // so if we don't have them, let's defer spawning the dialog for a short
+      // interval
+      if (this.props.angular === null) {
+        return setTimeout(this.addNotification, 50);
+      }
+      return this.dialog();
+    }
+  }, {
+    key: "dialog",
+    value: function dialog() {
+      var _omitMethods;
+
+      var omitMethods = (_omitMethods = {}, _defineProperty(_omitMethods, SUBSCRIPTION_JIRA_ISSUE, true), _defineProperty(_omitMethods, SUBSCRIPTION_EVERGREEN_WEBHOOK, true), _omitMethods);
+
+      var promise = addSubscriber(this.props.angular.$mdDialog, this.triggers, omitMethods);
+      return this.props.angular.$mdDialog.show(promise).then(function (data) {
+        addProjectSelectors(data, this.props.project);
+        var success = function success() {
+          this.props.angular.$mdToast.show({
+            templateUrl: "/static/partials/subscription_confirmation_toast.html",
+            position: "bottom right"
+          });
+        };
+        var failure = function failure(resp) {
+          this.props.angular.notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
+        };
+        this.props.angular.mciSubscriptionsService.post([data].subscriptions, { success: success, error: failure });
+      });
+    }
+  }, {
+    key: "render",
+    value: function render() {
+      var ButtonGroup = ReactBootstrap.ButtonGroup;
+      var Button = ReactBootstrap.Button;
+      var DropdownButton = ReactBootstrap.DropdownButton;
+      var MenuItem = ReactBootstrap.MenuItem;
+
+      return React.createElement(
+        "span",
+        null,
+        React.createElement(
+          DropdownButton,
+          {
+            className: "fa fa-gear",
+            pullRight: true,
+            id: "waterfall-gear-menu"
+          },
+          React.createElement(
+            MenuItem,
+            { onClick: this.addNotification },
+            "Add Notification"
+          )
+        )
+      );
+    }
+  }]);
+
+  return GearMenu;
+}(React.PureComponent);
+
+;
 
 // Headers
 
@@ -533,16 +634,16 @@ function ActiveVersionHeader(_ref6) {
   );
 };
 
-var HideHeaderButton = function (_React$Component5) {
-  _inherits(HideHeaderButton, _React$Component5);
+var HideHeaderButton = function (_React$Component2) {
+  _inherits(HideHeaderButton, _React$Component2);
 
   function HideHeaderButton(props) {
     _classCallCheck(this, HideHeaderButton);
 
-    var _this6 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
+    var _this7 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
 
-    _this6.onLinkClick = _this6.onLinkClick.bind(_this6);
-    return _this6;
+    _this7.onLinkClick = _this7.onLinkClick.bind(_this7);
+    return _this7;
   }
 
   _createClass(HideHeaderButton, [{

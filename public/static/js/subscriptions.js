@@ -58,6 +58,7 @@ function subscriberLabel(subscriber) {
 
 // Return a promise for the add subscription modal, with the list of triggers
 function addSubscriber($mdDialog, triggers, omitMethods) {
+    console.log('doop');
     return subscriberPromise($mdDialog, "Add", triggers, omitMethods)
 }
 
@@ -312,6 +313,20 @@ function addInSelectorsAndOwnerType(subscription, type, inType, id) {
   subscription.selectors.push({
     type: "in-" + inType,
     data: id
+  });
+  subscription.owner_type = "person";
+}
+
+function addProjectSelectors(subscription, project) {
+  if (!subscription) {
+    return;
+  }
+  if (!subscription.selectors) {
+    subscription.selectors = [];
+  }
+  subscription.selectors.push({
+    type: "project",
+    data: project
   });
   subscription.owner_type = "person";
 }
