@@ -144,14 +144,14 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	rd, err := executePatchesByProjectRequest("project2", s.now.Add(time.Hour), 100, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
+	s.route.projectId = "project2"
+	s.route.key = s.now.Add(time.Hour)
+	s.route.limit = 100
+
+	resp := s.route.Run(context.Background())
+	s.Len(resp.Data().([]interface{}), 2)
+
+	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
 	s.Nil(pageData.Next)
 }
@@ -165,25 +165,15 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 3; limit++ {
-			a, b, err := s.paginator(i, limit, patchesByProjectArgs{}, s.sc)
-			s.Len(a, 0)
-			s.Nil(b)
+			req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10&start_at="+i, nil)
+			s.Require().NoError(err)
+			err = s.route.Parse(context.Background(), req)
 			s.Error(err)
 			apiErr, ok := err.(gimlet.ErrorResponse)
 			s.True(ok)
 			s.Contains(apiErr.Message, i)
 		}
 	}
-}
-
-func executePatchesByProjectRequest(projectId string, ts time.Time, limit int, sc *data.MockConnector) (ResponseData, error) {
-	rm := getPatchesByProjectManager("", 2)
-	pe := (rm.Methods[0].RequestHandler).(*patchesByProjectHandler)
-	pe.Args = patchesByProjectArgs{projectId: projectId}
-	pe.key = ts.Format(model.APITimeFormat)
-	pe.limit = limit
-
-	return pe.Execute(context.TODO(), sc)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -404,27 +394,39 @@ func TestPatchesByUserSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
+func (s *PatchesByUserSuite) SetupTest() {
+	s.route = &patchesByUserHandler{
+		sc: s.sc,
+	}
+}
+
 func (s *PatchesByUserSuite) TestPaginatorShouldErrorIfNoResults() {
-	rd, err := executePatchesByUserRequest("zzz", s.now, 1, s.sc)
-	s.Error(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
-	s.Contains(err.Error(), "no patches found")
+	s.route.user = "zzz"
+	s.route.key = s.now
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusNotFound, resp.Status())
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
 }
 
 func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	rd, err := executePatchesByUserRequest("user1", s.now.Add(time.Second*7), 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
+	s.route.user = "user1"
+	s.route.key = s.now.Add(time.Second * 7)
+	s.route.limit = 2
 
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.NotNil(pageData.Prev)
+	resp := s.route.Run(context.Background())
+	s.Equal(http.StatusOK, resp.Status())
+	payload := resp.Data().([]interface{})
+
+	s.Len(payload, 2)
+	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
+	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
+
+	pageData := resp.Pages()
+
+	s.Nil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
 	nextTime := s.now.Format(model.APITimeFormat)
@@ -434,14 +436,17 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 }
 
 func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	rd, err := executePatchesByUserRequest("user2", s.now.Add(time.Hour), 100, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
+	s.route.user = "user2"
+	s.route.key = s.now.Add(time.Hour)
+	s.route.limit = 100
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+
+	s.Len(resp.Data().([]interface{}), 2)
+
+	pageData := resp.Pages()
 	s.Nil(pageData.Prev)
 	s.Nil(pageData.Next)
 }
@@ -455,6 +460,7 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 3; limit++ {
+
 			a, b, err := s.paginator(i, limit, patchesByUserArgs{}, s.sc)
 			s.Len(a, 0)
 			s.Nil(b)
