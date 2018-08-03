@@ -135,7 +135,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	if j.CurrentAttempt == 1 {
 		intentHost, err := host.FindOneId(j.HostID)
 		if err != nil {
-			return errors.Wrapf(err, "problem removing intent host '%s'", j.HostID)
+			return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
 		}
 		if err := intentHost.Remove(); err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
