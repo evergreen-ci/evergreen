@@ -84,7 +84,7 @@ type Connector interface {
 	// FindTestsByTaskId is a method to find a set of tests that correspond to
 	// a given task. It takes a taskId, testName to start from, test status to filter,
 	// limit, and sort to provide additional control over the results.
-	FindTestsByTaskId(string, string, string, int, int, int) ([]testresult.TestResult, error)
+	FindTestsByTaskId(string, string, string, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
@@ -129,9 +129,9 @@ type Connector interface {
 
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
-	FindPatchesByProject(string, time.Time, int, bool) ([]patch.Patch, error)
+	FindPatchesByProject(string, time.Time, int) ([]patch.Patch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
-	FindPatchesByUser(string, time.Time, int, bool) ([]patch.Patch, error)
+	FindPatchesByUser(string, time.Time, int) ([]patch.Patch, error)
 
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*patch.Patch, error)

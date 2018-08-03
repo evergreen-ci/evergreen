@@ -107,12 +107,7 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 }
 
 // TestResultsQuery is a query for returning test results to the REST v2 API.
-func TestResultsQuery(taskId, testId, status string, limit, sort, execution int) db.Q {
-	sortOperator := "$gte"
-	if sort < 0 {
-		sortOperator = "$lte"
-	}
-
+func TestResultsQuery(taskId, testId, status string, limit, execution int) db.Q {
 	match := bson.M{
 		TaskIDKey:    taskId,
 		ExecutionKey: execution,
@@ -121,18 +116,17 @@ func TestResultsQuery(taskId, testId, status string, limit, sort, execution int)
 		match[StatusKey] = status
 	}
 	if testId != "" {
-		match[IDKey] = bson.M{sortOperator: bson.ObjectId(testId)}
+		match[IDKey] = bson.M{"$gte": bson.ObjectId(testId)}
 	}
-	q := db.Query(match)
 
-	q = q.Sort([]string{IDKey})
-	if limit > 0 {
-		q = q.Limit(limit)
-	}
-	q = q.Project(bson.M{
+	q := db.Query(match).Sort([]string{IDKey}).Project(bson.M{
 		TaskIDKey:    0,
 		ExecutionKey: 0,
 	})
+
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
 
 	return q
 }

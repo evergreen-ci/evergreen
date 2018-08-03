@@ -44,27 +44,3 @@ type mockAuthenticator struct {
 func (m *mockAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
 	return m.err
 }
-
-// mockPaginatorFuncGenerator generates a PaginatorFunc which packages and
-// returns the passed in parameters.
-func mockPaginatorFuncGenerator(result []model.Model, nextKey, prevKey string,
-	nextLimit, prevLimit int, errResult error) PaginatorFunc {
-	return func(key string, limit int, args interface{},
-		sc data.Connector) ([]model.Model, *PageResult, error) {
-
-		nextPage := Page{
-			Limit:    nextLimit,
-			Key:      nextKey,
-			Relation: "next",
-		}
-
-		prevPage := Page{
-			Limit:    prevLimit,
-			Key:      prevKey,
-			Relation: "prev",
-		}
-
-		return result, &PageResult{&nextPage, &prevPage}, errResult
-
-	}
-}

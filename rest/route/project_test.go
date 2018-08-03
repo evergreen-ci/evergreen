@@ -17,9 +17,9 @@ import (
 // Tests for get projects route
 
 type ProjectGetSuite struct {
-	sc        *data.MockConnector
-	data      data.MockProjectConnector
-	paginator PaginatorFunc
+	data  data.MockProjectConnector
+	sc    *data.MockConnector
+	route *projectGetHandler
 
 	suite.Suite
 }

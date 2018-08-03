@@ -19,13 +19,13 @@ type costByVersionHandler struct {
 	sc        data.Connector
 }
 
-func makeCostByVersionHandler(sc data.Connector) gimlet.Responder {
+func makeCostByVersionHandler(sc data.Connector) gimlet.RouteHandler {
 	return &costByVersionHandler{
 		sc: sc,
 	}
 }
 
-func (cbvh *costByVersionHandler) Factory() gimlet.Responder {
+func (cbvh *costByVersionHandler) Factory() gimlet.RouteHandler {
 	return &costByVersionHandler{
 		sc: cbvh.sc,
 	}
@@ -64,13 +64,13 @@ type costByDistroHandler struct {
 	sc        data.Connector
 }
 
-func makeCostByDistroHandler(sc data.Connector) gimlet.Responder {
+func makeCostByDistroHandler(sc data.Connector) gimlet.RouteHandler {
 	return &costByDistroHandler{
 		sc: sc,
 	}
 }
 
-func (cbvh *costByDistroHandler) Factory() RequestHandler {
+func (cbvh *costByDistroHandler) Factory() gimlet.RouteHandler {
 	return &costByDistroHandler{sc: cbvh.sc}
 }
 
@@ -123,14 +123,14 @@ func (cbvh *costByDistroHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (cbvh *costByDistroHandler) Run(ctx context.Context) gimlet.Responder {
-	foundDistroCost, err := sc.FindCostByDistroId(cbvh.distroId, cbvh.startTime, cbvh.duration)
+	foundDistroCost, err := cbvh.sc.FindCostByDistroId(cbvh.distroId, cbvh.startTime, cbvh.duration)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	distroCostModel := &model.APIDistroCost{}
 	if err = distroCostModel.BuildFromService(foundDistroCost); err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
 	return gimlet.NewJSONResponse(distroCostModel)
@@ -161,7 +161,7 @@ func (h *costTasksByProjectHandler) Factory() gimlet.RouteHandler {
 func (h *costTasksByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.User = MustHaveUser(ctx)
 	h.projectID = gimlet.GetVars(r)["project_id"]
-	if args.projectID == "" {
+	if h.projectID == "" {
 		return errors.New("request data incomplete")
 	}
 
@@ -176,7 +176,6 @@ func (h *costTasksByProjectHandler) Parse(ctx context.Context, r *http.Request) 
 
 	h.key = vals.Get("start_at")
 
-	var err error
 	h.limit, err = getLimit(vals)
 	if err != nil {
 		return errors.WithStack(err)
@@ -185,8 +184,8 @@ func (h *costTasksByProjectHandler) Parse(ctx context.Context, r *http.Request) 
 	return nil
 }
 
-func (h *costTasksByProjectHandler) Run(ctx context.Context) gimlet.Response {
-	endttime := starttime.Add(h.duration)
+func (h *costTasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
+	endttime := h.starttime.Add(h.duration)
 	tasks, err := h.sc.FindCostTaskByProject(h.projectID, h.key, h.starttime, endttime, h.limit+1, 1)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))

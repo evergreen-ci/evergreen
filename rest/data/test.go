@@ -12,10 +12,9 @@ import (
 // from the Connector through interactions with the backing database.
 type DBTestConnector struct{}
 
-func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, status string, limit,
-	sort, execution int) ([]testresult.TestResult, error) {
+func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, status string, limit, execution int) ([]testresult.TestResult, error) {
 
-	q := testresult.TestResultsQuery(taskId, testId, status, limit, sort, execution)
+	q := testresult.TestResultsQuery(taskId, testId, status, limit, execution)
 	res, err := testresult.Find(q)
 	if err != nil {
 		return []testresult.TestResult{}, err
@@ -43,8 +42,7 @@ type MockTestConnector struct {
 	StoredError error
 }
 
-func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, status string, limit,
-	sort, execution int) ([]testresult.TestResult, error) {
+func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, status string, limit, execution int) ([]testresult.TestResult, error) {
 	if mtc.StoredError != nil {
 		return []testresult.TestResult{}, mtc.StoredError
 	}
@@ -54,18 +52,10 @@ func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testId, status string, l
 		if string(t.ID) == testId {
 			// We've found the test
 			var testsToReturn []testresult.TestResult
-			if sort < 0 {
-				if ix-limit > 0 {
-					testsToReturn = mtc.CachedTests[ix-(limit) : ix]
-				} else {
-					testsToReturn = mtc.CachedTests[:ix]
-				}
+			if ix+limit > len(mtc.CachedTests) {
+				testsToReturn = mtc.CachedTests[ix:]
 			} else {
-				if ix+limit > len(mtc.CachedTests) {
-					testsToReturn = mtc.CachedTests[ix:]
-				} else {
-					testsToReturn = mtc.CachedTests[ix : ix+limit]
-				}
+				testsToReturn = mtc.CachedTests[ix : ix+limit]
 			}
 			return testsToReturn, nil
 		}

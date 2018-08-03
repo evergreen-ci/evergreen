@@ -39,10 +39,9 @@ func (p *taskSystemMetricsHandler) Factory() gimlet.RouteHandler {
 func (p *taskSystemMetricsHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.taskID = gimlet.GetVars(r)["task_id"]
 	vals := r.URL.Query()
-	key := vals.Get("start_at")
 
 	var err error
-	p.key, err = time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
+	p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
 	if err != nil {
 		return errors.WithStack(err)
 	}

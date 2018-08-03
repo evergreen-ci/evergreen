@@ -76,11 +76,10 @@ func (s *PatchByIdSuite) TestFindByIdFail() {
 // Tests for fetch patch by project route
 
 type PatchesByProjectSuite struct {
-	sc        *data.MockConnector
-	data      data.MockPatchConnector
-	now       time.Time
-	paginator PaginatorFunc
-
+	sc    *data.MockConnector
+	data  data.MockPatchConnector
+	now   time.Time
+	route *patchesByProjectHandler
 	suite.Suite
 }
 
@@ -100,10 +99,13 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 			{Project: "project1", CreateTime: s.now.Add(time.Second * 10)},
 		},
 	}
-	s.paginator = patchesByProjectPaginator
 	s.sc = &data.MockConnector{
 		MockPatchConnector: s.data,
 	}
+}
+
+func (s *PatchesByProjectSuite) SetupTest() {
+	s.route = makePatchesByProjectRoute(s.sc)
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
@@ -368,10 +370,10 @@ func (s *PatchRestartSuite) TestRestart() {
 // Tests for fetch patches for current user
 
 type PatchesByUserSuite struct {
-	sc        *data.MockConnector
-	data      data.MockPatchConnector
-	now       time.Time
-	paginator PaginatorFunc
+	sc    *data.MockConnector
+	data  data.MockPatchConnector
+	now   time.Time
+	route *patchesByUserHandler
 
 	suite.Suite
 }
@@ -389,7 +391,6 @@ func TestPatchesByUserSuite(t *testing.T) {
 			{Author: "user1", CreateTime: s.now.Add(time.Second * 10)},
 		},
 	}
-	s.paginator = patchesByUserPaginator
 	s.sc = &data.MockConnector{
 		MockPatchConnector: s.data,
 	}

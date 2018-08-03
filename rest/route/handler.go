@@ -90,24 +90,10 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 			return
 		}
 
-		// Check the type of the results metadata. If it is a PaginationMetadata,
-		// create the pagination headers. Otherwise, no additional processing is needed.
-		// NOTE: This could expand to include additional metadata types that define
-		// other specific cases for how to handle results.
-		switch m := result.Metadata.(type) {
-		case *PaginationMetadata:
-			err := m.MakeHeader(w, sc.GetURL(), r.URL.Path)
-			if err != nil {
-				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
-				return
-			}
+		if len(result.Result) == 1 {
+			gimlet.WriteJSON(w, result.Result[0])
+		} else {
 			gimlet.WriteJSON(w, result.Result)
-		default:
-			if len(result.Result) == 1 {
-				gimlet.WriteJSON(w, result.Result[0])
-			} else {
-				gimlet.WriteJSON(w, result.Result)
-			}
 		}
 	}
 }
