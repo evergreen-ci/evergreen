@@ -643,26 +643,37 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
 	}
+	if buildDoc == nil {
+		return nil, errors.Wrap(err, "could not find build while building jira task payload")
+	}
 
-	hostDoc, err := host.FindOneId(j.task.HostId)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
+	var hostDoc *host.Host
+	if len(j.task.HostId) != 0 {
+		hostDoc, err = host.FindOneId(j.task.HostId)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
+		}
 	}
 
 	versionDoc, err := version.FindOneId(j.task.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
 	}
+	if versionDoc == nil {
+		return nil, errors.Wrap(err, "could not find version while building jira task payload")
+	}
 
 	projectRef, err := model.FindOneProjectRef(j.task.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
 	}
+	if projectRef == nil {
+		return nil, errors.Wrap(err, "could not find project ref while building jira task payload")
+	}
 
 	builder := jiraBuilder{
 		project:  strings.ToUpper(project),
 		mappings: &evergreen.JIRANotificationsConfig{},
-
 		data: jiraTemplateData{
 			UIRoot:  j.uiConfig.Url,
 			Task:    j.task,
