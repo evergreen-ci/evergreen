@@ -24,7 +24,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     var container = $('#page'),
         left = $('#drawer'),
         right = $('#page-content'),
-        handle = $('#drag');
+        handle = $('#drag-bar');
 
     handle.on('mousedown', function (e) {
         isResizing = true;
