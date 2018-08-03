@@ -416,10 +416,18 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 // host intents for *all* distros.
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
-		StatusKey:     evergreen.HostUninitialized,
-		UserHostKey:   false,
-		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
+		UserHostKey: false,
+		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
+		"$or": []bson.M{
+			{
+				StatusKey:     evergreen.HostUninitialized,
+				CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+			},
+			{
+				StatusKey:     evergreen.HostSpawning,
+				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
+			},
+		},
 	}
 
 	if distroID != "" {
