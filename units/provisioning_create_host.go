@@ -122,21 +122,29 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
-	// On the first attempt, remove the intent document so no other create host job tries to create this intent.
-	if j.CurrentAttempt == 1 {
-		if err := j.host.Remove(); err != nil {
-			grip.Notice(message.WrapError(err, message.Fields{
-				"message": "problem removing intent host",
-				"job":     j.ID(),
-				"host":    j.host.Id,
-			}))
-			return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.host.Id, err.Error())
-		}
+	if err := j.host.SetStatus(evergreen.HostSpawning, evergreen.User, "container status: spawning"); err != nil {
+		return errors.Wrapf(err, "problem setting container %s status to spawning", j.host.Id)
 	}
 
 	defer j.tryRequeue(ctx)
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
+	}
+
+	// On the first attempt, remove the intent host
+	if j.CurrentAttempt == 1 {
+		intentHost, err := host.FindOneId(j.HostID)
+		if err != nil {
+			return errors.Wrapf(err, "problem removing intent host '%s'", j.HostID)
+		}
+		if err := intentHost.Remove(); err != nil {
+			grip.Notice(message.WrapError(err, message.Fields{
+				"message": "problem removing intent host",
+				"job":     j.ID(),
+				"host":    j.HostID,
+			}))
+			return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
+		}
 	}
 
 	j.host.Status = evergreen.HostStarting
