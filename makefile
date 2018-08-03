@@ -31,10 +31,12 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 
 clientSource := main/evergreen.go
 
+xcPackages := agent command operations rest-client subprocess util
+distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/test.$(pkg))
+distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/race.$(pkg))
+
 distArtifacts :=  ./public ./service/templates ./alerts/templates
 distContents := $(clientBinaries) $(distArtifacts)
-distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
-distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
@@ -193,7 +195,7 @@ dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
-	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item)) --exclude "public/node_modules"
+	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item)) --item makefile --item scripts --exclude "public/node_modules"
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
 # end main build
@@ -220,9 +222,8 @@ phony += lint lint-deps build build-race race test coverage coverage-html list-r
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
-run-cross:dist-test
-	tar -zxvf dist-test.tar.gz
-	$(EVGHOME)/bin/test.$(echo $(crossTarget) | sed 's/-/./') --test.v --test.timeout=10m
+run-cross:
+	$(EVGHOME)/bin/test.$(subst xc-,,$(subst -,.,$(CROSS_TARGET))) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
 # end front-ends
 
 

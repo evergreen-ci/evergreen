@@ -146,7 +146,7 @@ func generateTasks() (*shrub.Configuration, error) {
 		lintGroup = append(lintGroup, name)
 	}
 
-	conf.Variant(lintVariant).DisplayTasks(getDisplayTask(lintGroup)).AddTasks(lintGroup...)
+	conf.Variant(lintVariant).DisplayName(lintVariant).DisplayTasks(getDisplayTask(lintGroup)).AddTasks(lintGroup...)
 
 	group := conf.TaskGroup(lintPrefix).SetMaxHosts(maxHosts)
 	group.SetupGroup.Command().Type("system").Command("git.get_project").Param("directory", "gopath/src/github.com/evergreen-ci/evergreen")
