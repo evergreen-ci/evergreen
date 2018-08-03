@@ -123,7 +123,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	if err := j.host.SetStatus(evergreen.HostSpawning, evergreen.User, ""); err != nil {
-		return errors.Wrapf(err, "problem setting container %s status to spawning", j.host.Id)
+		return errors.Wrapf(err, "problem setting host %s status to spawning", j.host.Id)
 	}
 
 	defer j.tryRequeue(ctx)
@@ -131,7 +131,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
 
-	// On the first attempt, remove the intent host
+	// On the first attempt, remove the intent host to insert started host
 	if j.CurrentAttempt == 1 {
 		intentHost, err := host.FindOneId(j.HostID)
 		if err != nil {

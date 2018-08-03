@@ -409,8 +409,9 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
-// Removes host intents that have been been pending for more than 3
-// minutes for the specified distro.
+// Removes host intents that have been been uninitialized for more than 3
+// minutes or spawning (but not started) for more than 15 minutes for the
+// specified distro.
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
