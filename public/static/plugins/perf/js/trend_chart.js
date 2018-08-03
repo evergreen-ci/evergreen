@@ -680,8 +680,6 @@ var drawSingleTrendChart = function(params) {
 
   function redrawChangePoints() {
     // Render change points
-    var activePoints = _
-
     var pointsAndSegments = _.chain(changePointForLevel)
       .filter(function(d) { return d.level.isActive })
       .partition(function(d) { // Separate points and segments
@@ -712,11 +710,6 @@ var drawSingleTrendChart = function(params) {
       .style({
         stroke: 'red',
         'stroke-width': '4',
-      })
-
-    changePointSegments
-      .on('mouseover', function(d) {
-        console.log(d)
       })
 
     changePointSegments.exit().remove()
