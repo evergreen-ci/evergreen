@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 //   Tests for FindCostTaskByProject route                                 //
 //-------------------------------------------------------------------------//
 type costTasksByProjectSuite struct {
+	route     *costTasksByProjectHandler
 	sc        *data.MockConnector
 	data      data.MockTaskConnector
 	starttime time.Time
@@ -68,92 +70,116 @@ func (s *costTasksByProjectSuite) SetupSuite() {
 	}
 }
 
+func (s *costTasksByProjectSuite) SetupTest() {
+	s.route = &costTasksByProjectHandler{
+		starttime: s.starttime,
+		sc:        s.sc,
+	}
+}
+
 func (s *costTasksByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
-	rd, err := executeCostTasksByProjectRequest("fake_project", "", s.starttime, time.Duration(1), 1, s.sc)
-	s.NoError(err) // Test queries that will return no results should not raise errors
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
+	s.route.projectID = "fake_project"
+	s.route.duration = 1
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.NotEqual(resp.Status(), http.StatusOK)
 }
 
 func (s *costTasksByProjectSuite) TestPaginatorReturnDataNoPagination() {
 	// time range + limit covers all three tasks; no pagination necessary
-	rd, err := executeCostTasksByProjectRequest("project", "", s.starttime, time.Duration(5000), 3, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 3)
-	s.Equal(model.ToAPIString("task1"), (rd.Result[0]).(*model.APITaskCost).Id)
-	s.Equal(model.ToAPIString("task2"), (rd.Result[1]).(*model.APITaskCost).Id)
-	s.Equal(model.ToAPIString("task3"), (rd.Result[2]).(*model.APITaskCost).Id)
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.Nil(pageData.Prev)
-	s.Nil(pageData.Next)
+	s.route.projectID = "project"
+	s.route.duration = time.Duration(5000)
+	s.route.limit = 3
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	payload := resp.Data().([]*model.APITaskCost)
+	s.Len(payload, 3)
+	s.Equal(model.ToAPIString("task1"), (payload[0]).Id)
+	s.Equal(model.ToAPIString("task2"), (payload[1]).Id)
+	s.Equal(model.ToAPIString("task3"), (payload[2]).Id)
+	pages := resp.Pages()
+	s.NotNil(pages)
+	s.Nil(pages.Prev)
+	s.Nil(pages.Next)
 }
 
 func (s *costTasksByProjectSuite) TestPaginatorReturnDataNextPage() {
 	// time range covers first two tasks; limit limits to returning one of them;
 	// the other task must be in the next page
-	rd, err := executeCostTasksByProjectRequest("project", "", s.starttime, time.Duration(3000), 1, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 1)
-	s.Equal(model.ToAPIString("task1"), (rd.Result[0]).(*model.APITaskCost).Id)
-	metadata, _ := rd.Metadata.(*PaginationMetadata)
-	pageData := metadata.Pages
-	s.NotNil(pageData.Next)
-	s.Equal("task2", pageData.Next.Key)
-	s.Nil(pageData.Prev)
+	s.route.projectID = "project"
+	s.route.duration = time.Duration(3000)
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	payload := resp.Data().([]*model.APITaskCost)
+	s.Len(payload, 1)
+	s.Equal(model.ToAPIString("task1"), (payload[0]).Id)
+
+	pages := resp.Pages()
+	s.NotNil(pages)
+	s.Nil(pages.Prev)
+	s.NotNil(pages.Next)
+	s.Equal("task2", pages.Next.Key)
 }
 
 func (s *costTasksByProjectSuite) TestPaginatorReturnDataPrevPage() {
 	// time range covers all three tasks; query starts at the second task so two
 	// tasks should be returned; the first task must be in the prev page
-	rd, err := executeCostTasksByProjectRequest("project", "task2", s.starttime, time.Duration(5000), 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	s.Equal(model.ToAPIString("task2"), (rd.Result[0]).(*model.APITaskCost).Id)
-	s.Equal(model.ToAPIString("task3"), (rd.Result[1]).(*model.APITaskCost).Id)
-	metadata, _ := rd.Metadata.(*PaginationMetadata)
-	pageData := metadata.Pages
-	s.Nil(pageData.Next)
-	s.NotNil(pageData.Prev)
-	s.Equal("task1", pageData.Prev.Key)
+	s.route.projectID = "project"
+	s.route.duration = time.Duration(5000)
+	s.route.key = "task2"
+	s.route.limit = 2
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	payload := resp.Data().([]*model.APITaskCost)
+	s.Len(payload, 2)
+	s.Equal(model.ToAPIString("task2"), (payload[0]).Id)
+	s.Equal(model.ToAPIString("task3"), (payload[1]).Id)
+
+	// we deprecated/removed reverse pagination on most routes (tycho)
+	pages := resp.Pages()
+	s.Nil(pages.Next)
+	s.Nil(pages.Prev)
 }
 
 func (s *costTasksByProjectSuite) TestPaginatorReturnDataPrevPageKey() {
 	// time range covers all three tasks; query starts at the third task so one
 	// task should be returned; the first two tasks must be in the prev page
 	// and the first task should be the key
-	rd, err := executeCostTasksByProjectRequest("project", "task3", s.starttime, time.Duration(5000), 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 1)
-	s.Equal(model.ToAPIString("task3"), (rd.Result[0]).(*model.APITaskCost).Id)
-	metadata, _ := rd.Metadata.(*PaginationMetadata)
-	pageData := metadata.Pages
-	s.Nil(pageData.Next)
-	s.NotNil(pageData.Prev)
-	s.Equal("task1", pageData.Prev.Key)
+	s.route.projectID = "project"
+	s.route.duration = time.Duration(5000)
+	s.route.key = "task3"
+	s.route.limit = 2
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	payload := resp.Data().([]*model.APITaskCost)
+	s.Len(payload, 1)
+	s.Equal(model.ToAPIString("task3"), (payload[0]).Id)
+
+	// we deprecated/removed reverse pagination on most routes (tycho)
+	pages := resp.Pages()
+	s.Nil(pages.Next)
+	s.Nil(pages.Prev)
 }
 
 // If the given parameters yield no results, it should merely return an empty
 // Result in the ResponseData. There should be no errors or nil ResponseData.
 func (s *costTasksByProjectSuite) TestPaginatorNoData() {
-	rd, err := executeCostTasksByProjectRequest("fake", "", s.starttime, time.Duration(5000), 3, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
-}
+	s.route.projectID = "fake"
+	s.route.duration = time.Duration(5000)
+	s.route.limit = 3
 
-func executeCostTasksByProjectRequest(project, key string, starttime time.Time,
-	duration time.Duration, limit int, sc *data.MockConnector) (ResponseData, error) {
-	rm := getCostTaskByProjectRouteManager("", 2)
-	handler := (rm.Methods[0].RequestHandler).(*costTasksByProjectHandler)
-	handler.Args = costTasksByProjectArgs{projectID: project, starttime: starttime, duration: duration}
-	handler.limit = limit
-	handler.key = key
-	return handler.Execute(context.TODO(), sc)
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 }
