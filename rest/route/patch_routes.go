@@ -209,7 +209,7 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         p.sc.GetURL(),
-				Key:             patches[p.limit].Id.String(),
+				Key:             model.NewTime(patches[p.limit].CreateTime).String(),
 				Limit:           p.limit,
 			},
 		})
@@ -230,7 +230,7 @@ func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 			})
 		}
 
-		if err = resp.AddData(info); err != nil {
+		if err = resp.AddData(patchModel); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}

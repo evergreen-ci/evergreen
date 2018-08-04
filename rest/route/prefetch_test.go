@@ -24,6 +24,13 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 		ctx = r.Context()
 	})
 
+	if rw.Code != http.StatusOK {
+		return ctx, gimlet.ErrorResponse{
+			StatusCode: rw.Code,
+			Message:    "not found",
+		}
+	}
+
 	return ctx, nil
 }
 
@@ -45,7 +52,7 @@ func TestPrefetchProject(t *testing.T) {
 
 				errToResemble := gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
-					Message:    "Project not found",
+					Message:    "not found",
 				}
 				So(err, ShouldResemble, errToResemble)
 			})
@@ -58,7 +65,7 @@ func TestPrefetchProject(t *testing.T) {
 
 				errToResemble := gimlet.ErrorResponse{
 					StatusCode: http.StatusNotFound,
-					Message:    "Not found",
+					Message:    "not found",
 				}
 				So(err, ShouldResemble, errToResemble)
 			})

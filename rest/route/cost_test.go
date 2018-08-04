@@ -46,13 +46,9 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	payload := res.Data().([]interface{})
-	s.Equal(1, len(payload))
-
 	// Test that the handler returns the result with correct properties, i.e. that
 	// it is the right type (model.APIVersionCost) and has correct versionId and SumTimeTaken
-	versionCost := payload[0]
-	h, ok := (versionCost).(*model.APIVersionCost)
+	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("version1"), h.VersionId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
@@ -67,13 +63,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	payload := res.Data().([]interface{})
-	s.Equal(1, len(payload))
-
-	// Test that the handler returns the result with correct properties, i.e. that
-	// it is the right type (model.APIVersionCost) and has correct versionId and SumTimeTaken
-	versionCost := payload[0]
-	h, ok := (versionCost).(*model.APIVersionCost)
+	h, ok := (res.Data()).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("version2"), h.VersionId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
@@ -177,14 +167,9 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	payload := res.Data().([]interface{})
-
-	s.Equal(1, payload)
-
 	// Test that the handler returns the result with correct properties, i.e. that
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
-	distroCost := payload[0]
-	h, ok := (distroCost).(*model.APIDistroCost)
+	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro1"), h.DistroId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
@@ -206,13 +191,9 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	payload := res.Data().([]interface{})
-	s.Equal(1, payload)
-
 	// Test that the handler returns the result with correct properties, i.e. that
 	// it is the right type (model.APIDistroCost) and has correct distroId and SumTimeTaken
-	distroCost := payload[0]
-	h, ok := (distroCost).(*model.APIDistroCost)
+	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
@@ -233,11 +214,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	payload := res.Data().([]interface{})
-	s.Equal(1, len(payload))
-
-	distroCost := payload[0]
-	h, ok := (distroCost).(*model.APIDistroCost)
+	h, ok := (res.Data()).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.ToAPIString("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(0), h.SumTimeTaken)

@@ -42,6 +42,7 @@ func (s *PatchByIdSuite) SetupSuite() {
 		},
 	}
 	s.sc = &data.MockConnector{
+		URL:                "https://evergreen.example.net",
 		MockPatchConnector: s.data,
 	}
 }
@@ -100,12 +101,13 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 		},
 	}
 	s.sc = &data.MockConnector{
+		URL:                "https://evergreen.example.net",
 		MockPatchConnector: s.data,
 	}
 }
 
 func (s *PatchesByProjectSuite) SetupTest() {
-	s.route = makeFetchPatchByID(s.sc).(*patchesByProjectHandler)
+	s.route = makePatchesByProjectRoute(s.sc).(*patchesByProjectHandler)
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
@@ -151,9 +153,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmp
 	resp := s.route.Run(context.Background())
 	s.Len(resp.Data().([]interface{}), 2)
 
-	pageData := resp.Pages()
-	s.Nil(pageData.Prev)
-	s.Nil(pageData.Next)
+	s.Nil(resp.Pages())
 }
 
 func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
@@ -169,9 +169,6 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
 			s.Error(err)
-			apiErr, ok := err.(gimlet.ErrorResponse)
-			s.True(ok)
-			s.Contains(apiErr.Message, i)
 		}
 	}
 }
@@ -388,6 +385,7 @@ func TestPatchesByUserSuite(t *testing.T) {
 		},
 	}
 	s.sc = &data.MockConnector{
+		URL:                "https://evergreen.example.net",
 		MockPatchConnector: s.data,
 	}
 
@@ -431,8 +429,6 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 
 	nextTime := s.now.Format(model.APITimeFormat)
 	s.Equal(nextTime, pageData.Next.Key)
-	prevTime := s.now.Add(time.Second * 10).Format(model.APITimeFormat)
-	s.Equal(prevTime, pageData.Prev.Key)
 }
 
 func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
@@ -446,9 +442,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty(
 
 	s.Len(resp.Data().([]interface{}), 2)
 
-	pageData := resp.Pages()
-	s.Nil(pageData.Prev)
-	s.Nil(pageData.Next)
+	s.Nil(resp.Pages())
 }
 
 func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
@@ -460,24 +454,13 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 3; limit++ {
-
-			a, b, err := s.paginator(i, limit, patchesByUserArgs{}, s.sc)
-			s.Len(a, 0)
-			s.Nil(b)
+			req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10&start_at="+i, nil)
+			s.Require().NoError(err)
+			err = s.route.Parse(context.Background(), req)
 			s.Error(err)
 			apiErr, ok := err.(gimlet.ErrorResponse)
 			s.True(ok)
 			s.Contains(apiErr.Message, i)
 		}
 	}
-}
-
-func executePatchesByUserRequest(user string, ts time.Time, limit int, sc *data.MockConnector) (ResponseData, error) {
-	rm := getPatchesByUserManager("", 2)
-	pe := (rm.Methods[0].RequestHandler).(*patchesByUserHandler)
-	pe.Args = patchesByUserArgs{user: user}
-	pe.key = ts.Format(model.APITimeFormat)
-	pe.limit = limit
-
-	return pe.Execute(context.TODO(), sc)
 }

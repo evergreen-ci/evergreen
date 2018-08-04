@@ -66,6 +66,7 @@ func (s *costTasksByProjectSuite) SetupSuite() {
 		CachedTasks: []task.Task{testTask1, testTask2, testTask3},
 	}
 	s.sc = &data.MockConnector{
+		URL:               "https://evergreen.example.net",
 		MockTaskConnector: s.data,
 	}
 }
@@ -84,7 +85,7 @@ func (s *costTasksByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.NotEqual(resp.Status(), http.StatusOK)
+	s.NotEqual(resp.Status(), http.StatusOK, "%+v", resp.Data())
 }
 
 func (s *costTasksByProjectSuite) TestPaginatorReturnDataNoPagination() {
@@ -96,15 +97,13 @@ func (s *costTasksByProjectSuite) TestPaginatorReturnDataNoPagination() {
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]*model.APITaskCost)
+	payload := resp.Data().([]interface{})
 	s.Len(payload, 3)
-	s.Equal(model.ToAPIString("task1"), (payload[0]).Id)
-	s.Equal(model.ToAPIString("task2"), (payload[1]).Id)
-	s.Equal(model.ToAPIString("task3"), (payload[2]).Id)
+	s.Equal(model.ToAPIString("task1"), (payload[0]).(*model.APITaskCost).Id)
+	s.Equal(model.ToAPIString("task2"), (payload[1]).(*model.APITaskCost).Id)
+	s.Equal(model.ToAPIString("task3"), (payload[2]).(*model.APITaskCost).Id)
 	pages := resp.Pages()
-	s.NotNil(pages)
-	s.Nil(pages.Prev)
-	s.Nil(pages.Next)
+	s.Nil(pages)
 }
 
 func (s *costTasksByProjectSuite) TestPaginatorReturnDataNextPage() {
@@ -117,37 +116,15 @@ func (s *costTasksByProjectSuite) TestPaginatorReturnDataNextPage() {
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]*model.APITaskCost)
+	payload := resp.Data().([]interface{})
 	s.Len(payload, 1)
-	s.Equal(model.ToAPIString("task1"), (payload[0]).Id)
+	s.Equal(model.ToAPIString("task1"), (payload[0]).(*model.APITaskCost).Id)
 
 	pages := resp.Pages()
 	s.NotNil(pages)
 	s.Nil(pages.Prev)
 	s.NotNil(pages.Next)
 	s.Equal("task2", pages.Next.Key)
-}
-
-func (s *costTasksByProjectSuite) TestPaginatorReturnDataPrevPage() {
-	// time range covers all three tasks; query starts at the second task so two
-	// tasks should be returned; the first task must be in the prev page
-	s.route.projectID = "project"
-	s.route.duration = time.Duration(5000)
-	s.route.key = "task2"
-	s.route.limit = 2
-
-	resp := s.route.Run(context.Background())
-	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]*model.APITaskCost)
-	s.Len(payload, 2)
-	s.Equal(model.ToAPIString("task2"), (payload[0]).Id)
-	s.Equal(model.ToAPIString("task3"), (payload[1]).Id)
-
-	// we deprecated/removed reverse pagination on most routes (tycho)
-	pages := resp.Pages()
-	s.Nil(pages.Next)
-	s.Nil(pages.Prev)
 }
 
 func (s *costTasksByProjectSuite) TestPaginatorReturnDataPrevPageKey() {
@@ -162,14 +139,9 @@ func (s *costTasksByProjectSuite) TestPaginatorReturnDataPrevPageKey() {
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]*model.APITaskCost)
+	payload := resp.Data().([]interface{})
 	s.Len(payload, 1)
-	s.Equal(model.ToAPIString("task3"), (payload[0]).Id)
-
-	// we deprecated/removed reverse pagination on most routes (tycho)
-	pages := resp.Pages()
-	s.Nil(pages.Next)
-	s.Nil(pages.Prev)
+	s.Equal(model.ToAPIString("task3"), (payload[0]).(*model.APITaskCost).Id)
 }
 
 // If the given parameters yield no results, it should merely return an empty
@@ -181,5 +153,5 @@ func (s *costTasksByProjectSuite) TestPaginatorNoData() {
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.Equal(http.StatusOK, resp.Status())
+	s.Equal(http.StatusNotFound, resp.Status(), "%+v", resp.Data())
 }

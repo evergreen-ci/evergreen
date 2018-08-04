@@ -90,7 +90,7 @@ func (tgh *testGetHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         tgh.sc.GetURL(),
-				Key:             tests[tgh.limit].ID.String(),
+				Key:             string(tests[tgh.limit].ID),
 				Limit:           tgh.limit,
 			},
 		})

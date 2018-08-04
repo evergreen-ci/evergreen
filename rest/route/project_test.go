@@ -9,6 +9,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -39,60 +40,57 @@ func (s *ProjectGetSuite) SetupSuite() {
 			{Identifier: "projectF"},
 		},
 	}
-	s.paginator = projectPaginator
+
 	s.sc = &data.MockConnector{
+		URL:                  "https://evergreen.example.net",
 		MockProjectConnector: s.data,
 	}
 }
 
+func (s *ProjectGetSuite) SetupTest() {
+	s.route = &projectGetHandler{sc: s.sc}
+}
+
 func (s *ProjectGetSuite) TestPaginatorShouldErrorIfNoResults() {
-	rd, err := executeProjectRequest("zzz", 1, s.sc)
-	s.Error(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
-	s.Contains(err.Error(), "no projects found")
+	s.route.key = "zzz"
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.Equal(http.StatusNotFound, resp.Status())
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no projects found")
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	rd, err := executeProjectRequest("projectC", 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	s.Equal(model.ToAPIString("projectC"), (rd.Result[0]).(*model.APIProject).Identifier)
-	s.Equal(model.ToAPIString("projectD"), (rd.Result[1]).(*model.APIProject).Identifier)
+	s.route.key = "projectC"
+	s.route.limit = 1
 
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.NotNil(pageData.Prev)
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	payload := resp.Data().([]interface{})
+
+	s.Len(payload, 1)
+	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProject).Identifier)
+
+	pageData := resp.Pages()
+	s.Nil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
-	s.Equal("projectE", pageData.Next.Key)
-	s.Equal("projectA", pageData.Prev.Key)
+	s.Equal("projectD", pageData.Next.Key)
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	rd, err := executeProjectRequest("projectA", 100, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 6)
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.Nil(pageData.Prev)
-	s.Nil(pageData.Next)
-}
+	s.route.key = "projectA"
+	s.route.limit = 100
 
-func executeProjectRequest(key string, limit int, sc *data.MockConnector) (ResponseData, error) {
-	rm := getProjectRouteManager("", 2)
-	pe := (rm.Methods[0].RequestHandler).(*projectGetHandler)
-	pe.Args = projectGetArgs{}
-	pe.key = key
-	pe.limit = limit
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	payload := resp.Data().([]interface{})
 
-	return pe.Execute(context.TODO(), sc)
+	s.Len(payload, 6)
+	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProject).Identifier, payload[0])
+	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProject).Identifier, payload[1])
+
+	s.Nil(resp.Pages())
 }
 
 func (s *ProjectGetSuite) TestGetRecentVersions() {
