@@ -69,8 +69,6 @@ type Connector interface {
 
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
-	// FindProjectVars is a method to fetch the vars for a given project
-	FindProjectVars(string) (*model.ProjectVars, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 	// GetVersionsAndVariants returns recent versions for a project
