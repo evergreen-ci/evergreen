@@ -122,11 +122,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
+	defer j.tryRequeue(ctx)
+
 	if err := j.host.SetStatus(evergreen.HostSpawning, evergreen.User, ""); err != nil {
 		return errors.Wrapf(err, "problem setting host %s status to spawning", j.host.Id)
 	}
 
-	defer j.tryRequeue(ctx)
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
