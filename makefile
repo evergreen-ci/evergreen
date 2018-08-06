@@ -223,7 +223,7 @@ phony += lint lint-deps build build-race race test coverage coverage-html list-r
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
 run-cross:
-	$(EVGHOME)/bin/test.$(subst xc-,,$(subst -,.,$(CROSS_TARGET))) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
+	$(EVGHOME)/bin/test.$(subst xc.,,$(subst -,.,$(CROSS_TARGET))) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
 # end front-ends
 
 

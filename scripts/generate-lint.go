@@ -91,6 +91,38 @@ func makeTarget(target string) string {
 	return fmt.Sprintf("%s-%s", lintPrefix, target)
 }
 
+func getAllTargets() ([]string, error) {
+	var targets []string
+
+	args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
+	cmd := exec.Command(args[0], args[1:]...)
+	allPackages, err := cmd.Output()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting diff")
+	}
+	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
+	for _, p := range split {
+		if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
+			continue
+		}
+
+		if !strings.HasPrefix(p, packagePrefix) {
+			continue
+		}
+
+		if p == packagePrefix {
+			targets = append(targets, "evergreen")
+			continue
+		}
+		p = strings.TrimPrefix(p, packagePrefix)
+		p = strings.TrimPrefix(p, "/")
+		p = strings.Replace(p, "/", "-", -1)
+		targets = append(targets, p)
+	}
+
+	return targets, nil
+}
+
 // generateTasks returns a map of tasks to generate.
 func generateTasks() (*shrub.Configuration, error) {
 	changes, err := whatChanged()
@@ -101,30 +133,9 @@ func generateTasks() (*shrub.Configuration, error) {
 	var maxHosts int
 	if len(changes) == 0 {
 		maxHosts = commitMaxHosts
-		args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
-		cmd := exec.Command(args[0], args[1:]...)
-		allPackages, err := cmd.Output()
+		targets, err = getAllTargets()
 		if err != nil {
-			return nil, errors.Wrap(err, "problem getting diff")
-		}
-		split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
-		for _, p := range split {
-			if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
-				continue
-			}
-
-			if !strings.HasPrefix(p, packagePrefix) {
-				continue
-			}
-
-			if p == packagePrefix {
-				targets = append(targets, "evergreen")
-				continue
-			}
-			p = strings.TrimPrefix(p, packagePrefix)
-			p = strings.TrimPrefix(p, "/")
-			p = strings.Replace(p, "/", "-", -1)
-			targets = append(targets, p)
+			return nil, err
 		}
 	} else {
 		maxHosts = patchMaxHosts
@@ -135,25 +146,28 @@ func generateTasks() (*shrub.Configuration, error) {
 	}
 
 	if len(targets) == 0 {
-		return nil, nil
+		targets, err = getAllTargets()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	conf := &shrub.Configuration{}
-	lintGroup := []string{}
+	lintTargets := []string{}
 	for _, t := range targets {
 		name := makeTarget(t)
 		conf.Task(name).FunctionWithVars("run-make", map[string]string{"target": name})
-		lintGroup = append(lintGroup, name)
+		lintTargets = append(lintTargets, name)
 	}
 
-	conf.Variant(lintVariant).DisplayName(lintVariant).DisplayTasks(getDisplayTask(lintGroup)).AddTasks(lintGroup...)
-
-	group := conf.TaskGroup(lintPrefix).SetMaxHosts(maxHosts)
+	group := conf.TaskGroup(lintGroup).SetMaxHosts(maxHosts)
 	group.SetupGroup.Command().Type("system").Command("git.get_project").Param("directory", "gopath/src/github.com/evergreen-ci/evergreen")
 	group.SetupGroup.Command().Function("set-up-credentials")
 	group.TeardownTask.Command().Function("attach-test-results")
 	group.TeardownTask.Command().Function("remove-test-results")
-	group.Task(lintGroup...)
+	group.Task(lintTargets...)
+
+	conf.Variant(lintVariant).DisplayTasks(getDisplayTask(lintTargets)).AddTasks(lintGroup)
 
 	return conf, nil
 }
