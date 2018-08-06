@@ -99,7 +99,9 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 				StatusCode: http.StatusInternalServerError,
 			})
 		}
-		models = append(models, projectModel)
+		if err = resp.AddData(projectModel); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
 
 	return resp
