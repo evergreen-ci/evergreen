@@ -107,19 +107,6 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 				StatusCode: http.StatusInternalServerError,
 			}
 		}
-
-		// now set the vars field
-		vars, err := sc.FindProjectVars(model.FromAPIString(projectModel.Identifier))
-		if err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
-				Message:    "problem fetching project vars",
-				StatusCode: http.StatusInternalServerError,
-			}
-		}
-		if vars != nil {
-			vars.RedactPrivateVars()
-			projectModel.Vars = vars.Vars
-		}
 		models = append(models, projectModel)
 	}
 
