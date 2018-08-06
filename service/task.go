@@ -423,7 +423,10 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 
 	// set the status for each of the uiDeps as "blocked" or "pending" if appropriate
 	// and get the status for task
-	status := setBlockedOrPending(*t, idToDep, idToUiDep)
+	status, err := setBlockedOrPending(*t, idToDep, idToUiDep, map[string]bool{})
+	if err != nil {
+		return nil, "", err
+	}
 
 	uiDeps := make([]uiDep, 0, len(idToUiDep))
 	for _, dep := range idToUiDep {
@@ -492,14 +495,22 @@ func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[st
 // and returns "blocked", "pending", or the original status of task as appropriate.
 // A task is blocked if some recursive dependency is in an undesirable state.
 // A task is pending if some dependency has not finished.
-func setBlockedOrPending(t task.Task, tasks map[string]task.Task, uiDeps map[string]uiDep) string {
+func setBlockedOrPending(t task.Task, tasks map[string]task.Task, uiDeps map[string]uiDep, depsEncountered map[string]bool) (string, error) {
 	blocked := false
 	pending := false
 	for _, dep := range t.DependsOn {
-		depTask := tasks[dep.TaskId]
+		if depsEncountered[dep.TaskId] {
+			return "", errors.Errorf("circular dependency containing task %s encountered", dep.TaskId)
+		}
+		depsEncountered[dep.TaskId] = true
 
+		depTask := tasks[dep.TaskId]
 		uid := uiDeps[depTask.Id]
-		uid.TaskWaiting = setBlockedOrPending(depTask, tasks, uiDeps)
+		var err error
+		uid.TaskWaiting, err = setBlockedOrPending(depTask, tasks, uiDeps, depsEncountered)
+		if err != nil {
+			return "", err
+		}
 		uiDeps[depTask.Id] = uid
 		if uid.TaskWaiting == TaskBlocked {
 			blocked = true
@@ -512,12 +523,12 @@ func setBlockedOrPending(t task.Task, tasks map[string]task.Task, uiDeps map[str
 		}
 	}
 	if blocked {
-		return TaskBlocked
+		return TaskBlocked, nil
 	}
 	if pending {
-		return TaskPending
+		return TaskPending, nil
 	}
-	return ""
+	return "", nil
 }
 
 // async handler for polling the task log
