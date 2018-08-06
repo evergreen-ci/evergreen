@@ -52,6 +52,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 				build.RevisionOrderNumberKey: bson.M{"$gte": leastRecentRevisionOrderNumber},
 				build.BuildVariantKey:        bson.M{"$in": buildVariantNames},
 				build.StatusKey:              evergreen.BuildSucceeded,
+				build.RequesterKey:           evergreen.RepotrackerVersionRequester,
 			},
 		},
 		// Sum up the number of builds that succeeded for each commit order number
