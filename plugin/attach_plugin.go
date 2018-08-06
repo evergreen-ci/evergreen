@@ -29,6 +29,11 @@ const (
 // for display and easy access in the UI.
 type AttachPlugin struct{}
 
+type displayTaskFiles struct {
+	Name  string
+	Files []artifact.File
+}
+
 // Name returns the name of this plugin - it serves to satisfy
 // the 'Plugin' interface
 func (self *AttachPlugin) Name() string                           { return AttachPluginName }
@@ -84,7 +89,7 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Page:     TaskPage,
 				Position: PageLeft,
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/task_files_panel.html'\" " +
-					"ng-init='files=plugins.attach' ng-show='plugins.attach.length'></div>",
+					"ng-init='entries=plugins.attach' ng-show='plugins.attach.length'></div>",
 				DataFunc: func(context UIContext) (interface{}, error) {
 					if context.Task == nil {
 						return nil, nil
@@ -100,22 +105,37 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						}
 					}
 
+					if t.DisplayOnly {
+						files := []displayTaskFiles{}
+						for _, execTaskID := range t.ExecutionTasks {
+							execTaskFiles, err := getAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: context.Task.Execution}})
+							if err != nil {
+								return nil, err
+							}
+							strippedFiles := stripHiddenFiles(execTaskFiles, context.User)
+							execTask, err := task.FindOne(task.ById(execTaskID))
+							if err != nil {
+								return nil, err
+							}
+							if execTask == nil {
+								continue
+							}
+							if len(strippedFiles) > 0 {
+								files = append(files, displayTaskFiles{
+									Name:  execTask.DisplayName,
+									Files: strippedFiles,
+								})
+							}
+						}
+
+						return files, nil
+					}
+
 					files, err := getAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: context.Task.Execution}})
 					if err != nil {
 						return nil, err
 					}
 
-					if t.DisplayOnly {
-						execTasks := []artifact.TaskIDAndExecution{}
-						for _, execTask := range t.ExecutionTasks {
-							execTasks = append(execTasks, artifact.TaskIDAndExecution{TaskID: execTask, Execution: context.Task.Execution})
-						}
-						execTaskFiles, err := getAllArtifacts(execTasks)
-						if err != nil {
-							return nil, err
-						}
-						files = append(files, execTaskFiles...)
-					}
 					return stripHiddenFiles(files, context.User), nil
 				},
 			},
