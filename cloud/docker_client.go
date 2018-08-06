@@ -362,8 +362,6 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context, h *host.Host) ([]
 // ListImages lists all images on the specified host machine.
 func (c *dockerClientImpl) ListImages(ctx context.Context, h *host.Host) ([]types.ImageSummary, error) {
 	dockerClient, err := c.generateClient(h)
-	grip.Info(*c.httpClient)
-	grip.Info(c.httpClient.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
