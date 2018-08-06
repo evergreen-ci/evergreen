@@ -14,7 +14,7 @@ const (
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
 	HostUninitialized   = "initializing"
-	HostSpawning        = "spawning"
+	HostBuilding        = "building"
 	HostStarting        = "starting"
 	HostProvisioning    = "provisioning"
 	HostProvisionFailed = "provision failed"
@@ -237,7 +237,7 @@ var (
 	UphostStatus = []string{
 		HostRunning,
 		HostUninitialized,
-		HostSpawning,
+		HostBuilding,
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,

@@ -2467,7 +2467,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 		{
 			Id:           "host5",
 			Distro:       distro1,
-			Status:       evergreen.HostSpawning,
+			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-5 * time.Minute),
 			UserHost:     false,
 			Provider:     evergreen.ProviderNameEc2Auto,
@@ -2475,7 +2475,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 		{
 			Id:           "host6",
 			Distro:       distro1,
-			Status:       evergreen.HostSpawning,
+			Status:       evergreen.HostBuilding,
 			CreationTime: now.Add(-30 * time.Minute),
 			UserHost:     false,
 			Provider:     evergreen.ProviderNameEc2Auto,
