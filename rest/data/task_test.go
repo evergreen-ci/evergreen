@@ -386,9 +386,6 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 		s.Equal((s.numTasks-startAt)-i, len(foundTasks))
 		for ix, t := range foundTasks {
 			index := ix
-			if sort > 0 {
-				index += i
-			}
 			s.Equal(tids[index], t.Id)
 		}
 	}
