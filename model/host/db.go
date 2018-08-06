@@ -425,7 +425,7 @@ func RemoveStaleInitializing(distroID string) error {
 				CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
 			},
 			{
-				StatusKey:     evergreen.HostSpawning,
+				StatusKey:     evergreen.HostBuilding,
 				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
 			},
 		},
