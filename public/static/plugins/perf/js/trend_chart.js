@@ -207,16 +207,19 @@ var drawSingleTrendChart = function(params) {
   }
 
   function hydrateChangePoint(point) {
+    // if idx == 0, shift it right for one point
+    var revIdx = idxByRevision(series, point.suspect_revision) || 1
+
     point._meta = {
-      firstRevIdx: idxByRevision(series, _.first(point.all_revisions)) || point.revision,
-      lastRevIdx:  idxByRevision(series, _.last(point.all_revisions))  || point.revision,
+      firstRevIdx: revIdx - 1,
+      lastRevIdx:  revIdx,
     }
   }
 
   // Filter out change points which lays outside ot the chart
   var visibleChangePoints = _.chain(changePoints)
     .filter(function(d) {
-      return _.findWhere(series, {revision: d.revision})
+      return _.findWhere(series, {revision: d.suspect_revision})
     })
     .each(hydrateChangePoint) // Add some useful meta data
     .value()
@@ -285,7 +288,7 @@ var drawSingleTrendChart = function(params) {
       // Check if there is existing point for this revision/level
       // Mostly for MAXONLY mode
       var existing = _.find(changePointForLevel, function(d) {
-        return d.level == level && d.changePoint.revision == point.revision
+        return d.level == level && d.changePoint.suspect_revision == point.suspect_revision
       })
       // If the point already exists, increase count meta property
       if (existing) {
@@ -740,7 +743,7 @@ var drawSingleTrendChart = function(params) {
       .attr({
         transform: function(d) {
           var idx = _.findIndex(series, function(sample) {
-            return sample && sample.revision == d.changePoint.revision
+            return sample && sample.revision == d.changePoint.suspect_revision
           })
 
           return idx > -1 ? d3Translate(
