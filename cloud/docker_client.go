@@ -85,15 +85,17 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 	return c.client, nil
 }
 
+// changeTimeout changes the timeout of dockerClient's internal httpClient and
+// returns a new docker.Client with the updated timeout
 func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
-	c.client = nil
+	var err error
 	c.httpClient.Timeout = newTimeout
-	dockerClient, err := c.generateClient(h)
+	c.client, err = c.generateClient(h)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	return dockerClient, nil
+	return c.client, nil
 }
 
 // Init sets the Docker API version to use for API calls to the Docker client.
