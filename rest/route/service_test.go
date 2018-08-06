@@ -817,7 +817,7 @@ func TestTestPaginator(t *testing.T) {
 
 func TestTaskExecutionPatchPrepare(t *testing.T) {
 	Convey("With handler and a project context and user", t, func() {
-		tep := &TaskExecutionPatchHandler{}
+		tep := &taskExecutionPatchHandler{}
 
 		projCtx := serviceModel.Context{
 			Task: &task.Task{
@@ -835,7 +835,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(ctx, req)
+			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := gimlet.ErrorResponse{
 				Message:    "No request body sent",
@@ -858,7 +858,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(ctx, req)
+			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := gimlet.ErrorResponse{
 				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
@@ -880,7 +880,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(ctx, req)
+			err = tep.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := gimlet.ErrorResponse{
 				Message:    "Must set 'activated' or 'priority'",
@@ -904,7 +904,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(ctx, req)
+			err = tep.Parse(ctx, req)
 			So(err, ShouldBeNil)
 			So(*tep.Activated, ShouldBeTrue)
 			So(*tep.Priority, ShouldEqual, 100)
@@ -932,7 +932,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			act := true
 			var prio int64 = 100
 
-			tep := &TaskExecutionPatchHandler{
+			tep := &taskExecutionPatchHandler{
 				Activated: &act,
 				Priority:  &prio,
 				task: &task.Task{
@@ -941,12 +941,11 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 				user: &user.DBUser{
 					Id: "testUser",
 				},
+				sc: &sc,
 			}
-			res, err := tep.Execute(ctx, &sc)
-			So(err, ShouldBeNil)
-			So(len(res.Result), ShouldEqual, 1)
-			resModel := res.Result[0]
-			resTask, ok := resModel.(*model.APITask)
+			res := tep.Run(ctx)
+			So(res.Status(), ShouldEqual, http.StatusOK)
+			resTask, ok := res.Data().(*model.APITask)
 			So(ok, ShouldBeTrue)
 			So(resTask.Priority, ShouldEqual, int64(100))
 			So(resTask.Activated, ShouldBeTrue)
@@ -976,7 +975,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
-			err = trh.ParseAndValidate(ctx, req)
+			err = trh.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := "Project not found"
 			So(err.Error(), ShouldContainSubstring, expectedErr)
@@ -987,7 +986,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			So(err, ShouldBeNil)
 			ctx = gimlet.AttachUser(ctx, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
-			err = trh.ParseAndValidate(ctx, req)
+			err = trh.Parse(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := gimlet.ErrorResponse{
 				Message:    "Task not found",
@@ -1001,8 +1000,8 @@ func TestTaskResetPrepare(t *testing.T) {
 
 func TestTaskGetHandler(t *testing.T) {
 	Convey("With test server with a handler and mock data", t, func() {
-		rm := getTaskRouteManager("/tasks/{task_id}", 2)
 		sc := &data.MockConnector{}
+		rm := makeGetTaskRoute(sc)
 		sc.SetPrefix("rest")
 
 		Convey("and task is in the service context", func() {
@@ -1017,7 +1016,7 @@ func TestTaskGetHandler(t *testing.T) {
 
 			app := gimlet.NewApp()
 			app.SetPrefix(sc.GetPrefix())
-			rm.Register(app, sc)
+			app.AddRoute("/tasks/{task_id}").Version(2).Get().RouteHandler(rm)
 			So(app.Resolve(), ShouldBeNil)
 			r, err := app.Router()
 			So(err, ShouldBeNil)
@@ -1026,17 +1025,6 @@ func TestTaskGetHandler(t *testing.T) {
 				" should be returned", func() {
 				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
 				So(err, ShouldBeNil)
-				req.Header.Add("Api-Key", "Key")
-				req.Header.Add("Api-User", "User")
-
-				sc.MockUserConnector.CachedUsers = map[string]*user.DBUser{
-					"User": &user.DBUser{
-						APIKey: "Key",
-						Id:     "User",
-					},
-				}
-
-				req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
 
 				rr := httptest.NewRecorder()
 				r.ServeHTTP(rr, req)
@@ -1049,32 +1037,12 @@ func TestTaskGetHandler(t *testing.T) {
 				So(model.FromAPIString(res.ProjectId), ShouldEqual, "testProject")
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
-			Convey("a request without a user should then return a 404 error and a task should"+
-				" should be not returned", func() {
-				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
-				So(err, ShouldBeNil)
-				req.Header.Add("Api-Key", "Key")
-				req.Header.Add("Api-User", "User")
-
-				rr := httptest.NewRecorder()
-				r.ServeHTTP(rr, req)
-				So(rr.Code, ShouldEqual, http.StatusNotFound)
-			})
 			Convey("and old tasks are available", func() {
 				sc.MockTaskConnector.CachedTasks[0].Execution = 1
-				sc.MockUserConnector.CachedUsers = map[string]*user.DBUser{
-					"User": &user.DBUser{
-						APIKey: "Key",
-						Id:     "User",
-					},
-				}
 
 				Convey("a test that requests old executions should receive them", func() {
 					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
 					So(err, ShouldBeNil)
-					req.Header.Add("Api-Key", "Key")
-					req.Header.Add("Api-User", "User")
-					req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
 
 					rr := httptest.NewRecorder()
 					r.ServeHTTP(rr, req)
@@ -1088,9 +1056,6 @@ func TestTaskGetHandler(t *testing.T) {
 				Convey("a test that doesn't request old executions should not receive them", func() {
 					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
 					So(err, ShouldBeNil)
-					req.Header.Add("Api-Key", "Key")
-					req.Header.Add("Api-User", "User")
-					req = req.WithContext(gimlet.AttachUser(req.Context(), sc.MockUserConnector.CachedUsers["User"]))
 
 					rr := httptest.NewRecorder()
 					r.ServeHTTP(rr, req)
@@ -1125,28 +1090,27 @@ func TestTaskResetExecute(t *testing.T) {
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
 				username: "testUser",
+				sc:       &sc,
 			}
 
-			_, err := trh.Execute(ctx, &sc)
-			So(err, ShouldNotBeNil)
-			apiErr, ok := err.(gimlet.ErrorResponse)
+			resp := trh.Run(ctx)
+			So(resp.Status(), ShouldNotEqual, http.StatusOK)
+			apiErr, ok := resp.Data().(gimlet.ErrorResponse)
 			So(ok, ShouldBeTrue)
 			So(apiErr.StatusCode, ShouldEqual, http.StatusBadRequest)
 
 		})
 
 		Convey("calling TryReset should reset the task", func() {
-
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
 				username: "testUser",
+				sc:       &sc,
 			}
 
-			res, err := trh.Execute(ctx, &sc)
-			So(err, ShouldBeNil)
-			So(len(res.Result), ShouldEqual, 1)
-			resModel := res.Result[0]
-			resTask, ok := resModel.(*model.APITask)
+			res := trh.Run(ctx)
+			So(res.Status(), ShouldEqual, http.StatusOK)
+			resTask, ok := res.Data().(*model.APITask)
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
 			So(resTask.DispatchTime, ShouldResemble, model.APIZeroTime)

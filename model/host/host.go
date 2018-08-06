@@ -916,6 +916,43 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	return nil
 }
 
+// FindRunningHosts is the underlying query behind the hosts page's table
+func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
+	query := bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
+
+	if !includeSpawnHosts {
+		query[StartedByKey] = evergreen.User
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": query,
+		},
+		{
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": task.IdKey,
+				"as":           "task_full",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path": "$task_full",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	}
+
+	var dbHosts []Host
+
+	if err := db.Aggregate(Collection, pipeline, &dbHosts); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return dbHosts, nil
+}
+
 // FindAllHostsSpawnedByTasks finds all running hosts spawned by the `createhost` command.
 func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	query := db.Query(bson.M{
@@ -961,11 +998,10 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 
 func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	hosts, err := Find(db.Query(bson.M{
-		StatusKey: bson.M{"$in": evergreen.UphostStatus},
-		RunningTaskKey: bson.M{"$and": []bson.M{
-			{"$exists": true},
-			{"$ne": ""},
-		}},
+		StatusKey: bson.M{"$nin": evergreen.UphostStatus},
+		"$and": []bson.M{
+			{RunningTaskKey: bson.M{"$exists": true}},
+			{RunningTaskKey: bson.M{"$ne": ""}}},
 	}))
 
 	if err == mgo.ErrNotFound {
@@ -1018,6 +1054,16 @@ func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
 		hostContainerPoolId: poolId,
 	}).Sort([]string{LastContainerFinishTimeKey})
 	return Find(query)
+}
+
+// CountUphostParents returns the number of initializing parent host intent documents
+func CountUphostParentsByContainerPool(poolId string) (int, error) {
+	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
+	return db.Count(Collection, bson.M{
+		HasContainersKey:    true,
+		StatusKey:           bson.M{"$in": evergreen.UphostStatus},
+		hostContainerPoolId: poolId,
+	})
 }
 
 func InsertMany(hosts []Host) error {

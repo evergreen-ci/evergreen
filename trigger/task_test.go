@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -39,7 +40,7 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, version.Collection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -67,6 +68,11 @@ func (s *taskSuite) SetupTest() {
 		ResourceId:   "test",
 		Data:         s.data,
 	}
+	v := version.Version{
+		Id:       "test_version_id",
+		AuthorID: "me",
+	}
+	s.NoError(v.Insert())
 
 	s.subs = []event.Subscription{
 		{
@@ -157,13 +163,47 @@ func (s *taskSuite) SetupTest() {
 			},
 			Subscriber: event.Subscriber{
 				Type:   event.JIRACommentSubscriberType,
-				Target: "A-1",
+				Target: "A-2",
 			},
 			Owner: "someone",
 			TriggerData: map[string]string{
 				event.TaskPercentChangeKey: "50",
 			},
 		},
+		{
+			ID:      bson.NewObjectId().Hex(),
+			Type:    event.ResourceTypeTask,
+			Trigger: triggerRuntimeChangeByPercent,
+			Selectors: []event.Selector{
+				{
+					Type: "project",
+					Data: "test_project",
+				},
+				{
+					Type: "requester",
+					Data: evergreen.RepotrackerVersionRequester,
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.EmailSubscriberType,
+				Target: "email",
+			},
+			RegexSelectors: []event.Selector{
+				{
+					Type: selectorDisplayName,
+					Data: "test-display-name",
+				},
+			},
+			Owner:     "test_project",
+			OwnerType: event.OwnerTypeProject,
+			TriggerData: map[string]string{
+				event.TaskPercentChangeKey: "10",
+			},
+		},
+		event.NewBuildBreakSubscriptionByOwner("me", event.Subscriber{
+			Type:   event.JIRACommentSubscriberType,
+			Target: "A-3",
+		}),
 	}
 
 	for i := range s.subs {
@@ -201,7 +241,7 @@ func (s *taskSuite) TestAllTriggers() {
 
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 3)
+	s.Len(n, 4)
 }
 
 func (s *taskSuite) TestSuccess() {
@@ -480,6 +520,10 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 	s.data.Status = taskStatus
 	s.event.ResourceId = s.task.Id
 	s.NoError(s.task.Insert())
+	v := version.Version{
+		Id: s.task.Version,
+	}
+	s.NoError(v.Insert())
 }
 
 func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
@@ -848,4 +892,54 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 	n, err = s.t.taskRuntimeChange(&s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
+}
+
+func (s *taskSuite) TestProjectTrigger() {
+	lastGreen := task.Task{
+		Id:                  "test1",
+		BuildVariant:        "test_build_variant",
+		DistroId:            "test_distro_id",
+		Project:             "test_project",
+		DisplayName:         "test-display-name",
+		StartTime:           s.task.StartTime.Add(-time.Hour),
+		RevisionOrderNumber: -1,
+		Status:              evergreen.TaskSucceeded,
+	}
+	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
+	s.NoError(lastGreen.Insert())
+
+	n, err := NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Len(n, 3)
+}
+
+func (s *taskSuite) TestBuildBreak() {
+	lastGreen := task.Task{
+		Id:           "test1",
+		BuildVariant: "test_build_variant",
+		DistroId:     "test_distro_id",
+		Project:      "test_project",
+		DisplayName:  "test-display-name",
+
+		RevisionOrderNumber: -1,
+		Status:              evergreen.TaskSucceeded,
+	}
+	s.NoError(lastGreen.Insert())
+
+	// successful task should not trigger
+	s.task.Status = evergreen.TaskSucceeded
+	n, err := s.t.buildBreak(&s.subs[5])
+	s.NoError(err)
+	s.Nil(n)
+
+	// task regression should trigger
+	s.task.Status = evergreen.TaskFailed
+	n, err = s.t.buildBreak(&s.subs[5])
+	s.NoError(err)
+	s.NotNil(n)
+
+	// another regression in the same version should not trigger
+	n, err = s.t.buildBreak(&s.subs[5])
+	s.NoError(err)
+	s.Nil(n)
 }

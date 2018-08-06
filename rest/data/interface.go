@@ -70,8 +70,6 @@ type Connector interface {
 
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
-	// FindProjectVars is a method to fetch the vars for a given project
-	FindProjectVars(string) (*model.ProjectVars, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 	// GetVersionsAndVariants returns recent versions for a project
@@ -112,8 +110,8 @@ type Connector interface {
 
 	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
 	// access to the metrics data collected by agents during task execution
-	FindTaskSystemMetrics(string, time.Time, int, int) ([]*message.SystemInfo, error)
-	FindTaskProcessMetrics(string, time.Time, int, int) ([][]*message.ProcessInfo, error)
+	FindTaskSystemMetrics(string, time.Time, int) ([]*message.SystemInfo, error)
+	FindTaskProcessMetrics(string, time.Time, int) ([][]*message.ProcessInfo, error)
 
 	// FindCostByVersionId returns cost data of a version given its ID.
 	FindCostByVersionId(string) (*task.VersionCost, error)

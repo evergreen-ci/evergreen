@@ -31,7 +31,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 			Usage: "schedule tasks immediately",
 		},
 		cli.BoolFlag{
-			Name:  joinFlagNames(patchBrowseFlagName, "b"),
+			Name:  joinFlagNames(patchBrowseFlagName),
 			Usage: "open patch url in browser",
 		},
 		cli.BoolFlag{

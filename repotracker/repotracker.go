@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -581,9 +580,22 @@ func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 		return nil
 	}
 	subscriptionBase := event.Subscription{
-		Type:      event.ResourceTypeVersion,
-		Trigger:   "regression",
-		Selectors: trigger.MakeVersionSelectors(*v),
+		Type:    event.ResourceTypeVersion,
+		Trigger: "build-break",
+		Selectors: []event.Selector{
+			{
+				Type: "object",
+				Data: "task",
+			},
+			{
+				Type: "project",
+				Data: projectRef.Identifier,
+			},
+			{
+				Type: "requester",
+				Data: evergreen.RepotrackerVersionRequester,
+			},
+		},
 	}
 	subscribers := []event.Subscriber{}
 

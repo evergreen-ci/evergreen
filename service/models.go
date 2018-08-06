@@ -1,13 +1,11 @@
 package service
 
 import (
-	"fmt"
 	"html/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -17,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type timelineData struct {
@@ -225,93 +222,13 @@ func getBuildVariantHistoryLastSuccess(buildId string) (*build.Build, error) {
 	return b, errors.WithStack(err)
 }
 
-func getVersionHistory(versionId string, N int) ([]version.Version, error) {
-	v, err := version.FindOne(version.ById(versionId))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	} else if v == nil {
-		return nil, errors.Errorf("Version '%v' not found", versionId)
-	}
-
-	// Versions in the same push event, assuming that no two push events happen at the exact same time
-	// Never want more than 2N+1 versions, so make sure we add a limit
-
-	siblingVersions, err := version.Find(db.Query(
-		bson.M{
-			version.RevisionOrderNumberKey: v.RevisionOrderNumber,
-			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
-			version.IdentifierKey:          v.Identifier,
-		}).WithoutFields(version.ConfigKey).Sort([]string{version.RevisionOrderNumberKey}).Limit(2*N + 1))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	versionIndex := -1
-	for i := 0; i < len(siblingVersions); i++ {
-		if siblingVersions[i].Id == v.Id {
-			versionIndex = i
-		}
-	}
-
-	numSiblings := len(siblingVersions) - 1
-	versions := siblingVersions
-
-	if versionIndex < N {
-		// There are less than N later versions from the same push event
-		// N subsequent versions plus the specified one
-		subsequentVersions, err := version.Find(
-			//TODO encapsulate this query in version pkg
-			db.Query(bson.M{
-				version.RevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
-				version.RequesterKey:           evergreen.RepotrackerVersionRequester,
-				version.IdentifierKey:          v.Identifier,
-			}).WithoutFields(version.ConfigKey).Sort([]string{version.RevisionOrderNumberKey}).Limit(N - versionIndex))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-
-		// Reverse the second array so we have the versions ordered "newest one first"
-		for i := 0; i < len(subsequentVersions)/2; i++ {
-			subsequentVersions[i], subsequentVersions[len(subsequentVersions)-1-i] = subsequentVersions[len(subsequentVersions)-1-i], subsequentVersions[i]
-		}
-
-		versions = append(subsequentVersions, versions...)
-	}
-
-	if numSiblings-versionIndex < N {
-		previousVersions, err := version.Find(db.Query(bson.M{
-			version.RevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
-			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
-			version.IdentifierKey:          v.Identifier,
-		}).WithoutFields(version.ConfigKey).Sort([]string{fmt.Sprintf("-%v", version.RevisionOrderNumberKey)}).Limit(N))
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		versions = append(versions, previousVersions...)
-	}
-
-	return versions, nil
-}
-
 func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
-	data := &hostsData{}
-
-	// get all of the hosts
-	var dbHosts []host.Host
-	var err error
-	var query bson.M
-	if includeSpawnedHosts {
-		query = bson.M{host.StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
-	} else {
-		query = bson.M{
-			host.StartedByKey: evergreen.User,
-			host.StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
-		}
-	}
-	err = db.Aggregate(host.Collection, host.QueryWithFullTaskPipeline(query), &dbHosts)
+	dbHosts, err := host.FindRunningHosts(includeSpawnedHosts)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "problem finding hosts")
 	}
+
+	data := &hostsData{}
 
 	// convert the hosts to the ui models
 	uiHosts := make([]uiHost, len(dbHosts))

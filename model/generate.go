@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
@@ -175,9 +176,17 @@ func cacheProjectData(p *Project) projectMaps {
 func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *version.Version, p *Project) error {
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
+	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))
+	if err != nil {
+		return errors.Wrap(err, "problem finding builds for version")
+	}
+	buildSet := map[string]struct{}{}
+	for _, b := range builds {
+		buildSet[b.BuildVariant] = struct{}{}
+	}
 	for _, bv := range g.BuildVariants {
 		// If the buildvariant already exists, append tasks to it.
-		if _, ok := cachedProject.buildVariants[bv.Name]; ok {
+		if _, ok := buildSet[bv.Name]; ok {
 			newTVPairsForExistingVariants = appendTasks(newTVPairsForExistingVariants, bv, p)
 		} else {
 			// If the buildvariant does not exist, create it.

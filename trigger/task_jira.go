@@ -21,7 +21,7 @@ import (
 // DescriptionTemplateString defines the content of the alert ticket.
 const descriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id}}/{{.Task.Execution}}]
-Host: [{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]
+Host: {{if .Host}}[{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]{{else}}N/A{{end}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
@@ -237,6 +237,7 @@ func logURL(test task.TestResult, root string) string {
 
 // getDescription returns the body of the JIRA ticket, with links.
 func (j *jiraBuilder) getDescription() (string, error) {
+	const jiraMaxDescLength = 32767
 	// build a list of all failed tests to include
 	tests := []jiraTestFailure{}
 	for _, test := range j.data.Task.LocalTestResults {
@@ -253,6 +254,10 @@ func (j *jiraBuilder) getDescription() (string, error) {
 	j.data.Tests = tests
 	if err := descriptionTemplate.Execute(buf, &j.data); err != nil {
 		return "", err
+	}
+	// Jira description length maximum
+	if buf.Len() > jiraMaxDescLength {
+		buf.Truncate(jiraMaxDescLength)
 	}
 	return buf.String(), nil
 }

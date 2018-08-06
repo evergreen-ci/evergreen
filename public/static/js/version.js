@@ -103,7 +103,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
         addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
 
       }else {
-        addInSelectorsAndOwnerType(data, "version", data.resource_type.toLowerCase(), $scope.version.Version.id);
+        addInSelectorsAndOwnerType(data, "version", "version", $scope.version.Version.id);
       }
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();

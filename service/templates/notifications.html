@@ -17,15 +17,17 @@ Notifications Preferences
 
 <div ng-controller="NotificationsController" layout="column" ng-cloak>
   <section layout="row" flex>
-
-    <md-card flex="40" style="max-height:390px;">
+    <md-card flex="40">
       <md-card-title>
         <md-card-title-text>
           Notification Preferences
         </md-card-title-text>
       </md-card-title>
-
       <md-card-content>
+        <md-input-container style="width:50%;">
+          <label>Github Username</label>
+          <input type="text" placeholder="octocat" ng-model="settings.github_user.last_known_as" />
+        </md-input-container>
         <md-input-container style="width:50%;">
           <label>Slack Username</label>
           <input type="text" ng-model="settings.slack_username">
@@ -86,27 +88,34 @@ Notifications Preferences
 
     <md-card flex="60">
       <md-card-title>
-        <md-card-title-text>
-          Existing Subscriptions
-        </md-card-title-text>
+        <md-card-title-text>Manage Subscriptions</md-card-title-text>
       </md-card-title>
       <md-card-content>
-
         <table class="table table-new">
           <thead>
             <tr>
               <th class="col-lg-3">Selectors</th>
-              <th class="col-lg-3">Trigger</th>
-              <th class="col-lg-3">Action</th>
-              <th class="col-lg-1"> </th>
+              <th class="col-lg-3">Event</th>
+              <th class="col-lg-3">Notify by</th>
+              <th class="col-lg-1"></th>
             </tr>
           </thead>
           <tbody>
             <tr ng-repeat="subscription in subscriptions"
                 class="test-result-row">
               <td class="col-lg-3">
-                <a href="javascript:void(0);" ng-click="selectorClick([[subscription.selectors]])"
-                 ng-bind="selectorText([[subscription.selectors]])"> </a>
+                  <span ng-repeat="s in subscription.selectors">
+                    <p ng-show="s.type === 'object'">when a [[s.data]] with:</p>
+                    <p ng-show="s.type !== 'object' && (s.type === 'id' || s.type.startsWith('in-'))"><b>[[s.type]]</b> of
+                      <span style="width: 50%; display: block; overflow: hidden; text-overflow: ellipsis;"><a href="javascript:void(0);" ng-click="selectorClick([[subscription.selectors]])">[[s.data]]</a></span>
+                    </p>
+                    <p ng-show="s.type !== 'object' && s.type !== 'id' && !s.type.startsWith('in-')"><b>[[s.type]]</b> of
+                      <span style="width: 50%; display: block; overflow: hidden; text-overflow: ellipsis;">[[s.data]]</span>
+                    </p>
+                  </span>
+                  <span ng-show="subscription.regex_selectors.length > 0" ng-repeat="s in subscription.regex_selectors">
+                      <span><b>[[s.type]]</b> matching regex <span style="font-family: monospace;">/[[s.data]]/</span>
+                  </span>
               </td>
               <td class="col-lg-3">
                 [[subscription.trigger]]
@@ -120,7 +129,9 @@ Notifications Preferences
             </tr>
           </tbody>
         </table>
-
+        <md-input-container style="width:50%;" ng-show="subscriptions.length > 0">
+          <md-button class="md-raised md-warn" type="submit" ng-click="clearAllSubscriptions()">Clear all Subscriptions</md-button>
+        </md-input-container>
       </md-card-content>
     </md-card>
 

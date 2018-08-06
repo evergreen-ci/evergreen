@@ -135,7 +135,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 // BuildImageWithAgent takes a base image and builds a new image on the specified
 // host from a Dockfile in the root directory, which adds the Evergreen binary
 func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
-	const dockerfileRoute = "/dockerfile"
+	const dockerfileRoute = "dockerfile"
 
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
@@ -151,9 +151,9 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	// build dockerfile route
 	dockerfileUrl := strings.Join([]string{
 		c.evergreenSettings.ApiUrl,
-		evergreen.APIRoutePrefixV2,
+		evergreen.APIRoutePrefix,
 		dockerfileRoute,
-	}, "")
+	}, "/")
 
 	options := types.ImageBuildOptions{
 		BuildArgs: map[string]*string{
@@ -214,7 +214,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	// Import correct base image if not already on host.
 	image, err := c.EnsureImageDownloaded(ctx, h, settings.ImageURL)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", h.Id)
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.ImageURL, h.Id)
 	}
 
 	// Build image containing Evergreen executable.

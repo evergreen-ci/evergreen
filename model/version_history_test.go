@@ -16,7 +16,7 @@ func init() {
 
 func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 	Convey("works", t, func() {
-		So(db.Clear(TaskQueuesCollection), ShouldBeNil)
+		So(db.ClearCollections(TaskQueuesCollection, version.Collection, build.Collection), ShouldBeNil)
 
 		project := "MyProject"
 		bv1 := "linux"
@@ -31,12 +31,18 @@ func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 
 		insertBuild("1a", project, bv1, evergreen.BuildSucceeded, 1)
 		insertBuild("1b", project, bv2, evergreen.BuildSucceeded, 1)
+		insertPatchBuild("1ap", project, bv1, evergreen.BuildSucceeded, 1)
+		insertPatchBuild("1bp", project, bv2, evergreen.BuildSucceeded, 1)
 
 		insertBuild("2a", project, bv1, evergreen.BuildSucceeded, 2)
 		insertBuild("2b", project, bv2, evergreen.BuildSucceeded, 2)
+		insertPatchBuild("2ap", project, bv1, evergreen.BuildSucceeded, 2)
+		insertPatchBuild("2bp", project, bv2, evergreen.BuildSucceeded, 2)
 
 		insertBuild("3a", project, bv1, evergreen.BuildSucceeded, 3)
 		insertBuild("3b", project, bv2, evergreen.BuildFailed, 3)
+		insertPatchBuild("3ap", project, bv1, evergreen.BuildSucceeded, 3)
+		insertPatchBuild("3bp", project, bv2, evergreen.BuildFailed, 3)
 
 		version, err := FindLastPassingVersionForBuildVariants(&projectObj, []string{bv1, bv2})
 
@@ -47,14 +53,25 @@ func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 	})
 }
 
-func insertBuild(id string, project string, buildVariant string, status string,
-	order int) {
+func insertBuild(id string, project string, buildVariant string, status string, order int) {
 	b := &build.Build{
 		Id:                  id,
 		Project:             project,
 		BuildVariant:        buildVariant,
 		Status:              status,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: order,
+	}
+	So(b.Insert(), ShouldBeNil)
+}
+
+func insertPatchBuild(id string, project string, buildVariant string, status string, order int) {
+	b := &build.Build{
+		Id:                  id,
+		Project:             project,
+		BuildVariant:        buildVariant,
+		Status:              status,
+		Requester:           evergreen.GithubPRRequester,
 		RevisionOrderNumber: order,
 	}
 	So(b.Insert(), ShouldBeNil)

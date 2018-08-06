@@ -197,7 +197,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 		zone: "",
 	}
 
-	prices, err := cpf.describeHourlySpotPriceHistory(ctx, client, args)
+	prices, err := cpf.describeSpotPriceHistory(ctx, client, args)
 	if err != nil {
 		return 0, "", errors.WithStack(err)
 	}
@@ -208,9 +208,13 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 	var min float64
 	var az string
 	for i := range prices {
-		if min == 0 || prices[i].Price < min {
-			min = prices[i].Price
-			az = prices[i].Zone
+		p, err := strconv.ParseFloat(*prices[i].SpotPrice, 64)
+		if err != nil {
+			return 0, "", errors.Wrapf(err, "problem parsing %s", *prices[i].SpotPrice)
+		}
+		if min == 0 || p < min {
+			min = p
+			az = *prices[i].AvailabilityZone
 		}
 	}
 	return min, az, nil
@@ -477,28 +481,10 @@ func (i hourlySpotPriceHistoryInput) String() string {
 	return fmt.Sprintln(i.iType, i.zone, i.os, i.start.Round(spotPriceCacheTTL).Unix())
 }
 
-// describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
-// simplifies that history into hourly billing rates starting from the supplied
-// start time. Returns a slice of hour-separated spot prices or any errors that occur.
-func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+// describeHourlySpotPriceHistory talks to Amazon to get spot price history
+func (cpf *cachingPriceFetcher) describeSpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]*ec2.SpotPrice, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
-
-	cacheKey := input.String()
-	cachedValue, ok := cpf.spotPrices[cacheKey]
-	if ok {
-		staleFor := time.Since(cachedValue.collectedAt)
-		if staleFor < spotPriceCacheTTL && len(cachedValue.values) > 0 {
-			grip.Debug(message.Fields{
-				"message":     "found spot price in cache",
-				"cached_secs": staleFor.Seconds(),
-				"key":         cacheKey,
-				"cache_size":  len(cpf.spotPrices),
-			})
-
-			return cachedValue.getCopy(), nil
-		}
-	}
 
 	cleanedNum := 0
 	for k, v := range cpf.spotPrices {
@@ -544,46 +530,65 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 			break
 		}
 	}
+	return history, nil
+}
+
+// describeHourlySpotPriceHistory simplifies that spot price history into hourly billing rates
+// starting from the supplied start time. Returns a slice of hour-separated spot prices.
+func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+	cacheKey := input.String()
+	cachedValue, ok := cpf.spotPrices[cacheKey]
+	if ok {
+		staleFor := time.Since(cachedValue.collectedAt)
+		if staleFor < spotPriceCacheTTL && len(cachedValue.values) > 0 {
+			grip.Debug(message.Fields{
+				"message":     "found spot price in cache",
+				"cached_secs": staleFor.Seconds(),
+				"key":         cacheKey,
+				"cache_size":  len(cpf.spotPrices),
+			})
+
+			return cachedValue.getCopy(), nil
+		}
+	}
+	history, err := cpf.describeSpotPriceHistory(ctx, client, input)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting spot price history")
+	}
+
 	// this loop samples the spot price history (which includes updates for every few minutes)
 	// into hourly billing periods. The price we are billed for an hour of spot time is the
 	// current price at the start of the hour. Amazon returns spot price history sorted in
 	// decreasing time order. We iterate backwards through the list to
 	// pretend the ordering to increasing time.
 	prices := []spotRate{}
-	if input.zone != "" {
-		i := len(history) - 1
-		for i >= 0 {
-			// add the current hourly price if we're in the last result bucket
-			// OR our billing hour starts the same time as the data (very rare)
-			// OR our billing hour starts after the current bucket but before the next one
-			if i == 0 || input.start.Equal(*history[i].Timestamp) ||
-				input.start.After(*history[i].Timestamp) && input.start.Before(*history[i-1].Timestamp) {
-				price, err := strconv.ParseFloat(*history[i].SpotPrice, 64)
-				if err != nil {
-					return nil, errors.Wrap(err, "parsing spot price")
-				}
-				var zone string
-				if history[i].AvailabilityZone != nil {
-					zone = *history[i].AvailabilityZone
-				}
-
-				prices = append(prices, spotRate{Time: input.start, Price: price, Zone: zone})
-				// we increment the hour but stay on the same price history index
-				// in case the current spot price spans more than one hour
-				input.start = input.start.Add(time.Hour)
-				if input.start.After(input.end) {
-					break
-				}
-			} else {
-				// continue iterating through our price history whenever we
-				// aren't matching the next billing hour
-				i--
+	i := len(history) - 1
+	for i >= 0 {
+		// add the current hourly price if we're in the last result bucket
+		// OR our billing hour starts the same time as the data (very rare)
+		// OR our billing hour starts after the current bucket but before the next one
+		if i == 0 || input.start.Equal(*history[i].Timestamp) ||
+			input.start.After(*history[i].Timestamp) && input.start.Before(*history[i-1].Timestamp) {
+			price, err := strconv.ParseFloat(*history[i].SpotPrice, 64)
+			if err != nil {
+				return nil, errors.Wrap(err, "parsing spot price")
 			}
-		}
-	} else {
-		for _, item := range history {
-			p, _ := strconv.ParseFloat(*item.SpotPrice, 64)
-			prices = append(prices, spotRate{Time: time.Now(), Price: p, Zone: *item.AvailabilityZone})
+			var zone string
+			if history[i].AvailabilityZone != nil {
+				zone = *history[i].AvailabilityZone
+			}
+
+			prices = append(prices, spotRate{Time: input.start, Price: price, Zone: zone})
+			// we increment the hour but stay on the same price history index
+			// in case the current spot price spans more than one hour
+			input.start = input.start.Add(time.Hour)
+			if input.start.After(input.end) {
+				break
+			}
+		} else {
+			// continue iterating through our price history whenever we
+			// aren't matching the next billing hour
+			i--
 		}
 	}
 
@@ -592,7 +597,6 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 		values:      prices,
 	}
 	cpf.spotPrices[cacheKey] = cachedValue
-
 	return cachedValue.getCopy(), nil
 }
 

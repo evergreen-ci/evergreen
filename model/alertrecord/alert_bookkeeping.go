@@ -1,6 +1,8 @@
 package alertrecord
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -14,10 +16,11 @@ const (
 
 // Task triggers
 const (
-	FirstVersionFailureId  = "first_version_failure"
-	FirstVariantFailureId  = "first_variant_failure"
-	FirstTaskTypeFailureId = "first_tasktype_failure"
-	TaskFailTransitionId   = "task_transition_failure"
+	FirstVersionFailureId    = "first_version_failure"
+	FirstVariantFailureId    = "first_variant_failure"
+	FirstTaskTypeFailureId   = "first_tasktype_failure"
+	TaskFailTransitionId     = "task_transition_failure"
+	FirstRegressionInVersion = "first_regression_in_version"
 	// TODO: EVG-3408
 	TaskFailedId                    = "task_failed"
 	LastRevisionNotFound            = "last_revision_not_found"
@@ -47,6 +50,7 @@ type AlertRecord struct {
 	Variant             string        `bson:"variant,omitempty"`
 	TestName            string        `bson:"test_name,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty"`
+	AlertTime           time.Time     `bson:"alert_time,omitempty"`
 }
 
 //nolint: deadcode, megacheck
@@ -63,6 +67,7 @@ var (
 	VersionIdKey           = bsonutil.MustHaveTag(AlertRecord{}, "VersionId")
 	testNameKey            = bsonutil.MustHaveTag(AlertRecord{}, "TestName")
 	RevisionOrderNumberKey = bsonutil.MustHaveTag(AlertRecord{}, "RevisionOrderNumber")
+	AlertTimeKey           = bsonutil.MustHaveTag(AlertRecord{}, "AlertTime")
 )
 
 // FindOne gets one AlertRecord for the given query.
@@ -100,7 +105,7 @@ func ByLastFailureTransition(subscriptionID, taskName, variant, projectId string
 	q[TaskNameKey] = taskName
 	q[VariantKey] = variant
 	q[ProjectIdKey] = projectId
-	return db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}).Limit(1)
+	return db.Query(q).Sort([]string{"-" + AlertTimeKey, "-" + RevisionOrderNumberKey}).Limit(1)
 }
 
 func ByFirstFailureInVersion(subscriptionID, projectId, versionId string) db.Q {
@@ -138,6 +143,13 @@ func ByLastRevNotFound(subscriptionID, projectId, versionId string) db.Q {
 	q[ProjectIdKey] = projectId
 	q[VersionIdKey] = versionId
 	return db.Query(q).Limit(1)
+}
+
+func FindByFirstRegressionInVersion(subscriptionID, versionId string) (*AlertRecord, error) {
+	q := subscriptionIDQuery(subscriptionID)
+	q[TypeKey] = FirstRegressionInVersion
+	q[VersionIdKey] = versionId
+	return FindOne(db.Query(q).Limit(1))
 }
 
 func FindByLastTaskRegressionByTest(subscriptionID, testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {
@@ -179,6 +191,7 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, testName, taskDisplayNa
 		Variant:             variant,
 		TestName:            testName,
 		RevisionOrderNumber: revision,
+		AlertTime:           time.Now(),
 	}
 
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTest)
@@ -194,6 +207,7 @@ func InsertNewTaskRegressionByTestWithNoTestsRecord(subscriptionID, taskDisplayN
 		TaskStatus:          taskStatus,
 		Variant:             variant,
 		RevisionOrderNumber: revision,
+		AlertTime:           time.Now(),
 	}
 
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTestWithNoTests)
