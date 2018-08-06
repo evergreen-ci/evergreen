@@ -10,34 +10,28 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 // types and functions for Version Cost Route
 type costByVersionHandler struct {
 	versionId string
+	sc        data.Connector
 }
 
-func getCostByVersionIdRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &costByVersionHandler{},
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
+func makeCostByVersionHandler(sc data.Connector) gimlet.RouteHandler {
+	return &costByVersionHandler{
+		sc: sc,
 	}
 }
 
-func (cbvh *costByVersionHandler) Handler() RequestHandler {
-	return &costByVersionHandler{}
+func (cbvh *costByVersionHandler) Factory() gimlet.RouteHandler {
+	return &costByVersionHandler{
+		sc: cbvh.sc,
+	}
 }
 
-func (cbvh *costByVersionHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (cbvh *costByVersionHandler) Parse(ctx context.Context, r *http.Request) error {
 	cbvh.versionId = gimlet.GetVars(r)["version_id"]
 
 	if cbvh.versionId == "" {
@@ -47,20 +41,19 @@ func (cbvh *costByVersionHandler) ParseAndValidate(ctx context.Context, r *http.
 	return nil
 }
 
-func (cbvh *costByVersionHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundVersionCost, err := sc.FindCostByVersionId(cbvh.versionId)
+func (cbvh *costByVersionHandler) Run(ctx context.Context) gimlet.Responder {
+	foundVersionCost, err := cbvh.sc.FindCostByVersionId(cbvh.versionId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	versionCostModel := &model.APIVersionCost{}
-	err = versionCostModel.BuildFromService(foundVersionCost)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+
+	if err = versionCostModel.BuildFromService(foundVersionCost); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
-	return ResponseData{
-		Result: []model.Model{versionCostModel},
-	}, nil
+
+	return gimlet.NewJSONResponse(versionCostModel)
 }
 
 // types and functions for Distro Cost Route
@@ -68,24 +61,17 @@ type costByDistroHandler struct {
 	distroId  string
 	startTime time.Time
 	duration  time.Duration
+	sc        data.Connector
 }
 
-func getCostByDistroIdRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &costByDistroHandler{},
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
+func makeCostByDistroHandler(sc data.Connector) gimlet.RouteHandler {
+	return &costByDistroHandler{
+		sc: sc,
 	}
 }
 
-func (cbvh *costByDistroHandler) Handler() RequestHandler {
-	return &costByDistroHandler{}
+func (cbvh *costByDistroHandler) Factory() gimlet.RouteHandler {
+	return &costByDistroHandler{sc: cbvh.sc}
 }
 
 func parseTime(r *http.Request) (time.Time, time.Duration, error) {
@@ -120,7 +106,7 @@ func parseTime(r *http.Request) (time.Time, time.Duration, error) {
 	return st, d, nil
 }
 
-func (cbvh *costByDistroHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (cbvh *costByDistroHandler) Parse(ctx context.Context, r *http.Request) error {
 	cbvh.distroId = gimlet.GetVars(r)["distro_id"]
 	if cbvh.distroId == "" {
 		return errors.New("request data incomplete")
@@ -136,61 +122,46 @@ func (cbvh *costByDistroHandler) ParseAndValidate(ctx context.Context, r *http.R
 	return nil
 }
 
-func (cbvh *costByDistroHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundDistroCost, err := sc.FindCostByDistroId(cbvh.distroId, cbvh.startTime, cbvh.duration)
+func (cbvh *costByDistroHandler) Run(ctx context.Context) gimlet.Responder {
+	foundDistroCost, err := cbvh.sc.FindCostByDistroId(cbvh.distroId, cbvh.startTime, cbvh.duration)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	distroCostModel := &model.APIDistroCost{}
-	err = distroCostModel.BuildFromService(foundDistroCost)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+	if err = distroCostModel.BuildFromService(foundDistroCost); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
-	return ResponseData{
-		Result: []model.Model{distroCostModel},
-	}, nil
+
+	return gimlet.NewJSONResponse(distroCostModel)
 }
 
 type costTasksByProjectHandler struct {
-	*PaginationExecutor
-}
-
-type costTasksByProjectArgs struct {
-	projectID string
-	starttime time.Time
+	limit     int
+	key       string
 	duration  time.Duration
+	starttime time.Time
+	projectID string
 	User      *user.DBUser
+	sc        data.Connector
 }
 
-func getCostTaskByProjectRouteManager(route string, version int) *RouteManager {
-	c := &costTasksByProjectHandler{}
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: c.Handler(),
-				MethodType:     http.MethodGet,
-			},
-		},
-		Version: version,
+func makeTaskCostByProjectRoute(sc data.Connector) gimlet.RouteHandler {
+	return &costTasksByProjectHandler{
+		sc: sc,
 	}
 }
 
-func (h *costTasksByProjectHandler) Handler() RequestHandler {
-	return &costTasksByProjectHandler{&PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       costTasksByProjectPaginator,
-	}}
+func (h *costTasksByProjectHandler) Factory() gimlet.RouteHandler {
+	return &costTasksByProjectHandler{
+		sc: h.sc,
+	}
 }
 
-func (h *costTasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	usr := MustHaveUser(ctx)
-	args := costTasksByProjectArgs{User: usr}
-	args.projectID = gimlet.GetVars(r)["project_id"]
-	if args.projectID == "" {
+func (h *costTasksByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.User = MustHaveUser(ctx)
+	h.projectID = gimlet.GetVars(r)["project_id"]
+	if h.projectID == "" {
 		return errors.New("request data incomplete")
 	}
 
@@ -198,62 +169,73 @@ func (h *costTasksByProjectHandler) ParseAndValidate(ctx context.Context, r *htt
 	if err != nil {
 		return err
 	}
-	args.starttime = st
-	args.duration = d
+	h.starttime = st
+	h.duration = d
 
-	h.Args = args
-	return h.PaginationExecutor.ParseAndValidate(ctx, r)
+	vals := r.URL.Query()
+
+	h.key = vals.Get("start_at")
+
+	h.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
-func costTasksByProjectPaginator(key string, limit int, args interface{},
-	sc data.Connector) ([]model.Model, *PageResult, error) {
-	grip.Debugln("fetching all tasks for project given time range")
-
-	project := args.(costTasksByProjectArgs).projectID
-	starttime := args.(costTasksByProjectArgs).starttime
-	endttime := starttime.Add(args.(costTasksByProjectArgs).duration)
-
-	tasks, err := sc.FindCostTaskByProject(project, key, starttime, endttime, limit*2, 1)
+func (h *costTasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
+	endttime := h.starttime.Add(h.duration)
+	tasks, err := h.sc.FindCostTaskByProject(h.projectID, h.key, h.starttime, endttime, h.limit+1, 1)
 	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}
 
-	// Make the previous page
-	prevTasks, err := sc.FindCostTaskByProject(project, key, starttime, endttime, limit, -1)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
+	if len(tasks) == 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "not found",
+		})
 	}
 
-	// Populate page info
-	pages := &PageResult{}
-	if len(tasks) > limit {
-		pages.Next = &Page{
-			Relation: "next",
-			Key:      tasks[limit].Id,
-			Limit:    len(tasks) - limit,
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	lastIndex := len(tasks)
+	if len(tasks) > h.limit {
+		lastIndex = h.limit
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         h.sc.GetURL(),
+				Key:             tasks[h.limit].Id,
+				Limit:           h.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
 		}
 	}
-	if len(prevTasks) >= 1 {
-		pages.Prev = &Page{
-			Relation: "prev",
-			Key:      prevTasks[len(prevTasks)-1].Id,
-			Limit:    len(prevTasks),
-		}
-	}
-	// Truncate results data if there's a next page
-	if pages.Next != nil {
-		tasks = tasks[:limit]
-	}
-	models := []model.Model{}
+
+	tasks = tasks[:lastIndex]
 	for _, t := range tasks {
 		taskCostModel := &model.APITaskCost{}
 		if err = taskCostModel.BuildFromService(t); err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
+			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				Message:    "problem converting task to APITaskCost",
 				StatusCode: http.StatusInternalServerError,
-			}
+			})
 		}
-		models = append(models, taskCostModel)
+
+		if err = resp.AddData(taskCostModel); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
-	return models, pages, nil
+
+	return resp
 }

@@ -60,7 +60,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 
 		Convey("then properly finding each set of tests should succeed", func() {
 			for i := 0; i < numTasks; i++ {
-				foundTests, err := serviceContext.FindTestsByTaskId(fmt.Sprintf("task_%d", i), "", "", 0, 1, 0)
+				foundTests, err := serviceContext.FindTestsByTaskId(fmt.Sprintf("task_%d", i), "", "", 0, 0)
 				So(err, ShouldBeNil)
 				So(len(foundTests), ShouldEqual, numTests)
 			}
@@ -68,7 +68,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 		Convey("then properly finding only tasks with status should return correct set", func() {
 			for _, status := range []string{"pass", "fail"} {
 				for i := 0; i < numTasks; i++ {
-					foundTests, err := serviceContext.FindTestsByTaskId(fmt.Sprintf("task_%d", i), "", status, 0, 1, 0)
+					foundTests, err := serviceContext.FindTestsByTaskId(fmt.Sprintf("task_%d", i), "", status, 0, 0)
 					So(err, ShouldBeNil)
 					So(len(foundTests), ShouldEqual, numTests/2)
 					for _, t := range foundTests {
@@ -79,13 +79,12 @@ func TestFindTestsByTaskId(t *testing.T) {
 		})
 		Convey("then properly finding only tasks from test file should return correct set", func() {
 			taskId := "task_1"
-			for _, sort := range []int{1, -1} {
-				for i := 0; i < numTests; i++ {
-					foundTests, err := serviceContext.FindTestsByTaskId(taskId, "", "", 0, sort, 0)
-					So(err, ShouldBeNil)
 
-					So(len(foundTests), ShouldEqual, numTests)
-				}
+			for i := 0; i < numTests; i++ {
+				foundTests, err := serviceContext.FindTestsByTaskId(taskId, "", "", 0, 0)
+				So(err, ShouldBeNil)
+
+				So(len(foundTests), ShouldEqual, numTests)
 			}
 		})
 		Convey("then adding a limit should return correct number and set of results"+
@@ -93,7 +92,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 			taskname := "task_0"
 			limit := 2
 			for i := 0; i < numTests/limit; i++ {
-				foundTests, err := serviceContext.FindTestsByTaskId(taskname, "", "", limit, 1, 0)
+				foundTests, err := serviceContext.FindTestsByTaskId(taskname, "", "", limit, 0)
 				So(err, ShouldBeNil)
 				So(len(foundTests), ShouldEqual, limit)
 			}
@@ -101,7 +100,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 		})
 		Convey("then searching for task that doesn't exist should"+
 			" fail with an APIError", func() {
-			foundTests, err := serviceContext.FindTestsByTaskId("fake_task", "", "", 0, 1, 0)
+			foundTests, err := serviceContext.FindTestsByTaskId("fake_task", "", "", 0, 0)
 			So(err, ShouldNotBeNil)
 			So(len(foundTests), ShouldEqual, 0)
 
@@ -113,7 +112,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 		Convey("then searching for a task with no test_file should return first result",
 			func() {
 				taskname := "task_0"
-				foundTests, err := serviceContext.FindTestsByTaskId(taskname, "", "", 1, 1, 0)
+				foundTests, err := serviceContext.FindTestsByTaskId(taskname, "", "", 1, 0)
 				So(err, ShouldBeNil)
 				So(len(foundTests), ShouldEqual, 1)
 				test1 := foundTests[0]

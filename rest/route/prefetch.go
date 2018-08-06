@@ -26,9 +26,12 @@ const (
 // fetch data using data.Connector set them on the request context.
 type PrefetchFunc func(context.Context, data.Connector, *http.Request) (context.Context, error)
 
-// PrefetchProjectContext gets the information related to the project that the request contains
-// and fetches the associated project context and attaches that to the request context.
-func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Request) (context.Context, error) {
+type projCtxMiddleware struct {
+	sc data.Connector
+}
+
+func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
 	vars := gimlet.GetVars(r)
 	taskId := vars["task_id"]
 	buildId := vars["build_id"]
@@ -36,31 +39,40 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
 
-	opCtx, err := sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
+	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
-		return ctx, err
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
 	}
 
 	user := gimlet.GetUser(ctx)
 
 	if opCtx.ProjectRef != nil && opCtx.ProjectRef.Private && user == nil {
 		// Project is private and user is not authorized so return not found
-		return ctx, gimlet.ErrorResponse{
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Project not found",
-		}
+		}))
+		return
 	}
 
 	if opCtx.Patch != nil && user == nil {
-		return ctx, gimlet.ErrorResponse{
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "Not found",
-		}
+		}))
+		return
 	}
 
-	ctx = context.WithValue(ctx, RequestContext, &opCtx)
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 
-	return ctx, nil
+	next(rw, r)
+}
+
+func NewProjectContextMiddleware(sc data.Connector) gimlet.Middleware {
+	return &projCtxMiddleware{
+		sc: sc,
+	}
 }
 
 // GetProjectContext returns the project context associated with a

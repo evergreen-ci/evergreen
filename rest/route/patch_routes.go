@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -131,116 +132,110 @@ func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Handler for fetching current users patches
-//
-//    /patches/mine
+// GET /rest/v2/users/<id>/patches
 
 type patchesByUserHandler struct {
-	PaginationExecutor
+	limit int
+	key   time.Time
+	user  string
+	sc    data.Connector
 }
 
-type patchesByUserArgs struct {
-	user string
-}
-
-func getPatchesByUserManager(route string, version int) *RouteManager {
-	p := &patchesByUserHandler{}
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodGet,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: p.Handler(),
-			},
-		},
+func makeUserPatchHandler(sc data.Connector) gimlet.RouteHandler {
+	return &patchesByUserHandler{
+		sc: sc,
 	}
 }
 
-func (p *patchesByUserHandler) Handler() RequestHandler {
-	return &patchesByUserHandler{PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       patchesByUserPaginator,
-		Args:            patchesByUserArgs{},
-	}}
+func (p *patchesByUserHandler) Factory() gimlet.RouteHandler {
+	return &patchesByUserHandler{
+		sc: p.sc,
+	}
 }
 
-func (p *patchesByUserHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = patchesByUserArgs{gimlet.GetVars(r)["user_id"]}
+func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.user = gimlet.GetVars(r)["user_id"]
+	vals := r.URL.Query()
 
-	return p.PaginationExecutor.ParseAndValidate(ctx, r)
-}
-
-func patchesByUserPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
-	user := args.(patchesByUserArgs).user
-	grip.Debugln("getting : ", limit, "patches for user: ", user, " starting from time: ", key)
-	var ts time.Time
 	var err error
-	if key == "" {
-		ts = time.Now()
-	} else {
-		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.UTC)
-		if err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
-				StatusCode: http.StatusBadRequest,
-			}
+	p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", p.key, err.Error()),
+			StatusCode: http.StatusBadRequest,
 		}
 	}
-	// sortAsc set to false in order to display patches in desc chronological order
-	patches, err := sc.FindPatchesByUser(user, ts, limit*2, false)
+
+	p.limit, err = getLimit(vals)
 	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
+		return errors.WithStack(err)
 	}
-	if len(patches) <= 0 {
-		return []model.Model{}, nil, gimlet.ErrorResponse{
+
+	return nil
+}
+
+func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
+	grip.Debug(message.Fields{
+		"limit": p.limit,
+		"user":  p.user,
+		"key":   p.key,
+		"op":    "patches for user",
+	})
+
+	// sortAsc set to false in order to display patches in desc chronological order
+	patches, err := p.sc.FindPatchesByUser(p.user, p.key, p.limit+1)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	if len(patches) == 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "no patches found",
 			StatusCode: http.StatusNotFound,
+		})
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	lastIndex := len(patches)
+	if len(patches) > p.limit {
+		lastIndex = p.limit
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         p.sc.GetURL(),
+				Key:             model.NewTime(patches[p.limit].CreateTime).String(),
+				Limit:           p.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
 		}
 	}
 
-	// Make the previous page
-	prevPatches, err := sc.FindPatchesByUser(user, ts, limit, true)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
-	}
-	// populate the page info structure
-	pages := &PageResult{}
-	if len(patches) > limit {
-		pages.Next = &Page{
-			Relation: "next",
-			Key:      model.NewTime(patches[limit].CreateTime).String(),
-			Limit:    len(patches) - limit,
-		}
-	}
-	if len(prevPatches) >= 1 {
-		pages.Prev = &Page{
-			Relation: "prev",
-			Key:      model.NewTime(prevPatches[len(prevPatches)-1].CreateTime).String(),
-			Limit:    len(prevPatches),
-		}
-	}
+	patches = patches[:lastIndex]
 
-	// truncate results data if there's a next page.
-	if pages.Next != nil {
-		patches = patches[:limit]
-	}
-	models := []model.Model{}
 	for _, info := range patches {
 		patchModel := &model.APIPatch{}
 		if err = patchModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
+			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				Message:    "problem converting patch document",
 				StatusCode: http.StatusInternalServerError,
-			}
+			})
 		}
 
-		models = append(models, patchModel)
+		if err = resp.AddData(patchModel); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
 
-	return models, pages, nil
+	return resp
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -249,112 +244,98 @@ func patchesByUserPaginator(key string, limit int, args interface{}, sc data.Con
 //
 //    /projects/{project_id}/patches
 
-type patchesByProjectArgs struct {
-	projectId string
-}
-
-func getPatchesByProjectManager(route string, version int) *RouteManager {
-	p := &patchesByProjectHandler{}
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodGet,
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: p.Handler(),
-			},
-		},
-	}
-}
-
 type patchesByProjectHandler struct {
-	PaginationExecutor
+	projectId string
+	key       time.Time
+	limit     int
+	sc        data.Connector
 }
 
-func (p *patchesByProjectHandler) Handler() RequestHandler {
-	return &patchesByProjectHandler{PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       patchesByProjectPaginator,
-		Args:            patchesByProjectArgs{},
-	}}
+func makePatchesByProjectRoute(sc data.Connector) gimlet.RouteHandler {
+	return &patchesByProjectHandler{
+		sc: sc,
+	}
 }
 
-func (p *patchesByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	p.Args = patchesByProjectArgs{projectId: gimlet.GetVars(r)["project_id"]}
-
-	return p.PaginationExecutor.ParseAndValidate(ctx, r)
+func (p *patchesByProjectHandler) Factory() gimlet.RouteHandler {
+	return &patchesByProjectHandler{
+		sc: p.sc,
+	}
 }
 
-func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
-	proj := args.(patchesByProjectArgs).projectId
-	grip.Debugln("getting patches for project: ", proj, " starting from time: ", key)
-	var ts time.Time
+func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.projectId = gimlet.GetVars(r)["project_id"]
+
+	vals := r.URL.Query()
+
 	var err error
-	if key == "" {
-		ts = time.Now()
-	} else {
-		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.UTC)
-		if err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
-				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-	}
-	// sortDir is set to -1 in order to display patches in reverse chronological order
-	patches, err := sc.FindPatchesByProject(proj, ts, limit*2, false)
+	p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
 	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
+		return errors.WithStack(err)
 	}
-	if len(patches) <= 0 {
-		return []model.Model{}, nil, gimlet.ErrorResponse{
+
+	p.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
+	patches, err := p.sc.FindPatchesByProject(p.projectId, p.key, p.limit+1)
+	if err != nil {
+		return gimlet.NewJSONResponse(errors.Wrap(err, "Database error"))
+	}
+
+	if len(patches) == 0 {
+		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 			Message:    "no patches found",
 			StatusCode: http.StatusNotFound,
+		})
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	lastIndex := len(patches)
+	if len(patches) > p.limit {
+		lastIndex = p.limit
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         p.sc.GetURL(),
+				Key:             model.NewTime(patches[p.limit].CreateTime).String(),
+				Limit:           p.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
 		}
 	}
 
-	// Make the previous page
-	prevPatches, err := sc.FindPatchesByProject(proj, ts, limit, true)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
-	}
-	// populate the page info structure
-	pages := &PageResult{}
-	if len(patches) > limit {
-		pages.Next = &Page{
-			Relation: "next",
-			Key:      model.NewTime(patches[limit].CreateTime).String(),
-			Limit:    len(patches) - limit,
-		}
-	}
-	if len(prevPatches) >= 1 {
-		pages.Prev = &Page{
-			Relation: "prev",
-			Key:      model.NewTime(prevPatches[len(prevPatches)-1].CreateTime).String(),
-			Limit:    len(prevPatches),
-		}
-	}
+	patches = patches[:lastIndex]
 
-	// truncate results data if there's a next page.
-	if pages.Next != nil {
-		patches = patches[:limit]
-	}
-	models := []model.Model{}
 	for _, info := range patches {
 		patchModel := &model.APIPatch{}
 		if err = patchModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
+			return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
 				Message:    "problem converting patch document",
 				StatusCode: http.StatusInternalServerError,
-			}
+			})
 		}
 
-		models = append(models, patchModel)
+		if err = resp.AddData(patchModel); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
 
-	return models, pages, nil
+	return resp
 }
 
 ////////////////////////////////////////////////////////////////////////

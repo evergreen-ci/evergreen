@@ -10,107 +10,101 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 type projectGetHandler struct {
-	PaginationExecutor
+	key   string
+	limit int
+	user  *user.DBUser
+	sc    data.Connector
 }
 
-type projectGetArgs struct {
-	User *user.DBUser
-}
-
-func getProjectRouteManager(route string, version int) *RouteManager {
-	p := &projectGetHandler{}
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: p.Handler(),
-				MethodType:     http.MethodGet,
-			},
-		},
+func makeFetchProjectsRoute(sc data.Connector) gimlet.RouteHandler {
+	return &projectGetHandler{
+		sc: sc,
 	}
 }
 
-func (p *projectGetHandler) Handler() RequestHandler {
-	return &projectGetHandler{PaginationExecutor{
-		KeyQueryParam:   "start_at",
-		LimitQueryParam: "limit",
-		Paginator:       projectPaginator,
-	}}
+func (p *projectGetHandler) Factory() gimlet.RouteHandler {
+	return &projectGetHandler{
+		sc: p.sc,
+	}
 }
 
-func (p *projectGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	usrabs := gimlet.GetUser(ctx)
-	u, _ := usrabs.(*user.DBUser)
+func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	p.user, _ = gimlet.GetUser(ctx).(*user.DBUser)
 
-	p.Args = projectGetArgs{User: u}
+	vals := r.URL.Query()
 
-	return p.PaginationExecutor.ParseAndValidate(ctx, r)
+	p.key = vals.Get("start_at")
+	var err error
+	p.limit, err = getLimit(vals)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
-func projectPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
-	grip.Debugln("fetching all projects")
+func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	isAuthenticated := false
-	if args.(projectGetArgs).User != nil {
+	if p.user != nil {
 		isAuthenticated = true
 	}
-	projects, err := sc.FindProjects(key, limit*2, 1, isAuthenticated)
+
+	projects, err := p.sc.FindProjects(p.key, p.limit+1, 1, isAuthenticated)
 	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
-	if len(projects) <= 0 {
-		return []model.Model{}, nil, gimlet.ErrorResponse{
+
+	if len(projects) == 0 {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "no projects found",
 			StatusCode: http.StatusNotFound,
-		}
+		})
 	}
 
-	// Make the previous page
-	prevProjects, err := sc.FindProjects(key, limit, -1, isAuthenticated)
-	if err != nil {
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
+	resp := gimlet.NewResponseBuilder()
+	if err = resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	// Populate page info
-	pages := &PageResult{}
-	if len(projects) > limit {
-		pages.Next = &Page{
-			Relation: "next",
-			Key:      projects[limit].Identifier,
-			Limit:    len(projects) - limit,
-		}
-	}
-	if len(prevProjects) >= 1 {
-		pages.Prev = &Page{
-			Relation: "prev",
-			Key:      prevProjects[len(prevProjects)-1].Identifier,
-			Limit:    len(prevProjects),
-		}
-	}
+	lastIndex := len(projects)
+	if len(projects) > p.limit {
+		lastIndex = p.limit
 
-	// Truncate results data if there's a next page
-	if pages.Next != nil {
-		projects = projects[:limit]
+		err = resp.SetPages(&gimlet.ResponsePages{
+			Next: &gimlet.Page{
+				Relation:        "next",
+				LimitQueryParam: "limit",
+				KeyQueryParam:   "start_at",
+				BaseURL:         p.sc.GetURL(),
+				Key:             projects[p.limit].Identifier,
+				Limit:           p.limit,
+			},
+		})
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
+				"problem paginating response"))
+		}
 	}
-	models := []model.Model{}
-	for _, p := range projects {
+	projects = projects[:lastIndex]
+
+	for _, proj := range projects {
 		projectModel := &model.APIProject{}
-		if err = projectModel.BuildFromService(p); err != nil {
-			return []model.Model{}, nil, gimlet.ErrorResponse{
+		if err = projectModel.BuildFromService(proj); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message:    "problem converting project document",
 				StatusCode: http.StatusInternalServerError,
-			}
+			})
 		}
-		models = append(models, projectModel)
+		if err = resp.AddData(projectModel); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
 	}
 
-	return models, pages, nil
+	return resp
 }
 
 type versionsGetHandler struct {

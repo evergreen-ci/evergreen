@@ -430,17 +430,12 @@ func scheduleableTasksQuery() bson.M {
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
 // associated with a given project and commit hash.
-func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string,
-	limit, sortDir int) []bson.M {
-	sortOperator := "$gte"
-	if sortDir < 0 {
-		sortOperator = "$lte"
-	}
+func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string, limit int) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:  projectId,
 			RevisionKey: commitHash,
-			IdKey:       bson.M{sortOperator: taskId},
+			IdKey:       bson.M{"$gte": taskId},
 		}},
 	}
 	if taskStatus != "" {
