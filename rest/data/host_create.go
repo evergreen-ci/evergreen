@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -71,24 +70,18 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 		return errors.Errorf("unable to find configuration for task %s", tc.Task.Id)
 	}
 
-	createHostCmds := []*command.CreateHost{}
+	createHostCmds := []apimodels.CreateHost{}
 	catcher := grip.NewBasicCatcher()
 	for _, commandConf := range projectTask.Commands {
-		cmds, err := command.Render(commandConf, tc.Project.Functions)
+		if commandConf.Command != evergreen.CreateHostCommandName {
+			continue
+		}
+		createHost := apimodels.CreateHost{}
+		err = mapstructure.Decode(commandConf.Params, &createHost)
 		if err != nil {
-			return errors.Wrap(err, "unable to parse command")
+			return errors.New("error decoding createHost parameters")
 		}
-		for _, cmd := range cmds {
-			createHost, ok := cmd.(*command.CreateHost)
-			if !ok {
-				continue
-			}
-			if err = createHost.CreateHost.Validate(); err != nil {
-				catcher.Add(err)
-				continue
-			}
-			createHostCmds = append(createHostCmds, createHost)
-		}
+		createHostCmds = append(createHostCmds, createHost)
 	}
 	if catcher.HasErrors() {
 		return catcher.Resolve()
@@ -96,8 +89,8 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 
 	hosts := []host.Host{}
 	for _, createHost := range createHostCmds {
-		for i := 0; i < createHost.CreateHost.NumHosts; i++ {
-			intent, err := dc.MakeIntentHost(t.Id, user.Username(), keyVal, *createHost.CreateHost)
+		for i := 0; i < createHost.NumHosts; i++ {
+			intent, err := dc.MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
 				return errors.Wrap(err, "error creating host document")
 			}

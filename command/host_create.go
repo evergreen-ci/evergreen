@@ -27,7 +27,7 @@ func (c *CreateHost) ParseParams(params map[string]interface{}) error {
 	return errors.Wrapf(mapstructure.Decode(params, c.CreateHost), "error parsing '%s' params", c.Name())
 }
 
-func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
+func (c *CreateHost) expandAndValidate(conf *model.TaskConfig) error {
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
 	}
