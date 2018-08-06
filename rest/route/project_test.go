@@ -29,28 +29,6 @@ func TestProjectGetSuite(t *testing.T) {
 }
 
 func (s *ProjectGetSuite) SetupSuite() {
-	varAMap := map[string]string{
-		"x": "a",
-		"y": "b",
-	}
-	varBMap := map[string]string{
-		"x": "a",
-		"y": "b",
-	}
-	varA := serviceModel.ProjectVars{
-		Id:   "projectA",
-		Vars: varAMap,
-		PrivateVars: map[string]bool{
-			"x": true,
-		},
-	}
-	varB := serviceModel.ProjectVars{
-		Id:   "projectB",
-		Vars: varBMap,
-		PrivateVars: map[string]bool{
-			"y": true,
-		},
-	}
 	s.data = data.MockProjectConnector{
 		CachedProjects: []serviceModel.ProjectRef{
 			{Identifier: "projectA"},
@@ -60,7 +38,6 @@ func (s *ProjectGetSuite) SetupSuite() {
 			{Identifier: "projectE"},
 			{Identifier: "projectF"},
 		},
-		CachedVars: []*serviceModel.ProjectVars{&varA, &varB},
 	}
 	s.paginator = projectPaginator
 	s.sc = &data.MockConnector{
@@ -106,24 +83,6 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	pageData := metadata.Pages
 	s.Nil(pageData.Prev)
 	s.Nil(pageData.Next)
-}
-
-func (s *ProjectGetSuite) TestPaginatorAttachesVars() {
-	rd, err := executeProjectRequest("projectA", 1, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-
-	s.Len(rd.Result, 1)
-	s.Equal("", (rd.Result[0]).(*model.APIProject).Vars["x"])
-	s.Equal("b", (rd.Result[0]).(*model.APIProject).Vars["y"])
-
-	rd, err = executeProjectRequest("projectB", 1, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-
-	s.Len(rd.Result, 1)
-	s.Equal("a", (rd.Result[0]).(*model.APIProject).Vars["x"])
-	s.Equal("", (rd.Result[0]).(*model.APIProject).Vars["y"])
 }
 
 func executeProjectRequest(key string, limit int, sc *data.MockConnector) (ResponseData, error) {
