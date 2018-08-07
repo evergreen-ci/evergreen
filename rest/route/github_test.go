@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -23,7 +24,7 @@ import (
 
 type GithubWebhookRouteSuite struct {
 	sc       *data.MockConnector
-	rm       *RouteManager
+	rm       gimlet.RouteHandler
 	canceler context.CancelFunc
 	conf     *evergreen.Settings
 	prBody   []byte
@@ -57,10 +58,11 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.NoError(db.Clear(model.ProjectRefCollection))
 
 	s.queue = evergreen.GetEnvironment().LocalQueue()
-	s.rm = getGithubHooksRouteManager(s.queue, []byte(s.conf.Api.GithubWebhookSecret))("", 2)
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
 		CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
 	}}
+
+	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.Api.GithubWebhookSecret))
 
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
@@ -72,7 +74,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.Len(s.pushBody, 7603)
 
 	var ok bool
-	s.h, ok = s.rm.Methods[0].Handler().(*githubHookApi)
+	s.h, ok = s.rm.Factory().(*githubHookApi)
 	s.True(ok)
 }
 
@@ -90,9 +92,8 @@ func (s *GithubWebhookRouteSuite) TestAddIntent() {
 	s.h.msgID = "1"
 
 	ctx := context.Background()
-	resp, err := s.h.Execute(ctx, s.sc)
-	s.NoError(err)
-	s.Empty(resp.Result)
+	resp := s.h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
@@ -101,9 +102,9 @@ func (s *GithubWebhookRouteSuite) TestAddDuplicateIntentFails() {
 	s.TestAddIntent()
 
 	ctx := context.Background()
-	resp, err := s.h.Execute(ctx, s.sc)
-	s.Error(err)
-	s.Empty(resp.Result)
+
+	resp := s.h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
 
@@ -114,7 +115,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	s.NoError(err)
 	req.Header.Del("X-Hub-Signature")
 
-	err = s.h.ParseAndValidate(ctx, req)
+	err = s.h.Parse(ctx, req)
 	s.Equal("pull_request", s.h.eventType)
 	s.Error(err)
 }
@@ -125,7 +126,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	req, err := makeRequest("1", s.prBody, secret)
 	s.NoError(err)
 
-	err = s.h.ParseAndValidate(ctx, req)
+	err = s.h.Parse(ctx, req)
 	s.NoError(err)
 	s.NotNil(s.h.event)
 	s.Equal("pull_request", s.h.eventType)
@@ -137,7 +138,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	req.Header.Del("X-Github-Event")
 	req.Header.Add("X-Github-Event", "push")
 
-	err = s.h.ParseAndValidate(ctx, req)
+	err = s.h.Parse(ctx, req)
 	s.NoError(err)
 	s.NotNil(s.h.event)
 	s.Equal("push", s.h.eventType)
@@ -179,7 +180,9 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	s.h.msgID = "1"
 
 	ctx := context.Background()
-	resp, err := s.h.Execute(ctx, s.sc)
-	s.NoError(err)
-	s.Empty(resp.Result)
+
+	resp := s.h.Run(ctx)
+	if s.NotNil(resp) {
+		s.Equal(http.StatusOK, resp.Status())
+	}
 }

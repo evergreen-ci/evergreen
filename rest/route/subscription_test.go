@@ -21,7 +21,7 @@ import (
 type SubscriptionRouteSuite struct {
 	sc data.Connector
 	suite.Suite
-	postHandler MethodHandler
+	postHandler gimlet.RouteHandler
 }
 
 func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
@@ -33,15 +33,7 @@ func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 }
 
 func (s *SubscriptionRouteSuite) SetupSuite() {
-	// test getting the route handler
-	const route = "/subscriptions"
-	const version = 2
-	routeManager := getSubscriptionRouteManager(route, version)
-	s.NotNil(routeManager)
-	s.Equal(route, routeManager.Route)
-	s.Equal(version, routeManager.Version)
-	s.postHandler = routeManager.Methods[0]
-	s.IsType(&subscriptionPostHandler{}, s.postHandler.RequestHandler)
+	s.postHandler = makeSetSubscrition(s.sc)
 }
 
 func (s *SubscriptionRouteSuite) SetupTest() {
@@ -70,11 +62,12 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 
 	// test creating a new subscription
-	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	resp := s.postHandler.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
+
 	s.NotNil(resp)
 
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
@@ -106,11 +99,11 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 
-	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	resp = s.postHandler.Run(ctx)
 	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 
 	dbSubscriptions, err = event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
@@ -140,12 +133,12 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 
 	// create a new subscription
-	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	resp := s.postHandler.Run(ctx)
 	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("myproj", event.OwnerTypeProject)
 	s.NoError(err)
@@ -176,26 +169,25 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 
-	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	resp = s.postHandler.Run(ctx)
 	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 
 	// get the updated subscription
-	h := &subscriptionGetHandler{}
+	h := &subscriptionGetHandler{sc: s.sc}
 	h.owner = "myproj"
 	h.ownerType = string(event.OwnerTypeProject)
-	subs, err := h.Execute(ctx, s.sc)
-	s.NoError(err)
-	s.Require().Len(subs.Result, 1)
-	sub := subs.Result[0].(*model.APISubscription)
-	s.Equal("new type", model.FromAPIString(sub.ResourceType))
+	resp = h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
+	sub := resp.Data().([]model.APISubscription)
+	s.Equal("new type", model.FromAPIString(sub[0].ResourceType))
 
 	// delete the subscription
-	d := &subscriptionDeleteHandler{id: id}
-	_, err = d.Execute(ctx, s.sc)
-	s.NoError(err)
+	d := &subscriptionDeleteHandler{sc: s.sc, id: id}
+	resp = d.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 	subscription, err := event.FindSubscriptionByID(id)
 	s.NoError(err)
 	s.Nil(subscription)
@@ -223,27 +215,26 @@ func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "401 (Unauthorized): Cannot change subscriptions for anyone other than yourself")
+	s.EqualError(s.postHandler.Parse(ctx, request), "401 (Unauthorized): Cannot change subscriptions for anyone other than yourself")
 }
 
 func (s *SubscriptionRouteSuite) TestGet() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 
-	h := &subscriptionGetHandler{}
+	h := &subscriptionGetHandler{sc: s.sc}
 	h.owner = "me"
 	h.ownerType = string(event.OwnerTypePerson)
-	subs, err := h.Execute(ctx, s.sc)
-	s.NoError(err)
-	s.Len(subs.Result, 0)
+	resp := h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 
 	s.TestSubscriptionPost()
 
 	h.owner = "me"
 	h.ownerType = string(event.OwnerTypePerson)
-	subs, err = h.Execute(ctx, s.sc)
-	s.NoError(err)
-	s.Len(subs.Result, 1)
+	resp = h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
+	s.NotNil(resp.Data())
 }
 
 func (s *SubscriptionRouteSuite) TestDeleteValidation() {
@@ -254,11 +245,11 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 
 	r, err := http.NewRequest(http.MethodDelete, "/subscriptions", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "400 (Bad Request): Must specify an ID to delete")
+	s.EqualError(d.Parse(ctx, r), "400 (Bad Request): Must specify an ID to delete")
 
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9704fdd202da", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "404 (Not Found): Subscription not found")
+	s.EqualError(d.Parse(ctx, r), "404 (Not Found): Subscription not found")
 
 	subscription := event.Subscription{
 		ID:    "5949645c9acd9604fdd202da",
@@ -270,14 +261,14 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 	s.NoError(subscription.Upsert())
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9604fdd202da", nil)
 	s.NoError(err)
-	s.EqualError(d.ParseAndValidate(ctx, r), "401 (Unauthorized): Cannot delete subscriptions for someone other than yourself")
+	s.EqualError(d.Parse(ctx, r), "401 (Unauthorized): Cannot delete subscriptions for someone other than yourself")
 }
 
 func (s *SubscriptionRouteSuite) TestGetWithoutUser() {
 	s.PanicsWithValue("no user attached to request", func() {
 		ctx := context.Background()
 		h := &subscriptionGetHandler{}
-		_ = h.ParseAndValidate(ctx, nil)
+		_ = h.Parse(ctx, nil)
 	})
 }
 
@@ -306,7 +297,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Cannot notify by jira-issue for version")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Cannot notify by jira-issue for version")
 
 	//test that project-level subscriptions are allowed
 	body = []map[string]interface{}{{
@@ -331,7 +322,7 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 }
 
 func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
@@ -359,7 +350,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Error validating subscription: foo must be a number")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: foo must be a number")
 
 	body = []map[string]interface{}{{
 		"resource_type": "atype",
@@ -383,7 +374,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Error validating subscription: -2 cannot be negative")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: -2 cannot be negative")
 
 	body = []map[string]interface{}{{
 		"resource_type": "atype",
@@ -407,7 +398,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	buffer = bytes.NewBuffer(jsonBody)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
 
 	body = []map[string]interface{}{{
 		"resource_type": "atype",
@@ -428,7 +419,7 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Invalid selectors: Selector had empty type or data")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Invalid selectors: Selector had empty type or data")
 }
 
 func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
@@ -455,7 +446,7 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.NoError(err)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Invalid regex selectors: Selector had empty type or data")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Invalid regex selectors: Selector had empty type or data")
 
 	body[0]["regex_selectors"] = []map[string]string{{
 		"type": "",
@@ -465,7 +456,7 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	s.NoError(err)
 	request, err = http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Invalid regex selectors: Selector had empty type or data")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Invalid regex selectors: Selector had empty type or data")
 }
 
 func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
@@ -488,7 +479,7 @@ func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
 	s.NoError(err)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "400 (Bad Request): Error validating subscription: must specify at least 1 selector")
+	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: must specify at least 1 selector")
 }
 
 func (s *SubscriptionRouteSuite) TestAcceptSubscriptionWithOnlyRegexSelectors() {
@@ -515,5 +506,5 @@ func (s *SubscriptionRouteSuite) TestAcceptSubscriptionWithOnlyRegexSelectors() 
 	s.NoError(err)
 	request, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer(jsonBody))
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 }

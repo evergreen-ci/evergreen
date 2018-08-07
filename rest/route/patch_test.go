@@ -208,49 +208,46 @@ func (s *PatchAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getPatchAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[0].Hex()
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-
-	s.NoError(err)
+	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
+	rm.patchId = s.objIds[0].Hex()
+	res := rm.Run(ctx)
 	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
 	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
-	p, ok := (res.Result[0]).(*model.APIPatch)
+	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
-	res, err = rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	res = rm.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
-	p, ok = (res.Result[0]).(*model.APIPatch)
+	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
-	rm = getPatchAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[1].Hex()
-	res, err = rm.Methods[0].Execute(ctx, s.sc)
+	rm.patchId = s.objIds[1].Hex()
+	res = rm.Run(ctx)
 
-	s.Error(err)
-	s.Nil(res.Result)
+	s.NotEqual(http.StatusOK, res.Status())
 }
 
 func (s *PatchAbortSuite) TestAbortFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getPatchAbortManager("", 2)
+	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
 	new_id := bson.NewObjectId()
 	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
 	}
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = new_id.Hex()
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-	s.Error(err)
-	s.NotNil(res)
-	s.Len(res.Result, 0)
+
+	rm.patchId = new_id.Hex()
+	res := rm.Run(ctx)
+	s.NotEqual(http.StatusOK, res.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -349,12 +346,12 @@ func (s *PatchRestartSuite) TestRestart() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getPatchRestartManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchRestartHandler).patchId = s.objIds[0].Hex()
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	rm := makeRestartPatch(s.sc).(*patchRestartHandler)
+	rm.patchId = s.objIds[0].Hex()
+	res := rm.Run(ctx)
 	s.NotNil(res)
 
+	s.Equal(http.StatusOK, res.Status())
 	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0].Hex()])
 }
 

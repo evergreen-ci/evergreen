@@ -57,93 +57,99 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(hostModel)
 }
 
-func getHostTerminateRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodPost,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &hostTerminateHandler{},
-			},
-		},
-	}
-}
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}/terminate
+
+// TODO this should be a DELETE method on the hosts route rather than
+// a post on terminate.
 
 type hostTerminateHandler struct {
 	hostID string
+	sc     data.Connector
 }
 
-func (h *hostTerminateHandler) Handler() RequestHandler {
-	return &hostTerminateHandler{}
+func makeTerminateHostRoute(sc data.Connector) gimlet.RouteHandler {
+	return &hostTerminateHandler{
+		sc: sc,
+	}
 }
 
-func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *hostTerminateHandler) Factory() gimlet.RouteHandler {
+	return &hostTerminateHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostTerminateHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
+
 	h.hostID, err = validateHostID(gimlet.GetVars(r)["host_id"])
 
 	return err
 }
 
-func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *hostTerminateHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	if host.Status == evergreen.HostTerminated {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("Host %s is already terminated", host.Id),
-		}
+		})
 
 	} else if host.Status == evergreen.HostUninitialized {
-		if err := sc.SetHostStatus(host, evergreen.HostTerminated, u.Id); err != nil {
-			return ResponseData{}, gimlet.ErrorResponse{
+		if err := h.sc.SetHostStatus(host, evergreen.HostTerminated, u.Id); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
-			}
+			})
 		}
 
 	} else {
-		if err := sc.TerminateHost(ctx, host, u.Id); err != nil {
-			return ResponseData{}, gimlet.ErrorResponse{
+		if err := h.sc.TerminateHost(ctx, host, u.Id); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
-			}
+			})
 		}
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func getHostChangeRDPPasswordRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodPost,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &hostChangeRDPPasswordHandler{},
-			},
-		},
-	}
-}
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}/change_password
+//
+
+// TODO (?) should this be a patch route?
 
 type hostChangeRDPPasswordHandler struct {
 	hostID      string
 	rdpPassword string
+	sc          data.Connector
 }
 
-func (h *hostChangeRDPPasswordHandler) Handler() RequestHandler {
-	return &hostChangeRDPPasswordHandler{}
+func makeHostChangePassword(sc data.Connector) gimlet.RouteHandler {
+	return &hostChangeRDPPasswordHandler{
+		sc: sc,
+	}
+
 }
 
-func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *hostChangeRDPPasswordHandler) Factory() gimlet.RouteHandler {
+	return &hostChangeRDPPasswordHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostChangeRDPPasswordHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
 		return err
@@ -166,60 +172,60 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 	return nil
 }
 
-func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *hostChangeRDPPasswordHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	if !host.Distro.IsWindows() {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "RDP passwords can only be set on Windows hosts",
-		}
+		})
 	}
 	if host.Status != evergreen.HostRunning {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "RDP passwords can only be set on running hosts",
-		}
+		})
 	}
 	if err := cloud.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
-		}
+		})
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
-func getHostExtendExpirationRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodPost,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &hostExtendExpirationHandler{},
-			},
-		},
-	}
-}
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/hosts/{host_id}/extend_expiration
+//
 
 type hostExtendExpirationHandler struct {
 	hostID   string
 	addHours time.Duration
+	sc       data.Connector
 }
 
-func (h *hostExtendExpirationHandler) Handler() RequestHandler {
-	return &hostExtendExpirationHandler{}
+func makeExtendHostExpiration(sc data.Connector) gimlet.RouteHandler {
+	return &hostExtendExpirationHandler{
+		sc: sc,
+	}
 }
 
-func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *hostExtendExpirationHandler) Factory() gimlet.RouteHandler {
+	return &hostExtendExpirationHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostExtendExpirationHandler) Parse(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
 		return err
@@ -256,37 +262,37 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 	return nil
 }
 
-func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *hostExtendExpirationHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
-	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
+	host, err := h.sc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 	if host.Status == evergreen.HostTerminated {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "cannot extend expiration of a terminated host",
-		}
+		})
 	}
 
 	var newExp time.Time
 	newExp, err = cloud.MakeExtendedSpawnHostExpiration(host, h.addHours)
 	if err != nil {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
-		}
+		})
 	}
 
-	if err := sc.SetHostExpirationTime(host, newExp); err != nil {
-		return ResponseData{}, gimlet.ErrorResponse{
+	if err := h.sc.SetHostExpirationTime(host, newExp); err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
-		}
+		})
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////

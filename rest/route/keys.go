@@ -18,64 +18,70 @@ import (
 // update the BASE64REGEX in directives.spawn.js
 const keyRegex = "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$"
 
-type keysGetHandler struct{}
+type keysGetHandler struct {
+	sc data.Connector
+}
 
-func getKeysRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			MethodHandler{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &keysGetHandler{},
-				MethodType:     http.MethodGet,
-			},
-			MethodHandler{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &keysPostHandler{},
-				MethodType:     http.MethodPost,
-			},
-		},
-		Version: version,
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/keys
+
+func makeFetchKeys(sc data.Connector) gimlet.RouteHandler {
+	return &keysGetHandler{
+		sc: sc,
 	}
 }
 
-func (h *keysGetHandler) Handler() RequestHandler {
-	return &keysGetHandler{}
-}
+func (h *keysGetHandler) Factory() gimlet.RouteHandler                     { return &keysGetHandler{sc: h.sc} }
+func (h *keysGetHandler) Parse(ctx context.Context, r *http.Request) error { return nil }
 
-func (h *keysGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	return nil
-}
-
-func (h *keysGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *keysGetHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
-	userKeys := make([]model.Model, len(user.PubKeys))
-	for i, key := range user.PubKeys {
-		apiKey := &model.APIPubKey{}
-		err := apiKey.BuildFromService(key)
-		if err != nil {
-			return ResponseData{}, errors.Wrap(err, "error marshalling public key to api")
-		}
-
-		userKeys[i] = apiKey
+	resp := gimlet.NewResponseBuilder()
+	if err := resp.SetStatus(http.StatusOK); err != nil {
+		return gimlet.NewJSONErrorResponse(err)
 	}
 
-	return ResponseData{
-		Result: userKeys,
-	}, nil
+	if err := resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.NewJSONErrorResponse(err)
+	}
+
+	for _, key := range user.PubKeys {
+		apiKey := &model.APIPubKey{}
+		if err := apiKey.BuildFromService(key); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error marshalling public key to api"))
+		}
+		if err := resp.AddData(apiKey); err != nil {
+			return gimlet.NewJSONResponse(err)
+		}
+
+	}
+
+	return resp
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/keys
 
 type keysPostHandler struct {
 	keyName  string
 	keyValue string
+	sc       data.Connector
 }
 
-func (h *keysPostHandler) Handler() RequestHandler {
-	return &keysPostHandler{}
+func makeSetKey(sc data.Connector) gimlet.RouteHandler {
+	return &keysPostHandler{
+		sc: sc,
+	}
 }
 
-func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *keysPostHandler) Factory() gimlet.RouteHandler {
+	return &keysPostHandler{sc: h.sc}
+}
+
+func (h *keysPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -135,46 +141,43 @@ func validateKeyValue(keyValue string) error {
 	return nil
 }
 
-func (h *keysPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
 
 	if _, err := u.GetPublicKey(h.keyName); err == nil {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "a public key with this name already exists for user",
-		}
+		})
 	}
 
-	if err := sc.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
-		return ResponseData{}, errors.Wrap(err, "failed to add key")
+	if err := h.sc.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "failed to add key"))
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// DELETE /rest/v2/keys/{key_name}
 
 type keysDeleteHandler struct {
 	keyName string
+	sc      data.Connector
 }
 
-func getKeysDeleteRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			MethodHandler{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &keysDeleteHandler{},
-				MethodType:     http.MethodDelete,
-			},
-		},
-		Version: version,
+func makeDeleteKeys(sc data.Connector) gimlet.RouteHandler {
+	return &keysDeleteHandler{
+		sc: sc,
 	}
 }
 
-func (h *keysDeleteHandler) Handler() RequestHandler {
-	return &keysDeleteHandler{}
+func (h *keysDeleteHandler) Factory() gimlet.RouteHandler {
+	return &keysDeleteHandler{sc: h.sc}
 }
 
-func (h *keysDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *keysDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.keyName = gimlet.GetVars(r)["key_name"]
 	if strings.TrimSpace(h.keyName) == "" {
 		return gimlet.ErrorResponse{
@@ -186,19 +189,19 @@ func (h *keysDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 	return nil
 }
 
-func (h *keysDeleteHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 
 	if _, err := user.GetPublicKey(h.keyName); err != nil {
-		return ResponseData{}, gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("key with name '%s' does not exist", h.keyName),
-		}
+		})
 	}
 
-	if err := sc.DeletePublicKey(user, h.keyName); err != nil {
-		return ResponseData{}, errors.New("couldn't delete key")
+	if err := h.sc.DeletePublicKey(user, h.keyName); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.New("couldn't delete key"))
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }

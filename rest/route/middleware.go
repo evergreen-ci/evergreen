@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -20,11 +22,6 @@ const (
 	// These are private custom types to avoid key collisions.
 	RequestContext requestContextKey = 0
 )
-
-// PrefetchFunc is a function signature that defines types of functions which may
-// be used to fetch data before the main request handler is called. They should
-// fetch data using data.Connector set them on the request context.
-type PrefetchFunc func(context.Context, data.Connector, *http.Request) (context.Context, error)
 
 type projCtxMiddleware struct {
 	sc data.Connector
@@ -105,4 +102,11 @@ func MustHaveUser(ctx context.Context) *user.DBUser {
 	}
 
 	return usr
+}
+
+func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
+	if priority > evergreen.MaxTaskPriority {
+		return auth.IsSuperUser(sc.GetSuperUsers(), user)
+	}
+	return true
 }
