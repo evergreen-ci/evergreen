@@ -1770,7 +1770,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 		Activated:   true,
 		BuildId:     buildID,
 		Project:     "sample",
-		Status:      evergreen.TaskUndispatched,
+		Status:      evergreen.TaskStarted,
 		StartTime:   time.Now().Add(-time.Hour),
 		DependsOn: []task.Dependency{
 			{
@@ -1792,8 +1792,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 				Status:      evergreen.TaskStarted,
 			},
 			{
-				Id:     anotherTask.Id,
-				Status: evergreen.TaskUndispatched,
+				Id:        anotherTask.Id,
+				Activated: true,
+				Status:    evergreen.TaskStarted,
 			},
 		},
 	}
