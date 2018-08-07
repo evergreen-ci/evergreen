@@ -193,6 +193,25 @@ const (
 	SenderEmail
 )
 
+func (k SenderKey) String() string {
+	switch k {
+	case SenderGithubStatus:
+		return "github-status"
+	case SenderEmail:
+		return "email"
+	case SenderEvergreenWebhook:
+		return "webhook"
+	case SenderSlack:
+		return "slack"
+	case SenderJIRAComment:
+		return "jira-comment"
+	case SenderJIRAIssue:
+		return "jira-issue"
+	default:
+		return "<error:unkwown>"
+	}
+}
+
 const (
 	defaultLogBufferingDuration  = 20
 	defaultMgoDialTimeout        = 5 * time.Second
