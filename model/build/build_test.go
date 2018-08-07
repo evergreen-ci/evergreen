@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -561,7 +562,7 @@ func TestAllTasksFinished(t *testing.T) {
 			},
 			// this task is unscheduled
 			{
-				Id:     "t7",
+				Id:     "t5",
 				Status: evergreen.TaskUndispatched,
 			},
 		},
@@ -596,4 +597,51 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.False(b.AllTasksFinished())
 	b.Tasks[0].Status = evergreen.TaskFailed
 	assert.True(b.AllTasksFinished())
+}
+
+func TestBuildSetCachedTaskFinished(t *testing.T) {
+	assert := assert.New(t)
+
+	b := &Build{
+		Id:      "b1",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+		Tasks: []TaskCache{
+			{
+				Id:     "t1",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t2",
+				Status: evergreen.TaskStarted,
+			},
+		},
+	}
+	assert.NoError(b.Insert())
+	b.Id = "b2"
+	assert.NoError(b.Insert())
+	b.Id = "b1"
+
+	detail := apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   "system",
+	}
+	timeTaken := 10 * time.Minute
+
+	assert.NoError(b.SetCachedTaskFinished("t1", evergreen.TaskFailed, &detail, timeTaken))
+	assert.NoError(b.SetCachedTaskFinished("t2", evergreen.TaskFailed, &detail, timeTaken))
+	assert.EqualError(b.SetCachedTaskFinished("t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
+
+	assert.NoError(SetCachedTaskFinished("b2", "t1", evergreen.TaskFailed, &detail, timeTaken))
+	assert.NoError(SetCachedTaskFinished("b2", "t2", evergreen.TaskFailed, &detail, timeTaken))
+	assert.EqualError(SetCachedTaskFinished("b2", "t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
+
+	// Results from build.SetCachedTaskFinished and SetCachedTaskFinished
+	// should be the same
+	b2, err := FindOneId("b2")
+	assert.NoError(err)
+	assert.NotNil(b2)
+	b.Id = ""
+	b2.Id = ""
+	assert.EqualValues(b2, b)
 }

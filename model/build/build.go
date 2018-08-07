@@ -219,3 +219,18 @@ func (b *Build) IsActive() bool {
 	}
 	return false
 }
+
+func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
+	for i := range b.Tasks {
+		if b.Tasks[i].Id != taskID {
+			continue
+		}
+
+		b.Tasks[i].Id = taskID
+		b.Tasks[i].Status = status
+		b.Tasks[i].TimeTaken = timeTaken
+		b.Tasks[i].StatusDetails = *detail
+	}
+
+	return SetCachedTaskFinished(b.Id, taskID, status, detail, timeTaken)
+}
