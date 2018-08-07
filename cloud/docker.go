@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -114,29 +113,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		"container": h.Id,
 	})
 	event.LogHostStarted(h.Id)
-
-	// Retrieve container details
-	newContainer, err := m.client.GetContainer(ctx, parentHost, h.Id)
-	if err != nil {
-		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", hostIP)
-		grip.Error(err)
-		return nil, err
-	}
-
-	hostPort, err := retrieveOpenPortBinding(newContainer)
-	if err != nil {
-		err = errors.Wrapf(err, "Container '%s' could not retrieve open ports", newContainer.ID)
-		grip.Error(err)
-		return nil, err
-	}
-	h.Host = fmt.Sprintf("%s:%s", hostIP, hostPort)
-
-	grip.Info(message.Fields{
-		"message":   "retrieved open port binding",
-		"container": h.Id,
-		"host_ip":   hostIP,
-		"host_port": hostPort,
-	})
 
 	return h, nil
 }
