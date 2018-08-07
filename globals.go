@@ -23,6 +23,7 @@ const (
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 
+	// Task Statuses used in the database models
 	// TaskUnstarted and TaskInactive are only used when collecting results
 	// (see model/task/results.go) and in tests. Presumably, these are
 	// statuses that were used in the past, however they are longer
@@ -35,7 +36,6 @@ const (
 	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
 
-	// Task Statuses used in the database models
 	// TaskStarted indicates a task is running on an agent
 	TaskStarted = "started"
 
@@ -46,8 +46,8 @@ const (
 	// The task statuses below indicate that a task has finished.
 	TaskSucceeded = "success"
 
-	// These statuses indicate a handful of types of failures, but the
-	// task end details struct contains additional statuses
+	// These statuses indicate some of the types of failures, but the
+	// task end details struct contains more
 	TaskFailed       = "failed"
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
@@ -131,12 +131,8 @@ const (
 )
 
 func IsFinishedTaskStatus(status string) bool {
-	if status == TaskFailed ||
-		status == TaskSucceeded ||
-		status == TaskSystemFailed ||
-		status == TaskSystemTimedOut ||
-		status == TaskSystemUnresponse ||
-		status == TaskTestTimedOut {
+	if status == TaskSucceeded ||
+		IsFailedTaskStatus(status) {
 		return true
 	}
 
