@@ -161,16 +161,16 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 
 // TestAbortVersion tests the route for aborting a version.
 func (s *VersionSuite) TestAbortVersion() {
-	handler := &versionAbortHandler{versionId: "versionId"}
+	handler := &versionAbortHandler{versionId: "versionId", sc: s.sc}
 
 	// Check that Execute runs without error and returns
 	// the correct Version.
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
-	version := res.Result[0]
-	h, _ := (version).(*model.APIVersion)
+	s.Equal(http.StatusOK, res.Status())
+	version := res.Data()
+	h, ok := (version).(*model.APIVersion)
+	s.True(ok)
 	s.Equal(model.ToAPIString(versionId), h.Id)
 
 	// Check that all tasks have been aborted.
@@ -184,16 +184,17 @@ func (s *VersionSuite) TestRestartVersion() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
 
-	handler := &versionRestartHandler{versionId: "versionId"}
+	handler := &versionRestartHandler{versionId: "versionId", sc: s.sc}
 
 	// Check that Execute runs without error and returns
 	// the correct Version.
-	res, err := handler.Execute(ctx, s.sc)
-	s.NoError(err)
+	res := handler.Run(ctx)
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
-	version := res.Result[0]
-	h, _ := (version).(*model.APIVersion)
+	s.Equal(http.StatusOK, res.Status())
+
+	version := res.Data()
+	h, ok := (version).(*model.APIVersion)
+	s.True(ok)
 	s.Equal(model.ToAPIString(versionId), h.Id)
 	s.Equal("caller1", s.versionData.CachedRestartedVersions["versionId"])
 }

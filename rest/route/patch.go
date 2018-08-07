@@ -285,7 +285,7 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	patches, err := p.sc.FindPatchesByProject(p.projectId, p.key, p.limit+1)
 	if err != nil {
-		return gimlet.NewJSONResponse(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
 	if len(patches) == 0 {
@@ -344,56 +344,46 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 //
 //    /patches/{patch_id}/abort
 
-func getPatchAbortManager(route string, version int) *RouteManager {
-	p := &patchAbortHandler{}
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodPost,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: p.Handler(),
-			},
-		},
+type patchAbortHandler struct {
+	patchId string
+	user    gimlet.User
+	sc      data.Connector
+}
+
+func makeAbortPatch(sc data.Connector) gimlet.RouteHandler {
+	return &patchAbortHandler{
+		sc: sc,
 	}
 }
 
-type patchAbortHandler struct {
-	patchId string
+func (p *patchAbortHandler) Factory() gimlet.RouteHandler {
+	return &patchAbortHandler{sc: p.sc}
 }
 
-func (p *patchAbortHandler) Handler() RequestHandler {
-	return &patchAbortHandler{}
-}
-
-func (p *patchAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (p *patchAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
-func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	err := sc.AbortPatch(p.patchId, usr.Id)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Abort error")
+
+	if err := p.sc.AbortPatch(p.patchId, usr.Id); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Abort error"))
 	}
 
 	// Patch may be deleted by abort (eg not finalized) and not found here
-	foundPatch, err := sc.FindPatchById(p.patchId)
+	foundPatch, err := p.sc.FindPatchById(p.patchId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
+
 	patchModel := &model.APIPatch{}
-	err = patchModel.BuildFromService(*foundPatch)
-
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+	if err = patchModel.BuildFromService(*foundPatch); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{patchModel},
-	}, nil
+	return gimlet.NewJSONResponse(patchModel)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -402,55 +392,45 @@ func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (Res
 //
 //    /patches/{patch_id}/restart
 
-func getPatchRestartManager(route string, version int) *RouteManager {
-	p := &patchRestartHandler{}
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				MethodType:     http.MethodPost,
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: p.Handler(),
-			},
-		},
+type patchRestartHandler struct {
+	patchId string
+	sc      data.Connector
+}
+
+func makeRestartPatch(sc data.Connector) gimlet.RouteHandler {
+	return &patchRestartHandler{
+		sc: sc,
 	}
 }
 
-type patchRestartHandler struct {
-	patchId string
+func (p *patchRestartHandler) Factory() gimlet.RouteHandler {
+	return &patchRestartHandler{
+		sc: p.sc,
+	}
 }
 
-func (p *patchRestartHandler) Handler() RequestHandler {
-	return &patchRestartHandler{}
-}
-
-func (p *patchRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (p *patchRestartHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.patchId = gimlet.GetVars(r)["patch_id"]
 	return nil
 }
 
-func (p *patchRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-
+func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// If the version has not been finalized, returns NotFound
 	usr := MustHaveUser(ctx)
-	err := sc.RestartVersion(p.patchId, usr.Id)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Restart error")
+
+	if err := p.sc.RestartVersion(p.patchId, usr.Id); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Restart error"))
 	}
 
-	foundPatch, err := sc.FindPatchById(p.patchId)
+	foundPatch, err := p.sc.FindPatchById(p.patchId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
+
 	patchModel := &model.APIPatch{}
-	err = patchModel.BuildFromService(*foundPatch)
-
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+	if err = patchModel.BuildFromService(*foundPatch); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{patchModel},
-	}, nil
+	return gimlet.NewJSONResponse(patchModel)
 }

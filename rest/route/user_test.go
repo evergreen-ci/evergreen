@@ -19,7 +19,7 @@ import (
 type UserRouteSuite struct {
 	sc data.Connector
 	suite.Suite
-	postHandler MethodHandler
+	postHandler gimlet.RouteHandler
 }
 
 func TestUserRouteSuiteWithDB(t *testing.T) {
@@ -31,15 +31,7 @@ func TestUserRouteSuiteWithDB(t *testing.T) {
 }
 
 func (s *UserRouteSuite) SetupSuite() {
-	// test getting the route handler
-	const route = "/users/settings"
-	const version = 2
-	routeManager := getUserSettingsRouteManager(route, version)
-	s.NotNil(routeManager)
-	s.Equal(route, routeManager.Route)
-	s.Equal(version, routeManager.Version)
-	s.postHandler = routeManager.Methods[1]
-	s.IsType(&userSettingsPostHandler{}, s.postHandler.RequestHandler)
+	s.postHandler = makeSetUserConfig(s.sc)
 }
 
 func (s *UserRouteSuite) SetupTest() {
@@ -63,11 +55,11 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/users/settings", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 
-	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	resp := s.postHandler.Run(ctx)
 	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 
 	dbUser, err := user.FindOne(user.ById("me"))
 	s.NoError(err)
@@ -97,11 +89,11 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest(http.MethodPost, "/users/settings", buffer)
 	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	s.NoError(s.postHandler.Parse(ctx, request))
 
-	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
+	resp := s.postHandler.Run(ctx)
 	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 
 	dbUser, err := user.FindOne(user.ById("me"))
 	s.NoError(err)
