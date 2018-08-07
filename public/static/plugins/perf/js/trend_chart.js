@@ -427,7 +427,7 @@ var drawSingleTrendChart = function(params) {
       class: 'x-tick-label',
       'text-anchor': 'middle'
     })
-    .text(function(d) { return moment(d.startedAt).format(cfg.xAxis.format) })
+    .text(function(d) { return moment(d.createTime).format(cfg.xAxis.format) })
 
   // X Tick vertical line
   xTicks
@@ -766,7 +766,7 @@ var drawSingleTrendChart = function(params) {
     // Reduce number of calls if hash didn't changed
     if (hash != scope.$parent.currentHash) {
       scope.$parent.currentHash = hash;
-      scope.$parent.currentHashDate = d.startedAt
+      scope.$parent.currentHashDate = d.createTime
       scope.$emit('hashChanged', hash)
       scope.$parent.$digest()
     }
