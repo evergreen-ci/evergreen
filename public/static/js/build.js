@@ -141,7 +141,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
         addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
 
       }else {
-        addInSelectorsAndOwnerType(data, "build", data.resource_type.toLowerCase(), $scope.build.Build._id);
+        addInSelectorsAndOwnerType(data, "build", "build", $scope.build.Build._id);
       }
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();

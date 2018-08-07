@@ -2360,15 +2360,15 @@ func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
 		h := Host{
 			Id:          "bar",
 			RunningTask: "foo",
-			Status:      evergreen.HostRunning,
+			Status:      evergreen.HostTerminated,
 		}
 		assert.NoError(t, h.Insert())
 
 		hosts, err := FindTerminatedHostsRunningTasks()
 		assert.NoError(t, err)
-		assert.Len(t, hosts, 1)
-		assert.Equal(t, h.Id, hosts[0].Id)
-
+		if assert.Len(t, hosts, 1) {
+			assert.Equal(t, h.Id, hosts[0].Id)
+		}
 	})
 }
 

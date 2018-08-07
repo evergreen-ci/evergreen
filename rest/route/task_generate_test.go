@@ -45,9 +45,8 @@ func TestValidateJSON(t *testing.T) {
 }
 
 func TestGenerateExecute(t *testing.T) {
-	assert := assert.New(t)
-	h := &generateHandler{}
-	r, err := h.Execute(context.Background(), &data.MockConnector{})
-	assert.Equal(ResponseData{}, r)
-	assert.NoError(err)
+	h := &generateHandler{sc: &data.MockConnector{}}
+	r := h.Run(context.Background())
+	assert.Equal(t, r.Data(), struct{}{})
+	assert.Equal(t, r.Status(), http.StatusOK)
 }

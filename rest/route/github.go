@@ -27,47 +27,33 @@ type githubHookApi struct {
 	event     interface{}
 	eventType string
 	msgID     string
+	sc        data.Connector
 }
 
-func getGithubHooksRouteManager(queue amboy.Queue, secret []byte) routeManagerFactory {
-	return func(route string, version int) *RouteManager {
-		methods := []MethodHandler{}
-		if len(secret) > 0 {
-			methods = append(methods, MethodHandler{
-				Authenticator: &NoAuthAuthenticator{},
-				RequestHandler: &githubHookApi{
-					queue:  queue,
-					secret: secret,
-				},
-				MethodType: http.MethodPost,
-			})
-
-		} else {
-			grip.Warning("Github webhook secret is empty! Github webhooks have been disabled!")
-		}
-
-		return &RouteManager{
-			Route:   route,
-			Methods: methods,
-			Version: version,
-		}
+func makeGithubHooksRoute(sc data.Connector, queue amboy.Queue, secret []byte) gimlet.RouteHandler {
+	return &githubHookApi{
+		sc:     sc,
+		queue:  queue,
+		secret: secret,
 	}
 }
 
-func (gh *githubHookApi) Handler() RequestHandler {
+func (gh *githubHookApi) Factory() gimlet.RouteHandler {
 	return &githubHookApi{
 		queue:  gh.queue,
 		secret: gh.secret,
+		sc:     gh.sc,
 	}
 }
 
-func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (gh *githubHookApi) Parse(ctx context.Context, r *http.Request) error {
 	gh.eventType = r.Header.Get("X-Github-Event")
 	gh.msgID = r.Header.Get("X-Github-Delivery")
 
 	if len(gh.secret) == 0 || gh.queue == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
+			Message:    "webhooks are not configured and therefore disabled",
 		}
 	}
 
@@ -102,14 +88,14 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 	return nil
 }
 
-func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
 		if event.HookID == nil {
-			return ResponseData{}, gimlet.ErrorResponse{
+			return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
 				Message:    "malformed ping event",
-			}
+			})
 		}
 		grip.Info(message.Fields{
 			"source":  "github hook",
@@ -130,7 +116,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				"event":  gh.eventType,
 			}))
 
-			return ResponseData{}, err
+			return gimlet.NewJSONErrorResponse(err)
 		}
 
 		if *event.Action == githubActionOpened || *event.Action == githubActionSynchronize ||
@@ -144,10 +130,10 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 					"action":  *event.Action,
 					"message": "failed to create intent",
 				}))
-				return ResponseData{}, gimlet.ErrorResponse{
+				return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 					StatusCode: http.StatusBadRequest,
 					Message:    err.Error(),
-				}
+				})
 			}
 
 			grip.Info(message.Fields{
@@ -163,11 +149,11 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				"hash":      *event.PullRequest.Head.SHA,
 			})
 
-			if err := sc.AddPatchIntent(ghi, gh.queue); err != nil {
-				return ResponseData{}, gimlet.ErrorResponse{
+			if err := gh.sc.AddPatchIntent(ghi, gh.queue); err != nil {
+				return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
-				}
+				})
 			}
 
 		} else if *event.Action == githubActionClosed {
@@ -179,7 +165,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				"message": "pull request closed; aborting patch",
 			})
 
-			err := sc.AbortPatchesFromPullRequest(event)
+			err := gh.sc.AbortPatchesFromPullRequest(event)
 			grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
 				"source":  "github hook",
 				"msg_id":  gh.msgID,
@@ -188,12 +174,15 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				"message": "failed to abort patches",
 			}))
 
-			return ResponseData{}, err
+			return gimlet.MakeJSONErrorResponder(err)
 		}
 
 	case *github.PushEvent:
-		return ResponseData{}, sc.TriggerRepotracker(gh.queue, gh.msgID, event)
+		if err := gh.sc.TriggerRepotracker(gh.queue, gh.msgID, event); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }

@@ -123,93 +123,77 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 // versionAbortHandler is a RequestHandler for aborting all tasks of a version.
 type versionAbortHandler struct {
 	versionId string
+	userId    string
+	sc        data.Connector
 }
 
-func getAbortVersionRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &versionAbortHandler{},
-				MethodType:     http.MethodPost,
-			},
-		},
-		Version: version,
+func makeAbortVersion(sc data.Connector) gimlet.RouteHandler {
+	return &versionAbortHandler{
+		sc: sc,
 	}
 }
 
 // Handler returns a pointer to a new versionAbortHandler.
-func (h *versionAbortHandler) Handler() RequestHandler {
-	return &versionAbortHandler{}
+func (h *versionAbortHandler) Factory() gimlet.RouteHandler {
+	return &versionAbortHandler{
+		sc: h.sc,
+	}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
-func (h *versionAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *versionAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.versionId = gimlet.GetVars(r)["version_id"]
 
 	if h.versionId == "" {
 		return errors.New("request data incomplete")
 	}
 
+	if u := gimlet.GetUser(ctx); u != nil {
+		h.userId = u.Username()
+	}
+
 	return nil
 }
 
 // Execute calls the data AbortVersion function to abort all tasks of a version.
-func (h *versionAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	var userId string
-
-	if u := gimlet.GetUser(ctx); u != nil {
-		userId = u.Username()
-	}
-	err := sc.AbortVersion(h.versionId, userId)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error in aborting version:")
+func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
+	if err := h.sc.AbortVersion(h.versionId, h.userId); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in aborting version"))
 	}
 
-	foundVersion, err := sc.FindVersionById(h.versionId)
+	foundVersion, err := h.sc.FindVersionById(h.versionId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error in finding version:")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version"))
 	}
 
 	versionModel := &model.APIVersion{}
-	err = versionModel.BuildFromService(foundVersion)
-	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+	if err = versionModel.BuildFromService(foundVersion); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{versionModel},
-	}, err
+	return gimlet.NewJSONResponse(versionModel)
 }
 
 // versionRestartHandler is a RequestHandler for restarting all completed tasks
 // of a version.
 type versionRestartHandler struct {
 	versionId string
+	sc        data.Connector
 }
 
-func getRestartVersionRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route: route,
-		Methods: []MethodHandler{
-			{
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: &versionRestartHandler{},
-				MethodType:     http.MethodPost,
-			},
-		},
-		Version: version,
+func makeRestartVersion(sc data.Connector) gimlet.RouteHandler {
+	return &versionRestartHandler{
+		sc: sc,
 	}
 }
 
 // Handler returns a pointer to a new versionRestartHandler.
-func (h *versionRestartHandler) Handler() RequestHandler {
-	return &versionRestartHandler{}
+func (h *versionRestartHandler) Factory() gimlet.RouteHandler {
+	return &versionRestartHandler{sc: h.sc}
 }
 
 // ParseAndValidate fetches the versionId from the http request.
-func (h *versionRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (h *versionRestartHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.versionId = gimlet.GetVars(r)["version_id"]
 
 	if h.versionId == "" {
@@ -220,26 +204,24 @@ func (h *versionRestartHandler) ParseAndValidate(ctx context.Context, r *http.Re
 }
 
 // Execute calls the data RestartVersion function to restart completed tasks of a version.
-func (h *versionRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	// Restart the version
-	err := sc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
+	err := h.sc.RestartVersion(h.versionId, MustHaveUser(ctx).Id)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error in restarting version:")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in restarting version"))
 	}
 
 	// Find the version to return updated status.
-	foundVersion, err := sc.FindVersionById(h.versionId)
+	foundVersion, err := h.sc.FindVersionById(h.versionId)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "Database error in finding version:")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error in finding version:"))
 	}
 
 	versionModel := &model.APIVersion{}
 	err = versionModel.BuildFromService(foundVersion)
 	if err != nil {
-		return ResponseData{}, errors.Wrap(err, "API model error")
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	return ResponseData{
-		Result: []model.Model{versionModel},
-	}, err
+	return gimlet.NewJSONResponse(versionModel)
 }

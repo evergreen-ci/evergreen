@@ -395,10 +395,11 @@ func (e *envState) initSenders() error {
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(&send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
+			Name:         "evergreen",
+			BaseURL:      jira.GetHostURL(),
+			Username:     jira.Username,
+			Password:     jira.Password,
+			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira issue logger")
@@ -406,10 +407,11 @@ func (e *envState) initSenders() error {
 		e.senders[SenderJIRAIssue] = sender
 
 		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
+			Name:         "evergreen",
+			BaseURL:      jira.GetHostURL(),
+			Username:     jira.Username,
+			Password:     jira.Password,
+			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira comment logger")

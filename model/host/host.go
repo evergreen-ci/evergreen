@@ -998,7 +998,7 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 
 func FindTerminatedHostsRunningTasks() ([]Host, error) {
 	hosts, err := Find(db.Query(bson.M{
-		StatusKey: bson.M{"$in": evergreen.UphostStatus},
+		StatusKey: bson.M{"$nin": evergreen.UphostStatus},
 		"$and": []bson.M{
 			{RunningTaskKey: bson.M{"$exists": true}},
 			{RunningTaskKey: bson.M{"$ne": ""}}},

@@ -3,6 +3,7 @@ package alerts
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"strings"
 	"text/template"
 
@@ -22,7 +23,7 @@ import (
 
 // DescriptionTemplateString defines the content of the alert ticket.
 const DescriptionTemplateString = `
-h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id}}/{{.Task.Execution}}]
+h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id | urlquery}}/{{.Task.Execution}}]
 {{if .Host}}
 Host: [{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]
 {{end}}
@@ -194,7 +195,7 @@ func getSummary(ctx AlertContext) string {
 // historyURL provides a full URL to the test's task history page.
 func historyURL(t *task.Task, testName, uiRoot string) string {
 	return fmt.Sprintf("%v/task_history/%v/%v#%v=fail",
-		uiRoot, t.Project, t.DisplayName, testName)
+		uiRoot, t.Project, url.PathEscape(t.Id), testName)
 }
 
 // logURL returns the full URL for linking to a test's logs.
@@ -208,6 +209,7 @@ func logURL(test task.TestResult, root string) string {
 
 // getDescription returns the body of the JIRA ticket, with links.
 func getDescription(ctx AlertContext, uiRoot string) (string, error) {
+	const jiraMaxDescLength = 32767
 	// build a list of all failed tests to include
 	tests := []jiraTestFailure{}
 	for _, test := range ctx.Task.LocalTestResults {
@@ -232,6 +234,10 @@ func getDescription(ctx AlertContext, uiRoot string) (string, error) {
 	buf := &bytes.Buffer{}
 	if err := DescriptionTemplate.Execute(buf, args); err != nil {
 		return "", err
+	}
+	// Jira description length maximum
+	if buf.Len() > jiraMaxDescLength {
+		buf.Truncate(jiraMaxDescLength)
 	}
 	return buf.String(), nil
 }

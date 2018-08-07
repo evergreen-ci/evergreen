@@ -26,7 +26,7 @@ func (j *jiraClientMock) CreateClient(_ *http.Client, _ string) error {
 	return nil
 }
 
-func (j *jiraClientMock) Authenticate(_ string, _ string) error {
+func (j *jiraClientMock) Authenticate(_ string, _ string, _ bool) error {
 	if j.failAuth {
 		return errors.New("mock failed authentication")
 	}

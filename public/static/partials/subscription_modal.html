@@ -18,7 +18,7 @@
                   <div ng-show="hasSelectors()">
                     <p>and:</p>
                       <ul style="list-style-type: circle !important;" >
-                          <li ng-repeat="(type, field) in regexSelectors"><b>[[field.type_label]]</b> matches regex <span style="font-family: monospace;">/[[field.data]]/</pre>
+                          <li ng-repeat="(type, field) in regexSelectors"><b>[[field.type_label]]</b> matches regex <span style="font-family: monospace;">/[[field.data]]/</span>
                           <md-button ng-click="deleteRegexSelector(type)">
                             <i class="fa fa-trash"></i>
                           </md-button>

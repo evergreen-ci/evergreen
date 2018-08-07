@@ -92,7 +92,8 @@ type Task struct {
 	// Tags that describe the task
 	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
 
-	// The host the task was run on
+	// The host the task was run on. This value is empty for display
+	// tasks
 	HostId string `bson:"host_id" json:"host_id"`
 
 	// the number of times this task has been restarted

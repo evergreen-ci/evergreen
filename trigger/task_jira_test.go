@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"net/url"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -25,7 +27,7 @@ const (
 	buildName       = "Linux 64"
 	buildId         = "b1"
 	taskName        = "mainTests"
-	taskId          = "t1"
+	taskId          = "t1!"
 	testName1       = "local/jstests/big_test.js"
 	testName2       = "FunUnitTest"
 	testName3       = `Windows\test\cool.exe`
@@ -284,7 +286,7 @@ func TestJIRADescription(t *testing.T) {
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
 			})
 			Convey("with links to the task, host, project", func() {
-				So(d, ShouldContainSubstring, taskId)
+				So(d, ShouldContainSubstring, url.PathEscape(taskId))
 				So(d, ShouldContainSubstring, hostId)
 				So(d, ShouldContainSubstring, projectId)
 			})
@@ -301,7 +303,8 @@ func TestJIRADescription(t *testing.T) {
 		Convey("the description should match the URL and logline regexes", func() {
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(len(desc), ShouldEqual, 523)
+
+			So(len(desc), ShouldEqual, 518)
 
 			split := strings.Split(desc, "\n")
 
@@ -333,7 +336,15 @@ func TestJIRADescription(t *testing.T) {
 			So(logfiles, ShouldContain, "http://evergreen.ui/test_log/123")
 
 			So(len(taskURLs), ShouldEqual, 1)
-			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1/0")
+			So(taskURLs, ShouldContain, "http://evergreen.ui/task/t1%21/0")
+		})
+
+		Convey("can generate a description for a task with no host", func() {
+			j.data.Host = nil
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(len(desc), ShouldEqual, 485)
+			So(strings.Contains(desc, "Host: N/A"), ShouldBeTrue)
 		})
 	})
 }
