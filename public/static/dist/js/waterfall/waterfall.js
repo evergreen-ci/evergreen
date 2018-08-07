@@ -130,8 +130,7 @@ var Root = function (_React$PureComponent) {
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: _this2.props.data,
-      angular: null
+      data: _this2.props.data
     };
 
     // Handle state for a collapsed view, as well as shortened header commit messages
@@ -140,16 +139,10 @@ var Root = function (_React$PureComponent) {
     _this2.handleBuildVariantFilter = _this2.handleBuildVariantFilter.bind(_this2);
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
     _this2.loadDataPortion = _.debounce(_this2.loadDataPortion, 100);
-    _this2.injectAngular = _this2.injectAngular.bind(_this2);
     return _this2;
   }
 
   _createClass(Root, [{
-    key: "injectAngular",
-    value: function injectAngular(angular) {
-      this.setState({ angular: angular });
-    }
-  }, {
     key: "updatePaginationContext",
     value: function updatePaginationContext(data) {
       // Initialize newer|older buttons
@@ -236,7 +229,6 @@ var Root = function (_React$PureComponent) {
           buildVariantFilterFunc: this.handleBuildVariantFilter,
           taskFilterFunc: this.handleTaskFilter,
           isLoggedIn: this.props.user !== null,
-          angular: this.state.angular,
           project: this.props.project
         }),
         React.createElement(Headers, {
@@ -274,7 +266,6 @@ function Toolbar(_ref2) {
       buildVariantFilterFunc = _ref2.buildVariantFilterFunc,
       taskFilterFunc = _ref2.taskFilterFunc,
       isLoggedIn = _ref2.isLoggedIn,
-      angular = _ref2.angular,
       project = _ref2.project;
 
 
@@ -310,7 +301,6 @@ function Toolbar(_ref2) {
         }),
         React.createElement(GearMenu, {
           project: project,
-          angular: angular,
           isLoggedIn: isLoggedIn
         })
       )

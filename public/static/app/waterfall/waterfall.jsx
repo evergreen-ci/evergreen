@@ -104,8 +104,7 @@ class Root extends React.PureComponent{
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: this.props.data,
-      angular: null
+      data: this.props.data
     };
 
     // Handle state for a collapsed view, as well as shortened header commit messages
@@ -114,11 +113,6 @@ class Root extends React.PureComponent{
     this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
     this.loadDataPortion = _.debounce(this.loadDataPortion, 100)
-    this.injectAngular = this.injectAngular.bind(this);
-  }
-
-  injectAngular(angular) {
-    this.setState({angular});
   }
 
   updatePaginationContext(data) {
@@ -196,7 +190,6 @@ class Root extends React.PureComponent{
           buildVariantFilterFunc={this.handleBuildVariantFilter}
           taskFilterFunc={this.handleTaskFilter}
           isLoggedIn={this.props.user !== null}
-          angular={this.state.angular}
           project={this.props.project}
         />
         <Headers
@@ -230,7 +223,6 @@ function Toolbar ({collapsed,
   buildVariantFilterFunc,
   taskFilterFunc,
   isLoggedIn,
-  angular,
   project}) {
 
   var Form = ReactBootstrap.Form;
@@ -260,7 +252,6 @@ function Toolbar ({collapsed,
           />
           <GearMenu
             project={project}
-            angular={angular}
             isLoggedIn={isLoggedIn}
           />
         </Form>
