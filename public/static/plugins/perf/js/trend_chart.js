@@ -17,9 +17,42 @@ mciModule.factory('PerfChartService', function() {
       bottom: 60,
       left: 120
     },
+    effectiveWidth: undefined, // to be calculated
+    effectiveHeight: undefined, // to be calculated
     points: {
       focusedR: 4.5,
       changePointSize: 12,
+    },
+    toolTip: { // For change points
+      interlineSpace: 20,
+      width: 165,
+      margin: 15,
+      xOffset: -65,
+      yOffset: 0,
+      colOffset: [0, 45, 50, 65],
+      height: undefined, // to be calculated
+      labels: [{
+        key: 'nobs',
+        display: '#',
+      }, {
+        key: function(d) { return d.minmax[0] },
+        display: 'Min',
+      }, {
+        key: function(d) { return d.minmax[1] },
+        display: 'Max',
+      }, {
+        key: 'mean',
+        display: 'Mean',
+      }, {
+        key: 'variance',
+        display: 'Variance',
+      }, {
+        key: 'skewness',
+        display: 'Skewness',
+      }, {
+        key: 'kurtosis',
+        display: 'Kurtosis',
+      }],
     },
     valueAttr: 'ops_per_sec',
     yAxis: {
@@ -79,6 +112,9 @@ mciModule.factory('PerfChartService', function() {
   cfg.effectiveWidth = cfg.container.width - cfg.margin.left - cfg.margin.right;
   cfg.effectiveHeight = cfg.container.height - cfg.margin.top - cfg.margin.bottom;
 
+  // Tool Tip
+  cfg.toolTip.height = cfg.toolTip.interlineSpace * cfg.toolTip.labels.length
+
   // Legend y pos
   cfg.legend.yPos = (
     cfg.container.height - cfg.legend.yOffset
@@ -133,9 +169,9 @@ mciModule.factory('PerfChartService', function() {
   // thread `level` and series `item`
   function getValueForAllLevels(level) {
     return function(item) {
-      return item.threadResults[level.idx] ?
-        item.threadResults[level.idx][cfg.valueAttr] :
-        null;
+      return item.threadResults[level.idx]
+        ? item.threadResults[level.idx][cfg.valueAttr]
+        : null
     }
   }
 
@@ -164,10 +200,29 @@ var drawSingleTrendChart = function(params) {
       linearMode = params.linearMode,
       originMode = params.originMode;
 
+  function idxByRevision(series, revision) {
+    return _.findIndex(series, function(sample) {
+      return sample && sample.revision == revision
+    })
+  }
+
+  function hydrateChangePoint(point) {
+    // if idx == 0, shift it right for one point
+    var revIdx = idxByRevision(series, point.suspect_revision) || 1
+
+    point._meta = {
+      firstRevIdx: revIdx - 1,
+      lastRevIdx:  revIdx,
+    }
+  }
+
   // Filter out change points which lays outside ot the chart
-  var visibleChangePoints = _.filter(changePoints, function(d) {
-    return _.findWhere(series, {revision: d.revision})
-  })
+  var visibleChangePoints = _.chain(changePoints)
+    .filter(function(d) {
+      return _.findWhere(series, {revision: d.suspect_revision})
+    })
+    .each(hydrateChangePoint) // Add some useful meta data
+    .value()
 
   var cfg = PerfChartService.cfg;
   document.getElementById(containerId).innerHTML = '';
@@ -204,7 +259,7 @@ var drawSingleTrendChart = function(params) {
         name: d,
         idx: _.indexOf(allLevels, d),
         isActive: true,
-      };
+      }
 
       var match = cfg.knownLevels[d];
 
@@ -233,7 +288,7 @@ var drawSingleTrendChart = function(params) {
       // Check if there is existing point for this revision/level
       // Mostly for MAXONLY mode
       var existing = _.find(changePointForLevel, function(d) {
-        return d.level == level && d.changePoint.revision == point.revision
+        return d.level == level && d.changePoint.suspect_revision == point.suspect_revision
       })
       // If the point already exists, increase count meta property
       if (existing) {
@@ -626,17 +681,46 @@ var drawSingleTrendChart = function(params) {
 
   redrawRefLines()
 
-  var changePointsG = chartG.append('g')
-    .attr('class', 'g-change-points')
-
   function redrawChangePoints() {
     // Render change points
-    var changePoints = changePointsG.selectAll('g.change-point')
-      .data(_.filter(changePointForLevel, function(d) {
-        return d.level.isActive
-      }))
+    var pointsAndSegments = _.chain(changePointForLevel)
+      .filter(function(d) { return d.level.isActive })
+      .partition(function(d) { // Separate points and segments
+        return d.changePoint._meta.firstRevIdx == d.changePoint._meta.lastRevIdx
+      })
+      .value()
 
-    changePoints
+    var changePointSegments = changePointsG.selectAll('g.change-point-segment')
+      .data(pointsAndSegments[1])
+
+    changePointSegments
+      .enter()
+      .append('g')
+        .attr({
+          class: 'point change-point-segment',
+        })
+      .append('line')
+      .attr({
+        x1: function(d) { return xScale(d.changePoint._meta.firstRevIdx) },
+        x2: function(d) { return xScale(d.changePoint._meta.lastRevIdx) },
+        y1: function(d) {
+          return yScale(getValueFor(d.level)(series[d.changePoint._meta.firstRevIdx]))
+        },
+        y2: function(d) {
+          return yScale(getValueFor(d.level)(series[d.changePoint._meta.lastRevIdx]))
+        },
+      })
+      .style({
+        stroke: 'red',
+        'stroke-width': '4',
+      })
+
+    changePointSegments.exit().remove()
+
+    var changePointPoints = changePointsG.selectAll('g.change-point')
+      .data(pointsAndSegments[0])
+
+    changePointPoints
       .enter()
       .append('g')
         .attr({
@@ -655,11 +739,11 @@ var drawSingleTrendChart = function(params) {
           },
         })
 
-    changePoints
+    changePointPoints
       .attr({
         transform: function(d) {
           var idx = _.findIndex(series, function(sample) {
-            return sample && sample.revision == d.changePoint.revision
+            return sample && sample.revision == d.changePoint.suspect_revision
           })
 
           return idx > -1 ? d3Translate(
@@ -669,16 +753,23 @@ var drawSingleTrendChart = function(params) {
         },
       })
 
-    changePoints.exit().remove()
+    changePointPoints.exit().remove()
   }
+
+  var changePointsG = chartG.append('g')
+    .attr('class', 'g-change-points')
 
   redrawChangePoints()
 
+  var changePointPanelG = chartG.append('g')
+    .attr({class: 'change-point-info'})
+
+  // -- REGULAR POINT HOVER --
   // Contains elements for hover behavior
-  var focusG = chartG.append('svg:g')
+  var focusG = chartG.append('g')
     .style('display', 'none')
 
-  var focusedLine = focusG.append('svg:line')
+  var focusedLine = focusG.append('line')
     .attr({
       class: 'focus-line',
       x1: 0,
@@ -741,6 +832,171 @@ var drawSingleTrendChart = function(params) {
 
   redrawTooltip()
 
+  // -- CHANGE POINT HOVER --
+  var toolTipG = chartG.append('g')
+    .attr('class', 'g-tool-tip')
+    .style('opacity', 0)
+
+  toolTipG.append('rect')
+    .attr({
+      x: cfg.toolTip.xOffset - cfg.toolTip.margin,
+      y: cfg.toolTip.yOffset - cfg.toolTip.margin,
+      width: cfg.toolTip.width + cfg.toolTip.margin * 2,
+      height: cfg.toolTip.height + cfg.toolTip.margin * 2,
+      rx: 5,
+      ry: 5,
+    })
+    .style({
+      fill: '#FFE',
+      stroke: '#EED',
+      'stroke-width': 2,
+    })
+
+  toolTipG.append('line')
+    .attr({
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: cfg.toolTip.height,
+    })
+    .style({
+      stroke: 'black',
+      'stroke-width': 1,
+    })
+
+  var toolTipItem = toolTipG
+    .selectAll('text')
+    .data(cfg.toolTip.labels)
+    .enter()
+    .append('g')
+    .attr('transform', function(d, i) { return d3Translate(0, cfg.toolTip.interlineSpace * (i + .67)) })
+
+  toolTipItem
+    .append('text')
+    .attr({
+      x: -5,
+      y: 0,
+      'text-anchor': 'end',
+    })
+    .text(_.property('display'))
+    .style({
+      'font-weight': 'bold',
+    })
+
+  toolTipItem
+    .append('text')
+    .attr({
+      x: cfg.toolTip.colOffset[1],
+      y: 0,
+      'text-anchor': 'end',
+      class: 'prev',
+    })
+
+  toolTipItem
+    .append('text')
+    .attr({
+      x: cfg.toolTip.colOffset[2],
+      y: 0,
+    })
+    .text('➞')
+
+  toolTipItem
+    .append('text')
+    .attr({
+      x: cfg.toolTip.colOffset[3],
+      y: 0,
+      class: 'next',
+    })
+
+  // For given 1d directional segment with length `len` and offset `pos`
+  // calculate new position, which fits `domain`
+  // :param domain: domain we want to fit in
+  // :ptype domain: [min, max]
+  // :param pos: position of directional segment (actually 1d vector)
+  // :param len: length of directional segment, non-negative
+  // :returns: new position of directional segment
+  // Example:
+  // A. domain=[0, 100], pos=50, len=10
+  //    The segment perfectly fits domain, pos = 50
+  // B. domain=[0, 100], pos=-20, len=10
+  //    The segment position is outside of domain, pos = 0
+  // C. domain=[0, 100], pos=99, len=10
+  //    The segment end position is outside of domain, pos = 90
+  function fit1d(domain, pos, len) {
+    return pos < domain[0]       ? 0 :
+           pos + len > domain[1] ? domain[1] - len :
+           pos
+  }
+
+  function fit(domain2d, pos2d, len2d) {
+    return [
+      fit1d(domain2d[0], pos2d[0], len2d[0]),
+      fit1d(domain2d[1], pos2d[1], len2d[1]),
+    ]
+  }
+
+  function changePointMouseMove() {
+    // Fit tool tip panel into chart container
+    toolTipG
+      .attr({
+        'transform': function() {
+          return d3Translate.apply(
+            null,
+            fit(
+              [[0, cfg.effectiveWidth], [0, cfg.effectiveHeight]],
+              d3.mouse(chartG[0][0]), // [0][0] is required to get bare <g> element
+              [cfg.toolTip.width, cfg.toolTip.height]
+            )
+          )
+        }
+      })
+  }
+
+  function changePointMouseOver(point) {
+    function statTextFor(statItemName) {
+      return function(d) {
+        var cpStat = point.statistics[statItemName]
+        if (_.isFunction(d.key)) {
+          return d.key(cpStat)
+        }
+        return cpStat[d.key]
+      }
+    }
+
+    toolTipItem.select('text.prev')
+      .text(_.compose(formatNumber, statTextFor('previous')))
+
+    toolTipItem.select('text.next')
+      .text(_.compose(formatNumber, statTextFor('next')))
+
+    toolTipG
+      .transition()
+      .style('opacity', .9)
+  }
+
+  function changePointMouseOut() {
+    toolTipG
+      .transition()
+      .style('opacity', 0)
+  }
+
+  function formatNumber(value) {
+    var absolute = Math.abs(value);
+    if (absolute == 0) {
+      return "0";
+    } else if (absolute < 1) {
+      if (absolute >= .1) {
+        return cfg.formatters.digits_1(value);
+      } else if (absolute >= .01) {
+        return cfg.formatters.digits_2(value);
+      } else {
+        return cfg.formatters.digits_3(value);
+      }
+    } else{
+      return cfg.formatters.large(value);
+    }
+  }
+
   // Overlay to handle hover action
   chartG.append('svg:rect')
     .attr({
@@ -757,11 +1013,28 @@ var drawSingleTrendChart = function(params) {
     })
     .on('mousemove', overlayMouseMove)
 
+  var cpHover = false
+
   function overlayMouseMove() {
     if (scope.locked) return;
     var idx = Math.round(xScale.invert(d3.mouse(this)[0]))
     var d = series[idx]
     var hash = d.revision
+
+    var hoveredChangePoint = _.filter(visibleChangePoints, function(d) {
+      return d._meta.firstRevIdx <= idx && idx <= d._meta.lastRevIdx
+    })[0]
+
+    if (hoveredChangePoint) {
+      if (!cpHover) {
+        changePointMouseOver(hoveredChangePoint)
+      }
+      changePointMouseMove()
+      cpHover = true
+    } else if (cpHover) {
+      changePointMouseOut()
+      cpHover = false
+    }
 
     // Reduce number of calls if hash didn't changed
     if (hash != scope.$parent.currentHash) {
@@ -812,20 +1085,7 @@ var drawSingleTrendChart = function(params) {
       })
       .text(function(d, i) {
         var value = values[i];
-        var absolute = Math.abs(value);
-        if (absolute == 0) {
-          return "0";
-        } else if (absolute < 1) {
-          if (absolute >= .1) {
-            return cfg.formatters.digits_1(value);
-          } else if (absolute >= .01) {
-            return cfg.formatters.digits_2(value);
-          } else {
-            return cfg.formatters.digits_3(value);
-          }
-        } else{
-          return cfg.formatters.large(value);
-        }
+        return formatNumber(value)
       });
 
     focusedLine.attr({
