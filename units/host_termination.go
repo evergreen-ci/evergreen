@@ -235,9 +235,11 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		hostBillingEnds = hostBillingEnds.Add(pad)
 	}
 
-	idleJob := newHostIdleJobForTermination(j.env, settings, cloudHost.CloudMgr, j.host, idleTimeStartsAt, hostBillingEnds)
-	idleJob.Run(ctx)
-	j.AddError(idleJob.Error())
+	if j.host.Distro.IsEphemeral() {
+		idleJob := newHostIdleJobForTermination(j.env, settings, cloudHost.CloudMgr, j.host, idleTimeStartsAt, hostBillingEnds)
+		idleJob.Run(ctx)
+		j.AddError(idleJob.Error())
+	}
 }
 
 func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHost) error {
