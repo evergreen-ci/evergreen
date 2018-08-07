@@ -442,8 +442,9 @@ func (e *envState) initSenders() error {
 	e.senders[SenderEvergreenWebhook] = sender
 
 	catcher := grip.NewBasicCatcher()
-	for _, s := range e.senders {
+	for name, s := range e.senders {
 		catcher.Add(s.SetLevel(levelInfo))
+		catcher.Add(s.SetErrorHandler(util.MakeNotificationErrorHandler(name.String())))
 	}
 
 	return catcher.Resolve()

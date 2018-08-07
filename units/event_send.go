@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
@@ -133,19 +132,7 @@ func (j *eventNotificationJob) send(n *notification.Notification) error {
 	if err != nil {
 		return errors.Wrap(err, "error building sender for notification")
 	}
-	if err = sender.SetLevel(send.LevelInfo{
-		Default:   level.Notice,
-		Threshold: level.Notice,
-	}); err != nil {
-		return errors.Wrap(err, "error setting level in sender")
-	}
 
-	err = sender.SetErrorHandler(getSendErrorHandler(n))
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":           "failed to set error handler",
-		"notification_id":   n.ID,
-		"notification_type": n.Subscriber.Type,
-	}))
 	sender.Send(c)
 
 	return nil
@@ -186,29 +173,4 @@ func checkFlag(flag bool) error {
 	}
 
 	return nil
-}
-
-func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
-	return func(err error, c message.Composer) {
-		if err == nil || c == nil {
-			return
-		}
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":               eventNotificationJobName,
-			"notification_id":   n.ID,
-			"notification_type": n.Subscriber.Type,
-			"source":            "events-processing",
-			"composer":          c.String(),
-		}))
-
-		err = n.MarkError(err)
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":               eventNotificationJobName,
-			"notification_id":   n.ID,
-			"notification_type": n.Subscriber.Type,
-			"source":            "events-processing",
-			"message":           "failed to add error to notification",
-			"composer":          c.String(),
-		}))
-	}
 }
