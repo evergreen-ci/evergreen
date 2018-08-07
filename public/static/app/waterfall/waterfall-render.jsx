@@ -1,7 +1,3 @@
-function waterfallRef(ref) {
-  window.waterfallInstance = ref;
-}
-
 ReactDOM.render(
   <Root
     ref={waterfallRef}

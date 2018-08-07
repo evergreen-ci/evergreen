@@ -380,7 +380,6 @@ class GearMenu extends React.PureComponent {
   }
 
   dialog($mdDialog, $mdToast, notificationService, mciSubscriptionsService) {
-    console.log($mdToast, notificationService, mciSubscriptionsService);
     const omitMethods = {
       [SUBSCRIPTION_JIRA_ISSUE]: true,
       [SUBSCRIPTION_EVERGREEN_WEBHOOK]: true
