@@ -803,14 +803,6 @@ func (t *Task) UpdateDisplayTask() error {
 		status = statuses[0]
 	}
 
-	grip.InfoWhen(status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime, message.Fields{
-		"lookhere":                      "evg-3345",
-		"message":                       "update display tasks",
-		"task_id":                       t.Id,
-		"status":                        status,
-		"dispatch_time_is_go_zero_time": t.DispatchTime.IsZero(),
-	})
-
 	update := bson.M{
 		StatusKey:    status,
 		ActivatedKey: t.Activated,

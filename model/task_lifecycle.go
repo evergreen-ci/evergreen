@@ -21,6 +21,7 @@ import (
 type StatusChanges struct {
 	PatchNewStatus string
 	BuildNewStatus string
+	BuildFinished  bool
 }
 
 func SetActiveState(taskId string, caller string, active bool) error {
@@ -419,9 +420,6 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		if err = build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, t.TimeTaken); err != nil {
 			return err
 		}
-		if err = build.UpdateCachedTask(t.BuildId, t.Id, t.Status, t.TimeTaken); err != nil {
-			return err
-		}
 	} else {
 		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail.Status, detail, t.TimeTaken)
 		if err != nil {
@@ -556,7 +554,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			if status == "" {
 				status = t.Details.Status
 			}
-			err = build.SetCachedTaskFinished(t.BuildId, t.Id, status, &t.Details, t.TimeTaken)
+			err = b.SetCachedTaskFinished(t.Id, status, &t.Details, t.TimeTaken)
 			if err != nil {
 				return fmt.Errorf("error updating build: %v", err.Error())
 			}
@@ -609,6 +607,9 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			"is_active":    b.IsActive(),
 		})
 		updates.BuildNewStatus = b.Status
+		if b.AllTasksFinished() {
+			updates.BuildFinished = true
+		}
 
 		if evergreen.IsPatchRequester(b.Requester) {
 			if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {

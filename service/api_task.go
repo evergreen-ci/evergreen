@@ -166,7 +166,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if len(updates.PatchNewStatus) != 0 {
 		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
 	}
-	if len(updates.BuildNewStatus) != 0 {
+	if len(updates.BuildNewStatus) != 0 && updates.BuildFinished {
 		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
 	}
 
