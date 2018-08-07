@@ -58,7 +58,6 @@ function subscriberLabel(subscriber) {
 
 // Return a promise for the add subscription modal, with the list of triggers
 function addSubscriber($mdDialog, triggers, omitMethods) {
-    console.log('doop');
     return subscriberPromise($mdDialog, "Add", triggers, omitMethods)
 }
 

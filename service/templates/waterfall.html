@@ -29,7 +29,8 @@ Evergreen - Waterfall
 {{end}}
 
 {{define "content"}}
-<div ng-controller="WaterfallController" id="root" class="container-fluid waterfall-2"></div>
+<div ng-controller="WaterfallController" id="waterfall-root"></div>
+<div id="root" class="container-fluid waterfall-2"></div>
 <script type="text/javascript" src="/static/dist/js/waterfall/waterfall-render.js?hash={{ BuildRevision }}"></script>
 
 {{end}}

@@ -353,10 +353,66 @@ class GearMenu extends React.PureComponent {
   constructor(props) {
     super(props);
     this.addNotification = this.addNotification.bind(this);
-    this.dialog= this.dialog.bind(this);
-    this.triggers = {
+    this.triggers = [
+      {
+        trigger: "outcome",
+        resource_type: "TASK",
+        label: "this task finishes",
+      },
+      {
+        trigger: "failure",
+        resource_type: "TASK",
+        label: "this task fails",
+      },
+      {
+        trigger: "success",
+        resource_type: "TASK",
+        label: "this task succeeds",
+      },
+      {
+        trigger: "exceeds-duration",
+        resource_type: "TASK",
+        label: "the runtime for this task exceeds some duration",
+        extraFields: [
+          {text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration}
+        ]
+      },
+      {
+        trigger: "runtime-change",
+        resource_type: "TASK",
+        label: "the runtime for this task changes by some percentage",
+        extraFields: [
+          {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
+        ]
+      },
+    ];
+  }
 
+  dialog($mdDialog, $mdToast, notificationService, mciSubscriptionsService) {
+    console.log($mdToast, notificationService, mciSubscriptionsService);
+    const omitMethods = {
+      [SUBSCRIPTION_JIRA_ISSUE]: true,
+      [SUBSCRIPTION_EVERGREEN_WEBHOOK]: true
     };
+
+    const self = this;
+    const promise = addSubscriber($mdDialog, this.triggers, omitMethods);
+    return $mdDialog.show(promise).then(function(data) {
+      addProjectSelectors(data, self.project);
+      var success = function() {
+        return $mdToast.show({
+          templateUrl: "/static/partials/subscription_confirmation_toast.html",
+          position: "bottom right"
+        });
+      };
+      var failure = function(resp) {
+        notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
+      };
+        console.log(data)
+      mciSubscriptionsService.post([data], { success: success, error: failure });
+    }).catch(function(e) {
+      console.error(e);
+    });
   }
 
   addNotification() {
@@ -366,29 +422,18 @@ class GearMenu extends React.PureComponent {
     if(this.props.angular === null) {
       return setTimeout(this.addNotification, 50);
     }
-    return this.dialog();
-  }
-
-  dialog() {
-    const omitMethods = {
-      [SUBSCRIPTION_JIRA_ISSUE]: true,
-      [SUBSCRIPTION_EVERGREEN_WEBHOOK]: true
-    };
-
-    const promise = addSubscriber(this.props.angular.$mdDialog, this.triggers, omitMethods);
-    return this.props.angular.$mdDialog.show(promise).then(function(data) {
-      addProjectSelectors(data, this.props.project);
-      var success = function() {
-        this.props.angular.$mdToast.show({
-          templateUrl: "/static/partials/subscription_confirmation_toast.html",
-          position: "bottom right"
-        });
-      };
-      var failure = function(resp) {
-        this.props.angular.notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
-      };
-      this.props.angular.mciSubscriptionsService.post([data].subscriptions, { success: success, error: failure });
+    const waterfall = angular.module('waterfall', []);
+    waterfall.provider({
+      $rootElement: function() {
+         this.$get = function() {
+             const root = document.getElementById("root");
+           return angular.element(root);
+        };
+      }
     });
+
+    const injector = angular.injector(['ng', 'waterfall', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
+    return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
   }
 
   render() {

@@ -453,12 +453,60 @@ var GearMenu = function (_React$PureComponent4) {
     var _this6 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
 
     _this6.addNotification = _this6.addNotification.bind(_this6);
-    _this6.dialog = _this6.dialog.bind(_this6);
-    _this6.triggers = {};
+    _this6.triggers = [{
+      trigger: "outcome",
+      resource_type: "TASK",
+      label: "this task finishes"
+    }, {
+      trigger: "failure",
+      resource_type: "TASK",
+      label: "this task fails"
+    }, {
+      trigger: "success",
+      resource_type: "TASK",
+      label: "this task succeeds"
+    }, {
+      trigger: "exceeds-duration",
+      resource_type: "TASK",
+      label: "the runtime for this task exceeds some duration",
+      extraFields: [{ text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration }]
+    }, {
+      trigger: "runtime-change",
+      resource_type: "TASK",
+      label: "the runtime for this task changes by some percentage",
+      extraFields: [{ text: "Percent change", key: "task-percent-change", validator: validatePercentage }]
+    }];
     return _this6;
   }
 
   _createClass(GearMenu, [{
+    key: "dialog",
+    value: function dialog($mdDialog, $mdToast, notificationService, mciSubscriptionsService) {
+      var _omitMethods;
+
+      console.log($mdToast, notificationService, mciSubscriptionsService);
+      var omitMethods = (_omitMethods = {}, _defineProperty(_omitMethods, SUBSCRIPTION_JIRA_ISSUE, true), _defineProperty(_omitMethods, SUBSCRIPTION_EVERGREEN_WEBHOOK, true), _omitMethods);
+
+      var self = this;
+      var promise = addSubscriber($mdDialog, this.triggers, omitMethods);
+      return $mdDialog.show(promise).then(function (data) {
+        addProjectSelectors(data, self.project);
+        var success = function success() {
+          return $mdToast.show({
+            templateUrl: "/static/partials/subscription_confirmation_toast.html",
+            position: "bottom right"
+          });
+        };
+        var failure = function failure(resp) {
+          notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
+        };
+        console.log(data);
+        mciSubscriptionsService.post([data], { success: success, error: failure });
+      }).catch(function (e) {
+        console.error(e);
+      });
+    }
+  }, {
     key: "addNotification",
     value: function addNotification() {
       // angular takes a bit to inject it's services into this react component,
@@ -467,29 +515,18 @@ var GearMenu = function (_React$PureComponent4) {
       if (this.props.angular === null) {
         return setTimeout(this.addNotification, 50);
       }
-      return this.dialog();
-    }
-  }, {
-    key: "dialog",
-    value: function dialog() {
-      var _omitMethods;
-
-      var omitMethods = (_omitMethods = {}, _defineProperty(_omitMethods, SUBSCRIPTION_JIRA_ISSUE, true), _defineProperty(_omitMethods, SUBSCRIPTION_EVERGREEN_WEBHOOK, true), _omitMethods);
-
-      var promise = addSubscriber(this.props.angular.$mdDialog, this.triggers, omitMethods);
-      return this.props.angular.$mdDialog.show(promise).then(function (data) {
-        addProjectSelectors(data, this.props.project);
-        var success = function success() {
-          this.props.angular.$mdToast.show({
-            templateUrl: "/static/partials/subscription_confirmation_toast.html",
-            position: "bottom right"
-          });
-        };
-        var failure = function failure(resp) {
-          this.props.angular.notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
-        };
-        this.props.angular.mciSubscriptionsService.post([data].subscriptions, { success: success, error: failure });
+      var waterfall = angular.module('waterfall', []);
+      waterfall.provider({
+        $rootElement: function $rootElement() {
+          this.$get = function () {
+            var root = document.getElementById("root");
+            return angular.element(root);
+          };
+        }
       });
+
+      var injector = angular.injector(['ng', 'waterfall', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
+      return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
     }
   }, {
     key: "render",
