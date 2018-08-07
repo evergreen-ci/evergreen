@@ -21,7 +21,6 @@ import (
 type StatusChanges struct {
 	PatchNewStatus string
 	BuildNewStatus string
-	BuildFinished  bool
 }
 
 func SetActiveState(taskId string, caller string, active bool) error {
@@ -40,13 +39,6 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		}
 
 		if t.DispatchTime != util.ZeroTime && t.Status == evergreen.TaskUndispatched {
-			grip.Info(message.Fields{
-				"lookhere":                "evg-3455",
-				"message":                 "task reset with zero time",
-				"task_id":                 t.Id,
-				"dispatchtime_is_go_zero": t.DispatchTime.IsZero(),
-				"caller":                  caller,
-			})
 			if err = resetTask(t.Id, caller); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
@@ -595,21 +587,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				return err
 			}
 		}
-		grip.InfoWhen(b.Project == "mci" || b.Project == "lobster", message.Fields{
-			"lookhere":     "evg-3455",
-			"message":      "build complete",
-			"task_id":      t.Id,
-			"task_status":  t.Status,
-			"build_id":     b.Id,
-			"build_status": b.Status,
-			"failed":       failedTask,
-			"is_finished":  b.IsFinished(),
-			"is_active":    b.IsActive(),
-		})
 		updates.BuildNewStatus = b.Status
-		if b.AllTasksFinished() {
-			updates.BuildFinished = true
-		}
 
 		if evergreen.IsPatchRequester(b.Requester) {
 			if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
