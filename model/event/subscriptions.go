@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -209,13 +210,24 @@ func (s *Subscription) Upsert() error {
 
 func FindSubscriptionByID(id string) (*Subscription, error) {
 	out := Subscription{}
-	err := db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+	query := bson.M{
 		subscriptionIDKey: id,
-	}), &out)
+	}
+	if bson.IsObjectIdHex(id) {
+		query = bson.M{
+			"$or": []bson.M{
+				query,
+				bson.M{
+					subscriptionIDKey: bson.ObjectIdHex(id),
+				},
+			},
+		}
+	}
+	err := db.FindOneQ(SubscriptionsCollection, db.Query(query), &out)
 	if err == mgo.ErrNotFound {
 		return nil, nil
-
-	} else if err != nil {
+	}
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subcription by ID")
 	}
 
@@ -425,7 +437,26 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 }
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeVersion, "regression")
+	return Subscription{
+		ID:      bson.NewObjectId().Hex(),
+		Type:    ResourceTypeTask,
+		Trigger: "build-break",
+		Selectors: []Selector{
+			{
+				Type: "owner",
+				Data: owner,
+			},
+			{
+				Type: "object",
+				Data: "task",
+			},
+			{
+				Type: "requester",
+				Data: evergreen.RepotrackerVersionRequester,
+			},
+		},
+		Subscriber: sub,
+	}
 }
 
 func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscription {

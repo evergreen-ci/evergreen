@@ -282,6 +282,16 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			ProjectID:    t.Project,
 			Version:      t.Version,
 		}
+		// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+		if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && t.Status != evergreen.TaskSucceeded {
+			if err := taskQueue.BlockTaskGroupTasks(spec, t.Id); err != nil {
+				return nil, errors.Wrapf(err, "problem blocking task group tasks for %s", t.Id)
+			}
+			grip.Debug(message.Fields{
+				"message": "blocked task group tasks",
+				"task_id": t.Id,
+			})
+		}
 	}
 	for taskQueue.Length() != 0 {
 		queueItem := taskQueue.FindNextTask(spec)

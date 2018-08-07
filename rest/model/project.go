@@ -21,7 +21,6 @@ type APIProject struct {
 	AlertSettings      map[string][]alertConfig `json:"alert_settings"`
 	DeactivatePrevious bool                     `json:"deactivate_previous"`
 	Admins             []APIString              `json:"admins"`
-	Vars               map[string]string        `json:"vars"`
 	TracksPushEvents   bool                     `json:"tracks_push_events"`
 	PRTestingEnabled   bool                     `json:"pr_testing_enabled"`
 }

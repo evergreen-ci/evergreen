@@ -1008,10 +1008,7 @@ func TestHostFindingWithTask(t *testing.T) {
 	assert.NoError(host3.Insert())
 	assert.NoError(host4.Insert())
 
-	var hosts []Host
-	err := db.Aggregate(Collection, QueryWithFullTaskPipeline(
-		bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}),
-		&hosts)
+	hosts, err := FindRunningHosts(true)
 	assert.NoError(err)
 
 	assert.Equal(3, len(hosts))
@@ -2351,4 +2348,77 @@ func TestEstimateNumContainersForDuration(t *testing.T) {
 	estimate2, err := parent.EstimateNumContainersForDuration(now, now.Add(15*time.Minute))
 	assert.NoError(err)
 	assert.Equal(2.0, estimate2)
+}
+
+func TestFindTerminatedHostsRunningTasksQuery(t *testing.T) {
+	t.Run("QueryExecutesProperly", func(t *testing.T) {
+		hosts, err := FindTerminatedHostsRunningTasks()
+		assert.NoError(t, err)
+		assert.Len(t, hosts, 0)
+	})
+	t.Run("QueryFindsResults", func(t *testing.T) {
+		h := Host{
+			Id:          "bar",
+			RunningTask: "foo",
+			Status:      evergreen.HostTerminated,
+		}
+		assert.NoError(t, h.Insert())
+
+		hosts, err := FindTerminatedHostsRunningTasks()
+		assert.NoError(t, err)
+		if assert.Len(t, hosts, 1) {
+			assert.Equal(t, h.Id, hosts[0].Id)
+		}
+	})
+}
+
+func TestCountUphostParents(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+
+	h1 := Host{
+		Id:            "h1",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+	}
+	h2 := Host{
+		Id:            "h2",
+		Status:        evergreen.HostUninitialized,
+		HasContainers: true,
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Distro:        "d1",
+			Id:            "test-pool",
+			MaxContainers: 100,
+		},
+	}
+	h3 := Host{
+		Id:            "h3",
+		Status:        evergreen.HostRunning,
+		HasContainers: true,
+		ContainerPoolSettings: &evergreen.ContainerPool{
+			Distro:        "d1",
+			Id:            "test-pool",
+			MaxContainers: 100,
+		},
+	}
+	h4 := Host{
+		Id:            "h4",
+		Status:        evergreen.HostUninitialized,
+		HasContainers: true,
+	}
+	h5 := Host{
+		Id:       "h5",
+		Status:   evergreen.HostUninitialized,
+		ParentID: "h1",
+	}
+
+	assert.NoError(h1.Insert())
+	assert.NoError(h2.Insert())
+	assert.NoError(h3.Insert())
+	assert.NoError(h4.Insert())
+	assert.NoError(h5.Insert())
+
+	numUphostParents, err := CountUphostParentsByContainerPool("test-pool")
+	assert.NoError(err)
+	assert.Equal(2, numUphostParents)
 }

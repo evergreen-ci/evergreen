@@ -10,9 +10,9 @@ import (
 
 type DBMetricsConnector struct{}
 
-func (mc *DBMetricsConnector) FindTaskSystemMetrics(taskId string, ts time.Time, limit, sort int) ([]*message.SystemInfo, error) {
+func (mc *DBMetricsConnector) FindTaskSystemMetrics(taskId string, ts time.Time, limit int) ([]*message.SystemInfo, error) {
 	out := []*message.SystemInfo{}
-	events, err := event.Find(event.TaskLogCollection, event.TaskSystemInfoEvents(taskId, ts, limit, sort))
+	events, err := event.Find(event.TaskLogCollection, event.TaskSystemInfoEvents(taskId, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching task system metrics for %s", taskId)
 	}
@@ -30,9 +30,9 @@ func (mc *DBMetricsConnector) FindTaskSystemMetrics(taskId string, ts time.Time,
 	return out, nil
 }
 
-func (mc *DBMetricsConnector) FindTaskProcessMetrics(taskId string, ts time.Time, limit, sort int) ([][]*message.ProcessInfo, error) {
+func (mc *DBMetricsConnector) FindTaskProcessMetrics(taskId string, ts time.Time, limit int) ([][]*message.ProcessInfo, error) {
 	out := [][]*message.ProcessInfo{}
-	events, err := event.Find(event.TaskLogCollection, event.TaskProcessInfoEvents(taskId, ts, limit, sort))
+	events, err := event.Find(event.TaskLogCollection, event.TaskProcessInfoEvents(taskId, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching task process metrics for %s", taskId)
 	}
@@ -55,7 +55,7 @@ type MockMetricsConnector struct {
 	Process map[string][][]*message.ProcessInfo
 }
 
-func (mc *MockMetricsConnector) FindTaskSystemMetrics(taskId string, ts time.Time, limit, sort int) ([]*message.SystemInfo, error) {
+func (mc *MockMetricsConnector) FindTaskSystemMetrics(taskId string, ts time.Time, limit int) ([]*message.SystemInfo, error) {
 	out, ok := mc.System[taskId]
 	if !ok {
 		return nil, errors.Errorf("no system metrics for task %s", taskId)
@@ -64,7 +64,7 @@ func (mc *MockMetricsConnector) FindTaskSystemMetrics(taskId string, ts time.Tim
 	return out, nil
 }
 
-func (mc *MockMetricsConnector) FindTaskProcessMetrics(taskId string, ts time.Time, limit, sort int) ([][]*message.ProcessInfo, error) {
+func (mc *MockMetricsConnector) FindTaskProcessMetrics(taskId string, ts time.Time, limit int) ([][]*message.ProcessInfo, error) {
 	out, ok := mc.Process[taskId]
 	if !ok {
 		return nil, errors.Errorf("no process metrics for task %s", taskId)

@@ -49,6 +49,10 @@ type distroSchedueler struct {
 	TaskQueuePersister
 }
 
+type newParentsNeededParams struct {
+	numUphostParents, numContainersNeeded, numExistingContainers, maxContainers int
+}
+
 func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task, versions map[string]version.Version) distroSchedulerResult {
 	res := distroSchedulerResult{
 		distroId: distroId,
@@ -160,17 +164,36 @@ func spawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 			return nil, errors.Wrap(err, "could not find running containers")
 		}
 
+		// find all uphost parent intent documents
+		numUphostParents, err := host.CountUphostParentsByContainerPool(pool.Id)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not count uphost parents")
+		}
+
+		// create numParentsNeededParams struct
+		parentsParams := newParentsNeededParams{
+			numUphostParents:      numUphostParents,
+			numContainersNeeded:   newHostsNeeded,
+			numExistingContainers: len(existingContainers),
+			maxContainers:         pool.MaxContainers,
+		}
 		// compute number of parents needed
-		numNewParents := numNewParentsNeeded(len(currentParents), newHostsNeeded, len(existingContainers), pool.MaxContainers)
+		numNewParents := numNewParentsNeeded(parentsParams)
+
+		// get parent distro from pool
+		parentDistro, err := distro.FindOne(distro.ById(pool.Distro))
+		if err != nil {
+			return nil, errors.Wrap(err, "error find parent distro")
+		}
 
 		// only want to spawn amount of parents allowed based on pool size
-		numNewParentsToSpawn, err := parentCapacity(d, numNewParents, len(currentParents), pool)
+		numNewParentsToSpawn, err := parentCapacity(parentDistro, numNewParents, len(currentParents), pool)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not calculate number of parents needed to spawn")
 		}
 		// create parent host intent documents
 		if numNewParentsToSpawn > 0 {
-			hostsSpawned = append(hostsSpawned, createParents(d, numNewParentsToSpawn, pool)...)
+			hostsSpawned = append(hostsSpawned, createParents(parentDistro, numNewParentsToSpawn, pool)...)
 
 			grip.Info(message.Fields{
 				"runner":          RunnerName,
@@ -268,21 +291,20 @@ func findAvailableParent(d distro.Distro) (host.Host, error) {
 
 // numNewParentsNeeded returns the number of additional parents needed to
 // accommodate new containers
-func numNewParentsNeeded(numCurrentParents, numContainersNeeded, numExistingContainers, maxContainers int) int {
-	if numCurrentParents*maxContainers < numExistingContainers+numContainersNeeded {
-		return int(math.Ceil(float64(numContainersNeeded) / float64(maxContainers)))
+func numNewParentsNeeded(params newParentsNeededParams) int {
+	if params.numUphostParents*params.maxContainers < params.numExistingContainers+params.numContainersNeeded {
+		numTotalNewParents := int(math.Ceil(float64(params.numContainersNeeded) / float64(params.maxContainers)))
+		if numTotalNewParents < 0 {
+			return 0
+		}
+		return numTotalNewParents
 	}
 	return 0
 }
 
 // parentCapacity calculates number of new parents to create
 // checks to make sure we do not create more parents than allowed
-func parentCapacity(d distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
-	// if looking to spawn on a static docker provider, do not spawn any more parents
-	parent, err := distro.FindOne(distro.ById(pool.Distro))
-	if err != nil {
-		return 0, errors.Wrapf(err, "could not find parent distro for pool %s", pool.Id)
-	}
+func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, pool *evergreen.ContainerPool) (int, error) {
 	if parent.Provider == evergreen.ProviderNameStatic {
 		return 0, nil
 	}
@@ -313,11 +335,11 @@ func containerCapacity(numCurrentParents, numCurrentContainers, numContainersToS
 }
 
 // createParents creates host intent documents for each parent
-func createParents(d distro.Distro, numNewParents int, pool *evergreen.ContainerPool) []host.Host {
+func createParents(parent distro.Distro, numNewParents int, pool *evergreen.ContainerPool) []host.Host {
 	hostsSpawned := make([]host.Host, numNewParents)
 
 	for idx := range hostsSpawned {
-		hostsSpawned[idx] = *cloud.NewIntent(d, d.GenerateName(), d.Provider, generateParentHostOptions(pool))
+		hostsSpawned[idx] = *cloud.NewIntent(parent, parent.GenerateName(), parent.Provider, generateParentHostOptions(pool))
 	}
 
 	return hostsSpawned

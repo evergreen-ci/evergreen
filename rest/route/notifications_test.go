@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -106,14 +107,13 @@ func (s *notificationSuite) SetupTest() {
 }
 
 func (s *notificationSuite) TestStatsCollector() {
-	h := notificationsStatusHandler{}
 	sc := &data.DBConnector{}
+	h := notificationsStatusHandler{sc: sc}
 
-	resp, err := h.Execute(context.Background(), sc)
-	s.NoError(err)
-	s.Require().Len(resp.Result, 1)
+	resp := h.Run(context.Background())
+	s.Equal(http.StatusOK, resp.Status())
 
-	stats := resp.Result[0].(*model.APIEventStats)
+	stats := resp.Data().(*model.APIEventStats)
 
 	s.Equal(s.expectedTime, stats.LastProcessedAt)
 	s.Equal(2, stats.NumUnprocessedEvents)

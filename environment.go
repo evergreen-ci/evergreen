@@ -17,7 +17,6 @@ import (
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -67,7 +66,7 @@ type Environment interface {
 	// Returns the settings object. The settings object is not
 	// necessarily safe for concurrent access.
 	Settings() *Settings
-	Session() db.Session
+	Session() *mgo.Session
 
 	// The Environment provides access to two queue's, a
 	// local-process level queue that is not persisted between
@@ -201,6 +200,9 @@ func (e *envState) initDB(settings DBSettings) error {
 func (e *envState) createQueues(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for local queue")
+	}
 
 	// configure the remote mongodb-backed amboy
 	// queue.
@@ -216,6 +218,10 @@ func (e *envState) createQueues(ctx context.Context) error {
 	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
 	if err = rq.SetDriver(qmdb); err != nil {
 		return errors.WithStack(err)
+	}
+
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for remote queue")
 	}
 	e.remoteQueue = rq
 
@@ -389,10 +395,11 @@ func (e *envState) initSenders() error {
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(&send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
+			Name:         "evergreen",
+			BaseURL:      jira.GetHostURL(),
+			Username:     jira.Username,
+			Password:     jira.Password,
+			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira issue logger")
@@ -400,10 +407,11 @@ func (e *envState) initSenders() error {
 		e.senders[SenderJIRAIssue] = sender
 
 		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
+			Name:         "evergreen",
+			BaseURL:      jira.GetHostURL(),
+			Username:     jira.Username,
+			Password:     jira.Password,
+			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira comment logger")
@@ -434,8 +442,9 @@ func (e *envState) initSenders() error {
 	e.senders[SenderEvergreenWebhook] = sender
 
 	catcher := grip.NewBasicCatcher()
-	for _, s := range e.senders {
+	for name, s := range e.senders {
 		catcher.Add(s.SetLevel(levelInfo))
+		catcher.Add(s.SetErrorHandler(util.MakeNotificationErrorHandler(name.String())))
 	}
 
 	return catcher.Resolve()
@@ -471,11 +480,11 @@ func (e *envState) RemoteQueue() amboy.Queue {
 	return e.remoteQueue
 }
 
-func (e *envState) Session() db.Session {
+func (e *envState) Session() *mgo.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return db.WrapSession(e.session.Copy())
+	return e.session.Copy()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {

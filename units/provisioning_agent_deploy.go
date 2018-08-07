@@ -89,27 +89,27 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
+	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
 
-	err = j.startAgentOnHost(ctx, settings, *j.host)
+	stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
 	j.AddError(err)
 	if err != nil {
-		stat, err := event.GetRecentAgentDeployStatuses(j.HostID, agentPutRetries)
-		j.AddError(err)
-		if err != nil {
+		return
+	}
+
+	if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count >= agentPutRetries {
+		if disableErr := j.host.DisablePoisonedHost("failed 10 times to put agent on host"); disableErr != nil {
+			j.AddError(errors.Wrapf(disableErr, "error terminating host %s", j.host.Id))
 			return
 		}
 
-		if stat.LastAttemptFailed() && stat.AllAttemptsFailed() && stat.Count == agentPutRetries {
-			msg := "error putting agent on host"
-			job := NewDecoHostNotifyJob(j.env, j.host, nil, msg)
-			grip.Critical(message.WrapError(j.env.RemoteQueue().Put(job),
-				message.Fields{
-					"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
-					"host_id": j.host.Id,
-					"distro":  j.host.Distro,
-				}))
-		}
-
+		job := NewDecoHostNotifyJob(j.env, j.host, nil, "error starting agent on host")
+		grip.Error(message.WrapError(j.env.RemoteQueue().Put(job),
+			message.Fields{
+				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
+				"host_id": j.host.Id,
+				"distro":  j.host.Distro,
+			}))
 	}
 }
 
@@ -252,6 +252,14 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context, hostObj host.Host, 
 		if disableErr := hostObj.DisablePoisonedHost(err.Error()); disableErr != nil {
 			return errors.Wrapf(disableErr, "error terminating host %s", hostObj.Id)
 		}
+
+		job := NewDecoHostNotifyJob(j.env, j.host, nil, "error running setup script on host")
+		grip.Error(message.WrapError(j.env.RemoteQueue().Put(job),
+			message.Fields{
+				"message": fmt.Sprintf("tried %d times to put agent on host", agentPutRetries),
+				"host_id": hostObj.Id,
+				"distro":  hostObj.Distro,
+			}))
 
 		return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 	}

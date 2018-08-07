@@ -102,10 +102,8 @@ func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.T
 	return ts, nil
 }
 
-func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
-	status string, limit, sortDir int) ([]task.Task, error) {
-	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId,
-		status, limit, sortDir)
+func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId, status string, limit int) ([]task.Task, error) {
+	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, limit)
 	res := []task.Task{}
 
 	err := task.Aggregate(pipeline, &res)
@@ -206,8 +204,7 @@ func (mtc *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 }
 
 // FindTasksBytaskId
-func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
-	status string, limit, sortDir int) ([]task.Task, error) {
+func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId, status string, limit int) ([]task.Task, error) {
 	if mtc.StoredError != nil {
 		return []task.Task{}, mtc.StoredError
 	}
@@ -224,18 +221,10 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 		if t.Id == taskId {
 			// We've found the task
 			var tasksToReturn []task.Task
-			if sortDir < 0 {
-				if ix-limit > 0 {
-					tasksToReturn = ofProjectAndCommit[ix-(limit) : ix]
-				} else {
-					tasksToReturn = ofProjectAndCommit[:ix]
-				}
+			if ix+limit > len(ofProjectAndCommit) {
+				tasksToReturn = ofProjectAndCommit[ix:]
 			} else {
-				if ix+limit > len(ofProjectAndCommit) {
-					tasksToReturn = ofProjectAndCommit[ix:]
-				} else {
-					tasksToReturn = ofProjectAndCommit[ix : ix+limit]
-				}
+				tasksToReturn = ofProjectAndCommit[ix : ix+limit]
 			}
 			return tasksToReturn, nil
 		}

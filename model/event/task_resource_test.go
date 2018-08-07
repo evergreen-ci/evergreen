@@ -27,7 +27,7 @@ func (s *TaskResourceSuite) SetupTest() {
 }
 
 func (s *TaskResourceSuite) TestNoSystemInfoResultsBeforeLoggingResults() {
-	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(results, 0)
 }
@@ -37,7 +37,7 @@ func (s *TaskResourceSuite) TestLoggedSystemInfoEventIsRetreivable() {
 	s.True(ok)
 
 	LogTaskSystemData(s.taskId, sysInfo)
-	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(results, 1)
 }
@@ -49,13 +49,13 @@ func (s *TaskResourceSuite) TestLoggingManySystemInfoEvents() {
 		LogTaskSystemData(s.taskId, info)
 	}
 
-	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(results, 10)
 }
 
 func (s *TaskResourceSuite) TestNoProcessEventsBeforeLoggingResults() {
-	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(results, 0)
 }
@@ -66,7 +66,7 @@ func (s *TaskResourceSuite) TestLogSingleProcessEvent() {
 
 	LogTaskProcessData(s.taskId, []*message.ProcessInfo{pm})
 
-	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(results, 1)
 }
@@ -89,7 +89,7 @@ func (s *TaskResourceSuite) TestLogManyProcessEvents() {
 	LogTaskProcessData(s.taskId, infos)
 
 	s.Equal(count, len(infos))
-	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(results, count)
 }
@@ -102,7 +102,7 @@ func (s *TaskResourceSuite) TestLoggedSystemEventsWithoutTimestampsGetCurrentTim
 	s.True(startTime.After(sys.Base.Time))
 
 	LogTaskSystemData(s.taskId, sys)
-	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Require().Len(results, 1)
 	event := results[0]
@@ -123,7 +123,7 @@ func (s *TaskResourceSuite) TestLoggedProcessEventsWithoutTimestampsGetCurrentTi
 	s.True(startTime.After(info.Base.Time))
 
 	LogTaskProcessData(s.taskId, []*message.ProcessInfo{info})
-	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Require().Len(results, 1)
 	event := results[0]
@@ -143,7 +143,7 @@ func (s *TaskResourceSuite) TestProcessInfosWithTimestampsPersist() {
 	s.True(startTime.Before(info.Base.Time))
 
 	LogTaskProcessData(s.taskId, []*message.ProcessInfo{info})
-	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Require().Len(results, 1)
 	event := results[0]
@@ -162,7 +162,7 @@ func (s *TaskResourceSuite) TestSystemInfosWithTimestampsPersist() {
 	s.True(startTime.Before(info.Base.Time))
 
 	LogTaskSystemData(s.taskId, info)
-	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
+	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Require().Len(results, 1)
 	event := results[0]
@@ -216,17 +216,17 @@ func (s *TaskResourceSuite) TestFinderMethodsFilterEventsByTypeAndTaskName() {
 
 	// Actually check the results methods
 
-	sysresults, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
+	sysresults, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(sysresults, baseNum)
-	procresults, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
+	procresults, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(sysresults, baseNum)
 
-	altsysresults, err := Find(TaskLogCollection, TaskSystemInfoEvents(altName, time.Now(), 100, -1))
+	altsysresults, err := Find(TaskLogCollection, TaskSystemInfoEvents(altName, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(sysresults, baseNum)
-	altprocresults, err := Find(TaskLogCollection, TaskProcessInfoEvents(altName, time.Now(), 100, -1))
+	altprocresults, err := Find(TaskLogCollection, TaskProcessInfoEvents(altName, time.Now().Add(-time.Second), 100))
 	s.NoError(err)
 	s.Len(sysresults, baseNum)
 

@@ -283,7 +283,7 @@ func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild) error {
 
 func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	data, err := getVersionHistory(projCtx.Version.Id, 5)
+	data, err := version.GetHistory(projCtx.Version.Id, 5)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -92,20 +92,11 @@ func ByUser(user string) db.Q {
 
 // ByUserPaginated produces a query that returns patches by the given user
 // before/after the input time, sorted by creation time and limited
-func ByUserPaginated(user string, ts time.Time, limit int, sortAsc bool) db.Q {
-	filter := bson.M{
-		AuthorKey: user,
-	}
-
-	sortSpec := CreateTimeKey
-
-	if !sortAsc {
-		sortSpec = "-" + sortSpec
-		filter[CreateTimeKey] = bson.M{"$lte": ts}
-	} else {
-		filter[CreateTimeKey] = bson.M{"$gt": ts}
-	}
-	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+func ByUserPaginated(user string, ts time.Time, limit int) db.Q {
+	return db.Query(bson.M{
+		AuthorKey:     user,
+		CreateTimeKey: bson.M{"$lte": ts},
+	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
 // ByUserProjectAndGitspec produces a query that returns patches by the given
@@ -177,24 +168,11 @@ func UpdateOne(query interface{}, update interface{}) error {
 
 // PatchesByProject builds a query for patches that match the given
 // project's id.
-//
-// If the sort value is less than 0, the query will return all
-// matching patches that occur before the specified time, and otherwise
-// will return all matching patches that occur after the specified time.
-func PatchesByProject(projectId string, ts time.Time, limit int, sortAsc bool) db.Q {
-	filter := bson.M{
-		ProjectKey: projectId,
-	}
-
-	sortSpec := CreateTimeKey
-
-	if !sortAsc {
-		sortSpec = "-" + sortSpec
-		filter[CreateTimeKey] = bson.M{"$lte": ts}
-	} else {
-		filter[CreateTimeKey] = bson.M{"$gt": ts}
-	}
-	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
+	return db.Query(bson.M{
+		CreateTimeKey: bson.M{"$lte": ts},
+		ProjectKey:    projectId,
+	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
 func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) db.Q {

@@ -74,13 +74,13 @@ func (s *StatusSuite) SetupSuite() {
 }
 
 func (s *StatusSuite) SetupTest() {
-	s.h = &recentTasksGetHandler{}
+	s.h = &recentTasksGetHandler{sc: s.sc}
 }
 
 func (s *StatusSuite) TestParseAndValidateDefault() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks", &bytes.Buffer{})
 	s.Require().NoError(err)
-	err = s.h.ParseAndValidate(context.Background(), r)
+	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(30, s.h.minutes)
 	s.Equal(false, s.h.verbose)
@@ -89,7 +89,7 @@ func (s *StatusSuite) TestParseAndValidateDefault() {
 func (s *StatusSuite) TestParseAndValidateMinutes() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=5", &bytes.Buffer{})
 	s.Require().NoError(err)
-	err = s.h.ParseAndValidate(context.Background(), r)
+	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(5, s.h.minutes)
 	s.Equal(false, s.h.verbose)
@@ -98,7 +98,7 @@ func (s *StatusSuite) TestParseAndValidateMinutes() {
 func (s *StatusSuite) TestParseAndValidateMinutesAndVerbose() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=5&verbose=true", &bytes.Buffer{})
 	s.Require().NoError(err)
-	err = s.h.ParseAndValidate(context.Background(), r)
+	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(5, s.h.minutes)
 	s.Equal(true, s.h.verbose)
@@ -107,7 +107,7 @@ func (s *StatusSuite) TestParseAndValidateMinutesAndVerbose() {
 func (s *StatusSuite) TestParseAndValidateVerbose() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?verbose=true", &bytes.Buffer{})
 	s.Require().NoError(err)
-	err = s.h.ParseAndValidate(context.Background(), r)
+	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(30, s.h.minutes)
 	s.Equal(true, s.h.verbose)
@@ -116,7 +116,7 @@ func (s *StatusSuite) TestParseAndValidateVerbose() {
 func (s *StatusSuite) TestParseAndValidateMaxMinutes() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=1500", &bytes.Buffer{})
 	s.Require().NoError(err)
-	err = s.h.ParseAndValidate(context.Background(), r)
+	err = s.h.Parse(context.Background(), r)
 	s.Error(err)
 	s.Equal(0, s.h.minutes)
 	s.Equal(false, s.h.verbose)
@@ -125,7 +125,7 @@ func (s *StatusSuite) TestParseAndValidateMaxMinutes() {
 func (s *StatusSuite) TestParseAndValidateNegativeMinutesAreParsedPositive() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=-10", &bytes.Buffer{})
 	s.Require().NoError(err)
-	err = s.h.ParseAndValidate(context.Background(), r)
+	err = s.h.Parse(context.Background(), r)
 	s.Error(err)
 	s.Equal(0, s.h.minutes)
 	s.Equal(false, s.h.verbose)
@@ -135,11 +135,10 @@ func (s *StatusSuite) TestExecuteDefault() {
 	s.h.minutes = 0
 	s.h.verbose = false
 
-	resp, err := s.h.Execute(context.Background(), s.sc)
-	s.NoError(err)
+	resp := s.h.Run(context.Background())
+	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
-	s.Len(resp.Result, 1)
-	res := resp.Result[0].(*model.APITaskStats)
+	res := resp.Data().([]model.Model)[0].(*model.APITaskStats)
 	s.Equal(1, res.Total)
 	s.Equal(2, res.Inactive)
 	s.Equal(3, res.Unstarted)
@@ -156,11 +155,11 @@ func (s *StatusSuite) TestExecuteVerbose() {
 	s.h.minutes = 0
 	s.h.verbose = true
 
-	resp, err := s.h.Execute(context.Background(), s.sc)
-	s.NoError(err)
+	resp := s.h.Run(context.Background())
+	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
-	s.Len(resp.Result, 5)
-	for i, result := range resp.Result {
+	s.Len(resp.Data().([]model.Model), 5)
+	for i, result := range resp.Data().([]model.Model) {
 		t := result.(*model.APITask)
 		s.Equal(model.ToAPIString(fmt.Sprintf("task%d", i+1)), t.Id)
 	}
@@ -171,36 +170,32 @@ func (s *StatusSuite) TaskTaskType() {
 	s.h.verbose = true
 
 	s.h.taskType = evergreen.TaskUnstarted
-	resp, err := s.h.Execute(context.Background(), s.sc)
-	s.NoError(err)
+	resp := s.h.Run(context.Background())
 	s.NotNil(resp)
-	s.Len(resp.Result, 1)
-	found := resp.Result[0].(*model.APITask)
+	s.Equal(http.StatusOK, resp.Status())
+	found := resp.Data().([]interface{})[0].(*model.APITask)
 	s.Equal(model.ToAPIString("task1"), found.Id)
 
 	s.h.taskType = evergreen.TaskStarted
-	resp, err = s.h.Execute(context.Background(), s.sc)
-	s.NoError(err)
+	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
-	s.Len(resp.Result, 1)
-	found = resp.Result[0].(*model.APITask)
+	s.Equal(http.StatusOK, resp.Status())
+	found = resp.Data().([]interface{})[0].(*model.APITask)
 	s.Equal(model.ToAPIString("task2"), found.Id)
 
 	s.h.taskType = evergreen.TaskSucceeded
-	resp, err = s.h.Execute(context.Background(), s.sc)
-	s.NoError(err)
+	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
-	s.Len(resp.Result, 2)
-	found = resp.Result[0].(*model.APITask)
+	s.Equal(http.StatusOK, resp.Status())
+	found = resp.Data().([]interface{})[0].(*model.APITask)
 	s.Equal(model.ToAPIString("task3"), found.Id)
-	found = resp.Result[1].(*model.APITask)
+	found = resp.Data().([]interface{})[1].(*model.APITask)
 	s.Equal(model.ToAPIString("task4"), found.Id)
 
 	s.h.taskType = evergreen.TaskSystemTimedOut
-	resp, err = s.h.Execute(context.Background(), s.sc)
-	s.NoError(err)
+	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
-	s.Len(resp.Result, 1)
-	found = resp.Result[0].(*model.APITask)
+	s.Equal(http.StatusOK, resp.Status())
+	found = resp.Data().([]interface{})[0].(*model.APITask)
 	s.Equal(model.ToAPIString("task5"), found.Id)
 }

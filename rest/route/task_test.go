@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -49,24 +50,25 @@ func (s *TaskAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getTaskAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*taskAbortHandler).taskId = "task1"
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
+	rm := makeTaskAbortHandler(s.sc)
+	rm.(*taskAbortHandler).taskId = "task1"
+	res := rm.Run(ctx)
 
-	s.NoError(err)
+	s.Equal(http.StatusOK, res.Status())
+
 	s.NotNil(res)
 	s.Equal("user1", s.data.CachedAborted["task1"])
 	s.Equal("", s.data.CachedAborted["task2"])
-	t, ok := (res.Result[0]).(*model.APITask)
+	t, ok := res.Data().(*model.APITask)
 	s.True(ok)
 	s.Equal(model.ToAPIString("task1"), t.Id)
 
-	res, err = rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	res = rm.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 	s.Equal("user1", s.data.CachedAborted["task1"])
 	s.Equal("", s.data.CachedAborted["task2"])
-	t, ok = (res.Result[0]).(*model.APITask)
+	t, ok = (res.Data()).(*model.APITask)
 	s.True(ok)
 	s.Equal(model.ToAPIString("task1"), t.Id)
 }
@@ -75,12 +77,11 @@ func (s *TaskAbortSuite) TestAbortFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getTaskAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*taskAbortHandler).taskId = "task1"
+	rm := makeTaskAbortHandler(s.sc)
+	rm.(*taskAbortHandler).taskId = "task1"
 	s.sc.MockTaskConnector.FailOnAbort = true
-	_, err := rm.Methods[0].Execute(ctx, s.sc)
-
-	s.Error(err)
+	resp := rm.Run(ctx)
+	s.Equal(http.StatusBadRequest, resp.Status())
 }
 
 func TestFetchArtifacts(t *testing.T) {
@@ -124,22 +125,20 @@ func TestFetchArtifacts(t *testing.T) {
 	assert.NoError(task2.Insert())
 	assert.NoError(task2.Archive())
 
-	taskGet := taskGetHandler{taskID: task1.Id}
-	resp, err := taskGet.Execute(context.Background(), &data.DBConnector{})
-	require.NoError(err)
+	taskGet := taskGetHandler{taskID: task1.Id, sc: &data.DBConnector{}}
+	resp := taskGet.Run(context.Background())
 	require.NotNil(resp)
-	require.Len(resp.Result, 1)
-	apiTask := resp.Result[0].(*model.APITask)
+	assert.Equal(resp.Status(), http.StatusOK)
+	apiTask := resp.Data().(*model.APITask)
 	assert.Len(apiTask.Artifacts, 2)
 	assert.Empty(apiTask.PreviousExecutions)
 
 	// fetch all
 	taskGet.fetchAllExecutions = true
-	resp, err = taskGet.Execute(context.Background(), &data.DBConnector{})
-	assert.NoError(err)
+	resp = taskGet.Run(context.Background())
 	require.NotNil(resp)
-	assert.Len(resp.Result, 1)
-	apiTask = resp.Result[0].(*model.APITask)
+	assert.Equal(resp.Status(), http.StatusOK)
+	apiTask = resp.Data().(*model.APITask)
 	require.Len(apiTask.PreviousExecutions, 1)
 	assert.NotZero(apiTask.PreviousExecutions[0])
 	assert.NotEmpty(apiTask.PreviousExecutions[0].Artifacts)
@@ -147,20 +146,18 @@ func TestFetchArtifacts(t *testing.T) {
 	// fetchs a display task
 	taskGet.taskID = "task2"
 	taskGet.fetchAllExecutions = false
-	resp, err = taskGet.Execute(context.Background(), &data.DBConnector{})
-	assert.NoError(err)
+	resp = taskGet.Run(context.Background())
 	require.NotNil(resp)
-	assert.Len(resp.Result, 1)
-	apiTask = resp.Result[0].(*model.APITask)
+	assert.Equal(resp.Status(), http.StatusOK)
+	apiTask = resp.Data().(*model.APITask)
 	assert.Empty(apiTask.PreviousExecutions)
 
 	// fetch all, tasks with display tasks
 	taskGet.fetchAllExecutions = true
-	resp, err = taskGet.Execute(context.Background(), &data.DBConnector{})
-	assert.NoError(err)
+	resp = taskGet.Run(context.Background())
 	require.NotNil(resp)
-	assert.Len(resp.Result, 1)
-	apiTask = resp.Result[0].(*model.APITask)
+	assert.Equal(resp.Status(), http.StatusOK)
+	apiTask = resp.Data().(*model.APITask)
 	require.Len(apiTask.PreviousExecutions, 1)
 	assert.NotZero(apiTask.PreviousExecutions[0])
 }

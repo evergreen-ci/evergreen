@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -48,7 +49,10 @@ type dockerClientImpl struct {
 }
 
 // template string for new images with agent
-const provisionedImageTag string = "%s:provisioned"
+const (
+	provisionedImageTag = "%s:provisioned"
+	imageImportTimeout  = 10 * time.Minute
+)
 
 // generateClient generates a Docker client that can talk to the specified host
 // machine. The Docker client must be exposed and available for requests at the
@@ -76,6 +80,19 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 			"api_version": c.apiVersion,
 		})
 		return nil, errors.Wrapf(err, "Docker initialize client API call failed at endpoint '%s'", endpoint)
+	}
+
+	return c.client, nil
+}
+
+// changeTimeout changes the timeout of dockerClient's internal httpClient and
+// returns a new docker.Client with the updated timeout
+func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
+	var err error
+	c.httpClient.Timeout = newTimeout
+	c.client, err = c.generateClient(h)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to generate docker client")
 	}
 
 	return c.client, nil
@@ -109,25 +126,51 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 		return "", errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	// extract image name from url
+	// Extract image name from url
 	baseName := path.Base(url)
 	imageName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
-	// check if image already exists on host
+	// Check if image already exists on host
 	_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
 	if err == nil {
-		// image already exists
+		// Image already exists
 		return imageName, nil
 	} else if strings.Contains(err.Error(), "No such image") {
-		// image does not exist, import from remote tarball
+
+		// Extend http client timeout for ImageImport
+		normalTimeout := c.httpClient.Timeout
+		dockerClient, err := c.changeTimeout(h, imageImportTimeout)
+		if err != nil {
+			return "", errors.Wrap(err, "Error changing http client timeout")
+		}
+
+		// Image does not exist, import from remote tarball
 		source := types.ImageImportSource{SourceName: url}
-		_, err = dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
+		msg := makeDockerLogMessage("ImageImport", h.Id, message.Fields{
+			"source":     source,
+			"image_name": imageName,
+			"image_url":  url,
+		})
+		resp, err := dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
 		if err != nil {
 			return "", errors.Wrapf(err, "Error importing image from %s", url)
 		}
+		grip.Info(msg)
+
+		// Wait until ImageImport finishes
+		_, err = ioutil.ReadAll(resp)
+		if err != nil {
+			return "", errors.Wrap(err, "Error reading ImageImport response")
+		}
+
+		// Reset http client timeout
+		_, err = c.changeTimeout(h, normalTimeout)
+		if err != nil {
+			return "", errors.Wrap(err, "Error changing http client timeout")
+		}
+
 		return imageName, nil
 	} else {
-		// other error
 		return "", errors.Wrapf(err, "Error inspecting image %s", imageName)
 	}
 }
@@ -135,7 +178,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 // BuildImageWithAgent takes a base image and builds a new image on the specified
 // host from a Dockfile in the root directory, which adds the Evergreen binary
 func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
-	const dockerfileRoute = "/dockerfile"
+	const dockerfileRoute = "dockerfile"
 
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
@@ -151,9 +194,9 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	// build dockerfile route
 	dockerfileUrl := strings.Join([]string{
 		c.evergreenSettings.ApiUrl,
-		evergreen.APIRoutePrefixV2,
+		evergreen.APIRoutePrefix,
 		dockerfileRoute,
-	}, "")
+	}, "/")
 
 	options := types.ImageBuildOptions{
 		BuildArgs: map[string]*string{
@@ -167,11 +210,17 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 		Tags:          []string{provisionedImage},
 	}
 
+	msg := makeDockerLogMessage("ImageBuild", h.Id, message.Fields{
+		"base_image":     options.BuildArgs["BASE_IMAGE"],
+		"dockerfile_url": options.RemoteContext,
+	})
+
 	// build the image
 	resp, err := dockerClient.ImageBuild(ctx, nil, options)
 	if err != nil {
 		return "", errors.Wrapf(err, "Error building Docker image from base image %s", baseImage)
 	}
+	grip.Info(msg)
 
 	// wait for ImageBuild to complete -- success response otherwise returned
 	// before building from Dockerfile is over, and next ContainerCreate will fail
@@ -214,7 +263,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	// Import correct base image if not already on host.
 	image, err := c.EnsureImageDownloaded(ctx, h, settings.ImageURL)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", h.Id)
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.ImageURL, h.Id)
 	}
 
 	// Build image containing Evergreen executable.
@@ -260,10 +309,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	}
 	networkConf := &network.NetworkingConfig{}
 
-	grip.Info(message.Fields{
-		"message":       "Creating docker container",
-		"name":          name,
-		"image_id":      containerConf.Image,
+	msg := makeDockerLogMessage("ContainerCreate", h.Id, message.Fields{
+		"image":         containerConf.Image,
 		"exposed_ports": containerConf.ExposedPorts,
 		"port_bindings": hostConf.PortBindings,
 	})
@@ -274,6 +321,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		grip.Error(err)
 		return err
 	}
+	grip.Info(msg)
 
 	return nil
 }
@@ -381,4 +429,13 @@ func (c *dockerClientImpl) StartContainer(ctx context.Context, h *host.Host, con
 	}
 
 	return nil
+}
+
+func makeDockerLogMessage(name, parent string, data interface{}) message.Fields {
+	return message.Fields{
+		"message":  "Docker API call",
+		"api_name": name,
+		"parent":   parent,
+		"data":     data,
+	}
 }
