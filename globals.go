@@ -23,10 +23,10 @@ const (
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 
-	// TaskUnstarted and TaskInactive are only used when collecting results.
-	// (see model/task/results.go) Presumably, these are statues that
-	// that were used in the past, however they are longer assigned to any
-	// new tasks
+	// TaskUnstarted and TaskInactive are only used when collecting results
+	// (see model/task/results.go) and in tests. Presumably, these are
+	// statuses that were used in the past, however they are longer
+	// assigned to any newly created tasks
 	TaskUnstarted = "unstarted"
 	TaskInactive  = "inactive"
 
