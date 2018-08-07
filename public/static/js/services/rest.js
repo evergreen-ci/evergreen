@@ -339,14 +339,15 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
       baseSvc.postResource(resource + "/settings", [], config, callbacks);
     }
 
-    service.restartTasks = function(from, to, isDryRun, restartRed, restartPurple, callbacks) {
+    service.restartTasks = function(from, to, isDryRun, restartRed, restartPurple, restartLavender, callbacks) {
       var config = {}
       config.data = {
         start_time: from,
         end_time: to,
         dry_run: isDryRun,
-        only_red: restartRed,
-        only_purple: restartPurple
+        include_test_failed: restartRed,
+        include_sys_failed: restartPurple,
+        include_setup_failed: restartLavender,
       };
       baseSvc.postResource(resource + "/restart", [], config, callbacks);
     }
