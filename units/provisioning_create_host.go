@@ -124,6 +124,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 
 	defer j.tryRequeue(ctx)
 
+	// Set status temporarily to HostBuilding. Conventional hosts only stay in
+	// SpawnHost for a short period of time. Containers stay in SpawnHost for
+	// longer, since they may need to download container images and build them
+	// with the agent. This state allows intent documents to stay around until
+	// SpawnHost returns, but NOT as as initializing hosts that could still be
+	// spawned by Evergreen.
 	if err := j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
 		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
 	}
@@ -137,6 +143,9 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		intentHost, err := host.FindOneId(j.HostID)
 		if err != nil {
 			return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
+		}
+		if intentHost == nil {
+			return errors.Wrapf(err, "no intent host '%s' found", j.HostID)
 		}
 		if err := intentHost.Remove(); err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
