@@ -157,7 +157,11 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		}
 	}
 
-	j.host.Status = evergreen.HostStarting
+	// Don't mark containers as starting. SpawnHost already marks containers as
+	// running.
+	if j.host.ParentID == "" {
+		j.host.Status = evergreen.HostStarting
+	}
 
 	// Provisionally set j.host.StartTime to now. Cloud providers may override
 	// this value with the time the host was created.
