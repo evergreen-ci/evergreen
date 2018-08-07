@@ -500,56 +500,56 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	}
 
 	failedTask := false
-	buildComplete := false
 	finishedTasks := 0
 
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
-		if t.IsFinished() {
-			var displayTask *task.Task
-			status := ""
-			finishedTasks++
+		if !t.IsFinished() {
+			continue
+		}
 
-			displayTask, err = t.GetDisplayTask()
+		var displayTask *task.Task
+		status := ""
+		finishedTasks++
+
+		displayTask, err = t.GetDisplayTask()
+		if err != nil {
+			return err
+		}
+		if displayTask != nil {
+			err = displayTask.UpdateDisplayTask()
 			if err != nil {
 				return err
 			}
-			if displayTask != nil {
-				err = displayTask.UpdateDisplayTask()
-				if err != nil {
-					return err
-				}
-				t = *displayTask
-				status = t.Status
-				if t.IsFinished() {
-					continue
-				}
+			t = *displayTask
+			status = t.Status
+			if t.IsFinished() {
+				continue
 			}
+		}
 
-			// update the build's status when a test task isn't successful
-			if t.Status != evergreen.TaskSucceeded {
-				err = b.UpdateStatus(evergreen.BuildFailed)
-				if err != nil {
-					err = errors.Wrap(err, "Error updating build status")
-					grip.Error(err)
-					return err
-				}
-
-				failedTask = true
-				if t.DisplayName == evergreen.CompileStage {
-					buildComplete = true
-					break
-				}
-			}
-
-			// update the cached version of the task, in its build document
-			if status == "" {
-				status = t.Details.Status
-			}
-			err = b.SetCachedTaskFinished(t.Id, status, &t.Details, t.TimeTaken)
+		// update the build's status when a test task isn't successful
+		if t.Status != evergreen.TaskSucceeded {
+			err = b.UpdateStatus(evergreen.BuildFailed)
 			if err != nil {
-				return fmt.Errorf("error updating build: %v", err.Error())
+				err = errors.Wrap(err, "Error updating build status")
+				grip.Error(err)
+				return err
 			}
+
+			failedTask = true
+			if t.DisplayName == evergreen.CompileStage {
+				break
+			}
+		}
+
+		// update the cached version of the task, in its build document
+		if status == "" {
+			status = t.Details.Status
+		}
+		err = b.SetCachedTaskFinished(t.Id, status, &t.Details, t.TimeTaken)
+		if err != nil {
+			return fmt.Errorf("error updating build: %v", err.Error())
 		}
 	}
 
@@ -562,16 +562,12 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		updates.BuildNewStatus = evergreen.BuildStarted
 	}
 
-	if finishedTasks >= len(buildTasks) {
-		buildComplete = true
-	}
-
 	// if a compile task didn't fail, then the
 	// build is only finished when both the compile
 	// and test tasks are completed or when those are
 	// both completed in addition to a push (a push
 	// does not occur if there's a failed task)
-	if buildComplete {
+	if b.IsFinished() {
 		if !failedTask {
 			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
 				err = errors.Wrap(err, "Error marking build as finished")
