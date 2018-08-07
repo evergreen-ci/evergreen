@@ -133,12 +133,6 @@ func (j *eventNotificationJob) send(n *notification.Notification) error {
 		return errors.Wrap(err, "error building sender for notification")
 	}
 
-	err = sender.SetErrorHandler(getSendErrorHandler(n))
-	grip.Error(message.WrapError(err, message.Fields{
-		"message":           "failed to set error handler",
-		"notification_id":   n.ID,
-		"notification_type": n.Subscriber.Type,
-	}))
 	sender.Send(c)
 
 	return nil

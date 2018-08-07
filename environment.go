@@ -345,7 +345,7 @@ func (e *envState) initSenders() error {
 	}
 
 	if e.settings.Notify.SMTP.From != "" {
-		smtp := e.settings.Notify.SMTPgo
+		smtp := e.settings.Notify.SMTP
 		opts := send.SMTPOptions{
 			Name:              "evergreen",
 			Server:            smtp.Server,
