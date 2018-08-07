@@ -23,14 +23,32 @@ const (
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 
-	// Task Statuses used in the database models
-	TaskStarted      = "started"
-	TaskUnstarted    = "unstarted"
+	// TaskUnstarted and TaskInactive are only used when collecting results.
+	// (see model/task/results.go) Presumably, these are statues that
+	// that were used in the past, however they are longer assigned to any
+	// new tasks
+	TaskUnstarted = "unstarted"
+	TaskInactive  = "inactive"
+
+	// TaskUndispatched indicates either
+	//  1. a task is not scheduled to run (when Task.Activated == false)
+	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
-	TaskDispatched   = "dispatched"
+
+	// Task Statuses used in the database models
+	// TaskStarted indicates a task is running on an agent
+	TaskStarted = "started"
+
+	// TaskDispatched indicates that an agent has received the task, but
+	// the agent has not yet told Evergreen that it's running the task
+	TaskDispatched = "dispatched"
+
+	// The task statuses below indicate that a task has finished.
+	TaskSucceeded = "success"
+
+	// These statuses indicate a handful of types of failures, but the
+	// task end details struct contains additional statuses
 	TaskFailed       = "failed"
-	TaskSucceeded    = "success"
-	TaskInactive     = "inactive"
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
 
@@ -115,6 +133,18 @@ const (
 func IsFinishedTaskStatus(status string) bool {
 	if status == TaskFailed ||
 		status == TaskSucceeded ||
+		status == TaskSystemFailed ||
+		status == TaskSystemTimedOut ||
+		status == TaskSystemUnresponse ||
+		status == TaskTestTimedOut {
+		return true
+	}
+
+	return false
+}
+
+func IsFailedTaskStatus(status string) bool {
+	if status == TaskFailed ||
 		status == TaskSystemFailed ||
 		status == TaskSystemTimedOut ||
 		status == TaskSystemUnresponse ||

@@ -63,14 +63,28 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
+func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
+	if !t.Activated && t.Status == evergreen.TaskUndispatched {
+		return true
+	}
+
+	return false
+}
+
 func (b *Build) AllTasksFinished() bool {
+	allFinished := true
 	for i := range b.Tasks {
-		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
-			return false
+		if !taskCacheTaskIsUnscheduled(&b.Tasks[i]) && !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+			allFinished = false
+		}
+		if b.Tasks[i].DisplayName == evergreen.CompileStage {
+			if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
+				return true
+			}
 		}
 	}
 
-	return true
+	return allFinished
 }
 
 // Find

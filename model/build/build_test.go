@@ -559,13 +559,10 @@ func TestAllTasksFinished(t *testing.T) {
 				Id:     "t4",
 				Status: evergreen.TaskStarted,
 			},
+			// this task is unscheduled
 			{
-				Id:     "t5",
-				Status: evergreen.TaskStarted,
-			},
-			{
-				Id:     "t6",
-				Status: evergreen.TaskStarted,
+				Id:     "t7",
+				Status: evergreen.TaskUndispatched,
 			},
 		},
 	}
@@ -576,10 +573,27 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.False(b.AllTasksFinished())
 	b.Tasks[2].Status = evergreen.TaskSystemFailed
 	assert.False(b.AllTasksFinished())
-	b.Tasks[3].Status = evergreen.TaskSystemTimedOut
+	b.Tasks[3].Status = evergreen.TaskTestTimedOut
+	assert.True(b.AllTasksFinished())
+
+	b.Tasks = []TaskCache{
+		{
+			Id:          "t1",
+			DisplayName: evergreen.CompileStage,
+			Status:      evergreen.TaskStarted,
+		},
+		{
+			Id:     "t2",
+			Status: evergreen.TaskStarted,
+		},
+		{
+			Id:          "t3",
+			DisplayName: evergreen.PushStage,
+			Status:      evergreen.TaskStarted,
+		},
+	}
+
 	assert.False(b.AllTasksFinished())
-	b.Tasks[4].Status = evergreen.TaskSystemUnresponse
-	assert.False(b.AllTasksFinished())
-	b.Tasks[5].Status = evergreen.TaskTestTimedOut
+	b.Tasks[0].Status = evergreen.TaskFailed
 	assert.True(b.AllTasksFinished())
 }
