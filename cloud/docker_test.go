@@ -329,6 +329,8 @@ func (s *DockerSuite) TestGetDNSName() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
+
 	dns, err := s.manager.GetDNSName(ctx, host)
 	s.Error(err)
 	s.Empty(dns)
