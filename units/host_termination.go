@@ -136,7 +136,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
-
 		// host may still be an intent host
 		if j.host.Status == evergreen.HostUninitialized {
 			if err = j.host.Terminate(evergreen.User); err != nil {
