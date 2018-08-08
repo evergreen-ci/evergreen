@@ -6,11 +6,28 @@ mciModule.controller('SignalProcessingCtrl', function(
   // TODO later this might be replaced with some sort of pagination
   var LIMIT = 500
 
+  vm.mode = {
+    options: [{
+      id: 'processed',
+      name: 'Processed',
+    }, {
+      id: 'unprocessed',
+      name: 'Unprocessed',
+    }],
+    value: 'unprocessed',
+  }
+
   var state = {
     sorting: null,
     filtering: {
       probability: '>0.05'
-    }
+    },
+    mode: vm.mode.value,
+  }
+
+  var modeToCollMap = {
+    unprocessed: STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS,
+    processed: STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS,
   }
 
   // Required by loadData.
@@ -21,7 +38,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     theMostRecentPromise = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
-        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
+        .collection(modeToCollMap[state.mode])
         .aggregate(getAggChain(state))
     })
     // Storing this promise in closure.
@@ -84,6 +101,11 @@ mciModule.controller('SignalProcessingCtrl', function(
 
     chain.push({$limit: LIMIT})
     return chain
+  }
+
+  vm.modeChanged = function() {
+    state.mode = vm.mode.value
+    loadData(state)
   }
 
   // Sets `state` to grid filters (TODO and sorting; not required yet)
