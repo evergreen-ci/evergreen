@@ -83,6 +83,9 @@ type Environment interface {
 	// clients, that this server can serve to users
 	ClientConfig() *ClientConfig
 
+	// SaveConfig persists the configuration settings to the db
+	SaveConfig() error
+
 	// GetSender provides a grip Sender configured with the environment's
 	// settings. These Grip senders must be used with Composers that specify
 	// all message details.
@@ -140,9 +143,6 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	catcher.Add(e.initSenders())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
-	if confPath != "" {
-		catcher.Add(e.persistSettings())
-	}
 
 	return catcher.Resolve()
 }
@@ -461,7 +461,48 @@ type BuildBaronProject struct {
 	BFSuggestionTimeoutSecs int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs"`
 }
 
-func (e *envState) persistSettings() error {
+func (e *envState) Settings() *Settings {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.settings
+}
+
+func (e *envState) LocalQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.localQueue
+}
+
+func (e *envState) RemoteQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.remoteQueue
+}
+
+func (e *envState) Session() *mgo.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.session.Copy()
+}
+
+func (e *envState) ClientConfig() *ClientConfig {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if e.clientConfig == nil {
+		e.initClientConfig()
+		if e.clientConfig == nil {
+			return nil
+		}
+	}
+
+	config := *e.clientConfig
+	return &config
+}
+
+func (e *envState) SaveConfig() error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot persist to DB")
 	}
@@ -509,47 +550,6 @@ func (e *envState) persistSettings() error {
 	}
 
 	return errors.WithStack(UpdateConfig(&copy))
-}
-
-func (e *envState) Settings() *Settings {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	return e.settings
-}
-
-func (e *envState) LocalQueue() amboy.Queue {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.localQueue
-}
-
-func (e *envState) RemoteQueue() amboy.Queue {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.remoteQueue
-}
-
-func (e *envState) Session() *mgo.Session {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	return e.session.Copy()
-}
-
-func (e *envState) ClientConfig() *ClientConfig {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	if e.clientConfig == nil {
-		e.initClientConfig()
-		if e.clientConfig == nil {
-			return nil
-		}
-	}
-
-	config := *e.clientConfig
-	return &config
 }
 
 func (e *envState) GetSender(key SenderKey) (send.Sender, error) {

@@ -50,6 +50,10 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	// first test loading config from a file
 	s.NoError(s.env.Configure(ctx, s.path, nil))
 	s.Error(s.env.Configure(ctx, s.path, nil))
+	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
+
+	// persist to db
+	s.NoError(s.env.SaveConfig())
 
 	// then test loading it from the db
 	s.env.settings = nil
@@ -58,6 +62,7 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	db := settings.Database
 	s.NoError(s.env.Configure(ctx, "", &db))
 	s.Equal(db, s.env.settings.Database)
+	s.Equal("http://localhost:8080", s.env.Settings().ApiUrl)
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
