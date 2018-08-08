@@ -2491,7 +2491,7 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	}
 
 	for i, _ := range hosts {
-		hosts[i].Insert()
+		assert.NoError(hosts[i].Insert())
 	}
 
 	err := RemoveStaleInitializing(distro1.Id)
