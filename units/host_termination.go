@@ -119,6 +119,28 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		j.AddError(model.ClearAndResetStrandedTask(j.host))
 	}
 
+	// terminate containers in DB if parent already terminated
+	if j.host.ParentID != "" {
+		parent, err := host.FindOneId(j.host.ParentID)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "problem finding parent of '%s'", j.host.Id))
+			return
+		}
+		if parent.Status == evergreen.HostTerminated {
+			if err := j.host.Terminate(evergreen.User); err != nil {
+				j.AddError(errors.Wrap(err, "problem terminating container in db"))
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":     j.host.Id,
+					"provider": j.host.Distro.Provider,
+					"job_type": j.Type().Name,
+					"job":      j.ID(),
+					"message":  "problem terminating container in db",
+				}))
+			}
+			return
+		}
+	}
+
 	// convert the host to a cloud host
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, settings)
 	if err != nil {
@@ -149,28 +171,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				}))
 			}
 			return
-		}
-
-		// terminate containers in DB if parent already terminated
-		if j.host.ParentID != "" {
-			parent, err := host.FindOneId(j.host.ParentID)
-			if err != nil {
-				j.AddError(errors.Wrapf(err, "problem finding parent of '%s'", j.host.Id))
-				return
-			}
-			if parent.Status == evergreen.HostTerminated {
-				if err := j.host.Terminate(evergreen.User); err != nil {
-					j.AddError(errors.Wrap(err, "problem terminating container in db"))
-					grip.Error(message.WrapError(err, message.Fields{
-						"host":     j.host.Id,
-						"provider": j.host.Distro.Provider,
-						"job_type": j.Type().Name,
-						"job":      j.ID(),
-						"message":  "problem terminating container in db",
-					}))
-				}
-				return
-			}
 		}
 
 		// other problem getting cloud status
