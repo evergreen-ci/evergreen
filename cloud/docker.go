@@ -134,13 +134,10 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 	return toEvgStatus(container.State), nil
 }
 
-//GetDNSName gets the DNS hostname of a container by reading it directly from
-//the Docker API
+// GetDNSName gets the DNS hostname of a container by reading it directly from
+// the Docker API
 func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if h.Host == "" {
-		return "", errors.New("DNS name is empty")
-	}
-	return h.Host, nil
+	return "", nil
 }
 
 //TerminateInstance destroys a container.
