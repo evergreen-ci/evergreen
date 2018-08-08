@@ -20,7 +20,7 @@ const (
 
 type createHostSuite struct {
 	params map[string]interface{}
-	cmd    CreateHost
+	cmd    createHost
 	conf   *model.TaskConfig
 	comm   client.Communicator
 	logger client.LoggerProducer
@@ -50,7 +50,7 @@ func (s *createHostSuite) SetupTest() {
 		"distro": "myDistro",
 		"scope":  "task",
 	}
-	s.cmd = CreateHost{}
+	s.cmd = createHost{}
 }
 
 func (s *createHostSuite) TestParamDefaults() {

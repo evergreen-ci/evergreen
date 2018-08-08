@@ -13,21 +13,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-type CreateHost struct {
+type createHost struct {
 	CreateHost *apimodels.CreateHost
 	base
 }
 
-func createHostFactory() Command { return &CreateHost{} }
+func createHostFactory() Command { return &createHost{} }
 
-func (c *CreateHost) Name() string { return "host.create" }
+func (c *createHost) Name() string { return "host.create" }
 
-func (c *CreateHost) ParseParams(params map[string]interface{}) error {
+func (c *createHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
 	return errors.Wrapf(mapstructure.Decode(params, c.CreateHost), "error parsing '%s' params", c.Name())
 }
 
-func (c *CreateHost) expandAndValidate(conf *model.TaskConfig) error {
+func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
 	}
@@ -38,7 +38,7 @@ func (c *CreateHost) expandAndValidate(conf *model.TaskConfig) error {
 	return nil
 }
 
-func (c *CreateHost) Execute(ctx context.Context, comm client.Communicator,
+func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	if err := c.expandAndValidate(conf); err != nil {
@@ -59,7 +59,7 @@ func (c *CreateHost) Execute(ctx context.Context, comm client.Communicator,
 	return comm.CreateHost(ctx, taskData, *c.CreateHost)
 }
 
-func (c *CreateHost) populateUserdata() error {
+func (c *createHost) populateUserdata() error {
 	file, err := os.Open(c.CreateHost.UserdataFile)
 	if err != nil {
 		return errors.Wrap(err, "error opening UserData file")
