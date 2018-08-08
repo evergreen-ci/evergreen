@@ -20,7 +20,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   var state = {
     sorting: null,
     filtering: {
-      probability: '>0.05'.
+      probability: '>0.05',
       project: '=' + $window.project,
     },
     mode: vm.mode.value,
