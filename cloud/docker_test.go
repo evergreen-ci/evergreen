@@ -127,6 +127,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	defer cancel()
 
 	hostA := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostA.Insert())
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
@@ -134,6 +135,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	s.NoError(err)
 
 	hostB := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostB.Insert())
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -156,6 +158,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	myHost := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(myHost.Insert())
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -218,6 +221,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
 	host = NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -230,11 +234,13 @@ func (s *DockerSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
 	hostOne := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostOne.Insert())
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
 	hostTwo := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostTwo.Insert())
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -249,12 +255,14 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
 	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -269,6 +277,7 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	h, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(h)
@@ -293,12 +302,14 @@ func (s *DockerSuite) TestSpawnFailOpenPortBinding() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.hasOpenPorts = false
 	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -313,12 +324,14 @@ func (s *DockerSuite) TestSpawnGetAPICall() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failGet = true
 	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -329,6 +342,8 @@ func (s *DockerSuite) TestGetDNSName() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
+
 	dns, err := s.manager.GetDNSName(ctx, host)
 	s.Error(err)
 	s.Empty(dns)

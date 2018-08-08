@@ -62,13 +62,13 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	}
 
 	// get parent of host
-	parent, err := h.GetParent()
+	parentHost, err := h.GetParent()
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error finding parent of host '%s'", h.Id)
 	}
-	hostIP := parent.Host
+	hostIP := parentHost.Host
 	if hostIP == "" {
-		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parent.Id)
+		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
 	}
 
 	if err := settings.Validate(); err != nil {
@@ -83,17 +83,26 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, parent, h.Id, h.Distro.User, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, parentHost, h, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
 	}
 
+	if err = h.SetAgentRevision(evergreen.BuildRevision); err != nil {
+		return nil, errors.Wrapf(err, "error setting agent revision on host %s", h.Id)
+	}
+
+	// The setup was successful. Update the container host accordingly in the database.
+	if err := h.MarkAsProvisioned(); err != nil {
+		return nil, errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
+	}
+
 	// Start container
-	if err := m.client.StartContainer(ctx, parent, h.Id); err != nil {
+	if err := m.client.StartContainer(ctx, parentHost, h.Id); err != nil {
 		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", hostIP)
 		// Clean up
-		if err2 := m.client.RemoveContainer(ctx, parent, h.Id); err2 != nil {
+		if err2 := m.client.RemoveContainer(ctx, parentHost, h.Id); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
 		}
 		grip.Error(err)
@@ -107,7 +116,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	event.LogHostStarted(h.Id)
 
 	// Retrieve container details
-	newContainer, err := m.client.GetContainer(ctx, parent, h.Id)
+	newContainer, err := m.client.GetContainer(ctx, parentHost, h.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", hostIP)
 		grip.Error(err)

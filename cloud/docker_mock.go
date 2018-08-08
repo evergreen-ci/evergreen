@@ -54,7 +54,7 @@ func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, stri
 	return fmt.Sprintf(provisionedImageTag, c.baseImage), nil
 }
 
-func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, string, string, *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}

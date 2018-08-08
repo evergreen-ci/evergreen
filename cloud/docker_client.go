@@ -30,7 +30,7 @@ type dockerClient interface {
 	Init(string) error
 	EnsureImageDownloaded(context.Context, *host.Host, string) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
-	CreateContainer(context.Context, *host.Host, string, string, *dockerSettings) error
+	CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
@@ -242,46 +242,46 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, name, user string, settings *dockerSettings) error {
-	dockerClient, err := c.generateClient(h)
+func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, containerHost *host.Host, settings *dockerSettings) error {
+	dockerClient, err := c.generateClient(parentHost)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
 
 	// List all containers to find ports that are already taken.
-	containers, err := c.ListContainers(ctx, h)
+	containers, err := c.ListContainers(ctx, parentHost)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to list containers on host '%s'", h.Id)
+		return errors.Wrapf(err, "Failed to list containers on host '%s'", parentHost.Id)
 	}
 
 	// Create a host config to bind the SSH port to another open port.
-	hostConf, err := makeHostConfig(h, containers)
+	hostConf, err := makeHostConfig(parentHost, containers)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to populate docker host config for host '%s'", h.Host)
+		return errors.Wrapf(err, "Unable to populate docker host config for host '%s'", parentHost.Host)
 	}
 
 	// Import correct base image if not already on host.
-	image, err := c.EnsureImageDownloaded(ctx, h, settings.ImageURL)
+	image, err := c.EnsureImageDownloaded(ctx, parentHost, settings.ImageURL)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.ImageURL, h.Id)
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.ImageURL, parentHost.Id)
 	}
 
 	// Build image containing Evergreen executable.
-	provisionedImage, err := c.BuildImageWithAgent(ctx, h, image)
+	provisionedImage, err := c.BuildImageWithAgent(ctx, parentHost, image)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", image, h.Id)
+		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", image, parentHost.Id)
 	}
 
 	// Build path to Evergreen executable.
 	pathToExecutable := filepath.Join("root", "evergreen")
-	if h.Distro.IsWindows() {
+	if parentHost.Distro.IsWindows() {
 		pathToExecutable += ".exe"
 	}
 
 	// Generate the host secret for container if none exists.
-	if h.Secret == "" {
-		if err = h.CreateSecret(); err != nil {
-			return errors.Wrapf(err, "creating secret for %s", h.Id)
+	if containerHost.Secret == "" {
+		if err = containerHost.CreateSecret(); err != nil {
+			return errors.Wrapf(err, "creating secret for %s", containerHost.Id)
 		}
 	}
 
@@ -289,11 +289,11 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 	agentCmdParts := []string{
 		pathToExecutable,
 		"agent",
-		fmt.Sprintf("--api_server='%s'", c.evergreenSettings.ApiUrl),
-		fmt.Sprintf("--host_id='%s'", h.Id),
-		fmt.Sprintf("--host_secret='%s'", h.Secret),
-		fmt.Sprintf("--log_prefix='%s'", filepath.Join(h.Distro.WorkDir, "agent")),
-		fmt.Sprintf("--working_directory='%s'", h.Distro.WorkDir),
+		fmt.Sprintf("--api_server=%s", c.evergreenSettings.ApiUrl),
+		fmt.Sprintf("--host_id=%s", containerHost.Id),
+		fmt.Sprintf("--host_secret=%s", containerHost.Secret),
+		fmt.Sprintf("--log_prefix=%s", filepath.Join(containerHost.Distro.WorkDir, "agent")),
+		fmt.Sprintf("--working_directory=%s", containerHost.Distro.WorkDir),
 		"--cleanup",
 	}
 
@@ -305,19 +305,19 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, h *host.Host, na
 		},
 		Cmd:   agentCmdParts,
 		Image: provisionedImage,
-		User:  user,
+		User:  containerHost.Distro.User,
 	}
 	networkConf := &network.NetworkingConfig{}
 
-	msg := makeDockerLogMessage("ContainerCreate", h.Id, message.Fields{
+	msg := makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{
 		"image":         containerConf.Image,
 		"exposed_ports": containerConf.ExposedPorts,
 		"port_bindings": hostConf.PortBindings,
 	})
 
 	// Build container
-	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, name); err != nil {
-		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", name)
+	if _, err := dockerClient.ContainerCreate(ctx, containerConf, hostConf, networkConf, containerHost.Id); err != nil {
+		err = errors.Wrapf(err, "Docker create API call failed for container '%s'", containerHost.Id)
 		grip.Error(err)
 		return err
 	}
