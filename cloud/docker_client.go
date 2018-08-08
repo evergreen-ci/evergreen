@@ -16,7 +16,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -248,18 +247,6 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	// List all containers to find ports that are already taken.
-	containers, err := c.ListContainers(ctx, parentHost)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to list containers on host '%s'", parentHost.Id)
-	}
-
-	// Create a host config to bind the SSH port to another open port.
-	hostConf, err := makeHostConfig(parentHost, containers)
-	if err != nil {
-		return errors.Wrapf(err, "Unable to populate docker host config for host '%s'", parentHost.Host)
-	}
-
 	// Import correct base image if not already on host.
 	image, err := c.EnsureImageDownloaded(ctx, parentHost, settings.ImageURL)
 	if err != nil {
@@ -299,20 +286,15 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 
 	// Populate container settings with command and new image.
 	containerConf := &container.Config{
-		// ExposedPorts exposes the default SSH port to external connections.
-		ExposedPorts: nat.PortSet{
-			sshdPort: {},
-		},
 		Cmd:   agentCmdParts,
 		Image: provisionedImage,
 		User:  containerHost.Distro.User,
 	}
 	networkConf := &network.NetworkingConfig{}
+	hostConf := &container.HostConfig{}
 
 	msg := makeDockerLogMessage("ContainerCreate", parentHost.Id, message.Fields{
-		"image":         containerConf.Image,
-		"exposed_ports": containerConf.ExposedPorts,
-		"port_bindings": hostConf.PortBindings,
+		"image": containerConf.Image,
 	})
 
 	// Build container
