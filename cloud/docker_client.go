@@ -27,6 +27,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
+	Close()
 	EnsureImageDownloaded(context.Context, *host.Host, string) (string, error)
 	BuildImageWithAgent(context.Context, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error
@@ -61,9 +62,18 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 		return nil, errors.New("HostIP must not be blank")
 	}
 
-	// cache the *docker.Client in dockerClientImpl
-	if c.client != nil {
+	// Cache the *docker.Client in dockerClientImpl, return this client if
+	// httpClient has not been closed
+	if c.client != nil && c.httpClient != nil {
 		return c.client, nil
+	}
+
+	// Get new HTTP client
+	if c.httpClient == nil {
+		err := c.getHTTPClient()
+		if err != nil {
+			return nil, errors.Wrap(err, "Error getting new HTTP client")
+		}
 	}
 
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
@@ -87,6 +97,10 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 // changeTimeout changes the timeout of dockerClient's internal httpClient and
 // returns a new docker.Client with the updated timeout
 func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration) (*docker.Client, error) {
+	if c.httpClient == nil {
+		return nil, errors.New("Error changing timeout: httpClient cannot be nil")
+	}
+
 	var err error
 	c.httpClient.Timeout = newTimeout
 	c.client, err = c.generateClient(h)
@@ -97,17 +111,11 @@ func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration)
 	return c.client, nil
 }
 
-// Init sets the Docker API version to use for API calls to the Docker client.
-func (c *dockerClientImpl) Init(apiVersion string) error {
-	if apiVersion == "" {
-		return errors.Errorf("Docker API version '%s' is invalid", apiVersion)
-	}
-	c.apiVersion = apiVersion
-
+func (c *dockerClientImpl) getHTTPClient() error {
 	// Create HTTP client
 	c.httpClient = util.GetHTTPClient()
 
-	// allow connections to Docker daemon with self-signed certificates
+	// Allow connections to Docker daemon with self-signed certificates
 	transport, ok := c.httpClient.Transport.(*http.Transport)
 	if !ok {
 		return errors.Errorf("Type assertion failed: type %T does not hold a *http.Transport", c.httpClient.Transport)
@@ -115,6 +123,25 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	transport.TLSClientConfig.InsecureSkipVerify = true
 
 	return nil
+}
+
+// Init sets the Docker API version to use for API calls to the Docker client.
+func (c *dockerClientImpl) Init(apiVersion string) error {
+	if apiVersion == "" {
+		return errors.Errorf("Docker API version '%s' is invalid", apiVersion)
+	}
+	c.apiVersion = apiVersion
+
+	return nil
+}
+
+// Close puts any HTTP client associated with the Docker client back in the pool.
+func (c *dockerClientImpl) Close() {
+	if c.httpClient != nil {
+		util.PutHTTPClient(c.httpClient)
+		c.httpClient = nil
+	}
+	return
 }
 
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,

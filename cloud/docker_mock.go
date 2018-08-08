@@ -40,6 +40,10 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
+func (c *dockerClientMock) Close() {
+	return
+}
+
 func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, string) (string, error) {
 	if c.failDownload {
 		return "", errors.New("failed to download image")

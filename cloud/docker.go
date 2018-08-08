@@ -47,6 +47,8 @@ func (*dockerManager) GetSettings() ProviderSettings {
 
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
+	defer m.client.Close()
+
 	if h.Distro.Provider != evergreen.ProviderNameDocker {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
@@ -120,6 +122,8 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
+	defer m.client.Close()
+
 	// get parent of container host
 	parent, err := h.GetParent()
 	if err != nil {
@@ -141,6 +145,8 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 
 //TerminateInstance destroys a container.
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
+	defer m.client.Close()
+
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 		grip.Error(err)
@@ -185,6 +191,8 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 //IsUp checks the container's state by querying the Docker API and
 //returns true if the host should be available to connect with SSH.
 func (m *dockerManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
+	defer m.client.Close()
+
 	cloudStatus, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {
 		return false, err
@@ -218,6 +226,8 @@ func (m *dockerManager) TimeTilNextPayment(_ *host.Host) time.Duration {
 }
 
 func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]string, error) {
+	defer m.client.Close()
+
 	containers, err := m.client.ListContainers(ctx, h)
 	if err != nil {
 		return nil, errors.Wrap(err, "error listing containers")
@@ -252,6 +262,8 @@ func (m *dockerManager) getContainersRunningImage(ctx context.Context, h *host.H
 
 // RemoveOldestImage finds the oldest image without running containers and forcibly removes it
 func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) error {
+	defer m.client.Close()
+
 	// list images in order of most to least recently created
 	images, err := m.client.ListImages(ctx, h)
 	if err != nil {
@@ -279,6 +291,8 @@ func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) err
 
 // CalculateImageSpaceUsage returns the amount of bytes that images take up on disk
 func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error) {
+	defer m.client.Close()
+
 	images, err := m.client.ListImages(ctx, h)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error listing images")
@@ -295,6 +309,8 @@ func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Ho
 // host. The method divides the cost of that span on the parent host by an
 // estimate of the number of containers running during the same interval.
 func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+	defer m.client.Close()
+
 	parent, err := h.GetParent()
 	if err != nil {
 		return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
