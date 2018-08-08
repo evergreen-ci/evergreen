@@ -1711,6 +1711,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		},
 	}
 	require.NoError(b.Insert())
+	assert.False(b.IsFinished())
+
 	v := &version.Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
@@ -1727,24 +1729,28 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.Empty(updates.BuildNewStatus)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
+	assert.False(b.IsFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
+	assert.False(b.IsFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&exeTask0, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
+	assert.False(b.IsFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&exeTask1, "", time.Now(), details, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
+	assert.True(b.IsFinished())
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
@@ -1767,10 +1773,9 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	anotherTask := task.Task{
 		Id:          "two",
 		DisplayName: "test 2",
-		Activated:   true,
 		BuildId:     buildID,
 		Project:     "sample",
-		Status:      evergreen.TaskStarted,
+		Status:      evergreen.TaskUndispatched,
 		StartTime:   time.Now().Add(-time.Hour),
 		DependsOn: []task.Dependency{
 			{
@@ -1815,4 +1820,5 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
+	assert.True(b.IsFinished())
 }
