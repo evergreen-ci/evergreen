@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,9 @@ func TestMakeIntentHost(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(distro.Collection, host.Collection, task.Collection))
-	handler := hostCreateHandler{}
+	handler := hostCreateHandler{
+		sc: &data.DBConnector{},
+	}
 
 	d := distro.Distro{
 		Id: "archlinux-test",
@@ -42,7 +45,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err := handler.makeIntentHost()
+	h, err := handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -70,7 +73,7 @@ func TestMakeIntentHost(t *testing.T) {
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
-	h, err = handler.makeIntentHost()
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	ec2Settings = &cloud.EC2ProviderSettings{}
@@ -89,7 +92,7 @@ func TestMakeIntentHost(t *testing.T) {
 		Spot:                true,
 	}
 	handler.createHost = c
-	h, err = handler.makeIntentHost()
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -114,7 +117,7 @@ func TestMakeIntentHost(t *testing.T) {
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
-	h, err = handler.makeIntentHost()
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("archlinux-test", h.Distro.Id)
@@ -142,7 +145,7 @@ func TestMakeIntentHost(t *testing.T) {
 		Subnet:              "subnet-123456",
 	}
 	handler.createHost = c
-	h, err = handler.makeIntentHost()
+	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
 	assert.NoError(err)
 	assert.NotNil(h)
 	assert.Equal("", h.Distro.Id)
