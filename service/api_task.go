@@ -80,10 +80,12 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	msg := fmt.Sprintf("Task %v started on host %v", t.Id, h.Id)
 
-	job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
-	if err = as.queue.Put(job); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error queuing host idle stats for %s", msg))
-		return
+	if h.Distro.IsEphemeral() {
+		job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
+		if err = as.queue.Put(job); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error queuing host idle stats for %s", msg))
+			return
+		}
 	}
 
 	gimlet.WriteJSON(w, msg)
