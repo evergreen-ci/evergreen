@@ -40,9 +40,15 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 		Status:   evergreen.HostRunning,
 		ParentID: "parent-1",
 	}
+	h4 := &host.Host{
+		Id:       "container-3",
+		Status:   evergreen.HostUninitialized,
+		ParentID: "parent-1",
+	}
 	assert.NoError(h1.Insert())
 	assert.NoError(h2.Insert())
 	assert.NoError(h3.Insert())
+	assert.NoError(h4.Insert())
 
 	j := NewHostMonitorContainerStateJob(env, h1, evergreen.ProviderNameDockerMock, "job-1")
 	assert.False(j.Status().Completed)
@@ -59,4 +65,8 @@ func TestHostMonitoringContainerStateJob(t *testing.T) {
 	container2, err := host.FindOne(host.ById("container-2"))
 	assert.NoError(err)
 	assert.Equal(evergreen.HostTerminated, container2.Status)
+
+	container3, err := host.FindOne(host.ById("container-3"))
+	assert.NoError(err)
+	assert.Equal(evergreen.HostUninitialized, container3.Status)
 }
