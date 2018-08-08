@@ -68,7 +68,14 @@ type AWSClient interface {
 	// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
 	DescribeVpcs(context.Context, *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
 
+	// GetInstanceInfo returns info about an ec2 instance.
 	GetInstanceInfo(context.Context, string) (*ec2.Instance, error)
+
+	// CreateKeyPair is a wrapper for ec2.CreateKeyPairWithContext.
+	CreateKeyPair(context.Context, *ec2.CreateKeyPairInput) (*ec2.CreateKeyPairOutput, error)
+
+	// DeleteKeyPair is a wrapper for ec2.DeleteKeyPairWithContext.
+	DeleteKeyPair(context.Context, *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -460,6 +467,52 @@ func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	return instances[0], nil
 }
 
+// CreateKeyPair is a wrapper for ec2.CreateKeyPair.
+func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyPairInput) (*ec2.CreateKeyPairOutput, error) {
+	var output *ec2.CreateKeyPairOutput
+	var err error
+	msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.CreateKeyPairWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DeleteKeyPair is a wrapper for ec2.DeleteKeyPair.
+func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error) {
+	var output *ec2.DeleteKeyPairOutput
+	var err error
+	msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.DeleteKeyPairWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*credentials.Credentials
@@ -474,6 +527,8 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeSpotPriceHistoryInput
 	*ec2.DescribeSubnetsInput
 	*ec2.DescribeVpcsInput
+	*ec2.CreateKeyPairInput
+	*ec2.DeleteKeyPairInput
 
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
@@ -667,6 +722,21 @@ func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.In
 	instance.State = &ec2.InstanceState{}
 	instance.State.Name = aws.String("running")
 	return instance, nil
+}
+
+// CreateKeyPair is a mock for ec2.CreateKeyPair.
+func (c *awsClientMock) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyPairInput) (*ec2.CreateKeyPairOutput, error) {
+	c.CreateKeyPairInput = input
+	return &ec2.CreateKeyPairOutput{
+		KeyName:     aws.String("key_name"),
+		KeyMaterial: aws.String("key_material"),
+	}, nil
+}
+
+// DeleteKeyPair is a mock for ec2.DeleteKeyPair.
+func (c *awsClientMock) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error) {
+	c.DeleteKeyPairInput = input
+	return &ec2.DeleteKeyPairOutput{}, nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {

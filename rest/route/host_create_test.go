@@ -56,6 +56,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	assert.Equal("task-id", h.SpawnOptions.TaskID)
+	assert.Equal("mock_key", ec2Settings.KeyName)
 
 	// scope to build
 	myTask := task.Task{
@@ -80,6 +81,7 @@ func TestMakeIntentHost(t *testing.T) {
 	err = mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings)
 	assert.NoError(err)
 	assert.Equal("build-id", h.SpawnOptions.BuildID)
+	assert.Equal("mock_key", ec2Settings.KeyName)
 
 	// spawn a spot evergreen distro
 	c = apimodels.CreateHost{
@@ -102,6 +104,7 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("ami-123456", ec2Settings.AMI)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Provider)
 	assert.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+	assert.Equal("mock_key", ec2Settings.KeyName)
 
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
