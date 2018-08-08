@@ -241,6 +241,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         config.data['key_name'] = spawnInfo.spawnKey.name;
         config.data['public_key'] = spawnInfo.spawnKey.key;
         config.data['userdata'] = spawnInfo.userData;
+        config.data['use_task_config'] = spawnInfo.useTaskConfig;
         baseSvc.putResource(resource, [], config, callbacks);
     };
 
