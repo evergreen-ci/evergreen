@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -108,4 +109,46 @@ func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
 	}
 
 	return dir, nil
+}
+
+func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
+	if t == nil {
+		return nil, errors.New("no task to make a TaskConfig from")
+	}
+	v, err := version.FindOne(version.ById(t.Version))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding version")
+	}
+	d, err := distro.FindOne(distro.ById(t.DistroId))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding distro")
+	}
+	proj := &Project{}
+	err = LoadProjectInto([]byte(v.Config), v.Identifier, proj)
+	if err != nil {
+		return nil, errors.Wrap(err, "error loading project")
+	}
+	projRef, err := FindOneProjectRef(t.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project ref")
+	}
+	var p *patch.Patch
+	if v.Requester == evergreen.PatchVersionRequester {
+		p, err = patch.FindOne(patch.ByVersion(v.Id))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding patch")
+		}
+	}
+
+	tc, err := NewTaskConfig(&d, v, proj, t, projRef, p)
+	if err != nil {
+		return nil, errors.Wrap(err, "error making TaskConfig")
+	}
+	projVars, err := FindOneProjectVars(t.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project vars")
+	}
+	tc.Expansions.Update(projVars.Vars)
+	tc.Redacted = projVars.PrivateVars
+	return tc, nil
 }
