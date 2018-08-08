@@ -25,11 +25,11 @@ func init() {
 type hostMonitorContainerStateJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
+	Provider string `bson:"provider" json:"provider" yaml:"provider"`
 
 	// cache
 	host     *host.Host
 	env      evergreen.Environment
-	provider string
 	settings *evergreen.Settings
 }
 
@@ -51,7 +51,7 @@ func NewHostMonitorContainerStateJob(env evergreen.Environment, h *host.Host, pr
 	job := makeHostMonitorContainerStateJob()
 
 	job.host = h
-	job.provider = providerName
+	job.Provider = providerName
 	job.HostID = h.Id
 
 	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitorContainerStateJobName, job.HostID, id))
@@ -90,7 +90,7 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	}
 
 	// list containers using Docker provider
-	mgr, err := cloud.GetManager(ctx, j.provider, j.settings)
+	mgr, err := cloud.GetManager(ctx, j.Provider, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return
@@ -107,16 +107,18 @@ func (j *hostMonitorContainerStateJob) Run(ctx context.Context) {
 	}
 
 	// build map of running container IDs
-	isRunning := make(map[string]bool)
+	isRunningInDocker := make(map[string]bool)
 	for _, id := range containerIdsFromDocker {
-		isRunning[id] = true
+		isRunningInDocker[id] = true
 	}
 
 	// for each non-terminated container in DB that is not actually running on
 	// Docker, mark it as terminated
 	for _, container := range containersFromDB {
-		if !isRunning[container.Id] {
-			j.AddError(container.SetTerminated(evergreen.User))
+		if container.Status == evergreen.HostRunning || container.Status == evergreen.HostDecommissioned {
+			if !isRunningInDocker[container.Id] {
+				j.AddError(container.SetTerminated(evergreen.User))
+			}
 		}
 	}
 }
