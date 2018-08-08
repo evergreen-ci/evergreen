@@ -2,14 +2,15 @@ mciModule.controller('SignalProcessingCtrl', function(
   $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG
 ) {
   var vm = this;
-  var projectId = $window.project
+
   // TODO later this might be replaced with some sort of pagination
   var LIMIT = 500
 
   var state = {
     sorting: null,
     filtering: {
-      probability: '>0.05'
+      probability: '>0.05',
+      project: '=' + $window.project,
     }
   }
 
@@ -129,11 +130,6 @@ mciModule.controller('SignalProcessingCtrl', function(
     },
     columnDefs: [
       {
-        name: 'Project',
-        field: 'project',
-        type: 'string',
-      },
-      {
         name: 'Variant',
         field: 'variant',
         type: 'string',
@@ -206,6 +202,12 @@ mciModule.controller('SignalProcessingCtrl', function(
       {
         name: 'Create Time',
         field: 'create_time',
+        visible: false,
+      },
+      {
+        name: 'Project',
+        field: 'project',
+        type: 'string',
         visible: false,
       },
     ]

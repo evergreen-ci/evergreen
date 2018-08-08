@@ -55,12 +55,24 @@ mciModule.factory('MDBQueryAdaptor', function() {
     }
   }
 
-  function strTypeTokenizer(query) { return [query] }
+  function strTypeTokenizer(query) {
+    return query
+      .match('(=?)(.+)')
+      .slice(1)
+      .filter(_.identity)
+  }
 
   function strTypeParser(tokens) {
-    return {
-      op: 'icontains',
-      term: tokens[0],
+    if (tokens[0] == '=') {
+      return {
+        op: '==',
+        term: tokens[1],
+      }
+    } else {
+      return {
+        op: 'icontains',
+        term: tokens[0],
+      }
     }
   }
 
