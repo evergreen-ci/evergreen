@@ -134,8 +134,7 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 	return toEvgStatus(container.State), nil
 }
 
-// GetDNSName gets the DNS hostname of a container by reading it directly from
-// the Docker API
+// GetDNSName does nothing, returning an empty string and no error.
 func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	return "", nil
 }
