@@ -174,7 +174,7 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 				"message": "failed to abort patches",
 			}))
 			if err != nil {
-				gimlet.MakeJSONErrorResponder(err)
+				return gimlet.MakeJSONErrorResponder(err)
 			}
 
 			return gimlet.NewJSONResponse(struct{}{})
