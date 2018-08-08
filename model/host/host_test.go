@@ -2422,3 +2422,90 @@ func TestCountUphostParents(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(2, numUphostParents)
 }
+
+func TestRemoveStaleInitializing(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.Clear(Collection))
+
+	now := time.Now()
+	distro1 := distro.Distro{Id: "distro1"}
+	distro2 := distro.Distro{Id: "distro2"}
+
+	hosts := []Host{
+		{
+			Id:           "host1",
+			Distro:       distro1,
+			Status:       evergreen.HostUninitialized,
+			CreationTime: now.Add(-1 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host2",
+			Distro:       distro1,
+			Status:       evergreen.HostUninitialized,
+			CreationTime: now.Add(-5 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host3",
+			Distro:       distro1,
+			Status:       evergreen.HostUninitialized,
+			CreationTime: now.Add(-5 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameStatic,
+		},
+		{
+			Id:           "host4",
+			Distro:       distro2,
+			Status:       evergreen.HostUninitialized,
+			CreationTime: now.Add(-5 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host5",
+			Distro:       distro1,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-5 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host6",
+			Distro:       distro1,
+			Status:       evergreen.HostBuilding,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+		{
+			Id:           "host7",
+			Distro:       distro2,
+			Status:       evergreen.HostRunning,
+			CreationTime: now.Add(-30 * time.Minute),
+			UserHost:     false,
+			Provider:     evergreen.ProviderNameEc2Auto,
+		},
+	}
+
+	for i, _ := range hosts {
+		assert.NoError(hosts[i].Insert())
+	}
+
+	err := RemoveStaleInitializing(distro1.Id)
+	assert.NoError(err)
+
+	numHosts, err := Count(All)
+	assert.NoError(err)
+	assert.Equal(5, numHosts)
+
+	err = RemoveStaleInitializing(distro2.Id)
+	assert.NoError(err)
+
+	numHosts, err = Count(All)
+	assert.NoError(err)
+	assert.Equal(4, numHosts)
+
+}

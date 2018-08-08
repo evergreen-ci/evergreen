@@ -122,21 +122,39 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
-	// On the first attempt, remove the intent document so no other create host job tries to create this intent.
+	defer j.tryRequeue(ctx)
+
+	// Set status temporarily to HostBuilding. Conventional hosts only stay in
+	// SpawnHost for a short period of time. Containers stay in SpawnHost for
+	// longer, since they may need to download container images and build them
+	// with the agent. This state allows intent documents to stay around until
+	// SpawnHost returns, but NOT as as initializing hosts that could still be
+	// spawned by Evergreen.
+	if err := j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
+		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
+	}
+
+	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
+		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
+	}
+
+	// On the first attempt, remove the intent host to insert started host
 	if j.CurrentAttempt == 1 {
-		if err := j.host.Remove(); err != nil {
+		intentHost, err := host.FindOneId(j.HostID)
+		if err != nil {
+			return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
+		}
+		if intentHost == nil {
+			return errors.Wrapf(err, "no intent host '%s' found", j.HostID)
+		}
+		if err := intentHost.Remove(); err != nil {
 			grip.Notice(message.WrapError(err, message.Fields{
 				"message": "problem removing intent host",
 				"job":     j.ID(),
-				"host":    j.host.Id,
+				"host":    j.HostID,
 			}))
-			return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.host.Id, err.Error())
+			return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
 		}
-	}
-
-	defer j.tryRequeue(ctx)
-	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
-		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
 
 	j.host.Status = evergreen.HostStarting
