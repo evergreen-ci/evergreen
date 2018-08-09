@@ -50,7 +50,7 @@ var (
 	LTCProjectKey              = bsonutil.MustHaveTag(Host{}, "LastProject")
 	StatusKey                  = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey           = bsonutil.MustHaveTag(Host{}, "AgentRevision")
-	AgentDeployAttemptKey      = bsonutil.MustHaveTag(Host{}, "AgentDeployAttemptKey")
+	AgentDeployAttemptKey      = bsonutil.MustHaveTag(Host{}, "AgentDeployAttempt")
 	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
