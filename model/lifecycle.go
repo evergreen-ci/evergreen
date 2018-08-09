@@ -165,9 +165,13 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 		return err
 	}
 
+	allCachedTasksComplete := true
 	for _, b := range builds {
 		if !b.IsFinished() {
 			return nil
+		}
+		if !b.AllCachedTasksOrCompileFinished() {
+			allCachedTasksComplete = false
 		}
 		if b.Status != evergreen.BuildSucceeded {
 			status = evergreen.VersionFailed
@@ -182,7 +186,9 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 	); err != nil {
 		return errors.WithStack(err)
 	}
-	event.LogVersionStateChangeEvent(versionId, status)
+	if allCachedTasksComplete {
+		event.LogVersionStateChangeEvent(versionId, status)
+	}
 	return nil
 }
 

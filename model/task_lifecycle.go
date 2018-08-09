@@ -21,6 +21,7 @@ import (
 type StatusChanges struct {
 	PatchNewStatus string
 	BuildNewStatus string
+	BuildComplete  bool
 }
 
 func SetActiveState(taskId string, caller string, active bool) error {
@@ -500,6 +501,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	}
 
 	failedTask := false
+	buildComplete := false
 	finishedTasks := 0
 
 	// update the build's status based on tasks for this build
@@ -539,6 +541,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 			failedTask = true
 			if t.DisplayName == evergreen.CompileStage {
+				buildComplete = true
 				break
 			}
 		}
@@ -562,12 +565,18 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		updates.BuildNewStatus = evergreen.BuildStarted
 	}
 
+	// finishedTasks > len(buildTasks) is true when there are display tasks
+	// because execution tasks are not stored in the build's task cache
+	if finishedTasks >= len(buildTasks) {
+		buildComplete = true
+	}
+
 	// if a compile task didn't fail, then the
 	// build is only finished when both the compile
 	// and test tasks are completed or when those are
 	// both completed in addition to a push (a push
 	// does not occur if there's a failed task)
-	if b.IsFinished() {
+	if buildComplete {
 		if !failedTask {
 			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
 				err = errors.Wrap(err, "Error marking build as finished")
@@ -584,6 +593,10 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 		}
 		updates.BuildNewStatus = b.Status
+		if b.AllCachedTasksOrCompileFinished() {
+			updates.BuildComplete = true
+
+		}
 
 		if evergreen.IsPatchRequester(b.Requester) {
 			if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {

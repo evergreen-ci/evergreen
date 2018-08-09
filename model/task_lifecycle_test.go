@@ -1727,30 +1727,34 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	updates := StatusChanges{}
 	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
+	assert.False(updates.BuildComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	assert.False(b.IsFinished())
+	assert.False(b.AllCachedTasksOrCompileFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
+	assert.False(updates.BuildComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	assert.False(b.IsFinished())
+	assert.False(b.AllCachedTasksOrCompileFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&exeTask0, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
+	assert.False(updates.BuildComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	assert.False(b.IsFinished())
+	assert.False(b.AllCachedTasksOrCompileFinished())
 
 	updates = StatusChanges{}
 	assert.NoError(MarkEnd(&exeTask1, "", time.Now(), details, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.True(updates.BuildComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	assert.True(b.IsFinished())
+	assert.True(b.AllCachedTasksOrCompileFinished())
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
