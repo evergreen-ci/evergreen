@@ -163,18 +163,12 @@ func (c *dockerClientImpl) generateDockerClient() error {
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
 func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, url string) (string, error) {
-	// Check that Docker client is properly configured
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return "", errors.Wrap(err, "Error generating Docker client")
-	}
-
 	// Extract image name from url
 	baseName := path.Base(url)
 	imageName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
 	// Check if image already exists on host
-	_, _, err = c.client.ImageInspectWithRaw(ctx, imageName)
+	_, _, err := c.client.ImageInspectWithRaw(ctx, imageName)
 	if err == nil {
 		// Image already exists
 		return imageName, nil
@@ -221,12 +215,6 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, url string
 // BuildImageWithAgent takes a base image and builds a new image on the specified
 // host from a Dockfile in the root directory, which adds the Evergreen binary
 func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, containerHost *host.Host, baseImage string) (string, error) {
-	// Check that Docker client is properly configured
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return "", errors.Wrap(err, "Error generating Docker client")
-	}
-
 	const dockerfileRoute = "dockerfile"
 
 	// modify tag for new image
@@ -287,12 +275,6 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, containerHos
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
 func (c *dockerClientImpl) CreateContainer(ctx context.Context, containerHost *host.Host, settings *dockerSettings) error {
-	// Check that Docker client is properly configured
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return errors.Wrap(err, "Error generating Docker client")
-	}
-
 	// Import correct base image if not already on host.
 	image, err := c.EnsureImageDownloaded(ctx, settings.ImageURL)
 	if err != nil {
@@ -357,12 +339,6 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, containerHost *h
 // GetContainer returns low-level information on the Docker container with the
 // specified ID running on the specified host machine.
 func (c *dockerClientImpl) GetContainer(ctx context.Context, containerID string) (*types.ContainerJSON, error) {
-	// Check that Docker client is properly configured
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error generating Docker client")
-	}
-
 	container, err := c.client.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Docker inspect API call failed for container '%s'", containerID)
@@ -373,12 +349,6 @@ func (c *dockerClientImpl) GetContainer(ctx context.Context, containerID string)
 
 // ListContainers lists all containers running on the specified host machine.
 func (c *dockerClientImpl) ListContainers(ctx context.Context) ([]types.Container, error) {
-	// Check that Docker client is properly configured
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error generating Docker client")
-	}
-
 	// Get all running containers
 	opts := types.ContainerListOptions{All: false}
 	containers, err := c.client.ContainerList(ctx, opts)
@@ -393,12 +363,6 @@ func (c *dockerClientImpl) ListContainers(ctx context.Context) ([]types.Containe
 
 // ListImages lists all images on the specified host machine.
 func (c *dockerClientImpl) ListImages(ctx context.Context) ([]types.ImageSummary, error) {
-	// Check that Docker client is properly configured
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error generating Docker client")
-	}
-
 	// Get all container images
 	opts := types.ImageListOptions{All: false}
 	images, err := c.client.ImageList(ctx, opts)
@@ -433,11 +397,6 @@ func (c *dockerClientImpl) RemoveImage(ctx context.Context, imageID string) erro
 
 // RemoveContainer forcibly removes a running or stopped container by ID from its host machine.
 func (c *dockerClientImpl) RemoveContainer(ctx context.Context, containerID string) error {
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return errors.Wrap(err, "Error generating Docker client")
-	}
-
 	opts := types.ContainerRemoveOptions{Force: true}
 	if err := c.client.ContainerRemove(ctx, containerID, opts); err != nil {
 		err = errors.Wrapf(err, "Failed to remove container '%s'", containerID)
@@ -450,11 +409,6 @@ func (c *dockerClientImpl) RemoveContainer(ctx context.Context, containerID stri
 
 // StartContainer starts a stopped or new container by ID on the host machine.
 func (c *dockerClientImpl) StartContainer(ctx context.Context, containerID string) error {
-	err := c.Create(c.daemonHost)
-	if err != nil {
-		return errors.Wrap(err, "Error generating Docker client")
-	}
-
 	opts := types.ContainerStartOptions{}
 	if err := c.client.ContainerStart(ctx, containerID, opts); err != nil {
 		return errors.Wrapf(err, "Failed to start container %s", containerID)
