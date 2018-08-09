@@ -63,12 +63,12 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 	}
 
 	// Cache the *docker.Client in dockerClientImpl, return this client if
-	// httpClient has not been closed
+	// httpClient exists and has not been returned to pool
 	if c.client != nil && c.httpClient != nil {
 		return c.client, nil
 	}
 
-	// Get new HTTP client
+	// Get new httpClient if dockerClient has none
 	if c.httpClient == nil {
 		err := c.getHTTPClient()
 		if err != nil {
@@ -111,6 +111,8 @@ func (c *dockerClientImpl) changeTimeout(h *host.Host, newTimeout time.Duration)
 	return c.client, nil
 }
 
+// getHTTPClient returns a new HTTP client from the pool capable of communicating
+// over TLS with a remote Docker daemon
 func (c *dockerClientImpl) getHTTPClient() error {
 	// Create HTTP client
 	c.httpClient = util.GetHTTPClient()
