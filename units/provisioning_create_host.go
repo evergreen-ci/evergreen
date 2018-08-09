@@ -17,7 +17,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-const createHostJobName = "provisioning-create-host"
+const (
+	createHostJobName = "provisioning-create-host"
+	// For container build
+	maxPollAttempts = 50
+	pollInterval    = 15 * time.Second
+)
 
 func init() {
 	registry.AddJobType(createHostJobName, func() amboy.Job {
@@ -134,6 +139,16 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
 	}
 
+	// Containers should wait on image builds, checking to see if the parent
+	// already has the image. If it does not, it should download it and wait
+	// on the job until it is finished downloading.
+	if j.host.ParentID != "" {
+		err := j.waitForContainerImageBuild(ctx)
+		if err != nil {
+			return errors.Wrap(err, "problem building container image")
+		}
+	}
+
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
 		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
 	}
@@ -205,4 +220,42 @@ func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 	return j.CurrentAttempt < j.MaxAttempts &&
 		j.host.Status != evergreen.HostStarting &&
 		ctx.Err() == nil
+}
+
+func (j *createHostJob) waitForContainerImageBuild(ctx context.Context) error {
+	parent, err := host.FindOneId(j.host.ParentID)
+	if err != nil {
+		return errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+	}
+	imageURL := (*j.host.Distro.ProviderSettings)["image_url"].(string)
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	var ok bool
+	// Continuously poll DB to see if image is ready
+retryLoop:
+	for i := 0; i < maxPollAttempts; i++ {
+		select {
+		case <-ctx.Done():
+			return errors.New("building container image cancelled")
+		case <-timer.C:
+			if ok = parent.ContainerImages[imageURL]; !ok {
+				//  If the image is not already present on the parent, run job to build
+				// the new image
+				if i == 0 {
+					buildingContainerJob := NewBuildingContainerImageJob(j.env, j.host, imageURL, j.host.Provider)
+					j.AddError(j.env.RemoteQueue().Put(buildingContainerJob))
+				}
+				timer.Reset(pollInterval)
+				continue
+			}
+			// Image is present on parent, can move on to SpawnHost
+			break retryLoop
+		}
+	}
+	if !ok {
+		return errors.Errorf("Verifying image ready for '%s' timed out", imageURL)
+	}
+	return nil
 }

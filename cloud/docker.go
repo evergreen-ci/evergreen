@@ -328,3 +328,25 @@ func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start
 
 	return cost / numContainers, nil
 }
+
+// BuildContainerImage downloads and buils a container image onto parent specified
+// by URL and returns this URL
+func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, url string) error {
+	if !parent.HasContainers {
+		return errors.Errorf("Error provisioning image: '%s' is not a parent", parent.Id)
+	}
+
+	// Import correct base image if not already on host.
+	image, err := m.client.EnsureImageDownloaded(ctx, parent, url)
+	if err != nil {
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", url, parent.Id)
+	}
+
+	// Build image containing Evergreen executable.
+	_, err = m.client.BuildImageWithAgent(ctx, parent, image)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to build image '%s' with agent on host '%s'", url, parent.Id)
+	}
+
+	return nil
+}

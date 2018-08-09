@@ -247,17 +247,9 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		return errors.Wrap(err, "Failed to generate docker client")
 	}
 
-	// Import correct base image if not already on host.
-	image, err := c.EnsureImageDownloaded(ctx, parentHost, settings.ImageURL)
-	if err != nil {
-		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", settings.ImageURL, parentHost.Id)
-	}
-
-	// Build image containing Evergreen executable.
-	provisionedImage, err := c.BuildImageWithAgent(ctx, parentHost, image)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to build image %s with agent on host '%s'", image, parentHost.Id)
-	}
+	// Extract image name from url
+	baseName := path.Base(settings.ImageURL)
+	provisionedImage := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
 	// Build path to Evergreen executable.
 	pathToExecutable := filepath.Join("root", "evergreen")
