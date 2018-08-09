@@ -506,8 +506,7 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
-			id := fmt.Sprintf("attempt-%s.%s", h.AgentDeployAttempt, ts)
-			catcher.Add(queue.Put(NewAgentDeployJob(env, h, id)))
+			catcher.Add(queue.Put(NewAgentDeployJob(env, h, ts)))
 		}
 
 		return catcher.Resolve()
