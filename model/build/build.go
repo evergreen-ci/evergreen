@@ -1,7 +1,6 @@
 package build
 
 import (
-	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -58,20 +57,28 @@ type Build struct {
 	Requester string `bson:"r" json:"r,omitempty"`
 }
 
-// Returns true if a build is finished, false otherwise. A build is considered
-// finished if either:
-//  1. there is a compile task, the compile task's status is one the ones
-//     listed in IsFinishedTaskStatus
-//  2. or all of the cached task's statuses are one of the task statuses listed
-//     in IsFinishedTaskStatus
+// Returns whether or not the build has finished, based on its status.
 func (b *Build) IsFinished() bool {
+	return b.Status == evergreen.BuildSucceeded ||
+		(b.Status == evergreen.BuildFailed && b.allCachedTasksFinished())
+}
+
+func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
+	if !t.Activated && t.Status == evergreen.TaskUndispatched {
+		return true
+	}
+
+	return false
+}
+
+// allCachedTasksFinished returns true when either:
+//  1. if there is a compile task, the compile task's status is one the ones
+//     listed in IsFinishedTaskStatus
+//  2. or the task's status is one of the finished tasks listed in IsFinishedTaskStatus
+func (b *Build) allCachedTasksFinished() bool {
 	allFinished := true
 	for i := range b.Tasks {
-		if taskCacheTaskIsUnscheduled(&b.Tasks[i]) {
-			continue
-		}
-
-		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+		if !taskCacheTaskIsUnscheduled(&b.Tasks[i]) && !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
 			allFinished = false
 		}
 		if b.Tasks[i].DisplayName == evergreen.CompileStage {
@@ -82,14 +89,6 @@ func (b *Build) IsFinished() bool {
 	}
 
 	return allFinished
-}
-
-func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
-	if !t.Activated && t.Status == evergreen.TaskUndispatched {
-		return true
-	}
-
-	return false
 }
 
 // Find
@@ -226,12 +225,6 @@ func (b *Build) IsActive() bool {
 }
 
 func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
-	if len(b.Id) == 0 {
-		return errors.New("build does not have an ID set")
-	}
-	if err := SetCachedTaskFinished(b.Id, taskID, status, detail, timeTaken); err != nil {
-		return err
-	}
 	for i := range b.Tasks {
 		if b.Tasks[i].Id != taskID {
 			continue
@@ -241,8 +234,7 @@ func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.T
 		b.Tasks[i].Status = status
 		b.Tasks[i].TimeTaken = timeTaken
 		b.Tasks[i].StatusDetails = *detail
-		break
 	}
 
-	return nil
+	return SetCachedTaskFinished(b.Id, taskID, status, detail, timeTaken)
 }

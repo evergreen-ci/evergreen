@@ -536,7 +536,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 	})
 }
 
-func TestIsFinished(t *testing.T) {
+func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
 	b := &Build{
@@ -567,15 +567,15 @@ func TestIsFinished(t *testing.T) {
 			},
 		},
 	}
-	assert.False(b.IsFinished())
+	assert.False(b.allCachedTasksFinished())
 	b.Tasks[0].Status = evergreen.TaskFailed
-	assert.False(b.IsFinished())
+	assert.False(b.allCachedTasksFinished())
 	b.Tasks[1].Status = evergreen.TaskSucceeded
-	assert.False(b.IsFinished())
+	assert.False(b.allCachedTasksFinished())
 	b.Tasks[2].Status = evergreen.TaskSystemFailed
-	assert.False(b.IsFinished())
+	assert.False(b.allCachedTasksFinished())
 	b.Tasks[3].Status = evergreen.TaskTestTimedOut
-	assert.True(b.IsFinished())
+	assert.True(b.allCachedTasksFinished())
 
 	b.Tasks = []TaskCache{
 		{
@@ -594,19 +594,9 @@ func TestIsFinished(t *testing.T) {
 		},
 	}
 
-	assert.False(b.IsFinished())
+	assert.False(b.allCachedTasksFinished())
 	b.Tasks[0].Status = evergreen.TaskFailed
-	assert.True(b.IsFinished())
-
-	b.Tasks = []TaskCache{
-		{
-			Id:     "t1",
-			Status: evergreen.TaskStarted,
-		},
-	}
-	assert.False(b.IsFinished())
-	b.Tasks[0].Status = evergreen.TaskSucceeded
-	assert.True(b.IsFinished())
+	assert.True(b.allCachedTasksFinished())
 }
 
 func TestBuildSetCachedTaskFinished(t *testing.T) {
