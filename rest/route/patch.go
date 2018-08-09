@@ -158,11 +158,15 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 	vals := r.URL.Query()
 
 	var err error
-	p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
-	if err != nil {
-		return gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", p.key, err.Error()),
-			StatusCode: http.StatusBadRequest,
+	if vals.Get("start_at") == "" {
+		p.key = time.Now()
+	} else {
+		p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", p.key, err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
 		}
 	}
 
