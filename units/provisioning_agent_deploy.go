@@ -194,15 +194,6 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	// Start agent to listen for tasks
 	grip.Info(j.getHostMessage(hostObj))
 	if err = j.startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
-		// mark the host's provisioning as failed
-		if err = hostObj.SetUnprovisioned(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"runner":  "taskrunner",
-				"host_id": hostObj.Id,
-				"message": "unprovisioning host failed",
-			}))
-		}
-
 		event.LogHostAgentDeployFailed(hostObj.Id, err)
 		grip.Info(message.Fields{
 			"message": "error starting agent on remote",
