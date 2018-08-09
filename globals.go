@@ -140,15 +140,12 @@ func IsFinishedTaskStatus(status string) bool {
 }
 
 func IsFailedTaskStatus(status string) bool {
-	if status == TaskFailed ||
+	return status == TaskFailed ||
+		status == TaskSucceeded ||
 		status == TaskSystemFailed ||
 		status == TaskSystemTimedOut ||
 		status == TaskSystemUnresponse ||
-		status == TaskTestTimedOut {
-		return true
-	}
-
-	return false
+		status == TaskTestTimedOut
 }
 
 // evergreen package names

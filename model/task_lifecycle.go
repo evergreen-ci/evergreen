@@ -495,6 +495,14 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		return errors.WithStack(err)
 	}
 
+	initialBuildStatus := b.Status
+	oldTaskCacheInfo := []string{}
+	if b.Project == "mci" && b.Status == evergreen.BuildFailed {
+		for i := range b.Tasks {
+			oldTaskCacheInfo = append(oldTaskCacheInfo, fmt.Sprintf("'%s': %s", b.Tasks[i].Id, b.Tasks[i].Status))
+		}
+	}
+
 	buildTasks, err := task.Find(task.ByBuildId(b.Id))
 	if err != nil {
 		return errors.WithStack(err)
@@ -555,6 +563,18 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			return fmt.Errorf("error updating build: %v", err.Error())
 		}
 	}
+
+	// this will be logged if a restart changes the status, or when
+	// the situation that caused the original issue with notifications arises
+	grip.InfoWhen(b.Project == "mci" && initialBuildStatus == evergreen.BuildFailed && !failedTask, message.Fields{
+		"lookhere":             "evg-3455",
+		"message":              "build was failed, but is now being overridden to succeeded",
+		"initial_build_status": initialBuildStatus,
+		"build_status":         b.Status,
+		"had_failed_tasks":     failedTask,
+		"old_task_cache":       oldTaskCacheInfo,
+		"this_task":            taskId,
+	})
 
 	if b.Status == evergreen.BuildCreated {
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
