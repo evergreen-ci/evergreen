@@ -168,7 +168,7 @@ mciModule.controller('SignalProcessingCtrl', function(
       },
       {
         name: 'Revision',
-        field: 'revision',
+        field: 'suspect_revision',
         type: 'string',
       },
       {
