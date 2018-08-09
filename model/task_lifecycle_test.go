@@ -522,8 +522,11 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			Activated:   false,
 			BuildId:     b.Id,
 			Project:     "sample",
-			Status:      evergreen.TaskFailed,
+			Status:      evergreen.TaskStarted,
 			StartTime:   time.Now().Add(-time.Hour),
+			Details: apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+			},
 		}
 		anotherTask := task.Task{
 			Id:          "two",
@@ -531,33 +534,45 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			Activated:   true,
 			BuildId:     b.Id,
 			Project:     "sample",
-			Status:      evergreen.TaskFailed,
+			Status:      evergreen.TaskSucceeded,
 			StartTime:   time.Now().Add(-time.Hour),
+			Details: apimodels.TaskEndDetail{
+				Status: evergreen.TaskSucceeded,
+			},
 		}
 
 		b.Tasks = []build.TaskCache{
 			{
 				Id:     testTask.Id,
-				Status: evergreen.TaskSucceeded,
+				Status: evergreen.TaskStarted,
 			},
 			{
 				Id:     anotherTask.Id,
-				Status: evergreen.TaskFailed,
+				Status: evergreen.TaskStarted,
 			},
 		}
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		So(anotherTask.Insert(), ShouldBeNil)
 		So(v.Insert(), ShouldBeNil)
-		Convey("updating the build for a task should update the build's status and the version's status", func() {
+		Convey("updating the build for a task should update the build's status", func() {
 			var err error
+			// mark the first one finished
 			updates := StatusChanges{}
+			So(UpdateBuildAndVersionStatusForTask(anotherTask.Id, &updates), ShouldBeNil)
+			b, err = build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
+			So(b.IsFinished(), ShouldBeFalse)
+
+			So(testTask.MarkFailed(), ShouldBeNil)
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
+			So(b.IsFinished(), ShouldBeTrue)
 			v, err = version.FindOne(version.ById(v.Id))
 			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionFailed)
@@ -583,6 +598,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Tasks: []build.TaskCache{
 					{Id: "testone"},
 				},
+				Status: evergreen.BuildStarted,
 			}
 			v = &version.Version{
 				Id:     b.Version,
@@ -621,7 +637,10 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskSucceeded)
+			So(buildCache.IsFinished(), ShouldBeTrue)
+			So(len(buildCache.Tasks), ShouldEqual, 1)
 			for _, t := range buildCache.Tasks {
 				So(t.Status, ShouldEqual, evergreen.TaskSucceeded)
 			}
