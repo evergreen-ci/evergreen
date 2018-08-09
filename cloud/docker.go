@@ -70,7 +70,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		"image_url": settings.ImageURL,
 	})
 
-	var err error
 	parentHost, err := h.GetParent()
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
@@ -125,7 +124,6 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	var err error
 	parentHost, err := h.GetParent()
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
@@ -151,7 +149,6 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 
 //TerminateInstance destroys a container.
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
-	var err error
 	parentHost, err := h.GetParent()
 	if err != nil {
 		return errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
