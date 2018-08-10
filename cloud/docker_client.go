@@ -231,16 +231,7 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	return provisionedImage, nil
 }
 
-// CreateContainer creates a new Docker container that runs an SSH daemon, and binds the
-// container's SSH port to another port on the host machine. The preloaded Docker image
-// must satisfy the following constraints:
-//     1. The image must have the sshd binary in order to start the SSH daemon. On Ubuntu
-//        14.04, you can get it with `apt-get update && apt-get install -y openssh-server`.
-//     2. The image must execute the SSH daemon without detaching on startup. On Ubuntu
-//        14.04, this command is `/usr/sbin/sshd -D`.
-//     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
-//        in order to allow users with SSH access to the host machine to have SSH access
-//        to the container.
+// CreateContainer creates a new Docker container with Evergreen agent.
 func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, containerHost *host.Host, settings *dockerSettings) error {
 	dockerClient, err := c.generateClient(parentHost)
 	if err != nil {
