@@ -30,11 +30,11 @@ func init() {
 type oldestImageRemovalJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
+	Provider string `bson:"provider" json:"provider" yaml:"provider"`
 
 	// cache
 	host     *host.Host
 	env      evergreen.Environment
-	provider string
 	settings *evergreen.Settings
 }
 
@@ -56,7 +56,7 @@ func NewOldestImageRemovalJob(h *host.Host, providerName, id string) amboy.Job {
 	j := makeOldestImageRemovalJob()
 
 	j.host = h
-	j.provider = providerName
+	j.Provider = providerName
 	j.HostID = h.Id
 
 	j.SetID(fmt.Sprintf("%s.%s", oldestImageRemovalJobName, id))
@@ -83,7 +83,7 @@ func (j *oldestImageRemovalJob) Run(ctx context.Context) {
 	}
 
 	// get least recently used image from Docker provider
-	mgr, err := cloud.GetManager(ctx, j.provider, j.settings)
+	mgr, err := cloud.GetManager(ctx, j.Provider, j.settings)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error getting Docker manager"))
 		return

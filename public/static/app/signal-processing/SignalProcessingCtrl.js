@@ -2,15 +2,33 @@ mciModule.controller('SignalProcessingCtrl', function(
   $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG
 ) {
   var vm = this;
-  var projectId = $window.project
+
   // TODO later this might be replaced with some sort of pagination
   var LIMIT = 500
+
+  vm.mode = {
+    options: [{
+      id: 'processed',
+      name: 'Processed',
+    }, {
+      id: 'unprocessed',
+      name: 'Unprocessed',
+    }],
+    value: 'unprocessed',
+  }
 
   var state = {
     sorting: null,
     filtering: {
-      probability: '>0.05'
-    }
+      probability: '>0.05',
+      project: '=' + $window.project,
+    },
+    mode: vm.mode.value,
+  }
+
+  var modeToCollMap = {
+    unprocessed: STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS,
+    processed: STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS,
   }
 
   // Required by loadData.
@@ -21,7 +39,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     theMostRecentPromise = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
-        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
+        .collection(modeToCollMap[state.mode])
         .aggregate(getAggChain(state))
     })
     // Storing this promise in closure.
@@ -86,6 +104,11 @@ mciModule.controller('SignalProcessingCtrl', function(
     return chain
   }
 
+  vm.modeChanged = function() {
+    state.mode = vm.mode.value
+    loadData(state)
+  }
+
   // Sets `state` to grid filters (TODO and sorting; not required yet)
   function setInitialGridState(gridApi, state) {
     _.each(state.filtering, function(term, colName) {
@@ -129,11 +152,6 @@ mciModule.controller('SignalProcessingCtrl', function(
     },
     columnDefs: [
       {
-        name: 'Project',
-        field: 'project',
-        type: 'string',
-      },
-      {
         name: 'Variant',
         field: 'variant',
         type: 'string',
@@ -150,7 +168,7 @@ mciModule.controller('SignalProcessingCtrl', function(
       },
       {
         name: 'Revision',
-        field: 'revision',
+        field: 'suspect_revision',
         type: 'string',
       },
       {
@@ -206,6 +224,12 @@ mciModule.controller('SignalProcessingCtrl', function(
       {
         name: 'Create Time',
         field: 'create_time',
+        visible: false,
+      },
+      {
+        name: 'Project',
+        field: 'project',
+        type: 'string',
         visible: false,
       },
     ]

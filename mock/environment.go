@@ -87,6 +87,10 @@ func (e *Environment) Settings() *evergreen.Settings {
 	return e.EvergreenSettings
 }
 
+func (e *Environment) SaveConfig() error {
+	return nil
+}
+
 func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 	return &evergreen.ClientConfig{
 		LatestRevision: evergreen.ClientVersion,

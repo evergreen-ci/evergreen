@@ -72,7 +72,11 @@
     </div>
     <div class="spawn-task-options" ng-show="!!spawnTask">
       <input type="checkbox" ng-model="$parent.spawnTaskChecked">
-      Load data for <strong>[[spawnTask.display_name]]</strong> on <strong>[[spawnTask.build_variant]]</strong> @ <strong class="mono">[[spawnTask.gitspec | limitTo:5]]</strong> onto host at startup
+        Load data for <strong>[[spawnTask.display_name]]</strong> on <strong>[[spawnTask.build_variant]]</strong> @ <strong class="mono">[[spawnTask.gitspec | limitTo:5]]</strong> onto host at startup
+      </input>
+      <br/>
+      <input type="checkbox" ng-model="$parent.useTaskConfig">
+        Also start any hosts this task started (if applicable)
       </input>
     </div>
     <div>

@@ -50,6 +50,7 @@ var (
 	LTCProjectKey              = bsonutil.MustHaveTag(Host{}, "LastProject")
 	StatusKey                  = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey           = bsonutil.MustHaveTag(Host{}, "AgentRevision")
+	AgentDeployAttemptKey      = bsonutil.MustHaveTag(Host{}, "AgentDeployAttempt")
 	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
@@ -400,6 +401,7 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
@@ -409,17 +411,26 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
-// Removes host intents that have been been pending for more than 3
-// minutes for the specified distro.
+// Removes host intents that have been been uninitialized for more than 3
+// minutes or spawning (but not started) for more than 15 minutes for the
+// specified distro.
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
-		StatusKey:     evergreen.HostUninitialized,
-		UserHostKey:   false,
-		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
+		UserHostKey: false,
+		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
+		"$or": []bson.M{
+			{
+				StatusKey:     evergreen.HostUninitialized,
+				CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+			},
+			{
+				StatusKey:     evergreen.HostBuilding,
+				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
+			},
+		},
 	}
 
 	if distroID != "" {

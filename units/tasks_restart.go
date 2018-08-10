@@ -21,8 +21,8 @@ func init() {
 }
 
 type restartTasksJob struct {
-	Opts     model.RestartTaskOptions `bson:"restart_options" json:"restart_options" yaml:"restart_options"`
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	Opts     model.RestartTaskOptions `bson:"restart_options" json:"restart_options"`
+	job.Base `bson:"job_base" json:"job_base"`
 }
 
 func makeTaskRestartJob() *restartTasksJob {

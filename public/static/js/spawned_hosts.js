@@ -16,6 +16,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.hostExtensionLengths = {};
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.spawnReqSent = false;
+    $scope.useTaskConfig = false;
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24*7;
@@ -146,6 +147,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userdata;
+      $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
       if($scope.spawnTaskChecked && !!$scope.spawnTask){
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }
