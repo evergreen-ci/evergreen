@@ -240,6 +240,7 @@ func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.T
 		b.Tasks[i].Status = status
 		b.Tasks[i].TimeTaken = timeTaken
 		b.Tasks[i].StatusDetails = *detail
+		break
 	}
 	return nil
 }
