@@ -3,7 +3,6 @@ package trigger
 import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/pkg/errors"
 )
 
 // `eventHandlerFactory`s create `eventHandler`s capable of validating triggers
@@ -35,9 +34,9 @@ type base struct {
 }
 
 func (b *base) Process(sub *event.Subscription) (*notification.Notification, error) {
-	f, ok := b.triggers[sub.Trigger]
-	if !ok {
-		return nil, errors.Errorf("unknown trigger: '%s'", sub.Trigger)
+	f, found := b.triggers[sub.Trigger]
+	if !found {
+		return nil, nil
 	}
 
 	return f(sub)
