@@ -93,7 +93,7 @@ func TestCleanupTask(t *testing.T) {
 				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(newTask.Restarts, ShouldEqual, 2)
 
-				Convey("a display task should reset all of its execution tasks", func() {
+				Convey("an execution task should request its display task be reset", func() {
 					dt := &task.Task{
 						Id:             "dt",
 						Status:         evergreen.TaskStarted,
@@ -123,7 +123,7 @@ func TestCleanupTask(t *testing.T) {
 					So(cleanUpTimedOutTask(*et), ShouldBeNil)
 					dbTask, err := task.FindOne(task.ById(dt.Id))
 					So(err, ShouldBeNil)
-					So(dbTask.Status, ShouldEqual, evergreen.TaskUnstarted)
+					So(dbTask.ResetWhenFinished, ShouldBeTrue)
 				})
 			})
 

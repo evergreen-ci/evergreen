@@ -861,7 +861,7 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 			Type:   "system",
 		}
 		if t.IsPartOfDisplay() {
-			return t.SetResetWhenFinished(detail)
+			return t.DisplayTask.SetResetWhenFinished(detail)
 		}
 		return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, detail), "problem resetting task")
 	}
