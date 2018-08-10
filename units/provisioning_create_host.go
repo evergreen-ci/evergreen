@@ -20,7 +20,7 @@ import (
 const (
 	createHostJobName = "provisioning-create-host"
 	// For container build
-	maxPollAttempts = 50
+	maxPollAttempts = 60
 	pollInterval    = 15 * time.Second
 )
 
@@ -223,10 +223,6 @@ func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 }
 
 func (j *createHostJob) waitForContainerImageBuild(ctx context.Context) error {
-	parent, err := host.FindOneId(j.host.ParentID)
-	if err != nil {
-		return errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
-	}
 	imageURL := (*j.host.Distro.ProviderSettings)["image_url"].(string)
 
 	timer := time.NewTimer(0)
@@ -240,11 +236,15 @@ retryLoop:
 		case <-ctx.Done():
 			return errors.New("building container image cancelled")
 		case <-timer.C:
+			parent, err := host.FindOneId(j.host.ParentID)
+			if err != nil {
+				return errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+			}
 			if ok = parent.ContainerImages[imageURL]; !ok {
 				//  If the image is not already present on the parent, run job to build
 				// the new image
 				if i == 0 {
-					buildingContainerJob := NewBuildingContainerImageJob(j.env, j.host, imageURL, j.host.Provider)
+					buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
 					j.AddError(j.env.RemoteQueue().Put(buildingContainerJob))
 				}
 				timer.Reset(pollInterval)

@@ -249,7 +249,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 
 	// Extract image name from url
 	baseName := path.Base(settings.ImageURL)
-	provisionedImage := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	provisionedImage := fmt.Sprintf(provisionedImageTag, strings.TrimSuffix(baseName, filepath.Ext(baseName)))
 
 	// Build path to Evergreen executable.
 	pathToExecutable := filepath.Join("root", "evergreen")

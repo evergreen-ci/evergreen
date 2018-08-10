@@ -592,6 +592,7 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				ProvisionOptionsKey:  h.ProvisionOptions,
 				StartTimeKey:         h.StartTime,
 				HasContainersKey:     h.HasContainers,
+				ContainerImagesKey:   h.ContainerImages,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
