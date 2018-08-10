@@ -261,7 +261,7 @@ func (m *dockerManager) canImageBeRemoved(ctx context.Context, h *host.Host, ima
 	}
 
 	for _, container := range containers {
-		if container.Image == imageID {
+		if container.ImageID == imageID {
 			return false, nil
 		}
 	}
