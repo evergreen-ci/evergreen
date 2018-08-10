@@ -165,17 +165,25 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 		return err
 	}
 
-	allCachedTasksComplete := true
+	allCachedTasksInActiveBuildsComplete := true
+	finished := true
 	for _, b := range builds {
 		if !b.IsFinished() {
-			return nil
+			finished = false
+			continue
 		}
 		if !b.AllCachedTasksOrCompileFinished() {
-			allCachedTasksComplete = false
+			allCachedTasksInActiveBuildsComplete = false
 		}
 		if b.Status != evergreen.BuildSucceeded {
 			status = evergreen.VersionFailed
 		}
+	}
+	if allCachedTasksInActiveBuildsComplete {
+		event.LogVersionStateChangeEvent(versionId, status)
+	}
+	if !finished {
+		return nil
 	}
 	if err := version.UpdateOne(
 		bson.M{version.IdKey: versionId},
@@ -185,9 +193,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 		}},
 	); err != nil {
 		return errors.WithStack(err)
-	}
-	if allCachedTasksComplete {
-		event.LogVersionStateChangeEvent(versionId, status)
 	}
 	return nil
 }
