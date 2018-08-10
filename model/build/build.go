@@ -59,8 +59,8 @@ type Build struct {
 
 // Returns whether or not the build has finished, based on its status.
 func (b *Build) IsFinished() bool {
-	return b.Status == evergreen.BuildSucceeded ||
-		b.Status == evergreen.BuildFailed
+	return b.Status == evergreen.BuildFailed ||
+		b.Status == evergreen.BuildSucceeded
 }
 
 func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
@@ -74,11 +74,14 @@ func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
 // AllCachedTasksOrCompileFinished returns true when either:
 //  1. if there is a compile task, the compile task's status is one the ones
 //     listed in IsFinishedTaskStatus
-//  2. or the task's status is one of the finished tasks listed in IsFinishedTaskStatus
+//  2. or all of the statuses in the task cached are listed in IsFinishedTaskStatus
 func (b *Build) AllCachedTasksOrCompileFinished() bool {
 	allFinished := true
 	for i := range b.Tasks {
-		if !taskCacheTaskIsUnscheduled(&b.Tasks[i]) && !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+		if taskCacheTaskIsUnscheduled(&b.Tasks[i]) {
+			continue
+		}
+		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
 			allFinished = false
 		}
 		if b.Tasks[i].DisplayName == evergreen.CompileStage {

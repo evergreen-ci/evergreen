@@ -141,7 +141,6 @@ func IsFinishedTaskStatus(status string) bool {
 
 func IsFailedTaskStatus(status string) bool {
 	return status == TaskFailed ||
-		status == TaskSucceeded ||
 		status == TaskSystemFailed ||
 		status == TaskSystemTimedOut ||
 		status == TaskSystemUnresponse ||
