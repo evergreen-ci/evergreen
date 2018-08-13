@@ -116,12 +116,22 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if shouldDeco {
+		hosts, err := host.Find(host.ByDistroId(newDistro.Id))
+		if err != nil {
+			message := fmt.Sprintf("error finding hosts hosts: %s", err.Error())
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
 		err = host.DecommissionHostsWithDistroId(newDistro.Id)
 		if err != nil {
-			message := fmt.Sprintf("error decommissioning hosts: %v", err)
+			message := fmt.Sprintf("error decommissioning hosts: %s", err.Error())
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-			http.Error(w, message, http.StatusBadRequest)
+			http.Error(w, message, http.StatusInternalServerError)
 			return
+		}
+		for _, h := range hosts {
+			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, u.Username(), "distro page")
 		}
 	}
 
