@@ -1,5 +1,5 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG
+  $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG,
 ) {
   var vm = this;
 
@@ -18,7 +18,10 @@ mciModule.controller('SignalProcessingCtrl', function(
   }
 
   var state = {
-    sorting: null,
+    sorting: [{
+      field: 'suspect_revision',
+      direction: 'asc',
+    }],
     filtering: {
       probability: '>0.05',
       project: '=' + $window.project,
@@ -109,12 +112,18 @@ mciModule.controller('SignalProcessingCtrl', function(
     loadData(state)
   }
 
-  // Sets `state` to grid filters (TODO and sorting; not required yet)
+  // Sets `state` to grid filters
   function setInitialGridState(gridApi, state) {
     _.each(state.filtering, function(term, colName) {
       var col = getCol(vm.gridApi, colName)
       if (!col) return // Error! Associated col does not found
       col.filters = [{term: term}]
+    })
+
+    _.each(state.sorting, function(sortingItem) {
+      var col = getCol(vm.gridApi, sortingItem.field)
+      if (!col) return // Error! Associated col does not found
+      col.sort.direction = sortingItem.direction
     })
   }
 
@@ -126,10 +135,12 @@ mciModule.controller('SignalProcessingCtrl', function(
     onRegisterApi: function(api) {
       vm.gridApi = api
       api.core.on.sortChanged($scope, function(grid, cols) {
-        state.sorting = {
-          field: cols[0].field,
-          direction: cols[0].sort.direction
-        }
+        state.sorting = _.map(cols, function(col) {
+          return {
+            field: col.field,
+            direction: col.sort.direction
+          }
+        })
         loadData(state)
       })
 
@@ -170,6 +181,13 @@ mciModule.controller('SignalProcessingCtrl', function(
         name: 'Revision',
         field: 'suspect_revision',
         type: 'string',
+        sort: {
+          priority: 0,
+        },
+        cellTemplate: 'ui-grid-group-name',
+        grouping: {
+          groupPriority: 0,
+        },
       },
       {
         name: 'Value',
