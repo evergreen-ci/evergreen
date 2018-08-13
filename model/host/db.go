@@ -413,7 +413,7 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 }
 
 // Removes host intents that have been been uninitialized for more than 3
-// minutes or spawning (but not started) for more than 20 minutes for the
+// minutes or spawning (but not started) for more than 15 minutes for the
 // specified distro.
 //
 // If you pass the empty string as a distroID, it will remove stale
@@ -429,7 +429,7 @@ func RemoveStaleInitializing(distroID string) error {
 			},
 			{
 				StatusKey:     evergreen.HostBuilding,
-				CreateTimeKey: bson.M{"$lt": time.Now().Add(-20 * time.Minute)},
+				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
 			},
 		},
 	}
