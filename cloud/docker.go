@@ -227,10 +227,11 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 	ids := []string{}
 	for _, container := range containers {
 		name := container.Names[0]
-		// names have leading slashes
-		if strings.Contains(name, "/") {
-			name = name[1:len(name)]
+		// names in Docker have leading slashes -- https://github.com/moby/moby/issues/6705
+		if !strings.HasPrefix(name, "/") {
+			return nil, errors.New("error reading container name")
 		}
+		name = name[1:len(name)]
 		ids = append(ids, name)
 	}
 
