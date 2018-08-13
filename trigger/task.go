@@ -81,7 +81,13 @@ func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
 		return false, err
 	}
 	if t == nil {
-		return false, errors.Errorf("task %s not found", taskID)
+		t, err = task.FindOneOldNoMerge(task.ById(taskID))
+		if err != nil {
+			return false, err
+		}
+		if t == nil {
+			return false, errors.Errorf("task %s not found", taskID)
+		}
 	}
 
 	return time.Since(t.FinishTime) >= 48*time.Hour, nil
