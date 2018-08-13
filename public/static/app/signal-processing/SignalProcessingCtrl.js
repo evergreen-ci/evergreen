@@ -1,5 +1,5 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG,
+  $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG
 ) {
   var vm = this;
 

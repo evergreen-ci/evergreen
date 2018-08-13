@@ -94,10 +94,10 @@ describe('MDBQueryAdaptorSpec', function() {
 
   it('compiles sorting', function() {
     expect(
-      svc.compileSorting({
+      svc.compileSorting([{
         field: 'fld',
         direction: 'asc'
-      })
+      }])
     ).toEqual({$sort: {fld: 1}})
   })
 })
