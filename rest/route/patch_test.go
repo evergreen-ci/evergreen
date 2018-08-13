@@ -461,3 +461,10 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 		}
 	}
 }
+
+func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
+	req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10", nil)
+	s.Require().NoError(err)
+	s.NoError(s.route.Parse(context.Background(), req))
+	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
+}
