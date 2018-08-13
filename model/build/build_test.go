@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -532,4 +534,114 @@ func TestBuildUpdateStatus(t *testing.T) {
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 		})
 	})
+}
+
+func TestAllTasksFinished(t *testing.T) {
+	assert := assert.New(t)
+
+	b := &Build{
+		Id:      "b1",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+		Tasks: []TaskCache{
+			{
+				Id:     "t1",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t2",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t3",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t4",
+				Status: evergreen.TaskStarted,
+			},
+			// this task is unscheduled
+			{
+				Id:     "t5",
+				Status: evergreen.TaskUndispatched,
+			},
+		},
+	}
+	assert.False(b.AllCachedTasksOrCompileFinished())
+	b.Tasks[0].Status = evergreen.TaskFailed
+	assert.False(b.AllCachedTasksOrCompileFinished())
+	b.Tasks[1].Status = evergreen.TaskSucceeded
+	assert.False(b.AllCachedTasksOrCompileFinished())
+	b.Tasks[2].Status = evergreen.TaskSystemFailed
+	assert.False(b.AllCachedTasksOrCompileFinished())
+	b.Tasks[3].Status = evergreen.TaskTestTimedOut
+	assert.True(b.AllCachedTasksOrCompileFinished())
+
+	b.Tasks = []TaskCache{
+		{
+			Id:          "t1",
+			DisplayName: evergreen.CompileStage,
+			Status:      evergreen.TaskStarted,
+		},
+		{
+			Id:     "t2",
+			Status: evergreen.TaskStarted,
+		},
+		{
+			Id:          "t3",
+			DisplayName: evergreen.PushStage,
+			Status:      evergreen.TaskStarted,
+		},
+	}
+
+	assert.False(b.AllCachedTasksOrCompileFinished())
+	b.Tasks[0].Status = evergreen.TaskFailed
+	assert.True(b.AllCachedTasksOrCompileFinished())
+}
+
+func TestBuildSetCachedTaskFinished(t *testing.T) {
+	assert := assert.New(t)
+
+	b := &Build{
+		Id:      "b1",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+		Tasks: []TaskCache{
+			{
+				Id:     "t1",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "t2",
+				Status: evergreen.TaskStarted,
+			},
+		},
+	}
+	assert.NoError(b.Insert())
+	b.Id = "b2"
+	assert.NoError(b.Insert())
+	b.Id = "b1"
+
+	detail := apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   "system",
+	}
+	timeTaken := 10 * time.Minute
+
+	assert.NoError(b.SetCachedTaskFinished("t1", evergreen.TaskFailed, &detail, timeTaken))
+	assert.NoError(b.SetCachedTaskFinished("t2", evergreen.TaskFailed, &detail, timeTaken))
+	assert.EqualError(b.SetCachedTaskFinished("t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
+
+	assert.NoError(SetCachedTaskFinished("b2", "t1", evergreen.TaskFailed, &detail, timeTaken))
+	assert.NoError(SetCachedTaskFinished("b2", "t2", evergreen.TaskFailed, &detail, timeTaken))
+	assert.EqualError(SetCachedTaskFinished("b2", "t3", evergreen.TaskFailed, &detail, timeTaken), "not found")
+
+	// Results from build.SetCachedTaskFinished and SetCachedTaskFinished
+	// should be the same
+	b2, err := FindOneId("b2")
+	assert.NoError(err)
+	assert.NotNil(b2)
+	b.Id = ""
+	b2.Id = ""
+	assert.EqualValues(b2, b)
 }

@@ -159,19 +159,31 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 
 	// Find the statuses for all builds in the version so we can figure out the version's status
 	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.StatusKey),
+		build.ByVersion(versionId).WithFields(build.StatusKey, build.TasksKey),
 	)
 	if err != nil {
 		return err
 	}
 
+	allCachedTasksInActiveBuildsComplete := true
+	finished := true
 	for _, b := range builds {
 		if !b.IsFinished() {
-			return nil
+			finished = false
+			continue
+		}
+		if !b.AllCachedTasksOrCompileFinished() {
+			allCachedTasksInActiveBuildsComplete = false
 		}
 		if b.Status != evergreen.BuildSucceeded {
 			status = evergreen.VersionFailed
 		}
+	}
+	if allCachedTasksInActiveBuildsComplete {
+		event.LogVersionStateChangeEvent(versionId, status)
+	}
+	if !finished {
+		return nil
 	}
 	if err := version.UpdateOne(
 		bson.M{version.IdKey: versionId},
@@ -182,7 +194,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 	); err != nil {
 		return errors.WithStack(err)
 	}
-	event.LogVersionStateChangeEvent(versionId, status)
 	return nil
 }
 
@@ -762,7 +773,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	}
 
 	// ensure all builds for this patch are finished as well
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey))
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey, build.TasksKey))
 	if err != nil {
 		return err
 	}

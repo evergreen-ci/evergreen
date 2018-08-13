@@ -25,27 +25,48 @@ const (
 	HostStatusFailed  = "failed"
 
 	// Task Statuses used in the database models
-	TaskStarted      = "started"
-	TaskUnstarted    = "unstarted"
+
+	// TaskInactive is not assigned to any new tasks, but can be found
+	// in the database and is used in the UI.
+	TaskInactive = "inactive"
+
+	// TaskUnstarted is assigned to a display task after cleaning up one of
+	// its execution tasks. This indicates that the display task is
+	// pending a rerun
+	TaskUnstarted = "unstarted"
+
+	// TaskUndispatched indicates either
+	//  1. a task is not scheduled to run (when Task.Activated == false)
+	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
-	TaskDispatched   = "dispatched"
+
+	// TaskStarted indicates a task is running on an agent
+	TaskStarted = "started"
+
+	// TaskDispatched indicates that an agent has received the task, but
+	// the agent has not yet told Evergreen that it's running the task
+	TaskDispatched = "dispatched"
+
+	// The task statuses below indicate that a task has finished.
+	TaskSucceeded = "success"
+
+	// These statuses indicate the types of failures that are stored in
+	// Task.Status field, build TaskCache and TaskEndDetails.
 	TaskFailed       = "failed"
-	TaskSucceeded    = "success"
-	TaskInactive     = "inactive"
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
+	TaskSetupFailed  = "setup-failed"
 
 	// Task Command Types
 	CommandTypeTest   = "test"
 	CommandTypeSystem = "system"
 	CommandTypeSetup  = "setup"
 
-	// Task Statuses used only in TaskEndDetails
-	// TaskFailed and TaskSucceeded are also used here
-	TaskSetupFailed      = "setup-failed"
-	TaskTimedOut         = "task-timed-out"
+	// Task Statuses that are currently used only by the UI, and in tests
+	// (these may be used in old tasks)
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
+	TaskTimedOut         = "task-timed-out"
 
 	// TaskConflict is used only in communication with the Agent
 	TaskConflict = "task-conflict"
@@ -112,6 +133,23 @@ const (
 
 	RoutePaginatorNextPageHeaderKey = "Link"
 )
+
+func IsFinishedTaskStatus(status string) bool {
+	if status == TaskSucceeded ||
+		IsFailedTaskStatus(status) {
+		return true
+	}
+
+	return false
+}
+
+func IsFailedTaskStatus(status string) bool {
+	return status == TaskFailed ||
+		status == TaskSystemFailed ||
+		status == TaskSystemTimedOut ||
+		status == TaskSystemUnresponse ||
+		status == TaskTestTimedOut
+}
 
 // evergreen package names
 const (

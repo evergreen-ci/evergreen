@@ -63,6 +63,37 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
+func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
+	if !t.Activated && t.Status == evergreen.TaskUndispatched {
+		return true
+	}
+
+	return false
+}
+
+// AllCachedTasksOrCompileFinished returns true when either:
+//  1. if there is a compile task, the compile task's status is one the ones
+//     listed in IsFailedTaskStatus
+//  2. or all of the statuses in the task cached are listed in IsFinishedTaskStatus
+func (b *Build) AllCachedTasksOrCompileFinished() bool {
+	allFinished := true
+	for i := range b.Tasks {
+		if taskCacheTaskIsUnscheduled(&b.Tasks[i]) {
+			continue
+		}
+		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+			allFinished = false
+		}
+		if b.Tasks[i].DisplayName == evergreen.CompileStage {
+			if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
+				return true
+			}
+		}
+	}
+
+	return allFinished
+}
+
 // Find
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
@@ -194,4 +225,22 @@ func (b *Build) IsActive() bool {
 		}
 	}
 	return false
+}
+
+func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
+	if err := SetCachedTaskFinished(b.Id, taskID, status, detail, timeTaken); err != nil {
+		return err
+	}
+	for i := range b.Tasks {
+		if b.Tasks[i].Id != taskID {
+			continue
+		}
+
+		b.Tasks[i].Id = taskID
+		b.Tasks[i].Status = status
+		b.Tasks[i].TimeTaken = timeTaken
+		b.Tasks[i].StatusDetails = *detail
+		break
+	}
+	return nil
 }
