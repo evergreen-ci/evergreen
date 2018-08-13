@@ -22,7 +22,6 @@ func TestCleanupTask(t *testing.T) {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When cleaning up a task", t, func() {
-		displayTasksRestarted := map[string]bool{}
 
 		// reset the db
 		testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
@@ -35,7 +34,7 @@ func TestCleanupTask(t *testing.T) {
 
 			err := cleanUpTimedOutTask(task.Task{
 				Project: "proj",
-			}, displayTasksRestarted)
+			})
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "not found")
 
@@ -86,7 +85,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTimedOutTask(*newTask, displayTasksRestarted), ShouldBeNil)
+				So(cleanUpTimedOutTask(*newTask), ShouldBeNil)
 
 				// refresh the task - it should be reset
 				newTask, err := task.FindOne(task.ById("t1"))
@@ -94,7 +93,7 @@ func TestCleanupTask(t *testing.T) {
 				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(newTask.Restarts, ShouldEqual, 2)
 
-				Convey("a display task should reset all of its execution tasks", func() {
+				Convey("an execution task should request its display task be reset", func() {
 					dt := &task.Task{
 						Id:             "dt",
 						Status:         evergreen.TaskStarted,
@@ -121,10 +120,10 @@ func TestCleanupTask(t *testing.T) {
 					}
 					So(b.Insert(), ShouldBeNil)
 
-					So(cleanUpTimedOutTask(*et, displayTasksRestarted), ShouldBeNil)
+					So(cleanUpTimedOutTask(*et), ShouldBeNil)
 					dbTask, err := task.FindOne(task.ById(dt.Id))
 					So(err, ShouldBeNil)
-					So(dbTask.Status, ShouldEqual, evergreen.TaskUnstarted)
+					So(dbTask.ResetWhenFinished, ShouldBeTrue)
 				})
 			})
 
@@ -158,7 +157,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTimedOutTask(*newTask, displayTasksRestarted), ShouldBeNil)
+				So(cleanUpTimedOutTask(*newTask), ShouldBeNil)
 
 				// refresh the host, make sure its running task field has
 				// been reset
