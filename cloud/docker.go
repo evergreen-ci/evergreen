@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -247,7 +248,13 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 
 	ids := []string{}
 	for _, container := range containers {
-		ids = append(ids, container.ID)
+		name := container.Names[0]
+		// names in Docker have leading slashes -- https://github.com/moby/moby/issues/6705
+		if !strings.HasPrefix(name, "/") {
+			return nil, errors.New("error reading container name")
+		}
+		name = name[1:len(name)]
+		ids = append(ids, name)
 	}
 
 	return ids, nil
