@@ -73,7 +73,7 @@ func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
 
 // AllCachedTasksOrCompileFinished returns true when either:
 //  1. if there is a compile task, the compile task's status is one the ones
-//     listed in IsFinishedTaskStatus
+//     listed in IsFailedTaskStatus
 //  2. or all of the statuses in the task cached are listed in IsFinishedTaskStatus
 func (b *Build) AllCachedTasksOrCompileFinished() bool {
 	allFinished := true
