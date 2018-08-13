@@ -132,14 +132,19 @@ mciModule.factory('MDBQueryAdaptor', function() {
   }
 
   // Creates aggregation entry for sorting
-  // :param sort: input sorting options
-  // :ptype sort: {field: '%field%', direction: 'asc|desc'}
+  // :param sorting: input sorting options
+  // :ptype sorting: [{field: '%field%', direction: 'asc|desc'}, ...]
   // :returns: mdb aggregation sorting entry
   // :rtype: {$sort: { ... }}
-  function compileSorting(sort) {
+  function compileSorting(sorting) {
     var q = {$sort: {}}
-    if (!_.isEmpty(sort)) {
-      q.$sort[sort.field] = sort.direction == 'asc' ? 1 : -1
+    if (sorting.length) {
+      // Some sort of hackery - JS objects are unordered
+      // however the VM keeps keys order
+      // This is required because keys order defines sorting priority
+      _.each(sorting, function(sortingItem) {
+        q.$sort[sortingItem.field] = sortingItem.direction == 'asc' ? 1 : -1
+      })
     }
     return q
   }
