@@ -25,8 +25,8 @@ func (t Tasks) InsertUnordered() error {
 	return db.InsertManyUnordered(Collection, t.getPayload()...)
 }
 
-type ByPriority []string
+type byPriority []string
 
-func (p ByPriority) Len() int           { return len(p) }
-func (p ByPriority) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
-func (p ByPriority) Less(i, j int) bool { return displayTaskPriority(p[i]) < displayTaskPriority(p[j]) }
+func (p byPriority) Len() int           { return len(p) }
+func (p byPriority) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p byPriority) Less(i, j int) bool { return displayTaskPriority(p[i]) < displayTaskPriority(p[j]) }
