@@ -35,7 +35,7 @@ mciModule.factory('MDBQueryAdaptor', function() {
       .filter(_.identity)
   }
 
-  function numTypeParser(tokens) {
+  function parser(tokens) {
     var t = tokens // shorthand
     var op
 
@@ -46,12 +46,24 @@ mciModule.factory('MDBQueryAdaptor', function() {
       if (t[1] == '=') op += t[1]
     }
 
-    var term = +_.last(t)
-    if (!term) return // Number parsing error
+    var term = _.last(t)
 
     return {
       op: op || '==',
       term: term,
+    }
+  }
+
+  function asNumType(parser) {
+    return function(tokens) {
+      var expr = parser(tokens)
+      if (!expr) return // Bypass (no expr)
+      var term = +expr.term
+      if (!term) return // Number parsing error
+      return {
+        op: expr.op,
+        term: term,
+      }
     }
   }
 
@@ -126,9 +138,15 @@ mciModule.factory('MDBQueryAdaptor', function() {
     'number': {
       preprocess: condense,
       tokenize: numTypeTokenizer,
-      parse: numTypeParser,
+      parse: asNumType(parser),
       compile: predicateCompiler,
     },
+    'date': {
+      preprocess: condense,
+      tokenize: numTypeTokenizer,
+      parse: parser,
+      compile: predicateCompiler,
+    }
   }
 
   // Creates aggregation entry for sorting
@@ -156,7 +174,7 @@ mciModule.factory('MDBQueryAdaptor', function() {
     _condense: condense,
     _numTypeTokenizer: numTypeTokenizer,
     _strTypeTokenizer: strTypeTokenizer,
-    _numTypeParser: numTypeParser,
+    _numTypeParser: asNumType(parser),
     _strTypeParser: strTypeParser,
     _predicateCompiler: predicateCompiler,
   }
