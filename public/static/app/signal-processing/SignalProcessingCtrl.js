@@ -1,5 +1,5 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG
+  $window, $scope, MDBQueryAdaptor, Stitch, FORMAT, STITCH_CONFIG
 ) {
   var vm = this;
 
@@ -23,6 +23,7 @@ mciModule.controller('SignalProcessingCtrl', function(
       direction: 'asc',
     }],
     filtering: {
+      create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
       probability: '>0.05',
       project: '=' + $window.project,
     },
@@ -243,6 +244,7 @@ mciModule.controller('SignalProcessingCtrl', function(
         name: 'Create Time',
         field: 'create_time',
         visible: false,
+        type: 'date',
       },
       {
         name: 'Project',
