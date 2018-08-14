@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -17,16 +16,6 @@ type GenerateConnector struct{}
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
-	t, err := task.FindOneId(taskID)
-	if err != nil {
-		return errors.Wrapf(err, "problem finding task: %s", taskID)
-	}
-	if t == nil {
-		return errors.Errorf("no task found: %s", taskID)
-	}
-	if t.Execution > 0 {
-		return nil
-	}
 	projects, err := ParseProjects(jsonBytes)
 	if err != nil {
 		return gimlet.ErrorResponse{

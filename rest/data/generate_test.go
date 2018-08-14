@@ -246,16 +246,3 @@ func TestGenerateTasks(t *testing.T) {
 	assert.Len(p.TaskGroups, 1)
 	assert.Len(p.TaskGroups[0].Tasks, 2)
 }
-
-func TestNoopGenerateTasksOnLaterExecutions(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	require.NoError(db.ClearCollections(task.Collection))
-	genTask := &task.Task{
-		Id:        "one",
-		Execution: 1,
-	}
-	require.NoError(genTask.Insert())
-	gc := &GenerateConnector{}
-	assert.NoError(gc.GenerateTasks("one", nil))
-}
