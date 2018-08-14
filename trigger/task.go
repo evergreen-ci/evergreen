@@ -78,12 +78,12 @@ func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.A
 func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
 	t, err := task.FindOneNoMerge(task.ById(taskID))
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "error finding task '%s'", taskID)
 	}
 	if t == nil {
 		t, err = task.FindOneOldNoMerge(task.ById(taskID))
 		if err != nil {
-			return false, err
+			return false, errors.Wrapf(err, "error finding old task '%s'", taskID)
 		}
 		if t == nil {
 			return false, errors.Errorf("task %s not found", taskID)
