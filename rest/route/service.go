@@ -61,7 +61,6 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/patches/{patch_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortPatch(sc))
 	app.AddRoute("/patches/{patch_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartPatch(sc))
 	app.AddRoute("/projects").Version(2).Get().RouteHandler(makeFetchProjectsRoute(sc))
-	app.AddRoute("/projects").Version(2).Get().RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects/{project_id}/patches").Version(2).Get().Wrap(checkUser).RouteHandler(makePatchesByProjectRoute(sc))
 	app.AddRoute("/projects/{project_id}/recent_versions").Version(2).Get().RouteHandler(makeFetchProjectVersions(sc))
 	app.AddRoute("/projects/{project_id}/revisions/{commit_hash}/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeTasksByProjectAndCommitHandler(sc))
