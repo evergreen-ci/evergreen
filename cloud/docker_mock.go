@@ -106,6 +106,9 @@ func (c *dockerClientMock) ListContainers(context.Context) ([]types.Container, e
 			{PublicPort: 5000},
 			{PublicPort: 5001},
 		},
+		Names: []string{
+			"/container-1",
+		},
 	}
 	return []types.Container{container}, nil
 }

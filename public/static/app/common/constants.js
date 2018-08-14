@@ -1,8 +1,12 @@
 mciModule
-  // Misk Evergreen constants
+  // Misc Evergreen constants
   .constant('EVG', {
     GIT_HASH_LEN: 40,
     PATCH_ID_LEN: 24,
+  })
+
+  .constant('FORMAT', {
+    ISO_DATE: 'YYYY-MM-DD',
   })
 
   .constant('BF', {
