@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/k0kubun/pp"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -538,7 +539,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		b.Tasks = []build.TaskCache{
 			{
 				Id:     testTask.Id,
-				Status: evergreen.TaskSucceeded,
+				Status: evergreen.TaskStarted,
 			},
 			{
 				Id:     anotherTask.Id,
@@ -554,8 +555,11 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			updates := StatusChanges{}
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldBeEmpty)
+			So(updates.VersionComplete, ShouldBeFalse)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			b, err = build.FindOne(build.ById(b.Id))
+			pp.Println(b)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
 			v, err = version.FindOne(version.ById(v.Id))
@@ -614,7 +618,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			reset()
 			updates := StatusChanges{}
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionSucceeded)
+			So(updates.VersionComplete, ShouldBeTrue)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -644,7 +652,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			})
 			So(err, ShouldBeNil)
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionSucceeded)
+			So(updates.VersionComplete, ShouldBeTrue)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -669,7 +681,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
+			So(updates.VersionComplete, ShouldBeTrue)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -690,13 +706,19 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
-			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
+			So(updates.VersionComplete, ShouldBeTrue)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			updates = StatusChanges{}
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
-			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
+			So(updates.VersionComplete, ShouldBeTrue)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.BuildComplete, ShouldBeTrue)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)

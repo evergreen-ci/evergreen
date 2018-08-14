@@ -19,9 +19,11 @@ import (
 )
 
 type StatusChanges struct {
-	PatchNewStatus string
-	BuildNewStatus string
-	BuildComplete  bool
+	PatchNewStatus   string
+	VersionNewStatus string
+	VersionComplete  bool
+	BuildNewStatus   string
+	BuildComplete    bool
 }
 
 func SetActiveState(taskId string, caller string, active bool) error {
@@ -437,6 +439,13 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 		return errors.Wrap(err, "Error updating build status")
 	}
 
+	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
+	if len(updates.BuildNewStatus) != 0 {
+		if updates.BuildComplete || !isBuildCompleteStatus {
+			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		}
+	}
+
 	return nil
 }
 
@@ -621,7 +630,12 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		updates.BuildNewStatus = b.Status
 		if b.AllCachedTasksOrCompileFinished() {
 			updates.BuildComplete = true
+		}
 
+		if err = MarkVersionCompleted(b.Version, finishTime, updates); err != nil {
+			err = errors.Wrap(err, "Error marking version as finished")
+			grip.Error(err)
+			return err
 		}
 
 		if evergreen.IsPatchRequester(b.Requester) {
@@ -630,12 +644,14 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				grip.Error(err)
 				return err
 			}
-		}
 
-		if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-			err = errors.Wrap(err, "Error marking version as finished")
-			grip.Error(err)
-			return err
+			if updates.VersionComplete && len(updates.VersionNewStatus) != 0 {
+				patchStatus := evergreen.PatchFailed
+				if updates.VersionNewStatus == evergreen.VersionSucceeded {
+					patchStatus = evergreen.PatchSucceeded
+				}
+				event.LogPatchStateChangeEvent(t.Version, patchStatus)
+			}
 		}
 
 		// update the build's makespan information if the task has finished

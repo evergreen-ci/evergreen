@@ -165,12 +165,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
-	isBuildCompleteStatus := updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded
-	if len(updates.BuildNewStatus) != 0 {
-		if updates.BuildComplete || !isBuildCompleteStatus {
-			event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
-		}
-	}
 
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
