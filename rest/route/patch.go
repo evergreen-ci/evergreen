@@ -293,7 +293,7 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if len(patches) == 0 {
-		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "no patches found",
 			StatusCode: http.StatusNotFound,
 		})
