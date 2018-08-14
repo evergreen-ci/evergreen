@@ -245,7 +245,10 @@ retryLoop:
 				// the new image
 				if i == 0 {
 					buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
-					j.AddError(j.env.RemoteQueue().Put(buildingContainerJob))
+					grip.Debug(message.Fields{
+						"error":   j.env.RemoteQueue().Put(buildingContainerJob),
+						"message": "Duplicate key being added to job to block building containers",
+					})
 				}
 				timer.Reset(pollInterval)
 				continue

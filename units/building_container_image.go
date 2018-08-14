@@ -11,10 +11,15 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-const buildingContainerImageJobName = "building-container-image"
+const (
+	buildingContainerImageJobName = "building-container-image"
+	containerBuildRetries         = 5
+)
 
 func init() {
 	registry.AddJobType(buildingContainerImageJobName, func() amboy.Job {
@@ -56,7 +61,7 @@ func NewBuildingContainerImageJob(env evergreen.Environment, h *host.Host, image
 	job.ParentID = h.Id
 	job.Provider = providerName
 
-	job.SetID(fmt.Sprintf("%s.%s.%s", buildingContainerImageJobName, job.ParentID, job.ImageURL))
+	job.SetID(fmt.Sprintf("%s.%s.attempt-%d.%s", buildingContainerImageJobName, job.ParentID, h.ContainerBuildAttempt, job.ImageURL))
 
 	return job
 }
@@ -81,6 +86,36 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}
 
 	if j.HasErrors() {
+		return
+	}
+
+	defer func() {
+		err := j.parent.IncContainerBuildAttempt()
+		if err != nil {
+			j.AddError(err)
+			grip.Warning(message.WrapError(err, message.Fields{
+				"host_id":      j.parent.Id,
+				"job_id":       j.ID(),
+				"runner":       "taskrunner",
+				"distro":       j.parent.Distro,
+				"message":      "failed to update container build iteration",
+				"current_iter": j.parent.ContainerBuildAttempt,
+			}))
+			return
+		}
+		grip.Debug(message.Fields{
+			"host_id":      j.parent.Id,
+			"job_id":       j.ID(),
+			"runner":       "taskrunner",
+			"distro":       j.parent.Distro,
+			"operation":    "container build complete",
+			"current_iter": j.parent.ContainerBuildAttempt,
+		})
+	}()
+
+	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
+		j.AddError(errors.Wrapf(j.parent.SetTerminated(evergreen.User),
+			"failed 5 times to build and download image '%s' on parent '%s'", j.ImageURL, j.parent))
 		return
 	}
 

@@ -231,23 +231,19 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 	return ids, nil
 }
 
-// GetContainersRunningImage returns all the containers that are running a particular image
-func (m *dockerManager) getContainersRunningImage(ctx context.Context, h *host.Host, imageID string) ([]string, error) {
-	containers, err := m.GetContainers(ctx, h)
+// canImageBeRemoved returns true if there are no containers running the image
+func (m *dockerManager) canImageBeRemoved(ctx context.Context, h *host.Host, imageID string) (bool, error) {
+	containers, err := m.client.ListContainers(ctx, h)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error listing containers")
+		return false, errors.Wrap(err, "error listing containers")
 	}
-	containersRunningImage := make([]string, 0)
-	for _, containerID := range containers {
-		container, err := m.client.GetContainer(ctx, h, containerID)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Error getting information for container '%s'", containerID)
-		}
-		if container.Image == imageID {
-			containersRunningImage = append(containersRunningImage, containerID)
+
+	for _, container := range containers {
+		if container.ImageID == imageID {
+			return false, nil
 		}
 	}
-	return containersRunningImage, nil
+	return true, nil
 }
 
 // RemoveOldestImage finds the oldest image without running containers and forcibly removes it
@@ -260,12 +256,12 @@ func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) err
 
 	for i := len(images) - 1; i >= 0; i-- {
 		id := images[i].ID
-		containersRunningImage, err := m.getContainersRunningImage(ctx, h, id)
+		canBeRemoved, err := m.canImageBeRemoved(ctx, h, id)
 		if err != nil {
-			return errors.Wrapf(err, "Error getting containers running on image '%s'", id)
+			return errors.Wrapf(err, "Error checking whether containers are running on image '%s'", id)
 		}
 		// remove image based on ID only if there are no containers running the image
-		if len(containersRunningImage) == 0 {
+		if canBeRemoved {
 			err = m.client.RemoveImage(ctx, h, id)
 			if err != nil {
 				return errors.Wrapf(err, "Error removing image '%s'", id)
@@ -273,7 +269,6 @@ func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) err
 			return nil
 		}
 	}
-
 	return nil
 }
 
