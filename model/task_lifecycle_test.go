@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -559,7 +558,6 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			So(updates.VersionComplete, ShouldBeFalse)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			b, err = build.FindOne(build.ById(b.Id))
-			pp.Println(b)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
 			v, err = version.FindOne(version.ById(v.Id))
