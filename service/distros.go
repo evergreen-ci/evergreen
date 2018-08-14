@@ -118,7 +118,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	if shouldDeco {
 		hosts, err := host.Find(host.ByDistroId(newDistro.Id))
 		if err != nil {
-			message := fmt.Sprintf("error finding hosts hosts: %s", err.Error())
+			message := fmt.Sprintf("error finding hosts: %s", err.Error())
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 			http.Error(w, message, http.StatusInternalServerError)
 			return

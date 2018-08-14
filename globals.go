@@ -243,17 +243,6 @@ var (
 		HostProvisionFailed,
 	}
 
-	// RunningHostStatuses is a list of statuses where the machine is running
-	RunningHostStatuses = []string{
-		HostRunning,
-		HostBuilding,
-		HostStarting,
-		HostProvisioning,
-		HostProvisionFailed,
-		HostDecommissioned,
-		HostQuarantined,
-	}
-
 	// Hosts in "initializing" status aren't actually running yet:
 	// they're just intents, so this list omits that value.
 	ActiveStatus = []string{
