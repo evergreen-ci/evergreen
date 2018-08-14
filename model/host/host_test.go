@@ -857,6 +857,7 @@ func TestHostUpsert(t *testing.T) {
 			LoadCLI: true,
 			TaskId:  "task_id",
 		},
+		ContainerImages: map[string]bool{},
 	}
 
 	// test inserting new host

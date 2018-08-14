@@ -98,6 +98,8 @@ type Host struct {
 	// managed containers require different information based on host type
 	// True if this host is a parent of containers
 	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
+	// stores URLs of container images already downloaded on a parent
+	ContainerImages map[string]bool `bson:"container_images,omitempty" json:"container_images,omitempty"`
 	// stores the ID of the host a container is on
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
@@ -590,6 +592,7 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				ProvisionOptionsKey:  h.ProvisionOptions,
 				StartTimeKey:         h.StartTime,
 				HasContainersKey:     h.HasContainers,
+				ContainerImagesKey:   h.ContainerImages,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
