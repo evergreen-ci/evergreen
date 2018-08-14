@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -558,6 +559,22 @@ func isTaskStatusRegression(oldStatus, newStatus string) bool {
 	return false
 }
 
+func (t *taskTriggers) testMatchesRegex(testName string, sub event.Subscription) bool {
+	regex, ok := sub.TriggerData[event.TestRegexKey]
+	if !ok || regex == "" {
+		return true
+	}
+	match, err := regexp.MatchString(regex, testName)
+	grip.Error(message.WrapError(err, message.Fields{
+		"source":  "test-trigger",
+		"message": "bad regex in db",
+	}))
+	if match {
+		return true
+	}
+	return false
+}
+
 func (t *taskTriggers) shouldIncludeTest(subID string, previousTask *task.Task, test *task.TestResult) (bool, error) {
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
@@ -620,6 +637,9 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 		testsToAlert := []task.TestResult{}
 		for i := range t.task.LocalTestResults {
+			if !t.testMatchesRegex(t.task.LocalTestResults[i].TestFile, *sub) {
+				continue
+			}
 			var shouldInclude bool
 			shouldInclude, err = t.shouldIncludeTest(sub.ID, previousCompleteTask, &t.task.LocalTestResults[i])
 			if err != nil {

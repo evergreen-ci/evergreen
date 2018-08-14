@@ -102,7 +102,11 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         if(save === true) {
             $scope.validationErrors = [];
             for (var key in $scope.customValidation) {
-              var validationMsg = $scope.customValidation[key]($scope.extraData[key]);
+              var validator = $scope.customValidation[key];
+              if (validator === null || validator === undefined) {
+                continue;
+              }
+              var validationMsg = validator($scope.extraData[key]);
               if (validationMsg) {
                 $scope.validationErrors.push(validationMsg);
               };
@@ -231,7 +235,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       if (!$scope.tempRegexSelector.type || !$scope.tempRegexSelector.data) {
           return;
       }
-      var typeLabel = $scope.$scope.findRegexTypeLabel($scope.tempRegexSelector.type);
+      var typeLabel = $scope.findRegexTypeLabel($scope.tempRegexSelector.type);
       $scope.regexSelectors[$scope.tempRegexSelector.type] = {type_label: typeLabel.type_label, data: $scope.tempRegexSelector.data};
       $scope.tempRegexSelector = {};
     }
@@ -325,6 +329,7 @@ function validateDuration(duration) {
   }
   return "";
 }
+
 function validatePercentage(percent) {
   if (!isFinite(percent)) {
     return percent + " must be a number";
