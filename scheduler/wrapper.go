@@ -9,10 +9,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
 type Configuration struct {
@@ -23,7 +23,7 @@ type Configuration struct {
 }
 
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
-	schedulerInstance := uuid.Must(uuid.NewV4()).String()
+	schedulerInstance := util.RandomString()
 	startAt := time.Now()
 	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
