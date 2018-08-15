@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -22,6 +23,7 @@ type Configuration struct {
 }
 
 func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) error {
+	schedulerInstance := util.RandomString()
 	startAt := time.Now()
 	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
@@ -36,11 +38,20 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return errors.Wrap(err, "problem unscheduling underwater tasks")
 	}
 
+	startTaskFinder := time.Now()
 	finder := GetTaskFinder(conf.TaskFinder)
 	tasks, err := finder(conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "problem calculating task finder")
 	}
+	grip.Info(message.Fields{
+		"runner":        RunnerName,
+		"distro":        conf.DistroID,
+		"operation":     "runtime-stats",
+		"phase":         "task-finder",
+		"instance":      schedulerInstance,
+		"duration_secs": time.Since(startTaskFinder).Seconds(),
+	})
 
 	runnableTasks, versions, err := filterTasksWithVersionCache(tasks)
 	if err != nil {
@@ -48,22 +59,37 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	ds := &distroSchedueler{
-		TaskPrioritizer:    &CmpBasedTaskPrioritizer{},
+		TaskPrioritizer: &CmpBasedTaskPrioritizer{
+			runtimeID: schedulerInstance,
+		},
 		TaskQueuePersister: &DBTaskQueuePersister{},
+		runtimeID:          schedulerInstance,
 	}
 
+	startPlanPhase := time.Now()
 	res := ds.scheduleDistro(conf.DistroID, runnableTasks, versions)
 	if res.err != nil {
 		return errors.Wrap(res.err, "problem calculating distro plan")
 	}
-
 	grip.Info(message.Fields{
-		"runner": RunnerName,
-		"distro": conf.DistroID,
-		"stat":   "distro-queue-size",
-		"size":   len(res.taskQueueItem),
+		"runner":        RunnerName,
+		"distro":        conf.DistroID,
+		"operation":     "runtime-stats",
+		"phase":         "planning-distro",
+		"instance":      schedulerInstance,
+		"duration_secs": time.Since(startPlanPhase).Seconds(),
+
+		// The following keys were previously part of a
+		// separate message, but to cut down on noise...
+		//
+		// "runner":   RunnerName,
+		// "instance": schedulerInstance,
+		// "distro":   conf.DistroID,
+		"stat": "distro-queue-size",
+		"size": len(res.taskQueueItem),
 	})
 
+	startHostAllocation := time.Now()
 	if err = host.RemoveStaleInitializing(conf.DistroID); err != nil {
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
@@ -96,7 +122,16 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
+	grip.Info(message.Fields{
+		"runner":        RunnerName,
+		"distro":        conf.DistroID,
+		"operation":     "runtime-stats",
+		"phase":         "host-allocation",
+		"instance":      schedulerInstance,
+		"duration_secs": time.Since(startHostAllocation).Seconds(),
+	})
 
+	startHostSpawning := time.Now()
 	hostsSpawned, err := spawnHosts(ctx, distroSpec, newHosts, pool)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
@@ -105,6 +140,15 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	event.LogSchedulerEvent(event.SchedulerEventData{
 		TaskQueueInfo: res.schedulerEvent,
 		DistroId:      conf.DistroID,
+	})
+
+	grip.Info(message.Fields{
+		"runner":        RunnerName,
+		"distro":        conf.DistroID,
+		"operation":     "runtime-stats",
+		"phase":         "host-spawning",
+		"instance":      schedulerInstance,
+		"duration_secs": time.Since(startHostSpawning).Seconds(),
 	})
 
 	var makespan time.Duration
@@ -126,6 +170,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"total_runtime":          res.schedulerEvent.ExpectedDuration.String(),
 		"predicted_makespan":     makespan.String(),
 		"scheduler_runtime_secs": time.Since(startAt).Seconds(),
+		"instance":               schedulerInstance,
 	})
 
 	return nil
