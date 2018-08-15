@@ -507,7 +507,7 @@ var GearMenu = function (_React$PureComponent4) {
         }
       });
 
-      var injector = angular.injector(['ng', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
+      var injector = angular.injector(['ng', 'waterfall', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
       return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
     }
   }, {

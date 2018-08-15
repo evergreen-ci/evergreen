@@ -415,7 +415,7 @@ class GearMenu extends React.PureComponent {
       }
     });
 
-    const injector = angular.injector(['ng', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
+    const injector = angular.injector(['ng', 'waterfall', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
     return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
   }
 
