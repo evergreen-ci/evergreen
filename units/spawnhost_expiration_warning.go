@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
+	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -18,7 +19,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const spawnhostExpirationWarningsName = "spawnhost-expiration-warnings"
+const (
+	spawnhostExpirationWarningsName = "spawnhost-expiration-warnings"
+	legacyAlertsSubscription        = "legacy-alerts"
+)
 
 func init() {
 	registry.AddJobType(spawnhostExpirationWarningsName,
@@ -81,7 +85,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 			j.AddError(errors.New("spawnhost expiration warning run canceled"))
 			return
 		}
-		if err = alerts.RunSpawnWarningTriggers(&h); err != nil {
+		if err = runSpawnWarningTriggers(&h); err != nil {
 			j.AddError(err)
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  "monitor",
@@ -91,5 +95,37 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 			}))
 		}
 	}
+}
 
+func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error) {
+	if h == nil || h.ExpirationTime.IsZero() || h.ExpirationTime.Sub(time.Now()) > (time.Duration(numHours)*time.Hour) { // nolint
+		return false, nil
+	}
+	rec, err := alertrecord.FindBySpawnHostExpirationWithHours(h.Id, numHours)
+	if err != nil {
+		return false, err
+	}
+
+	return rec == nil, nil
+}
+
+func tryHostNotifcation(h *host.Host, numHours int) error {
+	shouldExec, err := shouldNotifyForSpawnhostExpiration(h, numHours)
+	if err != nil {
+		return err
+	}
+	if shouldExec {
+		event.LogExpirationWarningSent(h.Id)
+		if err = alertrecord.InsertNewSpawnHostExpirationRecord(h.Id, numHours); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runSpawnWarningTriggers(h *host.Host) error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.Add(tryHostNotifcation(h, 2))
+	catcher.Add(tryHostNotifcation(h, 12))
+	return catcher.Resolve()
 }

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -61,20 +60,10 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// construct a json-marshaling friendly representation of our supported triggers
-	allTaskTriggers := []interface{}{}
-	for _, taskTrigger := range alerts.AvailableTaskFailTriggers {
-		allTaskTriggers = append(allTaskTriggers, struct {
-			Id      string `json:"id"`
-			Display string `json:"display"`
-		}{taskTrigger.Id(), taskTrigger.Display()})
-	}
-
 	data := struct {
-		AllProjects       []model.ProjectRef
-		AvailableTriggers []interface{}
+		AllProjects []model.ProjectRef
 		ViewData
-	}{allProjects, allTaskTriggers, uis.GetCommonViewData(w, r, true, true)}
+	}{allProjects, uis.GetCommonViewData(w, r, true, true)}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
