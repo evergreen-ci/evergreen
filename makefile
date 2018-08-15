@@ -3,7 +3,7 @@ name := evergreen
 buildDir := bin
 nodeDir := public
 packages := $(name) agent operations cloud command db subprocess util plugin units
-packages += thirdparty alerts auth scheduler model validator service monitor repotracker
+packages += thirdparty auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
 packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord
 orgPath := github.com/evergreen-ci
@@ -35,7 +35,7 @@ xcPackages := agent command operations rest-client subprocess util
 distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/race.$(pkg))
 
-distArtifacts :=  ./public ./service/templates ./alerts/templates
+distArtifacts :=  ./public ./service/templates
 distContents := $(clientBinaries) $(distArtifacts)
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")

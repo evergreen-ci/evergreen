@@ -376,9 +376,6 @@ tasks:
     tags: ["db", "test"]
     name: test-evergreen
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-alerts
-  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
@@ -485,9 +482,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-evergreen
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-alerts
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-thirdparty
