@@ -45,6 +45,7 @@ type distroSchedulerResult struct {
 }
 
 type distroSchedueler struct {
+	runtimeID string
 	TaskPrioritizer
 	TaskQueuePersister
 }
@@ -61,6 +62,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 		"runner":    RunnerName,
 		"distro":    distroId,
 		"num_tasks": len(runnableTasksForDistro),
+		"instance":  s.runtimeID,
 	})
 
 	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro, versions)
@@ -73,6 +75,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 	grip.Debug(message.Fields{
 		"runner":    RunnerName,
 		"distro":    distroId,
+		"instance":  s.runtimeID,
 		"operation": "saving task queue for distro",
 	})
 
@@ -120,6 +123,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 			"runner":             RunnerName,
 			"distro":             distroId,
 			"message":            "inconsistency with scheduler input and output",
+			"instance":           s.runtimeID,
 			"inconsistent_tasks": delta,
 		})
 	}

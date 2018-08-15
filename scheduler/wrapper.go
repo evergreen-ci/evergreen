@@ -59,8 +59,11 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	ds := &distroSchedueler{
-		TaskPrioritizer:    &CmpBasedTaskPrioritizer{},
+		TaskPrioritizer: &CmpBasedTaskPrioritizer{
+			runtimeID: schedulerInstance,
+		},
 		TaskQueuePersister: &DBTaskQueuePersister{},
+		runtimeID:          schedulerInstance,
 	}
 
 	startPlanPhase := time.Now()
