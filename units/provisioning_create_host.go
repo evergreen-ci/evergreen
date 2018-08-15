@@ -90,6 +90,39 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
+	numHosts, err := host.CountRunningHosts(j.host.Distro.Id)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "problem getting count of existing pool size"))
+		return
+	}
+
+	if numHosts >= j.host.Distro.PoolSize {
+		grip.Info(message.Fields{
+			"host_id":   j.HostID,
+			"attempt":   j.CurrentAttempt,
+			"distro":    j.host.Distro.Id,
+			"job":       j.ID(),
+			"provider":  j.host.Provider,
+			"message":   "not provisioning host to respect maxhosts",
+			"max_hosts": j.host.Distro.PoolSize,
+		})
+
+		err = errors.Wrap(j.host.Remove(), "problem removing host intent")
+
+		j.AddError(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"host_id":  j.HostID,
+			"attempt":  j.CurrentAttempt,
+			"distro":   j.host.Distro,
+			"job":      j.ID(),
+			"provider": j.host.Provider,
+			"message":  "could not remove intent document",
+			"outcome":  "host pool may exceed maxhost limit",
+		}))
+
+		return
+	}
+
 	if j.TimeInfo().MaxTime == 0 && !j.host.SpawnOptions.TimeoutSetup.IsZero() {
 		j.UpdateTimeInfo(amboy.JobTimeInfo{
 			MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
