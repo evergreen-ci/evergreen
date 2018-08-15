@@ -68,7 +68,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
 
-	distroHosts, err := findUsableHosts(conf.DistroID)
+	distroHosts, err := host.AllRunningHosts(conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "with host query")
 	}

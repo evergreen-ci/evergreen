@@ -46,7 +46,7 @@ func (s *SchedulerConnectorSuite) TestFindUsableHosts() {
 	s.NoError(runningHost.Insert())
 	s.NoError(terminatedHost.Insert())
 
-	hostMap, err := findUsableHosts("")
+	hostMap, err := host.AllRunningHosts("")
 	s.NoError(err)
 	s.NotNil(hostMap)
 
