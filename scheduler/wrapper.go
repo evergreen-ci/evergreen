@@ -77,7 +77,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		"duration_secs": time.Since(startPlanPhase).Seconds(),
 
 		// The following keys were previously part of a
-		// seperate message, but to cut down on noise...
+		// separate message, but to cut down on noise...
 		//
 		// "runner":   RunnerName,
 		// "instance": schedulerInstance,
