@@ -501,11 +501,10 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
 		// don't do this more than once a minute:
-		ts := util.RoundPartOfMinute(30).Format(tsFormat)
-		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(10).Format(tsFormat)
 
+		catcher := grip.NewBasicCatcher()
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewAgentDeployJob(env, h, ts)))
 		}

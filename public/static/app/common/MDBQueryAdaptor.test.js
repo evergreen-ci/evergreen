@@ -54,11 +54,20 @@ describe('MDBQueryAdaptorSpec', function() {
     })
   })
 
-  it('parses num field filtering tokens', function() {
+  it('parses str field filtering tokens (icontains)', function() {
     expect(
       svc._strTypeParser(['query'])
     ).toEqual({
       op: 'icontains',
+      term: 'query',
+    })
+  })
+
+  it('parses str field filtering tokens (exact)', function() {
+    expect(
+      svc._strTypeParser(['=', 'query'])
+    ).toEqual({
+      op: '==',
       term: 'query',
     })
   })
@@ -85,10 +94,10 @@ describe('MDBQueryAdaptorSpec', function() {
 
   it('compiles sorting', function() {
     expect(
-      svc.compileSorting({
+      svc.compileSorting([{
         field: 'fld',
         direction: 'asc'
-      })
+      }])
     ).toEqual({$sort: {fld: 1}})
   })
 })

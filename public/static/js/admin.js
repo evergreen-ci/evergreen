@@ -6,6 +6,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
     $scope.disableSubmit = false;
     $scope.restartRed = true;
     $scope.restartPurple = true;
+    $scope.restartLavender = true;
     $scope.ValidThemes = [ "announcement", "information", "warning", "important"];
     $("#tasks-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
@@ -166,7 +167,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
       alert("The from/to date and time must be populated to restart tasks");
       return;
     }
-    if (!$scope.restartRed && !$scope.restartPurple) {
+    if (!$scope.restartRed && !$scope.restartPurple && !scope.restartLavender) {
       alert("No tasks selected to restart");
       return;
     }
@@ -198,7 +199,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
       $scope.disableSubmit = false;
       return;
     }
-    mciAdminRestService.restartTasks(from, to, dryRun, $scope.restartRed, $scope.restartPurple, { success: successHandler, error: errorHandler });
+    mciAdminRestService.restartTasks(from, to, dryRun, $scope.restartRed, $scope.restartPurple, $scope.restartLavender, { success: successHandler, error: errorHandler });
   }
 
   combineDateTime = function(date, time) {

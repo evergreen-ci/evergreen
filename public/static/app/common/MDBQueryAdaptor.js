@@ -35,7 +35,7 @@ mciModule.factory('MDBQueryAdaptor', function() {
       .filter(_.identity)
   }
 
-  function numTypeParser(tokens) {
+  function parser(tokens) {
     var t = tokens // shorthand
     var op
 
@@ -46,8 +46,7 @@ mciModule.factory('MDBQueryAdaptor', function() {
       if (t[1] == '=') op += t[1]
     }
 
-    var term = +_.last(t)
-    if (!term) return // Number parsing error
+    var term = _.last(t)
 
     return {
       op: op || '==',
@@ -55,12 +54,37 @@ mciModule.factory('MDBQueryAdaptor', function() {
     }
   }
 
-  function strTypeTokenizer(query) { return [query] }
+  function asNumType(parser) {
+    return function(tokens) {
+      var expr = parser(tokens)
+      if (!expr) return // Bypass (no expr)
+      var term = +expr.term
+      if (!term) return // Number parsing error
+      return {
+        op: expr.op,
+        term: term,
+      }
+    }
+  }
+
+  function strTypeTokenizer(query) {
+    return query
+      .match('(=?)(.+)')
+      .slice(1)
+      .filter(_.identity)
+  }
 
   function strTypeParser(tokens) {
-    return {
-      op: 'icontains',
-      term: tokens[0],
+    if (tokens[0] == '=') {
+      return {
+        op: '==',
+        term: tokens[1],
+      }
+    } else {
+      return {
+        op: 'icontains',
+        term: tokens[0],
+      }
     }
   }
 
@@ -114,20 +138,31 @@ mciModule.factory('MDBQueryAdaptor', function() {
     'number': {
       preprocess: condense,
       tokenize: numTypeTokenizer,
-      parse: numTypeParser,
+      parse: asNumType(parser),
       compile: predicateCompiler,
     },
+    'date': {
+      preprocess: condense,
+      tokenize: numTypeTokenizer,
+      parse: parser,
+      compile: predicateCompiler,
+    }
   }
 
   // Creates aggregation entry for sorting
-  // :param sort: input sorting options
-  // :ptype sort: {field: '%field%', direction: 'asc|desc'}
+  // :param sorting: input sorting options
+  // :ptype sorting: [{field: '%field%', direction: 'asc|desc'}, ...]
   // :returns: mdb aggregation sorting entry
   // :rtype: {$sort: { ... }}
-  function compileSorting(sort) {
+  function compileSorting(sorting) {
     var q = {$sort: {}}
-    if (!_.isEmpty(sort)) {
-      q.$sort[sort.field] = sort.direction == 'asc' ? 1 : -1
+    if (sorting.length) {
+      // Some sort of hackery - JS objects are unordered
+      // however the VM keeps keys order
+      // This is required because keys order defines sorting priority
+      _.each(sorting, function(sortingItem) {
+        q.$sort[sortingItem.field] = sortingItem.direction == 'asc' ? 1 : -1
+      })
     }
     return q
   }
@@ -139,7 +174,7 @@ mciModule.factory('MDBQueryAdaptor', function() {
     _condense: condense,
     _numTypeTokenizer: numTypeTokenizer,
     _strTypeTokenizer: strTypeTokenizer,
-    _numTypeParser: numTypeParser,
+    _numTypeParser: asNumType(parser),
     _strTypeParser: strTypeParser,
     _predicateCompiler: predicateCompiler,
   }

@@ -12,43 +12,29 @@ import (
 	"github.com/evergreen-ci/gimlet"
 )
 
-func getSubscriptionRouteManager(route string, version int) *RouteManager {
-	h := &subscriptionPostHandler{}
-
-	postHandler := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: h.Handler(),
-		MethodType:     http.MethodPost,
-	}
-	getHandler := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: &subscriptionGetHandler{},
-		MethodType:     http.MethodGet,
-	}
-	deleteHandler := MethodHandler{
-		Authenticator:  &RequireUserAuthenticator{},
-		RequestHandler: &subscriptionDeleteHandler{},
-		MethodType:     http.MethodDelete,
-	}
-
-	routeManager := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{postHandler, getHandler, deleteHandler},
-		Version: version,
-	}
-	return &routeManager
-}
+////////////////////////////////////////////////////////////////////////
+//
+// POST /rest/v2/subscriptions
 
 type subscriptionPostHandler struct {
 	Subscriptions   *[]model.APISubscription `json:"subscriptions"`
 	dbSubscriptions []event.Subscription
+	sc              data.Connector
 }
 
-func (s *subscriptionPostHandler) Handler() RequestHandler {
-	return &subscriptionPostHandler{}
+func makeSetSubscrition(sc data.Connector) gimlet.RouteHandler {
+	return &subscriptionPostHandler{
+		sc: sc,
+	}
 }
 
-func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (s *subscriptionPostHandler) Factory() gimlet.RouteHandler {
+	return &subscriptionPostHandler{
+		sc: s.sc,
+	}
+}
+
+func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) error {
 	u := MustHaveUser(ctx)
 	s.Subscriptions = &[]model.APISubscription{}
 	s.dbSubscriptions = []event.Subscription{}
@@ -142,29 +128,43 @@ func validateSelectors(subscriber event.Subscriber, selectors []event.Selector) 
 	return true, ""
 }
 
-func (s *subscriptionPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.SaveSubscriptions(s.dbSubscriptions)
+func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
+	err := s.sc.SaveSubscriptions(s.dbSubscriptions)
 	if err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/subscriptions
 
 type subscriptionGetHandler struct {
 	owner     string
 	ownerType string
+	sc        data.Connector
 }
 
-func (s *subscriptionGetHandler) Handler() RequestHandler {
-	return &subscriptionGetHandler{}
+func makeFetchSubscription(sc data.Connector) gimlet.RouteHandler {
+	return &subscriptionGetHandler{
+		sc: sc,
+	}
 }
 
-func (s *subscriptionGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (s *subscriptionGetHandler) Factory() gimlet.RouteHandler {
+	return &subscriptionGetHandler{
+		sc: s.sc,
+	}
+}
+
+func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	u := MustHaveUser(ctx)
 	s.owner = r.FormValue("owner")
 	s.ownerType = r.FormValue("type")
 	if !event.IsValidOwnerType(s.ownerType) {
+		fmt.Println(s.ownerType)
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "Invalid owner type",
@@ -186,31 +186,35 @@ func (s *subscriptionGetHandler) ParseAndValidate(ctx context.Context, r *http.R
 	return nil
 }
 
-func (s *subscriptionGetHandler) Execute(_ context.Context, sc data.Connector) (ResponseData, error) {
-	subs, err := sc.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
+func (s *subscriptionGetHandler) Run(ctx context.Context) gimlet.Responder {
+	subs, err := s.sc.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
 	if err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	model := make([]model.Model, len(subs))
-	for i := range subs {
-		model[i] = &subs[i]
-	}
-
-	return ResponseData{
-		Result: model,
-	}, nil
+	return gimlet.NewJSONResponse(subs)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// DELETE /rest/v2/subscriptions
 
 type subscriptionDeleteHandler struct {
 	id string
+	sc data.Connector
 }
 
-func (s *subscriptionDeleteHandler) Handler() RequestHandler {
-	return &subscriptionDeleteHandler{}
+func makeDeleteSubscription(sc data.Connector) gimlet.RouteHandler {
+	return &subscriptionDeleteHandler{
+		sc: sc,
+	}
 }
 
-func (s *subscriptionDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+func (s *subscriptionDeleteHandler) Factory() gimlet.RouteHandler {
+	return &subscriptionDeleteHandler{sc: s.sc}
+}
+
+func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 	u := MustHaveUser(ctx)
 	idString := r.FormValue("id")
 	if idString == "" {
@@ -243,11 +247,11 @@ func (s *subscriptionDeleteHandler) ParseAndValidate(ctx context.Context, r *htt
 	return nil
 }
 
-func (s *subscriptionDeleteHandler) Execute(_ context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.DeleteSubscription(s.id)
+func (s *subscriptionDeleteHandler) Run(_ context.Context) gimlet.Responder {
+	err := s.sc.DeleteSubscription(s.id)
 	if err != nil {
-		return ResponseData{}, err
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	return ResponseData{}, nil
+	return gimlet.NewJSONResponse(struct{}{})
 }

@@ -523,8 +523,6 @@ mciModule.controller('PerfController', function PerfController(
 function TrendSamples(samples){
   this.samples = samples;
   var NON_THREAD_LEVELS = ['start', 'end']
-  var PARSER_MODE_1 = 'mode1'
-  var PARSER_MODE_2 = 'mode2'
 
   // minor TODO: move this function to utils
   // Extracts referenced element from the obj
@@ -536,12 +534,6 @@ function TrendSamples(samples){
       return m ? m[ref] : undefined
     }, obj)
   }
-
-  // Tries to understand the data format, using inner
-  // structure differencies
-  var parserMode = dereference(samples, '0.data.results.0.start') === undefined
-    ? PARSER_MODE_2
-    : PARSER_MODE_1
 
   // _sampleByCommitIndexes is a map of mappings of (githash -> sample data), keyed by test name.
   // e.g.
@@ -586,17 +578,13 @@ function TrendSamples(samples){
         .sortBy('-threadLevel')
         .value()
 
-      var startedAt = parserMode == PARSER_MODE_1
-        ? rec.start * 1000
-        : rec.results.start
-
       this.seriesByName[rec.name].push({
         revision: sample.revision,
         task_id: sample.task_id,
         ops_per_sec: maxOpsPerSecItem.ops_per_sec,
         ops_per_sec_values: maxOpsPerSecItem.ops_per_sec_values,
         order: sample.order,
-        startedAt: startedAt,
+        createTime: sample.create_time,
         threadResults: threadResults,
       });
     }

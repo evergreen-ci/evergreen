@@ -123,8 +123,10 @@ filters.common.filter('conditional', function() {
   // If skipDayMax is true, then durations longer than 1 day will be represented
   // in hours. Otherwise, they will be displayed as '>=1 day'
   return function(input, skipDayMax, skipSecMax) {
-    if (input == 0) {
+    if (input === 0) {
       return "0 seconds";
+    } else if (input == "unknown" || input < 0) {
+      return "unknown";
     } else if (input < NS_PER_MS) {
       return "< 1 ms";
     } else if (input < NS_PER_SEC) {
@@ -141,9 +143,7 @@ filters.common.filter('conditional', function() {
       return Math.floor(input / NS_PER_HOUR) + "h " +
           Math.floor((input % NS_PER_HOUR) / NS_PER_MINUTE) + "m " +
           Math.floor((input % NS_PER_MINUTE) / NS_PER_SEC) + "s";
-    } else if (input == "unknown") {
-      return "unknown";
-    }  else {
+    } else {
       return ">= 1 day";
     }
   };

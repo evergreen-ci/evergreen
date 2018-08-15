@@ -42,6 +42,7 @@ func (s *PatchByIdSuite) SetupSuite() {
 		},
 	}
 	s.sc = &data.MockConnector{
+		URL:                "https://evergreen.example.net",
 		MockPatchConnector: s.data,
 	}
 }
@@ -76,11 +77,10 @@ func (s *PatchByIdSuite) TestFindByIdFail() {
 // Tests for fetch patch by project route
 
 type PatchesByProjectSuite struct {
-	sc        *data.MockConnector
-	data      data.MockPatchConnector
-	now       time.Time
-	paginator PaginatorFunc
-
+	sc    *data.MockConnector
+	data  data.MockPatchConnector
+	now   time.Time
+	route *patchesByProjectHandler
 	suite.Suite
 }
 
@@ -100,52 +100,60 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 			{Project: "project1", CreateTime: s.now.Add(time.Second * 10)},
 		},
 	}
-	s.paginator = patchesByProjectPaginator
 	s.sc = &data.MockConnector{
+		URL:                "https://evergreen.example.net",
 		MockPatchConnector: s.data,
 	}
 }
 
+func (s *PatchesByProjectSuite) SetupTest() {
+	s.route = makePatchesByProjectRoute(s.sc).(*patchesByProjectHandler)
+}
+
 func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
-	rd, err := executePatchesByProjectRequest("project3", s.now, 1, s.sc)
-	s.Error(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
-	s.Contains(err.Error(), "no patches found")
+	s.route.projectId = "project3"
+	s.route.key = s.now
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.NotEqual(http.StatusNotFound, resp.Status())
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	rd, err := executePatchesByProjectRequest("project1", s.now.Add(time.Second*7), 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
+	s.route.projectId = "project1"
+	s.route.key = s.now.Add(time.Second * 7)
+	s.route.limit = 2
 
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.NotNil(pageData.Prev)
-	s.NotNil(pageData.Next)
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+
+	payload := resp.Data().([]interface{})
+	s.NotNil(payload)
+
+	s.Len(payload, 2)
+	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
+	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
+
+	pages := resp.Pages()
+	s.NotNil(pages)
+	s.Nil(pages.Prev)
+	s.NotNil(pages.Next)
 
 	nextTime := s.now.Format(model.APITimeFormat)
-	s.Equal(nextTime, pageData.Next.Key)
-	prevTime := s.now.Add(time.Second * 10).Format(model.APITimeFormat)
-	s.Equal(prevTime, pageData.Prev.Key)
+	s.Equal(nextTime, pages.Next.Key)
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	rd, err := executePatchesByProjectRequest("project2", s.now.Add(time.Hour), 100, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.Nil(pageData.Prev)
-	s.Nil(pageData.Next)
+	s.route.projectId = "project2"
+	s.route.key = s.now.Add(time.Hour)
+	s.route.limit = 100
+
+	resp := s.route.Run(context.Background())
+	s.Len(resp.Data().([]interface{}), 2)
+
+	s.Nil(resp.Pages())
 }
 
 func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
@@ -157,25 +165,12 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 3; limit++ {
-			a, b, err := s.paginator(i, limit, patchesByProjectArgs{}, s.sc)
-			s.Len(a, 0)
-			s.Nil(b)
+			req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10&start_at="+i, nil)
+			s.Require().NoError(err)
+			err = s.route.Parse(context.Background(), req)
 			s.Error(err)
-			apiErr, ok := err.(gimlet.ErrorResponse)
-			s.True(ok)
-			s.Contains(apiErr.Message, i)
 		}
 	}
-}
-
-func executePatchesByProjectRequest(projectId string, ts time.Time, limit int, sc *data.MockConnector) (ResponseData, error) {
-	rm := getPatchesByProjectManager("", 2)
-	pe := (rm.Methods[0].RequestHandler).(*patchesByProjectHandler)
-	pe.Args = patchesByProjectArgs{projectId: projectId}
-	pe.key = ts.Format(model.APITimeFormat)
-	pe.limit = limit
-
-	return pe.Execute(context.TODO(), sc)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -213,49 +208,46 @@ func (s *PatchAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getPatchAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[0].Hex()
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-
-	s.NoError(err)
+	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
+	rm.patchId = s.objIds[0].Hex()
+	res := rm.Run(ctx)
 	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
 	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
-	p, ok := (res.Result[0]).(*model.APIPatch)
+	p, ok := (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
-	res, err = rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	res = rm.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
-	p, ok = (res.Result[0]).(*model.APIPatch)
+	p, ok = (res.Data()).(*model.APIPatch)
 	s.True(ok)
 	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
-	rm = getPatchAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[1].Hex()
-	res, err = rm.Methods[0].Execute(ctx, s.sc)
+	rm.patchId = s.objIds[1].Hex()
+	res = rm.Run(ctx)
 
-	s.Error(err)
-	s.Nil(res.Result)
+	s.NotEqual(http.StatusOK, res.Status())
 }
 
 func (s *PatchAbortSuite) TestAbortFail() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getPatchAbortManager("", 2)
+	rm := makeAbortPatch(s.sc).(*patchAbortHandler)
 	new_id := bson.NewObjectId()
 	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
 	}
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = new_id.Hex()
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-	s.Error(err)
-	s.NotNil(res)
-	s.Len(res.Result, 0)
+
+	rm.patchId = new_id.Hex()
+	res := rm.Run(ctx)
+	s.NotEqual(http.StatusOK, res.Status())
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -354,12 +346,12 @@ func (s *PatchRestartSuite) TestRestart() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 
-	rm := getPatchRestartManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchRestartHandler).patchId = s.objIds[0].Hex()
-	res, err := rm.Methods[0].Execute(ctx, s.sc)
-	s.NoError(err)
+	rm := makeRestartPatch(s.sc).(*patchRestartHandler)
+	rm.patchId = s.objIds[0].Hex()
+	res := rm.Run(ctx)
 	s.NotNil(res)
 
+	s.Equal(http.StatusOK, res.Status())
 	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0].Hex()])
 }
 
@@ -368,10 +360,10 @@ func (s *PatchRestartSuite) TestRestart() {
 // Tests for fetch patches for current user
 
 type PatchesByUserSuite struct {
-	sc        *data.MockConnector
-	data      data.MockPatchConnector
-	now       time.Time
-	paginator PaginatorFunc
+	sc    *data.MockConnector
+	data  data.MockPatchConnector
+	now   time.Time
+	route *patchesByUserHandler
 
 	suite.Suite
 }
@@ -389,54 +381,65 @@ func TestPatchesByUserSuite(t *testing.T) {
 			{Author: "user1", CreateTime: s.now.Add(time.Second * 10)},
 		},
 	}
-	s.paginator = patchesByUserPaginator
 	s.sc = &data.MockConnector{
+		URL:                "https://evergreen.example.net",
 		MockPatchConnector: s.data,
 	}
 
 	suite.Run(t, s)
 }
 
+func (s *PatchesByUserSuite) SetupTest() {
+	s.route = &patchesByUserHandler{
+		sc: s.sc,
+	}
+}
+
 func (s *PatchesByUserSuite) TestPaginatorShouldErrorIfNoResults() {
-	rd, err := executePatchesByUserRequest("zzz", s.now, 1, s.sc)
-	s.Error(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
-	s.Contains(err.Error(), "no patches found")
+	s.route.user = "zzz"
+	s.route.key = s.now
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusNotFound, resp.Status())
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
 }
 
 func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	rd, err := executePatchesByUserRequest("user1", s.now.Add(time.Second*7), 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
+	s.route.user = "user1"
+	s.route.key = s.now.Add(time.Second * 7)
+	s.route.limit = 2
 
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.NotNil(pageData.Prev)
+	resp := s.route.Run(context.Background())
+	s.Equal(http.StatusOK, resp.Status())
+	payload := resp.Data().([]interface{})
+
+	s.Len(payload, 2)
+	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (payload[0]).(*model.APIPatch).CreateTime)
+	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (payload[1]).(*model.APIPatch).CreateTime)
+
+	pageData := resp.Pages()
+
+	s.Nil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
 	nextTime := s.now.Format(model.APITimeFormat)
 	s.Equal(nextTime, pageData.Next.Key)
-	prevTime := s.now.Add(time.Second * 10).Format(model.APITimeFormat)
-	s.Equal(prevTime, pageData.Prev.Key)
 }
 
 func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	rd, err := executePatchesByUserRequest("user2", s.now.Add(time.Hour), 100, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.Nil(pageData.Prev)
-	s.Nil(pageData.Next)
+	s.route.user = "user2"
+	s.route.key = s.now.Add(time.Hour)
+	s.route.limit = 100
+
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+
+	s.Len(resp.Data().([]interface{}), 2)
+
+	s.Nil(resp.Pages())
 }
 
 func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
@@ -448,9 +451,9 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 3; limit++ {
-			a, b, err := s.paginator(i, limit, patchesByUserArgs{}, s.sc)
-			s.Len(a, 0)
-			s.Nil(b)
+			req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10&start_at="+i, nil)
+			s.Require().NoError(err)
+			err = s.route.Parse(context.Background(), req)
 			s.Error(err)
 			apiErr, ok := err.(gimlet.ErrorResponse)
 			s.True(ok)
@@ -459,12 +462,9 @@ func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
 	}
 }
 
-func executePatchesByUserRequest(user string, ts time.Time, limit int, sc *data.MockConnector) (ResponseData, error) {
-	rm := getPatchesByUserManager("", 2)
-	pe := (rm.Methods[0].RequestHandler).(*patchesByUserHandler)
-	pe.Args = patchesByUserArgs{user: user}
-	pe.key = ts.Format(model.APITimeFormat)
-	pe.limit = limit
-
-	return pe.Execute(context.TODO(), sc)
+func (s *PatchesByUserSuite) TestEmptyTimeShouldSetNow() {
+	req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10", nil)
+	s.Require().NoError(err)
+	s.NoError(s.route.Parse(context.Background(), req))
+	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
 }

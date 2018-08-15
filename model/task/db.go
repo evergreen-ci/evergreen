@@ -326,12 +326,18 @@ func ByTimeRun(startTime, endTime time.Time) db.Q {
 }
 
 // ByTimeStartedAndFailed returns all failed tasks that started between 2 given times
-func ByTimeStartedAndFailed(startTime, endTime time.Time) db.Q {
-	return db.Query(bson.M{
+func ByTimeStartedAndFailed(startTime, endTime time.Time, commandTypes []string) db.Q {
+	query := bson.M{
 		StartTimeKey: bson.M{"$lte": endTime},
 		StartTimeKey: bson.M{"$gte": startTime},
 		StatusKey:    evergreen.TaskFailed,
-	})
+	}
+	if len(commandTypes) > 0 {
+		query[bsonutil.GetDottedKeyName(DetailsKey, "type")] = bson.M{
+			"$in": commandTypes,
+		}
+	}
+	return db.Query(query)
 }
 
 func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) db.Q {
@@ -430,17 +436,12 @@ func scheduleableTasksQuery() bson.M {
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
 // associated with a given project and commit hash.
-func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string,
-	limit, sortDir int) []bson.M {
-	sortOperator := "$gte"
-	if sortDir < 0 {
-		sortOperator = "$lte"
-	}
+func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string, limit int) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			ProjectKey:  projectId,
 			RevisionKey: commitHash,
-			IdKey:       bson.M{sortOperator: taskId},
+			IdKey:       bson.M{"$gte": taskId},
 		}},
 	}
 	if taskStatus != "" {

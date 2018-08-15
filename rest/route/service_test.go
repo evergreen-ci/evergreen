@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
@@ -221,7 +220,9 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 	projectName := "project_1"
 	commit := "commit_1"
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{}
+		serviceContext := data.MockConnector{
+			URL: "http://evergreen.example.net",
+		}
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
@@ -251,25 +252,25 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
-					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("task_%d", taskToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						LimitQueryParam: "limit",
+						KeyQueryParam:   "start_at",
 					},
 				}
-				tphArgs := tasksByProjectArgs{
+				handler := &tasksByProjectHandler{
 					projectId:  projectName,
 					commitHash: commit,
+					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					sc:         &serviceContext,
+					limit:      limit,
 				}
-				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
-					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
 
+				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
 			})
 			Convey("then finding a key in the near the end of the set should produce"+
 				" a limited next and full previous page and a full set of models", func() {
@@ -289,25 +290,25 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
-						Limit:    50,
-						Relation: "next",
-					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("task_%d", taskToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						LimitQueryParam: "limit",
+						KeyQueryParam:   "start_at",
 					},
 				}
-				tphArgs := tasksByProjectArgs{
+				handler := &tasksByProjectHandler{
 					projectId:  projectName,
 					commitHash: commit,
+					sc:         &serviceContext,
+					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					limit:      limit,
 				}
-				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
-					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
 
+				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
 			})
 			Convey("then finding a key in the near the beginning of the set should produce"+
 				" a full next and a limited previous page and a full set of models", func() {
@@ -327,58 +328,25 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
-					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("task_%d", 0),
-						Limit:    50,
-						Relation: "prev",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Limit:           limit,
+						LimitQueryParam: "limit",
+						KeyQueryParam:   "start_at",
+						BaseURL:         serviceContext.GetURL(),
+						Relation:        "next",
 					},
 				}
-				tphArgs := tasksByProjectArgs{
+				handler := &tasksByProjectHandler{
 					projectId:  projectName,
 					commitHash: commit,
+					sc:         &serviceContext,
+					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					limit:      limit,
 				}
-				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
-					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
 
-			})
-			Convey("then finding a key in the last page should produce only a previous"+
-				" page and a limited set of models", func() {
-				taskToStartAt := 299
-				limit := 100
-				expectedTasks := []model.Model{}
-				for i := taskToStartAt; i < numTasks; i++ {
-					serviceTask := &task.Task{
-						Id:       fmt.Sprintf("task_%d", i),
-						Revision: commit,
-						Project:  projectName,
-					}
-					nextModelTask := &model.APITask{}
-					err := nextModelTask.BuildFromService(serviceTask)
-					So(err, ShouldBeNil)
-					err = nextModelTask.BuildFromService(serviceContext.GetURL())
-					So(err, ShouldBeNil)
-					expectedTasks = append(expectedTasks, nextModelTask)
-				}
-				expectedPages := &PageResult{
-					Prev: &Page{
-						Key:      fmt.Sprintf("task_%d", taskToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
-					},
-				}
-				tphArgs := tasksByProjectArgs{
-					projectId:  projectName,
-					commitHash: commit,
-				}
-				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
-					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
-
+				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
 			})
 			Convey("then finding the first key should produce only a next"+
 				" page and a full set of models", func() {
@@ -398,29 +366,26 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("task_%d", taskToStartAt+limit),
+						LimitQueryParam: "limit",
+						KeyQueryParam:   "start_at",
+						Limit:           limit,
+						BaseURL:         serviceContext.GetURL(),
+						Relation:        "next",
 					},
 				}
-				tphArgs := tasksByProjectArgs{
+
+				handler := &tasksByProjectHandler{
 					projectId:  projectName,
 					commitHash: commit,
+					sc:         &serviceContext,
+					key:        fmt.Sprintf("task_%d", taskToStartAt),
+					limit:      limit,
 				}
-				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
-					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
-			})
-			Convey("when APIError is returned from DB, should percolate upward", func() {
-				expectedErr := gimlet.ErrorResponse{
-					StatusCode: http.StatusNotFound,
-					Message:    "not found",
-				}
-				serviceContext.MockTaskConnector.StoredError = &expectedErr
-				checkPaginatorResultMatches(tasksByProjectPaginator, "",
-					0, &serviceContext, tasksByProjectArgs{}, nil, nil, &expectedErr)
 
+				validatePaginatedResponse(t, handler, expectedTasks, expectedPages)
 			})
 		})
 	})
@@ -637,7 +602,9 @@ func TestTaskByBuildPaginator(t *testing.T) {
 func TestTestPaginator(t *testing.T) {
 	numTests := 300
 	Convey("When paginating with a Connector", t, func() {
-		serviceContext := data.MockConnector{}
+		serviceContext := data.MockConnector{
+			URL: "http://evergreen.example.net/",
+		}
 		Convey("and there are tasks with tests to be found", func() {
 			cachedTests := []testresult.TestResult{}
 			for i := 0; i < numTests; i++ {
@@ -666,30 +633,39 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
+						TaskId:    model.ToAPIString(""),
+						TestFile:  model.ToAPIString(""),
+						Logs: model.TestLogs{
+							URL:    model.ToAPIString(""),
+							URLRaw: model.ToAPIString(""),
+							LogId:  model.ToAPIString(""),
+						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
-					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "start_at",
+						LimitQueryParam: "limit",
 					},
 				}
-				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
-					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
+				handler := &testGetHandler{
+					limit: limit,
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:    &serviceContext,
+				}
+
+				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
 			})
 			Convey("then finding a key in the near the end of the set should produce"+
 				" a limited next and full previous page and a full set of models", func() {
 				testToStartAt := 150
-				limit := 100
+				limit := 50
 				expectedTests := []model.Model{}
 				for i := testToStartAt; i < testToStartAt+limit; i++ {
 					status := "pass"
@@ -700,25 +676,34 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
+						TaskId:    model.ToAPIString(""),
+						TestFile:  model.ToAPIString(""),
+						Logs: model.TestLogs{
+							URL:    model.ToAPIString(""),
+							URLRaw: model.ToAPIString(""),
+							LogId:  model.ToAPIString(""),
+						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
-						Limit:    50,
-						Relation: "next",
-					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+50),
+						Limit:           50,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "start_at",
+						LimitQueryParam: "limit",
 					},
 				}
-				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
-					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
+				handler := &testGetHandler{
+					limit: 50,
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:    &serviceContext,
+				}
+
+				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
 			})
 			Convey("then finding a key in the near the beginning of the set should produce"+
 				" a full next and a limited previous page and a full set of models", func() {
@@ -734,54 +719,34 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
+						TaskId:    model.ToAPIString(""),
+						TestFile:  model.ToAPIString(""),
+						Logs: model.TestLogs{
+							URL:    model.ToAPIString(""),
+							URLRaw: model.ToAPIString(""),
+							LogId:  model.ToAPIString(""),
+						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
-					},
-					Prev: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", 0),
-						Limit:    50,
-						Relation: "prev",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "start_at",
+						LimitQueryParam: "limit",
 					},
 				}
-				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
-					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
-			})
-			Convey("then finding a key in the last page should produce only a previous"+
-				" page and a limited set of models", func() {
-				testToStartAt := 299
-				limit := 100
-				expectedTests := []model.Model{}
-				for i := testToStartAt; i < numTests; i++ {
-					status := "pass"
-					if i%2 == 0 {
-						status = "fail"
-					}
-					nextModelTest := &model.APITest{
-						StartTime: model.NewTime(time.Unix(0, 0)),
-						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.ToAPIString(status),
-					}
-					expectedTests = append(expectedTests, nextModelTest)
+				handler := &testGetHandler{
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					limit: limit,
+					sc:    &serviceContext,
 				}
-				expectedPages := &PageResult{
-					Prev: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", testToStartAt-limit),
-						Limit:    limit,
-						Relation: "prev",
-					},
-				}
-				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
-					limit, &serviceContext, args, expectedPages, expectedTests, nil)
 
+				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
 			})
 			Convey("then finding the first key should produce only a next"+
 				" page and a full set of models", func() {
@@ -797,19 +762,34 @@ func TestTestPaginator(t *testing.T) {
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.ToAPIString(status),
+						TaskId:    model.ToAPIString(""),
+						TestFile:  model.ToAPIString(""),
+						Logs: model.TestLogs{
+							URL:    model.ToAPIString(""),
+							URLRaw: model.ToAPIString(""),
+							LogId:  model.ToAPIString(""),
+						},
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
-				expectedPages := &PageResult{
-					Next: &Page{
-						Key:      fmt.Sprintf("object_id_%d_", testToStartAt+limit),
-						Limit:    limit,
-						Relation: "next",
+				expectedPages := &gimlet.ResponsePages{
+					Next: &gimlet.Page{
+						Key:             fmt.Sprintf("object_id_%d_", testToStartAt+limit),
+						Limit:           limit,
+						Relation:        "next",
+						BaseURL:         serviceContext.GetURL(),
+						KeyQueryParam:   "start_at",
+						LimitQueryParam: "limit",
 					},
 				}
-				args := testGetHandlerArgs{}
-				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("object_id_%d_", testToStartAt),
-					limit, &serviceContext, args, expectedPages, expectedTests, nil)
+
+				handler := &testGetHandler{
+					key:   fmt.Sprintf("object_id_%d_", testToStartAt),
+					sc:    &serviceContext,
+					limit: limit,
+				}
+
+				validatePaginatedResponse(t, handler, expectedTests, expectedPages)
 			})
 		})
 	})
@@ -1120,23 +1100,6 @@ func TestTaskResetExecute(t *testing.T) {
 		})
 	})
 
-}
-
-func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
-	sc data.Connector, args interface{}, expectedPages *PageResult,
-	expectedModels []model.Model, expectedErr error) {
-
-	res, pages, err := paginator(key, limit, args, sc)
-	So(errors.Cause(err), ShouldResemble, expectedErr)
-	So(len(res), ShouldEqual, len(expectedModels))
-	for ix := range expectedModels {
-		dbModel, err := res[ix].ToService()
-		So(err, ShouldBeNil)
-		expectedModel, err := expectedModels[ix].ToService()
-		So(err, ShouldBeNil)
-		So(dbModel, ShouldResemble, expectedModel)
-	}
-	So(pages, ShouldResemble, expectedPages)
 }
 
 func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []model.Model, pages *gimlet.ResponsePages) {

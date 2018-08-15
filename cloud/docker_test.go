@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -127,6 +125,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	defer cancel()
 
 	hostA := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostA.Insert())
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
@@ -134,6 +133,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	s.NoError(err)
 
 	hostB := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostB.Insert())
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -156,6 +156,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	myHost := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(myHost.Insert())
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -218,6 +219,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
 	host = NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -230,11 +232,13 @@ func (s *DockerSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
 	hostOne := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostOne.Insert())
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
 	hostTwo := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostTwo.Insert())
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -249,12 +253,14 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
 	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -269,6 +275,7 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	h, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(h)
@@ -284,100 +291,6 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	s.Nil(h)
 }
 
-func (s *DockerSuite) TestSpawnFailOpenPortBinding() {
-	mock, ok := s.client.(*dockerClientMock)
-	s.True(ok)
-	s.True(mock.hasOpenPorts)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(ctx, host)
-	s.NoError(err)
-	s.NotNil(host)
-
-	mock.hasOpenPorts = false
-	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err = s.manager.SpawnHost(ctx, host)
-	s.Error(err)
-	s.Nil(host)
-}
-
-func (s *DockerSuite) TestSpawnGetAPICall() {
-	mock, ok := s.client.(*dockerClientMock)
-	s.True(ok)
-	s.False(mock.failCreate)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(ctx, host)
-	s.NoError(err)
-	s.NotNil(host)
-
-	mock.failGet = true
-	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err = s.manager.SpawnHost(ctx, host)
-	s.Error(err)
-	s.Nil(host)
-}
-
-func (s *DockerSuite) TestGetDNSName() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	dns, err := s.manager.GetDNSName(ctx, host)
-	s.Error(err)
-	s.Empty(dns)
-
-	host, err = s.manager.SpawnHost(ctx, host)
-	s.NoError(err)
-	s.NotNil(host)
-
-	dns, err = s.manager.GetDNSName(ctx, host)
-	s.NoError(err)
-	s.NotEmpty(dns)
-}
-
-func (s *DockerSuite) TestMakeHostConfig() {
-	container := types.Container{
-		Ports: []types.Port{
-			{PublicPort: 5000},
-			{PublicPort: 5001},
-		},
-	}
-	containers := []types.Container{container}
-
-	hostNoOpenPorts := &host.Host{
-		Id: "host-1",
-		ContainerPoolSettings: &evergreen.ContainerPool{
-			Id:            "test_pool-1",
-			MaxContainers: 1,
-			Port:          5000,
-		},
-	}
-
-	conf, err := makeHostConfig(hostNoOpenPorts, containers)
-	s.Error(err)
-	s.Nil(conf)
-
-	hostOpenPorts := &host.Host{
-		Id: "host-2",
-		ContainerPoolSettings: &evergreen.ContainerPool{
-			Id:            "test_pool-2",
-			MaxContainers: 10,
-			Port:          5000,
-		},
-	}
-
-	conf, err = makeHostConfig(hostOpenPorts, containers)
-	s.NoError(err)
-	s.NotNil(conf)
-}
-
 func (s *DockerSuite) TestUtilToEvgStatus() {
 	s.Equal(StatusRunning, toEvgStatus(&types.ContainerState{Running: true}))
 	s.Equal(StatusStopped, toEvgStatus(&types.ContainerState{Paused: true}))
@@ -385,48 +298,6 @@ func (s *DockerSuite) TestUtilToEvgStatus() {
 	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{OOMKilled: true}))
 	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{Dead: true}))
 	s.Equal(StatusUnknown, toEvgStatus(&types.ContainerState{}))
-}
-
-func (s *DockerSuite) TestUtilRetrieveOpenPortBinding() {
-	mock, ok := s.client.(*dockerClientMock)
-	s.True(ok)
-
-	containerNoPortBindings := &types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
-			ID:    mock.generateContainerID(),
-			State: &types.ContainerState{Running: true},
-		},
-		Config: &container.Config{
-			ExposedPorts: nat.PortSet{"22/tcp": {}},
-		},
-		NetworkSettings: &types.NetworkSettings{},
-	}
-	port, err := retrieveOpenPortBinding(containerNoPortBindings)
-	s.Empty(port)
-	s.Error(err)
-
-	hostPort := "5000"
-	containerOpenPortBinding := &types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
-			ID:    mock.generateContainerID(),
-			State: &types.ContainerState{Running: true},
-		},
-		Config: &container.Config{
-			ExposedPorts: nat.PortSet{"22/tcp": {}},
-		},
-		NetworkSettings: &types.NetworkSettings{
-			NetworkSettingsBase: types.NetworkSettingsBase{
-				Ports: nat.PortMap{
-					"22/tcp": []nat.PortBinding{
-						{"0.0.0.0", hostPort},
-					},
-				},
-			},
-		},
-	}
-	port, err = retrieveOpenPortBinding(containerOpenPortBinding)
-	s.Equal(hostPort, port)
-	s.NoError(err)
 }
 
 func (s *DockerSuite) TestSpawnDoesNotPanic() {

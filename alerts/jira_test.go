@@ -1,6 +1,7 @@
 package alerts
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -26,6 +27,7 @@ func TestJIRASummary(t *testing.T) {
 			ProjectRef: &model.ProjectRef{
 				DisplayName: ProjectName,
 				Owner:       ProjectOwner,
+				Repo:        ProjectRepo,
 			},
 			Task: &task.Task{
 				DisplayName: TaskName,
@@ -209,6 +211,7 @@ func TestJIRADescription(t *testing.T) {
 				DisplayName: ProjectName,
 				Identifier:  ProjectId,
 				Owner:       ProjectOwner,
+				Repo:        ProjectRepo,
 			},
 			Task: &task.Task{
 				Id:          TaskId,
@@ -239,12 +242,13 @@ func TestJIRADescription(t *testing.T) {
 				So(d, ShouldContainSubstring, ProjectName)
 				So(d, ShouldContainSubstring, BuildName)
 				So(d, ShouldContainSubstring, ProjectOwner)
+				So(d, ShouldContainSubstring, ProjectRepo)
 				So(d, ShouldContainSubstring, VersionRevision)
 				So(d, ShouldContainSubstring, VersionMessage)
 				So(d, ShouldContainSubstring, "diff|https://github.com/")
 			})
 			Convey("with links to the task, host, project", func() {
-				So(d, ShouldContainSubstring, TaskId)
+				So(d, ShouldContainSubstring, url.PathEscape(TaskId))
 				So(d, ShouldContainSubstring, HostId)
 				So(d, ShouldContainSubstring, ProjectId)
 			})

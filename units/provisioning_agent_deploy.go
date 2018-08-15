@@ -63,7 +63,7 @@ func NewAgentDeployJob(env evergreen.Environment, h host.Host, id string) amboy.
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
-	j.SetID(fmt.Sprintf("%s.%s.%s", agentDeployJobName, j.HostID, id))
+	j.SetID(fmt.Sprintf("%s.%s.attempt-%d.%s", agentDeployJobName, j.HostID, h.AgentDeployAttempt, id))
 
 	return j
 }
@@ -87,6 +87,30 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+
+	defer func() {
+		err := j.host.IncAgentDeployAttempt()
+		if err != nil {
+			j.AddError(err)
+			grip.Warning(message.WrapError(err, message.Fields{
+				"host_id":      j.HostID,
+				"job_id":       j.ID(),
+				"runner":       "taskrunner",
+				"distro":       j.host.Distro,
+				"message":      "failed to update agent iteration",
+				"current_iter": j.host.AgentDeployAttempt,
+			}))
+			return
+		}
+		grip.Debug(message.Fields{
+			"host_id":      j.HostID,
+			"job_id":       j.ID(),
+			"runner":       "taskrunner",
+			"distro":       j.host.Distro,
+			"operation":    "agent deploy complete",
+			"current_iter": j.host.AgentDeployAttempt,
+		})
+	}()
 
 	settings := j.env.Settings()
 	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))
@@ -194,15 +218,6 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	// Start agent to listen for tasks
 	grip.Info(j.getHostMessage(hostObj))
 	if err = j.startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
-		// mark the host's provisioning as failed
-		if err = hostObj.SetUnprovisioned(); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"runner":  "taskrunner",
-				"host_id": hostObj.Id,
-				"message": "unprovisioning host failed",
-			}))
-		}
-
 		event.LogHostAgentDeployFailed(hostObj.Id, err)
 		grip.Info(message.Fields{
 			"message": "error starting agent on remote",

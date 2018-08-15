@@ -25,11 +25,12 @@ var mciModule = angular.module('MCI', [
   'ngMaterial',
   'md.time.picker',
   'ui.grid',
-  'ui.grid.resizeColumns',
-  'ui.grid.moveColumns',
-  'ui.grid.emptyBaseLayer',
   'ui.grid.autoResize',
+  'ui.grid.emptyBaseLayer',
+  'ui.grid.grouping',
+  'ui.grid.moveColumns',
   'ui.grid.pinning',
+  'ui.grid.resizeColumns',
   'ui.select',
 ], function($interpolateProvider, $locationProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go

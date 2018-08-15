@@ -1364,6 +1364,16 @@ func TestFailedTaskRestart(t *testing.T) {
 		Status:    evergreen.TaskFailed,
 		Details:   apimodels.TaskEndDetail{Type: "test"},
 	}
+	testTask4 := &task.Task{
+		Id:        "setupFailed",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+		Details:   apimodels.TaskEndDetail{Type: "setup"},
+	}
 	p := &ProjectRef{
 		Identifier: "sample",
 	}
@@ -1378,22 +1388,27 @@ func TestFailedTaskRestart(t *testing.T) {
 		{
 			Id: testTask3.Id,
 		},
+		{
+			Id: testTask4.Id,
+		},
 	}
 	assert.NoError(b.Insert())
 	assert.NoError(v.Insert())
 	assert.NoError(testTask1.Insert())
 	assert.NoError(testTask2.Insert())
 	assert.NoError(testTask3.Insert())
+	assert.NoError(testTask4.Insert())
 	assert.NoError(p.Insert())
 
-	// test a dry run getting only red or purple tasks
+	// test a dry run
 	opts := RestartTaskOptions{
-		DryRun:     true,
-		OnlyRed:    true,
-		OnlyPurple: false,
-		StartTime:  time.Date(2017, time.June, 11, 11, 0, 0, 0, time.Local),
-		EndTime:    time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local),
-		User:       userName,
+		DryRun:             true,
+		IncludeTestFailed:  true,
+		IncludeSysFailed:   false,
+		IncludeSetupFailed: false,
+		StartTime:          time.Date(2017, time.June, 11, 11, 0, 0, 0, time.Local),
+		EndTime:            time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local),
+		User:               userName,
 	}
 
 	results, err := RestartFailedTasks(opts)
@@ -1402,23 +1417,33 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.Equal(1, len(results.TasksRestarted))
 	assert.Equal("taskOutsideOfTimeRange", results.TasksRestarted[0])
 
-	opts.OnlyRed = false
-	opts.OnlyPurple = true
+	opts.IncludeTestFailed = true
+	opts.IncludeSysFailed = true
+	results, err = RestartFailedTasks(opts)
+	assert.NoError(err)
+	assert.Nil(results.TasksErrored)
+	assert.Equal(2, len(results.TasksRestarted))
+	assert.Equal("taskToRestart", results.TasksRestarted[0])
+
+	opts.IncludeTestFailed = false
+	opts.IncludeSysFailed = false
+	opts.IncludeSetupFailed = true
 	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Nil(results.TasksErrored)
 	assert.Equal(1, len(results.TasksRestarted))
-	assert.Equal("taskToRestart", results.TasksRestarted[0])
+	assert.Equal("setupFailed", results.TasksRestarted[0])
 
 	// test restarting all tasks
 	opts.StartTime = time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
 	opts.DryRun = false
-	opts.OnlyRed = false
-	opts.OnlyPurple = false
+	opts.IncludeTestFailed = false
+	opts.IncludeSysFailed = false
+	opts.IncludeSetupFailed = false
 	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Equal(0, len(results.TasksErrored))
-	assert.Equal(1, len(results.TasksRestarted))
+	assert.Equal(2, len(results.TasksRestarted))
 	assert.Equal(testTask1.Id, results.TasksRestarted[0])
 	dbTask, err := task.FindOne(task.ById(testTask1.Id))
 	assert.NoError(err)
@@ -1432,6 +1457,10 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskFailed)
 	assert.Equal(1, dbTask.Execution)
+	dbTask, err = task.FindOne(task.ById(testTask4.Id))
+	assert.NoError(err)
+	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)
+	assert.Equal(2, dbTask.Execution)
 }
 
 func TestStepback(t *testing.T) {

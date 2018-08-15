@@ -9,19 +9,20 @@ import (
 )
 
 const (
-	confFlagName       = "conf"
-	adminFlagsFlagName = "flags"
-	pathFlagName       = "path"
-	projectFlagName    = "project"
-	variantsFlagName   = "variants"
-	patchIDFlagName    = "patch"
-	moduleFlagName     = "module"
-	yesFlagName        = "yes"
-	tasksFlagName      = "tasks"
-	largeFlagName      = "large"
-	hostFlagName       = "host"
-	startTimeFlagName  = "time"
-	limitFlagName      = "limit"
+	confFlagName          = "conf"
+	overwriteConfFlagName = "overwrite"
+	adminFlagsFlagName    = "flags"
+	pathFlagName          = "path"
+	projectFlagName       = "project"
+	variantsFlagName      = "variants"
+	patchIDFlagName       = "patch"
+	moduleFlagName        = "module"
+	yesFlagName           = "yes"
+	tasksFlagName         = "tasks"
+	largeFlagName         = "large"
+	hostFlagName          = "host"
+	startTimeFlagName     = "time"
+	limitFlagName         = "limit"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"
@@ -54,10 +55,15 @@ func addOutputPath(flags ...cli.Flag) []cli.Flag {
 }
 
 func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringFlag{
-		Name:  joinFlagNames(confFlagName, "config", "c"),
-		Usage: "path to the service configuration file",
-	})
+	return append(flags,
+		cli.StringFlag{
+			Name:  joinFlagNames(confFlagName, "config", "c"),
+			Usage: "path to the service configuration file",
+		},
+		cli.BoolFlag{
+			Name:  overwriteConfFlagName,
+			Usage: "overwrite the configuration in the db with the file",
+		})
 }
 
 func addProjectFlag(flags ...cli.Flag) []cli.Flag {

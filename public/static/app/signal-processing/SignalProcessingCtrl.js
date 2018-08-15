@@ -1,16 +1,38 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $window, $scope, MDBQueryAdaptor, Stitch, STITCH_CONFIG
+  $window, $scope, MDBQueryAdaptor, Stitch, FORMAT, STITCH_CONFIG
 ) {
   var vm = this;
-  var projectId = $window.project
+
   // TODO later this might be replaced with some sort of pagination
   var LIMIT = 500
 
+  vm.mode = {
+    options: [{
+      id: 'processed',
+      name: 'Processed',
+    }, {
+      id: 'unprocessed',
+      name: 'Unprocessed',
+    }],
+    value: 'unprocessed',
+  }
+
   var state = {
-    sorting: null,
+    sorting: [{
+      field: 'suspect_revision',
+      direction: 'asc',
+    }],
     filtering: {
-      probability: '>0.05'
-    }
+      create_time: '>' + moment().subtract(2, 'weeks').format(FORMAT.ISO_DATE),
+      probability: '>0.05',
+      project: '=' + $window.project,
+    },
+    mode: vm.mode.value,
+  }
+
+  var modeToCollMap = {
+    unprocessed: STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS,
+    processed: STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS,
   }
 
   // Required by loadData.
@@ -21,7 +43,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     theMostRecentPromise = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
-        .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
+        .collection(modeToCollMap[state.mode])
         .aggregate(getAggChain(state))
     })
     // Storing this promise in closure.
@@ -86,12 +108,23 @@ mciModule.controller('SignalProcessingCtrl', function(
     return chain
   }
 
-  // Sets `state` to grid filters (TODO and sorting; not required yet)
+  vm.modeChanged = function() {
+    state.mode = vm.mode.value
+    loadData(state)
+  }
+
+  // Sets `state` to grid filters
   function setInitialGridState(gridApi, state) {
     _.each(state.filtering, function(term, colName) {
       var col = getCol(vm.gridApi, colName)
       if (!col) return // Error! Associated col does not found
       col.filters = [{term: term}]
+    })
+
+    _.each(state.sorting, function(sortingItem) {
+      var col = getCol(vm.gridApi, sortingItem.field)
+      if (!col) return // Error! Associated col does not found
+      col.sort.direction = sortingItem.direction
     })
   }
 
@@ -103,10 +136,12 @@ mciModule.controller('SignalProcessingCtrl', function(
     onRegisterApi: function(api) {
       vm.gridApi = api
       api.core.on.sortChanged($scope, function(grid, cols) {
-        state.sorting = {
-          field: cols[0].field,
-          direction: cols[0].sort.direction
-        }
+        state.sorting = _.map(cols, function(col) {
+          return {
+            field: col.field,
+            direction: col.sort.direction
+          }
+        })
         loadData(state)
       })
 
@@ -129,11 +164,6 @@ mciModule.controller('SignalProcessingCtrl', function(
     },
     columnDefs: [
       {
-        name: 'Project',
-        field: 'project',
-        type: 'string',
-      },
-      {
         name: 'Variant',
         field: 'variant',
         type: 'string',
@@ -150,8 +180,15 @@ mciModule.controller('SignalProcessingCtrl', function(
       },
       {
         name: 'Revision',
-        field: 'revision',
+        field: 'suspect_revision',
         type: 'string',
+        sort: {
+          priority: 0,
+        },
+        cellTemplate: 'ui-grid-group-name',
+        grouping: {
+          groupPriority: 0,
+        },
       },
       {
         name: 'Value',
@@ -206,6 +243,13 @@ mciModule.controller('SignalProcessingCtrl', function(
       {
         name: 'Create Time',
         field: 'create_time',
+        visible: false,
+        type: 'date',
+      },
+      {
+        name: 'Project',
+        field: 'project',
+        type: 'string',
         visible: false,
       },
     ]

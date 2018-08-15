@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -69,8 +70,6 @@ type Connector interface {
 
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
-	// FindProjectVars is a method to fetch the vars for a given project
-	FindProjectVars(string) (*model.ProjectVars, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 	// GetVersionsAndVariants returns recent versions for a project
@@ -79,12 +78,12 @@ type Connector interface {
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
 	// for paginating through the results.
-	FindTasksByProjectAndCommit(string, string, string, string, int, int) ([]task.Task, error)
+	FindTasksByProjectAndCommit(string, string, string, string, int) ([]task.Task, error)
 
 	// FindTestsByTaskId is a method to find a set of tests that correspond to
 	// a given task. It takes a taskId, testName to start from, test status to filter,
 	// limit, and sort to provide additional control over the results.
-	FindTestsByTaskId(string, string, string, int, int, int) ([]testresult.TestResult, error)
+	FindTestsByTaskId(string, string, string, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (gimlet.User, error)
@@ -129,9 +128,9 @@ type Connector interface {
 
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
-	FindPatchesByProject(string, time.Time, int, bool) ([]patch.Patch, error)
+	FindPatchesByProject(string, time.Time, int) ([]patch.Patch, error)
 	// FindPatchByUser finds patches for the input user as ordered by creation time
-	FindPatchesByUser(string, time.Time, int, bool) ([]patch.Patch, error)
+	FindPatchesByUser(string, time.Time, int) ([]patch.Patch, error)
 
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*patch.Patch, error)
@@ -208,4 +207,6 @@ type Connector interface {
 
 	// ListHostsForTask lists running hosts scoped to the task or the task's build.
 	ListHostsForTask(string) ([]host.Host, error)
+	MakeIntentHost(string, string, string, apimodels.CreateHost) (*host.Host, error)
+	CreateHostsFromTask(*task.Task, user.DBUser, string) error
 }
