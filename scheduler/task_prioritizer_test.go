@@ -9,14 +9,13 @@ import (
 )
 
 func TestCmpBasedTaskComparator(t *testing.T) {
-
 	var taskComparator *CmpBasedTaskComparator
 	var taskIds []string
 	var tasks []task.Task
 
 	Convey("With a CmpBasedTaskComparator", t, func() {
 
-		taskComparator = NewCmpBasedTaskComparator()
+		taskComparator = NewCmpBasedTaskComparator("test-id")
 
 		taskIds = []string{"t1", "t2"}
 
@@ -140,7 +139,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 	})
 
 	Convey("Splitting tasks by requester should separate tasks based on the Requester field", t, func() {
-		taskComparator = NewCmpBasedTaskComparator()
+		taskComparator = NewCmpBasedTaskComparator("test-id")
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks = []task.Task{
 			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
@@ -163,7 +162,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 	})
 	Convey("Splitting tasks with priority greater than 100 should always put those tasks in the high priority queue", t, func() {
-		taskComparator = NewCmpBasedTaskComparator()
+		taskComparator = NewCmpBasedTaskComparator("test-id")
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks = []task.Task{
 			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester, Priority: 101},
