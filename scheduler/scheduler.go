@@ -329,7 +329,7 @@ func containerCapacity(numCurrentParents, numCurrentContainers, numContainersToS
 	}
 	numAvailableContainers := numCurrentParents*maxContainers - numCurrentContainers
 	if numContainersToSpawn > numAvailableContainers {
-		numContainersToSpawn = numAvailableContainers
+		return numAvailableContainers
 	}
 	return numContainersToSpawn
 }
