@@ -980,6 +980,11 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 			},
 		},
 		usesContainers: true,
+		containerPool: &evergreen.ContainerPool{
+			Id:            "test-pool",
+			MaxContainers: 10,
+			Distro:        s.distro.Id,
+		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
@@ -1096,6 +1101,11 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 			},
 		},
 		usesContainers: true,
+		containerPool: &evergreen.ContainerPool{
+			Id:            "test-pool",
+			MaxContainers: 10,
+			Distro:        s.distro.Id,
+		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
