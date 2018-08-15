@@ -474,7 +474,6 @@ var GearMenu = function (_React$PureComponent4) {
     value: function dialog($mdDialog, $mdToast, notificationService, mciSubscriptionsService) {
       var _omitMethods;
 
-      console.log($mdToast, notificationService, mciSubscriptionsService);
       var omitMethods = (_omitMethods = {}, _defineProperty(_omitMethods, SUBSCRIPTION_JIRA_ISSUE, true), _defineProperty(_omitMethods, SUBSCRIPTION_EVERGREEN_WEBHOOK, true), _omitMethods);
 
       var self = this;
@@ -490,21 +489,14 @@ var GearMenu = function (_React$PureComponent4) {
         var failure = function failure(resp) {
           notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
         };
-        console.log(data);
         mciSubscriptionsService.post([data], { success: success, error: failure });
       }).catch(function (e) {
-        console.error(e);
+        notificationService.pushNotification('Error saving subscriptions: ' + e, 'errorHeader');
       });
     }
   }, {
     key: "addNotification",
     value: function addNotification() {
-      // angular takes a bit to inject it's services into this react component,
-      // so if we don't have them, let's defer spawning the dialog for a short
-      // interval
-      if (this.props.angular === null) {
-        return setTimeout(this.addNotification, 50);
-      }
       var waterfall = angular.module('waterfall', []);
       waterfall.provider({
         $rootElement: function $rootElement() {
@@ -515,7 +507,7 @@ var GearMenu = function (_React$PureComponent4) {
         }
       });
 
-      var injector = angular.injector(['ng', 'waterfall', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
+      var injector = angular.injector(['ng', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
       return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
     }
   }, {

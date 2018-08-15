@@ -87,7 +87,7 @@ class JiraLink extends React.Component {
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
-class Root extends React.PureComponent{
+class Root extends React.PureComponent {
   constructor(props){
     super(props);
 
@@ -398,20 +398,13 @@ class GearMenu extends React.PureComponent {
       var failure = function(resp) {
         notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
       };
-        console.log(data)
       mciSubscriptionsService.post([data], { success: success, error: failure });
     }).catch(function(e) {
-      console.error(e);
+      notificationService.pushNotification('Error saving subscriptions: ' + e, 'errorHeader');
     });
   }
 
   addNotification() {
-    // angular takes a bit to inject it's services into this react component,
-    // so if we don't have them, let's defer spawning the dialog for a short
-    // interval
-    if(this.props.angular === null) {
-      return setTimeout(this.addNotification, 50);
-    }
     const waterfall = angular.module('waterfall', []);
     waterfall.provider({
       $rootElement: function() {
@@ -422,7 +415,7 @@ class GearMenu extends React.PureComponent {
       }
     });
 
-    const injector = angular.injector(['ng', 'waterfall', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
+    const injector = angular.injector(['ng', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
     return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
   }
 
