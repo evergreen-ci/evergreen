@@ -348,34 +348,72 @@ class GearMenu extends React.PureComponent {
       {
         trigger: "outcome",
         resource_type: "TASK",
-        label: "this task finishes",
+        label: "any task finishes",
+        regex_selectors: taskRegexSelectors()
       },
       {
         trigger: "failure",
         resource_type: "TASK",
-        label: "this task fails",
+        label: "any task fails",
+        regex_selectors: taskRegexSelectors()
       },
       {
         trigger: "success",
         resource_type: "TASK",
-        label: "this task succeeds",
+        label: "any task succeeds",
+        regex_selectors: taskRegexSelectors()
       },
       {
         trigger: "exceeds-duration",
         resource_type: "TASK",
-        label: "the runtime for this task exceeds some duration",
+        label: "the runtime for any task exceeds some duration",
         extraFields: [
           {text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration}
-        ]
+        ],
+        regex_selectors: taskRegexSelectors()
       },
       {
         trigger: "runtime-change",
         resource_type: "TASK",
-        label: "the runtime for this task changes by some percentage",
+        label: "the runtime for any task changes by some percentage",
         extraFields: [
           {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
-        ]
+        ],
+        regex_selectors: taskRegexSelectors()
       },
+      {
+        trigger: "outcome",
+        resource_type: "BUILD",
+        label: "a build-variant in any version finishes",
+        regex_selectors: buildRegexSelectors(),
+      },
+      {
+        trigger: "failure",
+        resource_type: "BUILD",
+        label: "a build-variant in any version fails",
+        regex_selectors: buildRegexSelectors(),
+      },
+      {
+        trigger: "success",
+        resource_type: "BUILD",
+        label: "a build-variant in any version succeeds",
+        regex_selectors: buildRegexSelectors(),
+      },
+      {
+        trigger: "outcome",
+        resource_type: "VERSION",
+        label: "any version finishes",
+      },
+      {
+        trigger: "failure",
+        resource_type: "VERSION",
+        label: "any version fails",
+      },
+      {
+        trigger: "success",
+        resource_type: "VERSION",
+        label: "any version succeeds",
+      }
     ];
   }
 
@@ -405,17 +443,17 @@ class GearMenu extends React.PureComponent {
   }
 
   addNotification() {
-    const waterfall = angular.module('waterfall', []);
+    const waterfall = angular.module('waterfall', ['ng', 'MCI', 'material.components.toast']);
     waterfall.provider({
       $rootElement: function() {
          this.$get = function() {
-             const root = document.getElementById("root");
+           const root = document.getElementById("root");
            return angular.element(root);
         };
       }
     });
 
-    const injector = angular.injector(['ng', 'waterfall', 'MCI', 'ngMaterial', 'material.components.dialog', 'material.components.toast']);
+    const injector = angular.injector(['waterfall']);
     return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
   }
 
