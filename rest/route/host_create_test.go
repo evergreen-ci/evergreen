@@ -42,6 +42,7 @@ func TestMakeIntentHost(t *testing.T) {
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
+		KeyName:             "mock_key",
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
@@ -71,6 +72,7 @@ func TestMakeIntentHost(t *testing.T) {
 		Scope:               "build",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
+		KeyName:             "mock_key",
 	}
 	handler.createHost = c
 	handler.taskID = "task-id"
@@ -92,6 +94,7 @@ func TestMakeIntentHost(t *testing.T) {
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
 		Spot:                true,
+		KeyName:             "mock_key",
 	}
 	handler.createHost = c
 	h, err = handler.sc.MakeIntentHost(handler.taskID, "", "", handler.createHost)
