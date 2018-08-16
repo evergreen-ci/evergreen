@@ -877,6 +877,7 @@ func UpdateDisplayTask(t *task.Task) error {
 	statuses := []string{}
 	var timeTaken time.Duration
 	var status string
+	wasFinished := t.IsFinished()
 	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
@@ -956,7 +957,7 @@ func UpdateDisplayTask(t *task.Task) error {
 
 	t.Status = status
 	t.TimeTaken = timeTaken
-	if t.IsFinished() {
+	if t.IsFinished() && !wasFinished {
 		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
 		if t.ResetWhenFinished {
 			return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, &t.Details), "error resetting display task")
