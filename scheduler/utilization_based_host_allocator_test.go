@@ -96,7 +96,7 @@ func (s *UtilizationAllocatorSuite) SetupSuite() {
 
 func (s *UtilizationAllocatorSuite) SetupTest() {
 	s.ctx = context.Background()
-	s.NoError(db.ClearCollections(task.Collection, host.Collection))
+	s.NoError(db.ClearCollections(task.Collection, host.Collection, distro.Collection))
 }
 
 // unit tests for calcuation functions
@@ -878,6 +878,13 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
+	parentDistro := distro.Distro{
+		Id:       "parent-distro",
+		PoolSize: 50,
+		Provider: evergreen.ProviderNameEc2Auto,
+	}
+	s.NoError(parentDistro.Insert())
+
 	h1 := host.Host{
 		Id:            "h1",
 		HasContainers: true,
@@ -980,6 +987,11 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 			},
 		},
 		usesContainers: true,
+		containerPool: &evergreen.ContainerPool{
+			Id:            "test-pool",
+			MaxContainers: 10,
+			Distro:        "parent-distro",
+		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
@@ -988,6 +1000,13 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 }
 
 func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
+	parentDistro := distro.Distro{
+		Id:       "parent-distro",
+		PoolSize: 50,
+		Provider: evergreen.ProviderNameEc2Auto,
+	}
+	s.NoError(parentDistro.Insert())
+
 	h1 := host.Host{
 		Id:            "h1",
 		HasContainers: true,
@@ -1096,6 +1115,11 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 			},
 		},
 		usesContainers: true,
+		containerPool: &evergreen.ContainerPool{
+			Id:            "test-pool",
+			MaxContainers: 10,
+			Distro:        "parent-distro",
+		},
 	}
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)

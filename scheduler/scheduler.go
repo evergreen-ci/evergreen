@@ -320,18 +320,18 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 	if numNewParents+numCurrentParents > parent.PoolSize {
 		numNewParents = parent.PoolSize - numCurrentParents
 	}
-
 	return numNewParents, nil
 }
 
 // containerCapacity calculates how many containers to make
 // checks to make sure we do not create more containers than can fit currently
 func containerCapacity(numCurrentParents, numCurrentContainers, numContainersToSpawn, maxContainers int) int {
-	if numContainersToSpawn > 0 {
-		numAvailableContainers := numCurrentParents*maxContainers - numCurrentContainers
-		if numContainersToSpawn > numAvailableContainers {
-			numContainersToSpawn = numAvailableContainers
-		}
+	if numContainersToSpawn < 0 {
+		return 0
+	}
+	numAvailableContainers := numCurrentParents*maxContainers - numCurrentContainers
+	if numContainersToSpawn > numAvailableContainers {
+		return numAvailableContainers
 	}
 	return numContainersToSpawn
 }
