@@ -351,3 +351,54 @@ func (s *DockerSuite) TestRemoveOldestImage() {
 	err = s.manager.RemoveOldestImage(ctx, parent)
 	s.NoError(err)
 }
+
+func (s *DockerSuite) TestBuildContainerImage() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failDownload)
+	s.False(mock.failBuild)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	s.NoError(err)
+}
+
+func (s *DockerSuite) TestBuildContainerImageFailedDownload() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failBuild)
+
+	mock.failDownload = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	s.EqualError(err, "Unable to ensure that image 'image-url' is on host 'parent': failed to download image")
+}
+
+func (s *DockerSuite) TestBuildContainerImageFailedBuild() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failDownload)
+
+	mock.failBuild = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	s.EqualError(err, "Failed to build image 'image-url' with agent on host 'parent': failed to build image with agent")
+}
