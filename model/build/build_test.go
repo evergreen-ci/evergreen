@@ -545,20 +545,24 @@ func TestAllTasksFinished(t *testing.T) {
 		Version: "abc",
 		Tasks: []TaskCache{
 			{
-				Id:     "t1",
-				Status: evergreen.TaskStarted,
+				Id:        "t1",
+				Status:    evergreen.TaskStarted,
+				Activated: true,
 			},
 			{
-				Id:     "t2",
-				Status: evergreen.TaskStarted,
+				Id:        "t2",
+				Activated: true,
+				Status:    evergreen.TaskStarted,
 			},
 			{
-				Id:     "t3",
-				Status: evergreen.TaskStarted,
+				Id:        "t3",
+				Status:    evergreen.TaskStarted,
+				Activated: true,
 			},
 			{
-				Id:     "t4",
-				Status: evergreen.TaskStarted,
+				Id:        "t4",
+				Status:    evergreen.TaskStarted,
+				Activated: true,
 			},
 			// this task is unscheduled
 			{
@@ -582,6 +586,7 @@ func TestAllTasksFinished(t *testing.T) {
 			Id:          "t1",
 			DisplayName: evergreen.CompileStage,
 			Status:      evergreen.TaskStarted,
+			Activated:   true,
 		},
 		{
 			Id:     "t2",

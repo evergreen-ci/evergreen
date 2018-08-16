@@ -538,16 +538,10 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				if err != nil {
 					return err
 				}
-				if displayTask != nil {
-					err = displayTask.UpdateDisplayTask()
-					if err != nil {
-						return err
-					}
-					t = *displayTask
-					status = t.Status
-					if t.IsFinished() {
-						continue
-					}
+				t = *displayTask
+				status = t.Status
+				if t.IsFinished() {
+					continue
 				}
 			}
 
@@ -627,10 +621,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 		}
 		updates.BuildNewStatus = b.Status
-		if complete, newStatus := b.AllCachedTasksOrCompileFinished(); complete {
-			updates.BuildComplete = true
-			updates.BuildNewStatus = newStatus
-		}
+		updates.BuildComplete = true
 
 		if err = MarkVersionCompleted(b.Version, finishTime, updates); err != nil {
 			err = errors.Wrap(err, "Error marking version as finished")
