@@ -187,7 +187,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 			status = evergreen.VersionFailed
 		}
 	}
-	if activeBuilds > 0 && buildsWithAllActiveTasksComplete == activeBuilds {
+	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
 		updates.VersionComplete = true
 		updates.VersionNewStatus = versionStatusFromTasks
 		event.LogVersionStateChangeEvent(versionId, status)
