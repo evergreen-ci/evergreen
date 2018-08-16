@@ -172,7 +172,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		if complete, buildStatus := b.AllCachedTasksOrCompileFinished(); complete {
 			buildsWithAllActiveTasksComplete += 1
 			if buildStatus != evergreen.BuildSucceeded {
-				status = evergreen.VersionFailed
+				versionStatusFromTasks = evergreen.VersionFailed
 			}
 		}
 		if !b.IsFinished() {
