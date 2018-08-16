@@ -1,9 +1,11 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -11,6 +13,15 @@ const (
 	// specified by the API spec document.
 	APITimeFormat = "\"2006-01-02T15:04:05.000Z\""
 )
+
+func ParseTime(tval string) (time.Time, error) {
+	if !strings.HasPrefix(tval, "\"") {
+		tval = "\"" + tval + "\""
+	}
+
+	t, err := time.ParseInLocation(APITimeFormat, tval, time.UTC)
+	return t, errors.WithStack(err)
+}
 
 type APITime time.Time
 
@@ -32,9 +43,9 @@ func (at *APITime) UnmarshalJSON(b []byte) error {
 	t := time.Time{}
 	var err error
 	if str != "null" {
-		t, err = time.ParseInLocation(APITimeFormat, str, time.UTC)
+		t, err = ParseTime(str)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 	(*at) = APITime(t)
