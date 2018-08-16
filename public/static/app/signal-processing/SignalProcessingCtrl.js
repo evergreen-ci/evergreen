@@ -164,6 +164,11 @@ mciModule.controller('SignalProcessingCtrl', function(
     },
     columnDefs: [
       {
+        // TODO Jim: Should be managed by PERF-1546
+        name: 'Hazard Level',
+        cellTemplate: '<hazard-level-cell row="row" />',
+      },
+      {
         name: 'Variant',
         field: 'variant',
         type: 'string',
