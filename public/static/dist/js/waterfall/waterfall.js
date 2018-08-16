@@ -545,6 +545,9 @@ var GearMenu = function (_React$PureComponent4) {
   }, {
     key: "render",
     value: function render() {
+      if (!this.props.isLoggedIn) {
+        return null;
+      }
       var ButtonGroup = ReactBootstrap.ButtonGroup;
       var Button = ReactBootstrap.Button;
       var DropdownButton = ReactBootstrap.DropdownButton;

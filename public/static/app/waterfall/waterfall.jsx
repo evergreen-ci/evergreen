@@ -458,6 +458,9 @@ class GearMenu extends React.PureComponent {
   }
 
   render() {
+    if (!this.props.isLoggedIn) {
+      return null;
+    }
     const ButtonGroup = ReactBootstrap.ButtonGroup;
     const Button = ReactBootstrap.Button;
     const DropdownButton = ReactBootstrap.DropdownButton;
