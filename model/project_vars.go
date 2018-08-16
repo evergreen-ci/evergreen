@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -15,6 +16,8 @@ var (
 
 const (
 	ProjectVarsCollection = "project_vars"
+	ProjectAWSSSHKeyName  = "__project_aws_ssh_key_name"
+	ProjectAWSSSHKeyValue = "__project_aws_ssh_key_value"
 )
 
 //ProjectVars holds a map of variables specific to a given project.
@@ -32,6 +35,11 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
+}
+
+type AWSSSHKey struct {
+	Name  string
+	Value string
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
@@ -52,6 +60,29 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 		return nil, err
 	}
 	return projectVars, nil
+}
+
+func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
+	vars, err := FindOneProjectVars(projectId)
+	if err != nil {
+		return errors.Wrap(err, "problem getting project vars")
+	}
+	vars.Vars[ProjectAWSSSHKeyName] = ssh.Name
+	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
+	vars.PrivateVars[ProjectAWSSSHKeyValue] = true // redact value, but not key name
+	_, err = vars.Upsert()
+	return errors.Wrap(err, "problem saving project keys")
+}
+
+func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
+	vars, err := FindOneProjectVars(projectId)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting project vars")
+	}
+	return &AWSSSHKey{
+		Name:  vars.Vars[ProjectAWSSSHKeyName],
+		Value: vars.Vars[ProjectAWSSSHKeyValue],
+	}, nil
 }
 
 func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
