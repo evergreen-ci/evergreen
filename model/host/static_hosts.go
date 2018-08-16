@@ -2,6 +2,8 @@ package host
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -17,7 +19,7 @@ import (
 //
 // If the distro is the empty string ("") then this operation affects
 // all distros.
-func MarkInactiveStaticHosts(activeStaticHosts []string, distro string) error {
+func MarkInactiveStaticHosts(activeStaticHosts []string, distroID string) error {
 	if len(activeStaticHosts) == 0 {
 		return nil
 	}
@@ -28,8 +30,8 @@ func MarkInactiveStaticHosts(activeStaticHosts []string, distro string) error {
 		StatusKey:   bson.M{"$ne": evergreen.HostQuarantined},
 	}
 
-	if distro != "" {
-		query[DistroKey] = distro
+	if distroID != "" {
+		query[bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)] = distroID
 	}
 
 	err := UpdateAll(
