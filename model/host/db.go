@@ -124,6 +124,30 @@ func AllIdleEphemeral() ([]Host, error) {
 	return Find(query)
 }
 
+func runningHostsQuery(distroID string) bson.M {
+	query := IsLive()
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	return query
+}
+
+func CountRunningHosts(distroID string) (int, error) {
+	num, err := Count(db.Query(runningHostsQuery(distroID)))
+	return num, errors.Wrap(err, "problem finding running hosts")
+}
+
+func AllRunningHosts(distroID string) ([]Host, error) {
+	allHosts, err := Find(db.Query(runningHostsQuery(distroID)))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding live hosts")
+	}
+
+	return allHosts, nil
+}
+
 // AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
 func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 	catcher := grip.NewBasicCatcher()

@@ -20,6 +20,10 @@ type ResponsePages struct {
 
 // GetLinks returns the strings for use in the links header
 func (r *ResponsePages) GetLinks(route string) string {
+	if strings.HasPrefix(route, "/") {
+		route = route[1:]
+	}
+
 	links := []string{}
 
 	if r.Next != nil {
