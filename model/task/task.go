@@ -983,6 +983,7 @@ func (t *Task) SetPriority(priority int64, user string) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting task dependencies")
 	}
+	ids = append(ids, t.ExecutionTasks...)
 
 	_, err = UpdateAll(
 		bson.M{"$or": []bson.M{
