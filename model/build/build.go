@@ -75,13 +75,11 @@ func (b *Build) IsFinished() bool {
 // true
 func (b *Build) AllCachedTasksOrCompileFinished() (bool, string) {
 	allFinished := true
-	visitedAtLeastOne := false
 	status := evergreen.BuildSucceeded
 	for i := range b.Tasks {
 		if !b.Tasks[i].Activated {
 			continue
 		}
-		visitedAtLeastOne = true
 		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
 			allFinished = false
 		}
@@ -95,7 +93,7 @@ func (b *Build) AllCachedTasksOrCompileFinished() (bool, string) {
 		}
 	}
 
-	return allFinished && visitedAtLeastOne, status
+	return allFinished, status
 }
 
 // Find

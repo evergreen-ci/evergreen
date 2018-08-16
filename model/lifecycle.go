@@ -156,19 +156,23 @@ func MarkVersionStarted(versionId string, startTime time.Time) error {
 // checking the status of its individual builds.
 func MarkVersionCompleted(versionId string, finishTime time.Time, updates *StatusChanges) error {
 	status := evergreen.VersionSucceeded
-	versionStatusFromTasks := evergreen.VersionSucceeded
 
 	// Find the statuses for all builds in the version so we can figure out the version's status
 	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.StatusKey, build.TasksKey),
+		build.ByVersion(versionId).WithFields(build.ActivatedKey, build.StatusKey, build.TasksKey),
 	)
 	if err != nil {
 		return err
 	}
 
+	versionStatusFromTasks := evergreen.VersionSucceeded
 	buildsWithAllActiveTasksComplete := 0
+	activeBuilds := 0
 	finished := true
 	for _, b := range builds {
+		if b.Activated {
+			activeBuilds += 1
+		}
 		if complete, buildStatus := b.AllCachedTasksOrCompileFinished(); complete {
 			buildsWithAllActiveTasksComplete += 1
 			if buildStatus != evergreen.BuildSucceeded {
@@ -183,7 +187,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 			status = evergreen.VersionFailed
 		}
 	}
-	if buildsWithAllActiveTasksComplete == len(builds) {
+	if activeBuilds > 0 && buildsWithAllActiveTasksComplete == activeBuilds {
 		updates.VersionComplete = true
 		updates.VersionNewStatus = versionStatusFromTasks
 		event.LogVersionStateChangeEvent(versionId, status)

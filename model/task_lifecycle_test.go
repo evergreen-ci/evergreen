@@ -508,9 +508,10 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
-			Id:      "buildtest",
-			Status:  evergreen.BuildStarted,
-			Version: "abc",
+			Id:        "buildtest",
+			Status:    evergreen.BuildStarted,
+			Version:   "abc",
+			Activated: true,
 		}
 		v := &version.Version{
 			Id:     b.Version,
@@ -537,12 +538,14 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 
 		b.Tasks = []build.TaskCache{
 			{
-				Id:     testTask.Id,
-				Status: evergreen.TaskStarted,
+				Id:        testTask.Id,
+				Status:    evergreen.TaskStarted,
+				Activated: true,
 			},
 			{
-				Id:     anotherTask.Id,
-				Status: evergreen.TaskFailed,
+				Id:        anotherTask.Id,
+				Status:    evergreen.TaskFailed,
+				Activated: true,
 			},
 		}
 		So(b.Insert(), ShouldBeNil)
@@ -583,7 +586,10 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Id:      "buildtest",
 				Version: "abc",
 				Tasks: []build.TaskCache{
-					{Id: "testone"},
+					{
+						Id:        "testone",
+						Activated: true,
+					},
 				},
 			}
 			v = &version.Version{
@@ -764,8 +770,9 @@ func TestMarkEnd(t *testing.T) {
 
 	b.Tasks = []build.TaskCache{
 		{
-			Id:     testTask.Id,
-			Status: evergreen.TaskStarted,
+			Id:        testTask.Id,
+			Status:    evergreen.TaskStarted,
+			Activated: true,
 		},
 	}
 	assert.NoError(b.Insert())
