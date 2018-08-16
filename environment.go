@@ -394,45 +394,50 @@ func (e *envState) initSenders() error {
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
-		sender, err = send.NewJiraLogger(&send.JiraOptions{
-			Name:         "evergreen",
-			BaseURL:      jira.GetHostURL(),
-			Username:     jira.Username,
-			Password:     jira.Password,
-			UseBasicAuth: true,
-		}, levelInfo)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup jira issue logger")
-		}
-		e.senders[SenderJIRAIssue] = sender
+		if !jira.Disabled {
+			sender, err = send.NewJiraLogger(&send.JiraOptions{
+				Name:         "evergreen",
+				BaseURL:      jira.GetHostURL(),
+				Username:     jira.Username,
+				Password:     jira.Password,
+				UseBasicAuth: true,
+			}, levelInfo)
+			if err != nil {
+				return errors.Wrap(err, "Failed to setup jira issue logger")
+			}
+			e.senders[SenderJIRAIssue] = sender
 
-		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
-			Name:         "evergreen",
-			BaseURL:      jira.GetHostURL(),
-			Username:     jira.Username,
-			Password:     jira.Password,
-			UseBasicAuth: true,
-		}, levelInfo)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup jira comment logger")
+			sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
+				Name:         "evergreen",
+				BaseURL:      jira.GetHostURL(),
+				Username:     jira.Username,
+				Password:     jira.Password,
+				UseBasicAuth: true,
+			}, levelInfo)
+			if err != nil {
+				return errors.Wrap(err, "Failed to setup jira comment logger")
+			}
+			e.senders[SenderJIRAComment] = sender
 		}
-		e.senders[SenderJIRAComment] = sender
+
 	}
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
-		// this sender is initialised with an invalid channel. Any
-		// messages sent with it that do not use message.SlackMessage
-		// will not be received
-		sender, err = send.NewSlackLogger(&send.SlackOptions{
-			Channel:  "#",
-			Name:     "evergreen",
-			Username: "Evergreen",
-			IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
-		}, slack.Token, levelInfo)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup slack logger")
+		if !slack.Disabled {
+			// this sender is initialised with an invalid channel. Any
+			// messages sent with it that do not use message.SlackMessage
+			// will not be received
+			sender, err = send.NewSlackLogger(&send.SlackOptions{
+				Channel:  "#",
+				Name:     "evergreen",
+				Username: "Evergreen",
+				IconURL:  fmt.Sprintf("%s/static/img/evergreen_green_150x150.png", e.settings.Ui.Url),
+			}, slack.Token, levelInfo)
+			if err != nil {
+				return errors.Wrap(err, "Failed to setup slack logger")
+			}
+			e.senders[SenderSlack] = sender
 		}
-		e.senders[SenderSlack] = sender
 	}
 
 	sender, err = util.NewEvergreenWebhookLogger()
