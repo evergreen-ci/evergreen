@@ -316,6 +316,20 @@ function addInSelectorsAndOwnerType(subscription, type, inType, id) {
   subscription.owner_type = "person";
 }
 
+function addProjectSelectors(subscription, project) {
+  if (!subscription) {
+    return;
+  }
+  if (!subscription.selectors) {
+    subscription.selectors = [];
+  }
+  subscription.selectors.push({
+    type: "project",
+    data: project
+  });
+  subscription.owner_type = "person";
+}
+
 function validateDuration(duration) {
   if (!Number.isInteger(+duration)) {
     return duration + " must be an integer";

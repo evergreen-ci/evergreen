@@ -7,14 +7,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -322,18 +320,18 @@ func parentCapacity(parent distro.Distro, numNewParents, numCurrentParents int, 
 	if numNewParents+numCurrentParents > parent.PoolSize {
 		numNewParents = parent.PoolSize - numCurrentParents
 	}
-
 	return numNewParents, nil
 }
 
 // containerCapacity calculates how many containers to make
 // checks to make sure we do not create more containers than can fit currently
 func containerCapacity(numCurrentParents, numCurrentContainers, numContainersToSpawn, maxContainers int) int {
-	if numContainersToSpawn > 0 {
-		numAvailableContainers := numCurrentParents*maxContainers - numCurrentContainers
-		if numContainersToSpawn > numAvailableContainers {
-			numContainersToSpawn = numAvailableContainers
-		}
+	if numContainersToSpawn < 0 {
+		return 0
+	}
+	numAvailableContainers := numCurrentParents*maxContainers - numCurrentContainers
+	if numContainersToSpawn > numAvailableContainers {
+		return numAvailableContainers
 	}
 	return numContainersToSpawn
 }
@@ -357,24 +355,6 @@ func getIntentHost(d distro.Distro) (*host.Host, error) {
 	}
 
 	return cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions), nil
-}
-
-// Finds live hosts in the DB and organizes them by distro. Pass the
-// empty string to retrieve all distros
-func findUsableHosts(distroID string) ([]host.Host, error) {
-	// fetch all hosts, split by distro
-	query := host.IsLive()
-	if distroID != "" {
-		key := bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
-		query[key] = distroID
-	}
-
-	allHosts, err := host.Find(db.Query(query))
-	if err != nil {
-		return nil, errors.Wrap(err, "Error finding live hosts")
-	}
-
-	return allHosts, nil
 }
 
 // pass 'allDistros' or the empty string to unchedule all distros.

@@ -132,8 +132,14 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 
 	maxDuration := MaxDurationPerDistroHost
 	if usesContainers {
+		parentDistro, err := distro.FindOne(distro.ById(containerPool.Distro))
+		if err != nil {
+			return 0, errors.Wrap(err, "error finding parent distro")
+		}
 		maxDuration = MaxDurationPerDistroHostWithContainers
+		maxHosts = parentDistro.PoolSize * containerPool.MaxContainers
 	}
+
 	numNewHosts := 0
 
 	// allocate 1 host per task that is longer than the max duration

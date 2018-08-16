@@ -2,6 +2,8 @@
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -107,8 +109,8 @@ var JiraLink = function (_React$Component) {
 // The one exception is the header, which is written in Angular and managed by menu.html
 
 
-var Root = function (_React$Component2) {
-  _inherits(Root, _React$Component2);
+var Root = function (_React$PureComponent) {
+  _inherits(Root, _React$PureComponent);
 
   function Root(props) {
     _classCallCheck(this, Root);
@@ -129,9 +131,10 @@ var Root = function (_React$Component2) {
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
       data: _this2.props.data
+    };
 
-      // Handle state for a collapsed view, as well as shortened header commit messages
-    };_this2.handleCollapseChange = _this2.handleCollapseChange.bind(_this2);
+    // Handle state for a collapsed view, as well as shortened header commit messages
+    _this2.handleCollapseChange = _this2.handleCollapseChange.bind(_this2);
     _this2.handleHeaderLinkClick = _this2.handleHeaderLinkClick.bind(_this2);
     _this2.handleBuildVariantFilter = _this2.handleBuildVariantFilter.bind(_this2);
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
@@ -224,7 +227,9 @@ var Root = function (_React$Component2) {
           buildVariantFilter: this.state.buildVariantFilter,
           taskFilter: this.state.taskFilter,
           buildVariantFilterFunc: this.handleBuildVariantFilter,
-          taskFilterFunc: this.handleTaskFilter
+          taskFilterFunc: this.handleTaskFilter,
+          isLoggedIn: this.props.user !== null,
+          project: this.props.project
         }),
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage,
@@ -245,7 +250,7 @@ var Root = function (_React$Component2) {
   }]);
 
   return Root;
-}(React.Component);
+}(React.PureComponent);
 
 // Toolbar
 
@@ -259,7 +264,9 @@ function Toolbar(_ref2) {
       buildVariantFilter = _ref2.buildVariantFilter,
       taskFilter = _ref2.taskFilter,
       buildVariantFilterFunc = _ref2.buildVariantFilterFunc,
-      taskFilterFunc = _ref2.taskFilterFunc;
+      taskFilterFunc = _ref2.taskFilterFunc,
+      isLoggedIn = _ref2.isLoggedIn,
+      project = _ref2.project;
 
 
   var Form = ReactBootstrap.Form;
@@ -291,6 +298,10 @@ function Toolbar(_ref2) {
           baseURL: baseURL,
           buildVariantFilter: buildVariantFilter,
           taskFilter: taskFilter
+        }),
+        React.createElement(GearMenu, {
+          project: project,
+          isLoggedIn: isLoggedIn
         })
       )
     )
@@ -350,8 +361,8 @@ function PageButton(_ref4) {
   );
 }
 
-var FilterBox = function (_React$Component3) {
-  _inherits(FilterBox, _React$Component3);
+var FilterBox = function (_React$PureComponent2) {
+  _inherits(FilterBox, _React$PureComponent2);
 
   function FilterBox(props) {
     _classCallCheck(this, FilterBox);
@@ -379,10 +390,10 @@ var FilterBox = function (_React$Component3) {
   }]);
 
   return FilterBox;
-}(React.Component);
+}(React.PureComponent);
 
-var CollapseButton = function (_React$Component4) {
-  _inherits(CollapseButton, _React$Component4);
+var CollapseButton = function (_React$PureComponent3) {
+  _inherits(CollapseButton, _React$PureComponent3);
 
   function CollapseButton(props) {
     _classCallCheck(this, CollapseButton);
@@ -421,7 +432,151 @@ var CollapseButton = function (_React$Component4) {
   }]);
 
   return CollapseButton;
-}(React.Component);
+}(React.PureComponent);
+
+var GearMenu = function (_React$PureComponent4) {
+  _inherits(GearMenu, _React$PureComponent4);
+
+  function GearMenu(props) {
+    _classCallCheck(this, GearMenu);
+
+    var _this6 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
+
+    _this6.addNotification = _this6.addNotification.bind(_this6);
+    _this6.triggers = [{
+      trigger: "outcome",
+      resource_type: "TASK",
+      label: "any task finishes",
+      regex_selectors: taskRegexSelectors()
+    }, {
+      trigger: "failure",
+      resource_type: "TASK",
+      label: "any task fails",
+      regex_selectors: taskRegexSelectors()
+    }, {
+      trigger: "success",
+      resource_type: "TASK",
+      label: "any task succeeds",
+      regex_selectors: taskRegexSelectors()
+    }, {
+      trigger: "exceeds-duration",
+      resource_type: "TASK",
+      label: "the runtime for any task exceeds some duration",
+      extraFields: [{ text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration }],
+      regex_selectors: taskRegexSelectors()
+    }, {
+      trigger: "runtime-change",
+      resource_type: "TASK",
+      label: "the runtime for any task changes by some percentage",
+      extraFields: [{ text: "Percent change", key: "task-percent-change", validator: validatePercentage }],
+      regex_selectors: taskRegexSelectors()
+    }, {
+      trigger: "outcome",
+      resource_type: "BUILD",
+      label: "a build-variant in any version finishes",
+      regex_selectors: buildRegexSelectors()
+    }, {
+      trigger: "failure",
+      resource_type: "BUILD",
+      label: "a build-variant in any version fails",
+      regex_selectors: buildRegexSelectors()
+    }, {
+      trigger: "success",
+      resource_type: "BUILD",
+      label: "a build-variant in any version succeeds",
+      regex_selectors: buildRegexSelectors()
+    }, {
+      trigger: "outcome",
+      resource_type: "VERSION",
+      label: "any version finishes"
+    }, {
+      trigger: "failure",
+      resource_type: "VERSION",
+      label: "any version fails"
+    }, {
+      trigger: "success",
+      resource_type: "VERSION",
+      label: "any version succeeds"
+    }];
+    return _this6;
+  }
+
+  _createClass(GearMenu, [{
+    key: "dialog",
+    value: function dialog($mdDialog, $mdToast, notificationService, mciSubscriptionsService) {
+      var _omitMethods;
+
+      var omitMethods = (_omitMethods = {}, _defineProperty(_omitMethods, SUBSCRIPTION_JIRA_ISSUE, true), _defineProperty(_omitMethods, SUBSCRIPTION_EVERGREEN_WEBHOOK, true), _omitMethods);
+
+      var self = this;
+      var promise = addSubscriber($mdDialog, this.triggers, omitMethods);
+      return $mdDialog.show(promise).then(function (data) {
+        addProjectSelectors(data, self.project);
+        var success = function success() {
+          return $mdToast.show({
+            templateUrl: "/static/partials/subscription_confirmation_toast.html",
+            position: "bottom right"
+          });
+        };
+        var failure = function failure(resp) {
+          notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
+        };
+        mciSubscriptionsService.post([data], { success: success, error: failure });
+      }).catch(function (e) {
+        notificationService.pushNotification('Error saving subscriptions: ' + e, 'errorHeader');
+      });
+    }
+  }, {
+    key: "addNotification",
+    value: function addNotification() {
+      var waterfall = angular.module('waterfall', ['ng', 'MCI', 'material.components.toast']);
+      waterfall.provider({
+        $rootElement: function $rootElement() {
+          this.$get = function () {
+            var root = document.getElementById("root");
+            return angular.element(root);
+          };
+        }
+      });
+
+      var injector = angular.injector(['waterfall']);
+      return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
+    }
+  }, {
+    key: "render",
+    value: function render() {
+      if (!this.props.isLoggedIn) {
+        return null;
+      }
+      var ButtonGroup = ReactBootstrap.ButtonGroup;
+      var Button = ReactBootstrap.Button;
+      var DropdownButton = ReactBootstrap.DropdownButton;
+      var MenuItem = ReactBootstrap.MenuItem;
+
+      return React.createElement(
+        "span",
+        null,
+        React.createElement(
+          DropdownButton,
+          {
+            className: "fa fa-gear",
+            pullRight: true,
+            id: "waterfall-gear-menu"
+          },
+          React.createElement(
+            MenuItem,
+            { onClick: this.addNotification },
+            "Add Notification"
+          )
+        )
+      );
+    }
+  }]);
+
+  return GearMenu;
+}(React.PureComponent);
+
+;
 
 // Headers
 
@@ -533,16 +688,16 @@ function ActiveVersionHeader(_ref6) {
   );
 };
 
-var HideHeaderButton = function (_React$Component5) {
-  _inherits(HideHeaderButton, _React$Component5);
+var HideHeaderButton = function (_React$Component2) {
+  _inherits(HideHeaderButton, _React$Component2);
 
   function HideHeaderButton(props) {
     _classCallCheck(this, HideHeaderButton);
 
-    var _this6 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
+    var _this7 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
 
-    _this6.onLinkClick = _this6.onLinkClick.bind(_this6);
-    return _this6;
+    _this7.onLinkClick = _this7.onLinkClick.bind(_this7);
+    return _this7;
   }
 
   _createClass(HideHeaderButton, [{
