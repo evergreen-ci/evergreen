@@ -628,8 +628,9 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 		}
 		updates.BuildNewStatus = b.Status
-		if b.AllCachedTasksOrCompileFinished() {
+		if complete, newStatus := b.AllCachedTasksOrCompileFinished(); complete {
 			updates.BuildComplete = true
+			updates.BuildNewStatus = newStatus
 		}
 
 		if err = MarkVersionCompleted(b.Version, finishTime, updates); err != nil {

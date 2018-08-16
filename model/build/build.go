@@ -63,35 +63,33 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
-func taskCacheTaskIsUnscheduled(t *TaskCache) bool {
-	if !t.Activated && t.Status == evergreen.TaskUndispatched {
-		return true
-	}
-
-	return false
-}
-
 // AllCachedTasksOrCompileFinished returns true when either:
 //  1. if there is a compile task, the compile task's status is one the ones
 //     listed in IsFailedTaskStatus
 //  2. or all of the statuses in the task cached are listed in IsFinishedTaskStatus
-func (b *Build) AllCachedTasksOrCompileFinished() bool {
+func (b *Build) AllCachedTasksOrCompileFinished() (bool, string) {
 	allFinished := true
+	visitedAtLeastOne := false
+	status := evergreen.BuildSucceeded
 	for i := range b.Tasks {
-		if taskCacheTaskIsUnscheduled(&b.Tasks[i]) {
+		if !b.Tasks[i].Activated {
 			continue
 		}
+		visitedAtLeastOne = true
 		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
 			allFinished = false
 		}
 		if b.Tasks[i].DisplayName == evergreen.CompileStage {
 			if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
-				return true
+				return true, evergreen.BuildFailed
 			}
+		}
+		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
+			status = evergreen.BuildFailed
 		}
 	}
 
-	return allFinished
+	return allFinished && visitedAtLeastOne, status
 }
 
 // Find
