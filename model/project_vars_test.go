@@ -105,6 +105,7 @@ func TestAWSVars(t *testing.T) {
 
 	// canaries
 	found, err := FindOneProjectVars(project)
+	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
 	assert.Equal(true, found.PrivateVars["a"])
@@ -129,6 +130,7 @@ func TestAWSVars(t *testing.T) {
 
 	// canaries, again
 	found, err = FindOneProjectVars(project)
+	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
 	assert.Equal(true, found.PrivateVars["a"])
