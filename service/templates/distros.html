@@ -55,7 +55,7 @@ Evergreen - Distros
       <input required ng-readonly="!activeDistro.new" id="identifier" name="id" type="text" class="form-control" ng-model="activeDistro._id" placeholder="Unique identifier for this distro">
       <label class="icon fa fa-warning distro-error" ng-show="form.id.$error.required">Distro identifier is required<br></label>
       <label class="icon fa fa-warning distro-error" ng-show="form.id.$dirty && form.id.$error.unsique || (activeDistro.new && form.id.$error.unique)">Distro identifier already exists</label>
-      <label class="icon fa fa-warning" ng-show="containerPoolDistros.indexOf(activeDistro._id) >= 0">Distro is a container pool, so it cannot be spawned for tasks.</label>
+      <label class="icon fa fa-warning" ng-show="containerPoolDistros.indexOf(activeDistro._id) >= 0">Distro is a container pool, so it is cannot be spawned for tasks.</label>
     </div>
     <br>
 
