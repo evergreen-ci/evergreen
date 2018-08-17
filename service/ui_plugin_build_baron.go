@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -286,13 +287,22 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jql := t.GetJQL(bbProj.TicketSearchProjects)
-	gimlet.WriteJSON(rw, searchReturnInfo{Issues: tickets, Search: jql, Source: source})
+	var featuresURL string
+	if bbProj.BFSuggestionFeaturesURL != "" {
+		featuresURL = bbProj.BFSuggestionFeaturesURL
+		featuresURL = strings.Replace(featuresURL, "{task_id}", taskId, -1)
+		featuresURL = strings.Replace(featuresURL, "{execution}", exec, -1)
+	} else {
+		featuresURL = ""
+	}
+	gimlet.WriteJSON(rw, searchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL})
 }
 
 type searchReturnInfo struct {
-	Issues []thirdparty.JiraTicket `json:"issues"`
-	Search string                  `json:"search"`
-	Source string                  `json:"source"`
+	Issues      []thirdparty.JiraTicket `json:"issues"`
+	Search      string                  `json:"search"`
+	Source      string                  `json:"source"`
+	FeaturesURL string                  `json:"features_url"`
 }
 
 type suggester interface {
