@@ -69,7 +69,7 @@ func (c *dockerClientImpl) generateClient(h *host.Host) (*docker.Client, error) 
 	// Create a Docker client to wrap Docker API calls. The Docker TCP endpoint must
 	// be exposed and available for requests at the client port on the host machine.
 	var err error
-	endpoint := fmt.Sprintf("tcp://%s:%v", h.Host, h.ContainerPoolSettings.Port)
+	endpoint := fmt.Sprintf("tcp://%s", h.Host)
 	c.client, err = docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
 	if err != nil {
 		grip.Error(message.Fields{

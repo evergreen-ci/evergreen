@@ -14,8 +14,6 @@ type ContainerPool struct {
 	Id string `bson:"id" json:"id" yaml:"id"`
 	// Maximum number of containers per parent host with this container pool
 	MaxContainers int `bson:"max_containers" json:"max_containers" yaml:"max_containers"`
-	// Port number to start at for SSH connections
-	Port uint16 `bson:"port" json:"port" yaml:"port"`
 }
 
 type ContainerPoolsConfig struct {
