@@ -74,6 +74,9 @@ func (j *idleHostJob) Run(ctx context.Context) {
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
 		j.AddError(err)
+		if err != nil {
+			return
+		}
 	}
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
