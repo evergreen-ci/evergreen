@@ -63,6 +63,7 @@ var (
 	TaskGroupKey            = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	GenerateTaskKey         = bsonutil.MustHaveTag(Task{}, "GenerateTask")
 	GeneratedByKey          = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
+	ResetWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")

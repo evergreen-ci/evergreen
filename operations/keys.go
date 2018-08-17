@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -102,7 +103,7 @@ func keysList() cli.Command {
 	return cli.Command{
 		Name:   "list",
 		Usage:  "list all public keys for the current user",
-		Before: mergeBeforeFuncs(setPlainLogger, requireClientConfig),
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 
@@ -127,7 +128,7 @@ func keysList() cli.Command {
 			} else {
 				grip.Info("Public keys stored in Evergreen:")
 				for _, key := range keys {
-					grip.Infof("Name: '%s', Key: '%s'\n", key.Name, key.Key)
+					grip.Infof("Name: '%s', Key: '%s'\n", model.FromAPIString(key.Name), model.FromAPIString(key.Key))
 				}
 			}
 

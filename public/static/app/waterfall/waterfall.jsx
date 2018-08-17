@@ -40,7 +40,7 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
   if (bvFilter && bvFilter != '')
     params["bv_filter"]= bvFilter;
   if (taskFilter && taskFilter != '')
-    params["task_filter"]= taskFilter; 
+    params["task_filter"]= taskFilter;
   params["skip"] = skip
 
   var paramString = generateURLParameters(params);
@@ -60,7 +60,7 @@ class JiraLink extends React.Component {
     if (_.isString(this.props.children)) {
       let tokens = this.props.children.split(/\s/);
       let jiraHost = this.props.jiraHost;
-      
+
       contents = _.map(tokens, function(token, i){
         let hasSpace = i !== (tokens.length - 1);
         let maybeSpace = hasSpace ? ' ': '';
@@ -87,12 +87,12 @@ class JiraLink extends React.Component {
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
-class Root extends React.Component{
+class Root extends React.PureComponent {
   constructor(props){
     super(props);
 
     this.updatePaginationContext(window.serverData)
-   
+
     const href = window.location.href
     var buildVariantFilter = getParameterByName('bv_filter', href) || ''
     var taskFilter = getParameterByName('task_filter', href) || ''
@@ -104,8 +104,8 @@ class Root extends React.Component{
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: this.props.data,
-    }
+      data: this.props.data
+    };
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
@@ -168,7 +168,7 @@ class Root extends React.Component{
   render() {
     if (this.state.data.rows.length == 0){
       return (
-        <div> 
+        <div>
           There are no builds for this project.
         </div>
         )
@@ -178,29 +178,31 @@ class Root extends React.Component{
       activeTaskStatuses : ['failed','system-failed'],
     };
     return (
-      <div> 
-        <Toolbar 
-          collapsed={this.state.collapsed} 
-          onCheck={this.handleCollapseChange} 
+      <div>
+        <Toolbar
+          collapsed={this.state.collapsed}
+          onCheck={this.handleCollapseChange}
           baseURL={this.baseURL}
-          nextSkip={this.nextSkip} 
-          prevSkip={this.prevSkip} 
+          nextSkip={this.nextSkip}
+          prevSkip={this.prevSkip}
           buildVariantFilter={this.state.buildVariantFilter}
           taskFilter={this.state.taskFilter}
           buildVariantFilterFunc={this.handleBuildVariantFilter}
           taskFilterFunc={this.handleTaskFilter}
-        /> 
-        <Headers 
-          shortenCommitMessage={this.state.shortenCommitMessage} 
-          versions={this.state.data.versions} 
-          onLinkClick={this.handleHeaderLinkClick} 
+          isLoggedIn={this.props.user !== null}
+          project={this.props.project}
+        />
+        <Headers
+          shortenCommitMessage={this.state.shortenCommitMessage}
+          versions={this.state.data.versions}
+          onLinkClick={this.handleHeaderLinkClick}
           userTz={this.props.userTz}
           jiraHost={this.props.jiraHost}
-        /> 
-        <Grid 
-          data={this.state.data} 
-          collapseInfo={collapseInfo} 
-          project={this.props.project} 
+        />
+        <Grid
+          data={this.state.data}
+          collapseInfo={collapseInfo}
+          project={this.props.project}
           buildVariantFilter={this.state.buildVariantFilter}
           taskFilter={this.state.taskFilter}
         />
@@ -211,40 +213,46 @@ class Root extends React.Component{
 
 
 // Toolbar
-function Toolbar ({collapsed, 
-  onCheck, 
+function Toolbar ({collapsed,
+  onCheck,
   baseURL,
-  nextSkip, 
-  prevSkip, 
-  buildVariantFilter, 
+  nextSkip,
+  prevSkip,
+  buildVariantFilter,
   taskFilter,
-  buildVariantFilterFunc, 
-  taskFilterFunc}) {
+  buildVariantFilterFunc,
+  taskFilterFunc,
+  isLoggedIn,
+  project}) {
 
   var Form = ReactBootstrap.Form;
   return (
     <div className="row">
       <div className="col-xs-12">
-        <Form inline className="waterfall-toolbar pull-right"> 
+        <Form inline className="waterfall-toolbar pull-right">
           <CollapseButton collapsed={collapsed} onCheck={onCheck} />
-          <FilterBox 
-            filterFunction={buildVariantFilterFunc} 
-            placeholder={"Filter variant"} 
-            currentFilter={buildVariantFilter} 
+          <FilterBox
+            filterFunction={buildVariantFilterFunc}
+            placeholder={"Filter variant"}
+            currentFilter={buildVariantFilter}
             disabled={false}
           />
-          <FilterBox 
-            filterFunction={taskFilterFunc} 
-            placeholder={"Filter task"} 
-            currentFilter={taskFilter} 
+          <FilterBox
+            filterFunction={taskFilterFunc}
+            placeholder={"Filter task"}
+            currentFilter={taskFilter}
             disabled={collapsed}
           />
-          <PageButtons 
-            nextSkip={nextSkip} 
-            prevSkip={prevSkip} 
+          <PageButtons
+            nextSkip={nextSkip}
+            prevSkip={prevSkip}
             baseURL={baseURL}
-            buildVariantFilter={buildVariantFilter} 
-            taskFilter={taskFilter} 
+            buildVariantFilter={buildVariantFilter}
+            taskFilter={taskFilter}
+          />
+          <GearMenu
+            project={project}
+            isLoggedIn={isLoggedIn}
           />
         </Form>
       </div>
@@ -291,7 +299,7 @@ function PageButton ({pageURL, directionIcon, disabled}) {
   );
 }
 
-class FilterBox extends React.Component {
+class FilterBox extends React.PureComponent {
   constructor(props){
     super(props);
     this.applyFilter = this.applyFilter.bind(this);
@@ -302,13 +310,13 @@ class FilterBox extends React.Component {
   render() {
     return <input type="text" ref="searchInput"
                   className="form-control waterfall-form-item"
-                  placeholder={this.props.placeholder} 
-                  value={this.props.currentFilter} onChange={this.applyFilter} 
+                  placeholder={this.props.placeholder}
+                  value={this.props.currentFilter} onChange={this.applyFilter}
                   disabled={this.props.disabled}/>
   }
 }
 
-class CollapseButton extends React.Component{
+class CollapseButton extends React.PureComponent {
   constructor(props){
     super(props);
     this.handleChange = this.handleChange.bind(this);
@@ -320,17 +328,158 @@ class CollapseButton extends React.Component{
     return (
       <span className="semi-muted waterfall-form-item">
         <span id="collapsed-prompt">Show collapsed view</span>
-        <input 
+        <input
           className="checkbox waterfall-checkbox"
           type="checkbox"
           checked={this.props.collapsed}
           ref="collapsedBuilds"
-          onChange={this.handleChange} 
+          onChange={this.handleChange}
         />
       </span>
     )
   }
 }
+
+class GearMenu extends React.PureComponent {
+  constructor(props) {
+    super(props);
+    this.addNotification = this.addNotification.bind(this);
+    this.triggers = [
+      {
+        trigger: "outcome",
+        resource_type: "TASK",
+        label: "any task finishes",
+        regex_selectors: taskRegexSelectors()
+      },
+      {
+        trigger: "failure",
+        resource_type: "TASK",
+        label: "any task fails",
+        regex_selectors: taskRegexSelectors()
+      },
+      {
+        trigger: "success",
+        resource_type: "TASK",
+        label: "any task succeeds",
+        regex_selectors: taskRegexSelectors()
+      },
+      {
+        trigger: "exceeds-duration",
+        resource_type: "TASK",
+        label: "the runtime for any task exceeds some duration",
+        extraFields: [
+          {text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration}
+        ],
+        regex_selectors: taskRegexSelectors()
+      },
+      {
+        trigger: "runtime-change",
+        resource_type: "TASK",
+        label: "the runtime for any task changes by some percentage",
+        extraFields: [
+          {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
+        ],
+        regex_selectors: taskRegexSelectors()
+      },
+      {
+        trigger: "outcome",
+        resource_type: "BUILD",
+        label: "a build-variant in any version finishes",
+        regex_selectors: buildRegexSelectors(),
+      },
+      {
+        trigger: "failure",
+        resource_type: "BUILD",
+        label: "a build-variant in any version fails",
+        regex_selectors: buildRegexSelectors(),
+      },
+      {
+        trigger: "success",
+        resource_type: "BUILD",
+        label: "a build-variant in any version succeeds",
+        regex_selectors: buildRegexSelectors(),
+      },
+      {
+        trigger: "outcome",
+        resource_type: "VERSION",
+        label: "any version finishes",
+      },
+      {
+        trigger: "failure",
+        resource_type: "VERSION",
+        label: "any version fails",
+      },
+      {
+        trigger: "success",
+        resource_type: "VERSION",
+        label: "any version succeeds",
+      }
+    ];
+  }
+
+  dialog($mdDialog, $mdToast, notificationService, mciSubscriptionsService) {
+    const omitMethods = {
+      [SUBSCRIPTION_JIRA_ISSUE]: true,
+      [SUBSCRIPTION_EVERGREEN_WEBHOOK]: true
+    };
+
+    const self = this;
+    const promise = addSubscriber($mdDialog, this.triggers, omitMethods);
+    return $mdDialog.show(promise).then(function(data) {
+      addProjectSelectors(data, self.project);
+      var success = function() {
+        return $mdToast.show({
+          templateUrl: "/static/partials/subscription_confirmation_toast.html",
+          position: "bottom right"
+        });
+      };
+      var failure = function(resp) {
+        notificationService.pushNotification('Error saving subscriptions: ' + resp.data.error, 'errorHeader');
+      };
+      mciSubscriptionsService.post([data], { success: success, error: failure });
+    }).catch(function(e) {
+      notificationService.pushNotification('Error saving subscriptions: ' + e, 'errorHeader');
+    });
+  }
+
+  addNotification() {
+    const waterfall = angular.module('waterfall', ['ng', 'MCI', 'material.components.toast']);
+    waterfall.provider({
+      $rootElement: function() {
+         this.$get = function() {
+           const root = document.getElementById("root");
+           return angular.element(root);
+        };
+      }
+    });
+
+    const injector = angular.injector(['waterfall']);
+    return injector.invoke(this.dialog, { triggers: this.triggers, project: this.props.project });
+  }
+
+  render() {
+    if (!this.props.isLoggedIn) {
+      return null;
+    }
+    const ButtonGroup = ReactBootstrap.ButtonGroup;
+    const Button = ReactBootstrap.Button;
+    const DropdownButton = ReactBootstrap.DropdownButton;
+    const MenuItem = ReactBootstrap.MenuItem;
+
+    return (
+      <span>
+        <DropdownButton
+          className={"fa fa-gear"}
+          pullRight={true}
+          id={"waterfall-gear-menu"}
+        >
+          <MenuItem onClick={this.addNotification}>Add Notification</MenuItem>
+        </DropdownButton>
+      </span>
+    );
+  }
+
+};
 
 // Headers
 
@@ -343,23 +492,23 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz, jiraHost
         {
           versions.map(function(version){
             if (version.rolled_up) {
-              return( 
-                <RolledUpVersionHeader 
-                  key={version.ids[0]} 
-                  version={version} 
-                  userTz={userTz} 
+              return(
+                <RolledUpVersionHeader
+                  key={version.ids[0]}
+                  version={version}
+                  userTz={userTz}
                   jiraHost={jiraHost}
                 />
               );
             }
             // Unrolled up version, no popover
             return (
-              <ActiveVersionHeader 
-                key={version.ids[0]} 
+              <ActiveVersionHeader
+                key={version.ids[0]}
                 version={version}
-                userTz = {userTz} 
-                shortenCommitMessage={shortenCommitMessage} 
-                onLinkClick={onLinkClick} 
+                userTz = {userTz}
+                shortenCommitMessage={shortenCommitMessage}
+                onLinkClick={onLinkClick}
                 jiraHost={jiraHost}
               />
             );
@@ -377,9 +526,9 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
-  var message = version.messages[0]; 
+  var message = version.messages[0];
   var formatted_time = getFormattedTime(version.create_times[0], userTz, 'M/D/YY h:mm A' );
-  const maxChars = 44 
+  const maxChars = 44
   var button;
   if (message.length > maxChars) {
     // If we shorten the commit message, only display the first maxChars chars
@@ -431,21 +580,21 @@ function RolledUpVersionHeader({version, userTz, jiraHost}){
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Button = ReactBootstrap.Button;
-  
+
   var versionStr = (version.messages.length > 1) ? "versions" : "version";
-  var rolledHeader = version.messages.length + " inactive " + versionStr; 
- 
+  var rolledHeader = version.messages.length + " inactive " + versionStr;
+
   var popovers = (
     <Popover id="popover-positioned-bottom" title="">
       {
         version.ids.map(function(id,i) {
-          return <RolledUpVersionSummary 
-            author={version.authors[i]}  
-            commit={version.revisions[i]} 
-            message={version.messages[i]} 
-            versionId={version.ids[i]} 
-            key={id} userTz={userTz} 
-            createTime={version.create_times[i]} 
+          return <RolledUpVersionSummary
+            author={version.authors[i]}
+            commit={version.revisions[i]}
+            message={version.messages[i]}
+            versionId={version.ids[i]}
+            key={id} userTz={userTz}
+            createTime={version.create_times[i]}
             jiraHost={jiraHost} />
         })
       }
@@ -458,22 +607,20 @@ function RolledUpVersionHeader({version, userTz, jiraHost}){
           <span className="pointer"> {rolledHeader} </span>
       </OverlayTrigger>
     </div>
-  ) 
-}; 
+  )
+};
 function RolledUpVersionSummary ({author, commit, message, versionId, createTime, userTz, jiraHost}) {
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A' );
   commit =  commit.substring(0,10);
-    
+
   return (
     <div className="rolled-up-version-summary">
       <span className="version-header-time">{formatted_time}</span>
-      <br /> 
-      <a href={"/version/" + versionId}>{commit}</a> - <strong>{author}</strong> 
-      <br /> 
+      <br />
+      <a href={"/version/" + versionId}>{commit}</a> - <strong>{author}</strong>
+      <br />
       <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
       <br />
     </div>
   );
 }
-
-

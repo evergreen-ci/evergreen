@@ -117,7 +117,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.NotEqual(http.StatusNotFound, resp.Status())
+	s.Equal(http.StatusNotFound, resp.Status())
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
 }
 

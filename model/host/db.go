@@ -68,6 +68,8 @@ var (
 	TotalIdleTimeKey           = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
 	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
 	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
+	ContainerImagesKey         = bsonutil.MustHaveTag(Host{}, "ContainerImages")
+	ContainerBuildAttempt      = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
 	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey            = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
 	ContainerPoolSettingsKey   = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
