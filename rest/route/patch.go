@@ -273,9 +273,16 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 	vals := r.URL.Query()
 
 	var err error
-	p.key, err = model.ParseTime(vals.Get("start_at"))
-	if err != nil {
-		return errors.WithStack(err)
+	if vals.Get("start_at") == "" {
+		p.key = time.Now()
+	} else {
+		p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", p.key, err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
 	}
 
 	p.limit, err = getLimit(vals)
