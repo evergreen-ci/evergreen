@@ -18,7 +18,7 @@ import (
 const (
 	// maximum turnaround we want to maintain for all hosts for a given distro
 	MaxDurationPerDistroHost               = 30 * time.Minute
-	MaxDurationPerDistroHostWithContainers = 5 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
 	// for distro queues with tasks that appear on other queues, this constant
 	// indicates the fraction of the total duration of shared tasks that we want

@@ -1124,7 +1124,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 
 	hosts, err := UtilizationBasedHostAllocator(s.ctx, data)
 	s.NoError(err)
-	s.Equal(1, hosts)
+	s.Equal(3, hosts)
 }
 
 func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsOnlyScheduled() {
