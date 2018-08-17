@@ -149,7 +149,7 @@ functions:
     type: setup
     params:
       directory: gopath/src/github.com/evergreen-ci/evergreen
-      token: "token f6be9f51e8796f00e2b72291b08bd1a8838c82d2"
+      token: ${github_token}
   run-make:
     command: subprocess.exec
     params:
