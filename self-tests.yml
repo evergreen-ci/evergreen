@@ -149,6 +149,7 @@ functions:
     type: setup
     params:
       directory: gopath/src/github.com/evergreen-ci/evergreen
+      token: "token f6be9f51e8796f00e2b72291b08bd1a8838c82d2"
   run-make:
     command: subprocess.exec
     params:
@@ -696,3 +697,19 @@ buildvariants:
         distros:
           - ubuntu1604-test
       - name: ".xc"
+
+  - name: archlinux-docker
+    display_name: Archlinux Docker
+    run_on:
+      - archlinux-docker
+    expansions:
+      goos: linux
+      gobin: /opt/go1.8/go/bin/go
+      goroot: /opt/go1.8/go
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+    tasks:
+      - name: "dist"
+      - name: ".smoke"
+      - name: ".test"
+      - name: "js-test"
+      - name: generate-lint
