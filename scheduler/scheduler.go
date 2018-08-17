@@ -314,11 +314,6 @@ func getNumContainersOnParents(d distro.Distro) ([]containersOnParents, error) {
 					parentHost:    parent,
 					numContainers: len(currentContainers),
 				})
-			grip.Info(message.Fields{
-				"operation":     "scheduling",
-				"parentHost":    parent.Id,
-				"numContainers": len(currentContainers),
-			})
 		}
 	}
 	return numContainersOnParents, nil
