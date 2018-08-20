@@ -81,7 +81,7 @@ variables:
       - name: dist-test
     commands:
       - func: get-dist-test
-      - func: set-up-cross-credentials
+      - func: set-up-credentials
       - func: run-cross
         vars: { target: "${task_name}" }
   - &run-xc-test-suite-with-mongodb
@@ -90,8 +90,8 @@ variables:
       - name: dist-test
     commands:
       - func: get-dist-test
-      - func: set-up-cross-credentials
-      - func: set-up-cross-mongodb
+      - func: set-up-credentials
+      - func: set-up-mongodb
       - func: run-cross
         vars: { target: "${task_name}" }
   - &run-smoke-test
@@ -179,14 +179,14 @@ functions:
       aws_secret: ${aws_secret}
       remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
       bucket: mciuploads
-      extract_to: ${workdir}
+      extract_to: ${workdir}/gopath/src/github.com/evergreen-ci/
   run-cross:
     command: subprocess.exec
     params:
-      working_dir: evergreen-tests
+      working_dir: gopath/src/github.com/evergreen-ci/evergreen
       env:
-        EVGHOME: ${workdir}/evergreen-tests
-        SETTINGS_OVERRIDE: ${workdir}/evergreen-tests/creds.yml
+        EVGHOME: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/
+        SETTINGS_OVERRIDE: gopath/src/github.com/evergreen-ci/evergreen/creds.yml
         CROSS_TARGET: ${target}
       command: make run-cross
   set-up-credentials:
@@ -195,21 +195,6 @@ functions:
     params:
       silent: true
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
-      env:
-        GITHUB_TOKEN: ${github_token}
-        JIRA_SERVER: ${jiraserver}
-        CROWD_SERVER: ${crowdserver}
-        CROWD_USER: ${crowduser}
-        CROWD_PW: ${crowdpw}
-        AWS_KEY: ${aws_key}
-        AWS_SECRET: ${aws_secret}
-      command: bash scripts/setup-credentials.sh
-  set-up-cross-credentials:
-    command: subprocess.exec
-    type: setup
-    params:
-      silent: true
-      working_dir: evergreen-tests
       env:
         GITHUB_TOKEN: ${github_token}
         JIRA_SERVER: ${jiraserver}
@@ -238,26 +223,6 @@ functions:
       type: setup
       params:
         working_dir: gopath/src/github.com/evergreen-ci/evergreen
-        command: make check-mongod
-  set-up-cross-mongodb:
-    - command: subprocess.exec
-      type: setup
-      params:
-        env:
-          MONGODB_URL: ${mongodb_url}
-          DECOMPRESS: ${decompress}
-        working_dir: evergreen-tests
-        command: make get-mongodb
-    - command: subprocess.exec
-      type: setup
-      params:
-        background: true
-        working_dir: evergreen-tests
-        command: make start-mongod
-    - command: subprocess.exec
-      type: setup
-      params:
-        working_dir: evergreen-tests
         command: make check-mongod
   attach-test-results:
     - command: gotest.parse_files

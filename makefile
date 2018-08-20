@@ -195,7 +195,7 @@ dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
-	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distTestContents) $(distContents),--item $(item)) --item makefile --item scripts --exclude "public/node_modules"
+	./$< -name $@ --prefix $(name) $(foreach item,$(distTestContents) $(distContents),--item $(item)) $(foreach item,$(shell find . -maxdepth 2 -type d -name "testdata"),--item $(item)) --item makefile --item scripts --item config_test --exclude "public/node_modules"
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
 # end main build
@@ -224,7 +224,9 @@ phony += lint lint-deps build build-race race test coverage coverage-html list-r
 .PRECIOUS:$(buildDir)/output.lint
 run-cross:
 	@mkdir -p $(buildDir)
-	$(EVGHOME)/bin/test.$(subst xc.,,$(subst -,.,$(CROSS_TARGET))) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
+	$(EVGHOME)/$(buildDir)/$(subst xc-,test.,$(CROSS_TARGET)) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
+	@grep -s -q -e "^PASS" $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
+
 # end front-ends
 
 
