@@ -94,7 +94,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 }
 
 func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
-	ts, err := task.FindOldWithDisplayTasks(task.ByIDPrefix(id))
+	ts, err := task.FindOldWithDisplayTasks(task.ByOldTaskID(id))
 	if err != nil {
 		return nil, err
 	}
