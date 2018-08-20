@@ -151,6 +151,12 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	if t.task == nil {
 		return errors.New("couldn't find task")
 	}
+	if t.task.DisplayOnly {
+		_, err = t.task.GetTestResultsForDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "error getting test results")
+		}
+	}
 
 	t.version, err = version.FindOne(version.ById(t.task.Version))
 	if err != nil {
