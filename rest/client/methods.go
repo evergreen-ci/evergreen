@@ -639,7 +639,7 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 		method:   get,
 		taskData: &td,
 		version:  apiVersion2,
-		path:     fmt.Sprintf("host/%s/list", td.ID),
+		path:     fmt.Sprintf("hosts/%s/list", td.ID),
 	}
 
 	hosts := []restmodel.APIHost{}
