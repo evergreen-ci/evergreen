@@ -316,7 +316,7 @@ func validatePositiveFloat(s string) error {
 func validateRegex(s string) error {
 	regex, err := regexp.Compile(s)
 	if regex == nil || err != nil {
-		return errors.New("invalid regex")
+		return errors.Wrap(err, "invalid regex")
 	}
 	return nil
 }

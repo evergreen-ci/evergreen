@@ -559,7 +559,7 @@ func isTaskStatusRegression(oldStatus, newStatus string) bool {
 	return false
 }
 
-func (t *taskTriggers) testMatchesRegex(testName string, sub event.Subscription) bool {
+func testMatchesRegex(testName string, sub *event.Subscription) bool {
 	regex, ok := sub.TriggerData[event.TestRegexKey]
 	if !ok || regex == "" {
 		return true
@@ -637,7 +637,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 
 		testsToAlert := []task.TestResult{}
 		for i := range t.task.LocalTestResults {
-			if !t.testMatchesRegex(t.task.LocalTestResults[i].TestFile, *sub) {
+			if !testMatchesRegex(t.task.LocalTestResults[i].TestFile, sub) {
 				continue
 			}
 			var shouldInclude bool
