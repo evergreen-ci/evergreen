@@ -102,7 +102,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			return
 		}
 
-		if numHosts >= j.host.Distro.PoolSize {
+		if numHosts > j.host.Distro.PoolSize {
 			grip.Info(message.Fields{
 				"host_id":   j.HostID,
 				"attempt":   j.CurrentAttempt,
