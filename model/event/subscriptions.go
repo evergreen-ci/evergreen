@@ -44,6 +44,7 @@ const (
 	BuildPercentChangeKey                             = "build-percent-change"
 	VersionDurationKey                                = "version-duration-secs"
 	VersionPercentChangeKey                           = "version-percent-change"
+	TestRegexKey                                      = "test-regex"
 	ImplicitSubscriptionPatchOutcome                  = "patch-outcome"
 	ImplicitSubscriptionBuildBreak                    = "build-break"
 	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
@@ -284,6 +285,9 @@ func (s *Subscription) runCustomValidation() error {
 	if buildPercentVal, ok := s.TriggerData[BuildPercentChangeKey]; ok {
 		catcher.Add(validatePositiveFloat(buildPercentVal))
 	}
+	if testRegex, ok := s.TriggerData[TestRegexKey]; ok {
+		catcher.Add(validateRegex(testRegex))
+	}
 	return catcher.Resolve()
 }
 
@@ -305,6 +309,14 @@ func validatePositiveFloat(s string) error {
 	}
 	if val <= 0 {
 		return fmt.Errorf("%f must be positive", val)
+	}
+	return nil
+}
+
+func validateRegex(s string) error {
+	regex, err := regexp.Compile(s)
+	if regex == nil || err != nil {
+		return errors.Wrap(err, "invalid regex")
 	}
 	return nil
 }

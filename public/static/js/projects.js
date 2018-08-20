@@ -86,6 +86,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       resource_type: "TASK",
       label: "a previously passing test in a task fails",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Test names matching regex", key: "test-regex", validator: null}
+      ]
     },
     {
       trigger: "exceeds-duration",
