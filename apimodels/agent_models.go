@@ -150,6 +150,9 @@ func (ch *CreateHost) Validate() error {
 	if ch.Retries < 1 {
 		ch.Retries = 1
 	}
+	if ch.Scope == "" {
+		ch.Scope = ScopeTask
+	}
 	if ch.Scope != ScopeTask && ch.Scope != ScopeBuild {
 		catcher.Add(errors.New("scope must be build or task"))
 	}
