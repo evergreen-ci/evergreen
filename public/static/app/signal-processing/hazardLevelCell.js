@@ -8,6 +8,9 @@ mciModule.directive('hazardLevelCell', function() {
   ]
 
   function weightedRatio(point) {
+    if (point.statistics.previous.mean == 0) {
+      return 0
+    }
     return Math.log(
       point.statistics.next.mean / point.statistics.previous.mean
     )
