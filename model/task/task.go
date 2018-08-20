@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -130,10 +131,9 @@ type Task struct {
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly       bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks    []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	ResetWhenFinished bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
-	DisplayTask       *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
@@ -749,6 +749,100 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
+func (t *Task) UpdateDisplayTask() error {
+	if !t.DisplayOnly {
+		return fmt.Errorf("%s is not a display task", t.Id)
+	}
+
+	statuses := []string{}
+	var timeTaken time.Duration
+	var status string
+	wasFinished := t.IsFinished()
+	execTasks, err := Find(ByIds(t.ExecutionTasks))
+	if err != nil {
+		return errors.Wrap(err, "error retrieving execution tasks")
+	}
+	hasFinishedTasks := false
+	hasUnfinishedTasks := false
+	startTime := time.Unix(1<<62, 0)
+	endTime := util.ZeroTime
+	for _, execTask := range execTasks {
+		// if any of the execution tasks are scheduled, the display task is too
+		if execTask.Activated {
+			t.Activated = true
+		}
+
+		if execTask.IsFinished() {
+			hasFinishedTasks = true
+		} else if execTask.IsDispatchable() {
+			hasUnfinishedTasks = true
+		}
+
+		// the display task's status will be the highest priority of its exec tasks
+		statuses = append(statuses, execTask.ResultStatus())
+
+		// add up the duration of the execution tasks as the cumulative time taken
+		timeTaken += execTask.TimeTaken
+
+		// set the start/end time of the display task as the earliest/latest task
+		if execTask.StartTime.Before(startTime) {
+			startTime = execTask.StartTime
+		}
+		if execTask.FinishTime.After(endTime) {
+			endTime = execTask.FinishTime
+		}
+	}
+
+	if hasFinishedTasks && hasUnfinishedTasks {
+		// if the display task has a mix of finished and unfinished tasks, the status
+		// will be "started"
+		status = evergreen.TaskStarted
+	} else if len(statuses) > 0 {
+		// the status of the display task will be the status of its constituent task
+		// that is logically the most exclusive
+		sort.Sort(byPriority(statuses))
+		status = statuses[0]
+	}
+
+	grip.InfoWhen(status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime, message.Fields{
+		"lookhere":                      "evg-3345",
+		"message":                       "update display tasks",
+		"task_id":                       t.Id,
+		"status":                        status,
+		"dispatch_time_is_go_zero_time": t.DispatchTime.IsZero(),
+	})
+
+	update := bson.M{
+		StatusKey:    status,
+		ActivatedKey: t.Activated,
+		TimeTakenKey: timeTaken,
+	}
+	if startTime != time.Unix(1<<62, 0) {
+		update[StartTimeKey] = startTime
+	}
+	if endTime != util.ZeroTime && !hasUnfinishedTasks {
+		update[FinishTimeKey] = endTime
+	}
+
+	err = UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": update,
+		})
+	if err != nil {
+		return errors.Wrap(err, "error updating display task")
+	}
+
+	t.Status = status
+	t.TimeTaken = timeTaken
+	if !wasFinished && t.IsFinished() {
+		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
+	}
+	return nil
+}
+
 func displayTaskPriority(status string) int {
 	switch status {
 	case evergreen.TaskStarted:
@@ -1209,27 +1303,6 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 		return nil, errors.Wrap(err, "error merging test results for display task")
 	}
 	return tasks[0].LocalTestResults, nil
-}
-
-func (t *Task) SetResetWhenFinished(detail *apimodels.TaskEndDetail) error {
-	if !t.DisplayOnly {
-		return errors.Errorf("%s is not a display task", t.Id)
-	}
-	t.ResetWhenFinished = true
-	if detail != nil {
-		t.Details = *detail
-	}
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				ResetWhenFinishedKey: true,
-				DetailsKey:           detail,
-			},
-		},
-	)
 }
 
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with

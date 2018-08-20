@@ -80,6 +80,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		return
 	}
 
+	displayTasksRestarted := map[string]bool{}
 	for _, task := range tasks {
 		msg := message.Fields{
 			"operation": j.Type().Name,
@@ -88,7 +89,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 			"host":      task.HostId,
 		}
 
-		if err := cleanUpTimedOutTask(task); err != nil {
+		if err := cleanUpTimedOutTask(task, displayTasksRestarted); err != nil {
 			grip.Warning(message.WrapError(err, msg))
 			j.AddError(err)
 			continue
@@ -105,7 +106,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 }
 
 // function to clean up a single task
-func cleanUpTimedOutTask(t task.Task) error {
+func cleanUpTimedOutTask(t task.Task, displayTasksRestarted map[string]bool) error {
 	// get tlhe host for the task
 	host, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
@@ -140,8 +141,17 @@ func cleanUpTimedOutTask(t task.Task) error {
 	}
 
 	// try to reset the task
+	taskID := t.Id
 	if t.IsPartOfDisplay() {
-		return t.DisplayTask.SetResetWhenFinished(detail)
+		if displayTasksRestarted[taskID] {
+			return nil // already restarted this display task this run
+		}
+		taskID = t.DisplayTask.Id
+		displayTasksRestarted[taskID] = true
 	}
-	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
+	if err := model.TryResetTask(taskID, "", "monitor", detail); err != nil {
+		return errors.Wrapf(err, "error trying to reset task %s", t.Id)
+	}
+
+	return nil
 }
