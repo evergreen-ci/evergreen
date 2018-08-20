@@ -374,7 +374,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 
 	if ec2Settings.KeyName == "" {
-		if h.SpawnOptions.TaskID == "" { // this is not a host spawned by a task
+		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
 		}
 		k, err := m.getKey(ctx, h)
@@ -489,12 +489,12 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 
 func (m *ec2Manager) getKey(ctx context.Context, h *host.Host) (string, error) {
 	const keyPrefix = "evg_auto_"
-	t, err := task.FindOneId(h.SpawnOptions.TaskID)
+	t, err := task.FindOneId(h.StartedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "problem finding task %s")
 	}
 	if t == nil {
-		return "", errors.Errorf("no task found %s", h.SpawnOptions.TaskID)
+		return "", errors.Errorf("no task found %s", h.StartedBy)
 	}
 	k, err := model.GetAWSKeyForProject(t.Project)
 	if err != nil {
