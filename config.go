@@ -411,7 +411,7 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 	}
 
 	// the slack logging service is only for logging very high level alerts.
-	if s.Slack.Token != "" {
+	if !s.Slack.Disabled && s.Slack.Token != "" {
 		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {

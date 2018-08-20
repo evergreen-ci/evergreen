@@ -14,6 +14,7 @@ type JiraConfig struct {
 	Username       string `yaml:"username" bson:"username" json:"username"`
 	Password       string `yaml:"password" bson:"password" json:"password"`
 	DefaultProject string `yaml:"default_project" bson:"default_project" json:"default_project"`
+	Disabled       bool   `bson:"disabled" json:"disabled" yaml:"disabled"`
 }
 
 func (c *JiraConfig) SectionId() string { return "jira" }
@@ -34,6 +35,7 @@ func (c *JiraConfig) Set() error {
 			"username":        c.Username,
 			"password":        c.Password,
 			"default_project": c.DefaultProject,
+			"disabled":        c.Disabled,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())

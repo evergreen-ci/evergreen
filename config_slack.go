@@ -9,9 +9,10 @@ import (
 )
 
 type SlackConfig struct {
-	Options *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
-	Token   string             `bson:"token" json:"token" yaml:"token"`
-	Level   string             `bson:"level" json:"level" yaml:"level"`
+	Options  *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
+	Token    string             `bson:"token" json:"token" yaml:"token"`
+	Level    string             `bson:"level" json:"level" yaml:"level"`
+	Disabled bool               `bson:"disabled" json:"disabled" yaml:"disabled"`
 }
 
 func (c *SlackConfig) SectionId() string { return "slack" }
@@ -28,9 +29,10 @@ func (c *SlackConfig) Get() error {
 func (c *SlackConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"options": c.Options,
-			"token":   c.Token,
-			"level":   c.Level,
+			"options":  c.Options,
+			"token":    c.Token,
+			"level":    c.Level,
+			"disabled": c.Disabled,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
