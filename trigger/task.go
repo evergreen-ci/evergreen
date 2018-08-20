@@ -152,7 +152,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.New("couldn't find task")
 	}
 	if t.task.DisplayOnly {
-		_, err = t.task.GetTestResultsForDisplayTask()
+		err = t.task.MergeNewTestResults()
 		if err != nil {
 			return errors.Wrap(err, "error getting test results")
 		}

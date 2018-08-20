@@ -1084,6 +1084,4 @@ func TestGetTestResultsForDisplayTask(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(results, 1)
 	assert.Equal("myTest", results[0].TestFile)
-	assert.Len(dt.LocalTestResults, 1)
-	assert.Equal("myTest", dt.LocalTestResults[0].TestFile)
 }

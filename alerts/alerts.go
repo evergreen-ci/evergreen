@@ -112,7 +112,7 @@ func (qp *QueueProcessor) LoadAlertContext(a *alert.AlertRequest) (*AlertContext
 
 		if aCtx.Task != nil {
 			if aCtx.Task.DisplayOnly {
-				_, err = aCtx.Task.GetTestResultsForDisplayTask()
+				err = aCtx.Task.MergeNewTestResults()
 				if err != nil {
 					return nil, errors.Wrap(err, "error getting test results")
 				}

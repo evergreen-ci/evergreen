@@ -1302,8 +1302,7 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error merging test results for display task")
 	}
-	t.LocalTestResults = tasks[0].LocalTestResults
-	return t.LocalTestResults, nil
+	return tasks[0].LocalTestResults, nil
 }
 
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
