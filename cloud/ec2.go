@@ -12,8 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -73,7 +75,7 @@ type EC2ProviderSettings struct {
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
-	if s.AMI == "" || s.InstanceType == "" || s.KeyName == "" {
+	if s.AMI == "" || s.InstanceType == "" {
 		return errors.New("AMI, instance type, and key name must not be empty")
 	}
 	if len(s.SecurityGroupIDs) == 0 {
@@ -371,6 +373,17 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		})
 	}
 
+	if ec2Settings.KeyName == "" {
+		if h.SpawnOptions.TaskID == "" { // this is not a host spawned by a task
+			return nil, errors.New("key name must not be empty")
+		}
+		k, err := m.getKey(ctx, h)
+		if err != nil {
+			return nil, errors.Wrap(err, "not spawning host, problem creating key")
+		}
+		ec2Settings.KeyName = k
+	}
+
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
@@ -472,6 +485,33 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	event.LogHostStarted(h.Id)
 
 	return h, nil
+}
+
+func (m *ec2Manager) getKey(ctx context.Context, h *host.Host) (string, error) {
+	const keyPrefix = "evg_auto_"
+	t, err := task.FindOneId(h.SpawnOptions.TaskID)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding task %s")
+	}
+	if t == nil {
+		return "", errors.Errorf("no task found %s", h.SpawnOptions.TaskID)
+	}
+	k, err := model.GetAWSKeyForProject(t.Project)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting key for project")
+	}
+	if k.Name != "" {
+		return k.Name, nil
+	}
+	name := keyPrefix + t.Project
+	newKey, err := m.makeNewKey(ctx, name, h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating new key")
+	}
+	if err := model.SetAWSKeyForProject(t.Project, &model.AWSSSHKey{Name: name, Value: newKey}); err != nil {
+		return "", errors.Wrap(err, "problem setting key")
+	}
+	return name, nil
 }
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
@@ -786,6 +826,28 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 		}
 	}
 	return nil
+}
+
+func (m *ec2Manager) makeNewKey(ctx context.Context, name string, h *host.Host) (string, error) {
+	r, err := getRegion(h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
+		return "", errors.Wrap(err, "error creating client")
+	}
+	_, err = m.client.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
+	if err != nil { // error does not indicate a problem, but log anyway for debugging
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":  "problem deleting key",
+			"key_name": name,
+		}))
+	}
+	resp, err := m.client.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating key pair")
+	}
+	return *resp.KeyMaterial, nil
 }
 
 // GetDNSName returns the DNS name for the host.

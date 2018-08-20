@@ -58,9 +58,42 @@ type Build struct {
 }
 
 // Returns whether or not the build has finished, based on its status.
+// In spite of the name, a build with status BuildFailed may still be in
+// progress; use AllCachedTasksOrCompileFinished
 func (b *Build) IsFinished() bool {
 	return b.Status == evergreen.BuildFailed ||
 		b.Status == evergreen.BuildSucceeded
+}
+
+// AllCachedTasksOrCompileFinished returns true when either:
+//  1. if there is a compile task, the compile task's status is one the ones
+//     listed in IsFailedTaskStatus
+//  2. or all activated tasks in the task cache have one of the statuses in
+//     IsFinishedTaskStatus
+// returns boolean to indicate if tasks are complete, string with either
+// BuildFailed or BuildSucceded. The string is only valid when the boolean is
+// true
+func (b *Build) AllCachedTasksOrCompileFinished() (bool, string) {
+	allFinished := true
+	status := evergreen.BuildSucceeded
+	for i := range b.Tasks {
+		if !b.Tasks[i].Activated {
+			continue
+		}
+		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
+			allFinished = false
+		}
+		if b.Tasks[i].DisplayName == evergreen.CompileStage {
+			if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
+				return true, evergreen.BuildFailed
+			}
+		}
+		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
+			status = evergreen.BuildFailed
+		}
+	}
+
+	return allFinished, status
 }
 
 // Find
@@ -194,4 +227,22 @@ func (b *Build) IsActive() bool {
 		}
 	}
 	return false
+}
+
+func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
+	if err := SetCachedTaskFinished(b.Id, taskID, status, detail, timeTaken); err != nil {
+		return err
+	}
+	for i := range b.Tasks {
+		if b.Tasks[i].Id != taskID {
+			continue
+		}
+
+		b.Tasks[i].Id = taskID
+		b.Tasks[i].Status = status
+		b.Tasks[i].TimeTaken = timeTaken
+		b.Tasks[i].StatusDetails = *detail
+		break
+	}
+	return nil
 }

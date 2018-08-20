@@ -73,3 +73,8 @@
 .buildbaron-feedback .form-group {
   margin-left: 0px;
 }
+
+.buildbaron-features {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}

@@ -40,11 +40,7 @@ func (c *dockerClientMock) Init(string) error {
 	return nil
 }
 
-func (c *dockerClientMock) Create(*host.Host) error { return nil }
-
-func (c *dockerClientMock) Close() { return }
-
-func (c *dockerClientMock) EnsureImageDownloaded(context.Context, string) (string, error) {
+func (c *dockerClientMock) EnsureImageDownloaded(context.Context, *host.Host, string) (string, error) {
 	if c.failDownload {
 		return "", errors.New("failed to download image")
 	}
@@ -58,14 +54,14 @@ func (c *dockerClientMock) BuildImageWithAgent(context.Context, *host.Host, stri
 	return fmt.Sprintf(provisionedImageTag, c.baseImage), nil
 }
 
-func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, *host.Host, *host.Host, *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) GetContainer(context.Context, string) (*types.ContainerJSON, error) {
+func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error) {
 	if c.failGet {
 		return nil, errors.New("failed to inspect container")
 	}
@@ -96,7 +92,7 @@ func (c *dockerClientMock) GetContainer(context.Context, string) (*types.Contain
 	return container, nil
 }
 
-func (c *dockerClientMock) ListContainers(context.Context) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.Container, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}
@@ -113,14 +109,14 @@ func (c *dockerClientMock) ListContainers(context.Context) ([]types.Container, e
 	return []types.Container{container}, nil
 }
 
-func (c *dockerClientMock) RemoveContainer(context.Context, string) error {
+func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host, string) error {
 	if c.failRemove {
 		return errors.New("failed to remove container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) ListImages(context.Context) ([]types.ImageSummary, error) {
+func (c *dockerClientMock) ListImages(context.Context, *host.Host) ([]types.ImageSummary, error) {
 	if c.failList {
 		return nil, errors.New("failed to list images")
 	}
@@ -138,14 +134,14 @@ func (c *dockerClientMock) ListImages(context.Context) ([]types.ImageSummary, er
 	return []types.ImageSummary{image1, image2}, nil
 }
 
-func (c *dockerClientMock) RemoveImage(context.Context, string) error {
+func (c *dockerClientMock) RemoveImage(context.Context, *host.Host, string) error {
 	if c.failRemove {
 		return errors.New("failed to remove image")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) StartContainer(context.Context, string) error {
+func (c *dockerClientMock) StartContainer(context.Context, *host.Host, string) error {
 	if c.failStart {
 		return errors.New("failed to start container")
 	}

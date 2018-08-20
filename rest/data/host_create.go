@@ -148,9 +148,7 @@ func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string
 	if createHost.InstanceType != "" {
 		ec2Settings.InstanceType = createHost.InstanceType
 	}
-	if createHost.KeyName != "" {
-		ec2Settings.KeyName = createHost.KeyName
-	}
+	ec2Settings.KeyName = createHost.KeyName // never use the distro's key
 	if createHost.Region != "" {
 		ec2Settings.Region = createHost.Region
 	}

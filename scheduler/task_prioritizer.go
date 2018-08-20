@@ -3,6 +3,7 @@ package scheduler
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -24,6 +25,7 @@ type TaskPrioritizer interface {
 // CmpBasedTaskComparator runs the tasks through a slice of comparator functions
 // determining which is more important.
 type CmpBasedTaskComparator struct {
+	runtimeID      string
 	tasks          []task.Task
 	versions       map[string]version.Version
 	errsDuringSort []error
@@ -50,8 +52,9 @@ type CmpBasedTaskQueues struct {
 
 // NewCmpBasedTaskComparator returns a new task prioritizer, using the default set of comparators
 // as well as the setup functions necessary for those comparators.
-func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
+func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 	return &CmpBasedTaskComparator{
+		runtimeID: id,
 		setupFuncs: []sortSetupFunc{
 			cachePreviousTasks,
 			cacheSimilarFailing,
@@ -71,7 +74,9 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 	}
 }
 
-type CmpBasedTaskPrioritizer struct{}
+type CmpBasedTaskPrioritizer struct {
+	runtimeID string
+}
 
 // PrioritizeTask prioritizes the tasks to run. First splits the tasks into slices based on
 // whether they are part of patch versions or automatically created versions.
@@ -79,7 +84,7 @@ type CmpBasedTaskPrioritizer struct{}
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
 func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]version.Version) ([]task.Task, error) {
 
-	comparator := NewCmpBasedTaskComparator()
+	comparator := NewCmpBasedTaskComparator(prioritizer.runtimeID)
 	comparator.versions = versions
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
@@ -91,28 +96,27 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 		"runner":    RunnerName,
 		"operation": "prioritize tasks",
 	})
+
+	var (
+		startAt      time.Time
+		setupRuntime time.Duration
+		cmpRuntime   time.Duration
+	)
+
 	for _, taskList := range [][]task.Task{taskQueues.RepotrackerTasks, taskQueues.PatchTasks, taskQueues.HighPriorityTasks} {
 
 		comparator.tasks = taskList
 
-		grip.Debug(message.Fields{
-			"message":   "running setup for prioritizing tasks",
-			"distro":    distroId,
-			"runner":    RunnerName,
-			"operation": "prioritize tasks",
-		})
+		startAt = time.Now()
 		err := comparator.setupForSortingTasks(distroId)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error running setup for sorting tasks")
 		}
+		setupRuntime += time.Since(startAt)
 
-		grip.Debug(message.Fields{
-			"message":   "sorting tasks",
-			"distro":    distroId,
-			"runner":    RunnerName,
-			"operation": "prioritize tasks",
-		})
+		startAt = time.Now()
 		sort.Stable(comparator)
+		cmpRuntime += time.Since(startAt)
 
 		if len(comparator.errsDuringSort) > 0 {
 			errString := "The following errors were thrown while sorting:"
@@ -124,19 +128,24 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 
 		prioritizedTaskLists = append(prioritizedTaskLists, comparator.tasks)
 	}
+
 	prioritizedTaskQueues := CmpBasedTaskQueues{
 		RepotrackerTasks:  prioritizedTaskLists[0],
 		PatchTasks:        prioritizedTaskLists[1],
 		HighPriorityTasks: prioritizedTaskLists[2],
 	}
+
 	grip.Debug(message.Fields{
-		"message":             "finished prioritizing task queues",
-		"distro":              distroId,
-		"runner":              RunnerName,
-		"operation":           "prioritize tasks",
-		"repotracker tasks":   len(prioritizedTaskQueues.RepotrackerTasks),
-		"patch tasks":         len(prioritizedTaskQueues.PatchTasks),
-		"high priority tasks": len(prioritizedTaskQueues.HighPriorityTasks),
+		"message":                 "finished prioritizing task queues",
+		"instance":                prioritizer.runtimeID,
+		"distro":                  distroId,
+		"runner":                  RunnerName,
+		"operation":               "prioritize tasks",
+		"repotracker tasks":       len(prioritizedTaskQueues.RepotrackerTasks),
+		"patch tasks":             len(prioritizedTaskQueues.PatchTasks),
+		"high priority tasks":     len(prioritizedTaskQueues.HighPriorityTasks),
+		"setup_runtime_secs":      setupRuntime.Seconds(),
+		"comparison_runtime_secs": cmpRuntime.Seconds(),
 	})
 
 	comparator.tasks = comparator.mergeTasks(&prioritizedTaskQueues)
@@ -147,6 +156,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 // Run all of the setup functions necessary for prioritizing the tasks.
 // Returns an error if any of the setup funcs return an error.
 func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error {
+	startAt := time.Now()
 	for i, setupFunc := range self.setupFuncs {
 		if err := setupFunc(self); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -160,10 +170,12 @@ func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error 
 		}
 	}
 	grip.Debug(message.Fields{
-		"message":   "successfully ran sorting setup",
-		"distro":    distroId,
-		"runner":    RunnerName,
-		"operation": "prioritize tasks",
+		"message":       "successfully ran sorting setup",
+		"distro":        distroId,
+		"runner":        RunnerName,
+		"instance":      self.runtimeID,
+		"duration_secs": time.Since(startAt).Seconds(),
+		"operation":     "prioritize tasks",
 	})
 	return nil
 }
@@ -171,9 +183,7 @@ func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error 
 // Determine which of two tasks is more important, by running the tasks through
 // the comparator functions and returning the first definitive decision on which
 // is more important.
-func (self *CmpBasedTaskComparator) taskMoreImportantThan(task1,
-	task2 task.Task) (bool, error) {
-
+func (self *CmpBasedTaskComparator) taskMoreImportantThan(task1, task2 task.Task) (bool, error) {
 	// run through the comparators, and return the first definitive decision on
 	// which task is more important
 	for _, cmp := range self.comparators {
@@ -181,6 +191,7 @@ func (self *CmpBasedTaskComparator) taskMoreImportantThan(task1,
 		if err != nil {
 			return false, errors.WithStack(err)
 		}
+
 		switch ret {
 		case -1:
 			return false, nil
@@ -207,9 +218,11 @@ func (self *CmpBasedTaskComparator) Len() int {
 func (self *CmpBasedTaskComparator) Less(i, j int) bool {
 	moreImportant, err := self.taskMoreImportantThan(self.tasks[i],
 		self.tasks[j])
+
 	if err != nil {
 		self.errsDuringSort = append(self.errsDuringSort, err)
 	}
+
 	return moreImportant
 }
 

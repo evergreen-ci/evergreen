@@ -18,6 +18,7 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
         $scope.source = resp.data.source;
         $scope.enableFeedback = ($scope.source === "BF Suggestion Server");
         $scope.JiraLink = getJqlUrl(searchString);
+        $scope.featuresLink = resp.data.features_url;
         if (issues && issues.length > 0 ) {
           // we must sort with native js, since Angular does not
           // allow us to use conditionals when comparing two entries.

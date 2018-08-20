@@ -735,6 +735,82 @@ func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
 	s.tryDoubleTrigger(true)
 }
 
+func (s *taskSuite) TestRegressionByTestWithRegex() {
+	sub := event.Subscription{
+		ID:      bson.NewObjectId().Hex(),
+		Type:    event.ResourceTypeTask,
+		Trigger: triggerTaskRegressionByTest,
+		Selectors: []event.Selector{
+			{
+				Type: selectorProject,
+				Data: "myproj",
+			},
+		},
+		Subscriber: event.Subscriber{
+			Type:   event.EmailSubscriberType,
+			Target: "a@b.com",
+		},
+		TriggerData: map[string]string{
+			event.TestRegexKey: "test*",
+		},
+		Owner: "someone",
+	}
+	s.NoError(sub.Upsert())
+
+	v1 := version.Version{
+		Id:        "v1",
+		Requester: evergreen.RepotrackerVersionRequester,
+	}
+	s.NoError(v1.Insert())
+
+	t1 := task.Task{
+		Id:        "t1",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.TaskFailed,
+		Version:   "v1",
+		Project:   "myproj",
+	}
+	s.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:        "t2",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.TaskFailed,
+		Version:   "v1",
+		Project:   "myproj",
+	}
+	s.NoError(t2.Insert())
+
+	results := []testresult.TestResult{
+		{ID: bson.NewObjectId(), TaskID: "t1", TestFile: "test1", Status: evergreen.TestFailedStatus},
+		{ID: bson.NewObjectId(), TaskID: "t1", TestFile: "something", Status: evergreen.TestSucceededStatus},
+	}
+	s.NoError(testresult.InsertMany(results))
+	results = []testresult.TestResult{
+		{ID: bson.NewObjectId(), TaskID: "t2", TestFile: "test1", Status: evergreen.TestSucceededStatus},
+		{ID: bson.NewObjectId(), TaskID: "t2", TestFile: "something", Status: evergreen.TestFailedStatus},
+	}
+	s.NoError(testresult.InsertMany(results))
+
+	willNotify := event.EventLogEntry{
+		ResourceType: event.ResourceTypeTask,
+		ResourceId:   "t1",
+		EventType:    event.TaskFinished,
+		Data:         &event.TaskEventData{},
+	}
+	n, err := NotificationsFromEvent(&willNotify)
+	s.NoError(err)
+	s.Len(n, 1)
+	wontNotify := event.EventLogEntry{
+		ResourceType: event.ResourceTypeTask,
+		ResourceId:   "t2",
+		EventType:    event.TaskFinished,
+		Data:         &event.TaskEventData{},
+	}
+	n, err = NotificationsFromEvent(&wontNotify)
+	s.NoError(err)
+	s.Len(n, 0)
+}
+
 func (s *taskSuite) makeTaskTriggers(id string, execution int) *taskTriggers {
 	t := makeTaskTriggers()
 	e := event.EventLogEntry{

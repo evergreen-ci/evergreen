@@ -161,7 +161,7 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 	if vals.Get("start_at") == "" {
 		p.key = time.Now()
 	} else {
-		p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+		p.key, err = model.ParseTime(vals.Get("start_at"))
 		if err != nil {
 			return gimlet.ErrorResponse{
 				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", p.key, err.Error()),
@@ -273,9 +273,16 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 	vals := r.URL.Query()
 
 	var err error
-	p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
-	if err != nil {
-		return errors.WithStack(err)
+	if vals.Get("start_at") == "" {
+		p.key = time.Now()
+	} else {
+		p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", p.key, err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
 	}
 
 	p.limit, err = getLimit(vals)
@@ -293,7 +300,7 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if len(patches) == 0 {
-		return gimlet.NewJSONErrorResponse(gimlet.ErrorResponse{
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			Message:    "no patches found",
 			StatusCode: http.StatusNotFound,
 		})

@@ -230,12 +230,7 @@ func IsAbortable(t Task) bool {
 
 // IsFinished returns true if the project is no longer running
 func (t *Task) IsFinished() bool {
-	return t.Status == evergreen.TaskFailed ||
-		t.Status == evergreen.TaskSucceeded ||
-		t.Status == evergreen.TaskSystemFailed ||
-		t.Status == evergreen.TaskSystemTimedOut ||
-		t.Status == evergreen.TaskSystemUnresponse ||
-		t.Status == evergreen.TaskTestTimedOut
+	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
 // IsDispatchable return true if the task should be dispatched
@@ -762,6 +757,7 @@ func (t *Task) UpdateDisplayTask() error {
 	statuses := []string{}
 	var timeTaken time.Duration
 	var status string
+	wasFinished := t.IsFinished()
 	execTasks, err := Find(ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
@@ -841,7 +837,7 @@ func (t *Task) UpdateDisplayTask() error {
 
 	t.Status = status
 	t.TimeTaken = timeTaken
-	if t.IsFinished() {
+	if !wasFinished && t.IsFinished() {
 		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
 	}
 	return nil
@@ -983,6 +979,7 @@ func (t *Task) SetPriority(priority int64, user string) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting task dependencies")
 	}
+	ids = append(ids, t.ExecutionTasks...)
 
 	_, err = UpdateAll(
 		bson.M{"$or": []bson.M{

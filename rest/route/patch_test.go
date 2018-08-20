@@ -117,7 +117,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
-	s.NotEqual(http.StatusNotFound, resp.Status())
+	s.Equal(http.StatusNotFound, resp.Status())
 	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no patches found")
 }
 
@@ -171,6 +171,13 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 			s.Error(err)
 		}
 	}
+}
+
+func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
+	req, err := http.NewRequest("GET", "https://example.net/foo/?limit=10", nil)
+	s.Require().NoError(err)
+	s.NoError(s.route.Parse(context.Background(), req))
+	s.InDelta(time.Now().UnixNano(), s.route.key.UnixNano(), float64(time.Second))
 }
 
 ////////////////////////////////////////////////////////////////////////

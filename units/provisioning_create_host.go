@@ -17,7 +17,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-const createHostJobName = "provisioning-create-host"
+const (
+	createHostJobName = "provisioning-create-host"
+	// For container build
+	maxPollAttempts = 60
+	pollInterval    = 15 * time.Second
+)
 
 func init() {
 	registry.AddJobType(createHostJobName, func() amboy.Job {
@@ -90,6 +95,41 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
+	if j.host.ParentID == "" {
+		numHosts, err := host.CountRunningHosts(j.host.Distro.Id)
+		if err != nil {
+			j.AddError(errors.Wrap(err, "problem getting count of existing pool size"))
+			return
+		}
+
+		if numHosts > j.host.Distro.PoolSize {
+			grip.Info(message.Fields{
+				"host_id":   j.HostID,
+				"attempt":   j.CurrentAttempt,
+				"distro":    j.host.Distro.Id,
+				"job":       j.ID(),
+				"provider":  j.host.Provider,
+				"message":   "not provisioning host to respect maxhosts",
+				"max_hosts": j.host.Distro.PoolSize,
+			})
+
+			err = errors.Wrap(j.host.Remove(), "problem removing host intent")
+
+			j.AddError(err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"host_id":  j.HostID,
+				"attempt":  j.CurrentAttempt,
+				"distro":   j.host.Distro,
+				"job":      j.ID(),
+				"provider": j.host.Provider,
+				"message":  "could not remove intent document",
+				"outcome":  "host pool may exceed maxhost limit",
+			}))
+
+			return
+		}
+	}
+
 	if j.TimeInfo().MaxTime == 0 && !j.host.SpawnOptions.TimeoutSetup.IsZero() {
 		j.UpdateTimeInfo(amboy.JobTimeInfo{
 			MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
@@ -132,6 +172,16 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// spawned by Evergreen.
 	if err := j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
 		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
+	}
+
+	// Containers should wait on image builds, checking to see if the parent
+	// already has the image. If it does not, it should download it and wait
+	// on the job until it is finished downloading.
+	if j.host.ParentID != "" {
+		err := j.waitForContainerImageBuild(ctx)
+		if err != nil {
+			return errors.Wrap(err, "problem building container image")
+		}
 	}
 
 	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
@@ -205,4 +255,45 @@ func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 	return j.CurrentAttempt < j.MaxAttempts &&
 		j.host.Status != evergreen.HostStarting &&
 		ctx.Err() == nil
+}
+
+func (j *createHostJob) waitForContainerImageBuild(ctx context.Context) error {
+	imageURL := (*j.host.Distro.ProviderSettings)["image_url"].(string)
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	var ok bool
+	// Continuously poll DB to see if image is ready
+retryLoop:
+	for i := 0; i < maxPollAttempts; i++ {
+		select {
+		case <-ctx.Done():
+			return errors.New("building container image cancelled")
+		case <-timer.C:
+			parent, err := host.FindOneId(j.host.ParentID)
+			if err != nil {
+				return errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+			}
+			if ok = parent.ContainerImages[imageURL]; !ok {
+				//  If the image is not already present on the parent, run job to build
+				// the new image
+				if i == 0 {
+					buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
+					grip.Debug(message.Fields{
+						"error":   j.env.RemoteQueue().Put(buildingContainerJob),
+						"message": "Duplicate key being added to job to block building containers",
+					})
+				}
+				timer.Reset(pollInterval)
+				continue
+			}
+			// Image is present on parent, can move on to SpawnHost
+			break retryLoop
+		}
+	}
+	if !ok {
+		return errors.Errorf("Verifying image ready for '%s' timed out", imageURL)
+	}
+	return nil
 }

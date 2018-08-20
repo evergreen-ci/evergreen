@@ -346,6 +346,16 @@ func TestJIRADescription(t *testing.T) {
 			So(len(desc), ShouldEqual, 485)
 			So(strings.Contains(desc, "Host: N/A"), ShouldBeTrue)
 		})
+		Convey("the description should return old_task_id if present", func() {
+			j.data.Task.Id = "new_task"
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(strings.Contains(desc, "http://evergreen.ui/task/new_task/0"), ShouldBeTrue)
+			j.data.Task.OldTaskId = "old_task_id"
+			desc, err = j.getDescription()
+			So(err, ShouldBeNil)
+			So(strings.Contains(desc, "http://evergreen.ui/task/old_task_id/0"), ShouldBeTrue)
+		})
 	})
 }
 

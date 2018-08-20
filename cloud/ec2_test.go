@@ -11,8 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -42,7 +44,7 @@ func (s *EC2Suite) SetupSuite() {
 }
 
 func (s *EC2Suite) SetupTest() {
-	s.Require().NoError(db.Clear(host.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection, task.Collection, model.ProjectVarsCollection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: onDemandProvider,
@@ -100,10 +102,6 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	p.SecurityGroupIDs = []string{"sg-123456"}
 
 	s.NoError(p.Validate())
-	p.KeyName = ""
-	s.Error(p.Validate())
-	p.KeyName = "keyName"
-
 	p.BidPrice = -1
 	s.Error(p.Validate())
 	p.BidPrice = 1
@@ -444,6 +442,122 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
+func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
+	h := &host.Host{}
+	h.Distro.Id = "distro_id"
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.ProviderSettings = &map[string]interface{}{
+		"ami":           "ami",
+		"instance_type": "instanceType",
+		"key_name":      "",
+		"mount_points": []map[string]string{
+			map[string]string{"device_name": "device", "virtual_name": "virtual"},
+		},
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := s.onDemandManager.SpawnHost(ctx, h)
+	s.Error(err)
+}
+
+func (s *EC2Suite) TestSpawnHostForTask() {
+	h := &host.Host{}
+	h.Distro.Id = "distro_id"
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.ProviderSettings = &map[string]interface{}{
+		"ami":           "ami",
+		"instance_type": "instanceType",
+		"key_name":      "",
+		"mount_points": []map[string]string{
+			map[string]string{"device_name": "device", "virtual_name": "virtual"},
+		},
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
+	}
+
+	project := "example_project"
+	t := &task.Task{
+		Id:      "task_1",
+		Project: project,
+	}
+	h.SpawnOptions.TaskID = "task_1"
+	s.Require().NoError(t.Insert())
+	newVars := &model.ProjectVars{
+		Id: project,
+	}
+	s.Require().NoError(newVars.Insert())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := s.onDemandManager.SpawnHost(ctx, h)
+	s.NoError(err)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	runInput := *mock.RunInstancesInput
+	s.Equal("ami", *runInput.ImageId)
+	s.Equal("instanceType", *runInput.InstanceType)
+	s.Equal("evg_auto_example_project", *runInput.KeyName)
+	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
+	s.Nil(runInput.SecurityGroupIds)
+	s.Nil(runInput.SecurityGroups)
+	s.Nil(runInput.SubnetId)
+	describeInput := *mock.DescribeInstancesInput
+	s.Equal("instance_id", *describeInput.InstanceIds[0])
+	tagsInput := *mock.CreateTagsInput
+	s.Equal("instance_id", *tagsInput.Resources[0])
+	s.Len(tagsInput.Tags, 8)
+	var foundInstanceName bool
+	var foundDistroID bool
+	for _, tag := range tagsInput.Tags {
+		if *tag.Key == "name" {
+			foundInstanceName = true
+			s.Equal(*tag.Value, "instance_id")
+		}
+		if *tag.Key == "distro" {
+			foundDistroID = true
+			s.Equal(*tag.Value, "distro_id")
+		}
+	}
+	s.True(foundInstanceName)
+	s.True(foundDistroID)
+	s.Equal(base64OfSomeUserData, *runInput.UserData)
+
+	deleteInput := *mock.DeleteKeyPairInput
+	s.Equal("evg_auto_"+project, *deleteInput.KeyName)
+	createInput := *mock.CreateKeyPairInput
+	s.Equal("evg_auto_"+project, *createInput.KeyName)
+
+	k, err := model.GetAWSKeyForProject(project)
+	s.NoError(err)
+	s.Equal("evg_auto_"+project, k.Name)
+	s.Equal("key_material", k.Value)
+
+	// if we do it again, we shouldn't hit AWS for the key again
+	deleteInput.KeyName = aws.String("")
+	createInput.KeyName = aws.String("")
+	_, err = s.onDemandManager.SpawnHost(ctx, h)
+	s.NoError(err)
+	s.Equal("", *deleteInput.KeyName)
+	s.Equal("", *createInput.KeyName)
+	k, err = model.GetAWSKeyForProject(project)
+	s.NoError(err)
+	s.Equal("evg_auto_"+project, k.Name)
+	s.Equal("key_material", k.Value)
+}
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

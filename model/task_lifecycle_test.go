@@ -508,9 +508,10 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
-			Id:      "buildtest",
-			Status:  evergreen.BuildStarted,
-			Version: "abc",
+			Id:        "buildtest",
+			Status:    evergreen.BuildStarted,
+			Version:   "abc",
+			Activated: true,
 		}
 		v := &version.Version{
 			Id:     b.Version,
@@ -537,12 +538,14 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 
 		b.Tasks = []build.TaskCache{
 			{
-				Id:     testTask.Id,
-				Status: evergreen.TaskSucceeded,
+				Id:        testTask.Id,
+				Status:    evergreen.TaskStarted,
+				Activated: true,
 			},
 			{
-				Id:     anotherTask.Id,
-				Status: evergreen.TaskFailed,
+				Id:        anotherTask.Id,
+				Status:    evergreen.TaskFailed,
+				Activated: true,
 			},
 		}
 		So(b.Insert(), ShouldBeNil)
@@ -554,6 +557,8 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			updates := StatusChanges{}
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldBeEmpty)
+			So(updates.VersionComplete, ShouldBeFalse)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
@@ -578,10 +583,14 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		reset := func() {
 			b = &build.Build{
-				Id:      "buildtest",
-				Version: "abc",
+				Id:        "buildtest",
+				Version:   "abc",
+				Activated: true,
 				Tasks: []build.TaskCache{
-					{Id: "testone"},
+					{
+						Id:        "testone",
+						Activated: true,
+					},
 				},
 			}
 			v = &version.Version{
@@ -614,7 +623,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			reset()
 			updates := StatusChanges{}
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionSucceeded)
+			So(updates.VersionComplete, ShouldBeTrue)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -644,7 +657,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			})
 			So(err, ShouldBeNil)
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionSucceeded)
+			So(updates.VersionComplete, ShouldBeTrue)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -669,7 +686,11 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
+			So(updates.VersionComplete, ShouldBeTrue)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -690,13 +711,19 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
-			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
+			So(updates.VersionComplete, ShouldBeTrue)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.BuildComplete, ShouldBeTrue)
 
 			updates = StatusChanges{}
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
-			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
+			So(updates.VersionComplete, ShouldBeTrue)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.BuildComplete, ShouldBeTrue)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
@@ -708,6 +735,36 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				}
 			}
 			So(hasFailedTask, ShouldBeTrue)
+		})
+		Convey("incomplete versions report updates", func() {
+			reset()
+			b2 := &build.Build{
+				Id:        "buildtest2",
+				Version:   "abc",
+				Activated: false,
+				Status:    evergreen.BuildCreated,
+				Tasks: []build.TaskCache{
+					{
+						Id:     "testone2",
+						Status: evergreen.TaskUndispatched,
+					},
+				},
+			}
+			So(b2.Insert(), ShouldBeNil)
+			err := testTask.SetResults([]task.TestResult{
+				{
+					Status: evergreen.TestFailedStatus,
+				},
+			})
+			So(err, ShouldBeNil)
+			updates := StatusChanges{}
+			detail.Status = evergreen.TaskFailed
+			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.VersionNewStatus, ShouldEqual, evergreen.VersionFailed)
+			So(updates.VersionComplete, ShouldBeTrue)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.BuildComplete, ShouldBeTrue)
 		})
 	})
 }
@@ -744,8 +801,9 @@ func TestMarkEnd(t *testing.T) {
 
 	b.Tasks = []build.TaskCache{
 		{
-			Id:     testTask.Id,
-			Status: evergreen.TaskStarted,
+			Id:        testTask.Id,
+			Status:    evergreen.TaskStarted,
+			Activated: true,
 		},
 	}
 	assert.NoError(b.Insert())
@@ -1658,9 +1716,13 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
-	buildID := "buildtest"
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, ProjectRefCollection))
+	ref := ProjectRef{
+		Identifier: "sample",
+	}
+	require.NoError(ref.Insert())
 
+	buildID := "buildtest"
 	testTask := task.Task{
 		Id:          "testone",
 		DisplayName: "test 1",
@@ -1681,23 +1743,67 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		StartTime:   time.Now().Add(-time.Hour),
 	}
 	assert.NoError(anotherTask.Insert())
+	displayTask := task.Task{
+		Id:             "three",
+		DisplayName:    "display task",
+		Activated:      true,
+		DisplayOnly:    true,
+		BuildId:        buildID,
+		Project:        "sample",
+		Status:         evergreen.TaskStarted,
+		StartTime:      time.Now().Add(-time.Hour),
+		ExecutionTasks: []string{"exe0", "exe1"},
+	}
+	assert.NoError(displayTask.Insert())
+	exeTask0 := task.Task{
+		Id:          "exe0",
+		DisplayName: "execution 0",
+		Activated:   true,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	assert.True(exeTask0.IsPartOfDisplay())
+	assert.NoError(exeTask0.Insert())
+	exeTask1 := task.Task{
+		Id:          "exe1",
+		DisplayName: "execution 1",
+		Activated:   true,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	assert.True(exeTask1.IsPartOfDisplay())
+	assert.NoError(exeTask1.Insert())
 
 	b := &build.Build{
-		Id:      buildID,
-		Status:  evergreen.BuildStarted,
-		Version: "abc",
+		Id:        buildID,
+		Status:    evergreen.BuildStarted,
+		Activated: true,
+		Version:   "abc",
 		Tasks: []build.TaskCache{
 			{
-				Id:     testTask.Id,
-				Status: evergreen.TaskStarted,
+				Id:        testTask.Id,
+				Status:    evergreen.TaskStarted,
+				Activated: true,
 			},
 			{
-				Id:     anotherTask.Id,
-				Status: evergreen.TaskStarted,
+				Id:        anotherTask.Id,
+				Status:    evergreen.TaskStarted,
+				Activated: true,
+			},
+			{
+				Id:        displayTask.Id,
+				Status:    evergreen.TaskStarted,
+				Activated: true,
 			},
 		},
 	}
 	require.NoError(b.Insert())
+	assert.False(b.IsFinished())
+
 	v := &version.Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
@@ -1708,35 +1814,125 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 		Status: evergreen.TaskFailed,
 		Type:   "system",
 	}
+
 	updates := StatusChanges{}
 	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
 	assert.Empty(updates.BuildNewStatus)
-	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
-	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.False(updates.BuildComplete)
+	assert.Empty(updates.VersionNewStatus)
+	assert.False(updates.VersionComplete)
+	b, err := build.FindOneId(buildID)
+	assert.NoError(err)
+	complete, _ := b.AllCachedTasksOrCompileFinished()
+	assert.False(complete)
 
-	// test with compile task
+	updates = StatusChanges{}
+	assert.NoError(MarkEnd(&anotherTask, "", time.Now(), details, false, &updates))
+	assert.Empty(updates.BuildNewStatus)
+	assert.False(updates.BuildComplete)
+	assert.Empty(updates.VersionNewStatus)
+	assert.False(updates.VersionComplete)
+	b, err = build.FindOneId(buildID)
+	assert.NoError(err)
+	complete, _ = b.AllCachedTasksOrCompileFinished()
+	assert.False(complete)
+
+	updates = StatusChanges{}
+	assert.NoError(MarkEnd(&exeTask0, "", time.Now(), details, false, &updates))
+	assert.Empty(updates.BuildNewStatus)
+	assert.False(updates.BuildComplete)
+	assert.Empty(updates.VersionNewStatus)
+	assert.False(updates.VersionComplete)
+	b, err = build.FindOneId(buildID)
+	assert.NoError(err)
+	complete, _ = b.AllCachedTasksOrCompileFinished()
+	assert.False(complete)
+
+	updates = StatusChanges{}
+	assert.NoError(MarkEnd(&exeTask1, "", time.Now(), details, false, &updates))
+	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.True(updates.BuildComplete)
+	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
+	assert.True(updates.VersionComplete)
+	b, err = build.FindOneId(buildID)
+	assert.NoError(err)
+	complete, _ = b.AllCachedTasksOrCompileFinished()
+	assert.True(complete)
+}
+
+func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
 	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
-	testTask.Status = evergreen.TaskStarted
-	testTask.DisplayName = evergreen.CompileStage
-	b.Tasks[0].Status = evergreen.TaskStarted
+
+	buildID := "buildtest"
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: evergreen.CompileStage,
+		Activated:   false,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
 	require.NoError(testTask.Insert())
-	anotherTask.Status = evergreen.TaskUndispatched
-	anotherTask.DependsOn = []task.Dependency{
-		{
-			TaskId: testTask.Id,
-			Status: evergreen.TaskSucceeded,
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: "test 2",
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskUndispatched,
+		StartTime:   time.Now().Add(-time.Hour),
+		DependsOn: []task.Dependency{
+			{
+				TaskId: testTask.Id,
+				Status: evergreen.TaskSucceeded,
+			},
 		},
 	}
-	b.Tasks[1].Status = evergreen.TaskUndispatched
 	require.NoError(anotherTask.Insert())
+
+	b := &build.Build{
+		Id:        buildID,
+		Status:    evergreen.BuildStarted,
+		Activated: true,
+		Version:   "abc",
+		Tasks: []build.TaskCache{
+			{
+				Id:          testTask.Id,
+				DisplayName: evergreen.CompileStage,
+				Status:      evergreen.TaskStarted,
+				Activated:   true,
+			},
+			{
+				Id:        anotherTask.Id,
+				Activated: true,
+				Status:    evergreen.TaskStarted,
+			},
+		},
+	}
 	require.NoError(b.Insert())
+
+	v := &version.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
 	require.NoError(v.Insert())
 
-	details = &apimodels.TaskEndDetail{
+	details := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 		Type:   "test",
 	}
-	updates = StatusChanges{}
+	updates := StatusChanges{}
 	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.True(updates.BuildComplete)
+	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
+	assert.True(updates.VersionComplete)
+	b, err := build.FindOneId(buildID)
+	complete, _ := b.AllCachedTasksOrCompileFinished()
+	assert.True(complete)
+	assert.NoError(err)
+	assert.True(b.IsFinished())
 }

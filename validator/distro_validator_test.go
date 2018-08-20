@@ -197,9 +197,6 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			Convey("for ec2, it must have the security group", func() {
 				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
 			})
-			Convey("for ec2, it must have the key name", func() {
-				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
-			})
 		})
 		Convey("no error should be returned if the distro contains all required provider settings", func() {
 			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldResemble, []ValidationError{})

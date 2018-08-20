@@ -12,5 +12,4 @@ mciModule.run(function($templateCache) {
       '</div>' +
     '</div>'
   )
-
 })

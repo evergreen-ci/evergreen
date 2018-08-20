@@ -75,6 +75,9 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 	}
 
 	for p, hosts := range providers {
+		if len(hosts) == 0 {
+			continue
+		}
 		m, err := cloud.GetManager(ctx, p, j.env.Settings())
 		if err != nil {
 			j.AddError(errors.Wrap(err, "error getting cloud manager"))

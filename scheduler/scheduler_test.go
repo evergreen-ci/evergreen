@@ -484,10 +484,10 @@ func (s *SchedulerSuite) TestFindAvailableParent() {
 	s.NoError(task1.Insert())
 	s.NoError(task2.Insert())
 
-	availableParent, err := findAvailableParent(d)
+	availableParent, err := getNumContainersOnParents(d)
 	s.NoError(err)
 
-	s.Equal("host2", availableParent.Id)
+	s.Equal(2, len(availableParent))
 }
 
 func (s *SchedulerSuite) TestFindNoAvailableParent() {
@@ -548,9 +548,9 @@ func (s *SchedulerSuite) TestFindNoAvailableParent() {
 	s.NoError(task1.Insert())
 	s.NoError(task2.Insert())
 
-	availableParent, err := findAvailableParent(d)
-	s.EqualError(err, "No available parent found for container")
-	s.Empty(availableParent.Id)
+	availableParent, err := getNumContainersOnParents(d)
+	s.NoError(err)
+	s.Equal(0, len(availableParent))
 }
 
 func (s *SchedulerSuite) TestSpawnContainersStatic() {

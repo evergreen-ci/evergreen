@@ -109,24 +109,23 @@ func (a *APIApp) Run(ctx context.Context) error {
 		WriteTimeout:      time.Minute,
 	}
 
-	catcher := grip.NewBasicCatcher()
 	serviceWait := make(chan struct{})
 	go func() {
 		defer recovery.LogStackTraceAndContinue("app service")
-
-		grip.Noticef("starting app on: %s:$d", a.address, a.port)
-		catcher.Add(srv.ListenAndServe())
+		grip.Noticef("starting app on: %s:%d", a.address, a.port)
+		srv.ListenAndServe()
+		close(serviceWait)
 	}()
 
 	go func() {
 		defer recovery.LogStackTraceAndContinue("server shutdown")
-		catcher.Add(srv.Shutdown(ctx))
-		close(serviceWait)
+		<-ctx.Done()
+		grip.Debug(srv.Shutdown(ctx))
 	}()
 
 	<-serviceWait
 
-	return catcher.Resolve()
+	return nil
 }
 
 // SetPort allows users to configure a default port for the API
