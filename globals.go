@@ -198,6 +198,7 @@ var (
 		ProviderNameGce,
 		ProviderNameOpenstack,
 		ProviderNameVsphere,
+		ProviderNameMock,
 	}
 )
 

@@ -126,6 +126,8 @@ type Task struct {
 
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
+	// total estimated cost of hosts this task spawned
+	SpawnedHostCost float64 `bson:"spawned_host_cost,omitempty" json:"spawned_host_cost,omitempty"`
 
 	// test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
@@ -1108,6 +1110,19 @@ func (t *Task) SetCost(cost float64) error {
 		bson.M{
 			"$set": bson.M{
 				CostKey: cost,
+			},
+		},
+	)
+}
+
+func IncSpawnedHostCost(taskID string, cost float64) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskID,
+		},
+		bson.M{
+			"$inc": bson.M{
+				SpawnedHostCostKey: cost,
 			},
 		},
 	)

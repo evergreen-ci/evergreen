@@ -9,7 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -61,6 +63,54 @@ func TestTerminateHosts(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbHost)
 	assert.Equal(evergreen.HostTerminated, dbHost.Status)
+}
+
+func TestHostCosts(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostCosts")
+	assert := assert.New(t)
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	testutil.HandleTestingErr(db.ClearCollections(host.Collection, task.Collection), t, "error clearing host collection")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	hostID := "i-12345"
+	mcp := cloud.GetMockProvider()
+	mcp.Set(hostID, cloud.MockInstance{
+		IsUp:   true,
+		Status: cloud.StatusRunning,
+	})
+	h := &host.Host{
+		Id: hostID,
+		Distro: distro.Distro{
+			Provider: evergreen.ProviderNameMock,
+		},
+		Status:      evergreen.HostRunning,
+		StartedBy:   "t1",
+		Provider:    evergreen.ProviderNameMock,
+		Provisioned: true,
+		StartTime:   time.Now().Add(-5 * time.Minute),
+		SpawnOptions: host.SpawnOptions{
+			SpawnedByTask: true,
+		},
+	}
+	assert.NoError(h.Insert())
+	t1 := task.Task{
+		Id: "t1",
+	}
+	assert.NoError(t1.Insert())
+
+	j := NewHostTerminationJob(&mock.Environment{}, *h)
+	j.Run(ctx)
+	assert.NoError(j.Error())
+	dbHost, err := host.FindOne(host.ById(h.Id))
+	assert.NoError(err)
+	assert.NotNil(dbHost)
+	assert.Equal(evergreen.HostTerminated, dbHost.Status)
+	assert.InDelta(5, dbHost.TotalCost, 0.001)
+	dbTask, err := task.FindOneId(t1.Id)
+	assert.NoError(err)
+	assert.InDelta(5, dbTask.SpawnedHostCost, 0.001)
 }
 
 ////////////////////////////////////////////////////////////////////////

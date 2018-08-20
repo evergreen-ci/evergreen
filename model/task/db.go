@@ -58,6 +58,7 @@ var (
 	PriorityKey             = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey          = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	CostKey                 = bsonutil.MustHaveTag(Task{}, "Cost")
+	SpawnedHostCostKey      = bsonutil.MustHaveTag(Task{}, "SpawnedHostCost")
 	ExecutionTasksKey       = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey          = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey            = bsonutil.MustHaveTag(Task{}, "TaskGroup")
