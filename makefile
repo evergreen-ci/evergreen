@@ -32,8 +32,8 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 clientSource := main/evergreen.go
 
 xcPackages := agent command operations rest-client subprocess util
-distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/test.$(pkg))
-distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPacjages),$(packages)),$(buildDir)/race.$(pkg))
+distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/test.$(pkg))
+distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/race.$(pkg))
 
 distArtifacts :=  ./public ./service/templates ./alerts/templates
 distContents := $(clientBinaries) $(distArtifacts)
@@ -195,7 +195,7 @@ dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
-	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item)) --item makefile --item scripts --exclude "public/node_modules"
+	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distTestContents) $(distContents),--item $(item)) --item makefile --item scripts --exclude "public/node_modules"
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
 # end main build
