@@ -999,7 +999,7 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.NoError(taskDoc.Archive())
 	taskDoc.Execution += 1
 
-	tasks, err := FindOld(ByIDPrefix("task"))
+	tasks, err := FindOld(ByOldTaskID("task"))
 	assert.NoError(err)
 	assert.Len(tasks, 2)
 	assert.Equal(0, tasks[0].Execution)

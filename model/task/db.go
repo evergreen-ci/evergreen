@@ -114,13 +114,9 @@ func ById(id string) db.Q {
 	}})
 }
 
-func ByIDPrefix(id string) db.Q {
+func ByOldTaskID(id string) db.Q {
 	return db.Query(bson.M{
-		IdKey: bson.M{
-			"$regex": bson.RegEx{
-				Pattern: fmt.Sprintf("^%s", id),
-			},
-		},
+		OldTaskIdKey: id,
 	})
 }
 
