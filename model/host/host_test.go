@@ -2139,8 +2139,24 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			},
 		},
 		{
+			Id:     "running_host_task_building",
+			Status: evergreen.HostBuilding,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				TaskID:          "running_task",
+			},
+		},
+		{
 			Id:     "running_host_build",
 			Status: evergreen.HostRunning,
+			SpawnOptions: SpawnOptions{
+				TimeoutTeardown: time.Now().Add(time.Minute),
+				BuildID:         "running_build",
+			},
+		},
+		{
+			Id:     "running_host_build_starting",
+			Status: evergreen.HostStarting,
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				BuildID:         "running_build",
@@ -2185,17 +2201,48 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 
 	found, err = allHostsSpawnedByFinishedTasks()
 	assert.NoError(err)
-	assert.Len(found, 1)
-	assert.Equal("running_host_task", found[0].Id)
+	assert.Len(found, 2)
+	should := map[string]bool{
+		"running_host_task":          false,
+		"running_host_task_building": false,
+	}
+	for _, f := range found {
+		should[f.Id] = true
+	}
+	for k, v := range should {
+		assert.True(v, fmt.Sprintf("failed to find host %s", k))
+	}
 
 	found, err = allHostsSpawnedByFinishedBuilds()
 	assert.NoError(err)
-	assert.Len(found, 1)
-	assert.Equal("running_host_build", found[0].Id)
+	assert.Len(found, 2)
+	should = map[string]bool{
+		"running_host_build":          false,
+		"running_host_build_starting": false,
+	}
+	for _, f := range found {
+		should[f.Id] = true
+	}
+	for k, v := range should {
+		assert.True(v, fmt.Sprintf("failed to find host %s", k))
+	}
 
 	found, err = AllHostsSpawnedByTasksToTerminate()
 	assert.NoError(err)
-	assert.Len(found, 3)
+	assert.Len(found, 5)
+	should = map[string]bool{
+		"running_host_timeout":        false,
+		"running_host_task":           false,
+		"running_host_task_building":  false,
+		"running_host_build":          false,
+		"running_host_build_starting": false,
+	}
+	for _, f := range found {
+		should[f.Id] = true
+	}
+	for k, v := range should {
+		assert.True(v, fmt.Sprintf("failed to find host %s", k))
+	}
 }
 
 func TestFindByFirstProvisioningAttempt(t *testing.T) {

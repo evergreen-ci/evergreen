@@ -192,7 +192,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 			"as":           runningTasks,
 		}},
 		{"$unwind": "$" + runningTasks},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: bson.M{"$in": evergreen.UphostStatus}}},
 		{"$project": bson.M{runningTasks: 0}},
 	}
 	var hosts []Host
@@ -213,7 +213,7 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 			"as":           runningBuilds,
 		}},
 		{"$unwind": "$" + runningBuilds},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: bson.M{"$in": evergreen.UphostStatus}}},
 		{"$project": bson.M{runningBuilds: 0}},
 	}
 	var hosts []Host
