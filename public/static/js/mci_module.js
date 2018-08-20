@@ -4,6 +4,14 @@ _.templateSettings = {
   interpolate: /\{(.+?)\}/g
 }
 
+_.mixin({
+  sum: function(coll) {
+    return _.reduce(coll, function(m, d) {
+      return m + d
+    }, 0)
+  }
+})
+
 var mciModule = angular.module('MCI', [
   'filters.common',
   'directives.eventLogs',
