@@ -68,63 +68,27 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	s.subs = []event.Subscription{
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypePatch,
-			Trigger:      "outcome",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
+		event.NewSubscriptionByID(event.ResourceTypePatch, "outcome", s.event.ResourceId, event.Subscriber{
+			Type: event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{
+				URL:    "http://example.com/2",
+				Secret: []byte("secret"),
 			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
+		}),
+		event.NewSubscriptionByID(event.ResourceTypePatch, "success", s.event.ResourceId, event.Subscriber{
+			Type: event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{
+				URL:    "http://example.com/2",
+				Secret: []byte("secret"),
 			},
-			Owner: "someone",
-		},
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypePatch,
-			Trigger:      "success",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
+		}),
+		event.NewSubscriptionByID(event.ResourceTypePatch, "failure", s.event.ResourceId, event.Subscriber{
+			Type: event.EvergreenWebhookSubscriberType,
+			Target: &event.WebhookSubscriber{
+				URL:    "http://example.com/2",
+				Secret: []byte("secret"),
 			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypePatch,
-			Trigger:      "failure",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
+		}),
 	}
 
 	for i := range s.subs {

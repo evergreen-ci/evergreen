@@ -430,10 +430,10 @@ func CreateOrUpdateImplicitSubscription(resourceType string, id string,
 	return sub, nil
 }
 
-func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
+func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subscription {
 	return Subscription{
 		ResourceType: ResourceTypePatch,
-		Trigger:      triggerOutcome,
+		Trigger:      trigger,
 		Selectors: []Selector{
 			{
 				Type: "id",
@@ -442,6 +442,10 @@ func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 		},
 		Subscriber: sub,
 	}
+}
+
+func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
+	return NewSubscriptionByID(ResourceTypePatch, triggerOutcome, id, sub)
 }
 
 func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscription {
