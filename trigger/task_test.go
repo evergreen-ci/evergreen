@@ -74,64 +74,18 @@ func (s *taskSuite) SetupTest() {
 	}
 	s.NoError(v.Insert())
 
+	apiSub := event.Subscriber{
+		Type: event.EvergreenWebhookSubscriberType,
+		Target: &event.WebhookSubscriber{
+			URL:    "http://example.com/2",
+			Secret: []byte("secret"),
+		},
+	}
+
 	s.subs = []event.Subscription{
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeTask,
-			Trigger:      "outcome",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeTask,
-			Trigger:      "success",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeTask,
-			Trigger:      "failure",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
+		event.NewSubscriptionByID(event.ResourceTypeTask, triggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, triggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, triggerFailure, s.event.ResourceId, apiSub),
 		{
 			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeTask,
