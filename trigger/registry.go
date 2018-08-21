@@ -9,8 +9,9 @@ import (
 )
 
 var registry = triggerRegistry{
-	handlers: map[registryKey]eventHandlerFactory{},
-	lock:     sync.RWMutex{},
+	handlers:               map[registryKey]eventHandlerFactory{},
+	handlersByResourceType: map[string][]eventHandlerFactory{},
+	lock: sync.RWMutex{},
 }
 
 type registryKey struct {
@@ -19,8 +20,9 @@ type registryKey struct {
 }
 
 type triggerRegistry struct {
-	handlers map[registryKey]eventHandlerFactory
-	lock     sync.RWMutex
+	handlers               map[registryKey]eventHandlerFactory
+	handlersByResourceType map[string][]eventHandlerFactory
+	lock                   sync.RWMutex
 }
 
 func (r *triggerRegistry) eventHandler(resourceType, eventDataType string) eventHandler {
@@ -49,14 +51,17 @@ func (r *triggerRegistry) registerEventHandler(resourceType, eventData string, h
 		panic(fmt.Sprintf("tried to register an eventHandler with duplicate key '%s'", resourceType))
 	}
 
+	r.handlersByResourceType[resourceType] = append(r.handlersByResourceType[resourceType], h)
 	r.handlers[key] = h
 }
 
-func ValidateTrigger(resourceType, eventDataType, triggerName string) bool {
-	h := registry.eventHandler(resourceType, eventDataType)
-	if h == nil {
-		return false
+func ValidateTrigger(resourceType, triggerName string) bool {
+	handlers := registry.handlersByResourceType[resourceType]
+	for i := range handlers {
+		if handlers[i]().ValidateTrigger(triggerName) {
+			return true
+		}
 	}
 
-	return h.ValidateTrigger(triggerName)
+	return false
 }
