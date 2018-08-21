@@ -1650,7 +1650,7 @@ func resetTaskData() error {
 	if err := displayTask.Insert(); err != nil {
 		return err
 	}
-	if err := displayTask.UpdateDisplayTask(); err != nil {
+	if err := UpdateDisplayTask(displayTask); err != nil {
 		return err
 	}
 	return nil

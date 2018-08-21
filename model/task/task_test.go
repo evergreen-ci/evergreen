@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -807,110 +806,6 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[7]}).SystemUnresponsive)
 	assert.Equal(1, GetResultCounts([]Task{tasks[8]}).TestTimedOut)
 	assert.Equal(1, GetResultCounts([]Task{tasks[9]}).SetupFailed)
-}
-
-func TestDisplayTaskUpdates(t *testing.T) {
-	testutil.HandleTestingErr(db.ClearCollections(Collection, event.AllLogCollection), t, "error clearing collection")
-	assert := assert.New(t)
-	dt := Task{
-		Id:          "dt",
-		DisplayOnly: true,
-		Status:      evergreen.TaskUndispatched,
-		Activated:   false,
-		ExecutionTasks: []string{
-			"task1",
-			"task2",
-			"task3",
-			"task4",
-		},
-	}
-	assert.NoError(dt.Insert())
-	dt2 := Task{
-		Id:          "dt2",
-		DisplayOnly: true,
-		Status:      evergreen.TaskUndispatched,
-		Activated:   false,
-		ExecutionTasks: []string{
-			"task5",
-			"task6",
-		},
-	}
-	assert.NoError(dt2.Insert())
-	task1 := Task{
-		Id:         "task1",
-		Status:     evergreen.TaskFailed,
-		TimeTaken:  3 * time.Minute,
-		StartTime:  time.Date(2000, 0, 0, 1, 1, 1, 0, time.Local),
-		FinishTime: time.Date(2000, 0, 0, 1, 9, 1, 0, time.Local),
-	}
-	assert.NoError(task1.Insert())
-	task2 := Task{
-		Id:         "task2",
-		Status:     evergreen.TaskSucceeded,
-		TimeTaken:  2 * time.Minute,
-		StartTime:  time.Date(2000, 0, 0, 0, 30, 0, 0, time.Local), // this should end up as the start time for dt1
-		FinishTime: time.Date(2000, 0, 0, 1, 0, 5, 0, time.Local),
-	}
-	assert.NoError(task2.Insert())
-	task3 := Task{
-		Id:         "task3",
-		Activated:  true,
-		Status:     evergreen.TaskSystemUnresponse,
-		TimeTaken:  5 * time.Minute,
-		StartTime:  time.Date(2000, 0, 0, 0, 44, 0, 0, time.Local),
-		FinishTime: time.Date(2000, 0, 0, 1, 0, 1, 0, time.Local),
-	}
-	assert.NoError(task3.Insert())
-	task4 := Task{
-		Id:         "task4",
-		Activated:  true,
-		Status:     evergreen.TaskSystemUnresponse,
-		TimeTaken:  1 * time.Minute,
-		StartTime:  time.Date(2000, 0, 0, 1, 0, 20, 0, time.Local),
-		FinishTime: time.Date(2000, 0, 0, 1, 22, 0, 0, time.Local), // this should end up as the end time for dt1
-	}
-	assert.NoError(task4.Insert())
-	task5 := Task{
-		Id:        "task5",
-		Activated: true,
-		Status:    evergreen.TaskUndispatched,
-	}
-	assert.NoError(task5.Insert())
-	task6 := Task{
-		Id:        "task6",
-		Activated: true,
-		Status:    evergreen.TaskSucceeded,
-	}
-	assert.NoError(task6.Insert())
-
-	// test that updating the status + activated from execution tasks works
-	assert.NoError(dt.UpdateDisplayTask())
-	dbTask, err := FindOne(ById(dt.Id))
-	assert.NoError(err)
-	assert.NotNil(dbTask)
-	assert.Equal(evergreen.TaskFailed, dbTask.Status)
-	assert.True(dbTask.Activated)
-	assert.Equal(11*time.Minute, dbTask.TimeTaken)
-	assert.Equal(task2.StartTime, dbTask.StartTime)
-	assert.Equal(task4.FinishTime, dbTask.FinishTime)
-
-	// test that you can't update an execution task
-	assert.Error(task1.UpdateDisplayTask())
-
-	// test that a display task with a finished + unstarted task is "scheduled"
-	assert.NoError(dt2.UpdateDisplayTask())
-	dbTask, err = FindOne(ById(dt2.Id))
-	assert.NoError(err)
-	assert.NotNil(dbTask)
-	assert.Equal(evergreen.TaskStarted, dbTask.Status)
-
-	// check that the updates above logged an event for the first one
-	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(dt.Id))
-	assert.NoError(err)
-	assert.Len(events, 1)
-	events, err = event.Find(event.AllLogCollection, event.TaskEventsForId(dt2.Id))
-	assert.NoError(err)
-	assert.Len(events, 0)
 }
 
 func TestMergeTestResultsBulk(t *testing.T) {
