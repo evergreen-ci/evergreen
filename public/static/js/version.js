@@ -98,7 +98,6 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
 
     $mdDialog.show(promise).then(function(data){
-      addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
       if (data.resource_type === "VERSION") {
         addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
 

@@ -15,6 +15,7 @@ import (
 type remoteBase struct {
 	started    bool
 	driver     Driver
+	driverType string
 	channel    chan amboy.Job
 	blocked    map[string]struct{}
 	dispatched map[string]struct{}
@@ -123,33 +124,43 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			})
 
 			if err := q.driver.Save(j); err != nil {
-				timer.Reset(retryInterval)
 				if time.Since(startAt) > time.Minute+LockTimeout {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
-						"driver_type": fmt.Sprintf("%T", q.driver),
+						"driver_type": q.driverType,
 						"retry_count": count,
 						"driver_id":   q.driver.ID(),
 						"message":     "job took too long to mark complete",
 					}))
-					return
 				} else if count > 10 {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
+						"driver_type": q.driverType,
 						"job_type":    j.Type().Name,
-						"driver_type": fmt.Sprintf("%T", q.driver),
 						"driver_id":   q.driver.ID(),
 						"retry_count": count,
-						"message":     " after 10 retries, aborting marking job complete",
+						"message":     "after 10 retries, aborting marking job complete",
 					}))
-					return
+				} else {
+					timer.Reset(retryInterval)
+					continue
 				}
-
-				continue
 			}
 
-			grip.CatchWarning(q.driver.Unlock(j))
+			grip.Error(message.WrapError(q.driver.Unlock(j),
+				message.Fields{
+					"job_id":      id,
+					"job_type":    j.Type().Name,
+					"driver_type": q.driverType,
+					"driver_id":   q.driver.ID(),
+					"message":     "problem unlocking remote job",
+					"impact": []string{
+						"stuck jobs",
+						"redundant work",
+						"collisions",
+					},
+				}))
 
 			q.mutex.Lock()
 			defer q.mutex.Unlock()
@@ -230,6 +241,7 @@ func (q *remoteBase) SetDriver(d Driver) error {
 	}
 
 	q.driver = d
+	q.driverType = fmt.Sprintf("%T", d)
 	return nil
 }
 
