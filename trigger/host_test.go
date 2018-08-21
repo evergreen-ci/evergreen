@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func TestHostTriggers(t *testing.T) {
@@ -49,26 +48,10 @@ func (s *hostSuite) SetupTest() {
 	}
 
 	s.subs = []event.Subscription{
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeHost,
-			Trigger:      triggerExpiration,
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.t.host.Id,
-				},
-				{
-					Type: selectorObject,
-					Data: objectHost,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type:   event.EmailSubscriberType,
-				Target: "foo@bar.com",
-			},
-			Owner: "me",
-		},
+		event.NewSubscriptionByID(event.ResourceTypeHost, triggerExpiration, s.t.host.Id, event.Subscriber{
+			Type:   event.EmailSubscriberType,
+			Target: "foo@bar.com",
+		}),
 	}
 
 	for i := range s.subs {
