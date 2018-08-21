@@ -74,68 +74,22 @@ func (s *taskSuite) SetupTest() {
 	}
 	s.NoError(v.Insert())
 
+	apiSub := event.Subscriber{
+		Type: event.EvergreenWebhookSubscriberType,
+		Target: &event.WebhookSubscriber{
+			URL:    "http://example.com/2",
+			Secret: []byte("secret"),
+		},
+	}
+
 	s.subs = []event.Subscription{
+		event.NewSubscriptionByID(event.ResourceTypeTask, triggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, triggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeTask, triggerFailure, s.event.ResourceId, apiSub),
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: "outcome",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: "success",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: "failure",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: triggerExceedsDuration,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -152,9 +106,9 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: triggerRuntimeChangeByPercent,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -171,9 +125,9 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: triggerRuntimeChangeByPercent,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "project",
@@ -737,9 +691,9 @@ func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
 
 func (s *taskSuite) TestRegressionByTestWithRegex() {
 	sub := event.Subscription{
-		ID:      bson.NewObjectId().Hex(),
-		Type:    event.ResourceTypeTask,
-		Trigger: triggerTaskRegressionByTest,
+		ID:           bson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      triggerTaskRegressionByTest,
 		Selectors: []event.Selector{
 			{
 				Type: selectorProject,

@@ -577,8 +577,8 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 
 func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
 	subscriptionBase := event.Subscription{
-		Type:    event.ResourceTypeVersion,
-		Trigger: "build-break",
+		ResourceType: event.ResourceTypeVersion,
+		Trigger:      "build-break",
 		Selectors: []event.Selector{
 			{
 				Type: "object",

@@ -55,68 +55,22 @@ func (s *buildSuite) SetupTest() {
 		Data:         s.data,
 	}
 
+	apiSub := event.Subscriber{
+		Type: event.EvergreenWebhookSubscriberType,
+		Target: &event.WebhookSubscriber{
+			URL:    "http://example.com/2",
+			Secret: []byte("secret"),
+		},
+	}
+
 	s.subs = []event.Subscription{
+		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeBuild, triggerFailure, s.event.ResourceId, apiSub),
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: "outcome",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: "success",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: "failure",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: triggerExceedsDuration,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeBuild,
+			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -133,9 +87,9 @@ func (s *buildSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: triggerRuntimeChangeByPercent,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeBuild,
+			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -288,7 +242,7 @@ func (s *buildSuite) TestTaskStatusToDesc() {
 func (s *buildSuite) TestBuildExceedsTime() {
 	// build that exceeds time should generate
 	s.t.event = &event.EventLogEntry{
-		EventType: event.BuildStateChange,
+		ResourceType: event.BuildStateChange,
 	}
 	s.t.data.Status = evergreen.BuildSucceeded
 	s.t.build.TimeTaken = 20 * time.Minute
@@ -314,7 +268,7 @@ func (s *buildSuite) TestBuildRuntimeChange() {
 	// no previous task should not generate
 	s.build.TimeTaken = 20 * time.Minute
 	s.t.event = &event.EventLogEntry{
-		EventType: event.BuildStateChange,
+		ResourceType: event.BuildStateChange,
 	}
 	s.t.data.Status = evergreen.BuildSucceeded
 	n, err := s.t.buildRuntimeChange(&s.subs[4])

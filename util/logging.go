@@ -10,7 +10,7 @@ import (
 
 func MakeNotificationErrorHandler(name string) send.ErrorHandler {
 	return func(err error, m message.Composer) {
-		if err != nil {
+		if err == nil {
 			return
 		}
 

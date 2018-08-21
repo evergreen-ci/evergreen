@@ -67,64 +67,18 @@ func (s *patchSuite) SetupTest() {
 		Data:         s.data,
 	}
 
+	apiSub := event.Subscriber{
+		Type: event.EvergreenWebhookSubscriberType,
+		Target: &event.WebhookSubscriber{
+			URL:    "http://example.com/2",
+			Secret: []byte("secret"),
+		},
+	}
+
 	s.subs = []event.Subscription{
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypePatch,
-			Trigger: "outcome",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypePatch,
-			Trigger: "success",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypePatch,
-			Trigger: "failure",
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
+		event.NewSubscriptionByID(event.ResourceTypePatch, triggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, triggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypePatch, triggerFailure, s.event.ResourceId, apiSub),
 	}
 
 	for i := range s.subs {

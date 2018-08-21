@@ -46,7 +46,7 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.Subscription:
 		s.ID = ToAPIString(v.ID)
-		s.ResourceType = ToAPIString(v.Type)
+		s.ResourceType = ToAPIString(v.ResourceType)
 		s.Trigger = ToAPIString(v.Trigger)
 		s.Owner = ToAPIString(v.Owner)
 		s.OwnerType = ToAPIString(string(v.OwnerType))
@@ -83,7 +83,7 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 func (s *APISubscription) ToService() (interface{}, error) {
 	out := event.Subscription{
 		ID:             FromAPIString(s.ID),
-		Type:           FromAPIString(s.ResourceType),
+		ResourceType:   FromAPIString(s.ResourceType),
 		Trigger:        FromAPIString(s.Trigger),
 		Owner:          FromAPIString(s.Owner),
 		OwnerType:      event.OwnerType(FromAPIString(s.OwnerType)),

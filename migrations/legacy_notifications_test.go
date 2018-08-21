@@ -180,7 +180,7 @@ func (s *legacyNotificationsSuite) TestMigration() {
 	s.NoError(q.All(&out))
 	s.Require().Len(out, 1)
 
-	s.Equal("TASK", out[0].Type)
+	s.Equal("TASK", out[0].ResourceType)
 	s.Equal("project", string(out[0].OwnerType))
 	s.Equal("mongodb-mongo-master", string(out[0].Owner))
 	s.Equal("regression", out[0].Trigger)
