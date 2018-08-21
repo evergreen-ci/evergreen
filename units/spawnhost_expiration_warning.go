@@ -21,7 +21,6 @@ import (
 
 const (
 	spawnhostExpirationWarningsName = "spawnhost-expiration-warnings"
-	legacyAlertsSubscription        = "legacy-alerts"
 )
 
 func init() {
