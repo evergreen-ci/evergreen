@@ -1065,3 +1065,23 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	assert.Equal(1, task01.Execution)
 	assert.Len(task01.LocalTestResults, 1)
 }
+
+func TestGetTestResultsForDisplayTask(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
+	dt := Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et"},
+	}
+	assert.NoError(dt.Insert())
+	test := testresult.TestResult{
+		TaskID:   "et",
+		TestFile: "myTest",
+	}
+	assert.NoError(test.Insert())
+	results, err := dt.GetTestResultsForDisplayTask()
+	assert.NoError(err)
+	assert.Len(results, 1)
+	assert.Equal("myTest", results[0].TestFile)
+}

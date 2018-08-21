@@ -111,6 +111,12 @@ func (qp *QueueProcessor) LoadAlertContext(a *alert.AlertRequest) (*AlertContext
 		}
 
 		if aCtx.Task != nil {
+			if aCtx.Task.DisplayOnly {
+				err = aCtx.Task.MergeNewTestResults()
+				if err != nil {
+					return nil, errors.Wrap(err, "error getting test results")
+				}
+			}
 			// override build and version ID with the ones this task belongs to
 			buildId = aCtx.Task.BuildId
 			versionId = aCtx.Task.Version
