@@ -432,7 +432,7 @@ func CreateOrUpdateImplicitSubscription(resourceType string, id string,
 
 func NewSubscriptionByID(resourceType, trigger, id string, sub Subscriber) Subscription {
 	return Subscription{
-		ResourceType: ResourceTypePatch,
+		ResourceType: resourceType,
 		Trigger:      trigger,
 		Selectors: []Selector{
 			{
