@@ -100,7 +100,7 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-// FindSubscriptions finds all subscriptions of matching resourceResourceType, and whose
+// FindSubscriptions finds all subscriptions of matching resourceType, and whose
 // selectors match the selectors slice
 func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
 	if len(selectors) == 0 {
@@ -479,10 +479,10 @@ func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscripti
 	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, "expiration")
 }
 
-func NewSubscriptionByOwner(owner string, sub Subscriber, resourceResourceType, trigger string) Subscription {
+func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
 	return Subscription{
 		ID:           bson.NewObjectId().Hex(),
-		ResourceType: resourceResourceType,
+		ResourceType: resourceType,
 		Trigger:      trigger,
 		Selectors: []Selector{
 			{
