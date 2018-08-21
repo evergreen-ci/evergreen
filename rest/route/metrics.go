@@ -41,7 +41,7 @@ func (p *taskSystemMetricsHandler) Parse(ctx context.Context, r *http.Request) e
 	vals := r.URL.Query()
 
 	var err error
-	p.key, err = time.ParseInLocation(model.APITimeFormat, vals.Get("start_at"), time.FixedZone("", 0))
+	p.key, err = model.ParseTime(vals.Get("start_at"))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -133,7 +133,7 @@ func (p *taskProcessMetricsHandler) Parse(ctx context.Context, r *http.Request) 
 	key := vals.Get("start_at")
 
 	var err error
-	p.key, err = time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
+	p.key, err = model.ParseTime(key)
 	if err != nil {
 		return errors.WithStack(err)
 	}
