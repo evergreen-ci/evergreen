@@ -44,8 +44,8 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -73,7 +73,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
-	s.Equal("atype", dbSubscriptions[0].Type)
+	s.Equal("TASK", dbSubscriptions[0].Type)
 	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
 	s.Equal("slack", dbSubscriptions[0].Subscriber.Type)
 
@@ -81,8 +81,8 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	id := dbSubscriptions[0].ID
 	body = []map[string]interface{}{{
 		"id":            id,
-		"resource_type": "new type",
-		"trigger":       "atrigger",
+		"resource_type": "PATCH",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -108,15 +108,15 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	dbSubscriptions, err = event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Len(dbSubscriptions, 1)
-	s.Equal("new type", dbSubscriptions[0].Type)
+	s.Equal("PATCH", dbSubscriptions[0].Type)
 }
 
 func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "myproj",
 		"owner_type":    "project",
 		"selectors": []map[string]string{{
@@ -143,7 +143,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("myproj", event.OwnerTypeProject)
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
-	s.Equal("atype", dbSubscriptions[0].Type)
+	s.Equal("TASK", dbSubscriptions[0].Type)
 	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
 	s.Equal("email", dbSubscriptions[0].Subscriber.Type)
 
@@ -151,8 +151,8 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	id := dbSubscriptions[0].ID
 	body = []map[string]interface{}{{
 		"id":            id,
-		"resource_type": "new type",
-		"trigger":       "atrigger",
+		"resource_type": "PATCH",
+		"trigger":       "outcome",
 		"owner":         "myproj",
 		"owner_type":    "project",
 		"selectors": []map[string]string{{
@@ -182,7 +182,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	resp = h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 	sub := resp.Data().([]model.APISubscription)
-	s.Equal("new type", model.FromAPIString(sub[0].ResourceType))
+	s.Equal("PATCH", model.FromAPIString(sub[0].ResourceType))
 
 	// delete the subscription
 	d := &subscriptionDeleteHandler{sc: s.sc, id: id}
@@ -197,8 +197,8 @@ func (s *SubscriptionRouteSuite) TestPostUnauthorizedUser() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "not_me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -276,8 +276,8 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -301,8 +301,8 @@ func (s *SubscriptionRouteSuite) TestDisallowedSubscription() {
 
 	//test that project-level subscriptions are allowed
 	body = []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -329,8 +329,8 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -353,8 +353,8 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: foo must be a number")
 
 	body = []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -377,8 +377,8 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: -2 cannot be negative")
 
 	body = []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -401,8 +401,8 @@ func (s *SubscriptionRouteSuite) TestInvalidTriggerData() {
 	s.EqualError(s.postHandler.Parse(ctx, request), "400 (Bad Request): Error validating subscription: unable to parse a as float: strconv.ParseFloat: parsing \"a\": invalid syntax")
 
 	body = []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"selectors": []map[string]string{{
@@ -429,8 +429,8 @@ func (s *SubscriptionRouteSuite) TestInvalidRegexSelectors() {
 	defer cancel()
 
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"regex_selectors": []map[string]string{{
@@ -466,8 +466,8 @@ func (s *SubscriptionRouteSuite) TestRejectSubscriptionWithoutSelectors() {
 	defer cancel()
 
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"subscriber": map[string]string{
@@ -489,8 +489,8 @@ func (s *SubscriptionRouteSuite) TestAcceptSubscriptionWithOnlyRegexSelectors() 
 	defer cancel()
 
 	body := []map[string]interface{}{{
-		"resource_type": "atype",
-		"trigger":       "atrigger",
+		"resource_type": "TASK",
+		"trigger":       "outcome",
 		"owner":         "me",
 		"owner_type":    "person",
 		"regex_selectors": []map[string]string{{
