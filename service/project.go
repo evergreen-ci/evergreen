@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -360,6 +361,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		subscription.OwnerType = event.OwnerTypeProject
 		subscription.Owner = projectRef.Identifier
+		if !trigger.ValidateTrigger(subscription.Type, subscription.Trigger) {
+			catcher.Add(errors.Errorf("subscription type/trigger is invalid: %s/%s", subscription.Type, subscription.Trigger))
+			continue
+		}
 		if err = subscription.Upsert(); err != nil {
 			catcher.Add(err)
 		}

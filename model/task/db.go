@@ -58,6 +58,7 @@ var (
 	PriorityKey             = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey          = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	CostKey                 = bsonutil.MustHaveTag(Task{}, "Cost")
+	SpawnedHostCostKey      = bsonutil.MustHaveTag(Task{}, "SpawnedHostCost")
 	ExecutionTasksKey       = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey          = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey            = bsonutil.MustHaveTag(Task{}, "TaskGroup")
@@ -114,13 +115,9 @@ func ById(id string) db.Q {
 	}})
 }
 
-func ByIDPrefix(id string) db.Q {
+func ByOldTaskID(id string) db.Q {
 	return db.Query(bson.M{
-		IdKey: bson.M{
-			"$regex": bson.RegEx{
-				Pattern: fmt.Sprintf("^%s", id),
-			},
-		},
+		OldTaskIdKey: id,
 	})
 }
 

@@ -999,7 +999,7 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.NoError(taskDoc.Archive())
 	taskDoc.Execution += 1
 
-	tasks, err := FindOld(ByIDPrefix("task"))
+	tasks, err := FindOld(ByOldTaskID("task"))
 	assert.NoError(err)
 	assert.Len(tasks, 2)
 	assert.Equal(0, tasks[0].Execution)
@@ -1064,4 +1064,24 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	assert.Equal("task", task01.Id)
 	assert.Equal(1, task01.Execution)
 	assert.Len(task01.LocalTestResults, 1)
+}
+
+func TestGetTestResultsForDisplayTask(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
+	dt := Task{
+		Id:             "dt",
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"et"},
+	}
+	assert.NoError(dt.Insert())
+	test := testresult.TestResult{
+		TaskID:   "et",
+		TestFile: "myTest",
+	}
+	assert.NoError(test.Insert())
+	results, err := dt.GetTestResultsForDisplayTask()
+	assert.NoError(err)
+	assert.Len(results, 1)
+	assert.Equal("myTest", results[0].TestFile)
 }

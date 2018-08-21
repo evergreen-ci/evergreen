@@ -489,6 +489,8 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 		Project: project,
 	}
 	h.SpawnOptions.TaskID = "task_1"
+	h.StartedBy = "task_1"
+	h.SpawnOptions.SpawnedByTask = true
 	s.Require().NoError(t.Insert())
 	newVars := &model.ProjectVars{
 		Id: project,

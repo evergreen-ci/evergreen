@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -55,6 +56,13 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    "Error parsing subscription interface",
+			}
+		}
+
+		if !trigger.ValidateTrigger(dbSubscription.Type, dbSubscription.Trigger) {
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("subscription type/trigger is invalid: %s/%s", dbSubscription.Type, dbSubscription.Trigger),
 			}
 		}
 

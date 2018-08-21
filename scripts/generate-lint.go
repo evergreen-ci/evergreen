@@ -16,7 +16,7 @@ import (
 
 const (
 	lintPrefix        = "lint"
-	lintVariant       = "archlinux-docker"
+	lintVariant       = "ubuntu1604"
 	lintGroup         = "lint-group"
 	commitMaxHosts    = 4
 	patchMaxHosts     = 1
