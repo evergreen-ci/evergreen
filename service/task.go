@@ -24,12 +24,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	// status overwrites
-	TaskBlocked = "blocked"
-	TaskPending = "pending"
-)
-
 var NumTestsToSearchForTestNames = 100
 
 type uiTaskData struct {
@@ -390,134 +384,35 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	taskMap := map[string]*task.Task{}
+	for i := range dependencies {
+		taskMap[dependencies[i].Id] = &dependencies[i]
+	}
 
-	idToUiDep := make(map[string]uiDep)
-	// match each task with its dependency requirements
-	for _, depTask := range dependencies {
-		for _, dep := range t.DependsOn {
-			if dep.TaskId == depTask.Id {
-				idToUiDep[depTask.Id] = uiDep{
-					Id:             depTask.Id,
-					Name:           depTask.DisplayName,
-					Status:         depTask.Status,
-					RequiredStatus: dep.Status,
-					Activated:      depTask.Activated,
-					BuildVariant:   depTask.BuildVariant,
-					Details:        depTask.Details,
-					//TODO EVG-614: add "Recursive: dep.Recursive," once Task.DependsOn includes all recursive dependencies
-				}
-			}
+	uiDependencies := []uiDep{}
+	for _, dep := range t.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
 		}
+		uiDependencies = append(uiDependencies, uiDep{
+			Id:             dep.TaskId,
+			Name:           depTask.DisplayName,
+			Status:         depTask.Status,
+			RequiredStatus: dep.Status,
+			Activated:      depTask.Activated,
+			BuildVariant:   depTask.BuildVariant,
+			Details:        depTask.Details,
+			//TODO EVG-614: add "Recursive: dep.Recursive," once Task.DependsOn includes all recursive dependencies
+		})
 	}
 
-	idToDep := make(map[string]task.Task)
-	for _, dep := range dependencies {
-		idToDep[dep.Id] = dep
-	}
-
-	// TODO EVG 614: delete this section once Task.DependsOn includes all recursive dependencies
-	err = addRecDeps(idToDep, idToUiDep, make(map[string]bool))
+	status, err := t.BlockedState()
 	if err != nil {
 		return nil, "", err
 	}
 
-	// set the status for each of the uiDeps as "blocked" or "pending" if appropriate
-	// and get the status for task
-	status := setBlockedOrPending(*t, idToDep, idToUiDep)
-
-	uiDeps := make([]uiDep, 0, len(idToUiDep))
-	for _, dep := range idToUiDep {
-		uiDeps = append(uiDeps, dep)
-	}
-	return uiDeps, status, nil
-}
-
-// addRecDeps recursively finds all dependencies of tasks and adds them to tasks and uiDeps.
-// done is a hashtable of task IDs whose dependencies we have found.
-// TODO EVG-614: delete this function once Task.DependsOn includes all recursive dependencies.
-func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[string]bool) error {
-	curTask := make(map[string]bool)
-	depIds := make([]string, 0)
-	for _, t := range tasks {
-		if _, ok := done[t.Id]; !ok {
-			for _, dep := range t.DependsOn {
-				depIds = append(depIds, dep.TaskId)
-			}
-			curTask[t.Id] = true
-		}
-	}
-
-	if len(depIds) == 0 {
-		return nil
-	}
-
-	deps, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey, task.ActivatedKey,
-		task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
-
-	if err != nil {
-		return err
-	}
-
-	for _, dep := range deps {
-		tasks[dep.Id] = dep
-	}
-
-	for _, t := range tasks {
-		if _, ok := curTask[t.Id]; ok {
-			for _, dep := range t.DependsOn {
-				if uid, ok := uiDeps[dep.TaskId]; !ok ||
-					// only replace if the current uiDep is not strict and not recursive
-					(uid.RequiredStatus == model.AllStatuses && !uid.Recursive) {
-					depTask := tasks[dep.TaskId]
-					uiDeps[depTask.Id] = uiDep{
-						Id:             depTask.Id,
-						Name:           depTask.DisplayName,
-						Status:         depTask.Status,
-						RequiredStatus: dep.Status,
-						Activated:      depTask.Activated,
-						BuildVariant:   depTask.BuildVariant,
-						Details:        depTask.Details,
-						Recursive:      true,
-					}
-				}
-			}
-			done[t.Id] = true
-		}
-	}
-
-	return addRecDeps(tasks, uiDeps, done)
-}
-
-// setBlockedOrPending sets the status of all uiDeps to "blocked" or "pending" if appropriate
-// and returns "blocked", "pending", or the original status of task as appropriate.
-// A task is blocked if some recursive dependency is in an undesirable state.
-// A task is pending if some dependency has not finished.
-func setBlockedOrPending(t task.Task, tasks map[string]task.Task, uiDeps map[string]uiDep) string {
-	blocked := false
-	pending := false
-	for _, dep := range t.DependsOn {
-		depTask := tasks[dep.TaskId]
-
-		uid := uiDeps[depTask.Id]
-		uid.TaskWaiting = setBlockedOrPending(depTask, tasks, uiDeps)
-		uiDeps[depTask.Id] = uid
-		if uid.TaskWaiting == TaskBlocked {
-			blocked = true
-		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
-			if depTask.Status != dep.Status && dep.Status != model.AllStatuses {
-				blocked = true
-			}
-		} else {
-			pending = true
-		}
-	}
-	if blocked {
-		return TaskBlocked
-	}
-	if pending {
-		return TaskPending
-	}
-	return ""
+	return uiDependencies, status, nil
 }
 
 // async handler for polling the task log

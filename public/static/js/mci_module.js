@@ -258,7 +258,7 @@ var mciModule = angular.module('MCI', [
       return task;
     }
     var cls = task.status;
-    if (task.status == 'undispatched') {
+    if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
       if (!task.activated) {
         cls = 'inactive';
       } else {
@@ -292,7 +292,7 @@ var mciModule = angular.module('MCI', [
   return function(task) {
     if (task.status == 'started') {
       return 'started';
-    } else if (task.status == 'undispatched' && task.activated) {
+    } else if ((task.status == 'undispatched' && task.activated) || (task.display_only && task.task_waiting)) {
       if (task.task_waiting) {
         return task.task_waiting;
       }

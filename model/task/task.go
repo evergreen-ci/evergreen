@@ -37,6 +37,9 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 15 * time.Minute
+
+	taskBlocked = "blocked"
+	taskPending = "pending"
 )
 
 var (
@@ -1631,4 +1634,63 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
+}
+
+// BlockedState returns "blocked," "pending," or "" to represent the state of the task
+// with respect to its dependencies
+func (t *Task) BlockedState() (string, error) {
+	if t.DisplayOnly {
+		return t.blockedStateForDisplayTask()
+	}
+
+	dependencyIDs := []string{}
+	for _, d := range t.DependsOn {
+		dependencyIDs = append(dependencyIDs, d.TaskId)
+	}
+	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
+		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
+	if err != nil {
+		return "", errors.Wrap(err, "error finding dependencies")
+	}
+	taskMap := map[string]*Task{}
+	for i := range dependentTasks {
+		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
+	}
+	for _, dependency := range t.DependsOn {
+		depTask := taskMap[dependency.TaskId]
+		state, err := depTask.BlockedState()
+		if err != nil {
+			return "", err
+		}
+		if state == taskBlocked {
+			return taskBlocked, nil
+		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
+			if depTask.Status != dependency.Status && dependency.Status != AllStatuses {
+				return taskBlocked, nil
+			}
+		} else {
+			return taskPending, nil
+		}
+	}
+	return "", nil
+}
+
+func (t *Task) blockedStateForDisplayTask() (string, error) {
+	execTasks, err := Find(ByIds(t.ExecutionTasks))
+	if err != nil {
+		return "", errors.Wrap(err, "error finding execution tasks")
+	}
+	state := ""
+	for _, execTask := range execTasks {
+		etState, err := execTask.BlockedState()
+		if err != nil {
+			return "", errors.Wrap(err, "error finding blocked state")
+		}
+		if etState == taskBlocked {
+			return taskBlocked, nil
+		} else if etState == taskPending {
+			state = taskPending
+		}
+	}
+	return state, nil
 }
