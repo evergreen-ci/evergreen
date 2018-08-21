@@ -61,83 +61,19 @@ func (s *VersionSuite) SetupTest() {
 		Data:         s.data,
 	}
 
+	apiSub := event.Subscriber{
+		Type: event.EvergreenWebhookSubscriberType,
+		Target: &event.WebhookSubscriber{
+			URL:    "http://example.com/2",
+			Secret: []byte("secret"),
+		},
+	}
+
 	s.subs = []event.Subscription{
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeVersion,
-			Trigger:      triggerOutcome,
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeVersion,
-			Trigger:      triggerSuccess,
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeVersion,
-			Trigger:      triggerFailure,
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
-		{
-			ID:           bson.NewObjectId().Hex(),
-			ResourceType: event.ResourceTypeVersion,
-			Trigger:      triggerRegression,
-			Selectors: []event.Selector{
-				{
-					Type: "id",
-					Data: s.event.ResourceId,
-				},
-			},
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-				Target: &event.WebhookSubscriber{
-					URL:    "http://example.com/2",
-					Secret: []byte("secret"),
-				},
-			},
-			Owner: "someone",
-		},
+		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerOutcome, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerSuccess, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerFailure, s.event.ResourceId, apiSub),
+		event.NewSubscriptionByID(event.ResourceTypeVersion, triggerRegression, s.event.ResourceId, apiSub),
 		{
 			ID:           bson.NewObjectId().Hex(),
 			ResourceType: event.ResourceTypeVersion,
