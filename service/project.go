@@ -384,8 +384,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		subscription.OwnerType = event.OwnerTypeProject
 		subscription.Owner = projectRef.Identifier
-		if !trigger.ValidateTrigger(subscription.Type, subscription.Trigger) {
-			catcher.Add(errors.Errorf("subscription type/trigger is invalid: %s/%s", subscription.Type, subscription.Trigger))
+		if !trigger.ValidateTrigger(subscription.ResourceType, subscription.Trigger) {
+			catcher.Add(errors.Errorf("subscription type/trigger is invalid: %s/%s", subscription.ResourceType, subscription.Trigger))
 			continue
 		}
 		if err = subscription.Upsert(); err != nil {

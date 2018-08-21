@@ -59,10 +59,10 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 			}
 		}
 
-		if !trigger.ValidateTrigger(dbSubscription.Type, dbSubscription.Trigger) {
+		if !trigger.ValidateTrigger(dbSubscription.ResourceType, dbSubscription.Trigger) {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("subscription type/trigger is invalid: %s/%s", dbSubscription.Type, dbSubscription.Trigger),
+				Message:    fmt.Sprintf("subscription type/trigger is invalid: %s/%s", dbSubscription.ResourceType, dbSubscription.Trigger),
 			}
 		}
 
