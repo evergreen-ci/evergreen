@@ -94,6 +94,34 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
+	// we may be running these jobs on hosts that are already
+	// terminated.
+	grip.InfoWhen(!util.StringSliceContains(evergreen.UphostStatus, j.hostStatus),
+		message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "terminating host already marked terminated in the db",
+			"theory":   "job collision",
+			"outcome":  "investigate-spurious-host-termination",
+		})
+
+	// host may still be an intent host
+	if j.host.Status == evergreen.HostUninitialized {
+		if err = j.host.Terminate(evergreen.User); err != nil {
+			j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
+			grip.Error(message.WrapError(err, message.Fields{
+				"host":     j.host.Id,
+				"provider": j.host.Distro.Provider,
+				"job_type": j.Type().Name,
+				"job":      j.ID(),
+				"message":  "problem terminating intent host in db",
+			}))
+		}
+		return
+	}
+
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
@@ -158,21 +186,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
-		// host may still be an intent host
-		if j.host.Status == evergreen.HostUninitialized {
-			if err = j.host.Terminate(evergreen.User); err != nil {
-				j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
-				grip.Error(message.WrapError(err, message.Fields{
-					"host":     j.host.Id,
-					"provider": j.host.Distro.Provider,
-					"job_type": j.Type().Name,
-					"job":      j.ID(),
-					"message":  "problem terminating intent host in db",
-				}))
-			}
-			return
-		}
-
 		// other problem getting cloud status
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
@@ -182,16 +195,19 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"job":      j.ID(),
 			"message":  "problem getting cloud host instance status",
 		}))
+
+		return
 	}
 
 	if cloudStatus == cloud.StatusTerminated {
 		j.AddError(errors.New("host is already terminated"))
-		grip.Error(message.Fields{
+		grip.Warning(message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,
 			"job":      j.ID(),
 			"message":  "attempted to terminated an already terminated host",
+			"theory":   "external termination",
 		})
 		if err := j.host.Terminate(evergreen.User); err != nil {
 			j.AddError(errors.Wrap(err, "problem terminating host in db"))
