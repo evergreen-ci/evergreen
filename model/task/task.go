@@ -797,6 +797,7 @@ func (t *Task) Reset() error {
 	t.StartTime = util.ZeroTime
 	t.ScheduledTime = util.ZeroTime
 	t.FinishTime = util.ZeroTime
+	t.ResetWhenFinished = false
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -808,7 +809,8 @@ func (t *Task) Reset() error {
 			FinishTimeKey:    util.ZeroTime,
 		},
 		"$unset": bson.M{
-			DetailsKey: "",
+			DetailsKey:           "",
+			ResetWhenFinishedKey: "",
 		},
 	}
 
