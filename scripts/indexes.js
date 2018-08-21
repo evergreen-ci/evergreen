@@ -95,6 +95,7 @@ db.tasks.createIndex({ "distro": 1, "status": 1, "activated": 1, "priority": 1 }
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
+db.old_tasks.ensureIndex({ "old_task_id": 1})
 
 //======versions======//
 db.versions.ensureIndex({ "order" : 1 })
