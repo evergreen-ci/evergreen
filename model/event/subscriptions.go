@@ -23,7 +23,7 @@ const (
 //nolint: deadcode, megacheck
 var (
 	subscriptionIDKey             = bsonutil.MustHaveTag(Subscription{}, "ID")
-	subscriptionTypeKey           = bsonutil.MustHaveTag(Subscription{}, "Type")
+	subscriptionResourceTypeKey   = bsonutil.MustHaveTag(Subscription{}, "ResourceType")
 	subscriptionTriggerKey        = bsonutil.MustHaveTag(Subscription{}, "Trigger")
 	subscriptionSelectorsKey      = bsonutil.MustHaveTag(Subscription{}, "Selectors")
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
@@ -53,7 +53,7 @@ const (
 
 type Subscription struct {
 	ID             string            `bson:"_id"`
-	Type           string            `bson:"type"`
+	ResourceType   string            `bson:"type"`
 	Trigger        string            `bson:"trigger"`
 	Selectors      []Selector        `bson:"selectors,omitempty"`
 	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
@@ -65,7 +65,7 @@ type Subscription struct {
 
 type unmarshalSubscription struct {
 	ID             string            `bson:"_id"`
-	Type           string            `bson:"type"`
+	ResourceType   string            `bson:"type"`
 	Trigger        string            `bson:"trigger"`
 	Selectors      []Selector        `bson:"selectors,omitempty"`
 	RegexSelectors []Selector        `bson:"regex_selectors,omitempty"`
@@ -83,7 +83,7 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 	}
 
 	s.ID = temp.ID
-	s.Type = temp.Type
+	s.ResourceType = temp.ResourceType
 	s.Trigger = temp.Trigger
 	s.Selectors = temp.Selectors
 	s.RegexSelectors = temp.RegexSelectors
@@ -100,9 +100,9 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-// FindSubscriptions finds all subscriptions of matching resourceType, and whose
+// FindSubscriptions finds all subscriptions of matching resourceResourceType, and whose
 // selectors match the selectors slice
-func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
+func FindSubscriptions(resourceResourceType string, selectors []Selector) ([]Subscription, error) {
 	if len(selectors) == 0 {
 		return nil, nil
 	}
@@ -110,7 +110,7 @@ func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscriptio
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				subscriptionTypeKey: resourceType,
+				subscriptionResourceTypeKey: resourceResourceType,
 			},
 		},
 		{
@@ -165,9 +165,9 @@ func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
 	return true
 }
 
-func findSelector(selectors []Selector, selectorType string) *Selector {
+func findSelector(selectors []Selector, selectorResourceType string) *Selector {
 	for i := range selectors {
-		if selectors[i].Type == selectorType {
+		if selectors[i].Type == selectorResourceType {
 			return &selectors[i]
 		}
 	}
@@ -180,7 +180,7 @@ func (s *Subscription) Upsert() error {
 		s.ID = bson.NewObjectId().Hex()
 	}
 	update := bson.M{
-		subscriptionTypeKey:           s.Type,
+		subscriptionResourceTypeKey:   s.ResourceType,
 		subscriptionTriggerKey:        s.Trigger,
 		subscriptionSelectorsKey:      s.Selectors,
 		subscriptionRegexSelectorsKey: s.RegexSelectors,
@@ -250,7 +250,7 @@ func (s *Subscription) Validate() error {
 	if len(s.Selectors)+len(s.RegexSelectors) == 0 {
 		catcher.Add(errors.New("must specify at least 1 selector"))
 	}
-	if s.Type == "" {
+	if s.ResourceType == "" {
 		catcher.Add(errors.New("subscription type is required"))
 	}
 	if s.Trigger == "" {
@@ -330,7 +330,7 @@ func (s *Subscription) String() string {
 	tmpl := []string{
 		fmt.Sprintf("ID: %s", id),
 		"",
-		fmt.Sprintf("when the '%s' event, matching the '%s' trigger occurs,", s.Type, s.Trigger),
+		fmt.Sprintf("when the '%s' event, matching the '%s' trigger occurs,", s.ResourceType, s.Trigger),
 		"and the following attributes match:",
 	}
 
@@ -352,16 +352,16 @@ func (s *Subscription) String() string {
 	return out
 }
 
-func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription, error) {
+func FindSubscriptionsByOwner(owner string, ownerResourceType OwnerType) ([]Subscription, error) {
 	if len(owner) == 0 {
 		return nil, nil
 	}
-	if !IsValidOwnerType(string(ownerType)) {
-		return nil, errors.Errorf("%s is not a valid owner type", ownerType)
+	if !IsValidOwnerType(string(ownerResourceType)) {
+		return nil, errors.Errorf("%s is not a valid owner type", ownerResourceType)
 	}
 	query := db.Query(bson.M{
 		subscriptionOwnerKey:     owner,
-		subscriptionOwnerTypeKey: ownerType,
+		subscriptionOwnerTypeKey: ownerResourceType,
 	})
 	subscriptions := []Subscription{}
 	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
@@ -383,7 +383,7 @@ const (
 	triggerOutcome = "outcome"
 )
 
-func CreateOrUpdateImplicitSubscription(subscriptionType string, id string,
+func CreateOrUpdateImplicitSubscription(subscriptionResourceType string, id string,
 	subscriber Subscriber, user string) (*Subscription, error) {
 	var err error
 	var sub *Subscription
@@ -396,7 +396,7 @@ func CreateOrUpdateImplicitSubscription(subscriptionType string, id string,
 	if subscriber.Validate() == nil {
 		if sub == nil {
 			var temp Subscription
-			switch subscriptionType {
+			switch subscriptionResourceType {
 			case ImplicitSubscriptionPatchOutcome:
 				temp = NewPatchOutcomeSubscriptionByOwner(user, subscriber)
 			case ImplicitSubscriptionBuildBreak:
@@ -406,7 +406,7 @@ func CreateOrUpdateImplicitSubscription(subscriptionType string, id string,
 			case ImplicitSubscriptionSpawnHostOutcome:
 				temp = NewSpawnHostOutcomeByOwner(user, subscriber)
 			default:
-				return nil, errors.Errorf("unknown subscription type: %s", subscriptionType)
+				return nil, errors.Errorf("unknown subscription type: %s", subscriptionResourceType)
 			}
 			sub = &temp
 		} else {
@@ -432,8 +432,8 @@ func CreateOrUpdateImplicitSubscription(subscriptionType string, id string,
 
 func NewPatchOutcomeSubscription(id string, sub Subscriber) Subscription {
 	return Subscription{
-		Type:    ResourceTypePatch,
-		Trigger: triggerOutcome,
+		ResourceType: ResourceTypePatch,
+		Trigger:      triggerOutcome,
 		Selectors: []Selector{
 			{
 				Type: "id",
@@ -450,9 +450,9 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
-		ID:      bson.NewObjectId().Hex(),
-		Type:    ResourceTypeTask,
-		Trigger: "build-break",
+		ID:           bson.NewObjectId().Hex(),
+		ResourceType: ResourceTypeTask,
+		Trigger:      "build-break",
 		Selectors: []Selector{
 			{
 				Type: "owner",
@@ -475,11 +475,11 @@ func NewSpawnhostExpirationSubscription(owner string, sub Subscriber) Subscripti
 	return NewSubscriptionByOwner(owner, sub, ResourceTypeHost, "expiration")
 }
 
-func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger string) Subscription {
+func NewSubscriptionByOwner(owner string, sub Subscriber, resourceResourceType, trigger string) Subscription {
 	return Subscription{
-		ID:      bson.NewObjectId().Hex(),
-		Type:    resourceType,
-		Trigger: trigger,
+		ID:           bson.NewObjectId().Hex(),
+		ResourceType: resourceResourceType,
+		Trigger:      trigger,
 		Selectors: []Selector{
 			{
 				Type: "owner",
@@ -492,8 +492,8 @@ func NewSubscriptionByOwner(owner string, sub Subscriber, resourceType, trigger 
 
 func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subscription {
 	return Subscription{
-		Type:    ResourceTypeBuild,
-		Trigger: triggerOutcome,
+		ResourceType: ResourceTypeBuild,
+		Trigger:      triggerOutcome,
 		Selectors: []Selector{
 			{
 				Type: "in-version",
@@ -506,8 +506,8 @@ func NewBuildOutcomeSubscriptionByVersion(versionID string, sub Subscriber) Subs
 
 func NewSpawnHostOutcomeByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
-		Type:    ResourceTypeHost,
-		Trigger: triggerOutcome,
+		ResourceType: ResourceTypeHost,
+		Trigger:      triggerOutcome,
 		Selectors: []Selector{
 			{
 				Type: "object",

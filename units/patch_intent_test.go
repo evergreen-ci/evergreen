@@ -469,11 +469,11 @@ func (s *PatchIntentUnitsSuite) verifyGithubSubscriptions(patchDoc *patch.Patch)
 		s.Require().True(ok)
 
 		s.EqualValues(ghSub.Target, *target)
-		if out[i].Type == event.ResourceTypePatch {
+		if out[i].ResourceType == event.ResourceTypePatch {
 			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
 			foundPatch = true
 
-		} else if out[i].Type == event.ResourceTypeBuild {
+		} else if out[i].ResourceType == event.ResourceTypeBuild {
 			s.Equal(patchDoc.Id.Hex(), out[i].Selectors[0].Data)
 			foundBuild = true
 

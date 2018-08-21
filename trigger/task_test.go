@@ -76,9 +76,9 @@ func (s *taskSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: "outcome",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -95,9 +95,9 @@ func (s *taskSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: "success",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      "success",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -114,9 +114,9 @@ func (s *taskSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: "failure",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      "failure",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -133,9 +133,9 @@ func (s *taskSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: triggerExceedsDuration,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -152,9 +152,9 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: triggerRuntimeChangeByPercent,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -171,9 +171,9 @@ func (s *taskSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeTask,
-			Trigger: triggerRuntimeChangeByPercent,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeTask,
+			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "project",
@@ -737,9 +737,9 @@ func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
 
 func (s *taskSuite) TestRegressionByTestWithRegex() {
 	sub := event.Subscription{
-		ID:      bson.NewObjectId().Hex(),
-		Type:    event.ResourceTypeTask,
-		Trigger: triggerTaskRegressionByTest,
+		ID:           bson.NewObjectId().Hex(),
+		ResourceType: event.ResourceTypeTask,
+		Trigger:      triggerTaskRegressionByTest,
 		Selectors: []event.Selector{
 			{
 				Type: selectorProject,

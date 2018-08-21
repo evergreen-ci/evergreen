@@ -73,7 +73,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
-	s.Equal("atype", dbSubscriptions[0].Type)
+	s.Equal("atype", dbSubscriptions[0].ResourceType)
 	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
 	s.Equal("slack", dbSubscriptions[0].Subscriber.Type)
 
@@ -108,7 +108,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	dbSubscriptions, err = event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Len(dbSubscriptions, 1)
-	s.Equal("new type", dbSubscriptions[0].Type)
+	s.Equal("new type", dbSubscriptions[0].ResourceType)
 }
 
 func (s *SubscriptionRouteSuite) TestProjectSubscription() {
@@ -143,7 +143,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	dbSubscriptions, err := event.FindSubscriptionsByOwner("myproj", event.OwnerTypeProject)
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
-	s.Equal("atype", dbSubscriptions[0].Type)
+	s.Equal("atype", dbSubscriptions[0].ResourceType)
 	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
 	s.Equal("email", dbSubscriptions[0].Subscriber.Type)
 

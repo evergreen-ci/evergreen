@@ -57,9 +57,9 @@ func (s *buildSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: "outcome",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeBuild,
+			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -76,9 +76,9 @@ func (s *buildSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: "success",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeBuild,
+			Trigger:      "success",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -95,9 +95,9 @@ func (s *buildSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: "failure",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeBuild,
+			Trigger:      "failure",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -114,9 +114,9 @@ func (s *buildSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: triggerExceedsDuration,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeBuild,
+			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -133,9 +133,9 @@ func (s *buildSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeBuild,
-			Trigger: triggerRuntimeChangeByPercent,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeBuild,
+			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -288,7 +288,7 @@ func (s *buildSuite) TestTaskStatusToDesc() {
 func (s *buildSuite) TestBuildExceedsTime() {
 	// build that exceeds time should generate
 	s.t.event = &event.EventLogEntry{
-		EventType: event.BuildStateChange,
+		ResourceType: event.BuildStateChange,
 	}
 	s.t.data.Status = evergreen.BuildSucceeded
 	s.t.build.TimeTaken = 20 * time.Minute
@@ -314,7 +314,7 @@ func (s *buildSuite) TestBuildRuntimeChange() {
 	// no previous task should not generate
 	s.build.TimeTaken = 20 * time.Minute
 	s.t.event = &event.EventLogEntry{
-		EventType: event.BuildStateChange,
+		ResourceType: event.BuildStateChange,
 	}
 	s.t.data.Status = evergreen.BuildSucceeded
 	n, err := s.t.buildRuntimeChange(&s.subs[4])

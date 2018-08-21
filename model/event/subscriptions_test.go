@@ -32,9 +32,9 @@ func (s *subscriptionsSuite) SetupTest() {
 	t5 := "slack_user"
 	s.subscriptions = []Subscription{
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    "type1",
-			Trigger: "trigger1",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type1",
+			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
 					Type: "data1",
@@ -50,9 +50,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    "type1",
-			Trigger: "trigger1",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type1",
+			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
 					Type: "data2",
@@ -68,9 +68,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    "type1",
-			Trigger: "trigger1",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type1",
+			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
 					Type: "data1",
@@ -94,9 +94,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      "5949645c9acd9604fdd202d8",
-			Type:    "type2",
-			Trigger: "trigger2",
+			ID:           "5949645c9acd9604fdd202d8",
+			ResourceType: "type2",
+			Trigger:      "trigger2",
 			Selectors: []Selector{
 				{
 					Type: "data",
@@ -116,9 +116,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    "type2",
-			Trigger: "trigger2",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type2",
+			Trigger:      "trigger2",
 			Selectors: []Selector{
 				{
 					Type: "data",

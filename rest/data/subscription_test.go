@@ -16,11 +16,11 @@ func TestGetSubscriptions(t *testing.T) {
 
 	subs := []event.Subscription{
 		{
-			ID:        bson.NewObjectId().Hex(),
-			Owner:     "someone",
-			OwnerType: event.OwnerTypePerson,
-			Type:      "PATCH",
-			Trigger:   "outcome",
+			ID:           bson.NewObjectId().Hex(),
+			Owner:        "someone",
+			OwnerType:    event.OwnerTypePerson,
+			ResourceType: "PATCH",
+			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -33,11 +33,11 @@ func TestGetSubscriptions(t *testing.T) {
 			},
 		},
 		{
-			ID:        bson.NewObjectId().Hex(),
-			Owner:     "someoneelse",
-			OwnerType: event.OwnerTypePerson,
-			Type:      "PATCH",
-			Trigger:   "outcomeelse",
+			ID:           bson.NewObjectId().Hex(),
+			Owner:        "someoneelse",
+			OwnerType:    event.OwnerTypePerson,
+			ResourceType: "PATCH",
+			Trigger:      "outcomeelse",
 			Selectors: []event.Selector{
 				{
 					Type: "id",

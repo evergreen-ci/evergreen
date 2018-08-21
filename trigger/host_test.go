@@ -50,9 +50,9 @@ func (s *hostSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeHost,
-			Trigger: triggerExpiration,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeHost,
+			Trigger:      triggerExpiration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",

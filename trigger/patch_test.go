@@ -69,9 +69,9 @@ func (s *patchSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypePatch,
-			Trigger: "outcome",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypePatch,
+			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -88,9 +88,9 @@ func (s *patchSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypePatch,
-			Trigger: "success",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypePatch,
+			Trigger:      "success",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -107,9 +107,9 @@ func (s *patchSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypePatch,
-			Trigger: "failure",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypePatch,
+			Trigger:      "failure",
 			Selectors: []event.Selector{
 				{
 					Type: "id",

@@ -529,9 +529,9 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 
 	return []event.Subscription{
 		{
-			Type:    "type",
-			Trigger: "trigger",
-			Owner:   "owner",
+			ResourceType: "type",
+			Trigger:      "trigger",
+			Owner:        "owner",
 			Selectors: []event.Selector{
 				{
 					Type: "id",

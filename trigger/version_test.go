@@ -63,9 +63,9 @@ func (s *VersionSuite) SetupTest() {
 
 	s.subs = []event.Subscription{
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeVersion,
-			Trigger: triggerOutcome,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeVersion,
+			Trigger:      triggerOutcome,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -82,9 +82,9 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeVersion,
-			Trigger: triggerSuccess,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeVersion,
+			Trigger:      triggerSuccess,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -101,9 +101,9 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeVersion,
-			Trigger: triggerFailure,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeVersion,
+			Trigger:      triggerFailure,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -120,9 +120,9 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeVersion,
-			Trigger: triggerRegression,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeVersion,
+			Trigger:      triggerRegression,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -139,9 +139,9 @@ func (s *VersionSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeVersion,
-			Trigger: triggerExceedsDuration,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeVersion,
+			Trigger:      triggerExceedsDuration,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -158,9 +158,9 @@ func (s *VersionSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId().Hex(),
-			Type:    event.ResourceTypeVersion,
-			Trigger: triggerRuntimeChangeByPercent,
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: event.ResourceTypeVersion,
+			Trigger:      triggerRuntimeChangeByPercent,
 			Selectors: []event.Selector{
 				{
 					Type: "id",
