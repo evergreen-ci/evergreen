@@ -1085,3 +1085,48 @@ func TestGetTestResultsForDisplayTask(t *testing.T) {
 	assert.Len(results, 1)
 	assert.Equal("myTest", results[0].TestFile)
 }
+
+func TestBlockedState(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	t1 := Task{
+		Id: "t1",
+		DependsOn: []Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t1.Insert())
+	t2 := Task{
+		Id:     "t2",
+		Status: evergreen.TaskFailed,
+		DependsOn: []Dependency{
+			{TaskId: "t3", Status: evergreen.TaskFailed},
+		},
+	}
+	assert.NoError(t2.Insert())
+	t3 := Task{
+		Id: "t3",
+		DependsOn: []Dependency{
+			{TaskId: "t4", Status: AllStatuses},
+		},
+	}
+	assert.NoError(t3.Insert())
+	t4 := Task{
+		Id:     "t4",
+		Status: evergreen.TaskSucceeded,
+	}
+	assert.NoError(t4.Insert())
+
+	state, err := t4.BlockedState()
+	assert.NoError(err)
+	assert.Equal("", state)
+	state, err = t3.BlockedState()
+	assert.NoError(err)
+	assert.Equal("", state)
+	state, err = t2.BlockedState()
+	assert.NoError(err)
+	assert.Equal(TaskPending, state)
+	state, err = t1.BlockedState()
+	assert.NoError(err)
+	assert.Equal(TaskBlocked, state)
+}
