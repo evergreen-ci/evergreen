@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -262,6 +263,22 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		idleJob := newHostIdleJobForTermination(j.env, settings, cloudHost.CloudMgr, j.host, idleTimeStartsAt, hostBillingEnds)
 		idleJob.Run(ctx)
 		j.AddError(idleJob.Error())
+
+		if j.host.SpawnOptions.SpawnedByTask {
+			manager, err := cloud.GetManager(ctx, j.host.Provider, settings)
+			if err != nil {
+				j.AddError(err)
+				return
+			}
+			if calc, ok := manager.(cloud.CostCalculator); ok {
+				cost, err := calc.CostForDuration(ctx, j.host, j.host.StartTime, hostBillingEnds, settings)
+				if err != nil {
+					j.AddError(err)
+					return
+				}
+				j.AddError(task.IncSpawnedHostCost(j.host.StartedBy, cost))
+			}
+		}
 	}
 }
 
