@@ -56,11 +56,10 @@ func (r *triggerRegistry) registerEventHandler(resourceType, eventData string, h
 }
 
 func ValidateTrigger(resourceType, triggerName string) bool {
-	for _, handlers := range registry.handlersByResourceType {
-		for i := range handlers {
-			if handlers[i]().ValidateTrigger(triggerName) {
-				return true
-			}
+	handlers := registry.handlersByResourceType[resourceType]
+	for i := range handlers {
+		if handlers[i]().ValidateTrigger(triggerName) {
+			return true
 		}
 	}
 
