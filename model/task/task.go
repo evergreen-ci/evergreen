@@ -38,8 +38,8 @@ const (
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 15 * time.Minute
 
-	TaskBlocked = "blocked"
-	TaskPending = "pending"
+	taskBlocked = "blocked"
+	taskPending = "pending"
 )
 
 var (
@@ -1653,8 +1653,8 @@ func (t *Task) BlockedState() (string, error) {
 		return "", errors.Wrap(err, "error finding dependencies")
 	}
 	taskMap := map[string]*Task{}
-	for _, t := range dependentTasks {
-		taskMap[t.Id] = &t
+	for i := range dependentTasks {
+		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
 	}
 	for _, dependency := range t.DependsOn {
 		depTask := taskMap[dependency.TaskId]
@@ -1662,14 +1662,14 @@ func (t *Task) BlockedState() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if state == TaskBlocked {
-			return TaskBlocked, nil
+		if state == taskBlocked {
+			return taskBlocked, nil
 		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
 			if depTask.Status != dependency.Status && dependency.Status != AllStatuses {
-				return TaskBlocked, nil
+				return taskBlocked, nil
 			}
 		} else {
-			return TaskPending, nil
+			return taskPending, nil
 		}
 	}
 	return "", nil
@@ -1686,10 +1686,10 @@ func (t *Task) blockedStateForDisplayTask() (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "error finding blocked state")
 		}
-		if etState == TaskBlocked {
-			return TaskBlocked, nil
-		} else if etState == TaskPending {
-			state = TaskPending
+		if etState == taskBlocked {
+			return taskBlocked, nil
+		} else if etState == taskPending {
+			state = taskPending
 		}
 	}
 	return state, nil

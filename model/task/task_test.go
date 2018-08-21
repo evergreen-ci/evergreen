@@ -1105,7 +1105,8 @@ func TestBlockedState(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 	t3 := Task{
-		Id: "t3",
+		Id:     "t3",
+		Status: evergreen.TaskUnstarted,
 		DependsOn: []Dependency{
 			{TaskId: "t4", Status: AllStatuses},
 		},
@@ -1125,8 +1126,8 @@ func TestBlockedState(t *testing.T) {
 	assert.Equal("", state)
 	state, err = t2.BlockedState()
 	assert.NoError(err)
-	assert.Equal(TaskPending, state)
+	assert.Equal(taskPending, state)
 	state, err = t1.BlockedState()
 	assert.NoError(err)
-	assert.Equal(TaskBlocked, state)
+	assert.Equal(taskBlocked, state)
 }

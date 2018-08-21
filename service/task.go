@@ -385,8 +385,8 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 		return nil, "", err
 	}
 	taskMap := map[string]*task.Task{}
-	for _, t := range dependencies {
-		taskMap[t.Id] = &t
+	for i := range dependencies {
+		taskMap[dependencies[i].Id] = &dependencies[i]
 	}
 
 	uiDependencies := []uiDep{}
