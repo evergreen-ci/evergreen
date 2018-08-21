@@ -102,7 +102,7 @@ type Selector struct {
 
 // FindSubscriptions finds all subscriptions of matching resourceResourceType, and whose
 // selectors match the selectors slice
-func FindSubscriptions(resourceResourceType string, selectors []Selector) ([]Subscription, error) {
+func FindSubscriptions(resourceType string, selectors []Selector) ([]Subscription, error) {
 	if len(selectors) == 0 {
 		return nil, nil
 	}
@@ -110,7 +110,7 @@ func FindSubscriptions(resourceResourceType string, selectors []Selector) ([]Sub
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				subscriptionResourceTypeKey: resourceResourceType,
+				subscriptionResourceTypeKey: resourceType,
 			},
 		},
 		{
@@ -352,16 +352,16 @@ func (s *Subscription) String() string {
 	return out
 }
 
-func FindSubscriptionsByOwner(owner string, ownerResourceType OwnerType) ([]Subscription, error) {
+func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription, error) {
 	if len(owner) == 0 {
 		return nil, nil
 	}
-	if !IsValidOwnerType(string(ownerResourceType)) {
-		return nil, errors.Errorf("%s is not a valid owner type", ownerResourceType)
+	if !IsValidOwnerType(string(ownerType)) {
+		return nil, errors.Errorf("%s is not a valid owner type", ownerType)
 	}
 	query := db.Query(bson.M{
 		subscriptionOwnerKey:     owner,
-		subscriptionOwnerTypeKey: ownerResourceType,
+		subscriptionOwnerTypeKey: ownerType,
 	})
 	subscriptions := []Subscription{}
 	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
@@ -383,7 +383,7 @@ const (
 	triggerOutcome = "outcome"
 )
 
-func CreateOrUpdateImplicitSubscription(subscriptionResourceType string, id string,
+func CreateOrUpdateImplicitSubscription(resourceType string, id string,
 	subscriber Subscriber, user string) (*Subscription, error) {
 	var err error
 	var sub *Subscription
@@ -396,7 +396,7 @@ func CreateOrUpdateImplicitSubscription(subscriptionResourceType string, id stri
 	if subscriber.Validate() == nil {
 		if sub == nil {
 			var temp Subscription
-			switch subscriptionResourceType {
+			switch resourceType {
 			case ImplicitSubscriptionPatchOutcome:
 				temp = NewPatchOutcomeSubscriptionByOwner(user, subscriber)
 			case ImplicitSubscriptionBuildBreak:
@@ -406,7 +406,7 @@ func CreateOrUpdateImplicitSubscription(subscriptionResourceType string, id stri
 			case ImplicitSubscriptionSpawnHostOutcome:
 				temp = NewSpawnHostOutcomeByOwner(user, subscriber)
 			default:
-				return nil, errors.Errorf("unknown subscription type: %s", subscriptionResourceType)
+				return nil, errors.Errorf("unknown subscription resource type: %s", resourceType)
 			}
 			sub = &temp
 		} else {
