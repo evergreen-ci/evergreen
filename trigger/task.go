@@ -221,6 +221,8 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data := commonTemplateData{
 		ID:              t.task.Id,
+		EventID:         t.event.ID,
+		SubscriptionID:  sub.ID,
 		DisplayName:     t.task.DisplayName,
 		Object:          "task",
 		Project:         t.task.Project,

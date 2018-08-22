@@ -25,6 +25,7 @@ h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{i
 Host: {{if .Host}}[{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]{{else}}N/A{{end}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
+Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
 `
