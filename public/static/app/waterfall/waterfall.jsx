@@ -41,19 +41,19 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
     params["bv_filter"]= bvFilter;
   if (taskFilter && taskFilter != '')
     params["task_filter"]= taskFilter;
-  params["skip"] = skip
+  if (skip !== 0) {
+    params["skip"] = skip;
+  }
 
-  var paramString = generateURLParameters(params);
-  window.history.replaceState({}, '', baseURL + "?" + paramString);
+  if (Object.Keys(params).length > 0) {
+    const paramString = generateURLParameters(params);
+    window.history.replaceState({}, '', baseURL + "?" + paramString);
+  }
 }
 
 var JIRA_REGEX = /[A-Z]{1,10}-\d{1,6}/ig;
 
-class JiraLink extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
+class JiraLink extends React.PureComponent {
   render() {
     var contents
 
@@ -91,8 +91,6 @@ class Root extends React.PureComponent {
   constructor(props){
     super(props);
 
-    this.updatePaginationContext(window.serverData)
-
     const href = window.location.href
     var buildVariantFilter = getParameterByName('bv_filter', href) || ''
     var taskFilter = getParameterByName('task_filter', href) || ''
@@ -112,6 +110,7 @@ class Root extends React.PureComponent {
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
     this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
+    this.loadDataPortion();
     this.loadDataPortion = _.debounce(this.loadDataPortion, 100)
   }
 
@@ -139,6 +138,7 @@ class Root extends React.PureComponent {
     var params = filter ? {bv_filter: filter} : {}
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
+          console.log(data);
         this.updatePaginationContext(data)
         this.setState({data})
         updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
@@ -166,6 +166,9 @@ class Root extends React.PureComponent {
   }
 
   render() {
+    if (!this.state.data) {
+      return null;
+    }
     if (this.state.data.rows.length == 0){
       return (
         <div>

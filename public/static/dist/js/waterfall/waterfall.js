@@ -51,21 +51,25 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
   var params = {};
   if (bvFilter && bvFilter != '') params["bv_filter"] = bvFilter;
   if (taskFilter && taskFilter != '') params["task_filter"] = taskFilter;
-  params["skip"] = skip;
+  if (skip !== 0) {
+    params["skip"] = skip;
+  }
 
-  var paramString = generateURLParameters(params);
-  window.history.replaceState({}, '', baseURL + "?" + paramString);
+  if (Object.Keys(params).length > 0) {
+    var paramString = generateURLParameters(params);
+    window.history.replaceState({}, '', baseURL + "?" + paramString);
+  }
 }
 
 var JIRA_REGEX = /[A-Z]{1,10}-\d{1,6}/ig;
 
-var JiraLink = function (_React$Component) {
-  _inherits(JiraLink, _React$Component);
+var JiraLink = function (_React$PureComponent) {
+  _inherits(JiraLink, _React$PureComponent);
 
-  function JiraLink(props) {
+  function JiraLink() {
     _classCallCheck(this, JiraLink);
 
-    return _possibleConstructorReturn(this, (JiraLink.__proto__ || Object.getPrototypeOf(JiraLink)).call(this, props));
+    return _possibleConstructorReturn(this, (JiraLink.__proto__ || Object.getPrototypeOf(JiraLink)).apply(this, arguments));
   }
 
   _createClass(JiraLink, [{
@@ -103,21 +107,19 @@ var JiraLink = function (_React$Component) {
   }]);
 
   return JiraLink;
-}(React.Component);
+}(React.PureComponent);
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
 
 
-var Root = function (_React$PureComponent) {
-  _inherits(Root, _React$PureComponent);
+var Root = function (_React$PureComponent2) {
+  _inherits(Root, _React$PureComponent2);
 
   function Root(props) {
     _classCallCheck(this, Root);
 
     var _this2 = _possibleConstructorReturn(this, (Root.__proto__ || Object.getPrototypeOf(Root)).call(this, props));
-
-    _this2.updatePaginationContext(window.serverData);
 
     var href = window.location.href;
     var buildVariantFilter = getParameterByName('bv_filter', href) || '';
@@ -138,6 +140,7 @@ var Root = function (_React$PureComponent) {
     _this2.handleHeaderLinkClick = _this2.handleHeaderLinkClick.bind(_this2);
     _this2.handleBuildVariantFilter = _this2.handleBuildVariantFilter.bind(_this2);
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
+    _this2.loadDataPortion();
     _this2.loadDataPortion = _.debounce(_this2.loadDataPortion, 100);
     return _this2;
   }
@@ -172,6 +175,7 @@ var Root = function (_React$PureComponent) {
       http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
+        console.log(data);
         _this3.updatePaginationContext(data);
         _this3.setState({ data: data });
         updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
@@ -204,6 +208,9 @@ var Root = function (_React$PureComponent) {
   }, {
     key: "render",
     value: function render() {
+      if (!this.state.data) {
+        return null;
+      }
       if (this.state.data.rows.length == 0) {
         return React.createElement(
           "div",
@@ -361,8 +368,8 @@ function PageButton(_ref4) {
   );
 }
 
-var FilterBox = function (_React$PureComponent2) {
-  _inherits(FilterBox, _React$PureComponent2);
+var FilterBox = function (_React$PureComponent3) {
+  _inherits(FilterBox, _React$PureComponent3);
 
   function FilterBox(props) {
     _classCallCheck(this, FilterBox);
@@ -392,8 +399,8 @@ var FilterBox = function (_React$PureComponent2) {
   return FilterBox;
 }(React.PureComponent);
 
-var CollapseButton = function (_React$PureComponent3) {
-  _inherits(CollapseButton, _React$PureComponent3);
+var CollapseButton = function (_React$PureComponent4) {
+  _inherits(CollapseButton, _React$PureComponent4);
 
   function CollapseButton(props) {
     _classCallCheck(this, CollapseButton);
@@ -434,8 +441,8 @@ var CollapseButton = function (_React$PureComponent3) {
   return CollapseButton;
 }(React.PureComponent);
 
-var GearMenu = function (_React$PureComponent4) {
-  _inherits(GearMenu, _React$PureComponent4);
+var GearMenu = function (_React$PureComponent5) {
+  _inherits(GearMenu, _React$PureComponent5);
 
   function GearMenu(props) {
     _classCallCheck(this, GearMenu);
@@ -688,8 +695,8 @@ function ActiveVersionHeader(_ref6) {
   );
 };
 
-var HideHeaderButton = function (_React$Component2) {
-  _inherits(HideHeaderButton, _React$Component2);
+var HideHeaderButton = function (_React$Component) {
+  _inherits(HideHeaderButton, _React$Component);
 
   function HideHeaderButton(props) {
     _classCallCheck(this, HideHeaderButton);
