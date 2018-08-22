@@ -263,7 +263,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
 		}
 		var err error
-		payload, err = t.makeJIRATaskPayload(issueSub.Project)
+		payload, err = t.makeJIRATaskPayload(sub.ID, issueSub.Project)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create jira payload for task")
 		}
@@ -672,7 +672,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	return n, catcher.Resolve()
 }
 
-func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, error) {
+func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.JiraIssue, error) {
 	buildDoc, err := build.FindOne(build.ById(j.task.BuildId))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
@@ -709,12 +709,14 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 		project:  strings.ToUpper(project),
 		mappings: &evergreen.JIRANotificationsConfig{},
 		data: jiraTemplateData{
-			UIRoot:  j.uiConfig.Url,
-			Task:    j.task,
-			Version: versionDoc,
-			Project: projectRef,
-			Build:   buildDoc,
-			Host:    hostDoc,
+			UIRoot:         j.uiConfig.Url,
+			SubscriptionID: subID,
+			EventID:        j.event.ID,
+			Task:           j.task,
+			Version:        versionDoc,
+			Project:        projectRef,
+			Build:          buildDoc,
+			Host:           hostDoc,
 		},
 	}
 

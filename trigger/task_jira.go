@@ -55,6 +55,8 @@ type jiraBuilder struct {
 
 type jiraTemplateData struct {
 	UIRoot          string
+	SubscriptionID  string
+	EventID         string
 	Task            *task.Task
 	Build           *build.Build
 	Host            *host.Host

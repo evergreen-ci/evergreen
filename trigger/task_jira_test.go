@@ -304,7 +304,7 @@ func TestJIRADescription(t *testing.T) {
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
 
-			So(len(desc), ShouldEqual, 518)
+			So(len(desc), ShouldEqual, 562)
 
 			split := strings.Split(desc, "\n")
 
@@ -343,7 +343,7 @@ func TestJIRADescription(t *testing.T) {
 			j.data.Host = nil
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(len(desc), ShouldEqual, 485)
+			So(len(desc), ShouldEqual, 529)
 			So(strings.Contains(desc, "Host: N/A"), ShouldBeTrue)
 		})
 		Convey("the description should return old_task_id if present", func() {
