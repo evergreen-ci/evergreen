@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -571,7 +572,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
-			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection); err != nil {
+			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection, event.AllLogCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 
@@ -835,24 +836,6 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				dbBuild, err := build.FindOne(build.ById(buildId))
 				So(err, ShouldBeNil)
 				So(dbBuild.Tasks[2].Status, ShouldEqual, evergreen.TaskFailed)
-			})
-			Convey("alerts should be created for the build failure", func() {
-				dbAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
-					"legacy-alerts", displayTask.DisplayName, displayTask.BuildVariant, displayTask.Project))
-				So(err, ShouldBeNil)
-				if err != nil {
-					return
-				}
-
-				So(dbAlert, ShouldNotBeNil)
-				So(dbAlert.Type, ShouldEqual, alertrecord.TaskFailTransitionId)
-				So(dbAlert.TaskId, ShouldEqual, displayTask.Id)
-
-				// alerts should not have been created for the execution task
-				execTaskAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
-					"legacy-alerts", execTask.DisplayName, execTask.BuildVariant, execTask.Project))
-				So(err, ShouldBeNil)
-				So(execTaskAlert, ShouldBeNil)
 			})
 		})
 	})

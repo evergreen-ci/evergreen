@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -412,12 +411,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 				return nil
 			}
 
-			grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
-				"operation": "running host provisioning alert trigger",
-				"job":       j.ID(),
-				"host":      h.Id,
-				"attempts":  h.ProvisionAttempts,
-			}))
 			event.LogProvisionFailed(h.Id, output)
 
 			// mark the host's provisioning as failed

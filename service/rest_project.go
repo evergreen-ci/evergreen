@@ -16,8 +16,6 @@ func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding project"})
 		return
 	}
-	// unset alerts so we don't expose emails through the API
-	ref.Alerts = nil
 	gimlet.WriteJSON(w, ref)
 }
 

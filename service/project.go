@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -24,7 +23,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // publicProjectFields are the fields needed by the UI
@@ -62,20 +60,10 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// construct a json-marshaling friendly representation of our supported triggers
-	allTaskTriggers := []interface{}{}
-	for _, taskTrigger := range alerts.AvailableTaskFailTriggers {
-		allTaskTriggers = append(allTaskTriggers, struct {
-			Id      string `json:"id"`
-			Display string `json:"display"`
-		}{taskTrigger.Id(), taskTrigger.Display()})
-	}
-
 	data := struct {
-		AllProjects       []model.ProjectRef
-		AvailableTriggers []interface{}
+		AllProjects []model.ProjectRef
 		ViewData
-	}{allProjects, allTaskTriggers, uis.GetCommonViewData(w, r, true, true)}
+	}{allProjects, uis.GetCommonViewData(w, r, true, true)}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
@@ -283,17 +271,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
-
-	projectRef.Alerts = map[string][]model.AlertConfig{}
-	for triggerId, alerts := range responseRef.AlertConfig {
-		//TODO validate the triggerID, provider, and settings.
-		for _, alert := range alerts {
-			projectRef.Alerts[triggerId] = append(projectRef.Alerts[triggerId], model.AlertConfig{
-				Provider: alert.Provider,
-				Settings: bson.M(alert.Settings),
-			})
-		}
-	}
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {

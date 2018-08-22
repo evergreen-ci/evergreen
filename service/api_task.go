@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -194,22 +193,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
 	}
-
-	if !evergreen.IsPatchRequester(t.Requester) {
-		if t.IsPartOfDisplay() {
-			parent := t.DisplayTask
-			if parent.IsFinished() {
-				grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(parent.Id),
-					"processing alert triggers for display task %s", parent.Id))
-			}
-		} else {
-			grip.Infoln("Processing alert triggers for task", t.Id)
-
-			grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
-				"processing alert triggers for task %s", t.Id))
-		}
-	}
-	// TODO(EVG-223) process patch-specific triggers
 
 	// update the bookkeeping entry for the task
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)

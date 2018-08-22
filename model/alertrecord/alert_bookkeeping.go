@@ -1,6 +1,7 @@
 package alertrecord
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -35,7 +36,10 @@ const (
 	SpawnHostTwelveHourWarning = "spawn_twelvehour"
 	SlowProvisionWarning       = "slow_provision"
 	ProvisionFailed            = "provision_failed"
+	spawnHostWarningTemplate   = "spawn_%dhour"
 )
+
+const legacyAlertsSubscription = "legacy-alerts"
 
 type AlertRecord struct {
 	Id                  bson.ObjectId `bson:"_id"`
@@ -51,6 +55,10 @@ type AlertRecord struct {
 	TestName            string        `bson:"test_name,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty"`
 	AlertTime           time.Time     `bson:"alert_time,omitempty"`
+}
+
+func (ar *AlertRecord) Insert() error {
+	return db.Insert(Collection, ar)
 }
 
 //nolint: deadcode, megacheck
@@ -130,13 +138,6 @@ func ByFirstFailureInTaskType(subscriptionID, versionId, taskName string) db.Q {
 	return db.Query(q).Limit(1)
 }
 
-func ByHostAlertRecordType(subscriptionID, hostId, triggerId string) db.Q {
-	q := subscriptionIDQuery(subscriptionID)
-	q[TypeKey] = triggerId
-	q[HostIdKey] = hostId
-	return db.Query(q).Limit(1)
-}
-
 func ByLastRevNotFound(subscriptionID, projectId, versionId string) db.Q {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = LastRevisionNotFound
@@ -177,8 +178,12 @@ func FindByLastTaskRegressionByTestWithNoTests(subscriptionID, taskDisplayName, 
 	return FindOne(db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
-func (ar *AlertRecord) Insert() error {
-	return db.Insert(Collection, ar)
+func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
+	alerttype := fmt.Sprintf(spawnHostWarningTemplate, hours)
+	q := subscriptionIDQuery(legacyAlertsSubscription)
+	q[TypeKey] = alerttype
+	q[HostIdKey] = hostID
+	return FindOne(db.Query(q).Limit(1))
 }
 
 func InsertNewTaskRegressionByTestRecord(subscriptionID, testName, taskDisplayName, variant, projectID string, revision int) error {
@@ -211,4 +216,17 @@ func InsertNewTaskRegressionByTestWithNoTestsRecord(subscriptionID, taskDisplayN
 	}
 
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTestWithNoTests)
+}
+
+func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
+	alerttype := fmt.Sprintf(spawnHostWarningTemplate, hours)
+	record := AlertRecord{
+		Id:             bson.NewObjectId(),
+		SubscriptionID: legacyAlertsSubscription,
+		Type:           alerttype,
+		HostId:         hostID,
+		AlertTime:      time.Now(),
+	}
+
+	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", alerttype)
 }
