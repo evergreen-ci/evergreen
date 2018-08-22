@@ -14,10 +14,16 @@ func (createHost *CreateHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host:
 		createHost.DNSName = v.Host
-		createHost.InstanceID = v.ExternalIdentifier
+		createHost.InstanceID = v.Id
+		if v.ExternalIdentifier != "" {
+			createHost.InstanceID = v.ExternalIdentifier
+		}
 	case *host.Host:
 		createHost.DNSName = v.Host
-		createHost.InstanceID = v.ExternalIdentifier
+		createHost.InstanceID = v.Id
+		if v.ExternalIdentifier != "" {
+			createHost.InstanceID = v.ExternalIdentifier
+		}
 	default:
 		return errors.Errorf("Invalid type passed to *CreateHost.BuildFromService (%T)", h)
 	}

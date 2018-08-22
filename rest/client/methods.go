@@ -634,7 +634,7 @@ func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options 
 	return errors.Errorf("error executing `create.host`: %s", string(body))
 }
 
-func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.APIHost, error) {
+func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.CreateHost, error) {
 	info := requestInfo{
 		method:   get,
 		taskData: &td,
@@ -642,11 +642,16 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 		path:     fmt.Sprintf("hosts/%s/list", td.ID),
 	}
 
-	hosts := []restmodel.APIHost{}
-
-	if _, err := c.retryRequest(ctx, info, &hosts); err != nil {
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
 		return nil, errors.Wrapf(err, "problem listing hosts for task '%s'", td.ID)
 	}
+	defer resp.Body.Close()
 
+	hosts := []restmodel.CreateHost{}
+	util.ReadJSONInto(resp.Body, &hosts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
+	}
 	return hosts, nil
 }
