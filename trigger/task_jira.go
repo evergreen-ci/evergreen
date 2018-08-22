@@ -83,7 +83,7 @@ func makeSpecificTaskStatus(t *task.Task) string {
 func makeSummaryPrefix(t *task.Task, failed int) string {
 	s := makeSpecificTaskStatus(t)
 	switch {
-	case t.Status == evergreen.TaskSucceeded:
+	case s == evergreen.TaskSucceeded:
 		return "Succeeded: "
 	case s == evergreen.TaskTimedOut:
 		return "Timed Out: "

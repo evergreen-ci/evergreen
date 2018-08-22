@@ -445,3 +445,58 @@ func TestCustomFields(t *testing.T) {
 	assert.Contains(customFields[jiraFailingTestsField], testName2)
 	assert.Equal([]string{evergreen.TaskSystemFailed}, customFields[jiraFailureType])
 }
+
+func TestMakeSpecificTaskStatus(t *testing.T) {
+	assert := assert.New(t)
+	doc := &task.Task{
+		Status: evergreen.TaskSucceeded,
+		Details: apimodels.TaskEndDetail{
+			TimedOut: false,
+			Type:     evergreen.CommandTypeTest,
+		},
+	}
+
+	assert.Equal(evergreen.TaskSucceeded, makeSpecificTaskStatus(doc))
+
+	doc.Status = evergreen.TaskFailed
+	assert.Equal(evergreen.TaskFailed, makeSpecificTaskStatus(doc))
+
+	doc.Details.TimedOut = true
+	assert.Equal(evergreen.TaskTimedOut, makeSpecificTaskStatus(doc))
+
+	doc.Details.TimedOut = false
+	doc.Details.Type = evergreen.CommandTypeSetup
+	assert.Equal(evergreen.TaskSetupFailed, makeSpecificTaskStatus(doc))
+
+	doc.Details.Type = evergreen.CommandTypeSystem
+	assert.Equal(evergreen.TaskSystemFailed, makeSpecificTaskStatus(doc))
+}
+
+func TestMakeSummaryPrefix(t *testing.T) {
+	assert := assert.New(t)
+
+	doc := &task.Task{
+		Status: evergreen.TaskSucceeded,
+		Details: apimodels.TaskEndDetail{
+			TimedOut: false,
+			Type:     evergreen.CommandTypeTest,
+		},
+	}
+	assert.Equal("Succeeded: ", makeSummaryPrefix(doc, 1))
+
+	doc.Status = evergreen.TaskFailed
+	assert.Equal("Failure: ", makeSummaryPrefix(doc, 1))
+	assert.Equal("Failed: ", makeSummaryPrefix(doc, 0))
+
+	doc.Details.TimedOut = true
+	assert.Equal(evergreen.TaskTimedOut, makeSpecificTaskStatus(doc))
+	assert.Equal("Timed Out: ", makeSummaryPrefix(doc, 1))
+
+	doc.Details.TimedOut = false
+	doc.Details.Type = evergreen.CommandTypeSetup
+	assert.Equal("Setup Failure: ", makeSummaryPrefix(doc, 1))
+
+	doc.Details.Type = evergreen.CommandTypeSystem
+	assert.Equal("System Failure: ", makeSummaryPrefix(doc, 1))
+
+}
