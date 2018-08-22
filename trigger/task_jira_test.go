@@ -366,6 +366,7 @@ func TestCustomFields(t *testing.T) {
 		jiraFailingVariantField   = "customfield_14277"
 		jiraEvergreenProjectField = "customfield_14278"
 		jiraFailingRevisionField  = "customfield_14851"
+		jiraFailureType           = "customfield_16252"
 	)
 	assert := assert.New(t)
 
@@ -376,6 +377,7 @@ func TestCustomFields(t *testing.T) {
 		jiraFailingVariantField:   "{{.Task.BuildVariant}}",
 		jiraEvergreenProjectField: "{{.Project.Identifier}}",
 		jiraFailingRevisionField:  "{{.Task.Revision}}",
+		jiraFailureType:           "{{.SpecificTaskStatus}}",
 	}
 	fields["EFG"] = nil
 	fields["HIJ"] = map[string]string{}
@@ -396,9 +398,11 @@ func TestCustomFields(t *testing.T) {
 				Id:           taskId,
 				BuildVariant: "build12",
 				DisplayName:  taskName,
-				Details:      apimodels.TaskEndDetail{},
-				Project:      projectId,
-				Revision:     versionRevision,
+				Details: apimodels.TaskEndDetail{
+					Type: "system",
+				},
+				Project:  projectId,
+				Revision: versionRevision,
 				LocalTestResults: []task.TestResult{
 					{TestFile: testName1, Status: evergreen.TestFailedStatus, URL: "direct_link"},
 					{TestFile: testName2, Status: evergreen.TestFailedStatus, LogId: "123"},
@@ -413,6 +417,9 @@ func TestCustomFields(t *testing.T) {
 			},
 		},
 	}
+	issue, err := j.build()
+	assert.NoError(err)
+	assert.NotNil(issue)
 
 	assert.Empty(j.makeCustomFields())
 
@@ -428,7 +435,7 @@ func TestCustomFields(t *testing.T) {
 	j.project = "BFG"
 	j.data.FailedTestNames = []string{}
 	customFields := j.makeCustomFields()
-	assert.Len(customFields, 5)
+	assert.Len(customFields, 6)
 	assert.Equal([]string{projectId}, customFields[jiraEvergreenProjectField])
 	assert.Equal([]string{taskName}, customFields[jiraFailingTasksField])
 	assert.Equal([]string{"build12"}, customFields[jiraFailingVariantField])
@@ -436,4 +443,5 @@ func TestCustomFields(t *testing.T) {
 	assert.Len(customFields[jiraFailingTestsField], 2)
 	assert.Contains(customFields[jiraFailingTestsField], testName1)
 	assert.Contains(customFields[jiraFailingTestsField], testName2)
+	assert.Equal([]string{evergreen.TaskSystemFailed}, customFields[jiraFailureType])
 }
