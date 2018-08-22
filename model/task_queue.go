@@ -346,8 +346,7 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
-			taskQueueDistroKey:                                               self.Distro,
-			bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey): taskId,
+			taskQueueDistroKey: self.Distro,
 		},
 		bson.M{
 			"$pull": bson.M{
