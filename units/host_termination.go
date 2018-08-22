@@ -247,7 +247,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"host":       j.host.Id,
 				"subject":    subj,
 			})
-		} else {
+		} else if len(settings.Notify.SMTP.AdminEmail) > 0 {
 			mailer.Send(message.NewEmailMessage(level.Error, message.Email{
 				From:       settings.Notify.SMTP.From,
 				Recipients: settings.Notify.SMTP.AdminEmail,
