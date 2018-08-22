@@ -24,11 +24,6 @@ type APIProject struct {
 	PRTestingEnabled   bool        `json:"pr_testing_enabled"`
 }
 
-type alertConfig struct {
-	Provider APIString         `json:"provider"`
-	Settings map[string]string `json:"settings"`
-}
-
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	v, ok := p.(model.ProjectRef)
 	if !ok {
