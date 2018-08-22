@@ -649,8 +649,7 @@ func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmo
 	defer resp.Body.Close()
 
 	hosts := []restmodel.CreateHost{}
-	util.ReadJSONInto(resp.Body, &hosts)
-	if err != nil {
+	if err := util.ReadJSONInto(resp.Body, &hosts); err != nil {
 		return nil, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
 	}
 	return hosts, nil

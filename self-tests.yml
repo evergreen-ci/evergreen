@@ -250,6 +250,18 @@ functions:
 #######################################
 
 tasks:
+  - name: try-host
+    commands:
+      - command: host.create
+        params:
+          distro: ubuntu1604-test
+          provider: ec2
+          scope: "build"
+      - command: host.list
+        params:
+          wait: true
+          timeout_seconds: 300
+          num_hosts: 1
   - name: coverage
     tags: [ "report" ]
     commands:
@@ -538,6 +550,7 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
       - name: generate-lint
+      - name: try-host
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
