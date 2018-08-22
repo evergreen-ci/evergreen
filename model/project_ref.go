@@ -43,10 +43,6 @@ type ProjectRef struct {
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
 
-	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
-	// the set of alert deliveries to be processed for that trigger.
-	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
-
 	// TODO: remove the alerts field above
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
 
@@ -98,7 +94,6 @@ var (
 	ProjectRefRemotePathKey         = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefTrackedKey            = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
 	ProjectRefLocalConfig           = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
-	ProjectRefAlertsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
@@ -309,7 +304,6 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRemotePathKey:         projectRef.RemotePath,
 				ProjectRefTrackedKey:            projectRef.Tracked,
 				ProjectRefLocalConfig:           projectRef.LocalConfig,
-				ProjectRefAlertsKey:             projectRef.Alerts,
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
