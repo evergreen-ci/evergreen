@@ -53,18 +53,55 @@ type jiraBuilder struct {
 }
 
 type jiraTemplateData struct {
-	UIRoot          string
-	Task            *task.Task
-	Build           *build.Build
-	Host            *host.Host
-	Project         *model.ProjectRef
-	Version         *version.Version
-	FailedTests     []task.TestResult
-	FailedTestNames []string
-	Tests           []jiraTestFailure
+	UIRoot             string
+	Task               *task.Task
+	Build              *build.Build
+	Host               *host.Host
+	Project            *model.ProjectRef
+	Version            *version.Version
+	FailedTests        []task.TestResult
+	FailedTestNames    []string
+	Tests              []jiraTestFailure
+	SpecificTaskStatus string
+}
+
+func makeSpecificTaskStatus(t *task.Task) string {
+	switch {
+	case t.Details.TimedOut:
+		return evergreen.TaskTimedOut
+	case t.Details.Type == evergreen.CommandTypeSystem:
+		return evergreen.TaskSystemFailed
+	case t.Details.Type == evergreen.CommandTypeSetup:
+		return evergreen.TaskSetupFailed
+	case t.Status == evergreen.TaskSucceeded:
+		return evergreen.TaskSucceeded
+	default:
+		return evergreen.TaskFailed
+	}
+}
+
+func makeSummaryPrefix(t *task.Task, failed int) string {
+	s := makeSpecificTaskStatus(t)
+	switch {
+	case t.Status == evergreen.TaskSucceeded:
+		return "Succeeded: "
+	case s == evergreen.TaskTimedOut:
+		return "Timed Out: "
+	case s == evergreen.TaskSystemFailed:
+		return "System Failure: "
+	case s == evergreen.TaskSetupFailed:
+		return "Setup Failure: "
+	case failed == 1:
+		return "Failure: "
+	case failed > 1:
+		return "Failures: "
+	default:
+		return "Failed: "
+	}
 }
 
 func (j *jiraBuilder) build() (*message.JiraIssue, error) {
+	j.data.SpecificTaskStatus = makeSpecificTaskStatus(j.data.Task)
 	description, err := j.getDescription()
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating description")
@@ -111,20 +148,7 @@ func (j *jiraBuilder) getSummary() (string, error) {
 		}
 	}
 
-	switch {
-	case j.data.Task.Details.TimedOut:
-		subj.WriteString("Timed Out: ")
-	case j.data.Task.Details.Type == evergreen.CommandTypeSystem:
-		subj.WriteString("System Failure: ")
-	case j.data.Task.Details.Type == evergreen.CommandTypeSetup:
-		subj.WriteString("Setup Failure: ")
-	case len(failed) == 1:
-		subj.WriteString("Failure: ")
-	case len(failed) > 1:
-		subj.WriteString("Failures: ")
-	default:
-		subj.WriteString("Failed: ")
-	}
+	subj.WriteString(makeSummaryPrefix(j.data.Task, len(failed)))
 
 	catcher := grip.NewSimpleCatcher()
 	_, err := fmt.Fprintf(subj, "%s on %s ", j.data.Task.DisplayName, j.data.Build.DisplayName)
