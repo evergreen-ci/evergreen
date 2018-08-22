@@ -67,14 +67,14 @@ type jiraTemplateData struct {
 
 func makeSpecificTaskStatus(t *task.Task) string {
 	switch {
+	case t.Status == evergreen.TaskSucceeded:
+		return evergreen.TaskSucceeded
 	case t.Details.TimedOut:
 		return evergreen.TaskTimedOut
 	case t.Details.Type == evergreen.CommandTypeSystem:
 		return evergreen.TaskSystemFailed
 	case t.Details.Type == evergreen.CommandTypeSetup:
 		return evergreen.TaskSetupFailed
-	case t.Status == evergreen.TaskSucceeded:
-		return evergreen.TaskSucceeded
 	default:
 		return evergreen.TaskFailed
 	}
