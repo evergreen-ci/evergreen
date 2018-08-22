@@ -31,7 +31,7 @@ type cachingPriceFetcher struct {
 	ec2Prices  map[odInfo]float64
 	ebsPrices  map[string]float64
 	spotPrices map[string]cachedSpotRate
-	sync.Mutex
+	sync.RWMutex
 }
 
 type cachedSpotRate struct {
@@ -537,7 +537,10 @@ func (cpf *cachingPriceFetcher) describeSpotPriceHistory(ctx context.Context, cl
 // starting from the supplied start time. Returns a slice of hour-separated spot prices.
 func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
 	cacheKey := input.String()
+	cpf.RLock()
 	cachedValue, ok := cpf.spotPrices[cacheKey]
+	l := len(cpf.spotPrices)
+	cpf.RUnlock()
 	if ok {
 		staleFor := time.Since(cachedValue.collectedAt)
 		if staleFor < spotPriceCacheTTL && len(cachedValue.values) > 0 {
@@ -545,7 +548,7 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 				"message":     "found spot price in cache",
 				"cached_secs": staleFor.Seconds(),
 				"key":         cacheKey,
-				"cache_size":  len(cpf.spotPrices),
+				"cache_size":  l,
 			})
 
 			return cachedValue.getCopy(), nil
@@ -596,6 +599,8 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 		collectedAt: time.Now(),
 		values:      prices,
 	}
+	cpf.Lock()
+	defer cpf.Unlock()
 	cpf.spotPrices[cacheKey] = cachedValue
 	return cachedValue.getCopy(), nil
 }
