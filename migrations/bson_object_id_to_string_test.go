@@ -11,18 +11,19 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type subscriptionIDToStringSuite struct {
-	docs  []db.Document
-	found map[string]bool
+type bsonObjectIDToStringSuite struct {
+	docs       []db.Document
+	found      map[string]bool
+	collection string
 	migrationSuite
 }
 
 func TestSubscriptionIDToString(t *testing.T) {
-	suite.Run(t, &subscriptionIDToStringSuite{})
+	suite.Run(t, &bsonObjectIDToStringSuite{collection: event.SubscriptionsCollection})
 }
 
-func (s *subscriptionIDToStringSuite) SetupTest() {
-	c := s.session.DB(s.database).C(event.SubscriptionsCollection)
+func (s *bsonObjectIDToStringSuite) SetupTest() {
+	c := s.session.DB(s.database).C(s.collection)
 	_, err := c.RemoveAll(db.Document{})
 	s.NoError(err)
 
@@ -72,7 +73,7 @@ func (s *subscriptionIDToStringSuite) SetupTest() {
 	}
 }
 
-func (s *subscriptionIDToStringSuite) TestMigration() {
+func (s *bsonObjectIDToStringSuite) TestMigration() {
 	args := migrationGeneratorFactoryOptions{
 		db:    s.database,
 		limit: 50,
@@ -81,7 +82,7 @@ func (s *subscriptionIDToStringSuite) TestMigration() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	gen, err := subscriptionIDToStringGenerator(anser.GetEnvironment(), args)
+	gen, err := makeBSONObjectIDToStringGenerator(event.SubscriptionsCollection)(anser.GetEnvironment(), args)
 	s.Require().NoError(err)
 	gen.Run(ctx)
 	s.Require().NoError(gen.Error())
@@ -95,7 +96,7 @@ func (s *subscriptionIDToStringSuite) TestMigration() {
 
 	s.Equal(5, i)
 
-	q := s.session.DB(s.database).C(event.SubscriptionsCollection).Find(db.Document{
+	q := s.session.DB(s.database).C(s.collection).Find(db.Document{
 		"_id": db.Document{
 			"$type": "string",
 		},

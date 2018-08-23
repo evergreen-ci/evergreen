@@ -99,6 +99,7 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		migrationSpawnhostExpirationPreference:      setSpawnhostPreferenceGenerator,
 		migrationDistroSecurityGroups:               distroSecurityGroupsGenerator,
 		migrationLegacyNotificationsToSubscriptions: legacyNotificationsToSubscriptionsGenerator,
+		migrationSubscriptionBSONObjectIDToString:   makeBSONObjectIDToStringGenerator("subscriptions"),
 	}
 	catcher := grip.NewBasicCatcher()
 
