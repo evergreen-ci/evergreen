@@ -2128,6 +2128,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			Status: evergreen.HostRunning,
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(-time.Minute),
+				SpawnedByTask:   true,
 			},
 		},
 		{
@@ -2136,6 +2137,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				TaskID:          "running_task",
+				SpawnedByTask:   true,
 			},
 		},
 		{
@@ -2144,6 +2146,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				TaskID:          "running_task",
+				SpawnedByTask:   true,
 			},
 		},
 		{
@@ -2152,6 +2155,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				BuildID:         "running_build",
+				SpawnedByTask:   true,
 			},
 		},
 		{
@@ -2160,6 +2164,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				BuildID:         "running_build",
+				SpawnedByTask:   true,
 			},
 		},
 		{
@@ -2167,6 +2172,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			Status: evergreen.HostTerminated,
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(-time.Minute),
+				SpawnedByTask:   true,
 			},
 		},
 		{
@@ -2175,6 +2181,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				TaskID:          "running_task",
+				SpawnedByTask:   true,
 			},
 		},
 		{
@@ -2183,6 +2190,7 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 			SpawnOptions: SpawnOptions{
 				TimeoutTeardown: time.Now().Add(time.Minute),
 				BuildID:         "running_build",
+				SpawnedByTask:   true,
 			},
 		},
 		{
