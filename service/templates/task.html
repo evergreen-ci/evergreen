@@ -266,7 +266,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                             <tbody>
                               <tr ng-repeat="et in task.execution_tasks">
                                 <td>
-                                  <a ng-href="[[execTaskUrl(et.id)]]">[[et.display_name]]</a>
+                                  <a ng-href="[[execTaskUrl(et.id, task.execution)]]">[[et.display_name]]</a>
                                 </td>
                                 <td>
                                   [[et.status]]
@@ -424,7 +424,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   </div>
                 </td>
                 <td ng-if="task.display_only" class="col-lg-3">
-                  <a ng-href="[[execTaskUrl(test.task_id)]]">[[test.task_name]]</a>
+                  <a ng-href="[[execTaskUrl(test.task_id, task.execution)]]">[[test.task_name]]</a>
                 </td>
               </tr>
             </tbody>
