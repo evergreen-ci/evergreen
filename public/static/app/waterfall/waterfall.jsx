@@ -102,7 +102,7 @@ class Root extends React.PureComponent {
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: this.props.data
+      data: null
     };
 
     // Handle state for a collapsed view, as well as shortened header commit messages
@@ -138,11 +138,11 @@ class Root extends React.PureComponent {
     var params = filter ? {bv_filter: filter} : {}
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
-          //setTimeout(() => {
+        setTimeout(() => {
           this.updatePaginationContext(data)
           this.setState({data})
           updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
-          //}, 10000);
+        }, 5000);
       })
   }
 
@@ -182,6 +182,7 @@ class Root extends React.PureComponent {
               taskFilterFunc={this.handleTaskFilter}
               isLoggedIn={this.props.user !== null}
               project={this.props.project}
+              disabled={true}
             />
             <VersionHeaderTombstone />
             <Grid
@@ -219,6 +220,7 @@ class Root extends React.PureComponent {
           taskFilterFunc={this.handleTaskFilter}
           isLoggedIn={this.props.user !== null}
           project={this.props.project}
+          disabled={false}
         />
         <Headers
           shortenCommitMessage={this.state.shortenCommitMessage}
@@ -251,25 +253,27 @@ function Toolbar ({collapsed,
   buildVariantFilterFunc,
   taskFilterFunc,
   isLoggedIn,
-  project}) {
+  project,
+  disabled
+}) {
 
   var Form = ReactBootstrap.Form;
   return (
     <div className="row">
       <div className="col-xs-12">
         <Form inline className="waterfall-toolbar pull-right">
-          <CollapseButton collapsed={collapsed} onCheck={onCheck} />
+          <CollapseButton collapsed={collapsed} onCheck={onCheck} disabled={disabled} />
           <FilterBox
             filterFunction={buildVariantFilterFunc}
             placeholder={"Filter variant"}
             currentFilter={buildVariantFilter}
-            disabled={false}
+            disabled={disabled}
           />
           <FilterBox
             filterFunction={taskFilterFunc}
             placeholder={"Filter task"}
             currentFilter={taskFilter}
-            disabled={collapsed}
+            disabled={collapsed || disabled}
           />
           <PageButtons
             nextSkip={nextSkip}
@@ -277,6 +281,7 @@ function Toolbar ({collapsed,
             baseURL={baseURL}
             buildVariantFilter={buildVariantFilter}
             taskFilter={taskFilter}
+            disabled={disabled}
           />
           <GearMenu
             project={project}
@@ -362,6 +367,7 @@ class CollapseButton extends React.PureComponent {
           checked={this.props.collapsed}
           ref="collapsedBuilds"
           onChange={this.handleChange}
+          disabled={this.props.disabled}
         />
       </span>
     )

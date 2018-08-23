@@ -132,7 +132,7 @@ var Root = function (_React$PureComponent2) {
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: _this2.props.data
+      data: null
     };
 
     // Handle state for a collapsed view, as well as shortened header commit messages
@@ -175,11 +175,11 @@ var Root = function (_React$PureComponent2) {
       http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
-        //setTimeout(() => {
-        _this3.updatePaginationContext(data);
-        _this3.setState({ data: data });
-        updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
-        //}, 10000);
+        setTimeout(function () {
+          _this3.updatePaginationContext(data);
+          _this3.setState({ data: data });
+          updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
+        }, 5000);
       });
     }
   }, {
@@ -224,7 +224,8 @@ var Root = function (_React$PureComponent2) {
             buildVariantFilterFunc: this.handleBuildVariantFilter,
             taskFilterFunc: this.handleTaskFilter,
             isLoggedIn: this.props.user !== null,
-            project: this.props.project
+            project: this.props.project,
+            disabled: true
           }),
           React.createElement(VersionHeaderTombstone, null),
           React.createElement(Grid, {
@@ -261,7 +262,8 @@ var Root = function (_React$PureComponent2) {
           buildVariantFilterFunc: this.handleBuildVariantFilter,
           taskFilterFunc: this.handleTaskFilter,
           isLoggedIn: this.props.user !== null,
-          project: this.props.project
+          project: this.props.project,
+          disabled: false
         }),
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage,
@@ -298,7 +300,8 @@ function Toolbar(_ref2) {
       buildVariantFilterFunc = _ref2.buildVariantFilterFunc,
       taskFilterFunc = _ref2.taskFilterFunc,
       isLoggedIn = _ref2.isLoggedIn,
-      project = _ref2.project;
+      project = _ref2.project,
+      disabled = _ref2.disabled;
 
 
   var Form = ReactBootstrap.Form;
@@ -311,25 +314,26 @@ function Toolbar(_ref2) {
       React.createElement(
         Form,
         { inline: true, className: "waterfall-toolbar pull-right" },
-        React.createElement(CollapseButton, { collapsed: collapsed, onCheck: onCheck }),
+        React.createElement(CollapseButton, { collapsed: collapsed, onCheck: onCheck, disabled: disabled }),
         React.createElement(FilterBox, {
           filterFunction: buildVariantFilterFunc,
           placeholder: "Filter variant",
           currentFilter: buildVariantFilter,
-          disabled: false
+          disabled: disabled
         }),
         React.createElement(FilterBox, {
           filterFunction: taskFilterFunc,
           placeholder: "Filter task",
           currentFilter: taskFilter,
-          disabled: collapsed
+          disabled: collapsed || disabled
         }),
         React.createElement(PageButtons, {
           nextSkip: nextSkip,
           prevSkip: prevSkip,
           baseURL: baseURL,
           buildVariantFilter: buildVariantFilter,
-          taskFilter: taskFilter
+          taskFilter: taskFilter,
+          disabled: disabled
         }),
         React.createElement(GearMenu, {
           project: project,
@@ -457,7 +461,8 @@ var CollapseButton = function (_React$PureComponent4) {
           type: "checkbox",
           checked: this.props.collapsed,
           ref: "collapsedBuilds",
-          onChange: this.handleChange
+          onChange: this.handleChange,
+          disabled: this.props.disabled
         })
       );
     }
