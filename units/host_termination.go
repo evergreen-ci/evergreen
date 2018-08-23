@@ -227,36 +227,33 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.Status != evergreen.HostProvisionFailed {
-		// only run teardown if provisioning was successful
-		if err := runHostTeardown(ctx, j.host, cloudHost); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"job_type": j.Type().Name,
-				"message":  "Error running teardown script",
-				"host":     j.host.Id,
+	if err := j.runHostTeardown(ctx, cloudHost); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"job_type": j.Type().Name,
+			"message":  "Error running teardown script",
+			"host":     j.host.Id,
+		}))
+
+		subj := fmt.Sprintf("%v Error running teardown for host %v",
+			teardownFailurePreface, j.host.Id)
+
+		mailer, serr := j.env.GetSender(evergreen.SenderEmail)
+		if serr != nil {
+			grip.Alert(message.Fields{
+				"message":    "problem getting sender",
+				"operation":  "host termination issue",
+				"sender_err": serr,
+				"error":      err,
+				"host":       j.host.Id,
+				"subject":    subj,
+			})
+		} else if len(settings.Notify.SMTP.AdminEmail) > 0 {
+			mailer.Send(message.NewEmailMessage(level.Error, message.Email{
+				From:       settings.Notify.SMTP.From,
+				Recipients: settings.Notify.SMTP.AdminEmail,
+				Subject:    subj,
+				Body:       err.Error(),
 			}))
-
-			subj := fmt.Sprintf("%v Error running teardown for host %v",
-				teardownFailurePreface, j.host.Id)
-
-			mailer, serr := j.env.GetSender(evergreen.SenderEmail)
-			if serr != nil {
-				grip.Alert(message.Fields{
-					"message":    "problem getting sender",
-					"operation":  "host termination issue",
-					"sender_err": serr,
-					"error":      err,
-					"host":       j.host.Id,
-					"subject":    subj,
-				})
-			} else {
-				mailer.Send(message.NewEmailMessage(level.Error, message.Email{
-					From:       settings.Notify.SMTP.From,
-					Recipients: settings.Notify.SMTP.AdminEmail,
-					Subject:    subj,
-					Body:       err.Error(),
-				}))
-			}
 		}
 	}
 
@@ -301,22 +298,24 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 }
 
-func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHost) error {
-	if h.Distro.Teardown == "" {
+func (j *hostTerminationJob) runHostTeardown(ctx context.Context, cloudHost *cloud.CloudHost) error {
+	if j.host.Distro.Teardown == "" ||
+		j.host.Status == evergreen.HostProvisionFailed ||
+		j.host.SpawnOptions.SpawnedByTask {
 		return nil
 	}
 
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
+		return errors.Wrapf(err, "error getting ssh options for host %s", j.host.Id)
 	}
 	startTime := time.Now()
 	// run the teardown script with the agent
-	logs, err := h.RunSSHCommand(ctx, h.TearDownCommand(), sshOptions)
+	logs, err := j.host.RunSSHCommand(ctx, j.host.TearDownCommand(), sshOptions)
 	if err != nil {
-		event.LogHostTeardown(h.Id, logs, false, time.Since(startTime))
+		event.LogHostTeardown(j.host.Id, logs, false, time.Since(startTime))
 		return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)
 	}
-	event.LogHostTeardown(h.Id, logs, true, time.Since(startTime))
+	event.LogHostTeardown(j.host.Id, logs, true, time.Since(startTime))
 	return nil
 }

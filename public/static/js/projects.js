@@ -132,38 +132,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     return !isNaN(Number(t)) && Number(t) >= 0
   }
 
-  // TODO: EVG-3408
-  $scope.isValidAlertDefinition = function(spec) {
-    if (!spec) { return false; }
-    if (spec.startsWith("JIRA:") && spec.split(":").length < 3) {
-        return false
-    }
-    if (spec.startsWith("SLACK:") && spec.split(":").length < 2) {
-        return false
-    }
-    return true
-  }
-
-  // TODO: EVG-3408
-  $scope.addAlert = function(obj, trigger){
-    if(!$scope.settingsFormData.alert_config) {
-      $scope.settingsFormData.alert_config = {}
-    }
-    if(!$scope.settingsFormData.alert_config[trigger.id]){
-      $scope.settingsFormData.alert_config[trigger.id] = []
-    }
-    $scope.settingsFormData.alert_config[trigger.id].push(NewAlert(obj.email))
-    obj.editing = false
-  }
-
-  // TODO: EVG-3408
-  $scope.getProjectAlertConfig = function(t){
-    if(!$scope.settingsFormData.alert_config || !$scope.settingsFormData.alert_config[t]){
-      return []
-    }
-    return $scope.settingsFormData.alert_config[t]
-  }
-
   $scope.findProject = function(identifier){
     return _.find($scope.trackedProjects, function(project){
       return project.identifier == identifier;
@@ -598,27 +566,5 @@ mciModule.directive('adminNewProject', function() {
         '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-click="addProject()">Create Project</button>' +
       '</div>' +
     '</div>'
-  };
-});
-
-// TODO: EVG-3408
-mciModule.directive('adminNewAlert', function() {
-    return {
-      restrict: 'E',
-      templateUrl:'/static/partials/alert_modal_form.html',
-      link: function(scope, element, attrs){
-        scope.availableTriggers= [
-          {id:"task_failed", display:"Any task fails..."},
-          {id:"first_task_failed", display:"The first failure in a version occurs..."},
-          {id:"task_fail_transition", display:"A task that had passed in a previous run fails"},
-        ]
-        scope.availableActions= [
-          {id:"email", display:"Send an e-mail"},
-        ]
-        scope.setTrigger = function(index){
-          scope.currentTrigger = scope.availableTriggers[index]
-        }
-        scope.currentTrigger = scope.availableTriggers[0]
-      }
   };
 });

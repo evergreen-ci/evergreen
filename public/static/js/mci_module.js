@@ -290,9 +290,12 @@ var mciModule = angular.module('MCI', [
   }
 }).filter('statusLabel', function() {
   return function(task) {
+    if (task.task_waiting) {
+      return task.task_waiting;
+    }
     if (task.status == 'started') {
       return 'started';
-    } else if ((task.status == 'undispatched' && task.activated) || (task.display_only && task.task_waiting)) {
+    } else if (task.status == 'undispatched' && task.activated) {
       if (task.task_waiting) {
         return task.task_waiting;
       }

@@ -638,6 +638,14 @@ Admin Settings
                   <input type="text" ng-model="Settings.slack.options.name">
                 </md-input-container>
                 <md-input-container class="control" style="width:45%; margin-left:50px;">
+                  <label>Username</label>
+                  <input type="text" ng-model="Settings.slack.options.username">
+                </md-input-container>
+                <md-input-container class="control" style="width:45%;">
+                  <label>Icon URL</label>
+                  <input type="text" ng-model="Settings.slack.options.icon_url">
+                </md-input-container>
+                <md-input-container class="control" style="width:45%; margin-left:50px;">
                   <label>Fields to set</label>
                   <textarea ng-model="Settings.slack.options.fields" ng-list="&#10;"
                   ng-trim="false" rows="3" md-select-on-focus></textarea>
