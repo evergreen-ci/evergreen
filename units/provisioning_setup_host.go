@@ -214,23 +214,28 @@ func (j *setupHostJob) setDNSName(ctx context.Context, host *host.Host, cloudMgr
 // runHostSetup runs the specified setup script for an individual host. Returns
 // the output from running the script remotely, as well as any error that
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
-func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) (string, error) {
+func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, settings *evergreen.Settings) error {
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := cloud.GetManager(ctx, targetHost.Provider, settings)
 	if err != nil {
-		return "", errors.Wrapf(err,
+		return errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
 			targetHost.Id, targetHost.Provider)
 	}
 
 	if err := j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
-		return "", errors.Wrap(err, "error settings DNS name")
+		return errors.Wrap(err, "error settings DNS name")
 	}
 
 	// run the function scheduled for when the host is up
 	if err = cloudMgr.OnUp(ctx, targetHost); err != nil {
 		err = errors.Wrapf(err, "OnUp callback failed for host %s", targetHost.Id)
-		return "", err
+		return err
+	}
+
+	// Do not copy setup scripts to task-spawned hosts
+	if targetHost.SpawnOptions.SpawnedByTask {
+		return nil
 	}
 
 	// get expansions mapping using settings
@@ -238,14 +243,14 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 		exp := util.NewExpansions(settings.Expansions)
 		targetHost.Distro.Setup, err = exp.ExpandString(targetHost.Distro.Setup)
 		if err != nil {
-			return "", errors.Wrap(err, "expansions error")
+			return errors.Wrap(err, "expansions error")
 		}
 	}
 
 	if targetHost.Distro.Setup != "" {
 		err = j.copyScript(ctx, settings, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
-			return "", errors.Wrapf(err, "error copying setup script %v to host %v",
+			return errors.Wrapf(err, "error copying setup script %v to host %v",
 				evergreen.SetupScriptName, targetHost.Id)
 		}
 	}
@@ -253,12 +258,12 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 	if targetHost.Distro.Teardown != "" {
 		err = j.copyScript(ctx, settings, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {
-			return "", errors.Wrapf(err, "error copying teardown script %v to host %v",
+			return errors.Wrapf(err, "error copying teardown script %v to host %v",
 				evergreen.TeardownScriptName, targetHost.Id)
 		}
 	}
 
-	return "", nil
+	return nil
 }
 
 // copyScript writes a given script as file "name" to the target host. This works
@@ -394,36 +399,38 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 		"operation":     "increment provisioning errors failed",
 	}))
 
-	// If this is not a task-spawned host
-	if !h.SpawnOptions.SpawnedByTask {
-		output, err := j.runHostSetup(ctx, h, settings)
-		if err != nil {
-			if shouldRetryProvisioning(h) {
-				grip.Debug(message.Fields{
-					"host":     h.Id,
-					"attempts": h.ProvisionAttempts,
-					"output":   output,
-					"distro":   h.Distro.Id,
-					"job":      j.ID(),
-					"error":    err.Error(),
-					"message":  "provisioning failed, but will retry",
-				})
-				return nil
-			}
-
-			event.LogProvisionFailed(h.Id, output)
-
-			// mark the host's provisioning as failed
-			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
-				"operation": "setting host unprovisioned",
-				"attempts":  h.ProvisionAttempts,
-				"distro":    h.Distro.Id,
-				"job":       j.ID(),
-				"host":      h.Id,
-			}))
-
-			return errors.Wrapf(err, "error initializing host %s", h.Id)
+	err := j.runHostSetup(ctx, h, settings)
+	if err != nil {
+		if shouldRetryProvisioning(h) {
+			grip.Debug(message.Fields{
+				"host":     h.Id,
+				"attempts": h.ProvisionAttempts,
+				"distro":   h.Distro.Id,
+				"job":      j.ID(),
+				"error":    err.Error(),
+				"message":  "provisioning failed, but will retry",
+			})
+			return nil
 		}
+
+		grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
+			"operation": "running host provisioning alert trigger",
+			"job":       j.ID(),
+			"host":      h.Id,
+			"attempts":  h.ProvisionAttempts,
+		}))
+		event.LogProvisionFailed(h.Id, "")
+
+		// mark the host's provisioning as failed
+		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+			"operation": "setting host unprovisioned",
+			"attempts":  h.ProvisionAttempts,
+			"distro":    h.Distro.Id,
+			"job":       j.ID(),
+			"host":      h.Id,
+		}))
+
+		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
 
 	// If this is a spawn host
