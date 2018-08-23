@@ -704,7 +704,7 @@ function VariantTombstone() {
         </span>
       </div>
       <div className="col-xs-10">
-        <div className="row build-cells" style={{'height': '100px'}}>
+        <div className="row build-cells">
           <div className="waterfall-build">
             <div className="active-build">
               {TaskTombstones(80)}

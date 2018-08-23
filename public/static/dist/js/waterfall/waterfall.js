@@ -923,7 +923,7 @@ function VariantTombstone() {
       { className: "col-xs-10" },
       React.createElement(
         "div",
-        { className: "row build-cells", style: { 'height': '100px' } },
+        { className: "row build-cells" },
         React.createElement(
           "div",
           { className: "waterfall-build" },
