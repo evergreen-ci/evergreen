@@ -175,11 +175,9 @@ var Root = function (_React$PureComponent2) {
       http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
-        setTimeout(function () {
-          _this3.updatePaginationContext(data);
-          _this3.setState({ data: data });
-          updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
-        }, 5000);
+        _this3.updatePaginationContext(data);
+        _this3.setState({ data: data });
+        updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
       });
     }
   }, {

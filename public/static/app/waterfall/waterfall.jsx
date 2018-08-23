@@ -138,11 +138,9 @@ class Root extends React.PureComponent {
     var params = filter ? {bv_filter: filter} : {}
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
-        setTimeout(() => {
-          this.updatePaginationContext(data)
-          this.setState({data})
-          updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
-        }, 5000);
+        this.updatePaginationContext(data)
+        this.setState({data})
+        updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
       })
   }
 
