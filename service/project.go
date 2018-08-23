@@ -548,8 +548,10 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
-	j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
-	if err := uis.queue.Put(j); err != nil {
+	ts := util.RoundPartOfHour(5).Format("2006-01-02.15-04-05")
+	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+	err = evergreen.GetEnvironment().RemoteQueue().Put(j)
+	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
