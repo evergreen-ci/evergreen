@@ -374,7 +374,10 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           return url;
         };
 
-        $scope.execTaskUrl = function(taskId) {
+        $scope.execTaskUrl = function(taskId, execution) {
+          if (execution >= 0) {
+            return '/task/' + taskId + '/' + execution;
+          }
           return '/task/' + taskId;
         };
 

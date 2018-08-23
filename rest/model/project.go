@@ -8,26 +8,20 @@ import (
 )
 
 type APIProject struct {
-	BatchTime          int                      `json:"batch_time"`
-	Branch             APIString                `json:"branch_name"`
-	DisplayName        APIString                `json:"display_name"`
-	Enabled            bool                     `json:"enabled"`
-	Identifier         APIString                `json:"identifier"`
-	Owner              APIString                `json:"owner_name"`
-	Private            bool                     `json:"private"`
-	RemotePath         APIString                `json:"remote_path"`
-	Repo               APIString                `json:"repo_name"`
-	Tracked            bool                     `json:"tracked"`
-	AlertSettings      map[string][]alertConfig `json:"alert_settings"`
-	DeactivatePrevious bool                     `json:"deactivate_previous"`
-	Admins             []APIString              `json:"admins"`
-	TracksPushEvents   bool                     `json:"tracks_push_events"`
-	PRTestingEnabled   bool                     `json:"pr_testing_enabled"`
-}
-
-type alertConfig struct {
-	Provider APIString         `json:"provider"`
-	Settings map[string]string `json:"settings"`
+	BatchTime          int         `json:"batch_time"`
+	Branch             APIString   `json:"branch_name"`
+	DisplayName        APIString   `json:"display_name"`
+	Enabled            bool        `json:"enabled"`
+	Identifier         APIString   `json:"identifier"`
+	Owner              APIString   `json:"owner_name"`
+	Private            bool        `json:"private"`
+	RemotePath         APIString   `json:"remote_path"`
+	Repo               APIString   `json:"repo_name"`
+	Tracked            bool        `json:"tracked"`
+	DeactivatePrevious bool        `json:"deactivate_previous"`
+	Admins             []APIString `json:"admins"`
+	TracksPushEvents   bool        `json:"tracks_push_events"`
+	PRTestingEnabled   bool        `json:"pr_testing_enabled"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
@@ -47,21 +41,6 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Tracked = v.Tracked
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
-
-	alertSettings := make(map[string][]alertConfig)
-	for k, v := range v.Alerts {
-		configArr := []alertConfig{}
-		for _, c := range v {
-			config := alertConfig{
-				Provider: ToAPIString(c.Provider),
-				Settings: c.GetSettingsMap(),
-			}
-			configArr = append(configArr, config)
-		}
-		alertSettings[k] = configArr
-	}
-
-	apiProject.AlertSettings = alertSettings
 	apiProject.DeactivatePrevious = v.DeactivatePrevious
 
 	admins := []APIString{}

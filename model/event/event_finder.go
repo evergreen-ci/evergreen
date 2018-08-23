@@ -214,3 +214,7 @@ func TaskProcessInfoEvents(taskID string, ts time.Time, limit int) db.Q {
 
 	return db.Query(filter).Sort([]string{TimestampKey}).Limit(limit)
 }
+
+func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {
+	return Find(AllLogCollection, db.Query(bson.M{ResourceIdKey: resourceID}))
+}

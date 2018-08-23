@@ -102,7 +102,7 @@ type Communicator interface {
 
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) error
-	ListHosts(context.Context, TaskData) ([]restmodel.APIHost, error)
+	ListHosts(context.Context, TaskData) ([]restmodel.CreateHost, error)
 
 	// ---------------------------------------------------------------------
 	// End legacy API methods

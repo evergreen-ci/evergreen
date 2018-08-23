@@ -10,8 +10,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const legacyAlertsSubscription = "legacy-alerts"
-
 func TestAlertRecord(t *testing.T) {
 	suite.Run(t, &alertRecordSuite{})
 }

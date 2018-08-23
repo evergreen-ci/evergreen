@@ -70,8 +70,9 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	var hosts []restmodel.APIHost
+	var hosts []restmodel.CreateHost
 	var err error
+	var timeout bool
 
 	backoffCounter := getS3OpBackoff()
 	timer := time.NewTimer(0)
@@ -81,7 +82,7 @@ waitForHosts:
 	for {
 		select {
 		case <-ctx.Done():
-			err = errors.New("reached timeout")
+			timeout = true
 			break waitForHosts
 		case <-timer.C:
 			hosts, err = comm.ListHosts(ctx, td)
@@ -101,8 +102,11 @@ waitForHosts:
 		}
 	}
 
-	if err != nil {
-		return errors.Wrap(err, "reached timeout waiting for hosts ")
+	if timeout {
+		if err != nil {
+			return errors.Wrap(err, "problem getting hosts list")
+		}
+		return errors.New("reached timeout waiting for hosts")
 	}
 
 	if c.Path != "" {

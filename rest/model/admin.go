@@ -1062,6 +1062,8 @@ type APISlackOptions struct {
 	Channel       APIString       `json:"channel"`
 	Hostname      APIString       `json:"hostname"`
 	Name          APIString       `json:"name"`
+	Username      APIString       `json:"username"`
+	IconURL       APIString       `json:"icon_url"`
 	BasicMetadata bool            `json:"add_basic_metadata"`
 	Fields        bool            `json:"use_fields"`
 	AllFields     bool            `json:"all_fields"`
@@ -1074,6 +1076,8 @@ func (a *APISlackOptions) BuildFromService(h interface{}) error {
 		a.Channel = ToAPIString(v.Channel)
 		a.Hostname = ToAPIString(v.Hostname)
 		a.Name = ToAPIString(v.Name)
+		a.Username = ToAPIString(v.Username)
+		a.IconURL = ToAPIString(v.IconURL)
 		a.BasicMetadata = v.BasicMetadata
 		a.Fields = v.Fields
 		a.AllFields = v.AllFields
@@ -1092,6 +1096,8 @@ func (a *APISlackOptions) ToService() (interface{}, error) {
 		Channel:       FromAPIString(a.Channel),
 		Hostname:      FromAPIString(a.Hostname),
 		Name:          FromAPIString(a.Name),
+		Username:      FromAPIString(a.Username),
+		IconURL:       FromAPIString(a.IconURL),
 		BasicMetadata: a.BasicMetadata,
 		Fields:        a.Fields,
 		AllFields:     a.AllFields,
