@@ -141,7 +141,7 @@ Evergreen Projects
             <label class="control-label">Owner</label>
           </div>
           <div class="col-lg-5">
-            <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
+            <input class="form-control" type="text" ng-model="settingsFormData.owner_name" ng-change="repoChange()">
           </div>
         </div>
         <div class="form-group">
@@ -149,7 +149,7 @@ Evergreen Projects
             <label class="control-label">Repo Name</label>
           </div>
           <div class="col-lg-6">
-            <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
+            <input class="form-control" type="text" ng-model="settingsFormData.repo_name" ng-change="repoChange()">
           </div>
         </div>
         <div class="form-group">
@@ -157,7 +157,7 @@ Evergreen Projects
             <label class="control-label">Branch Name</label>
           </div>
           <div class="col-lg-6">
-            <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name">
+            <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name" ng-change="repoChange()">
           </div>
         </div>
       </div>
@@ -236,9 +236,9 @@ Evergreen Projects
                 </div>
                 <br />
                 <div class="col-lg-8 col-header" ng-show="githubHookID !== 0">
-                    <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
-                        <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" />
-                    </label>
+                  <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
+                    <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" ng-checked="repoChanged" />
+                  </label>
                 </div>
             </div>
           </div>
