@@ -21,6 +21,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.newProject = {};
   $scope.newProjectMessage="";
 
+  $scope.repoChanged = false;
+  $scope.repoChange = function() {
+    if ($scope.repoChanged == false) {
+      $scope.repoChanged = true;
+    }
+  };
+
   $scope.isDirty = false;
   $scope.triggers = [
     {
