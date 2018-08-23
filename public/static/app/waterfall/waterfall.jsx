@@ -136,14 +136,14 @@ class Root extends React.PureComponent {
 
   loadDataPortion(filter) {
     var params = filter ? {bv_filter: filter} : {}
-      //http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
-      //  .then(({data}) => {
-      //    setTimeout(() => {
-      //      this.updatePaginationContext(data)
-      //      this.setState({data})
-      //      updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
-      //    }, 10000);
-      //  })
+    http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
+      .then(({data}) => {
+          //setTimeout(() => {
+          this.updatePaginationContext(data)
+          this.setState({data})
+          updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
+          //}, 10000);
+      })
   }
 
   handleCollapseChange(collapsed) {
@@ -707,7 +707,7 @@ function VariantTombstone() {
         <div className="row build-cells">
           <div className="waterfall-build">
             <div className="active-build">
-              {TaskTombstones(80)}
+              {TaskTombstones(1)}
             </div>
           </div>
         </div>
