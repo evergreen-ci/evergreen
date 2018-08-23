@@ -136,7 +136,7 @@ class Root extends React.PureComponent {
 
   loadDataPortion(filter) {
     var params = filter ? {bv_filter: filter} : {}
-    http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
+    http.get(`/rest/v1/waterfall/${this.props.project}?${this.nextSkip}`, {params})
       .then(({data}) => {
         this.updatePaginationContext(data)
         this.setState({data})
