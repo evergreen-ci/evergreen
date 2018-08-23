@@ -45,7 +45,7 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
     params["skip"] = skip;
   }
 
-  if (Object.Keys(params).length > 0) {
+  if (Object.keys(params).length > 0) {
     const paramString = generateURLParameters(params);
     window.history.replaceState({}, '', baseURL + "?" + paramString);
   }
@@ -136,13 +136,14 @@ class Root extends React.PureComponent {
 
   loadDataPortion(filter) {
     var params = filter ? {bv_filter: filter} : {}
-    http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
-      .then(({data}) => {
-          console.log(data);
-        this.updatePaginationContext(data)
-        this.setState({data})
-        updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
-      })
+      //http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
+      //  .then(({data}) => {
+      //    setTimeout(() => {
+      //      this.updatePaginationContext(data)
+      //      this.setState({data})
+      //      updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
+      //    }, 10000);
+      //  })
   }
 
   handleCollapseChange(collapsed) {
@@ -167,7 +168,31 @@ class Root extends React.PureComponent {
 
   render() {
     if (!this.state.data) {
-      return null;
+        return (
+          <div>
+            <Toolbar
+              collapsed={this.state.collapsed}
+              onCheck={this.handleCollapseChange}
+              baseURL={this.baseURL}
+              nextSkip={this.nextSkip}
+              prevSkip={this.prevSkip}
+              buildVariantFilter={this.state.buildVariantFilter}
+              taskFilter={this.state.taskFilter}
+              buildVariantFilterFunc={this.handleBuildVariantFilter}
+              taskFilterFunc={this.handleTaskFilter}
+              isLoggedIn={this.props.user !== null}
+              project={this.props.project}
+            />
+            <VersionHeaderTombstone />
+            <Grid
+              data={this.state.data}
+              collapseInfo={collapseInfo}
+              project={this.props.project}
+              buildVariantFilter={this.state.buildVariantFilter}
+              taskFilter={this.state.taskFilter}
+            />
+          </div>
+        );
     }
     if (this.state.data.rows.length == 0){
       return (
@@ -524,6 +549,40 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz, jiraHost
 }
 
 
+function VersionHeaderTombstone() {
+  return (
+    <div className="row version-header">
+      <div className="variant-col col-xs-2 version-header-rolled"></div>
+      <div className="col-xs-10">
+        <div className="row">
+          <div className="header-col">
+            <div className="version-header-expanded">
+              <div className="col-xs-12">
+                <div className="row">
+                  <span className="waterfall-tombstone" style={{'height': '17px'}}>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                  </span>
+                </div>
+              </div>
+              <div className="col-xs-12">
+                <div className="row">
+                  <span className="waterfall-tombstone" style={{'height': '15px'}}>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                  </span><br/>
+                  <span className="waterfall-tombstone" style={{'height': '15px'}}>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                  </span><br/>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz, jiraHost}) {
   var message = version.messages[0];
   var author = version.authors[0];
@@ -560,7 +619,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
           </div>
         </div>
       </div>
-  )
+  );
 };
 
 class HideHeaderButton extends React.Component{

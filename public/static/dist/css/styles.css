@@ -2198,8 +2198,10 @@ a.task-summary:hover {
   background: #f6f7f8;
   background: linear-gradient(to right, #eeeeee 8%, #dddddd 18%, #eeeeee 33%);
   background-size: 800px 104px;
-  height: 96px;
   position: relative;
+}
+.task-tombstone {
+  background-color: rgba(255, 255, 255, 0);
 }
 .active-elt-colors {
   background-color: #5F923B;

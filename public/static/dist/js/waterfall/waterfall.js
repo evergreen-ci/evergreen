@@ -55,7 +55,7 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
     params["skip"] = skip;
   }
 
-  if (Object.Keys(params).length > 0) {
+  if (Object.keys(params).length > 0) {
     var paramString = generateURLParameters(params);
     window.history.replaceState({}, '', baseURL + "?" + paramString);
   }
@@ -169,17 +169,15 @@ var Root = function (_React$PureComponent2) {
   }, {
     key: "loadDataPortion",
     value: function loadDataPortion(filter) {
-      var _this3 = this;
-
       var params = filter ? { bv_filter: filter } : {};
-      http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
-        var data = _ref.data;
-
-        console.log(data);
-        _this3.updatePaginationContext(data);
-        _this3.setState({ data: data });
-        updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
-      });
+      //http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
+      //  .then(({data}) => {
+      //    setTimeout(() => {
+      //      this.updatePaginationContext(data)
+      //      this.setState({data})
+      //      updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
+      //    }, 10000);
+      //  })
     }
   }, {
     key: "handleCollapseChange",
@@ -209,7 +207,31 @@ var Root = function (_React$PureComponent2) {
     key: "render",
     value: function render() {
       if (!this.state.data) {
-        return null;
+        return React.createElement(
+          "div",
+          null,
+          React.createElement(Toolbar, {
+            collapsed: this.state.collapsed,
+            onCheck: this.handleCollapseChange,
+            baseURL: this.baseURL,
+            nextSkip: this.nextSkip,
+            prevSkip: this.prevSkip,
+            buildVariantFilter: this.state.buildVariantFilter,
+            taskFilter: this.state.taskFilter,
+            buildVariantFilterFunc: this.handleBuildVariantFilter,
+            taskFilterFunc: this.handleTaskFilter,
+            isLoggedIn: this.props.user !== null,
+            project: this.props.project
+          }),
+          React.createElement(VersionHeaderTombstone, null),
+          React.createElement(Grid, {
+            data: this.state.data,
+            collapseInfo: collapseInfo,
+            project: this.props.project,
+            buildVariantFilter: this.state.buildVariantFilter,
+            taskFilter: this.state.taskFilter
+          })
+        );
       }
       if (this.state.data.rows.length == 0) {
         return React.createElement(
@@ -262,18 +284,18 @@ var Root = function (_React$PureComponent2) {
 // Toolbar
 
 
-function Toolbar(_ref2) {
-  var collapsed = _ref2.collapsed,
-      onCheck = _ref2.onCheck,
-      baseURL = _ref2.baseURL,
-      nextSkip = _ref2.nextSkip,
-      prevSkip = _ref2.prevSkip,
-      buildVariantFilter = _ref2.buildVariantFilter,
-      taskFilter = _ref2.taskFilter,
-      buildVariantFilterFunc = _ref2.buildVariantFilterFunc,
-      taskFilterFunc = _ref2.taskFilterFunc,
-      isLoggedIn = _ref2.isLoggedIn,
-      project = _ref2.project;
+function Toolbar(_ref) {
+  var collapsed = _ref.collapsed,
+      onCheck = _ref.onCheck,
+      baseURL = _ref.baseURL,
+      nextSkip = _ref.nextSkip,
+      prevSkip = _ref.prevSkip,
+      buildVariantFilter = _ref.buildVariantFilter,
+      taskFilter = _ref.taskFilter,
+      buildVariantFilterFunc = _ref.buildVariantFilterFunc,
+      taskFilterFunc = _ref.taskFilterFunc,
+      isLoggedIn = _ref.isLoggedIn,
+      project = _ref.project;
 
 
   var Form = ReactBootstrap.Form;
@@ -315,12 +337,12 @@ function Toolbar(_ref2) {
   );
 };
 
-function PageButtons(_ref3) {
-  var prevSkip = _ref3.prevSkip,
-      nextSkip = _ref3.nextSkip,
-      baseURL = _ref3.baseURL,
-      buildVariantFilter = _ref3.buildVariantFilter,
-      taskFilter = _ref3.taskFilter;
+function PageButtons(_ref2) {
+  var prevSkip = _ref2.prevSkip,
+      nextSkip = _ref2.nextSkip,
+      baseURL = _ref2.baseURL,
+      buildVariantFilter = _ref2.buildVariantFilter,
+      taskFilter = _ref2.taskFilter;
 
   var ButtonGroup = ReactBootstrap.ButtonGroup;
 
@@ -354,10 +376,10 @@ function PageButtons(_ref3) {
   );
 }
 
-function PageButton(_ref4) {
-  var pageURL = _ref4.pageURL,
-      directionIcon = _ref4.directionIcon,
-      disabled = _ref4.disabled;
+function PageButton(_ref3) {
+  var pageURL = _ref3.pageURL,
+      directionIcon = _ref3.directionIcon,
+      disabled = _ref3.disabled;
 
   var Button = ReactBootstrap.Button;
   var classes = "fa " + directionIcon;
@@ -374,10 +396,10 @@ var FilterBox = function (_React$PureComponent3) {
   function FilterBox(props) {
     _classCallCheck(this, FilterBox);
 
-    var _this4 = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
+    var _this3 = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
 
-    _this4.applyFilter = _this4.applyFilter.bind(_this4);
-    return _this4;
+    _this3.applyFilter = _this3.applyFilter.bind(_this3);
+    return _this3;
   }
 
   _createClass(FilterBox, [{
@@ -405,10 +427,10 @@ var CollapseButton = function (_React$PureComponent4) {
   function CollapseButton(props) {
     _classCallCheck(this, CollapseButton);
 
-    var _this5 = _possibleConstructorReturn(this, (CollapseButton.__proto__ || Object.getPrototypeOf(CollapseButton)).call(this, props));
+    var _this4 = _possibleConstructorReturn(this, (CollapseButton.__proto__ || Object.getPrototypeOf(CollapseButton)).call(this, props));
 
-    _this5.handleChange = _this5.handleChange.bind(_this5);
-    return _this5;
+    _this4.handleChange = _this4.handleChange.bind(_this4);
+    return _this4;
   }
 
   _createClass(CollapseButton, [{
@@ -447,10 +469,10 @@ var GearMenu = function (_React$PureComponent5) {
   function GearMenu(props) {
     _classCallCheck(this, GearMenu);
 
-    var _this6 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
+    var _this5 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
 
-    _this6.addNotification = _this6.addNotification.bind(_this6);
-    _this6.triggers = [{
+    _this5.addNotification = _this5.addNotification.bind(_this5);
+    _this5.triggers = [{
       trigger: "outcome",
       resource_type: "TASK",
       label: "any task finishes",
@@ -505,7 +527,7 @@ var GearMenu = function (_React$PureComponent5) {
       resource_type: "VERSION",
       label: "any version succeeds"
     }];
-    return _this6;
+    return _this5;
   }
 
   _createClass(GearMenu, [{
@@ -587,12 +609,12 @@ var GearMenu = function (_React$PureComponent5) {
 
 // Headers
 
-function Headers(_ref5) {
-  var shortenCommitMessage = _ref5.shortenCommitMessage,
-      versions = _ref5.versions,
-      onLinkClick = _ref5.onLinkClick,
-      userTz = _ref5.userTz,
-      jiraHost = _ref5.jiraHost;
+function Headers(_ref4) {
+  var shortenCommitMessage = _ref4.shortenCommitMessage,
+      versions = _ref4.versions,
+      onLinkClick = _ref4.onLinkClick,
+      userTz = _ref4.userTz,
+      jiraHost = _ref4.jiraHost;
 
   return React.createElement(
     "div",
@@ -628,12 +650,69 @@ function Headers(_ref5) {
   );
 }
 
-function ActiveVersionHeader(_ref6) {
-  var shortenCommitMessage = _ref6.shortenCommitMessage,
-      version = _ref6.version,
-      onLinkClick = _ref6.onLinkClick,
-      userTz = _ref6.userTz,
-      jiraHost = _ref6.jiraHost;
+function VersionHeaderTombstone() {
+  return React.createElement(
+    "div",
+    { className: "row version-header" },
+    React.createElement("div", { className: "variant-col col-xs-2 version-header-rolled" }),
+    React.createElement(
+      "div",
+      { className: "col-xs-10" },
+      React.createElement(
+        "div",
+        { className: "row" },
+        React.createElement(
+          "div",
+          { className: "header-col" },
+          React.createElement(
+            "div",
+            { className: "version-header-expanded" },
+            React.createElement(
+              "div",
+              { className: "col-xs-12" },
+              React.createElement(
+                "div",
+                { className: "row" },
+                React.createElement(
+                  "span",
+                  { className: "waterfall-tombstone", style: { 'height': '17px' } },
+                  "\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0"
+                )
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "col-xs-12" },
+              React.createElement(
+                "div",
+                { className: "row" },
+                React.createElement(
+                  "span",
+                  { className: "waterfall-tombstone", style: { 'height': '15px' } },
+                  "\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0"
+                ),
+                React.createElement("br", null),
+                React.createElement(
+                  "span",
+                  { className: "waterfall-tombstone", style: { 'height': '15px' } },
+                  "\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0"
+                ),
+                React.createElement("br", null)
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+function ActiveVersionHeader(_ref5) {
+  var shortenCommitMessage = _ref5.shortenCommitMessage,
+      version = _ref5.version,
+      onLinkClick = _ref5.onLinkClick,
+      userTz = _ref5.userTz,
+      jiraHost = _ref5.jiraHost;
 
   var message = version.messages[0];
   var author = version.authors[0];
@@ -701,10 +780,10 @@ var HideHeaderButton = function (_React$Component) {
   function HideHeaderButton(props) {
     _classCallCheck(this, HideHeaderButton);
 
-    var _this7 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
+    var _this6 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
 
-    _this7.onLinkClick = _this7.onLinkClick.bind(_this7);
-    return _this7;
+    _this6.onLinkClick = _this6.onLinkClick.bind(_this6);
+    return _this6;
   }
 
   _createClass(HideHeaderButton, [{
@@ -733,10 +812,10 @@ var HideHeaderButton = function (_React$Component) {
   return HideHeaderButton;
 }(React.Component);
 
-function RolledUpVersionHeader(_ref7) {
-  var version = _ref7.version,
-      userTz = _ref7.userTz,
-      jiraHost = _ref7.jiraHost;
+function RolledUpVersionHeader(_ref6) {
+  var version = _ref6.version,
+      userTz = _ref6.userTz,
+      jiraHost = _ref6.jiraHost;
 
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
@@ -776,14 +855,14 @@ function RolledUpVersionHeader(_ref7) {
     )
   );
 };
-function RolledUpVersionSummary(_ref8) {
-  var author = _ref8.author,
-      commit = _ref8.commit,
-      message = _ref8.message,
-      versionId = _ref8.versionId,
-      createTime = _ref8.createTime,
-      userTz = _ref8.userTz,
-      jiraHost = _ref8.jiraHost;
+function RolledUpVersionSummary(_ref7) {
+  var author = _ref7.author,
+      commit = _ref7.commit,
+      message = _ref7.message,
+      versionId = _ref7.versionId,
+      createTime = _ref7.createTime,
+      userTz = _ref7.userTz,
+      jiraHost = _ref7.jiraHost;
 
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A');
   commit = commit.substring(0, 10);
