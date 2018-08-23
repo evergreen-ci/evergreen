@@ -413,12 +413,6 @@ func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings
 			return nil
 		}
 
-		grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
-			"operation": "running host provisioning alert trigger",
-			"job":       j.ID(),
-			"host":      h.Id,
-			"attempts":  h.ProvisionAttempts,
-		}))
 		event.LogProvisionFailed(h.Id, "")
 
 		// mark the host's provisioning as failed
