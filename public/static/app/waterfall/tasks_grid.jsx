@@ -174,45 +174,6 @@ function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}
     )
 }
 
-function TaskTombstones(num) {
-  const out = [];
-  for (let i = 0; i < num; ++i) {
-    out.push((<a className="waterfall-box inactive" />));
-  }
-  return out;
-}
-
-function VariantTombstone() {
-  return (
-    <div className="row variant-row">
-      <div className="col-xs-2 build-variants">
-        <span className="waterfall-tombstone">
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        </span>
-      </div>
-      <div className="col-xs-10">
-        <div className="row build-cells" style={{'height': '100px'}}>
-          <div className="waterfall-build">
-            <div className="active-build">
-              <div className="waterfall-tombstone">
-                {TaskTombstones(80)}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GridTombstone() {
-  return (
-    <div className="waterfall-grid">
-      <VariantTombstone />
-    </div>
-  );
-}
-
 // Each Build class is one group of tasks for an version + build variant intersection
 // We case on whether or not a build is active or not, and return either an ActiveBuild or InactiveBuild respectively
 

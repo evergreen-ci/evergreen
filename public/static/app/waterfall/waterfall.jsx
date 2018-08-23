@@ -686,3 +686,40 @@ function RolledUpVersionSummary ({author, commit, message, versionId, createTime
     </div>
   );
 }
+
+function TaskTombstones(num) {
+  const out = [];
+  for (let i = 0; i < num; ++i) {
+    out.push((<a className="waterfall-box inactive" />));
+  }
+  return out;
+}
+
+function VariantTombstone() {
+  return (
+    <div className="row variant-row">
+      <div className="col-xs-2 build-variants">
+        <span className="waterfall-tombstone">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        </span>
+      </div>
+      <div className="col-xs-10">
+        <div className="row build-cells" style={{'height': '100px'}}>
+          <div className="waterfall-build">
+            <div className="active-build">
+              {TaskTombstones(80)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GridTombstone() {
+  return (
+    <div className="waterfall-grid">
+      <VariantTombstone />
+    </div>
+  );
+}
