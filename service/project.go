@@ -19,11 +19,12 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
-	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+const tsFormat = "2006-01-02.15-04-05"
 
 // publicProjectFields are the fields needed by the UI
 // on base_angular and the menu
@@ -328,10 +329,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.ForceRepotrackerRun {
-		j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
-		if err = uis.queue.Put(j); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+		if err := uis.queue.Put(j); err != nil {
+			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
 	}
 
@@ -525,14 +526,11 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
-	ts := util.RoundPartOfHour(5).Format("2006-01-02.15-04-05")
+	ts := util.RoundPartOfHour(1).Format(tsFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
-	err = evergreen.GetEnvironment().RemoteQueue().Put(j)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
+	if err := uis.queue.Put(j); err != nil {
+		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}
-
 	gimlet.WriteJSON(w, nil)
 }
 
