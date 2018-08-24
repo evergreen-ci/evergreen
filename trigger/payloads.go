@@ -49,7 +49,7 @@ type commonTemplateData struct {
 	githubDescription string
 }
 
-const emailSubjectTemplate string = `Evergreen: {{ .Object }} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const emailSubjectTemplate string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 const emailTemplate string = `<html>
 <head>
 </head>
