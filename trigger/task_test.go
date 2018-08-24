@@ -678,6 +678,14 @@ func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 	s.makeTask(25, evergreen.TaskFailed)
 	s.makeTest(25, 0, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
+
+	// force fully move the time of task 25 back 48 hours
+	s.task.FinishTime = time.Now().Add(-48 * time.Hour)
+	s.NoError(db.Update(task.Collection, bson.M{task.IdKey: s.task.Id}, &s.task))
+
+	s.makeTask(26, evergreen.TaskFailed)
+	s.makeTest(26, 0, "", evergreen.TestFailedStatus)
+	s.tryDoubleTrigger(true)
 }
 
 func (s *taskSuite) TestRegressionByTestWithDuplicateTestNames() {
