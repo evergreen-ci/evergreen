@@ -77,12 +77,12 @@ func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.A
 }
 
 func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
-	t, err := task.FindOneNoMerge(task.ById(taskID))
+	t, err := task.FindOneNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
 	if err != nil {
 		return false, errors.Wrapf(err, "error finding task '%s'", taskID)
 	}
 	if t == nil {
-		t, err = task.FindOneOldNoMerge(task.ById(taskID))
+		t, err = task.FindOneOldNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
 		if err != nil {
 			return false, errors.Wrapf(err, "error finding old task '%s'", taskID)
 		}
@@ -601,11 +601,16 @@ func (t *taskTriggers) shouldIncludeTest(subID string, previousTask *task.Task, 
 			}
 
 		} else if !isTestStatusRegression(oldTestResult.Status, test.Status) {
-			return false, nil
+			if len(record.TaskId) != 0 {
+				isOld, err := taskFinishedTwoOrMoreDaysAgo(record.TaskId)
+				if err != nil || !isOld {
+					return false, errors.Wrap(err, "failed to fetch last alert age")
+				}
+			}
 		}
 	}
 
-	err = alertrecord.InsertNewTaskRegressionByTestRecord(subID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	err = alertrecord.InsertNewTaskRegressionByTestRecord(subID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to save alert record")
 	}
@@ -634,7 +639,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		if record != nil && !isTaskStatusRegression(record.TaskStatus, t.task.Status) {
 			return nil, nil
 		}
-		catcher.Add(alertrecord.InsertNewTaskRegressionByTestWithNoTestsRecord(sub.ID, t.task.DisplayName, t.task.Status, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber))
+		catcher.Add(alertrecord.InsertNewTaskRegressionByTestWithNoTestsRecord(sub.ID, t.task.Id, t.task.DisplayName, t.task.Status, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber))
 
 	} else {
 		if previousCompleteTask != nil {
