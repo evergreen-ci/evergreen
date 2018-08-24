@@ -1942,6 +1942,82 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(b.IsFinished())
 }
 
+func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, event.AllLogCollection))
+
+	buildID := "buildtest"
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: "dothings",
+		Activated:   false,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	require.NoError(testTask.Insert())
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: "test 2",
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskUndispatched,
+		StartTime:   time.Now().Add(-time.Hour),
+		DependsOn: []task.Dependency{
+			{
+				TaskId: testTask.Id,
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+	}
+	require.NoError(anotherTask.Insert())
+
+	b := &build.Build{
+		Id:        buildID,
+		Status:    evergreen.BuildStarted,
+		Activated: true,
+		Version:   "abc",
+		Tasks: []build.TaskCache{
+			{
+				Id:        testTask.Id,
+				Status:    evergreen.TaskStarted,
+				Activated: true,
+			},
+			{
+				Id:        anotherTask.Id,
+				Activated: true,
+				Status:    evergreen.TaskStarted,
+			},
+		},
+	}
+	require.NoError(b.Insert())
+
+	v := &version.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	require.NoError(v.Insert())
+
+	details := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   "test",
+	}
+	updates := StatusChanges{}
+	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
+	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.True(updates.BuildComplete)
+	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
+	assert.True(updates.VersionComplete)
+	b, err := build.FindOneId(buildID)
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	assert.True(complete)
+	assert.NoError(err)
+	assert.True(b.IsFinished())
+}
+
 func TestDisplayTaskUpdates(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, event.AllLogCollection), t, "error clearing collection")
 	assert := assert.New(t)
