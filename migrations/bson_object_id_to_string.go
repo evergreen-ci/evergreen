@@ -17,7 +17,7 @@ const (
 
 func makeBSONObjectIDToStringGenerator(collection string) migrationGeneratorFactory {
 	return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
-		migrationName := fmt.Sprintf(bsonObjectIDmigrationNameTmpl)
+		migrationName := fmt.Sprintf(bsonObjectIDmigrationNameTmpl, collection)
 		if err := env.RegisterManualMigrationOperation(migrationName, makeBSONObjectIDToStringMigration(args.db, collection)); err != nil {
 			return nil, err
 		}
