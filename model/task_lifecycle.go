@@ -91,7 +91,11 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		return updateDisplayTaskAndCache(t)
+		err = updateDisplayTaskAndCache(t)
+		if err != nil {
+			return err
+		}
+		taskId = t.DisplayTask.Id
 	}
 
 	return errors.WithStack(build.SetCachedTaskActivated(t.BuildId, taskId, active))
