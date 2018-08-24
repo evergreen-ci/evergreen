@@ -893,7 +893,7 @@ func validateGenerateTasks(p *model.Project) []ValidationError {
 func validateCreateHosts(p *model.Project) []ValidationError {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
 	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
-	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 10)...)
+	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 25)...)
 	return errs
 }
 
