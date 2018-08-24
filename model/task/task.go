@@ -1572,6 +1572,9 @@ func (t *Task) BlockedState() (string, error) {
 	if t.DisplayOnly {
 		return t.blockedStateForDisplayTask()
 	}
+	if len(t.DependsOn) == 0 {
+		return "", nil
+	}
 
 	dependencyIDs := []string{}
 	for _, d := range t.DependsOn {
@@ -1609,6 +1612,9 @@ func (t *Task) blockedStateForDisplayTask() (string, error) {
 	execTasks, err := Find(ByIds(t.ExecutionTasks))
 	if err != nil {
 		return "", errors.Wrap(err, "error finding execution tasks")
+	}
+	if len(execTasks) == 0 {
+		return "", nil
 	}
 	state := ""
 	for _, execTask := range execTasks {
