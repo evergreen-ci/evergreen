@@ -297,7 +297,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           {
             trigger: "runtime-change",
             resource_type: "TASK",
-            label: "the runtime for this task changes by some percentage",
+            label: "this task success and its runtime changes by some percentage",
             extraFields: [
               {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
             ]

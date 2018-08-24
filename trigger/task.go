@@ -506,6 +506,9 @@ func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notificati
 }
 
 func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.Status != evergreen.TaskSucceeded {
+		return nil, nil
+	}
 
 	percentString, ok := sub.TriggerData[event.TaskPercentChangeKey]
 	if !ok {

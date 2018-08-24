@@ -915,6 +915,7 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 	}
 	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
 	s.NoError(lastGreen.Insert())
+	s.t.task.Status = evergreen.TaskSucceeded
 	n, err = s.t.taskRuntimeChange(&s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)
@@ -948,7 +949,7 @@ func (s *taskSuite) TestProjectTrigger() {
 
 	n, err := NotificationsFromEvent(&s.event)
 	s.NoError(err)
-	s.Len(n, 3)
+	s.Len(n, 1)
 }
 
 func (s *taskSuite) TestBuildBreak() {
