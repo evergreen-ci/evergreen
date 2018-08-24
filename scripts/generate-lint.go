@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/evergreen-ci/shrub"
 	"github.com/google/shlex"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -58,6 +59,11 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 			if dir == scriptsDir {
 				continue
 			}
+
+			if strings.HasPrefix(dir, "vendor") {
+				continue
+			}
+
 			if dir == "." || dir == "main" {
 				targets["evergreen"] = struct{}{}
 			} else {
@@ -73,28 +79,52 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 }
 
 // makeTask returns a task map that can be marshaled into a JSON document.
-func makeTask(target string) map[string]interface{} {
-	name := makeTarget(target)
-	task := map[string]interface{}{
-		"name": name,
-		"commands": []map[string]interface{}{
-			map[string]interface{}{
-				"func": "run-make",
-				"vars": map[string]interface{}{
-					"target": name,
-				},
-			},
-		},
+func getDisplayTask(targets []string) shrub.DisplayTaskDefinition {
+	def := shrub.DisplayTaskDefinition{Name: lintPrefix}
+	for _, et := range targets {
+		def.Components = append(def.Components, et)
 	}
-	return task
+	return def
 }
 
 func makeTarget(target string) string {
 	return fmt.Sprintf("%s-%s", lintPrefix, target)
 }
 
+func getAllTargets() ([]string, error) {
+	var targets []string
+
+	args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
+	cmd := exec.Command(args[0], args[1:]...)
+	allPackages, err := cmd.Output()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting diff")
+	}
+	split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
+	for _, p := range split {
+		if strings.HasPrefix(p, fmt.Sprintf("%s/vendor", packagePrefix)) {
+			continue
+		}
+
+		if !strings.HasPrefix(p, packagePrefix) {
+			continue
+		}
+
+		if p == packagePrefix {
+			targets = append(targets, "evergreen")
+			continue
+		}
+		p = strings.TrimPrefix(p, packagePrefix)
+		p = strings.TrimPrefix(p, "/")
+		p = strings.Replace(p, "/", "-", -1)
+		targets = append(targets, p)
+	}
+
+	return targets, nil
+}
+
 // generateTasks returns a map of tasks to generate.
-func generateTasks() (map[string][]map[string]interface{}, error) {
+func generateTasks() (*shrub.Configuration, error) {
 	changes, err := whatChanged()
 	if err != nil {
 		return nil, err
@@ -103,24 +133,9 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 	var maxHosts int
 	if len(changes) == 0 {
 		maxHosts = commitMaxHosts
-		args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
-		cmd := exec.Command(args[0], args[1:]...)
-		allPackages, err := cmd.Output()
+		targets, err = getAllTargets()
 		if err != nil {
-			return nil, errors.Wrap(err, "problem getting diff")
-		}
-		split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
-		for _, p := range split {
-			if !strings.Contains(p, "vendor") && strings.Contains(p, "evergreen") {
-				if p == packagePrefix {
-					targets = append(targets, "evergreen")
-					continue
-				}
-				p = strings.TrimPrefix(p, packagePrefix)
-				p = strings.TrimPrefix(p, "/")
-				p = strings.Replace(p, "/", "-", -1)
-				targets = append(targets, p)
-			}
+			return nil, err
 		}
 	} else {
 		maxHosts = patchMaxHosts
@@ -129,57 +144,32 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 			return nil, err
 		}
 	}
-	taskList := []map[string]interface{}{}
-	bvTasksList := []map[string]string{}
+
+	if len(targets) == 0 {
+		targets, err = getAllTargets()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	conf := &shrub.Configuration{}
+	lintTargets := []string{}
 	for _, t := range targets {
-		taskList = append(taskList, makeTask(t))
-		bvTasksList = append(bvTasksList, map[string]string{"name": makeTarget(t)})
+		name := makeTarget(t)
+		conf.Task(name).FunctionWithVars("run-make", map[string]string{"target": name})
+		lintTargets = append(lintTargets, name)
 	}
-	executionTaskList := []string{}
-	for _, et := range taskList {
-		executionTaskList = append(executionTaskList, et["name"].(string))
-	}
-	if len(executionTaskList) == 0 {
-		return nil, nil
-	}
-	generate := map[string][]map[string]interface{}{}
-	generate["tasks"] = taskList
-	generate["task_groups"] = []map[string]interface{}{
-		map[string]interface{}{
-			"name":      lintGroup,
-			"max_hosts": maxHosts,
-			"tasks":     executionTaskList,
-			"setup_group": []map[string]interface{}{
-				map[string]interface{}{
-					"command": "git.get_project",
-					"type":    "system",
-					"params": map[string]string{
-						"directory": "gopath/src/github.com/evergreen-ci/evergreen",
-					},
-				},
-				map[string]interface{}{
-					"func": "set-up-credentials",
-				},
-			},
-			"teardown_task": []map[string]interface{}{
-				{"func": "attach-test-results"},
-				{"func": "remove-test-results"},
-			},
-		},
-	}
-	generate["buildvariants"] = []map[string]interface{}{
-		map[string]interface{}{
-			"name":  lintVariant,
-			"tasks": []string{lintGroup},
-			"display_tasks": []map[string]interface{}{
-				map[string]interface{}{
-					"name":            lintPrefix,
-					"execution_tasks": executionTaskList,
-				},
-			},
-		},
-	}
-	return generate, nil
+
+	group := conf.TaskGroup(lintGroup).SetMaxHosts(maxHosts)
+	group.SetupGroup.Command().Type("system").Command("git.get_project").Param("directory", "gopath/src/github.com/evergreen-ci/evergreen")
+	group.SetupGroup.Command().Function("set-up-credentials")
+	group.TeardownTask.Command().Function("attach-test-results")
+	group.TeardownTask.Command().Function("remove-test-results")
+	group.Task(lintTargets...)
+
+	conf.Variant(lintVariant).DisplayTasks(getDisplayTask(lintTargets)).AddTasks(lintGroup)
+
+	return conf, nil
 }
 
 func main() {

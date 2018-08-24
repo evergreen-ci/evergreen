@@ -149,6 +149,7 @@ functions:
     type: setup
     params:
       directory: gopath/src/github.com/evergreen-ci/evergreen
+      token: ${github_token}
   run-make:
     command: subprocess.exec
     params:
@@ -170,6 +171,7 @@ functions:
         RACE_ENABLED: ${race_enabed}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
+        XC_BUILD: ${xc_build}
   get-dist-test:
     command: s3.get
     params:
@@ -177,15 +179,16 @@ functions:
       aws_secret: ${aws_secret}
       remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
       bucket: mciuploads
-      local_file: dist-test.tar.gz
+      extract_to: ${workdir}/gopath/src/github.com/evergreen-ci/
   run-cross:
     command: subprocess.exec
     params:
       working_dir: gopath/src/github.com/evergreen-ci/evergreen
       env:
-        EVGHOME: ${workdir}/evergreen-test
-        SETTINGS_OVERRIDE: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
-      command: make crossTarget=${target} run-cross
+        EVGHOME: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/
+        SETTINGS_OVERRIDE: gopath/src/github.com/evergreen-ci/evergreen/creds.yml
+        CROSS_TARGET: ${target}
+      command: make run-cross
   set-up-credentials:
     command: subprocess.exec
     type: setup
@@ -339,11 +342,11 @@ tasks:
     tags: ["db", "test"]
     name: test-evergreen
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-alerts
+    tags: ["db", "test", "agent"]
+    name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-thirdparty
+    name: test-trigger
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-util
@@ -380,9 +383,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-testresult
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-trigger
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-user
@@ -450,9 +450,6 @@ tasks:
     name: race-evergreen
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-alerts
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-thirdparty
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
@@ -486,16 +483,15 @@ tasks:
     name: race-model-task
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-model-trigger
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-model-version
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-rest-data
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-plugin
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-trigger
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations
@@ -611,6 +607,7 @@ buildvariants:
       - rhel71-power8-test
     expansions:
       disable_coverage: yes
+      xc_build: yes
       goarch: ppc64le
       gobin: /opt/go1.8/go/bin/go
       goos: linux
@@ -628,6 +625,7 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
+      xc_build: yes
       disable_coverage: yes
       goarch: s390x
       gobin: /opt/go1.8/go/bin/go
@@ -647,6 +645,7 @@ buildvariants:
       - ubuntu1604-arm64-small
     expansions:
       disable_coverage: yes
+      xc_build: yes
       goarch: arm64
       goos: linux
       gobin: /opt/go1.8/go/bin/go
@@ -657,3 +656,19 @@ buildvariants:
         distros:
           - ubuntu1604-test
       - name: ".xc"
+
+  - name: archlinux-docker
+    display_name: Archlinux Docker
+    run_on:
+      - archlinux-docker
+    expansions:
+      goos: linux
+      gobin: /opt/go1.8/go/bin/go
+      goroot: /opt/go1.8/go
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+    tasks:
+      - name: "dist"
+      - name: ".smoke"
+      - name: ".test"
+      - name: "js-test"
+      - name: generate-lint

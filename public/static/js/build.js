@@ -80,17 +80,17 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     {
       trigger: "outcome",
       resource_type: "BUILD",
-      label: "this build finishes"
+      label: "this build finishes",
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
-      label: "this build fails"
+      label: "this build fails",
     },
     {
       trigger: "success",
       resource_type: "BUILD",
-      label: "this build succeeds"
+      label: "this build succeeds",
     },
     {
       trigger: "exceeds-duration",
@@ -98,7 +98,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       label: "the runtime for this build exceeds some duration",
       extraFields: [
         {text: "Build duration (seconds)", key: "build-duration-secs", validator: validateDuration}
-      ]
+      ],
     },
     {
       trigger: "runtime-change",
@@ -106,22 +106,25 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       label: "the runtime for this build changes by some percentage",
       extraFields: [
         {text: "Percent change", key: "build-percent-change", validator: validatePercentage}
-      ]
+      ],
     },
     {
       trigger: "outcome",
       resource_type: "TASK",
-      label: "a task in this build finishes"
+      label: "a task in this build finishes",
+      regex_selectors: taskRegexSelectors()
     },
     {
       trigger: "failure",
       resource_type: "TASK",
-      label: "a task in this build fails"
+      label: "a task in this build fails",
+      regex_selectors: taskRegexSelectors()
     },
     {
       trigger: "succeeds",
       resource_type: "TASK",
-      label: "a task in this build succeeds"
+      label: "a task in this build succeeds",
+      regex_selectors: taskRegexSelectors()
     },
   ];
 
@@ -138,7 +141,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
         addSelectorsAndOwnerType(data, "build", $scope.build.Build._id);
 
       }else {
-        addInSelectorsAndOwnerType(data, "build", data.resource_type.toLowerCase(), $scope.build.Build._id);
+        addInSelectorsAndOwnerType(data, "build", "build", $scope.build.Build._id);
       }
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();

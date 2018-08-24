@@ -44,8 +44,10 @@ func (s *eventMetaJobSuite) TearDownTest() {
 
 func (s *eventMetaJobSuite) SetupTest() {
 	evergreen.ResetEnvironment()
+	env := evergreen.GetEnvironment()
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.Require().NoError(evergreen.GetEnvironment().Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.Require().NoError(env.RemoteQueue().Start(s.ctx))
 
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 
@@ -114,13 +116,26 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	}
 	s.NoError(flags.Set())
 
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchStateChange,
+		ResourceId:   "12345",
+		Data: &event.PatchEventData{
+			Status: evergreen.PatchFailed,
+		},
+	}
+
+	// degraded mode shouldn't process events
+	logger := event.NewDBEventLogger(event.AllLogCollection)
+	s.NoError(logger.LogEvent(&e))
+
 	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1")
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
 	out, err := event.FindUnprocessedEvents()
 	s.NoError(err)
-	s.Empty(out)
+	s.Len(out, 1)
 }
 
 func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
@@ -205,9 +220,9 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	subs := []event.Subscription{
 		{
-			ID:      bson.NewObjectId(),
-			Type:    e.ResourceType,
-			Trigger: "outcome",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: e.ResourceType,
+			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "owner",
@@ -223,9 +238,9 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId(),
-			Type:    e.ResourceType,
-			Trigger: "outcome",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: e.ResourceType,
+			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "test",

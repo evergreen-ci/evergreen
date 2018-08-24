@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/trigger"
+	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -93,11 +93,11 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	defer func() {
 		if r := recover(); r != nil {
 			n = nil
-			err = errors.Errorf("panicked while processing event %s", e.ID.Hex())
+			err = errors.Errorf("panicked while processing event %s", e.ID)
 			grip.Alert(message.WrapError(err, message.Fields{
 				"job":         eventMetaJobName,
 				"source":      "events-processing",
-				"event_id":    e.ID.Hex(),
+				"event_id":    e.ID,
 				"event_type":  e.ResourceType,
 				"panic_value": r,
 			}))
@@ -105,11 +105,19 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 	}()
 
 	n, err = trigger.NotificationsFromEvent(e)
+	grip.Info(message.Fields{
+		"job":           eventMetaJobName,
+		"source":        "events-processing",
+		"message":       "event processed",
+		"event_id":      e.ID,
+		"event_type":    e.ResourceType,
+		"notifications": len(n),
+	})
 	grip.Error(message.WrapError(err, message.Fields{
 		"job":        eventMetaJobName,
 		"source":     "events-processing",
 		"message":    "errors processing triggers for event",
-		"event_id":   e.ID.Hex(),
+		"event_id":   e.ID,
 		"event_type": e.ResourceType,
 	}))
 
@@ -120,25 +128,16 @@ func (j *eventMetaJob) dispatchLoop(ctx context.Context) error {
 	// TODO: if this is a perf problem, it could be multithreaded. For now,
 	// we just log time
 	startTime := time.Now()
-	bulk, err := notification.BulkInserter(ctx)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
 	notifications := make([][]notification.Notification, len(j.events))
 
+	var err error
 	for i := range j.events {
 		notifications[i], err = tryProcessOneEvent(&j.events[i])
 		catcher.Add(err)
-
-		for _, n := range notifications[i] {
-			catcher.Add(bulk.Append(n))
-		}
-
+		catcher.Add(notification.InsertMany(notifications[i]...))
 	}
-	catcher.Add(bulk.Close())
 
 	for idx := range notifications {
 		catcher.Add(j.dispatch(notifications[idx]))
@@ -199,10 +198,8 @@ func (j *eventMetaJob) Run(ctx context.Context) {
 	if j.flags.EventProcessingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventMetaJobName,
-			"message": "events processing is disabled, all events will be marked processed",
+			"message": "events processing is disabled",
 		})
-
-		j.AddError(event.MarkAllEventsProcessed(event.AllLogCollection))
 		return
 	}
 

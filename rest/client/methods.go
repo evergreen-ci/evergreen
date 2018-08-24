@@ -19,6 +19,7 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -608,4 +609,48 @@ func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
 	_, err := c.retryRequest(ctx, info, jsonBytes)
 	return errors.Wrap(err, "problem sending `generate.tasks` request")
+}
+
+// CreateHost requests a new host be created
+func (c *communicatorImpl) CreateHost(ctx context.Context, td TaskData, options apimodels.CreateHost) error {
+	info := requestInfo{
+		method:   post,
+		taskData: &td,
+		version:  apiVersion2,
+	}
+	info.path = fmt.Sprintf("hosts/%s/create", td.ID)
+	resp, err := c.retryRequest(ctx, info, options)
+	if err != nil {
+		return errors.Wrap(err, "problem sending `create.host` request")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errors.Wrap(err, "problem reading body from `create.host` response")
+	}
+	return errors.Errorf("error executing `create.host`: %s", string(body))
+}
+
+func (c *communicatorImpl) ListHosts(ctx context.Context, td TaskData) ([]restmodel.CreateHost, error) {
+	info := requestInfo{
+		method:   get,
+		taskData: &td,
+		version:  apiVersion2,
+		path:     fmt.Sprintf("hosts/%s/list", td.ID),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem listing hosts for task '%s'", td.ID)
+	}
+	defer resp.Body.Close()
+
+	hosts := []restmodel.CreateHost{}
+	if err := util.ReadJSONInto(resp.Body, &hosts); err != nil {
+		return nil, errors.Wrapf(err, "problem reading hosts from response body for '%s'", td.ID)
+	}
+	return hosts, nil
 }

@@ -177,6 +177,7 @@ func TestGenerateTasks(t *testing.T) {
 	sampleBuild := build.Build{
 		Id:           "sample_build_id",
 		BuildVariant: "race-detector",
+		Version:      "sample_version",
 	}
 	require.NoError(sampleBuild.Insert())
 	sampleTask := task.Task{

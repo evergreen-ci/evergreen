@@ -182,6 +182,11 @@ func (l *appRecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 				"remote":   r.RemoteAddr,
 				"length":   r.ContentLength,
 			})
+
+			WriteJSONInternalError(rw, ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "request aborted",
+			})
 		}
 	}()
 	next(rw, r)

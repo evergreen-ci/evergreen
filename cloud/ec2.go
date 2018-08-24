@@ -7,12 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -32,6 +35,12 @@ type EC2ProviderSettings struct {
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
+	// If set, overrides key from credentials
+	AWSKeyID string `mapstructure:"aws_access_key_id" bson:"aws_access_key_id,omitempty"`
+
+	// If set, overrides secret from credentials
+	AWSSecret string `mapstructure:"aws_secret_access_key" bson:"aws_secret_access_key,omitempty"`
+
 	// InstanceType is the EC2 instance type.
 	InstanceType string `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
 
@@ -40,9 +49,6 @@ type EC2ProviderSettings struct {
 
 	// MountPoints are the disk mount points for EBS volumes.
 	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
-
-	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
-	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
 
 	// SecurityGroupIDs is a list of security group IDs.
 	SecurityGroupIDs []string `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" bson:"security_group_ids,omitempty"`
@@ -69,14 +75,11 @@ type EC2ProviderSettings struct {
 
 // Validate that essential EC2ProviderSettings fields are not empty.
 func (s *EC2ProviderSettings) Validate() error {
-	if s.AMI == "" || s.InstanceType == "" || s.KeyName == "" {
+	if s.AMI == "" || s.InstanceType == "" {
 		return errors.New("AMI, instance type, and key name must not be empty")
 	}
-	if s.SecurityGroup == "" && len(s.SecurityGroupIDs) == 0 {
-		return errors.New("Security group must not be empty")
-	}
-	if s.SecurityGroup != "" && len(s.SecurityGroupIDs) > 0 {
-		return errors.New("Must only set SecurityGroup or SecurityGroupIDs")
+	if len(s.SecurityGroupIDs) == 0 {
+		return errors.New("Security groups must not be empty")
 	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
@@ -94,11 +97,10 @@ func (s *EC2ProviderSettings) getSecurityGroups() []*string {
 	groups := []*string{}
 	if len(s.SecurityGroupIDs) > 0 {
 		for _, group := range s.SecurityGroupIDs {
-			groups = append(groups, makeStringPtr(group))
+			groups = append(groups, aws.String(group))
 		}
 		return groups
 	}
-	groups = append(groups, makeStringPtr(s.SecurityGroup))
 	return groups
 }
 
@@ -164,8 +166,8 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	input := &ec2.RunInstancesInput{
-		MinCount:            makeInt64Ptr(1),
-		MaxCount:            makeInt64Ptr(1),
+		MinCount:            aws.Int64(1),
+		MaxCount:            aws.Int64(1),
 		ImageId:             &ec2Settings.AMI,
 		KeyName:             &ec2Settings.KeyName,
 		InstanceType:        &ec2Settings.InstanceType,
@@ -175,8 +177,8 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if ec2Settings.IsVpc {
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{
-				AssociatePublicIpAddress: makeBoolPtr(true),
-				DeviceIndex:              makeInt64Ptr(0),
+				AssociatePublicIpAddress: aws.Bool(true),
+				DeviceIndex:              aws.Int64(0),
 				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
@@ -281,12 +283,12 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	spotRequest := &ec2.RequestSpotInstancesInput{
-		SpotPrice:     makeStringPtr(fmt.Sprintf("%v", ec2Settings.BidPrice)),
-		InstanceCount: makeInt64Ptr(1),
+		SpotPrice:     aws.String(fmt.Sprintf("%v", ec2Settings.BidPrice)),
+		InstanceCount: aws.Int64(1),
 		LaunchSpecification: &ec2.RequestSpotLaunchSpecification{
-			ImageId:             makeStringPtr(ec2Settings.AMI),
-			KeyName:             makeStringPtr(ec2Settings.KeyName),
-			InstanceType:        makeStringPtr(ec2Settings.InstanceType),
+			ImageId:             aws.String(ec2Settings.AMI),
+			KeyName:             aws.String(ec2Settings.KeyName),
+			InstanceType:        aws.String(ec2Settings.InstanceType),
 			BlockDeviceMappings: blockDevices,
 		},
 	}
@@ -294,8 +296,8 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 	if ec2Settings.IsVpc {
 		spotRequest.LaunchSpecification.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{
-				AssociatePublicIpAddress: makeBoolPtr(true),
-				DeviceIndex:              makeInt64Ptr(0),
+				AssociatePublicIpAddress: aws.Bool(true),
+				DeviceIndex:              aws.Int64(0),
 				Groups:                   ec2Settings.getSecurityGroups(),
 				SubnetId:                 &ec2Settings.SubnetId,
 			},
@@ -362,6 +364,24 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	})
 	if err := ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
+	}
+
+	if ec2Settings.AWSKeyID != "" {
+		m.credentials = credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     ec2Settings.AWSKeyID,
+			SecretAccessKey: ec2Settings.AWSSecret,
+		})
+	}
+
+	if ec2Settings.KeyName == "" {
+		if !h.SpawnOptions.SpawnedByTask {
+			return nil, errors.New("key name must not be empty")
+		}
+		k, err := m.getKey(ctx, h)
+		if err != nil {
+			return nil, errors.Wrap(err, "not spawning host, problem creating key")
+		}
+		ec2Settings.KeyName = k
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
@@ -465,6 +485,33 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	event.LogHostStarted(h.Id)
 
 	return h, nil
+}
+
+func (m *ec2Manager) getKey(ctx context.Context, h *host.Host) (string, error) {
+	const keyPrefix = "evg_auto_"
+	t, err := task.FindOneId(h.StartedBy)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding task %s")
+	}
+	if t == nil {
+		return "", errors.Errorf("no task found %s", h.StartedBy)
+	}
+	k, err := model.GetAWSKeyForProject(t.Project)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting key for project")
+	}
+	if k.Name != "" {
+		return k.Name, nil
+	}
+	name := keyPrefix + t.Project
+	newKey, err := m.makeNewKey(ctx, name, h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating new key")
+	}
+	if err := model.SetAWSKeyForProject(t.Project, &model.AWSSSHKey{Name: name, Value: newKey}); err != nil {
+		return "", errors.Wrap(err, "problem setting key")
+	}
+	return name, nil
 }
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
@@ -613,7 +660,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 		return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 	}
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{makeStringPtr(instanceId)},
+		InstanceIds: []*string{aws.String(instanceId)},
 	})
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -657,7 +704,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 		return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 	}
 	if _, err = m.client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
+		SpotInstanceRequestIds: []*string{aws.String(h.Id)},
 	}); err != nil {
 		if ec2err, ok := err.(awserr.Error); ok {
 			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
@@ -781,6 +828,28 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	return nil
 }
 
+func (m *ec2Manager) makeNewKey(ctx context.Context, name string, h *host.Host) (string, error) {
+	r, err := getRegion(h)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting region from host")
+	}
+	if err := m.client.Create(m.credentials, r); err != nil {
+		return "", errors.Wrap(err, "error creating client")
+	}
+	_, err = m.client.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
+	if err != nil { // error does not indicate a problem, but log anyway for debugging
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":  "problem deleting key",
+			"key_name": name,
+		}))
+	}
+	resp, err := m.client.CreateKeyPair(ctx, &ec2.CreateKeyPairInput{KeyName: aws.String(name)})
+	if err != nil {
+		return "", errors.Wrap(err, "problem creating key pair")
+	}
+	return *resp.KeyMaterial, nil
+}
+
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	var instance *ec2.Instance
@@ -901,7 +970,7 @@ func cloudStatusFromSpotStatus(state string) CloudStatus {
 	}
 }
 
-func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
+func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
@@ -909,7 +978,7 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if err != nil {
 		return 0, errors.Wrap(err, "problem getting region from host")
 	}
-	if err := m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()

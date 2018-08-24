@@ -128,7 +128,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	}
 
 	if calc, ok := j.manager.(cloud.CostCalculator); ok {
-		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
+		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime, j.settings)
 		if err != nil {
 			j.AddError(err)
 		}
@@ -182,6 +182,7 @@ func (j *collectHostIdleDataJob) getHostStatsMessage(cost float64, idleTime time
 
 	if j.host.Status == evergreen.HostTerminated {
 		msg["task_count"] = j.host.TaskCount
+		msg["total_idle_secs"] = j.host.TotalIdleTime.Seconds()
 	}
 
 	return message.ConvertToComposer(level.Info, msg)

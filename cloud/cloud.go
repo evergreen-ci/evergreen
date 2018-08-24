@@ -54,10 +54,23 @@ type Manager interface {
 	TimeTilNextPayment(*host.Host) time.Duration
 }
 
+type ContainerManager interface {
+	Manager
+
+	// GetContainers returns the IDs of all running containers on a specified host
+	GetContainers(context.Context, *host.Host) ([]string, error)
+	// RemoveOldestImage removes the earliest created image on a specified host
+	RemoveOldestImage(ctx context.Context, h *host.Host) error
+	// CalculateImageSpaceUsage returns the total space taken up by docker images on a specified host
+	CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error)
+	// BuildContainerImage downloads and builds a container image onto parent specified by URL
+	BuildContainerImage(ctx context.Context, parent *host.Host, url string) error
+}
+
 // CostCalculator is an interface for cloud providers that can estimate what a span of time on a
 // given host costs.
 type CostCalculator interface {
-	CostForDuration(context.Context, *host.Host, time.Time, time.Time) (float64, error)
+	CostForDuration(context.Context, *host.Host, time.Time, time.Time, *evergreen.Settings) (float64, error)
 }
 
 // BatchManager is an interface for cloud providers that support batch operations.
@@ -84,6 +97,8 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: autoProvider})
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
+	case evergreen.ProviderNameDockerMock:
+		provider = &dockerManager{client: &dockerClientMock{}}
 	case evergreen.ProviderNameOpenstack:
 		provider = &openStackManager{}
 	case evergreen.ProviderNameGce:
@@ -91,7 +106,7 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	case evergreen.ProviderNameVsphere:
 		provider = &vsphereManager{}
 	default:
-		return nil, errors.Errorf("No known provider for '%v'", providerName)
+		return nil, errors.Errorf("No known provider for '%s'", providerName)
 	}
 
 	if err := provider.Configure(ctx, settings); err != nil {
@@ -99,4 +114,13 @@ func GetManager(ctx context.Context, providerName string, settings *evergreen.Se
 	}
 
 	return provider, nil
+}
+
+// ConvertContainerManager converts a regular manager into a container manager,
+// errors if type conversion not possible.
+func ConvertContainerManager(m Manager) (ContainerManager, error) {
+	if cm, ok := m.(ContainerManager); ok {
+		return cm, nil
+	}
+	return nil, errors.New("Error converting manager to container manager")
 }

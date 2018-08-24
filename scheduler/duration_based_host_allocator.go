@@ -6,14 +6,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -22,7 +18,7 @@ import (
 const (
 	// maximum turnaround we want to maintain for all hosts for a given distro
 	MaxDurationPerDistroHost               = 30 * time.Minute
-	MaxDurationPerDistroHostWithContainers = 5 * time.Minute
+	MaxDurationPerDistroHostWithContainers = 2 * time.Minute
 
 	// for distro queues with tasks that appear on other queues, this constant
 	// indicates the fraction of the total duration of shared tasks that we want
@@ -81,51 +77,16 @@ type ScheduledDistroTasksData struct {
 	tasksAccountedFor map[string]bool
 
 	// all distros this task could run on
-	taskRunDistros map[string][]string
+	taskRunDistros []string
 
 	// the name of the distro whose task queue items data this represents
 	currentDistroId string
 }
 
-// helper type to sort distros by the number of static hosts they have
-type sortableDistroByNumStaticHost struct {
-	distros []distro.Distro
-}
-
 // NewHostsNeeded decides if new hosts are needed for a
 // distro while taking the duration of running/scheduled tasks into
 // consideration. Returns a map of distro to number of hosts to spawn.
-func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (newHostsNeeded map[string]int, err error) {
-	queueDistros := make([]distro.Distro, 0,
-		len(hostAllocatorData.taskQueueItems))
-
-	// Sanity check to ensure that we have a distro object for each item in the
-	// task queue. Also pulls the distros we need for sorting
-	for distroId := range hostAllocatorData.taskQueueItems {
-		d, ok := hostAllocatorData.distros[distroId]
-		if !ok {
-			return nil, errors.Errorf("No distro info available for distro %v",
-				distroId)
-		}
-		if d.Id != distroId {
-			return nil, errors.Errorf("Bad mapping between task queue distro "+
-				"name and host allocator distro data: %v != %v", d.Id,
-				distroId)
-		}
-		queueDistros = append(queueDistros, d)
-	}
-
-	// sort the distros by the number of static hosts available. why?
-	// well if we have tasks that can run on say 2 distros, one with static
-	// hosts and other without, we want to spin up new machines for the latter
-	// only if the former is unable to satisfy the turnaround requirement - as
-	// determined by MaxDurationPerDistroHost
-	distros := sortDistrosByNumStaticHosts(queueDistros)
-
-	// for all distros, this maintains a mapping of distro name -> the number
-	// of new hosts needed for that distro
-	newHostsNeeded = make(map[string]int)
-
+func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
 	// across all distros, this maintains a mapping of task id -> bool - a
 	// boolean that indicates if we've accounted for this task from some
 	// distro's queue
@@ -135,25 +96,21 @@ func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAlloc
 	// used in creating a nominal number of new hosts needed for that distro
 	distroScheduleData := make(map[string]DistroScheduleData)
 
-	// now, for each distro, see if we need to spin up any new hosts
-	for _, d := range distros {
-		newHostsNeeded[d.Id], err = durationNumNewHostsForDistro(ctx,
-			&hostAllocatorData, d, tasksAccountedFor, distroScheduleData)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"runner":  RunnerName,
-				"message": "problem getting number of running hosts for distro",
-				"distro":  d.Id,
-			}))
-			return nil, errors.WithStack(err)
-		}
+	newHostsNeeded, err := durationNumNewHostsForDistro(ctx, &hostAllocatorData, tasksAccountedFor, distroScheduleData)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"message": "problem getting number of running hosts for distro",
+			"distro":  hostAllocatorData.distro.Id,
+		}))
+		return 0, errors.WithStack(err)
 	}
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
 		"num_new_hosts": newHostsNeeded,
-		"num_distros":   len(distros),
 		"message":       "requsting new hosts",
+		"distro":        hostAllocatorData.distro.Id,
 	})
 
 	return newHostsNeeded, nil
@@ -161,14 +118,11 @@ func DurationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAlloc
 
 // computeScheduledTasksDuration returns the total estimated duration of all
 // tasks scheduled to be run in a given task queue
-func computeScheduledTasksDuration(
-	scheduledDistroTasksData *ScheduledDistroTasksData) (
+func computeScheduledTasksDuration(scheduledDistroTasksData *ScheduledDistroTasksData) (
 	scheduledTasksDuration float64, sharedTasksDuration map[string]float64) {
 
 	taskQueueItems := scheduledDistroTasksData.taskQueueItems
-	taskRunDistros := scheduledDistroTasksData.taskRunDistros
 	tasksAccountedFor := scheduledDistroTasksData.tasksAccountedFor
-	currentDistroId := scheduledDistroTasksData.currentDistroId
 	sharedTasksDuration = make(map[string]float64)
 
 	// compute the total expected duration for tasks in this queue
@@ -181,11 +135,9 @@ func computeScheduledTasksDuration(
 		// if the task can be run on multiple distros - including this one - add
 		// it to the total duration of 'shared tasks' for the distro and all
 		// other distros it can be run on
-		distroIds, ok := taskRunDistros[taskQueueItem.Id]
-		if ok && util.StringSliceContains(distroIds, currentDistroId) {
-			for _, distroId := range distroIds {
-				sharedTasksDuration[distroId] +=
-					taskQueueItem.ExpectedDuration.Seconds()
+		if util.StringSliceContains(scheduledDistroTasksData.taskRunDistros, scheduledDistroTasksData.currentDistroId) {
+			for _, distroId := range scheduledDistroTasksData.taskRunDistros {
+				sharedTasksDuration[distroId] += taskQueueItem.ExpectedDuration.Seconds()
 			}
 		}
 	}
@@ -421,15 +373,13 @@ func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
 
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro.
-func durationNumNewHostsForDistro(ctx context.Context,
-	hostAllocatorData *HostAllocatorData, distro distro.Distro,
-	tasksAccountedFor map[string]bool,
-	distroScheduleData map[string]DistroScheduleData) (numNewHosts int,
-	err error) {
+func durationNumNewHostsForDistro(ctx context.Context, hostAllocatorData *HostAllocatorData,
+	tasksAccountedFor map[string]bool, distroScheduleData map[string]DistroScheduleData) (numNewHosts int, err error) {
 
-	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Id]
-	taskQueueItems := hostAllocatorData.taskQueueItems[distro.Id]
+	existingDistroHosts := hostAllocatorData.existingHosts
+	taskQueueItems := hostAllocatorData.taskQueueItems
 	taskRunDistros := hostAllocatorData.taskRunDistros
+	distro := hostAllocatorData.distro
 
 	// determine how many free hosts we have
 	numFreeHosts := 0
@@ -542,52 +492,4 @@ func durationNumNewHostsForDistro(ctx context.Context,
 	})
 
 	return numNewHosts, nil
-}
-
-// sortDistrosByNumStaticHosts returns a sorted slice of distros where the
-// distro with the greatest number of static host is first - at index position 0
-func sortDistrosByNumStaticHosts(distros []distro.Distro) []distro.Distro {
-	sortableDistroObj := &sortableDistroByNumStaticHost{distros}
-	sort.Sort(sortableDistroObj)
-	return sortableDistroObj.distros
-}
-
-// helpers for sorting the distros by the number of their static hosts
-func (sd *sortableDistroByNumStaticHost) Len() int {
-	return len(sd.distros)
-}
-
-func (sd *sortableDistroByNumStaticHost) Less(i, j int) bool {
-	if sd.distros[i].Provider != evergreen.HostTypeStatic &&
-		sd.distros[j].Provider != evergreen.HostTypeStatic {
-		return false
-	}
-	if sd.distros[i].Provider == evergreen.HostTypeStatic &&
-		sd.distros[j].Provider != evergreen.HostTypeStatic {
-		return true
-	}
-	if sd.distros[i].Provider != evergreen.HostTypeStatic &&
-		sd.distros[j].Provider == evergreen.HostTypeStatic {
-		return false
-	}
-
-	h1 := &cloud.StaticSettings{}
-	h2 := &cloud.StaticSettings{}
-
-	err := mapstructure.Decode(sd.distros[i].ProviderSettings, h1)
-	if err != nil {
-		return false
-	}
-
-	err = mapstructure.Decode(sd.distros[j].ProviderSettings, h2)
-	if err != nil {
-		return false
-	}
-
-	return len(h1.Hosts) > len(h2.Hosts)
-}
-
-func (sd *sortableDistroByNumStaticHost) Swap(i, j int) {
-	sd.distros[i], sd.distros[j] =
-		sd.distros[j], sd.distros[i]
 }

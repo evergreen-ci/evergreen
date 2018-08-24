@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -22,13 +21,13 @@ type DBHostConnector struct{}
 
 // FindHostsById uses the service layer's host type to query the backing database for
 // the hosts.
-func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int, sortDir int) ([]host.Host, error) {
-	hostRes, err := host.GetHostsByFromIdWithStatus(id, status, user, limit, sortDir)
+func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
+	hostRes, err := host.GetHostsByFromIDWithStatus(id, status, user, limit)
 	if err != nil {
 		return nil, err
 	}
 	if len(hostRes) == 0 {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no hosts found",
 		}
@@ -43,7 +42,7 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 		return nil, err
 	}
 	if h == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("host with id %s not found", id),
 		}
@@ -57,7 +56,7 @@ func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user gimlet.User) (
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser, providerSettings *map[string]interface{}) (*host.Host, error) {
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -67,11 +66,12 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, 
 	}
 
 	spawnOptions := cloud.SpawnOptions{
-		Distro:    distroID,
-		UserName:  user.Username(),
-		PublicKey: keyVal,
-		TaskId:    taskID,
-		Owner:     user,
+		DistroId:         distroID,
+		ProviderSettings: providerSettings,
+		UserName:         user.Username(),
+		PublicKey:        keyVal,
+		TaskId:           taskID,
+		Owner:            user,
 	}
 
 	intentHost, err := cloud.CreateSpawnHost(spawnOptions)
@@ -109,23 +109,16 @@ type MockHostConnector struct {
 }
 
 // FindHostsById searches the mock hosts slice for hosts and returns them
-func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int, sort int) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) ([]host.Host, error) {
 	if id != "" && user == "" && status == "" {
-		return hc.FindHostsByIdOnly(id, status, user, limit, sort)
+		return hc.FindHostsByIdOnly(id, status, user, limit)
 	}
 
 	var hostsToReturn []host.Host
 	for ix := range hc.CachedHosts {
-		var h host.Host
-		if sort < 0 {
-			h = hc.CachedHosts[len(hc.CachedHosts)-1-ix]
-		} else {
-			h = hc.CachedHosts[ix]
-		}
+		h := hc.CachedHosts[ix]
 		if id != "" {
-			if (sort < 0 && h.Id > id) || (sort > 0 && h.Id < id) {
-				continue
-			}
+			continue
 		}
 		if user != "" && h.StartedBy != user {
 			continue
@@ -154,23 +147,15 @@ func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int, s
 	return hostsToReturn, nil
 }
 
-func (hc *MockHostConnector) FindHostsByIdOnly(id, status, user string, limit int, sort int) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsByIdOnly(id, status, user string, limit int) ([]host.Host, error) {
 	for ix, h := range hc.CachedHosts {
 		if h.Id == id {
 			// We've found the host
 			var hostsToReturn []host.Host
-			if sort < 0 {
-				if ix-limit > 0 {
-					hostsToReturn = hc.CachedHosts[ix-(limit) : ix]
-				} else {
-					hostsToReturn = hc.CachedHosts[:ix]
-				}
+			if ix+limit > len(hc.CachedHosts) {
+				hostsToReturn = hc.CachedHosts[ix:]
 			} else {
-				if ix+limit > len(hc.CachedHosts) {
-					hostsToReturn = hc.CachedHosts[ix:]
-				} else {
-					hostsToReturn = hc.CachedHosts[ix : ix+limit]
-				}
+				hostsToReturn = hc.CachedHosts[ix : ix+limit]
 			}
 			return hostsToReturn, nil
 		}
@@ -184,7 +169,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 			return &h, nil
 		}
 	}
-	return nil, &rest.APIError{
+	return nil, gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("host with id %s not found", id),
 	}
@@ -192,7 +177,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, user *user.DBUser, providerSettings *map[string]interface{}) (*host.Host, error) {
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -202,7 +187,7 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string
 	}
 
 	spawnOptions := cloud.SpawnOptions{
-		Distro:    distroID,
+		DistroId:  distroID,
 		UserName:  user.Username(),
 		PublicKey: keyVal,
 		TaskId:    taskID,
@@ -260,13 +245,13 @@ func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User)
 func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
 	host, err := c.FindHostById(hostID)
 	if err != nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error fetching host information",
 		}
 	}
 	if host == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    "host does not exist",
 		}
@@ -274,7 +259,7 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 
 	if user.Username() != host.StartedBy {
 		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
-			return nil, &rest.APIError{
+			return nil, gimlet.ErrorResponse{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to modify host",
 			}

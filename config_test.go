@@ -129,7 +129,6 @@ func (s *AdminSuite) TestBaseConfig() {
 		Credentials:        map[string]string{"k1": "v1"},
 		Expansions:         map[string]string{"k2": "v2"},
 		GithubPRCreatorOrg: "org",
-		IsNonProd:          true,
 		Keys:               map[string]string{"k3": "v3"},
 		LogPath:            "logpath",
 		Plugins:            map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
@@ -155,7 +154,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Credentials, settings.Credentials)
 	s.Equal(config.Expansions, settings.Expansions)
 	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
-	s.Equal(config.IsNonProd, settings.IsNonProd)
 	s.Equal(config.Keys, settings.Keys)
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
@@ -547,16 +545,75 @@ func (s *AdminSuite) TestContainerPoolsConfig() {
 	s.NotNil(settings)
 	s.Equal(validConfig, settings.ContainerPools)
 
-	lookup, err := settings.ContainerPools.GetContainerPool("test-pool-1")
-	s.NoError(err)
+	lookup := settings.ContainerPools.GetContainerPool("test-pool-1")
 	s.NotNil(lookup)
-	s.Equal(lookup, validConfig.Pools[0])
+	s.Equal(*lookup, validConfig.Pools[0])
 
-	lookup, err = settings.ContainerPools.GetContainerPool("test-pool-2")
-	s.NoError(err)
+	lookup = settings.ContainerPools.GetContainerPool("test-pool-2")
 	s.NotNil(lookup)
-	s.Equal(lookup, validConfig.Pools[1])
+	s.Equal(*lookup, validConfig.Pools[1])
 
-	_, err = settings.ContainerPools.GetContainerPool("test-pool-3")
-	s.EqualError(err, "error retrieving container pool test-pool-3")
+	lookup = settings.ContainerPools.GetContainerPool("test-pool-3")
+	s.Nil(lookup)
+}
+
+func (s *AdminSuite) TestJIRANotificationsConfig() {
+	c := JIRANotificationsConfig{
+		CustomFields: JIRACustomFieldsByProject{
+			{
+				Project: "this",
+				Fields: []JIRANotificationsCustomField{
+					{
+						Field:    "should",
+						Template: "disappear",
+					},
+				},
+			},
+		},
+	}
+	s.NoError(c.Get())
+	s.NotNil(c)
+	s.Nil(c.CustomFields)
+	s.NotPanics(func() {
+		s.NoError(c.ValidateAndDefault())
+	})
+
+	c.CustomFields = JIRACustomFieldsByProject{
+		{
+			Project: "EVG",
+			Fields: []JIRANotificationsCustomField{
+				{
+					Field:    "customfield_12345",
+					Template: "magical{{.Template.Expansion}}",
+				},
+			},
+		},
+	}
+	s.NoError(c.Set())
+
+	c = JIRANotificationsConfig{}
+	s.NoError(c.Get())
+	s.NoError(c.ValidateAndDefault())
+	m, err := c.CustomFields.ToMap()
+	s.NoError(err)
+	s.Require().Len(m, 1)
+	s.Require().Len(m["EVG"], 1)
+	s.Equal("magical{{.Template.Expansion}}", m["EVG"]["customfield_12345"])
+	s.NoError(c.ValidateAndDefault())
+
+	c = JIRANotificationsConfig{}
+	s.NoError(c.Set())
+	s.NoError(c.ValidateAndDefault())
+	c.CustomFields = JIRACustomFieldsByProject{
+		{
+			Project: "this",
+			Fields: []JIRANotificationsCustomField{
+				{
+					Field:    "is",
+					Template: "{{.Invalid}",
+				},
+			},
+		},
+	}
+	s.EqualError(c.ValidateAndDefault(), "template: this-is:1: unexpected \"}\" in operand")
 }

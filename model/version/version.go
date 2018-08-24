@@ -1,6 +1,7 @@
 package version
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -140,4 +141,72 @@ func FindDuplicateVersions(since time.Time) ([]DuplicateVersions, error) {
 	}
 
 	return out, nil
+}
+
+func GetHistory(versionId string, N int) ([]Version, error) {
+	v, err := FindOne(ById(versionId))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	} else if v == nil {
+		return nil, errors.Errorf("Version '%v' not found", versionId)
+	}
+
+	// Versions in the same push event, assuming that no two push events happen at the exact same time
+	// Never want more than 2N+1 versions, so make sure we add a limit
+
+	siblingVersions, err := Find(db.Query(
+		bson.M{
+			RevisionOrderNumberKey: v.RevisionOrderNumber,
+			RequesterKey:           evergreen.RepotrackerVersionRequester,
+			IdentifierKey:          v.Identifier,
+		}).WithoutFields(ConfigKey).Sort([]string{RevisionOrderNumberKey}).Limit(2*N + 1))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	versionIndex := -1
+	for i := 0; i < len(siblingVersions); i++ {
+		if siblingVersions[i].Id == v.Id {
+			versionIndex = i
+		}
+	}
+
+	numSiblings := len(siblingVersions) - 1
+	versions := siblingVersions
+
+	if versionIndex < N {
+		// There are less than N later versions from the same push event
+		// N subsequent versions plus the specified one
+		subsequentVersions, err := Find(
+			//TODO encapsulate this query in version pkg
+			db.Query(bson.M{
+				RevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
+				RequesterKey:           evergreen.RepotrackerVersionRequester,
+				IdentifierKey:          v.Identifier,
+			}).WithoutFields(ConfigKey).Sort([]string{RevisionOrderNumberKey}).Limit(N - versionIndex))
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		// Reverse the second array so we have the versions ordered "newest one first"
+		for i := 0; i < len(subsequentVersions)/2; i++ {
+			subsequentVersions[i], subsequentVersions[len(subsequentVersions)-1-i] = subsequentVersions[len(subsequentVersions)-1-i], subsequentVersions[i]
+		}
+
+		versions = append(subsequentVersions, versions...)
+	}
+
+	if numSiblings-versionIndex < N {
+		previousVersions, err := Find(db.Query(bson.M{
+			RevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
+			RequesterKey:           evergreen.RepotrackerVersionRequester,
+			IdentifierKey:          v.Identifier,
+		}).WithoutFields(ConfigKey).Sort([]string{fmt.Sprintf("-%v", RevisionOrderNumberKey)}).Limit(N))
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		versions = append(versions, previousVersions...)
+	}
+
+	return versions, nil
 }

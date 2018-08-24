@@ -36,17 +36,23 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	containerPools := make([]evergreen.ContainerPool, 0)
 	containerPoolDistros := make([]string, 0)
+	containerPoolIds := make([]string, 0)
 	for _, p := range settings.ContainerPools.Pools {
+		containerPools = append(containerPools, p)
 		containerPoolDistros = append(containerPoolDistros, p.Distro)
+		containerPoolIds = append(containerPoolIds, p.Id)
 	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Distros []distro.Distro
 		Keys    map[string]string
 		ViewData
+		ContainerPools       []evergreen.ContainerPool
 		ContainerPoolDistros []string
-	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPoolDistros},
+		ContainerPoolIds     []string
+	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true), containerPools, containerPoolDistros, containerPoolIds},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 
@@ -110,12 +116,22 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if shouldDeco {
+		hosts, err := host.Find(host.ByDistroId(newDistro.Id))
+		if err != nil {
+			message := fmt.Sprintf("error finding hosts: %s", err.Error())
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
 		err = host.DecommissionHostsWithDistroId(newDistro.Id)
 		if err != nil {
-			message := fmt.Sprintf("error decommissioning hosts: %v", err)
+			message := fmt.Sprintf("error decommissioning hosts: %s", err.Error())
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
-			http.Error(w, message, http.StatusBadRequest)
+			http.Error(w, message, http.StatusInternalServerError)
 			return
+		}
+		for _, h := range hosts {
+			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, u.Username(), "distro page")
 		}
 	}
 

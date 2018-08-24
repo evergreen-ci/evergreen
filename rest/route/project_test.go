@@ -9,6 +9,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -17,9 +18,9 @@ import (
 // Tests for get projects route
 
 type ProjectGetSuite struct {
-	sc        *data.MockConnector
-	data      data.MockProjectConnector
-	paginator PaginatorFunc
+	data  data.MockProjectConnector
+	sc    *data.MockConnector
+	route *projectGetHandler
 
 	suite.Suite
 }
@@ -29,28 +30,6 @@ func TestProjectGetSuite(t *testing.T) {
 }
 
 func (s *ProjectGetSuite) SetupSuite() {
-	varAMap := map[string]string{
-		"x": "a",
-		"y": "b",
-	}
-	varBMap := map[string]string{
-		"x": "a",
-		"y": "b",
-	}
-	varA := serviceModel.ProjectVars{
-		Id:   "projectA",
-		Vars: varAMap,
-		PrivateVars: map[string]bool{
-			"x": true,
-		},
-	}
-	varB := serviceModel.ProjectVars{
-		Id:   "projectB",
-		Vars: varBMap,
-		PrivateVars: map[string]bool{
-			"y": true,
-		},
-	}
 	s.data = data.MockProjectConnector{
 		CachedProjects: []serviceModel.ProjectRef{
 			{Identifier: "projectA"},
@@ -60,99 +39,76 @@ func (s *ProjectGetSuite) SetupSuite() {
 			{Identifier: "projectE"},
 			{Identifier: "projectF"},
 		},
-		CachedVars: []*serviceModel.ProjectVars{&varA, &varB},
 	}
-	s.paginator = projectPaginator
+
 	s.sc = &data.MockConnector{
+		URL:                  "https://evergreen.example.net",
 		MockProjectConnector: s.data,
 	}
 }
 
+func (s *ProjectGetSuite) SetupTest() {
+	s.route = &projectGetHandler{sc: s.sc}
+}
+
 func (s *ProjectGetSuite) TestPaginatorShouldErrorIfNoResults() {
-	rd, err := executeProjectRequest("zzz", 1, s.sc)
-	s.Error(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 0)
-	s.Contains(err.Error(), "no projects found")
+	s.route.key = "zzz"
+	s.route.limit = 1
+
+	resp := s.route.Run(context.Background())
+	s.Equal(http.StatusNotFound, resp.Status())
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "no projects found")
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	rd, err := executeProjectRequest("projectC", 2, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 2)
-	s.Equal(model.ToAPIString("projectC"), (rd.Result[0]).(*model.APIProject).Identifier)
-	s.Equal(model.ToAPIString("projectD"), (rd.Result[1]).(*model.APIProject).Identifier)
+	s.route.key = "projectC"
+	s.route.limit = 1
 
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.NotNil(pageData.Prev)
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	payload := resp.Data().([]interface{})
+
+	s.Len(payload, 1)
+	s.Equal(model.ToAPIString("projectC"), (payload[0]).(*model.APIProject).Identifier)
+
+	pageData := resp.Pages()
+	s.Nil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
-	s.Equal("projectE", pageData.Next.Key)
-	s.Equal("projectA", pageData.Prev.Key)
+	s.Equal("projectD", pageData.Next.Key)
 }
 
 func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	rd, err := executeProjectRequest("projectA", 100, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-	s.Len(rd.Result, 6)
-	metadata, ok := rd.Metadata.(*PaginationMetadata)
-	s.True(ok)
-	s.NotNil(metadata)
-	pageData := metadata.Pages
-	s.Nil(pageData.Prev)
-	s.Nil(pageData.Next)
-}
+	s.route.key = "projectA"
+	s.route.limit = 100
 
-func (s *ProjectGetSuite) TestPaginatorAttachesVars() {
-	rd, err := executeProjectRequest("projectA", 1, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
+	resp := s.route.Run(context.Background())
+	s.NotNil(resp)
+	payload := resp.Data().([]interface{})
 
-	s.Len(rd.Result, 1)
-	s.Equal("", (rd.Result[0]).(*model.APIProject).Vars["x"])
-	s.Equal("b", (rd.Result[0]).(*model.APIProject).Vars["y"])
+	s.Len(payload, 6)
+	s.Equal(model.ToAPIString("projectA"), (payload[0]).(*model.APIProject).Identifier, payload[0])
+	s.Equal(model.ToAPIString("projectB"), (payload[1]).(*model.APIProject).Identifier, payload[1])
 
-	rd, err = executeProjectRequest("projectB", 1, s.sc)
-	s.NoError(err)
-	s.NotNil(rd)
-
-	s.Len(rd.Result, 1)
-	s.Equal("a", (rd.Result[0]).(*model.APIProject).Vars["x"])
-	s.Equal("", (rd.Result[0]).(*model.APIProject).Vars["y"])
-}
-
-func executeProjectRequest(key string, limit int, sc *data.MockConnector) (ResponseData, error) {
-	rm := getProjectRouteManager("", 2)
-	pe := (rm.Methods[0].RequestHandler).(*projectGetHandler)
-	pe.Args = projectGetArgs{}
-	pe.key = key
-	pe.limit = limit
-
-	return pe.Execute(context.TODO(), sc)
+	s.Nil(resp.Pages())
 }
 
 func (s *ProjectGetSuite) TestGetRecentVersions() {
-	routeManager := getRecentVersionsManager("/projects/projectA/recent_versions", 2)
-	getVersions := routeManager.Methods[0]
+	getVersions := makeFetchProjectVersions(s.sc)
 	ctx := context.Background()
 
 	// valid request with defaults
 	request, err := http.NewRequest("GET", "/projects/projectA/recent_versions", bytes.NewReader(nil))
 	s.NoError(err)
-	s.NoError(getVersions.ParseAndValidate(ctx, request))
+	s.NoError(getVersions.Parse(ctx, request))
 
 	// invalid limit
 	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?limit=asdf", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid limit")
+	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid limit")
 
 	// invalid offset
 	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
 	s.NoError(err)
-	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid offset")
+	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
 }

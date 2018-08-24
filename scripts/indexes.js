@@ -1,8 +1,9 @@
 //======alertrecord======//
-db.alertrecord.ensureIndex({ "host_id" : 1 })
-db.alertrecord.ensureIndex({ "version_id" : 1, "type" : 1 })
-db.alertrecord.ensureIndex({ "type" : 1, "version_id" : 1 })
-db.alertrecord.ensureIndex({ "type": 1, "project_id": 1, "variant": 1, "task_name": 1, "test_name": 1, "order": -1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "host_id" : 1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "version_id" : 1, "type" : 1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "type" : 1, "version_id" : 1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "type": 1, "project_id": 1, "variant": 1, "task_name": 1, "test_name": 1, "order": -1 })
+db.alertrecord.ensureIndex({ "subscription_id": 1, "project_id": 1, "task_name": 1, "type": 1, "variant": 1, "alert_time": -1, "order": -1 })
 
 //======artifact_files======//
 db.artifact_files.ensureIndex({ "task" : 1 })
@@ -40,6 +41,7 @@ db.hosts.ensureIndex({ "running_task": 1}, {sparse: true, unique: true})
 db.hosts.createIndex({ "last_bv": 1, "last_group": 1, "last_project": 1, "last_version": 1, "status": 1, "last_task": 1 }, {background: true})
 db.hosts.createIndex({ "running_task_bv": 1, "running_task_group": 1, "running_task_project": 1, "running_task_version": 1, "status": 1, "running_task": 1 }, {background: true})
 db.hosts.createIndex({ "parent_id": 1 })
+db.hosts.createIndex({ "container_pool_settings.id": 1 })
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
@@ -93,6 +95,7 @@ db.tasks.createIndex({ "distro": 1, "status": 1, "activated": 1, "priority": 1 }
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
+db.old_tasks.ensureIndex({ "old_task_id": 1})
 
 //======versions======//
 db.versions.ensureIndex({ "order" : 1 })

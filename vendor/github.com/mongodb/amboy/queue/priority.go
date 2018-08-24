@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
@@ -41,6 +42,10 @@ func NewLocalPriorityQueue(workers int) amboy.Queue {
 // this operation updates it in the queue, potentially reordering the
 // queue accordingly.
 func (q *priorityLocalQueue) Put(j amboy.Job) error {
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		Created: time.Now(),
+	})
+
 	return q.storage.Insert(j)
 }
 

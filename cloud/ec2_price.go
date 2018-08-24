@@ -3,12 +3,14 @@ package cloud
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -23,22 +25,38 @@ type timeRange struct {
 	end   time.Time
 }
 
+const spotPriceCacheTTL = 2 * time.Minute
+
 type cachingPriceFetcher struct {
-	ec2Prices map[odInfo]float64
-	ebsPrices map[string]float64
-	sync.Mutex
+	ec2Prices  map[odInfo]float64
+	ebsPrices  map[string]float64
+	spotPrices map[string]cachedSpotRate
+	sync.RWMutex
+}
+
+type cachedSpotRate struct {
+	values      []spotRate
+	collectedAt time.Time
+}
+
+func (c *cachedSpotRate) getCopy() []spotRate {
+	out := make([]spotRate, len(c.values))
+	copy(out, c.values)
+	return out
 }
 
 // spotRate is an internal type for simplifying Amazon's price history responses.
 type spotRate struct {
 	Time  time.Time
 	Price float64
+	Zone  string
 }
 
 var pkgCachingPriceFetcher *cachingPriceFetcher
 
 func init() {
 	pkgCachingPriceFetcher = new(cachingPriceFetcher)
+	pkgCachingPriceFetcher.spotPrices = make(map[string]cachedSpotRate)
 }
 
 func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
@@ -157,40 +175,46 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 }
 
 func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
-	cpf.Lock()
-	defer cpf.Unlock()
 	osName := string(os)
 	if settings.IsVpc {
 		osName += " (Amazon VPC)"
 	}
+
 	grip.Debug(message.Fields{
 		"message":       "getting spot history",
 		"instance_type": settings.InstanceType,
 		"function":      "getLatestLowestSpotCostForInstance",
 		"start_time":    "future",
 	})
-	prices, err := client.DescribeSpotPriceHistory(ctx, &ec2.DescribeSpotPriceHistoryInput{
+
+	args := hourlySpotPriceHistoryInput{
+		iType: settings.InstanceType,
+		os:    osType(osName),
 		// passing a future start time gets the latest price only
-		StartTime:           makeTimePtr(time.Now().UTC().Add(24 * time.Hour)),
-		InstanceTypes:       []*string{makeStringPtr(settings.InstanceType)},
-		ProductDescriptions: []*string{makeStringPtr(osName)},
-	})
-	if err != nil {
-		return 0, "", errors.Wrap(err, "error getting spot price history")
+		start: time.Now().UTC().Add(24 * time.Hour),
+		end:   time.Now().UTC().Add(25 * time.Hour),
+		// passing empty zone to find the "best"
+		zone: "",
 	}
-	if len(prices.SpotPriceHistory) == 0 {
+
+	prices, err := cpf.describeSpotPriceHistory(ctx, client, args)
+	if err != nil {
+		return 0, "", errors.WithStack(err)
+	}
+	if len(prices) == 0 {
 		return 0, "", errors.New("no prices found")
 	}
+
 	var min float64
 	var az string
-	for i := range prices.SpotPriceHistory {
-		p, err := strconv.ParseFloat(*prices.SpotPriceHistory[i].SpotPrice, 0)
+	for i := range prices {
+		p, err := strconv.ParseFloat(*prices[i].SpotPrice, 64)
 		if err != nil {
-			return 0, "", errors.Wrap(err, "error parsing spot price")
+			return 0, "", errors.Wrapf(err, "problem parsing %s", *prices[i].SpotPrice)
 		}
 		if min == 0 || p < min {
 			min = p
-			az = *prices.SpotPriceHistory[i].AvailabilityZone
+			az = *prices[i].AvailabilityZone
 		}
 	}
 	return min, az, nil
@@ -245,9 +269,9 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	vpcs, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
-				Name: makeStringPtr("tag:Name"),
+				Name: aws.String("tag:Name"),
 				Values: []*string{
-					makeStringPtr(vpcName),
+					aws.String(vpcName),
 				},
 			},
 		},
@@ -260,16 +284,16 @@ func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string)
 	subnets, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
-				Name:   makeStringPtr("vpc-id"),
-				Values: []*string{makeStringPtr(vpcID)},
+				Name:   aws.String("vpc-id"),
+				Values: []*string{aws.String(vpcID)},
 			},
 			&ec2.Filter{
-				Name:   makeStringPtr("availability-zone"),
-				Values: []*string{makeStringPtr(azName)},
+				Name:   aws.String("availability-zone"),
+				Values: []*string{aws.String(azName)},
 			},
 			&ec2.Filter{
-				Name:   makeStringPtr("tag:Name"),
-				Values: []*string{makeStringPtr(vpcName + ".subnet_" + strings.Split(azName, "-")[2])},
+				Name:   aws.String("tag:Name"),
+				Values: []*string{aws.String(vpcName + ".subnet_" + strings.Split(azName, "-")[2])},
 			},
 		},
 	})
@@ -453,10 +477,29 @@ type hourlySpotPriceHistoryInput struct {
 	end   time.Time
 }
 
-// describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
-// simplifies that history into hourly billing rates starting from the supplied
-// start time. Returns a slice of hour-separated spot prices or any errors that occur.
-func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+func (i hourlySpotPriceHistoryInput) String() string {
+	return fmt.Sprintln(i.iType, i.zone, i.os, i.start.Round(spotPriceCacheTTL).Unix())
+}
+
+// describeHourlySpotPriceHistory talks to Amazon to get spot price history
+func (cpf *cachingPriceFetcher) describeSpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]*ec2.SpotPrice, error) {
+	cpf.Lock()
+	defer cpf.Unlock()
+
+	cleanedNum := 0
+	for k, v := range cpf.spotPrices {
+		if time.Since(v.collectedAt) > spotPriceCacheTTL {
+			cleanedNum++
+			delete(cpf.spotPrices, k)
+		}
+	}
+	grip.DebugWhen(cleanedNum > 0, message.Fields{
+		"message":   "cleaned cached spot prices",
+		"ttl_secs":  spotPriceCacheTTL.Seconds(),
+		"expired":   cleanedNum,
+		"remaining": len(cpf.spotPrices),
+	})
+
 	// expand times to contain the full runtime of the host
 	startFilter, endFilter := input.start.Add(-time.Hour), input.end.Add(time.Hour)
 	osStr := string(input.os)
@@ -487,6 +530,35 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 			break
 		}
 	}
+	return history, nil
+}
+
+// describeHourlySpotPriceHistory simplifies that spot price history into hourly billing rates
+// starting from the supplied start time. Returns a slice of hour-separated spot prices.
+func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+	cacheKey := input.String()
+	cpf.RLock()
+	cachedValue, ok := cpf.spotPrices[cacheKey]
+	l := len(cpf.spotPrices)
+	cpf.RUnlock()
+	if ok {
+		staleFor := time.Since(cachedValue.collectedAt)
+		if staleFor < spotPriceCacheTTL && len(cachedValue.values) > 0 {
+			grip.Debug(message.Fields{
+				"message":     "found spot price in cache",
+				"cached_secs": staleFor.Seconds(),
+				"key":         cacheKey,
+				"cache_size":  l,
+			})
+
+			return cachedValue.getCopy(), nil
+		}
+	}
+	history, err := cpf.describeSpotPriceHistory(ctx, client, input)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting spot price history")
+	}
+
 	// this loop samples the spot price history (which includes updates for every few minutes)
 	// into hourly billing periods. The price we are billed for an hour of spot time is the
 	// current price at the start of the hour. Amazon returns spot price history sorted in
@@ -504,7 +576,12 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 			if err != nil {
 				return nil, errors.Wrap(err, "parsing spot price")
 			}
-			prices = append(prices, spotRate{Time: input.start, Price: price})
+			var zone string
+			if history[i].AvailabilityZone != nil {
+				zone = *history[i].AvailabilityZone
+			}
+
+			prices = append(prices, spotRate{Time: input.start, Price: price, Zone: zone})
 			// we increment the hour but stay on the same price history index
 			// in case the current spot price spans more than one hour
 			input.start = input.start.Add(time.Hour)
@@ -517,7 +594,15 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Conte
 			i--
 		}
 	}
-	return prices, nil
+
+	cachedValue = cachedSpotRate{
+		collectedAt: time.Now(),
+		values:      prices,
+	}
+	cpf.Lock()
+	defer cpf.Unlock()
+	cpf.spotPrices[cacheKey] = cachedValue
+	return cachedValue.getCopy(), nil
 }
 
 func getOsName(h *host.Host) osType {

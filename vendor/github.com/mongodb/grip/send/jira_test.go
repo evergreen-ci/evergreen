@@ -2,6 +2,7 @@ package send
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/mongodb/grip/level"
@@ -185,6 +186,16 @@ func (j *JiraSuite) TestTruncate() {
 	m = message.NewDefaultMessage(level.Info, longString.String())
 	sender.Send(m)
 	j.Len(mock.lastSummary, 254)
+
+	buffer := bytes.NewBufferString("")
+	buffer.Grow(40000)
+	for i := 0; i < 40000; i++ {
+		buffer.WriteString("a")
+	}
+
+	m = message.NewDefaultMessage(level.Info, buffer.String())
+	sender.Send(m)
+	j.Len(mock.lastDescription, 32767)
 }
 
 func (j *JiraSuite) TestCustomFields() {
@@ -198,6 +209,7 @@ func (j *JiraSuite) TestCustomFields() {
 
 	jiraIssue := message.JiraIssue{
 		Summary: "test",
+		Type:    "type",
 		Fields: map[string]interface{}{
 			"customfield_12345": []string{"hi", "bye"},
 		},
@@ -210,4 +222,9 @@ func (j *JiraSuite) TestCustomFields() {
 
 	j.Equal([]string{"hi", "bye"}, mock.lastFields.Unknowns["customfield_12345"])
 	j.Equal("test", mock.lastFields.Summary)
+
+	bytes, err := json.Marshal(&mock.lastFields)
+	j.NoError(err)
+	j.Len(bytes, 79)
+	j.Equal(`{"customfield_12345":["hi","bye"],"issuetype":{"name":"type"},"summary":"test"}`, string(bytes))
 }

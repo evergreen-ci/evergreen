@@ -14,6 +14,8 @@ type ContainerPool struct {
 	Id string `bson:"id" json:"id" yaml:"id"`
 	// Maximum number of containers per parent host with this container pool
 	MaxContainers int `bson:"max_containers" json:"max_containers" yaml:"max_containers"`
+	// Port number to start at for SSH connections
+	Port uint16 `bson:"port" json:"port" yaml:"port"`
 }
 
 type ContainerPoolsConfig struct {
@@ -42,13 +44,13 @@ func (c *ContainerPoolsConfig) Set() error {
 
 // GetContainerPool retrieves the container pool with a given id from
 // a ContainerPoolsConfig struct
-func (c *ContainerPoolsConfig) GetContainerPool(id string) (ContainerPool, error) {
+func (c *ContainerPoolsConfig) GetContainerPool(id string) *ContainerPool {
 	for _, pool := range c.Pools {
 		if pool.Id == id {
-			return pool, nil
+			return &pool
 		}
 	}
-	return ContainerPool{}, errors.Errorf("error retrieving container pool %s", id)
+	return nil
 }
 
 func (c *ContainerPoolsConfig) ValidateAndDefault() error {

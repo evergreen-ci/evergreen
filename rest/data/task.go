@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -25,7 +25,7 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 		return nil, err
 	}
 	if t == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task with id %s not found", taskId),
 		}
@@ -52,7 +52,7 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 		} else {
 			message = fmt.Sprintf("tasks from build '%s' not found", buildId)
 		}
-		return []task.Task{}, &rest.APIError{
+		return []task.Task{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}
@@ -67,7 +67,7 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 			}
 		}
 		if !found {
-			return []task.Task{}, &rest.APIError{
+			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
 			}
@@ -77,12 +77,15 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 }
 
 func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	ts, err := task.Find(task.ByIds(ids))
 	if err != nil {
 		return nil, err
 	}
 	if len(ts) == 0 {
-		return []task.Task{}, &rest.APIError{
+		return []task.Task{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no tasks found",
 		}
@@ -91,7 +94,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 }
 
 func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {
-	ts, err := task.FindOldWithDisplayTasks(task.ByIDPrefix(id))
+	ts, err := task.FindOldWithDisplayTasks(task.ByOldTaskID(id))
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +102,8 @@ func (tc *DBTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.T
 	return ts, nil
 }
 
-func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
-	status string, limit, sortDir int) ([]task.Task, error) {
-	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId,
-		status, limit, sortDir)
+func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId, status string, limit int) ([]task.Task, error) {
+	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, status, limit)
 	res := []task.Task{}
 
 	err := task.Aggregate(pipeline, &res)
@@ -118,7 +119,7 @@ func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 			message = fmt.Sprintf("task from project '%s' and commit '%s' not found",
 				projectId, commitHash)
 		}
-		return []task.Task{}, &rest.APIError{
+		return []task.Task{}, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}
@@ -133,7 +134,7 @@ func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 			}
 		}
 		if !found {
-			return []task.Task{}, &rest.APIError{
+			return []task.Task{}, gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
 			}
@@ -203,8 +204,7 @@ func (mtc *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 }
 
 // FindTasksBytaskId
-func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
-	status string, limit, sortDir int) ([]task.Task, error) {
+func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId, status string, limit int) ([]task.Task, error) {
 	if mtc.StoredError != nil {
 		return []task.Task{}, mtc.StoredError
 	}
@@ -221,18 +221,10 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 		if t.Id == taskId {
 			// We've found the task
 			var tasksToReturn []task.Task
-			if sortDir < 0 {
-				if ix-limit > 0 {
-					tasksToReturn = ofProjectAndCommit[ix-(limit) : ix]
-				} else {
-					tasksToReturn = ofProjectAndCommit[:ix]
-				}
+			if ix+limit > len(ofProjectAndCommit) {
+				tasksToReturn = ofProjectAndCommit[ix:]
 			} else {
-				if ix+limit > len(ofProjectAndCommit) {
-					tasksToReturn = ofProjectAndCommit[ix:]
-				} else {
-					tasksToReturn = ofProjectAndCommit[ix : ix+limit]
-				}
+				tasksToReturn = ofProjectAndCommit[ix : ix+limit]
 			}
 			return tasksToReturn, nil
 		}
@@ -251,8 +243,7 @@ func (mtc *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, err
 // FindTaskByBuildId provides a mock implementation of the function for the
 // Connector interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
-func (mtc *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit,
-	sortDir int) ([]task.Task, error) {
+func (mtc *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit, sortDir int) ([]task.Task, error) {
 	if mtc.StoredError != nil {
 		return []task.Task{}, mtc.StoredError
 	}

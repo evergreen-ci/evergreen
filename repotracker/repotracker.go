@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/trigger"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -577,28 +576,43 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 }
 
 func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
-	if !projectRef.NotifyOnBuildFailure {
-		return nil
-	}
 	subscriptionBase := event.Subscription{
-		Type:      event.ResourceTypeVersion,
-		Trigger:   "regression",
-		Selectors: trigger.MakeVersionSelectors(*v),
+		ResourceType: event.ResourceTypeVersion,
+		Trigger:      "build-break",
+		Selectors: []event.Selector{
+			{
+				Type: "object",
+				Data: "task",
+			},
+			{
+				Type: "project",
+				Data: projectRef.Identifier,
+			},
+			{
+				Type: "requester",
+				Data: evergreen.RepotrackerVersionRequester,
+			},
+		},
 	}
 	subscribers := []event.Subscriber{}
 
-	// if the commit author wants build break notifications, don't send to admins
+	// if the commit author has subscribed to build break notifications,
+	// send it to the comitter, but not the admins
+	catcher := grip.NewSimpleCatcher()
 	if v.AuthorID != "" {
 		author, err := user.FindOne(user.ById(v.AuthorID))
 		if err != nil {
-			return errors.Wrap(err, "unable to retrieve user")
-		}
-		if author.Settings.Notifications.BuildBreakID.Valid() {
+			catcher.Add(errors.Wrap(err, "unable to retrieve user"))
+		} else if author.Settings.Notifications.BuildBreakID != "" {
 			return nil
 		}
 	}
+
+	// Only send to admins if the admins have enabled build break notifications
+	if !projectRef.NotifyOnBuildFailure {
+		return nil
+	}
 	// if the project has build break notifications, subscribe admins if no one subscribed
-	catcher := grip.NewSimpleCatcher()
 	for _, admin := range projectRef.Admins {
 		subscriber, err := makeBuildBreakSubscriber(admin)
 		if err != nil {

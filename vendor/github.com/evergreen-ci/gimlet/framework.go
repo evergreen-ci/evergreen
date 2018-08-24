@@ -21,7 +21,7 @@ type RouteHandler interface {
 	// populate the implementation of the RouteHandler. This also
 	// allows you to isolate your interaction with the request
 	// object.
-	Parse(context.Context, *http.Request) (context.Context, error)
+	Parse(context.Context, *http.Request) error
 
 	// Runs the core buinsess logic for the route, returning a
 	// Responder interface to provide structure around returning
@@ -35,14 +35,11 @@ type RouteHandler interface {
 // standard go http.HandlerFunc.
 func handleHandler(h RouteHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var err error
-
 		handler := h.Factory()
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
-		ctx, err = handler.Parse(ctx, r)
-		if err != nil {
+		if err := handler.Parse(ctx, r); err != nil {
 			e := getError(err, http.StatusBadRequest)
 			WriteJSONResponse(w, e.StatusCode, e)
 			return
@@ -69,18 +66,6 @@ func handleHandler(h RouteHandler) http.HandlerFunc {
 			w.Header().Set("Link", resp.Pages().GetLinks(r.URL.Path))
 		}
 
-		// Write the response, based on the format specified.
-		switch resp.Format() {
-		case JSON:
-			WriteJSONResponse(w, resp.Status(), resp.Data())
-		case TEXT:
-			WriteTextResponse(w, resp.Status(), resp.Data())
-		case HTML:
-			WriteHTMLResponse(w, resp.Status(), resp.Data())
-		case YAML:
-			WriteYAMLResponse(w, resp.Status(), resp.Data())
-		case BINARY:
-			WriteBinaryResponse(w, resp.Status(), resp.Data())
-		}
+		WriteResponse(w, resp)
 	}
 }

@@ -25,7 +25,7 @@ const (
 )
 
 const DescriptionTemplateString = `
-h2. [{{.Task.DisplayName}} failed on {{.Task.BuildVariant}}|` + UIRoot + `/task/{{.Task.Id}}/{{.Task.Execution}}]
+h2. [{{.Task.DisplayName}} failed on {{.Task.BuildVariant}}|` + UIRoot + `/task/{{.Task.Id | urlquery}}/{{.Task.Execution}}]
 
 {{with .Host}} Host: [{{.Host}}|` + UIRoot + `/host/{{.Id}}] {{end}}
 Project: [{{.Task.Project}}|` + UIRoot + `/waterfall/{{.Task.Project}}]

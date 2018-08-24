@@ -1,9 +1,10 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, mciDistroRestService) {
+mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, $filter, mciDistroRestService) {
 
   $scope.readOnly = !$window.isSuperUser;
 
   $scope.distros = $window.distros;
   $scope.containerPoolDistros = $window.containerPoolDistros;
+  $scope.containerPoolIds = $window.containerPoolIds;
 
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;
@@ -363,6 +364,17 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
     return (!min && !max) || (min >= 0 && min <= max);
   }
 
+  $scope.checkPoolID = function(id) {
+    if ($scope.form.poolID.$invalid) {
+      return false
+    }
+    return $scope.containerPoolIds.includes(id)
+  }
+
+  $scope.displayContainerPool = function(id){
+    return ($filter('filter')($window.containerPools, {'id':id}))[0];
+  };
+
   // checks that the form is valid for the given active distro
   $scope.validForm = function() {
     if ($scope.activeDistro.provider.startsWith('ec2')) {
@@ -374,8 +386,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
   $scope.validSecurityGroup = function(){
     if ($scope.activeDistro){
-      if ($scope.activeDistro.settings.is_vpc){
-       return $scope.activeDistro.settings.security_group.substring(0,3) == 'sg-';
+      if ($scope.activeDistro.settings.is_vpc && $scope.activeDistro.settings.security_group_ids){
+        for (var i = 0; i < $scope.activeDistro.settings.security_group_ids.length; i++) {
+          if ($scope.activeDistro.settings.security_group_ids[i].substring(0,3) !== "sg-") {
+            return false
+          }
+        }
      }
    }
    return true

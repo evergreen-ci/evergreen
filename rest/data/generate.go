@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -18,7 +18,7 @@ type GenerateConnector struct{}
 func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
 	projects, err := ParseProjects(jsonBytes)
 	if err != nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    errors.Wrap(err, "error parsing JSON from `generate.tasks`").Error(),
 		}
@@ -34,14 +34,14 @@ func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMe
 		return err
 	}
 	if len(syntaxErrs) > 0 {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("project syntax is invalid: %s", validator.ValidationErrorsToString(syntaxErrs)),
 		}
 	}
 	semanticErrs := validator.CheckProjectSemantics(p)
 	if len(semanticErrs) > 0 {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("project semantics is invalid: %s", validator.ValidationErrorsToString(semanticErrs)),
 		}

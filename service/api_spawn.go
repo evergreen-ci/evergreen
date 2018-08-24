@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -59,7 +60,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, "", user)
+	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, "", user, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -149,4 +150,19 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Unrecognized action %v", hostAction), http.StatusBadRequest)
 	}
 
+}
+
+// returns dockerfle as text
+func getDockerfile(w http.ResponseWriter, r *http.Request) {
+	parts := []string{
+		"ARG BASE_IMAGE",
+		"FROM $BASE_IMAGE",
+		"ARG URL",
+		"ARG EXECUTABLE_SUB_PATH",
+		"ARG BINARY_NAME",
+		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
+		"RUN chmod +x /root/${BINARY_NAME}",
+	}
+
+	gimlet.WriteText(w, strings.Join(parts, "\n"))
 }

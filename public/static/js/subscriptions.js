@@ -33,7 +33,8 @@ function subscriberLabel(subscriber) {
         return "Post a comment on JIRA issue " + subscriber.target;
 
     }else if (subscriber.type === SUBSCRIPTION_JIRA_ISSUE) {
-        return "Create a JIRA issue in " + subscriber.target;
+        return "Create a JIRA issue in " + subscriber.target.project +
+            " with issue type " + subscriber.target.issue_type;
 
     }else if (subscriber.type === SUBSCRIPTION_SLACK) {
         return "Send a slack message to " + subscriber.target;
@@ -94,12 +95,18 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
       });
     };
     $scope.extraData = {};
+    $scope.regexSelectors = {};
+    $scope.tempRegexSelector = {};
 
     $scope.closeDialog = function(save) {
         if(save === true) {
             $scope.validationErrors = [];
             for (var key in $scope.customValidation) {
-              var validationMsg = $scope.customValidation[key]($scope.extraData[key]);
+              var validator = $scope.customValidation[key];
+              if (validator === null || validator === undefined) {
+                continue;
+              }
+              var validationMsg = validator($scope.extraData[key]);
               if (validationMsg) {
                 $scope.validationErrors.push(validationMsg);
               };
@@ -119,6 +126,9 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             d.trigger = $scope.trigger.trigger;
             d.trigger_label = $scope.trigger.label;
             d.trigger_data = $scope.extraData;
+            d.regex_selectors = _($scope.regexSelectors).map(function(val, key) {
+              return {type: key, data: val.data};
+            });
             $mdDialog.hide(d);
         }
         $mdDialog.cancel();
@@ -155,7 +165,12 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             return $scope.targets[SUBSCRIPTION_JIRA_COMMENT].match(".+-[0-9]+") !== null
 
         }else if ($scope.method.value === SUBSCRIPTION_JIRA_ISSUE) {
-            return $scope.targets[SUBSCRIPTION_JIRA_ISSUE].match(".+") !== null
+            if (!$scope.targets[SUBSCRIPTION_JIRA_ISSUE]) {
+                return false;
+            }
+
+            return $scope.targets[SUBSCRIPTION_JIRA_ISSUE]['project'].match(".+") !== null &&
+                $scope.targets[SUBSCRIPTION_JIRA_ISSUE]['issue_type'].match(".+") !== null;
 
         }else if ($scope.method.value === SUBSCRIPTION_SLACK) {
             return $scope.targets[SUBSCRIPTION_SLACK].match("(#|@).+") !== null
@@ -179,17 +194,20 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         return false;
     };
 
-
     $scope.bindTrigger = function() {
       _.each($scope.c.triggers, function(trigger){
-        if (trigger.trigger === $scope.trigger.trigger) {
+        if (trigger.resource_type === $scope.trigger.resource_type &&
+              trigger.trigger === $scope.trigger.trigger) {
           $scope.extraFields = trigger.extraFields;
+          $scope.regexSelectorOptions = trigger.regex_selectors;
           $scope.addCustomValidation(trigger.extraFields);
           return;
         }
       });
+      if ($scope.regexSelectors === undefined) {
+        $scope.regexSelectors = {};
+      }
     };
-
     $scope.method = {};
     $scope.targets = {};
     $scope.targets[SUBSCRIPTION_EVERGREEN_WEBHOOK] = {
@@ -212,6 +230,44 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             console.log("failed to fetch user settings: ", resp);
         }});
     }
+
+    $scope.addRegexSelector = function() {
+      if (!$scope.tempRegexSelector.type || !$scope.tempRegexSelector.data) {
+          return;
+      }
+      var typeLabel = $scope.findRegexTypeLabel($scope.tempRegexSelector.type);
+      $scope.regexSelectors[$scope.tempRegexSelector.type] = {type_label: typeLabel.type_label, data: $scope.tempRegexSelector.data};
+      $scope.tempRegexSelector = {};
+    }
+
+    $scope.deleteRegexSelector = function(type) {
+      delete $scope.regexSelectors[type];
+    }
+
+    $scope.selectorDisabled = function(field) {
+      return field.type in $scope.regexSelectors;
+    }
+
+    $scope.hasSelectors = function() {
+      return Object.keys($scope.regexSelectors).length !== 0;
+    }
+
+
+    $scope.findRegexTypeLabel = function(type) { return _.where($scope.trigger.regex_selectors, {type: type })[0]; }
+
+    $scope.loadFromSubscription = function() {
+        if (!$scope.c.subscription) {
+          return;
+        }
+        $scope.bindTrigger();
+        _.each($scope.c.subscription.regex_selectors, function(selector){
+          var typeLabel = $scope.$scope.findRegexTypeLabel(selector.type);
+          $scope.regexSelectors[selector.type] = {type_label: typeLabel.type_label, data: selector.data};
+        });
+        $scope.extraData = $scope.c.subscription.trigger_data;
+    }
+
+    $scope.loadFromSubscription();
 }
 
 // Lookup a trigger with given (name, resource_type) pair in triggers, an
@@ -264,6 +320,20 @@ function addInSelectorsAndOwnerType(subscription, type, inType, id) {
   subscription.owner_type = "person";
 }
 
+function addProjectSelectors(subscription, project) {
+  if (!subscription) {
+    return;
+  }
+  if (!subscription.selectors) {
+    subscription.selectors = [];
+  }
+  subscription.selectors.push({
+    type: "project",
+    data: project
+  });
+  subscription.owner_type = "person";
+}
+
 function validateDuration(duration) {
   if (!Number.isInteger(+duration)) {
     return duration + " must be an integer";
@@ -273,6 +343,7 @@ function validateDuration(duration) {
   }
   return "";
 }
+
 function validatePercentage(percent) {
   if (!isFinite(percent)) {
     return percent + " must be a number";
@@ -281,4 +352,26 @@ function validatePercentage(percent) {
     return percent + " must be positive";
   }
   return "";
+}
+
+function buildRegexSelectors() {
+  return [
+    {
+      type: "display-name",
+      type_label: "Build Variant Name",
+    },
+    {
+      type: "build-variant",
+      type_label: "Build Variant ID",
+    },
+  ];
+}
+
+function taskRegexSelectors() {
+  return [
+    {
+      type: "display-name",
+      type_label: "Task Name",
+    }
+  ];
 }

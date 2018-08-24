@@ -112,7 +112,7 @@ func RemoveProjectAlias(id string) error {
 	if id == "" {
 		return errors.New("can't remove project alias with empty id")
 	}
-	err := db.Remove(ProjectAliasCollection, db.Query(bson.M{idKey: bson.ObjectIdHex(id)}))
+	err := db.Remove(ProjectAliasCollection, bson.M{idKey: bson.ObjectIdHex(id)})
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove project alias %s", id)
 	}

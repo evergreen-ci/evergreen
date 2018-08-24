@@ -1622,14 +1622,14 @@ textarea {
   width: 35px;
 }
 .execTaskTable {
-  width: 50%;
+  width: 60%;
   max-height: 400px;
   overflow: auto;
   padding-top: 10px;
   padding-right: 12px;
 }
 #execTaskTable td:nth-child(1) {
-  width: 100%;
+  width: 60%;
 }
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;

@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -38,9 +39,9 @@ func fetchTestDistro() distro.Distro {
 			// TODO : The below settings require access to our staging environment. We
 			// hope to make settings test data better in the future so that we do not
 			// have to include values like these in our test code.
-			"security_group": "sg-601a6c13",
-			"subnet_id":      "subnet-517c941a",
-			"vpc_name":       "stage_dynamic_vpc",
+			"security_group_ids": []string{"sg-601a6c13"},
+			"subnet_id":          "subnet-517c941a",
+			"vpc_name":           "stage_dynamic_vpc",
 		},
 
 		SetupAsSudo: true,
@@ -91,7 +92,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert.NoError(m.OnUp(ctx, h))
 	foundHost := foundHosts[0]
 	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{makeStringPtr(foundHost.Id)},
+		InstanceIds: []*string{aws.String(foundHost.Id)},
 	})
 	assert.NoError(err)
 	tags := out.Reservations[0].Instances[0].Tags

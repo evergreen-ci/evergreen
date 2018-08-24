@@ -284,7 +284,7 @@ func (s *RemoteUnorderedSuite) TestNextMethodSkipsLockedJobs() {
 
 		if i%3 == 0 {
 			numLocked++
-			err := s.driver.Lock(j)
+			err := s.driver.Lock(ctx, j)
 			s.NoError(err)
 
 			stat := j.Status()

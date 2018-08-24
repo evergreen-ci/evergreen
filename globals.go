@@ -14,6 +14,7 @@ const (
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
 	HostUninitialized   = "initializing"
+	HostBuilding        = "building"
 	HostStarting        = "starting"
 	HostProvisioning    = "provisioning"
 	HostProvisionFailed = "provision failed"
@@ -24,22 +25,48 @@ const (
 	HostStatusFailed  = "failed"
 
 	// Task Statuses used in the database models
-	TaskStarted      = "started"
-	TaskUnstarted    = "unstarted"
+
+	// TaskInactive is not assigned to any new tasks, but can be found
+	// in the database and is used in the UI.
+	TaskInactive = "inactive"
+
+	// TaskUnstarted is assigned to a display task after cleaning up one of
+	// its execution tasks. This indicates that the display task is
+	// pending a rerun
+	TaskUnstarted = "unstarted"
+
+	// TaskUndispatched indicates either
+	//  1. a task is not scheduled to run (when Task.Activated == false)
+	//  2. a task is scheduled to run (when Task.Activated == true)
 	TaskUndispatched = "undispatched"
-	TaskDispatched   = "dispatched"
+
+	// TaskStarted indicates a task is running on an agent
+	TaskStarted = "started"
+
+	// TaskDispatched indicates that an agent has received the task, but
+	// the agent has not yet told Evergreen that it's running the task
+	TaskDispatched = "dispatched"
+
+	// The task statuses below indicate that a task has finished.
+	TaskSucceeded = "success"
+
+	// These statuses indicate the types of failures that are stored in
+	// Task.Status field, build TaskCache and TaskEndDetails.
 	TaskFailed       = "failed"
-	TaskSucceeded    = "success"
-	TaskInactive     = "inactive"
 	TaskSystemFailed = "system-failed"
 	TaskTestTimedOut = "test-timed-out"
+	TaskSetupFailed  = "setup-failed"
 
-	// Task Statuses used only in TaskEndDetails
-	// TaskFailed and TaskSucceeded are also used here
-	TaskSetupFailed      = "setup-failed"
-	TaskTimedOut         = "task-timed-out"
+	// Task Command Types
+	CommandTypeTest   = "test"
+	CommandTypeSystem = "system"
+	CommandTypeSetup  = "setup"
+
+	// Task Statuses that are currently used only by the UI, and in tests
+	// (these may be used in old tasks)
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
+	TaskTimedOut         = "task-timed-out"
 
 	// TaskConflict is used only in communication with the Agent
 	TaskConflict = "task-conflict"
@@ -96,7 +123,8 @@ const (
 	RestRoutePrefix = "rest"
 	APIRoutePrefix  = "api"
 
-	AgentAPIVersion = 2
+	AgentAPIVersion  = 2
+	APIRoutePrefixV2 = "/rest/v2"
 
 	DegradedLoggingPercent = 10
 
@@ -106,10 +134,28 @@ const (
 	RoutePaginatorNextPageHeaderKey = "Link"
 )
 
+func IsFinishedTaskStatus(status string) bool {
+	if status == TaskSucceeded ||
+		IsFailedTaskStatus(status) {
+		return true
+	}
+
+	return false
+}
+
+func IsFailedTaskStatus(status string) bool {
+	return status == TaskFailed ||
+		status == TaskSystemFailed ||
+		status == TaskSystemTimedOut ||
+		status == TaskSystemUnresponse ||
+		status == TaskTestTimedOut
+}
+
 // evergreen package names
 const (
-	UIPackage     = "EVERGREEN_UI"
-	RESTV2Package = "EVERGREEN_REST_V2"
+	UIPackage      = "EVERGREEN_UI"
+	RESTV2Package  = "EVERGREEN_REST_V2"
+	MonitorPackage = "EVERGREEN_MONITOR"
 )
 
 const (
@@ -126,17 +172,16 @@ const (
 
 // cloud provider related constants
 const (
-	ProviderNameEc2Auto       = "ec2-auto"
-	ProviderNameEc2OnDemand   = "ec2-ondemand"
-	ProviderNameEc2Spot       = "ec2-spot"
-	ProviderNameDocker        = "docker"
-	ProviderNameDockerStatic  = "docker-static"
-	ProviderNameDockerDynamic = "docker-dynamic"
-	ProviderNameGce           = "gce"
-	ProviderNameStatic        = "static"
-	ProviderNameOpenstack     = "openstack"
-	ProviderNameVsphere       = "vsphere"
-	ProviderNameMock          = "mock"
+	ProviderNameEc2Auto     = "ec2-auto"
+	ProviderNameEc2OnDemand = "ec2-ondemand"
+	ProviderNameEc2Spot     = "ec2-spot"
+	ProviderNameDocker      = "docker"
+	ProviderNameDockerMock  = "docker-mock"
+	ProviderNameGce         = "gce"
+	ProviderNameStatic      = "static"
+	ProviderNameOpenstack   = "openstack"
+	ProviderNameVsphere     = "vsphere"
+	ProviderNameMock        = "mock"
 
 	// TODO: This can be removed when no more hosts with provider ec2 are running.
 	ProviderNameEc2Legacy = "ec2"
@@ -153,6 +198,7 @@ var (
 		ProviderNameGce,
 		ProviderNameOpenstack,
 		ProviderNameVsphere,
+		ProviderNameMock,
 	}
 )
 
@@ -173,7 +219,7 @@ const (
 
 const (
 	GenerateTasksCommandName = "generate.tasks"
-	CreateHostCommandName    = "create.host"
+	CreateHostCommandName    = "host.create"
 )
 
 type SenderKey int
@@ -186,6 +232,25 @@ const (
 	SenderJIRAComment
 	SenderEmail
 )
+
+func (k SenderKey) String() string {
+	switch k {
+	case SenderGithubStatus:
+		return "github-status"
+	case SenderEmail:
+		return "email"
+	case SenderEvergreenWebhook:
+		return "webhook"
+	case SenderSlack:
+		return "slack"
+	case SenderJIRAComment:
+		return "jira-comment"
+	case SenderJIRAIssue:
+		return "jira-issue"
+	default:
+		return "<error:unkwown>"
+	}
+}
 
 const (
 	defaultLogBufferingDuration  = 20
@@ -211,6 +276,7 @@ var (
 	UphostStatus = []string{
 		HostRunning,
 		HostUninitialized,
+		HostBuilding,
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
@@ -228,6 +294,8 @@ var (
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
+
+	ValidCommandTypes = []string{CommandTypeSetup, CommandTypeSystem, CommandTypeTest}
 )
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.

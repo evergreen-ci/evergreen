@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -43,11 +44,11 @@ type MountPoint struct {
 
 var (
 	// bson fields for the EC2ProviderSettings struct
-	AMIKey           = bsonutil.MustHaveTag(EC2ProviderSettings{}, "AMI")
-	InstanceTypeKey  = bsonutil.MustHaveTag(EC2ProviderSettings{}, "InstanceType")
-	SecurityGroupKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroup")
-	KeyNameKey       = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
-	MountPointsKey   = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
+	AMIKey            = bsonutil.MustHaveTag(EC2ProviderSettings{}, "AMI")
+	InstanceTypeKey   = bsonutil.MustHaveTag(EC2ProviderSettings{}, "InstanceType")
+	SecurityGroupsKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroupIDs")
+	KeyNameKey        = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
+	MountPointsKey    = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
 )
 
 var (
@@ -254,51 +255,33 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 		return nil, nil
 	}
 	mappings := []*ec2aws.BlockDeviceMapping{}
-	for i, mount := range mounts {
+	for _, mount := range mounts {
 		if mount.DeviceName == "" {
-			return nil, errors.Errorf("missing 'device_name': %+v", mount)
+			return nil, errors.New("missing device name")
 		}
+		if mount.VirtualName == "" && mount.Size == 0 {
+			return nil, errors.New("must provide either a virtual name or an EBS size")
+		}
+
+		m := &ec2aws.BlockDeviceMapping{
+			DeviceName: aws.String(mount.DeviceName),
+		}
+		// Without a virtual name, this is EBS
 		if mount.VirtualName == "" {
-			if mount.Size <= 0 {
-				return nil, errors.Errorf("must provide either a virtual name or an EBS size")
+			m.Ebs = &ec2aws.EbsBlockDevice{
+				DeleteOnTermination: aws.Bool(true),
+				VolumeSize:          aws.Int64(mount.Size),
 			}
-			// EBS - size but no virtual name
-			mappings = append(mappings, &ec2aws.BlockDeviceMapping{
-				DeviceName: &mounts[i].DeviceName,
-				Ebs: &ec2aws.EbsBlockDevice{
-					DeleteOnTermination: makeBoolPtr(true),
-					Iops:                &mounts[i].Iops,
-					SnapshotId:          &mounts[i].SnapshotID,
-					VolumeSize:          &mounts[i].Size,
-				},
-			})
-			continue
+			if mount.Iops != 0 {
+				m.Ebs.Iops = aws.Int64(mount.Iops)
+			}
+			if mount.SnapshotID != "" {
+				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
+			}
+		} else { // With a virtual name, this is an instance store
+			m.VirtualName = aws.String(mount.VirtualName)
 		}
-		// instance store - virtual name but no size
-		mappings = append(mappings, &ec2aws.BlockDeviceMapping{
-			DeviceName:  &mounts[i].DeviceName,
-			VirtualName: &mounts[i].VirtualName,
-		})
+		mappings = append(mappings, m)
 	}
 	return mappings, nil
-}
-
-// makeInt64Ptr is necessary because Go does not allow you to write `&int64(1)`.
-func makeInt64Ptr(i int64) *int64 {
-	return &i
-}
-
-// makeStringPtr is necessary because Go does not allow you to write `&"foo"`.
-func makeStringPtr(s string) *string {
-	return &s
-}
-
-// makeBoolPtr is necessary because Go does not allow you to write `&true`.
-func makeBoolPtr(b bool) *bool {
-	return &b
-}
-
-// makeTimePtr is necessary because Go does not allow you to write `&time.Time`.
-func makeTimePtr(t time.Time) *time.Time {
-	return &t
 }

@@ -3,9 +3,9 @@ name := evergreen
 buildDir := bin
 nodeDir := public
 packages := $(name) agent operations cloud command db subprocess util plugin units
-packages += thirdparty alerts auth scheduler model validator service monitor repotracker
+packages += thirdparty auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
-packages += model-grid rest-client rest-data rest-route rest-model migrations model-trigger model-alertrecord
+packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -31,10 +31,12 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 
 clientSource := main/evergreen.go
 
-distArtifacts :=  ./public ./service/templates ./alerts/templates
+xcPackages := agent command operations rest-client subprocess util
+distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/test.$(pkg))
+distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/race.$(pkg))
+
+distArtifacts :=  ./public ./service/templates
 distContents := $(clientBinaries) $(distArtifacts)
-distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
-distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
@@ -52,13 +54,13 @@ endif
 #   separately. This is a temporary solution: eventually we should
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
-lintDeps += github.com/richardsamuels/evg-lint/...
+lintDeps += github.com/evergreen-ci/evg-lint/...
 #   include test files and give linters 40s to run to avoid timeouts
 lintArgs := --tests --deadline=10m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="maligned"
+lintArgs += --disable="gotype" --disable="gosec" --disable="gocyclo" --disable="maligned"
 lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
 lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
@@ -66,7 +68,7 @@ lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
-lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
+lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"
 lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
@@ -193,7 +195,7 @@ dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
-	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item)) --exclude "public/node_modules"
+	./$< -name $@ --prefix $(name) $(foreach item,$(distTestContents) $(distContents),--item $(item)) $(foreach item,$(shell find . -maxdepth 2 -type d -name "testdata"),--item $(item)) --item makefile --item scripts --item config_test --exclude "public/node_modules"
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
 # end main build
@@ -220,9 +222,11 @@ phony += lint lint-deps build build-race race test coverage coverage-html list-r
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
-run-cross:dist-test
-	tar -zxvf dist-test.tar.gz
-	$(EVGHOME)/bin/test.$(echo $(crossTarget) | sed 's/-/./') --test.v --test.timeout=10m
+run-cross:
+	@mkdir -p $(buildDir)
+	$(EVGHOME)/$(buildDir)/$(subst xc-,test.,$(CROSS_TARGET)) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
+	@grep -s -q -e "^PASS" $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
+
 # end front-ends
 
 
@@ -244,10 +248,9 @@ lint-%:$(buildDir)/output.%.lint
 # start vendoring configuration
 vendor-clean:
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/urfave/negroni/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/gorilla/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/gopkg.in/yaml.v2/
+	rm -rf vendor/github.com/evergreen-ci/go-test2json/vendor
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/

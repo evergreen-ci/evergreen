@@ -3,7 +3,6 @@ package task
 import (
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -23,8 +22,8 @@ const (
 	edgesKey = "edges"
 	taskKey  = "task"
 
-	// tasks should be unscheduled after ~2 weeks
-	unschedulableThreshold = 7 * 24 * time.Hour
+	// tasks should be unscheduled after ~a week
+	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
@@ -37,6 +36,9 @@ const (
 
 	// length of time to cache the expected duration in the task document
 	predictionTTL = 15 * time.Minute
+
+	taskBlocked = "blocked"
+	taskPending = "pending"
 )
 
 var (
@@ -63,6 +65,7 @@ type Task struct {
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
+	ActivatedTime time.Time `bson:"activated_time" json:"activated_time"`
 
 	Version           string `bson:"version" json:"version,omitempty"`
 	Project           string `bson:"branch" json:"branch,omitempty"`
@@ -76,13 +79,14 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated     bool         `bson:"activated" json:"activated"`
-	ActivatedBy   string       `bson:"activated_by" json:"activated_by"`
-	BuildId       string       `bson:"build_id" json:"build_id"`
-	DistroId      string       `bson:"distro" json:"distro"`
-	BuildVariant  string       `bson:"build_variant" json:"build_variant"`
-	DependsOn     []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	Activated            bool         `bson:"activated" json:"activated"`
+	ActivatedBy          string       `bson:"activated_by" json:"activated_by"`
+	BuildId              string       `bson:"build_id" json:"build_id"`
+	DistroId             string       `bson:"distro" json:"distro"`
+	BuildVariant         string       `bson:"build_variant" json:"build_variant"`
+	DependsOn            []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents        int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	OverrideDependencies bool         `bson:"override_dependencies,omitempty" json:"override_dependencies,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -90,7 +94,8 @@ type Task struct {
 	// Tags that describe the task
 	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
 
-	// The host the task was run on
+	// The host the task was run on. This value is empty for display
+	// tasks
 	HostId string `bson:"host_id" json:"host_id"`
 
 	// the number of times this task has been restarted
@@ -123,14 +128,17 @@ type Task struct {
 
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
+	// total estimated cost of hosts this task spawned
+	SpawnedHostCost float64 `bson:"spawned_host_cost,omitempty" json:"spawned_host_cost,omitempty"`
 
 	// test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
-	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
-	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
+	DisplayOnly       bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks    []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	ResetWhenFinished bool     `bson:"reset_when_finished,omitempty" json:"reset_when_finished,omitempty"`
+	DisplayTask       *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
@@ -226,14 +234,8 @@ func IsAbortable(t Task) bool {
 }
 
 // IsFinished returns true if the project is no longer running
-func (t Task) IsFinished() bool {
-	return t.Status == evergreen.TaskFailed ||
-		t.Status == evergreen.TaskSucceeded ||
-		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
-		t.Status == evergreen.TaskSystemFailed ||
-		t.Status == evergreen.TaskSystemTimedOut ||
-		t.Status == evergreen.TaskSystemUnresponse ||
-		t.Status == evergreen.TaskTestTimedOut
+func (t *Task) IsFinished() bool {
+	return evergreen.IsFinishedTaskStatus(t.Status)
 }
 
 // IsDispatchable return true if the task should be dispatched
@@ -272,13 +274,42 @@ func (t *Task) IsPatchRequest() bool {
 	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
 }
 
+func (t *Task) SetOverrideDependencies(userID string) error {
+	t.OverrideDependencies = true
+	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				OverrideDependenciesKey: true,
+			},
+		},
+	)
+}
+
+func (t *Task) AddDependency(d Dependency) error {
+	t.DependsOn = append(t.DependsOn, d)
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$push": bson.M{
+				DependsOnKey: d,
+			},
+		},
+	)
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
 // are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 
-	if len(t.DependsOn) == 0 {
+	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return true, nil
 	}
 
@@ -560,7 +591,7 @@ func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	}
 
 	query["$and"] = []bson.M{
-		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
+		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
 		{CreateTimeKey: bson.M{"$gt": util.ZeroTime}},
 	}
 
@@ -594,6 +625,31 @@ func (t *Task) MarkFailed() error {
 	)
 }
 
+func (t *Task) MarkSystemFailed() error {
+	t.Status = evergreen.TaskFailed
+	t.FinishTime = time.Now()
+
+	t.Details = apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   evergreen.CommandTypeSystem,
+	}
+
+	event.LogTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:     evergreen.TaskFailed,
+				FinishTimeKey: t.FinishTime,
+				DetailsKey:    t.Details,
+			},
+		},
+	)
+}
+
 // SetAborted sets the abort field of task to aborted
 func (t *Task) SetAborted() error {
 	t.Aborted = true
@@ -613,14 +669,16 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
+	t.ActivatedTime = time.Now()
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ActivatedKey:   true,
-				ActivatedByKey: caller,
+				ActivatedKey:     true,
+				ActivatedByKey:   caller,
+				ActivatedTimeKey: t.ActivatedTime,
 			},
 		})
 }
@@ -696,91 +754,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
-func (t *Task) UpdateDisplayTask() error {
-	if !t.DisplayOnly {
-		return fmt.Errorf("%s is not a display task", t.Id)
-	}
-
-	statuses := []string{}
-	var timeTaken time.Duration
-	var status string
-	execTasks, err := Find(ByIds(t.ExecutionTasks))
-	if err != nil {
-		return errors.Wrap(err, "error retrieving execution tasks")
-	}
-	hasFinishedTasks := false
-	hasUnfinishedTasks := false
-	startTime := time.Unix(1<<62, 0)
-	endTime := util.ZeroTime
-	for _, execTask := range execTasks {
-		// if any of the execution tasks are scheduled, the display task is too
-		if execTask.Activated {
-			t.Activated = true
-		}
-
-		if execTask.IsFinished() {
-			hasFinishedTasks = true
-		} else if execTask.IsDispatchable() {
-			hasUnfinishedTasks = true
-		}
-
-		// the display task's status will be the highest priority of its exec tasks
-		statuses = append(statuses, execTask.ResultStatus())
-
-		// add up the duration of the execution tasks as the cumulative time taken
-		timeTaken += execTask.TimeTaken
-
-		// set the start/end time of the display task as the earliest/latest task
-		if execTask.StartTime.Before(startTime) {
-			startTime = execTask.StartTime
-		}
-		if execTask.FinishTime.After(endTime) {
-			endTime = execTask.FinishTime
-		}
-	}
-
-	if hasFinishedTasks && hasUnfinishedTasks {
-		// if the display task has a mix of finished and unfinished tasks, the status
-		// will be "started"
-		status = evergreen.TaskStarted
-	} else if len(statuses) > 0 {
-		// the status of the display task will be the status of its constituent task
-		// that is logically the most exclusive
-		sort.Sort(byPriority(statuses))
-		status = statuses[0]
-	}
-
-	update := bson.M{
-		StatusKey:    status,
-		ActivatedKey: t.Activated,
-		TimeTakenKey: timeTaken,
-	}
-	if startTime != time.Unix(1<<62, 0) {
-		update[StartTimeKey] = startTime
-	}
-	if endTime != util.ZeroTime && !hasUnfinishedTasks {
-		update[FinishTimeKey] = endTime
-	}
-
-	err = UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": update,
-		})
-	if err != nil {
-		return errors.Wrap(err, "error updating display task")
-	}
-
-	t.Status = status
-	t.TimeTaken = timeTaken
-	if t.IsFinished() {
-		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
-	}
-	return nil
-}
-
 func displayTaskPriority(status string) int {
 	switch status {
 	case evergreen.TaskStarted:
@@ -827,6 +800,7 @@ func (t *Task) Reset() error {
 	t.StartTime = util.ZeroTime
 	t.ScheduledTime = util.ZeroTime
 	t.FinishTime = util.ZeroTime
+	t.ResetWhenFinished = false
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -838,7 +812,8 @@ func (t *Task) Reset() error {
 			FinishTimeKey:    util.ZeroTime,
 		},
 		"$unset": bson.M{
-			DetailsKey: "",
+			DetailsKey:           "",
+			ResetWhenFinishedKey: "",
 		},
 	}
 
@@ -917,6 +892,7 @@ func (t *Task) SetPriority(priority int64, user string) error {
 	if err != nil {
 		return errors.Wrap(err, "error getting task dependencies")
 	}
+	ids = append(ids, t.ExecutionTasks...)
 
 	_, err = UpdateAll(
 		bson.M{"$or": []bson.M{
@@ -1045,6 +1021,19 @@ func (t *Task) SetCost(cost float64) error {
 		bson.M{
 			"$set": bson.M{
 				CostKey: cost,
+			},
+		},
+	)
+}
+
+func IncSpawnedHostCost(taskID string, cost float64) error {
+	return UpdateOne(
+		bson.M{
+			IdKey: taskID,
+		},
+		bson.M{
+			"$inc": bson.M{
+				SpawnedHostCostKey: cost,
 			},
 		},
 	)
@@ -1240,6 +1229,27 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 		return nil, errors.Wrap(err, "error merging test results for display task")
 	}
 	return tasks[0].LocalTestResults, nil
+}
+
+func (t *Task) SetResetWhenFinished(detail *apimodels.TaskEndDetail) error {
+	if !t.DisplayOnly {
+		return errors.Errorf("%s is not a display task", t.Id)
+	}
+	t.ResetWhenFinished = true
+	if detail != nil {
+		t.Details = *detail
+	}
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				ResetWhenFinishedKey: true,
+				DetailsKey:           detail,
+			},
+		},
+	)
 }
 
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
@@ -1553,4 +1563,63 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	}
 
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
+}
+
+// BlockedState returns "blocked," "pending," or "" to represent the state of the task
+// with respect to its dependencies
+func (t *Task) BlockedState() (string, error) {
+	if t.DisplayOnly {
+		return t.blockedStateForDisplayTask()
+	}
+
+	dependencyIDs := []string{}
+	for _, d := range t.DependsOn {
+		dependencyIDs = append(dependencyIDs, d.TaskId)
+	}
+	dependentTasks, err := Find(ByIds(dependencyIDs).WithFields(DisplayNameKey, StatusKey,
+		ActivatedKey, BuildVariantKey, DetailsKey, DependsOnKey))
+	if err != nil {
+		return "", errors.Wrap(err, "error finding dependencies")
+	}
+	taskMap := map[string]*Task{}
+	for i := range dependentTasks {
+		taskMap[dependentTasks[i].Id] = &dependentTasks[i]
+	}
+	for _, dependency := range t.DependsOn {
+		depTask := taskMap[dependency.TaskId]
+		state, err := depTask.BlockedState()
+		if err != nil {
+			return "", err
+		}
+		if state == taskBlocked {
+			return taskBlocked, nil
+		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
+			if depTask.Status != dependency.Status && dependency.Status != AllStatuses {
+				return taskBlocked, nil
+			}
+		} else {
+			return taskPending, nil
+		}
+	}
+	return "", nil
+}
+
+func (t *Task) blockedStateForDisplayTask() (string, error) {
+	execTasks, err := Find(ByIds(t.ExecutionTasks))
+	if err != nil {
+		return "", errors.Wrap(err, "error finding execution tasks")
+	}
+	state := ""
+	for _, execTask := range execTasks {
+		etState, err := execTask.BlockedState()
+		if err != nil {
+			return "", errors.Wrap(err, "error finding blocked state")
+		}
+		if etState == taskBlocked {
+			return taskBlocked, nil
+		} else if etState == taskPending {
+			state = taskPending
+		}
+	}
+	return state, nil
 }

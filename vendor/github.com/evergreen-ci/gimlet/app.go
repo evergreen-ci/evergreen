@@ -21,7 +21,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
-	"github.com/urfave/negroni"
 )
 
 // APIApp is a structure representing a single API service.
@@ -46,11 +45,9 @@ type APIApp struct {
 // for new methods.
 func NewApp() *APIApp {
 	a := &APIApp{
-		port: 3000,
+		port:        3000,
+		StrictSlash: true,
 	}
-
-	a.AddMiddleware(negroni.NewRecovery())
-	a.AddMiddleware(NewAppLogger())
 
 	return a
 }
@@ -112,24 +109,23 @@ func (a *APIApp) Run(ctx context.Context) error {
 		WriteTimeout:      time.Minute,
 	}
 
-	catcher := grip.NewBasicCatcher()
 	serviceWait := make(chan struct{})
 	go func() {
 		defer recovery.LogStackTraceAndContinue("app service")
-
-		grip.Noticef("starting app on: %s:$d", a.address, a.port)
-		catcher.Add(srv.ListenAndServe())
+		grip.Noticef("starting app on: %s:%d", a.address, a.port)
+		srv.ListenAndServe()
+		close(serviceWait)
 	}()
 
 	go func() {
 		defer recovery.LogStackTraceAndContinue("server shutdown")
-		catcher.Add(srv.Shutdown(ctx))
-		close(serviceWait)
+		<-ctx.Done()
+		grip.Debug(srv.Shutdown(ctx))
 	}()
 
 	<-serviceWait
 
-	return catcher.Resolve()
+	return nil
 }
 
 // SetPort allows users to configure a default port for the API

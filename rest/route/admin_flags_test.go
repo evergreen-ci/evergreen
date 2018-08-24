@@ -18,15 +18,8 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 	assert := assert.New(t)
 	sc := &data.MockConnector{}
 
-	// test getting the route handler
-	const route = "/admin/service_flags"
-	const version = 2
-	routeManager := getServiceFlagsRouteManager(route, version)
-	assert.NotNil(routeManager)
-	assert.Equal(route, routeManager.Route)
-	assert.Equal(version, routeManager.Version)
-	postHandler := routeManager.Methods[0]
-	assert.IsType(&flagsPostHandler{}, postHandler.RequestHandler)
+	postHandler := makeSetServiceFlagsRouteManager(sc)
+	assert.NotNil(postHandler)
 
 	// run the route
 	ctx := context.Background()
@@ -46,14 +39,15 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/service_flags", buffer)
 	assert.NoError(err)
-	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	h := postHandler.RequestHandler.(*flagsPostHandler)
+	assert.NoError(postHandler.Parse(ctx, request))
+	h := postHandler.(*flagsPostHandler)
 	assert.Equal(body.Flags, h.Flags)
 
 	// test executing the POST request
-	resp, err := postHandler.RequestHandler.Execute(ctx, sc)
-	assert.NoError(err)
+	resp := postHandler.Run(ctx)
 	assert.NotNil(resp)
+	assert.Equal(http.StatusOK, resp.Status())
+
 	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
 	assert.Equal(body.Flags.HostinitDisabled, settings.ServiceFlags.HostinitDisabled)

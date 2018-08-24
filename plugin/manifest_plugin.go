@@ -14,11 +14,8 @@ func init() {
 }
 
 // Name returns the name of this plugin - satisfies 'Plugin' interface
-func (m *ManifestPlugin) Name() string { return "manifest" }
-
-func (m *ManifestPlugin) Configure(conf map[string]interface{}) error {
-	return nil
-}
+func (m *ManifestPlugin) Name() string                           { return "manifest" }
+func (m *ManifestPlugin) Configure(map[string]interface{}) error { return nil }
 
 // GetPanelConfig returns a pointer to a plugin's UI configuration.
 // or an error, if an error occur while trying to generate the config

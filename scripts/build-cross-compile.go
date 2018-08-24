@@ -86,7 +86,7 @@ func main() {
 
 	if race && supportsRaceDetector(arch, system) {
 		cmd.Args = append(cmd.Args, "-race")
-		cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=1", "GORACE=\"halt_on_error=1\"")
 	}
 
 	if runtime.Compiler != "gccgo" {

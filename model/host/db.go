@@ -50,6 +50,7 @@ var (
 	LTCProjectKey              = bsonutil.MustHaveTag(Host{}, "LastProject")
 	StatusKey                  = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey           = bsonutil.MustHaveTag(Host{}, "AgentRevision")
+	AgentDeployAttemptKey      = bsonutil.MustHaveTag(Host{}, "AgentDeployAttempt")
 	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
@@ -67,8 +68,11 @@ var (
 	TotalIdleTimeKey           = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
 	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
 	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
+	ContainerImagesKey         = bsonutil.MustHaveTag(Host{}, "ContainerImages")
+	ContainerBuildAttempt      = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
 	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
 	SpawnOptionsKey            = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
+	ContainerPoolSettingsKey   = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
 	SpawnOptionsTaskIDKey      = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
 	SpawnOptionsBuildIDKey     = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
 	SpawnOptionsTimeoutKey     = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
@@ -122,6 +126,30 @@ func AllIdleEphemeral() ([]Host, error) {
 	return Find(query)
 }
 
+func runningHostsQuery(distroID string) bson.M {
+	query := IsLive()
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	return query
+}
+
+func CountRunningHosts(distroID string) (int, error) {
+	num, err := Count(db.Query(runningHostsQuery(distroID)))
+	return num, errors.Wrap(err, "problem finding running hosts")
+}
+
+func AllRunningHosts(distroID string) ([]Host, error) {
+	allHosts, err := Find(db.Query(runningHostsQuery(distroID)))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding live hosts")
+	}
+
+	return allHosts, nil
+}
+
 // AllHostsSpawnedByTasksToTerminate finds all hosts spawned by tasks that should be terminated.
 func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 	catcher := grip.NewBasicCatcher()
@@ -164,7 +192,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 			"as":           runningTasks,
 		}},
 		{"$unwind": "$" + runningTasks},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: bson.M{"$in": evergreen.UphostStatus}}},
 		{"$project": bson.M{runningTasks: 0}},
 	}
 	var hosts []Host
@@ -185,7 +213,7 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 			"as":           runningBuilds,
 		}},
 		{"$unwind": "$" + runningBuilds},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: evergreen.HostRunning}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: bson.M{"$in": evergreen.UphostStatus}}},
 		{"$project": bson.M{runningBuilds: 0}},
 	}
 	var hosts []Host
@@ -399,6 +427,7 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 		StatusKey:        evergreen.HostRunning,
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
+		ParentIDKey:      bson.M{"$exists": false},
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
@@ -408,17 +437,26 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
-// Removes host intents that have been been pending for more than 3
-// minutes for the specified distro.
+// Removes host intents that have been been uninitialized for more than 3
+// minutes or spawning (but not started) for more than 15 minutes for the
+// specified distro.
 //
 // If you pass the empty string as a distroID, it will remove stale
 // host intents for *all* distros.
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
-		StatusKey:     evergreen.HostUninitialized,
-		UserHostKey:   false,
-		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
+		UserHostKey: false,
+		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
+		"$or": []bson.M{
+			{
+				StatusKey:     evergreen.HostUninitialized,
+				CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+			},
+			{
+				StatusKey:     evergreen.HostBuilding,
+				CreateTimeKey: bson.M{"$lt": time.Now().Add(-15 * time.Minute)},
+			},
+		},
 	}
 
 	if distroID != "" {
@@ -485,13 +523,7 @@ func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
 	)
 }
 
-func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]Host, error) {
-	sort := []string{IdKey}
-	sortOperator := "$gte"
-	if sortDir < 0 {
-		sortOperator = "$lte"
-		sort = []string{"-" + IdKey}
-	}
+func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, error) {
 	var statusMatch interface{}
 	if status != "" {
 		statusMatch = status
@@ -500,46 +532,20 @@ func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]
 	}
 
 	filter := bson.M{
-		IdKey:     bson.M{sortOperator: id},
+		IdKey:     bson.M{"$gte": id},
 		StatusKey: statusMatch,
 	}
+
 	if user != "" {
 		filter[StartedByKey] = user
 	}
-	query := db.Q{}
-	query = query.Filter(filter)
-	query = query.Sort(sort)
-	query = query.Limit(limit)
 
-	hosts, err := Find(query)
+	var query db.Q
+	hosts, err := Find(query.Filter(filter).Sort([]string{IdKey}).Limit(limit))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error querying database")
 	}
 	return hosts, nil
-}
-
-// QueryWithFullTaskPipeline returns a pipeline to match hosts and embeds the
-// task document within the host, if it's running a task
-func QueryWithFullTaskPipeline(match bson.M) []bson.M {
-	return []bson.M{
-		{
-			"$match": match,
-		},
-		{
-			"$lookup": bson.M{
-				"from":         task.Collection,
-				"localField":   RunningTaskKey,
-				"foreignField": task.IdKey,
-				"as":           "task_full",
-			},
-		},
-		{
-			"$unwind": bson.M{
-				"path": "$task_full",
-				"preserveNullAndEmptyArrays": true,
-			},
-		},
-	}
 }
 
 type InactiveHostCounts struct {

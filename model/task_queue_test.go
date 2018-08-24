@@ -51,6 +51,16 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldNotBeNil)
 		})
 
+		Convey("if the task is present in the in-memory queue but not in the db queue"+
+			", an error should not be thrown", func() {
+			taskQueue.Queue = append(taskQueue.Queue,
+				TaskQueueItem{Id: taskIds[1]})
+			So(taskQueue.Save(), ShouldBeNil)
+			taskQueue.Queue = append(taskQueue.Queue,
+				TaskQueueItem{Id: taskIds[0]})
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+		})
+
 		Convey("if the task is present in the queue, it should be removed"+
 			" from the in-memory and db versions of the queue", func() {
 			taskQueue.Queue = []TaskQueueItem{
@@ -107,6 +117,57 @@ func TestFindTask(t *testing.T) {
 	assert.Equal("one", q.FindNextTask(TaskSpec{Group: "foo", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
 	assert.Equal("six", q.FindNextTask(TaskSpec{Group: "bar", ProjectID: "aa", Version: "bb", BuildVariant: "a"}).Id)
 	assert.Equal("two", q.FindNextTask(TaskSpec{Group: "bar", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
+}
+
+func TestBlockTaskGroupTasks(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection))
+
+	q := &TaskQueue{
+		Queue: []TaskQueueItem{
+			{Id: "one", Group: "foo", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "two", Group: "bar", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "three", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "four", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "five", Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "six", Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "seven", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "eight", Project: "aa", Version: "bb", BuildVariant: "a"},
+		},
+		Distro: "distro",
+	}
+	qLength := len(q.Queue)
+	assert.NoError(q.Save())
+	tasks := []task.Task{
+		{
+			Id:                "task_id",
+			TaskGroup:         "foo",
+			TaskGroupMaxHosts: 1,
+			BuildVariant:      "a",
+			Version:           "b",
+		},
+		{
+			Id:           "one",
+			TaskGroup:    "foo",
+			Project:      "a",
+			Version:      "b",
+			BuildVariant: "a",
+		},
+	}
+	for _, t := range tasks {
+		require.NoError(t.Insert())
+	}
+	spec := TaskSpec{
+		Group:        "foo",
+		BuildVariant: "a",
+		ProjectID:    "a",
+		Version:      "b",
+	}
+	assert.NoError(q.BlockTaskGroupTasks(spec, "task_id"))
+	newQ, err := LoadTaskQueue("distro")
+	assert.NoError(err)
+	assert.Len(newQ.Queue, qLength-1)
 }
 
 func TestFindNextTaskEmptySpec(t *testing.T) {

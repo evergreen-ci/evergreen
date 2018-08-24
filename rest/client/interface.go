@@ -100,6 +100,10 @@ type Communicator interface {
 	// GenerateTasks posts new tasks for the `generate.tasks` command.
 	GenerateTasks(context.Context, TaskData, []json.RawMessage) error
 
+	// Spawn-hosts for tasks methods
+	CreateHost(context.Context, TaskData, apimodels.CreateHost) error
+	ListHosts(context.Context, TaskData) ([]restmodel.CreateHost, error)
+
 	// ---------------------------------------------------------------------
 	// End legacy API methods
 	// ---------------------------------------------------------------------

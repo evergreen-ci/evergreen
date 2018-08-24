@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -18,10 +16,11 @@ import (
 )
 
 type DockerSuite struct {
-	client   dockerClient
-	manager  *dockerManager
-	distro   distro.Distro
-	hostOpts HostOptions
+	client     dockerClient
+	manager    *dockerManager
+	distro     distro.Distro
+	hostOpts   HostOptions
+	parentHost host.Host
 	suite.Suite
 }
 
@@ -31,6 +30,7 @@ func TestDockerSuite(t *testing.T) {
 
 func (s *DockerSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	s.NoError(db.Clear(host.Collection))
 }
 
 func (s *DockerSuite) SetupTest() {
@@ -41,97 +41,38 @@ func (s *DockerSuite) SetupTest() {
 		client: s.client,
 	}
 	s.distro = distro.Distro{
+		Id:       "d",
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"host_ip":     "127.0.0.1",
-			"image_name":  "docker_image",
-			"client_port": 4243,
-			"port_range": map[string]interface{}{
-				"min_port": 5000,
-				"max_port": 5010,
-			},
+			"image_url": "http://0.0.0.0:8000/docker_image.tgz",
+			"pool_id":   "pool_id",
 		},
+		User: "root",
 	}
-	s.hostOpts = HostOptions{}
+	s.parentHost = host.Host{
+		Id:            "parent",
+		Host:          "host",
+		HasContainers: true,
+	}
+	s.hostOpts = HostOptions{
+		ParentID: "parent",
+	}
+	s.NoError(s.parentHost.Insert())
 }
 
+func (s *DockerSuite) TearDownTest() {
+	s.NoError(db.Clear(host.Collection))
+}
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
+		ImageURL: "http://0.0.0.0:8000/docker_image.tgz",
 	}
 	s.NoError(settingsOk.Validate())
 
-	// error when missing host ip
-	settingsNoHostIP := &dockerSettings{
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
-	}
-	s.Error(settingsNoHostIP.Validate())
-
-	// error when missing image id
-	settingsNoImageID := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
-	}
-	s.Error(settingsNoImageID.Validate())
-
-	// error when missing client port
-	settingsNoClientPort := &dockerSettings{
-		HostIP:  "127.0.0.1",
-		ImageID: "docker_image",
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
-	}
-	s.Error(settingsNoClientPort.Validate())
-
-	// error when invalid port range
-	settingsInvalidPorts := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 5010,
-			MaxPort: 5000,
-		},
-	}
-	s.Error(settingsInvalidPorts.Validate())
-
-	// error when missing port PortRange
-	settingsNoPortRange := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-	}
-	s.Error(settingsNoPortRange.Validate())
-
-	// error when ports are 0
-	settingsInvalidPortsZero := &dockerSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		ClientPort: 4243,
-		PortRange: &portRange{
-			MinPort: 0,
-			MaxPort: 0,
-		},
-	}
-	s.Error(settingsInvalidPortsZero.Validate())
+	// error when missing image url
+	settingsNoImageURL := &dockerSettings{}
+	s.EqualError(settingsNoImageURL.Validate(), "ImageURL must not be blank")
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
@@ -166,7 +107,7 @@ func (s *DockerSuite) TestIsUpFailAPICall() {
 }
 
 func (s *DockerSuite) TestIsUpStatuses() {
-	host := &host.Host{}
+	host := &host.Host{ParentID: "parent"}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -184,6 +125,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	defer cancel()
 
 	hostA := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostA.Insert())
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
@@ -191,6 +133,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	s.NoError(err)
 
 	hostB := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostB.Insert())
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -213,6 +156,7 @@ func (s *DockerSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	myHost := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(myHost.Insert())
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -275,6 +219,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
 	host = NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -287,11 +232,13 @@ func (s *DockerSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
 	hostOne := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostOne.Insert())
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
 	hostTwo := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(hostTwo.Insert())
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -306,12 +253,14 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
 	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -326,6 +275,7 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	defer cancel()
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
+	s.NoError(host.Insert())
 	h, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(h)
@@ -341,94 +291,6 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	s.Nil(h)
 }
 
-func (s *DockerSuite) TestSpawnFailOpenPortBinding() {
-	mock, ok := s.client.(*dockerClientMock)
-	s.True(ok)
-	s.True(mock.hasOpenPorts)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(ctx, host)
-	s.NoError(err)
-	s.NotNil(host)
-
-	mock.hasOpenPorts = false
-	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err = s.manager.SpawnHost(ctx, host)
-	s.Error(err)
-	s.Nil(host)
-}
-
-func (s *DockerSuite) TestSpawnGetAPICall() {
-	mock, ok := s.client.(*dockerClientMock)
-	s.True(ok)
-	s.False(mock.failCreate)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(ctx, host)
-	s.NoError(err)
-	s.NotNil(host)
-
-	mock.failGet = true
-	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	host, err = s.manager.SpawnHost(ctx, host)
-	s.Error(err)
-	s.Nil(host)
-}
-
-func (s *DockerSuite) TestGetDNSName() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
-	dns, err := s.manager.GetDNSName(ctx, host)
-	s.Error(err)
-	s.Empty(dns)
-
-	host, err = s.manager.SpawnHost(ctx, host)
-	s.NoError(err)
-	s.NotNil(host)
-
-	dns, err = s.manager.GetDNSName(ctx, host)
-	s.NoError(err)
-	s.NotEmpty(dns)
-}
-
-func (s *DockerSuite) TestMakeHostConfig() {
-	container := types.Container{
-		Ports: []types.Port{
-			{PublicPort: 5000},
-			{PublicPort: 5001},
-		},
-	}
-	containers := []types.Container{container}
-
-	settingsNoOpenPorts := &dockerSettings{
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5001,
-		},
-	}
-	conf, err := makeHostConfig(s.distro, settingsNoOpenPorts, containers)
-	s.Error(err)
-	s.Nil(conf)
-
-	settingsOpenPorts := &dockerSettings{
-		PortRange: &portRange{
-			MinPort: 5000,
-			MaxPort: 5010,
-		},
-	}
-	conf, err = makeHostConfig(s.distro, settingsOpenPorts, containers)
-	s.NoError(err)
-	s.NotNil(conf)
-}
-
 func (s *DockerSuite) TestUtilToEvgStatus() {
 	s.Equal(StatusRunning, toEvgStatus(&types.ContainerState{Running: true}))
 	s.Equal(StatusStopped, toEvgStatus(&types.ContainerState{Paused: true}))
@@ -436,48 +298,6 @@ func (s *DockerSuite) TestUtilToEvgStatus() {
 	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{OOMKilled: true}))
 	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{Dead: true}))
 	s.Equal(StatusUnknown, toEvgStatus(&types.ContainerState{}))
-}
-
-func (s *DockerSuite) TestUtilRetrieveOpenPortBinding() {
-	mock, ok := s.client.(*dockerClientMock)
-	s.True(ok)
-
-	containerNoPortBindings := &types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
-			ID:    mock.generateContainerID(),
-			State: &types.ContainerState{Running: true},
-		},
-		Config: &container.Config{
-			ExposedPorts: nat.PortSet{"22/tcp": {}},
-		},
-		NetworkSettings: &types.NetworkSettings{},
-	}
-	port, err := retrieveOpenPortBinding(containerNoPortBindings)
-	s.Empty(port)
-	s.Error(err)
-
-	hostPort := "5000"
-	containerOpenPortBinding := &types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
-			ID:    mock.generateContainerID(),
-			State: &types.ContainerState{Running: true},
-		},
-		Config: &container.Config{
-			ExposedPorts: nat.PortSet{"22/tcp": {}},
-		},
-		NetworkSettings: &types.NetworkSettings{
-			NetworkSettingsBase: types.NetworkSettingsBase{
-				Ports: nat.PortMap{
-					"22/tcp": []nat.PortBinding{
-						{"0.0.0.0", hostPort},
-					},
-				},
-			},
-		},
-	}
-	port, err = retrieveOpenPortBinding(containerOpenPortBinding)
-	s.Equal(hostPort, port)
-	s.NoError(err)
 }
 
 func (s *DockerSuite) TestSpawnDoesNotPanic() {
@@ -488,7 +308,7 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	delete(*s.distro.ProviderSettings, "port_range")
+	delete(*s.distro.ProviderSettings, "image_url")
 
 	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 
@@ -496,5 +316,89 @@ func (s *DockerSuite) TestSpawnDoesNotPanic() {
 		_, err := s.manager.SpawnHost(ctx, host)
 		s.Error(err)
 	})
+}
 
+func (s *DockerSuite) TestGetContainers() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failList)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	containers, err := s.manager.GetContainers(ctx, parent)
+	s.NoError(err)
+	s.Equal(1, len(containers))
+	s.Equal("container-1", containers[0])
+}
+
+func (s *DockerSuite) TestRemoveOldestImage() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failRemove)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.RemoveOldestImage(ctx, parent)
+	s.NoError(err)
+}
+
+func (s *DockerSuite) TestBuildContainerImage() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failDownload)
+	s.False(mock.failBuild)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	s.NoError(err)
+}
+
+func (s *DockerSuite) TestBuildContainerImageFailedDownload() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failBuild)
+
+	mock.failDownload = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	s.EqualError(err, "Unable to ensure that image 'image-url' is on host 'parent': failed to download image")
+}
+
+func (s *DockerSuite) TestBuildContainerImageFailedBuild() {
+	mock, ok := s.client.(*dockerClientMock)
+	s.True(ok)
+	s.False(mock.failDownload)
+
+	mock.failBuild = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	parent, err := host.FindOneId("parent")
+	s.NoError(err)
+	s.Equal("parent", parent.Id)
+
+	err = s.manager.BuildContainerImage(ctx, parent, "image-url")
+	s.EqualError(err, "Failed to build image 'image-url' with agent on host 'parent': failed to build image with agent")
 }

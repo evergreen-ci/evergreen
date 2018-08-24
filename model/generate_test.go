@@ -30,6 +30,12 @@ var (
 						Command: "shell.exec",
 					},
 				},
+				DependsOn: []parserDependency{
+					{TaskSelector: taskSelector{
+						Name:    "a-depended-on-task",
+						Variant: &variantSelector{stringSelector: "*"},
+					}},
+				},
 			},
 		},
 		BuildVariants: []parserBV{
@@ -88,16 +94,39 @@ tasks:
   - name: say-bye
     commands:
       - command: shell.exec
+  - name: a-depended-on-task
+    command:
+      - command: shell.exec
 
 buildvariants:
   - name: a_variant
     display_name: Variant Number One
     tasks:
-    - name: "say-hi"
+    - name: say-hi
+    - name: a-depended-on-task
 
 functions:
   a_function:
     command: shell.exec
+`
+	sampleProjYmlNoFunctions = `
+tasks:
+  - name: say-hi
+    commands:
+      - command: shell.exec
+  - name: say-bye
+    commands:
+      - command: shell.exec
+  - name: a-depended-on-task
+    command:
+      - command: shell.exec
+
+buildvariants:
+  - name: a_variant
+    display_name: Variant Number One
+    tasks:
+    - name: say-hi
+    - name: a-depended-on-task
 `
 	sampleGenerateTasksYml = `
 {
@@ -419,6 +448,16 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Contains(config, "say-bye")
 	s.Contains(config, "my_display_task_new_variant")
 	s.Contains(config, "my_display_task_old_variant")
+
+	config, err = g.addGeneratedProjectToConfig(sampleProjYmlNoFunctions, cachedProject)
+	s.NoError(err)
+	s.Contains(config, "say-hi")
+	s.Contains(config, "new_task")
+	s.Contains(config, "a_variant")
+	s.Contains(config, "new_buildvariant")
+	s.Contains(config, "say-bye")
+	s.Contains(config, "my_display_task_new_variant")
+	s.Contains(config, "my_display_task_old_variant")
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
@@ -449,6 +488,6 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, db.Q{}, &tasks)
 	s.NoError(err)
-	s.Len(builds, 2)
-	s.Len(tasks, 5)
+	s.Len(builds, 3)
+	s.Len(tasks, 6)
 }

@@ -3,12 +3,15 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/amboy/reporting"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
@@ -16,6 +19,7 @@ import (
 
 const (
 	amboyStatsCollectorJobName = "amboy-stats-collector"
+	enableExtendedRemoteStats  = false
 )
 
 func init() {
@@ -31,23 +35,13 @@ type amboyStatsCollector struct {
 	logger        grip.Journaler
 }
 
-// NewAmboyStatsCollector reports the status of the local and remote
-// queues registered in the evergreen service Environment.
-func NewAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
-	j := makeAmboyStatsCollector()
-	j.env = env
-	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
-
-	return j
-}
-
 // NewLocalAmboyStatsCollector reports the status of only the local queue
 // registered in the evergreen service Environment.
 func NewLocalAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
 	j := makeAmboyStatsCollector()
 	j.ExcludeRemote = true
 	j.env = env
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
 	return j
 }
 
@@ -57,7 +51,7 @@ func NewRemoteAmboyStatsCollector(env evergreen.Environment, id string) amboy.Jo
 	j := makeAmboyStatsCollector()
 	j.ExcludeLocal = true
 	j.env = env
-	j.SetID(id)
+	j.SetID(fmt.Sprintf("%s-%s", amboyStatsCollectorJobName, id))
 	return j
 }
 
@@ -77,7 +71,7 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 	return j
 }
 
-func (j *amboyStatsCollector) Run(_ context.Context) {
+func (j *amboyStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if j.env == nil {
@@ -101,5 +95,52 @@ func (j *amboyStatsCollector) Run(_ context.Context) {
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(),
 		})
+
+		if enableExtendedRemoteStats {
+			j.AddError(j.collectExtendedRemoteStats(ctx))
+		}
 	}
+}
+
+func (j *amboyStatsCollector) collectExtendedRemoteStats(ctx context.Context) error {
+	settings := j.env.Settings()
+
+	opts := queue.DefaultMongoDBOptions()
+	opts.URI = settings.Database.Url
+	opts.DB = settings.Amboy.DB
+	opts.Priority = true
+
+	reporter, err := reporting.MakeDBQueueState(settings.Amboy.Name, opts, j.env.Session())
+	if err != nil {
+		return err
+	}
+
+	r := message.Fields{
+		"message": "amboy remote queue report",
+	}
+
+	pending, err := reporter.JobStatus(ctx, reporting.Pending)
+	j.AddError(err)
+	if pending != nil {
+		r["pending"] = pending
+	}
+	inprog, err := reporter.JobStatus(ctx, reporting.InProgress)
+	j.AddError(err)
+	if inprog != nil {
+		r["inprog"] = inprog
+	}
+	stale, err := reporter.JobStatus(ctx, reporting.Stale)
+	j.AddError(err)
+	if stale != nil {
+		r["stale"] = stale
+	}
+
+	recentErrors, err := reporter.RecentErrors(ctx, time.Minute, reporting.StatsOnly)
+	j.AddError(err)
+	if recentErrors != nil {
+		r["errors"] = recentErrors
+	}
+
+	j.logger.InfoWhen(len(r) > 1, r)
+	return nil
 }

@@ -25,66 +25,42 @@ describe('PerfDiscoveryDataServiceTest', function() {
         buildA: {
           id: 'baid',
           name: 'buildAName',
+          variant: 'bvA',
           tasks: { taskA: {task_id: 'idA'}, taskB: {task_id: 'idB'}, } },
         buildB: {
           id: 'bbid',
           name: 'buildBName',
+          variant: 'bvB',
           tasks: { taskC: {task_id: 'idC'}, taskD: {task_id: 'idD'}, } } } }
 
     expect(
       service._extractTasks(version)
     ).toEqual([{
       buildId: 'baid',
+      buildVariant: 'bvA',
       taskId: 'idA',
       taskName: 'taskA',
       buildName: 'buildAName',
     }, {
       buildId: 'baid',
+      buildVariant: 'bvA',
       taskId: 'idB',
       taskName: 'taskB',
       buildName: 'buildAName',
     }, {
       buildId: 'bbid',
+      buildVariant: 'bvB',
       taskId: 'idC',
       taskName: 'taskC',
       buildName: 'buildBName',
     }, {
       buildId: 'bbid',
+      buildVariant: 'bvB',
       taskId: 'idD',
       taskName: 'taskD',
       buildName: 'buildBName',
     }])
 })
-
-  it('extracts storageEngine from build name', function() {
-    expect(
-      service._extractStorageEngine('build-wt', 'task')
-    ).toEqual({
-      build: 'build',
-      task: 'task',
-      storageEngine: 'wt',
-    })
-  })
-
-  it('extracts storageEngine from task name', function() {
-    expect(
-      service._extractStorageEngine('build', 'task-wiredtiger')
-    ).toEqual({
-      build: 'build',
-      task: 'task',
-      storageEngine: 'wiredtiger',
-    })
-  })
-
-  it('handles no storageEngine case', function() {
-    expect(
-      service._extractStorageEngine('build', 'task')
-    ).toEqual({
-      build: 'build',
-      task: 'task',
-      storageEngine: '(none)',
-    })
-  })
 
   it('processes single data item', function() {
     var item = {
@@ -95,7 +71,12 @@ describe('PerfDiscoveryDataServiceTest', function() {
       }
     }
     var ctx = {
-      buildName: 'b-wt', taskName: 't', taskId: 'tid', buildId: 'bid'
+      buildName: 'b',
+      taskName: 't',
+      taskId: 'tid',
+      buildId: 'bid',
+      buildVariant: 'bv',
+      storageEngine: 'wt',
     }
     var receiver = {}
 
@@ -105,6 +86,8 @@ describe('PerfDiscoveryDataServiceTest', function() {
     ).toEqual({
       'b-wt-t-name-8': {
         build: 'b',
+        buildId: 'bid',
+        buildVariant: 'bv',
         task: 't',
         buildURL: '/build/bid',
         taskURL: '/task/tid',
@@ -116,6 +99,8 @@ describe('PerfDiscoveryDataServiceTest', function() {
       },
       'b-wt-t-name-16': {
         build: 'b',
+        buildId: 'bid',
+        buildVariant: 'bv',
         task: 't',
         buildURL: '/build/bid',
         taskURL: '/task/tid',
@@ -152,7 +137,11 @@ describe('PerfDiscoveryDataServiceTest', function() {
             results: {8: {ops_per_sec: 100}}}
           ]}}
       ],
-      ctx: {buildName: 'b', taskName: 't'}
+      ctx: {
+        buildName: 'b',
+        taskName: 't',
+        buildVariant: 'bv',
+      }
     }]
 
     var processed = service._onProcessData(data)

@@ -154,24 +154,46 @@ func MarkVersionStarted(versionId string, startTime time.Time) error {
 
 // MarkVersionCompleted updates the status of a completed version to reflect its correct state by
 // checking the status of its individual builds.
-func MarkVersionCompleted(versionId string, finishTime time.Time) error {
+func MarkVersionCompleted(versionId string, finishTime time.Time, updates *StatusChanges) error {
 	status := evergreen.VersionSucceeded
 
 	// Find the statuses for all builds in the version so we can figure out the version's status
 	builds, err := build.Find(
-		build.ByVersion(versionId).WithFields(build.StatusKey),
+		build.ByVersion(versionId).WithFields(build.ActivatedKey, build.StatusKey, build.TasksKey),
 	)
 	if err != nil {
 		return err
 	}
 
+	versionStatusFromTasks := evergreen.VersionSucceeded
+	buildsWithAllActiveTasksComplete := 0
+	activeBuilds := 0
+	finished := true
 	for _, b := range builds {
+		if b.Activated {
+			activeBuilds += 1
+		}
+		if complete, buildStatus := b.AllCachedTasksOrCompileFinished(); complete {
+			buildsWithAllActiveTasksComplete += 1
+			if buildStatus != evergreen.BuildSucceeded {
+				versionStatusFromTasks = evergreen.VersionFailed
+			}
+		}
 		if !b.IsFinished() {
-			return nil
+			finished = false
+			continue
 		}
 		if b.Status != evergreen.BuildSucceeded {
 			status = evergreen.VersionFailed
 		}
+	}
+	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
+		updates.VersionComplete = true
+		updates.VersionNewStatus = versionStatusFromTasks
+		event.LogVersionStateChangeEvent(versionId, status)
+	}
+	if !finished {
+		return nil
 	}
 	if err := version.UpdateOne(
 		bson.M{version.IdKey: versionId},
@@ -182,7 +204,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 	); err != nil {
 		return errors.WithStack(err)
 	}
-	event.LogVersionStateChangeEvent(versionId, status)
 	return nil
 }
 
@@ -762,7 +783,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	}
 
 	// ensure all builds for this patch are finished as well
-	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey))
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey, build.TasksKey))
 	if err != nil {
 		return err
 	}

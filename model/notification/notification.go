@@ -21,7 +21,7 @@ import (
 // This function will produce an ID that will collide to prevent duplicate
 // notifications from being inserted
 func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string { //nolint: interfacer
-	return fmt.Sprintf("%s-%s-%s", event.ID.Hex(), trigger, subscriber.String())
+	return fmt.Sprintf("%s-%s-%s", event.ID, trigger, subscriber.String())
 }
 
 // New returns a new Notification, with a correctly initialised ID
@@ -119,7 +119,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return message.NewEmailMessage(level.Notice, *payload), nil
 
 	case event.JIRAIssueSubscriberType:
-		project, ok := n.Subscriber.Target.(*string)
+		jiraIssue, ok := n.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {
 			return nil, errors.New("jira-issue subscriber is invalid")
 		}
@@ -128,7 +128,8 @@ func (n *Notification) Composer() (message.Composer, error) {
 			return nil, errors.New("jira-issue payload is invalid")
 		}
 
-		payload.Project = *project
+		payload.Project = jiraIssue.Project
+		payload.Type = jiraIssue.IssueType
 
 		return message.MakeJiraMessage(*payload), nil
 

@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -49,7 +50,7 @@ func getNextTaskEndpoint(t *testing.T, as *APIServer, hostId string, details *ap
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -75,7 +76,7 @@ func getEndTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string, deta
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -103,7 +104,7 @@ func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *h
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	handler, err := as.Handler()
+	handler, err := as.GetServiceApp().Handler()
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
@@ -146,6 +147,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				Id: distroId,
 			},
 			Secret: hostSecret,
+			Status: evergreen.HostRunning,
 		}
 		So(sampleHost.Insert(), ShouldBeNil)
 
@@ -232,6 +234,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 						Id: distroId,
 					},
 					Secret: hostSecret,
+					Status: evergreen.HostRunning,
 				}
 				So(h2.Insert(), ShouldBeNil)
 
@@ -569,7 +572,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
-			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection); err != nil {
+			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection, event.AllLogCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 
@@ -611,7 +614,10 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(task1.Insert(), ShouldBeNil)
 
 		sampleHost := host.Host{
-			Id:                    hostId,
+			Id: hostId,
+			Distro: distro.Distro{
+				Provider: evergreen.ProviderNameEc2Auto,
+			},
 			Secret:                hostSecret,
 			RunningTask:           task1.Id,
 			Provider:              evergreen.ProviderNameStatic,
@@ -830,19 +836,6 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 				dbBuild, err := build.FindOne(build.ById(buildId))
 				So(err, ShouldBeNil)
 				So(dbBuild.Tasks[2].Status, ShouldEqual, evergreen.TaskFailed)
-			})
-			Convey("alerts should be created for the build failure", func() {
-				dbAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
-					displayTask.DisplayName, displayTask.BuildVariant, displayTask.Project))
-				So(err, ShouldBeNil)
-				So(dbAlert.Type, ShouldEqual, alertrecord.TaskFailTransitionId)
-				So(dbAlert.TaskId, ShouldEqual, displayTask.Id)
-
-				// alerts should not have been created for the execution task
-				execTaskAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
-					execTask.DisplayName, execTask.BuildVariant, execTask.Project))
-				So(err, ShouldBeNil)
-				So(execTaskAlert, ShouldBeNil)
 			})
 		})
 	})

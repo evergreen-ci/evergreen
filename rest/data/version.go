@@ -10,8 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/rest"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +35,7 @@ func (vc *DBVersionConnector) FindCostByVersionId(versionId string) (*task.Versi
 	}
 
 	if len(res) == 0 {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("version with id %s not found", versionId),
 		}
@@ -50,7 +50,7 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*version.Versio
 		return nil, err
 	}
 	if v == nil {
-		return nil, &rest.APIError{
+		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("version with id %s not found", versionId),
 		}
@@ -75,7 +75,7 @@ func (vc *DBVersionConnector) RestartVersion(versionId string, caller string) er
 		return err
 	}
 	if tasks == nil {
-		return &rest.APIError{
+		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("version with id %s not found", versionId),
 		}
@@ -345,7 +345,7 @@ func (mvc *MockVersionConnector) FindVersionById(versionId string) (*version.Ver
 			return &v, nil
 		}
 	}
-	return nil, &rest.APIError{
+	return nil, gimlet.ErrorResponse{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("build with id %s not found", versionId),
 	}

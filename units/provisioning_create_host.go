@@ -17,7 +17,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-const createHostJobName = "provisioning-create-host"
+const (
+	createHostJobName = "provisioning-create-host"
+	// For container build
+	maxPollAttempts = 60
+	pollInterval    = 15 * time.Second
+)
 
 func init() {
 	registry.AddJobType(createHostJobName, func() amboy.Job {
@@ -26,11 +31,14 @@ func init() {
 }
 
 type createHostJob struct {
-	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	HostID         string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	CurrentAttempt int    `bson:"current_attempt" json:"current_attempt" yaml:"current_attempt"`
+	MaxAttempts    int    `bson:"max_attempts" json:"max_attempts" yaml:"max_attempts"`
+	job.Base       `bson:"metadata" json:"metadata" yaml:"metadata"`
 
-	host *host.Host
-	env  evergreen.Environment
+	start time.Time
+	host  *host.Host
+	env   evergreen.Environment
 }
 
 func makeCreateHostJob() *createHostJob {
@@ -47,19 +55,33 @@ func makeCreateHostJob() *createHostJob {
 	return j
 }
 
-func NewHostCreateJob(env evergreen.Environment, h host.Host, id string) amboy.Job {
+func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, CurrentAttempt int, MaxAttempts int) amboy.Job {
 	j := makeCreateHostJob()
 	j.host = &h
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
 	j.SetID(fmt.Sprintf("%s.%s.%s", createHostJobName, j.HostID, id))
+	j.CurrentAttempt = CurrentAttempt
+	if MaxAttempts > 0 {
+		j.MaxAttempts = MaxAttempts
+	} else if j.host.SpawnOptions.Retries > 0 {
+		j.MaxAttempts = j.host.SpawnOptions.Retries
+	} else {
+		j.MaxAttempts = 1
+	}
 	return j
 }
 
 func (j *createHostJob) Run(ctx context.Context) {
 	var err error
 	defer j.MarkComplete()
+
+	j.start = time.Now()
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -73,66 +95,205 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
+	if j.host.ParentID == "" {
+		numHosts, err := host.CountRunningHosts(j.host.Distro.Id)
+		if err != nil {
+			j.AddError(errors.Wrap(err, "problem getting count of existing pool size"))
+			return
+		}
+
+		if numHosts > j.host.Distro.PoolSize {
+			grip.Info(message.Fields{
+				"host_id":   j.HostID,
+				"attempt":   j.CurrentAttempt,
+				"distro":    j.host.Distro.Id,
+				"job":       j.ID(),
+				"provider":  j.host.Provider,
+				"message":   "not provisioning host to respect maxhosts",
+				"max_hosts": j.host.Distro.PoolSize,
+			})
+
+			err = errors.Wrap(j.host.Remove(), "problem removing host intent")
+
+			j.AddError(err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"host_id":  j.HostID,
+				"attempt":  j.CurrentAttempt,
+				"distro":   j.host.Distro,
+				"job":      j.ID(),
+				"provider": j.host.Provider,
+				"message":  "could not remove intent document",
+				"outcome":  "host pool may exceed maxhost limit",
+			}))
+
+			return
+		}
 	}
 
-	settings := j.env.Settings()
+	if j.TimeInfo().MaxTime == 0 && !j.host.SpawnOptions.TimeoutSetup.IsZero() {
+		j.UpdateTimeInfo(amboy.JobTimeInfo{
+			MaxTime: j.host.SpawnOptions.TimeoutSetup.Sub(j.start),
+		})
+	}
 
-	err = j.createHost(ctx, j.host, settings)
-	j.AddError(err)
+	j.AddError(j.createHost(ctx))
 }
 
-func (j *createHostJob) createHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
-	hostStartTime := time.Now()
+func (j *createHostJob) createHost(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return errors.Wrap(err, "canceling create host because context is canceled")
+	}
+	hostStartTime := j.start
 	grip.Info(message.Fields{
-		"message": "attempting to start host",
-		"hostid":  h.Id,
-		"runner":  HostInit,
+		"message":      "attempting to start host",
+		"hostid":       j.host.Id,
+		"job":          j.ID(),
+		"attempt":      j.CurrentAttempt,
+		"max_attempts": j.MaxAttempts,
 	})
 
-	cloudManager, err := cloud.GetManager(ctx, h.Provider, settings)
+	cloudManager, err := cloud.GetManager(ctx, j.host.Provider, j.env.Settings())
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",
-			"runner":  HostInit,
-			"host":    h.Id,
+			"host":    j.host.Id,
+			"job":     j.ID(),
 		}))
-		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", j.host.Id, err.Error())
 	}
 
-	if err = h.Remove(); err != nil {
-		grip.Notice(message.WrapError(err, message.Fields{
-			"message": "problem removing intent host",
-			"runner":  HostInit,
-			"host":    h.Id,
-		}))
-		return errors.Wrapf(errIgnorableCreateHost, "problem getting cloud provider for host '%s' [%s]", h.Id, err.Error())
+	defer j.tryRequeue(ctx)
+
+	// Set status temporarily to HostBuilding. Conventional hosts only stay in
+	// SpawnHost for a short period of time. Containers stay in SpawnHost for
+	// longer, since they may need to download container images and build them
+	// with the agent. This state allows intent documents to stay around until
+	// SpawnHost returns, but NOT as as initializing hosts that could still be
+	// spawned by Evergreen.
+	if err := j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
+		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
 	}
 
-	_, err = cloudManager.SpawnHost(ctx, h)
-	if err != nil {
-		return errors.Wrapf(err, "error spawning host %s", h.Id)
+	// Containers should wait on image builds, checking to see if the parent
+	// already has the image. If it does not, it should download it and wait
+	// on the job until it is finished downloading.
+	if j.host.ParentID != "" {
+		err := j.waitForContainerImageBuild(ctx)
+		if err != nil {
+			return errors.Wrap(err, "problem building container image")
+		}
 	}
 
-	h.Status = evergreen.HostStarting
+	if _, err = cloudManager.SpawnHost(ctx, j.host); err != nil {
+		return errors.Wrapf(err, "error spawning host %s", j.host.Id)
+	}
 
-	// Provisionally set h.StartTime to now. Cloud providers may override
+	// On the first attempt, remove the intent host to insert started host
+	if j.CurrentAttempt == 1 {
+		intentHost, err := host.FindOneId(j.HostID)
+		if err != nil {
+			return errors.Wrapf(err, "problem retrieving intent host '%s'", j.HostID)
+		}
+		if intentHost == nil {
+			return errors.Wrapf(err, "no intent host '%s' found", j.HostID)
+		}
+		if err := intentHost.Remove(); err != nil {
+			grip.Notice(message.WrapError(err, message.Fields{
+				"message": "problem removing intent host",
+				"job":     j.ID(),
+				"host":    j.HostID,
+			}))
+			return errors.Wrapf(errIgnorableCreateHost, "problem removing intent host '%s' [%s]", j.HostID, err.Error())
+		}
+	}
+
+	// Don't mark containers as starting. SpawnHost already marks containers as
+	// running.
+	if j.host.ParentID == "" {
+		j.host.Status = evergreen.HostStarting
+	}
+
+	// Provisionally set j.host.StartTime to now. Cloud providers may override
 	// this value with the time the host was created.
-	h.StartTime = time.Now()
+	j.host.StartTime = j.start
 
-	_, err = h.Upsert()
-	if err != nil {
-		return errors.Wrapf(err, "error updating host %v", h.Id)
+	if err := j.host.Insert(); err != nil {
+		return errors.Wrapf(err, "error updating host %v", j.host.Id)
 	}
 
 	grip.Info(message.Fields{
-		"runner":  HostInit,
 		"message": "successfully started host",
-		"hostid":  h.Id,
-		"DNS":     h.Host,
+		"hostid":  j.host.Id,
+		"job":     j.ID(),
+		"DNS":     j.host.Host,
 		"runtime": time.Since(hostStartTime),
 	})
 
+	return nil
+}
+
+func (j *createHostJob) tryRequeue(ctx context.Context) {
+	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Started() {
+		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts)
+		job.UpdateTimeInfo(amboy.JobTimeInfo{
+			WaitUntil: j.start.Add(time.Minute),
+			MaxTime:   j.TimeInfo().MaxTime - (time.Now().Sub(j.start)) - time.Minute,
+		})
+		err := j.env.RemoteQueue().Put(job)
+		grip.Critical(message.WrapError(err, message.Fields{
+			"message":  "failed to requeue setup job",
+			"host":     j.host.Id,
+			"job":      j.ID(),
+			"distro":   j.host.Distro.Id,
+			"attempts": j.host.ProvisionAttempts,
+		}))
+		j.AddError(err)
+	}
+}
+
+func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
+	return j.CurrentAttempt < j.MaxAttempts &&
+		j.host.Status != evergreen.HostStarting &&
+		ctx.Err() == nil
+}
+
+func (j *createHostJob) waitForContainerImageBuild(ctx context.Context) error {
+	imageURL := (*j.host.Distro.ProviderSettings)["image_url"].(string)
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	var ok bool
+	// Continuously poll DB to see if image is ready
+retryLoop:
+	for i := 0; i < maxPollAttempts; i++ {
+		select {
+		case <-ctx.Done():
+			return errors.New("building container image cancelled")
+		case <-timer.C:
+			parent, err := host.FindOneId(j.host.ParentID)
+			if err != nil {
+				return errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
+			}
+			if ok = parent.ContainerImages[imageURL]; !ok {
+				//  If the image is not already present on the parent, run job to build
+				// the new image
+				if i == 0 {
+					buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
+					grip.Debug(message.Fields{
+						"error":   j.env.RemoteQueue().Put(buildingContainerJob),
+						"message": "Duplicate key being added to job to block building containers",
+					})
+				}
+				timer.Reset(pollInterval)
+				continue
+			}
+			// Image is present on parent, can move on to SpawnHost
+			break retryLoop
+		}
+	}
+	if !ok {
+		return errors.Errorf("Verifying image ready for '%s' timed out", imageURL)
+	}
 	return nil
 }

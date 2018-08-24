@@ -39,7 +39,7 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 // Events are considered unprocessed if their "processed_at" time IsZero
 func FindUnprocessedEvents() ([]EventLogEntry, error) {
 	out := []EventLogEntry{}
-	err := db.FindAllQ(AllLogCollection, db.Query(unprocessedEvents()), &out)
+	err := db.FindAllQ(AllLogCollection, db.Query(unprocessedEvents()).Limit(10000), &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch unprocssed events")
 	}
@@ -194,47 +194,27 @@ func AdminEventsBefore(before time.Time, n int) db.Q {
 // TaskSystemInfoEvents builds a query for system info,
 // (e.g. aggregate information about the system as a whole) collected
 // during a task.
-//
-// If the sort value is less than 0, the query will return all
-// matching events that occur before the specified time, and otherwise
-// will return all matching events that occur after the specified time.
-func TaskSystemInfoEvents(taskID string, ts time.Time, limit, sort int) db.Q {
+func TaskSystemInfoEvents(taskID string, ts time.Time, limit int) db.Q {
 	filter := resourceTypeKeyIs(EventTaskSystemInfo)
 	filter[ResourceIdKey] = taskID
 	filter[TypeKey] = EventTaskSystemInfo
+	filter[TimestampKey] = bson.M{"$gte": ts}
 
-	sortSpec := TimestampKey
-
-	if sort < 0 {
-		sortSpec = "-" + sortSpec
-		filter[TimestampKey] = bson.M{"$lte": ts}
-	} else {
-		filter[TimestampKey] = bson.M{"$gte": ts}
-	}
-
-	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+	return db.Query(filter).Sort([]string{TimestampKey}).Limit(limit)
 }
 
 // TaskProcessInfoEvents builds a query for process info, which
 // returns information about each process (and children) spawned
 // during task execution.
-//
-// If the sort value is less than 0, the query will return all
-// matching events that occur before the specified time, and otherwise
-// will return all matching events that occur after the specified time.
-func TaskProcessInfoEvents(taskID string, ts time.Time, limit, sort int) db.Q {
+func TaskProcessInfoEvents(taskID string, ts time.Time, limit int) db.Q {
 	filter := resourceTypeKeyIs(EventTaskProcessInfo)
 	filter[ResourceIdKey] = taskID
 	filter[TypeKey] = EventTaskProcessInfo
+	filter[TimestampKey] = bson.M{"$gte": ts}
 
-	sortSpec := TimestampKey
+	return db.Query(filter).Sort([]string{TimestampKey}).Limit(limit)
+}
 
-	if sort < 0 {
-		sortSpec = "-" + sortSpec
-		filter[TimestampKey] = bson.M{"$lte": ts}
-	} else {
-		filter[TimestampKey] = bson.M{"$gte": ts}
-	}
-
-	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {
+	return Find(AllLogCollection, db.Query(bson.M{ResourceIdKey: resourceID}))
 }

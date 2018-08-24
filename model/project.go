@@ -21,15 +21,9 @@ import (
 )
 
 const (
-	TestCommandType   = "test"
-	SystemCommandType = "system"
-	SetupCommandType  = "setup"
-)
-
-const (
 	// DefaultCommandType is a system configuration option that is used to
 	// differentiate between setup related commands and actual testing commands.
-	DefaultCommandType = TestCommandType
+	DefaultCommandType = evergreen.CommandTypeTest
 )
 
 type Project struct {
@@ -625,14 +619,47 @@ func (p *Project) GetVariantMappings() map[string]string {
 	return mappings
 }
 
+// GetVariantsWithTask returns the names of all buildvariants that contain a certain task.
+// Searches tasks, task groups, and display tasks
 func (p *Project) GetVariantsWithTask(taskName string) []string {
-	var variantsList []string
+	variantsMap := map[string]bool{}
+bvLoop:
 	for _, buildVariant := range p.BuildVariants {
+
 		for _, task := range buildVariant.Tasks {
 			if task.Name == taskName {
-				variantsList = append(variantsList, buildVariant.Name)
+				variantsMap[buildVariant.Name] = true
+				continue bvLoop
+			}
+			if task.IsGroup {
+				tg := p.FindTaskGroup(task.Name)
+				if tg != nil {
+					for _, tgTask := range tg.Tasks {
+						if tgTask == taskName {
+							variantsMap[buildVariant.Name] = true
+							continue bvLoop
+						}
+					}
+				}
 			}
 		}
+
+		for _, displayTask := range buildVariant.DisplayTasks {
+			if displayTask.Name == taskName {
+				variantsMap[buildVariant.Name] = true
+				continue bvLoop
+			}
+			for _, execTask := range displayTask.ExecutionTasks {
+				if execTask == taskName {
+					variantsMap[buildVariant.Name] = true
+					continue bvLoop
+				}
+			}
+		}
+	}
+	variantsList := []string{}
+	for bv := range variantsMap {
+		variantsList = append(variantsList, bv)
 	}
 	return variantsList
 }

@@ -23,12 +23,10 @@ imports:
     version: ca25df3b54300e897d96029dcc4f86b8c4215a27
   - name: github.com/docker/go-connections
     version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
+  - name: github.com/evergreen-ci/go-test2json
+    version: 5b6cfd2e8cb0a84da7d0d52307afda3e5cb0b410
   - name: github.com/Microsoft/go-winio
     version: 7ff89941bcb93df2e962467fb073c6e997b13cf0
-  - name: github.com/gorilla/context
-    version: 50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da
-  - name: github.com/gorilla/mux
-    version: ac112f7d75a0714af1bd86ab17749b31f7809640
   - name: github.com/gorilla/securecookie
     version: 1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b
   - name: github.com/gorilla/sessions
@@ -60,14 +58,11 @@ imports:
   - name: golang.org/x/tools/cmd/cover
     version: release-branch.go1.4
 
-  - name: github.com/urfave/negroni
-    version: c262547a5086067ebe455c81db5cc52eb298ac3c
   - name: github.com/urfave/cli
     version: 01857ac33766ce0c93856370626f9799281c14f4
 
-
   - name: github.com/evergreen-ci/crowd
-    version: 96ed7c0438ed5e6f3fff5181fa5b83115742faa9
+    version: 4eeec3d0ebc1dc804dd28d9067fc233c51c3ceed
 
   - name: github.com/kardianos/osext
     version: 6e7f843663477789fac7c02def0d0909e969b4e5
@@ -86,7 +81,8 @@ imports:
 
   - name: github.com/mholt/archiver
     version: e4ef56d48eb029648b0e895bb0b6a393ef0829c3
-
+  - name: github.com/google/shlex
+    version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
@@ -106,20 +102,20 @@ imports:
   - name: golang.org/x/sys
     version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
 
-  - name: github.com/google/shlex
-    version: 6f45313302b9c56850fc17f99e40caebce98c716
-
-  - name: github.com/mongodb/grip
-    version: 5d6dffc047e01c5553d48459d68a2d4f6c11a6ff
-  - name: github.com/mongodb/anser
-    version: a39cb2703e7f53a0d46f17a785d25f85fa19923a
-  - name: github.com/mongodb/amboy
-    version: d1e174d349e86cfe074824d06cc3d58018a27257
   - name: github.com/google/go-github
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring
     version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
   - name: github.com/PuerkitoBio/rehttp
     version: 11cf6ea5d3e9afda34846e1db511aa218049471c
+
+  - name: github.com/mongodb/grip
+    verison: a4288cec9139bc97135a22e795b086baefb167b2
+  - name: github.com/mongodb/anser
+    version: 6a21a3cf64774e98ca28f7ca205cc27b342a3fdd
+  - name: github.com/mongodb/amboy
+    version: ee8563f24cbfc03fd6a4fc3aebed99efb85f5caa
   - name: github.com/evergreen-ci/gimlet
-    version: 9daf3e203253a64724a51d1cc67c967dd8d8cb91
+    version: 713b8d22b5e93a0c25a9f71ca944c86d7ecefe84
+  - name: github.com/evergreen-ci/shrub
+    version: 7f4c682246a052cb61b758561ccf3276301d3e6f

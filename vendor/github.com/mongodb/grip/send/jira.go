@@ -22,10 +22,11 @@ type jiraJournal struct {
 
 // JiraOptions include configurations for the JIRA client
 type JiraOptions struct {
-	Name     string // Name of the journaler
-	BaseURL  string // URL of the JIRA instance
-	Username string
-	Password string
+	Name         string // Name of the journaler
+	BaseURL      string // URL of the JIRA instance
+	Username     string
+	Password     string
+	UseBasicAuth bool
 
 	HTTPClient *http.Client
 	client     jiraClient
@@ -53,7 +54,7 @@ func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
 		return nil, err
 	}
 
-	if err := j.opts.client.Authenticate(opts.Username, opts.Password); err != nil {
+	if err := j.opts.client.Authenticate(opts.Username, opts.Password, opts.UseBasicAuth); err != nil {
 		return nil, fmt.Errorf("jira authentication error: %v", err)
 	}
 
@@ -81,6 +82,13 @@ func (j *jiraJournal) Send(m message.Composer) {
 		issueFields := getFields(m)
 		if len(issueFields.Summary) > 254 {
 			issueFields.Summary = issueFields.Summary[:254]
+		}
+		if len(issueFields.Description) > 32767 {
+			issueFields.Description = issueFields.Description[:32767]
+		}
+
+		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password, j.opts.UseBasicAuth); err != nil {
+			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
 		}
 		if err := j.opts.client.PostIssue(issueFields); err != nil {
 			j.errHandler(err, message.NewFormattedMessage(m.Priority(), m.String()))
@@ -132,7 +140,6 @@ func getFields(m message.Composer) *jira.IssueFields {
 			Project:     jira.Project{Key: msg.Project},
 			Summary:     msg.Summary,
 			Description: msg.Description,
-			Components:  []*jira.Component{},
 		}
 		if len(msg.Fields) != 0 {
 			unknownsMap := tcontainer.NewMarshalMap()
@@ -153,11 +160,14 @@ func getFields(m message.Composer) *jira.IssueFields {
 		if len(msg.Labels) > 0 {
 			issueFields.Labels = msg.Labels
 		}
-		for _, component := range msg.Components {
-			issueFields.Components = append(issueFields.Components,
-				&jira.Component{
-					Name: component,
-				})
+		if len(msg.Components) > 0 {
+			issueFields.Components = make([]*jira.Component, 0, len(msg.Components))
+			for _, component := range msg.Components {
+				issueFields.Components = append(issueFields.Components,
+					&jira.Component{
+						Name: component,
+					})
+			}
 		}
 	case message.Fields:
 		issueFields = &jira.IssueFields{
@@ -188,7 +198,7 @@ func getFields(m message.Composer) *jira.IssueFields {
 
 type jiraClient interface {
 	CreateClient(*http.Client, string) error
-	Authenticate(string, string) error
+	Authenticate(string, string, bool) error
 	PostIssue(*jira.IssueFields) error
 	PostComment(string, string) error
 }
@@ -203,14 +213,19 @@ func (c *jiraClientImpl) CreateClient(client *http.Client, baseURL string) error
 	return err
 }
 
-func (c *jiraClientImpl) Authenticate(username string, password string) error {
-	authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
-	if err != nil {
-		return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
-	}
+func (c *jiraClientImpl) Authenticate(username string, password string, useBasic bool) error {
+	if useBasic {
+		c.Client.Authentication.SetBasicAuth(username, password)
 
-	if !authed {
-		return fmt.Errorf("problem authenticating to jira as '%s'", username)
+	} else {
+		authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
+		if err != nil {
+			return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
+		}
+
+		if !authed {
+			return fmt.Errorf("problem authenticating to jira as '%s'", username)
+		}
 	}
 	return nil
 }

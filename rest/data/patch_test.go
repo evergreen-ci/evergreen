@@ -92,27 +92,29 @@ func (s *PatchConnectorFetchByProjectSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
-	patches, err := s.ctx.FindPatchesByProject("project2", s.time, 3, true)
+	patches, err := s.ctx.FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
-	s.Len(patches, 2)
-	s.Equal("project2", patches[0].Project)
-	s.Equal("project2", patches[1].Project)
-	s.True(patches[0].CreateTime.Before(patches[1].CreateTime))
+	if s.Len(patches, 2) {
+		s.Equal("project2", patches[0].Project)
+		s.Equal("project2", patches[1].Project)
+		s.True(patches[1].CreateTime.Before(patches[0].CreateTime))
+	}
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
-	patches, err := s.ctx.FindPatchesByProject("project2", s.time.Add(time.Second*10), 3, false)
+	patches, err := s.ctx.FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
-	s.Len(patches, 2)
-	s.Equal("project2", patches[0].Project)
-	s.Equal("project2", patches[1].Project)
-	s.True(patches[0].CreateTime.After(patches[1].CreateTime))
+	if s.Len(patches, 2) {
+		s.Equal("project2", patches[0].Project)
+		s.Equal("project2", patches[1].Project)
+		s.True(patches[0].CreateTime.After(patches[1].CreateTime))
+	}
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
-	patches, err := s.ctx.FindPatchesByProject("project2", s.time, 1, true)
+	patches, err := s.ctx.FindPatchesByProject("project2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 
@@ -120,16 +122,8 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
 	s.Equal("project2", patches[0].Project)
 }
 
-func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFewAsc() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time, 1, true)
-	s.NoError(err)
-	s.NotNil(patches)
-	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*4), patches[0].CreateTime)
-}
-
-func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFewDesc() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Second*10), 1, false)
+func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
+	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -137,35 +131,21 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFewDesc() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchNonexistentFail() {
-	patches, err := s.ctx.FindPatchesByProject("zzz", s.time, 1, true)
+	patches, err := s.ctx.FindPatchesByProject("zzz", s.time, 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
 
-func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBoundAsc() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Second*4), 1, true)
+func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
+	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
 	s.Equal(s.time.Add(time.Second*6), patches[0].CreateTime)
 }
 
-func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBoundDesc() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Second*6), 1, false)
-	s.NoError(err)
-	s.NotNil(patches)
-	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*6), patches[0].CreateTime)
-}
-
-func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBoundAsc() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(time.Hour), 1, true)
-	s.NoError(err)
-	s.Len(patches, 0)
-}
-
-func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBoundDesc() {
-	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(-time.Hour), 1, false)
+func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
+	patches, err := s.ctx.FindPatchesByProject("project1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
@@ -373,7 +353,7 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortByPullRequest() {
 	s.NoError(err)
 	event, ok := eventInterface.(*github.PullRequestEvent)
 	s.True(ok)
-	s.Equal("pull request data is malformed", s.ctx.AbortPatchesFromPullRequest(event).Error())
+	s.Contains(s.ctx.AbortPatchesFromPullRequest(event).Error(), "pull request data is malformed")
 
 	now := time.Now().Round(time.Millisecond)
 	event.PullRequest.ClosedAt = &now
@@ -388,7 +368,7 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 	owner, repo, err := verifyPullRequestEventForAbort(event)
 	s.Empty(owner)
 	s.Empty(repo)
-	s.Equal("pull request data is malformed", err.Error())
+	s.Contains(err.Error(), "pull request data is malformed")
 
 	now := time.Now().Round(time.Millisecond)
 	event.PullRequest.ClosedAt = &now
@@ -562,18 +542,8 @@ func TestMockPatchConnectorFetchByUserSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *PatchConnectorFetchByUserSuite) TestFetchTooManyAsc() {
-	patches, err := s.ctx.FindPatchesByUser("user2", s.time, 3, true)
-	s.NoError(err)
-	s.NotNil(patches)
-	s.Len(patches, 2)
-	s.Equal("user2", patches[0].Author)
-	s.Equal("user2", patches[1].Author)
-	s.True(patches[0].CreateTime.Before(patches[1].CreateTime))
-}
-
-func (s *PatchConnectorFetchByUserSuite) TestFetchTooManyDesc() {
-	patches, err := s.ctx.FindPatchesByUser("user2", s.time.Add(time.Second*10), 3, false)
+func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
+	patches, err := s.ctx.FindPatchesByUser("user2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 2)
@@ -583,24 +553,15 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooManyDesc() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
-	patches, err := s.ctx.FindPatchesByUser("user2", s.time, 1, true)
+	patches, err := s.ctx.FindPatchesByUser("user2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
-	s.NotNil(patches)
-
-	s.Len(patches, 1)
-	s.Equal("user2", patches[0].Author)
+	if s.NotNil(patches) && s.Len(patches, 1) {
+		s.Equal("user2", patches[0].Author)
+	}
 }
 
-func (s *PatchConnectorFetchByUserSuite) TestFetchTooFewAsc() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time, 1, true)
-	s.NoError(err)
-	s.NotNil(patches)
-	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*4), patches[0].CreateTime)
-}
-
-func (s *PatchConnectorFetchByUserSuite) TestFetchTooFewDesc() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Second*10), 1, false)
+func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
+	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -608,35 +569,20 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooFewDesc() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchNonexistentFail() {
-	patches, err := s.ctx.FindPatchesByUser("zzz", s.time, 1, true)
+	patches, err := s.ctx.FindPatchesByUser("zzz", s.time, 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }
 
-func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBoundAsc() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Second*4), 1, true)
+func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
+	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
 	s.Equal(s.time.Add(time.Second*6), patches[0].CreateTime)
 }
-
-func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBoundDesc() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Second*6), 1, false)
-	s.NoError(err)
-	s.NotNil(patches)
-	s.Len(patches, 1)
-	s.Equal(s.time.Add(time.Second*6), patches[0].CreateTime)
-}
-
-func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBoundAsc() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(time.Hour), 1, true)
-	s.NoError(err)
-	s.Len(patches, 0)
-}
-
-func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBoundDesc() {
-	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(-time.Hour), 1, false)
+func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
+	patches, err := s.ctx.FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Len(patches, 0)
 }

@@ -11,7 +11,22 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
+
+// GetListener creates a network listener on the given address.
+func GetListener(addr string) (net.Listener, error) {
+	return net.Listen("tcp", addr)
+}
+
+// GetTLSListener creates an encrypted listener with the given TLS config and address.
+func GetTLSListener(addr string, conf *tls.Config) (net.Listener, error) {
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return tls.NewListener(l, conf), nil
+}
 
 type TestServer struct {
 	URL string

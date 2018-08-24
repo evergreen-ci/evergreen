@@ -29,11 +29,11 @@ func TestCheckDistro(t *testing.T) {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
-					"ami":            "a",
-					"key_name":       "a",
-					"instance_type":  "a",
-					"security_group": "a",
-					"mount_points":   nil,
+					"ami":                "a",
+					"key_name":           "a",
+					"instance_type":      "a",
+					"security_group_ids": []string{"a"},
+					"mount_points":       nil,
 				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
@@ -45,11 +45,11 @@ func TestCheckDistro(t *testing.T) {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
-					"ami":            "a",
-					"key_name":       "a",
-					"instance_type":  "a",
-					"security_group": "a",
-					"mount_points":   nil,
+					"ami":                "a",
+					"key_name":           "a",
+					"instance_type":      "a",
+					"security_group_ids": []string{"a"},
+					"mount_points":       nil,
 				},
 			}
 			// simulate duplicate id
@@ -64,11 +64,11 @@ func TestCheckDistro(t *testing.T) {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
-					"ami":            "a",
-					"key_name":       "a",
-					"instance_type":  "a",
-					"security_group": "a",
-					"mount_points":   nil,
+					"ami":                "a",
+					"key_name":           "a",
+					"instance_type":      "a",
+					"security_group_ids": []string{"a"},
+					"mount_points":       nil,
 				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
@@ -80,11 +80,11 @@ func TestCheckDistro(t *testing.T) {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
-					"ami":            "",
-					"key_name":       "a",
-					"instance_type":  "a",
-					"security_group": "a",
-					"mount_points":   nil,
+					"ami":                "",
+					"key_name":           "a",
+					"instance_type":      "a",
+					"security_group_ids": []string{"a"},
+					"mount_points":       nil,
 				},
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
@@ -131,16 +131,16 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"instance_type":  "a",
-				"security_group": "a",
-				"key_name":       "a",
-				"mount_points":   nil,
+				"instance_type":      "a",
+				"security_group_ids": []string{"a"},
+				"key_name":           "a",
+				"mount_points":       nil,
 			}},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"ami":            "a",
-				"security_group": "a",
-				"key_name":       "a",
-				"mount_points":   nil,
+				"ami":                "a",
+				"security_group_ids": []string{"a"},
+				"key_name":           "a",
+				"mount_points":       nil,
 			}},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":           "a",
@@ -149,17 +149,17 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 				"mount_points":  nil,
 			}},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"ami":            "a",
-				"instance_type":  "a",
-				"security_group": "a",
-				"mount_points":   nil,
+				"ami":                "a",
+				"instance_type":      "a",
+				"security_group_ids": []string{"a"},
+				"mount_points":       nil,
 			}},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
-				"ami":            "a",
-				"key_name":       "a",
-				"instance_type":  "a",
-				"security_group": "a",
-				"mount_points":   nil,
+				"ami":                "a",
+				"key_name":           "a",
+				"instance_type":      "a",
+				"security_group_ids": []string{"a"},
+				"mount_points":       nil,
 			}},
 		}
 		i++
@@ -195,9 +195,6 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
 			})
 			Convey("for ec2, it must have the security group", func() {
-				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
-			})
-			Convey("for ec2, it must have the key name", func() {
 				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
 			})
 		})

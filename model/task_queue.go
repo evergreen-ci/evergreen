@@ -3,8 +3,10 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -119,6 +121,26 @@ func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 		return true
 	}
 	return false
+}
+
+func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
+	catcher := grip.NewBasicCatcher()
+	for _, it := range self.Queue {
+		if spec.Group == it.Group && spec.BuildVariant == it.BuildVariant && spec.Version == it.Version {
+			t, err := task.FindOneId(it.Id)
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "problem finding task %s", it.Id))
+				continue
+			}
+			if t == nil {
+				catcher.Add(errors.Errorf("got nil task for %s", it.Id))
+				continue
+			}
+			catcher.Add(t.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
+			catcher.Add(errors.Wrapf(self.DequeueTask(it.Id), "problem dequeueing task %s", it.Id))
+		}
+	}
+	return catcher.Resolve()
 }
 
 func (self *TaskQueue) Save() error {

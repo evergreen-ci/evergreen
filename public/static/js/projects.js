@@ -26,58 +26,88 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     {
       trigger: "outcome",
       resource_type: "VERSION",
-      label: "any version finishes"
+      label: "any version finishes",
     },
     {
       trigger: "failure",
       resource_type: "VERSION",
-      label: "any version fails"
+      label: "any version fails",
     },
     {
       trigger: "outcome",
       resource_type: "BUILD",
       label: "any build finishes",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
       label: "any build fails",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "outcome",
       resource_type: "TASK",
       label: "any task finishes",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "failure",
       resource_type: "TASK",
       label: "any task fails",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "first-failure-in-version",
       resource_type: "TASK",
       label: "the first task failure occurs",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "first-failure-in-build",
       resource_type: "TASK",
       label: "the first failure in each build occurs",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "first-failure-in-version-with-name",
       resource_type: "TASK",
       label: "the first failure in each version for each task name occurs",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "regression",
       resource_type: "TASK",
       label: "a previously passing task fails",
+      regex_selectors: taskRegexSelectors(),
     },
     {
       trigger: "regression-by-test",
       resource_type: "TASK",
       label: "a previously passing test in a task fails",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Test names matching regex", key: "test-regex", validator: null}
+      ]
     },
+    {
+      trigger: "exceeds-duration",
+      resource_type: "TASK",
+      label: "the runtime for a task exceeds some duration",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Task duration (seconds)", key: "task-duration-secs", validator: validateDuration}
+      ]
+    },
+    {
+      trigger: "runtime-change",
+      resource_type: "TASK",
+      label: "the runtime for a task changes by some percentage",
+      regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
+      ]
+    }
   ];
 
   // refreshTrackedProjects will populate the list of projects that should be displayed
@@ -100,38 +130,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       return true
     }
     return !isNaN(Number(t)) && Number(t) >= 0
-  }
-
-  // TODO: EVG-3408
-  $scope.isValidAlertDefinition = function(spec) {
-    if (!spec) { return false; }
-    if (spec.startsWith("JIRA:") && spec.split(":").length < 3) {
-        return false
-    }
-    if (spec.startsWith("SLACK:") && spec.split(":").length < 2) {
-        return false
-    }
-    return true
-  }
-
-  // TODO: EVG-3408
-  $scope.addAlert = function(obj, trigger){
-    if(!$scope.settingsFormData.alert_config) {
-      $scope.settingsFormData.alert_config = {}
-    }
-    if(!$scope.settingsFormData.alert_config[trigger.id]){
-      $scope.settingsFormData.alert_config[trigger.id] = []
-    }
-    $scope.settingsFormData.alert_config[trigger.id].push(NewAlert(obj.email))
-    obj.editing = false
-  }
-
-  // TODO: EVG-3408
-  $scope.getProjectAlertConfig = function(t){
-    if(!$scope.settingsFormData.alert_config || !$scope.settingsFormData.alert_config[t]){
-      return []
-    }
-    return $scope.settingsFormData.alert_config[t]
   }
 
   $scope.findProject = function(identifier){
@@ -289,6 +287,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
           t = lookupTrigger($scope.triggers, v.trigger, v.resource_type);
+          if (!t) {
+            return v;
+          }
           v.trigger_label = t.label;
           v.subscriber.label = subscriberLabel(v.subscriber);
           return v;
@@ -565,27 +566,5 @@ mciModule.directive('adminNewProject', function() {
         '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-click="addProject()">Create Project</button>' +
       '</div>' +
     '</div>'
-  };
-});
-
-// TODO: EVG-3408
-mciModule.directive('adminNewAlert', function() {
-    return {
-      restrict: 'E',
-      templateUrl:'/static/partials/alert_modal_form.html',
-      link: function(scope, element, attrs){
-        scope.availableTriggers= [
-          {id:"task_failed", display:"Any task fails..."},
-          {id:"first_task_failed", display:"The first failure in a version occurs..."},
-          {id:"task_fail_transition", display:"A task that had passed in a previous run fails"},
-        ]
-        scope.availableActions= [
-          {id:"email", display:"Send an e-mail"},
-        ]
-        scope.setTrigger = function(index){
-          scope.currentTrigger = scope.availableTriggers[index]
-        }
-        scope.currentTrigger = scope.availableTriggers[0]
-      }
   };
 });

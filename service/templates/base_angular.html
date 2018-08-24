@@ -10,7 +10,7 @@
 
         <!-- mongostrap (Bootstrap + MongoDB) + angular material styles -->
         <link href="/static/css/mongostrap.min.css?hash={{ BuildRevision }}" rel="stylesheet" />
-        <link href="/static/css/angular-material{{if IsProd }}.min{{end}}.css" rel="stylesheet" />
+        <link href="/static/css/angular-material.min.css" rel="stylesheet" />
         <link href="/static/css/md-time-picker.css" rel="stylesheet" />
 
         <!-- icons -->
@@ -18,7 +18,7 @@
         <link href="/static/material-design-icons/material-icons.css" rel="stylesheet" />
 
         <!-- our css -->
-        <link href="/static/dist/css/styles{{if IsProd }}.min{{end}}.css?hash={{ BuildRevision }}" rel="stylesheet" />
+        <link href="/static/dist/css/styles.min.css?hash={{ BuildRevision }}" rel="stylesheet" />
 
         <!-- underscore.js js v1.4.4 js -->
         <script type="text/javascript" src="/static/thirdparty/underscore-min.js"></script>
@@ -27,12 +27,12 @@
         <script type="text/javascript" src="/static/thirdparty/d3.min.js"></script>
 
         <!-- angular.js v1.2.18 js -->
-        <script type="text/javascript" src="/static/thirdparty/angular{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular.min.js"></script>
         <script type="text/javascript" src="/static/thirdparty/angular-sanitize.min.js"></script>
-        <script type="text/javascript" src="/static/thirdparty/angular-aria{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/thirdparty/angular-messages{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/thirdparty/angular-animate{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/thirdparty/angular-material{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-aria.min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-messages.min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-animate.min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-material.min.js"></script>
         <script type="text/javascript" src="/static/thirdparty/ansi_up.js"></script>
         <script type="text/javascript" src="/static/thirdparty/angular-md5.js?hash={{ BuildRevision }}"></script>
         <script type="text/javascript" src="/static/js/filters/filters.common.js?hash={{ BuildRevision }}"></script>
@@ -70,6 +70,7 @@
         <!-- APP -->
         <script type="text/javascript" src="/static/app/common/constants.js?hash={{ BuildRevision }}"></script>
         <script type="text/javascript" src="/static/app/common/Stitch.js?hash={{ BuildRevision }}"></script>
+        <script type="text/javascript" src="/static/app/common/templates.js?hash={{ BuildRevision }}"></script>
 
         <style type="text/css">
           #footer{ font-size:.8em; color:#888; }

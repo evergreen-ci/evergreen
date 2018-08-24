@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -113,13 +114,12 @@ func (s *VersionSuite) SetupSuite() {
 
 // TestFindByVersionId tests the route for finding version by its ID.
 func (s *VersionSuite) TestFindByVersionId() {
-	handler := &versionHandler{versionId: "versionId"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &versionHandler{versionId: "versionId", sc: s.sc}
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
-	version := res.Result[0]
-	h, ok := (version).(*model.APIVersion)
+	s.Equal(http.StatusOK, res.Status())
+
+	h, ok := res.Data().(*model.APIVersion)
 	s.True(ok)
 	s.Equal(model.ToAPIString(versionId), h.Id)
 	s.Equal(model.NewTime(timeField), h.CreateTime)
@@ -136,15 +136,20 @@ func (s *VersionSuite) TestFindByVersionId() {
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
 func (s *VersionSuite) TestFindAllBuildsForVersion() {
-	handler := &buildsForVersionHandler{versionId: "versionId"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	handler := &buildsForVersionHandler{versionId: "versionId", sc: s.sc}
+	res := handler.Run(context.TODO())
+	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	s.Equal(2, len(res.Result))
 
-	for idx, build := range res.Result {
+	builds, ok := res.Data().([]model.Model)
+	s.True(ok)
+
+	s.Equal(2, len(builds))
+
+	for idx, build := range builds {
 		b, ok := (build).(*model.APIBuild)
 		s.True(ok)
+
 		s.Equal(model.ToAPIString(s.bi[idx]), b.Id)
 		s.Equal(model.NewTime(timeField), b.CreateTime)
 		s.Equal(model.NewTime(timeField), b.StartTime)
@@ -156,16 +161,16 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 
 // TestAbortVersion tests the route for aborting a version.
 func (s *VersionSuite) TestAbortVersion() {
-	handler := &versionAbortHandler{versionId: "versionId"}
+	handler := &versionAbortHandler{versionId: "versionId", sc: s.sc}
 
 	// Check that Execute runs without error and returns
 	// the correct Version.
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	res := handler.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
-	version := res.Result[0]
-	h, _ := (version).(*model.APIVersion)
+	s.Equal(http.StatusOK, res.Status())
+	version := res.Data()
+	h, ok := (version).(*model.APIVersion)
+	s.True(ok)
 	s.Equal(model.ToAPIString(versionId), h.Id)
 
 	// Check that all tasks have been aborted.
@@ -179,16 +184,17 @@ func (s *VersionSuite) TestRestartVersion() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "caller1"})
 
-	handler := &versionRestartHandler{versionId: "versionId"}
+	handler := &versionRestartHandler{versionId: "versionId", sc: s.sc}
 
 	// Check that Execute runs without error and returns
 	// the correct Version.
-	res, err := handler.Execute(ctx, s.sc)
-	s.NoError(err)
+	res := handler.Run(ctx)
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
-	version := res.Result[0]
-	h, _ := (version).(*model.APIVersion)
+	s.Equal(http.StatusOK, res.Status())
+
+	version := res.Data()
+	h, ok := (version).(*model.APIVersion)
+	s.True(ok)
 	s.Equal(model.ToAPIString(versionId), h.Id)
 	s.Equal("caller1", s.versionData.CachedRestartedVersions["versionId"])
 }

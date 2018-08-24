@@ -25,9 +25,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 	}
 
 	// Get latest commit order number for this project
-	latestVersion, err := version.FindOne(db.Query(
-		version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).
-			WithFields(version.RevisionOrderNumberKey)))
+	latestVersion, err := version.FindOne(version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).WithFields(version.RevisionOrderNumberKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting latest version")
 	}
@@ -52,6 +50,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 				build.RevisionOrderNumberKey: bson.M{"$gte": leastRecentRevisionOrderNumber},
 				build.BuildVariantKey:        bson.M{"$in": buildVariantNames},
 				build.StatusKey:              evergreen.BuildSucceeded,
+				build.RequesterKey:           evergreen.RepotrackerVersionRequester,
 			},
 		},
 		// Sum up the number of builds that succeeded for each commit order number

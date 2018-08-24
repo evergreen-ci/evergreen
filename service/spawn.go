@@ -99,15 +99,17 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
-		Task      string `json:"task_id"`
-		Distro    string `json:"distro"`
-		KeyName   string `json:"key_name"`
-		PublicKey string `json:"public_key"`
-		SaveKey   bool   `json:"save_key"`
-		UserData  string `json:"userdata"`
+		Task          string `json:"task_id"`
+		Distro        string `json:"distro"`
+		KeyName       string `json:"key_name"`
+		PublicKey     string `json:"public_key"`
+		SaveKey       bool   `json:"save_key"`
+		UserData      string `json:"userdata"`
+		UseTaskConfig bool   `json:"use_task_config"`
 	}{}
 
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &putParams); err != nil {
+	err := util.ReadJSONInto(util.NewRequestReader(r), &putParams)
+	if err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -120,8 +122,17 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
-	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, authedUser)
+	var d distro.Distro
+	if putParams.UserData != "" {
+		d, err = distro.FindOne(distro.ById(putParams.Distro))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding distro"))
+			return
+		}
+		(*d.ProviderSettings)["user_data"] = putParams.UserData
+	}
+	hc := &data.DBConnector{}
+	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, authedUser, d.ProviderSettings)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
@@ -130,6 +141,18 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	if spawnHost == nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Spawned host is nil"))
 		return
+	}
+	if putParams.UseTaskConfig {
+		task, err := task.FindOneNoMerge(task.ById(putParams.Task))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error finding task"))
+			return
+		}
+		err = hc.CreateHostsFromTask(task, *authedUser, putParams.PublicKey)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error creating hosts from task"))
+			return
+		}
 	}
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host spawned"))

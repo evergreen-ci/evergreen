@@ -1,5 +1,7 @@
 package db
 
+import "gopkg.in/mgo.v2/bson"
+
 // Q holds all information necessary to execute a query
 type Q struct {
 	filter     interface{} // should be bson.D or bson.M
@@ -92,3 +94,12 @@ func CountQ(collection string, q Q) (int, error) {
 func RemoveAllQ(collection string, q Q) error {
 	return Remove(collection, q.filter)
 }
+
+// implement custom marshaller interfaces to prevent the bug where we
+// pass a db.Q instead of a bson document, leading to great
+// sadness. The real solution is to get rid of db.Q objects entirely.
+
+func (q Q) SetBSON(_ bson.Raw) error      { panic("should never marshal db.Q objects to bson") }
+func (q Q) GetBSON() (interface{}, error) { panic("should never marshal db.Q objects to bson") }
+func (q Q) UnmarshalBSON(_ []byte) error  { panic("should never marshal db.Q objects to bson") }
+func (q Q) MarshalBSON() ([]byte, error)  { panic("should never marshal db.Q objects to bson") }

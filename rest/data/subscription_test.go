@@ -16,11 +16,11 @@ func TestGetSubscriptions(t *testing.T) {
 
 	subs := []event.Subscription{
 		{
-			ID:        bson.NewObjectId(),
-			Owner:     "someone",
-			OwnerType: event.OwnerTypePerson,
-			Type:      "PATCH",
-			Trigger:   "outcome",
+			ID:           bson.NewObjectId().Hex(),
+			Owner:        "someone",
+			OwnerType:    event.OwnerTypePerson,
+			ResourceType: "PATCH",
+			Trigger:      "outcome",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -28,16 +28,16 @@ func TestGetSubscriptions(t *testing.T) {
 				},
 			},
 			Subscriber: event.Subscriber{
-				Type:   event.JIRAIssueSubscriberType,
+				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
 			},
 		},
 		{
-			ID:        bson.NewObjectId(),
-			Owner:     "someoneelse",
-			OwnerType: event.OwnerTypePerson,
-			Type:      "PATCH",
-			Trigger:   "outcomeelse",
+			ID:           bson.NewObjectId().Hex(),
+			Owner:        "someoneelse",
+			OwnerType:    event.OwnerTypePerson,
+			ResourceType: "PATCH",
+			Trigger:      "outcomeelse",
 			Selectors: []event.Selector{
 				{
 					Type: "id",
@@ -45,7 +45,7 @@ func TestGetSubscriptions(t *testing.T) {
 				},
 			},
 			Subscriber: event.Subscriber{
-				Type:   event.JIRAIssueSubscriberType,
+				Type:   event.EmailSubscriberType,
 				Target: "a@domain.invalid",
 			},
 		},
@@ -69,6 +69,6 @@ func TestGetSubscriptions(t *testing.T) {
 	assert.Len(apiSubs, 0)
 
 	apiSubs, err = c.GetSubscriptions("", event.OwnerTypePerson)
-	assert.EqualError(err, "no subscription owner provided")
+	assert.EqualError(err, "400 (Bad Request): no subscription owner provided")
 	assert.Len(apiSubs, 0)
 }

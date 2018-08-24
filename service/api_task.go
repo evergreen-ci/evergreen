@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -78,13 +77,17 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		idleTimeStartAt = h.StartTime
 	}
 
-	job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
-	if err = as.queue.Put(job); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error queuing host idle stats"))
-		return
+	msg := fmt.Sprintf("Task %v started on host %v", t.Id, h.Id)
+
+	if h.Distro.IsEphemeral() {
+		job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
+		if err = as.queue.Put(job); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error queuing host idle stats for %s", msg))
+			return
+		}
 	}
 
-	gimlet.WriteJSON(w, fmt.Sprintf("Task %v started on host %v", t.Id, h.Id))
+	gimlet.WriteJSON(w, msg)
 }
 
 // validateTaskEndDetails returns true if the task is finished or undispatched
@@ -161,12 +164,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
-	if len(updates.PatchNewStatus) != 0 {
-		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
-	}
-	if len(updates.BuildNewStatus) != 0 {
-		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
-	}
 
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
@@ -196,22 +193,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
 		return
 	}
-
-	if !evergreen.IsPatchRequester(t.Requester) {
-		if t.IsPartOfDisplay() {
-			parent := t.DisplayTask
-			if parent.IsFinished() {
-				grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(parent.Id),
-					"processing alert triggers for display task %s", parent.Id))
-			}
-		} else {
-			grip.Infoln("Processing alert triggers for task", t.Id)
-
-			grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
-				"processing alert triggers for task %s", t.Id))
-		}
-	}
-	// TODO(EVG-223) process patch-specific triggers
 
 	// update the bookkeeping entry for the task
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)
@@ -280,7 +261,34 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			ProjectID:    t.Project,
 			Version:      t.Version,
 		}
+		// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+		if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && t.Status != evergreen.TaskSucceeded {
+			if err := taskQueue.BlockTaskGroupTasks(spec, t.Id); err != nil {
+				return nil, errors.Wrapf(err, "problem blocking task group tasks for %s", t.Id)
+			}
+			grip.Debug(message.Fields{
+				"message": "blocked task group tasks",
+				"task_id": t.Id,
+			})
+		}
 	}
+
+	// This loop does the following:
+	// 1. Find the next task in the queue.
+	// 2. Assign the task to the host.
+	// 3. Dequeue the task from the in-memory and DB queue.
+	//
+	// Note that updating the running task on the host must occur before
+	// dequeueing the task. If these two steps were in the inverse order,
+	// there would be a race that can cause two hosts to run the first two
+	// tasks of a 1-host task group simultaneously, i.e., if one host is
+	// between dequeueing and assigning the task to itself while a second
+	// host gets the task queue.
+	//
+	// Note also that this is not a loop over the task queue items. The loop
+	// continues until the task queue is empty. This means that every
+	// continue must be preceded by dequeueing the current task from the
+	// queue to prevent an infinite loop.
 	for taskQueue.Length() != 0 {
 		queueItem := taskQueue.FindNextTask(spec)
 		if queueItem == nil {
@@ -295,13 +303,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			return nil, errors.New("nil task on the queue")
 		}
 
-		// dequeue the task from the queue
-		if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-			return nil, errors.Wrapf(err,
-				"error pulling task with id %v from queue for distro %v",
-				nextTask.Id, nextTask.DistroId)
-		}
-
 		// validate that the task can be run, if not fetch the next one in
 		// the queue.
 		if !nextTask.IsDispatchable() {
@@ -312,18 +313,24 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 				"activated": nextTask.Activated,
 				"host":      currentHost.Id,
 			})
+			// Dequeue the task so we don't get it on another iteration of the loop.
+			if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
+				return nil, errors.Wrapf(err,
+					"error pulling task with id %s from queue for distro %s",
+					nextTask.Id, nextTask.DistroId)
+			}
 			continue
 		}
 
 		projectRef, err := model.FindOneProjectRef(nextTask.Project)
 		if err != nil || projectRef == nil {
-			grip.Warning(message.Fields{
+			grip.Alert(message.Fields{
 				"task_id": nextTask.Id,
 				"message": "could not find project ref for next task, skipping",
 				"project": nextTask.Project,
 				"host":    currentHost.Id,
 			})
-			continue
+			return nil, errors.Wrapf(err, "could not find project ref for next task %s", nextTask.Id)
 		}
 
 		if !projectRef.Enabled {
@@ -333,6 +340,12 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 				"host":    currentHost.Id,
 				"message": "skipping task because of disabled project",
 			})
+			// Dequeue the task so we don't get it on another iteration of the loop.
+			if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
+				return nil, errors.Wrapf(err,
+					"error pulling task with id %s from queue for distro %s",
+					nextTask.Id, nextTask.DistroId)
+			}
 			continue
 		}
 
@@ -340,9 +353,16 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
+		// Dequeue the task so we don't get it on another iteration of the loop.
+		if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
+			return nil, errors.Wrapf(err,
+				"error pulling task with id %s from queue for distro %s",
+				nextTask.Id, nextTask.DistroId)
+		}
 		if !ok {
 			continue
 		}
+
 		return nextTask, nil
 	}
 	return nil, nil

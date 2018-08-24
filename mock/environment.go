@@ -11,11 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/anser/db"
 	anserMock "github.com/mongodb/anser/mock"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	mgo "gopkg.in/mgo.v2"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -75,16 +75,20 @@ func (e *Environment) LocalQueue() amboy.Queue {
 	return e.Local
 }
 
-func (e *Environment) Session() db.Session {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.DBSession
+func (e *Environment) Session() *mgo.Session {
+	session, _, _ := edb.GetGlobalSessionFactory().GetSession()
+
+	return session
 }
 
 func (e *Environment) Settings() *evergreen.Settings {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.EvergreenSettings
+}
+
+func (e *Environment) SaveConfig() error {
+	return nil
 }
 
 func (e *Environment) ClientConfig() *evergreen.ClientConfig {

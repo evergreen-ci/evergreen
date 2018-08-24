@@ -4,6 +4,14 @@ _.templateSettings = {
   interpolate: /\{(.+?)\}/g
 }
 
+_.mixin({
+  sum: function(coll) {
+    return _.reduce(coll, function(m, d) {
+      return m + d
+    }, 0)
+  }
+})
+
 var mciModule = angular.module('MCI', [
   'filters.common',
   'directives.eventLogs',
@@ -25,11 +33,12 @@ var mciModule = angular.module('MCI', [
   'ngMaterial',
   'md.time.picker',
   'ui.grid',
-  'ui.grid.resizeColumns',
-  'ui.grid.moveColumns',
-  'ui.grid.emptyBaseLayer',
   'ui.grid.autoResize',
+  'ui.grid.emptyBaseLayer',
+  'ui.grid.grouping',
+  'ui.grid.moveColumns',
   'ui.grid.pinning',
+  'ui.grid.resizeColumns',
   'ui.select',
 ], function($interpolateProvider, $locationProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go
@@ -249,7 +258,7 @@ var mciModule = angular.module('MCI', [
       return task;
     }
     var cls = task.status;
-    if (task.status == 'undispatched') {
+    if (task.status == 'undispatched' || (task.display_only && task.task_waiting)) {
       if (!task.activated) {
         cls = 'inactive';
       } else {
@@ -281,6 +290,9 @@ var mciModule = angular.module('MCI', [
   }
 }).filter('statusLabel', function() {
   return function(task) {
+    if (task.task_waiting) {
+      return task.task_waiting;
+    }
     if (task.status == 'started') {
       return 'started';
     } else if (task.status == 'undispatched' && task.activated) {

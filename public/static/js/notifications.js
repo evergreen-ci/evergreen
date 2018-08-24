@@ -19,6 +19,9 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       var patchFinishId = $scope.settings.notifications.patch_finish_id;
       var buildBreakId = $scope.settings.notifications.build_break_id;
       var spawnhostExpirationId = $scope.settings.notifications.spawn_host_expiration_id;
+      if (!Array.isArray(resp.data)) {
+        resp.data = [resp.data];
+      }
       $scope.subscriptions = _.filter(resp.data, function(subscription){
         if (subscription.id === patchFinishId || subscription.id === buildBreakId || subscription.id === spawnhostExpirationId) {
           return false;
@@ -27,7 +30,7 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       });
     };
     var failure = function(resp) {
-      notificationService.pushNotification("Failed to get subscriptions: " + resp.data,'errorHeader');
+      notificationService.pushNotification("Failed to get subscriptions: " + resp.data.error, 'errorHeader');
     };
     mciSubscriptionsService.get(user, "person", {success: success, error: failure});
   };
@@ -37,17 +40,23 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
       window.location.reload();
     };
     var failure = function(resp) {
-      notificationService.pushNotification("Failed to save changes: " + resp.data,'errorHeader');
+      notificationService.pushNotification("Failed to save changes: " + resp.data.error, 'errorHeader');
     };
     mciUserSettingsService.saveUserSettings($scope.settings, {success: success, error: failure});
   };
+
+  $scope.clearAllSubscriptions = function() {
+    $scope.subscriptions.forEach(function(sub) {
+      $scope.deleteSubscription(sub.id);
+    });
+  }
 
   $scope.deleteSubscription = function(id) {
     var success = function() {
       $scope.getSubscriptions();
     };
     var failure = function(resp) {
-      notificationService.pushNotification("Failed to delete subscription: " + resp.data,'errorHeader');
+      notificationService.pushNotification("Failed to delete subscription: " + resp.data.error, 'errorHeader');
     };
     mciSubscriptionsService.delete(id, {success: success, error: failure});
   }
@@ -55,15 +64,15 @@ mciModule.controller('NotificationsController', function($scope, $window, mciUse
   $scope.subscriberText = function(input) {
     switch (input.type) {
     case "jira-issue":
-      return "make a Jira issue in " + input.target;
+      return "making a Jira issue in " + input.target.project + ' with issue type ' + input.target.issue_type;
     case "jira-comment":
-      return "make a comment on Jira issue " + input.target;
+      return "making a comment on Jira issue " + input.target;
     case "evergreen-webhook":
-      return "post to server " + input.target;
+      return "posting to server " + input.target;
     case "email":
-      return "email " + input.target;
+      return "emailing " + input.target;
     case "slack":
-      return "send a Slack message to " + input.target;
+      return "sending a Slack message to " + input.target;
     }
     return input;
   };

@@ -1,10 +1,8 @@
-// +build go1.7
-
 package cloud
 
 import (
 	"context"
-	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,65 +20,22 @@ type dockerManager struct {
 	client dockerClient
 }
 
-type portRange struct {
-	MinPort uint16 `mapstructure:"min_port" json:"min_port" bson:"min_port"`
-	MaxPort uint16 `mapstructure:"max_port" json:"max_port" bson:"max_port"`
-}
-
 // ProviderSettings specifies the settings used to configure a host instance.
 type dockerSettings struct {
-	// HostIP is the IP address of the machine on which to start Docker containers. This
-	// host machine must already have Docker installed and the Docker API exposed at the
-	// client port, and preloaded Docker images.
-	HostIP string `mapstructure:"host_ip" json:"host_ip" bson:"host_ip"`
-	// ImageID is the Docker image ID already loaded on the host machine.
-	ImageID string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
-	// ClientPort is the port at which the Docker API is exposed on the host machine.
-	ClientPort int `mapstructure:"client_port" json:"client_port" bson:"client_port"`
-	// PortRange specifies potential ports to bind new containers to for SSH connections.
-	PortRange *portRange `mapstructure:"port_range" json:"port_range" bson:"port_range"`
+	// ImageURL is the url of the Docker image to use when building the container.
+	ImageURL string `mapstructure:"image_url" json:"image_url" bson:"image_url"`
 }
 
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
-	hostIPKey     = bsonutil.MustHaveTag(dockerSettings{}, "HostIP")
-	imageIDKey    = bsonutil.MustHaveTag(dockerSettings{}, "ImageID")
-	clientPortKey = bsonutil.MustHaveTag(dockerSettings{}, "ClientPort")
-	portRangeKey  = bsonutil.MustHaveTag(dockerSettings{}, "PortRange")
-
-	// bson fields for the portRange struct
-	minPortKey = bsonutil.MustHaveTag(portRange{}, "MinPort")
-	maxPortKey = bsonutil.MustHaveTag(portRange{}, "MaxPort")
+	imageURLKey = bsonutil.MustHaveTag(dockerSettings{}, "ImageURL")
 )
 
 //Validate checks that the settings from the config file are sane.
 func (settings *dockerSettings) Validate() error {
-	if settings.HostIP == "" {
-		return errors.New("HostIP must not be blank")
-	}
-
-	if settings.ImageID == "" {
-		return errors.New("ImageName must not be blank")
-	}
-
-	if settings.ClientPort == 0 {
-		return errors.New("Port must not be blank")
-	}
-
-	if settings.PortRange == nil {
-		return errors.New("Container port range must not be blank. Include min and max values.")
-	}
-
-	min := settings.PortRange.MinPort
-	max := settings.PortRange.MaxPort
-
-	if min == 0 && max == 0 {
-		return errors.New("Container port range must be valid")
-	}
-
-	if max < min {
-		return errors.New("Container port range must be valid")
+	if settings.ImageURL == "" {
+		return errors.New("ImageURL must not be blank")
 	}
 
 	return nil
@@ -106,32 +61,48 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		}
 	}
 
+	// get parent of host
+	parentHost, err := h.GetParent()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error finding parent of host '%s'", h.Id)
+	}
+	hostIP := parentHost.Host
+	if hostIP == "" {
+		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
+	}
+
 	if err := settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid Docker settings in distro '%s'", h.Distro.Id)
+		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
 	}
 
 	grip.Info(message.Fields{
-		"message":     "decoded Docker container settings",
-		"container":   h.Id,
-		"host_ip":     settings.HostIP,
-		"image_id":    settings.ImageID,
-		"client_port": settings.ClientPort,
-		"min_port":    settings.PortRange.MinPort,
-		"max_port":    settings.PortRange.MaxPort,
+		"message":   "decoded Docker container settings",
+		"container": h.Id,
+		"host_ip":   hostIP,
+		"image_url": settings.ImageURL,
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, settings); err != nil {
-		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
+	if err := m.client.CreateContainer(ctx, parentHost, h, settings); err != nil {
+		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
 	}
 
+	if err = h.SetAgentRevision(evergreen.BuildRevision); err != nil {
+		return nil, errors.Wrapf(err, "error setting agent revision on host %s", h.Id)
+	}
+
+	// The setup was successful. Update the container host accordingly in the database.
+	if err := h.MarkAsProvisioned(); err != nil {
+		return nil, errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
+	}
+
 	// Start container
-	if err := m.client.StartContainer(ctx, h); err != nil {
-		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", settings.HostIP)
+	if err := m.client.StartContainer(ctx, parentHost, h.Id); err != nil {
+		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", hostIP)
 		// Clean up
-		if err2 := m.client.RemoveContainer(ctx, h); err2 != nil {
+		if err2 := m.client.RemoveContainer(ctx, parentHost, h.Id); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
 		}
 		grip.Error(err)
@@ -144,36 +115,19 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 	event.LogHostStarted(h.Id)
 
-	// Retrieve container details
-	newContainer, err := m.client.GetContainer(ctx, h)
-	if err != nil {
-		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", settings.HostIP)
-		grip.Error(err)
-		return nil, err
-	}
-
-	hostPort, err := retrieveOpenPortBinding(newContainer)
-	if err != nil {
-		err = errors.Wrapf(err, "Container '%s' could not retrieve open ports", newContainer.ID)
-		grip.Error(err)
-		return nil, err
-	}
-	h.Host = fmt.Sprintf("%s:%s", settings.HostIP, hostPort)
-
-	grip.Info(message.Fields{
-		"message":   "retrieved open port binding",
-		"container": h.Id,
-		"host_ip":   settings.HostIP,
-		"host_port": hostPort,
-	})
-
 	return h, nil
 }
 
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
 func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
-	container, err := m.client.GetContainer(ctx, h)
+	// get parent of container host
+	parent, err := h.GetParent()
+	if err != nil {
+		return StatusUnknown, errors.Wrapf(err, "Error retrieving parent of host '%s'", h.Id)
+	}
+
+	container, err := m.client.GetContainer(ctx, parent, h.Id)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
@@ -181,13 +135,9 @@ func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cl
 	return toEvgStatus(container.State), nil
 }
 
-//GetDNSName gets the DNS hostname of a container by reading it directly from
-//the Docker API
+// GetDNSName does nothing, returning an empty string and no error.
 func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if h.Host == "" {
-		return "", errors.New("DNS name is empty")
-	}
-	return h.Host, nil
+	return "", nil
 }
 
 //TerminateInstance destroys a container.
@@ -198,7 +148,13 @@ func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, use
 		return err
 	}
 
-	if err := m.client.RemoveContainer(ctx, h); err != nil {
+	// get parent of container host
+	parent, err := h.GetParent()
+	if err != nil {
+		return errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+	}
+
+	if err := m.client.RemoveContainer(ctx, parent, h.Id); err != nil {
 		return errors.Wrap(err, "API call to remove container failed")
 	}
 
@@ -217,7 +173,7 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 	config := s.Providers.Docker
 
 	if m.client == nil {
-		m.client = &dockerClientImpl{}
+		m.client = &dockerClientImpl{evergreenSettings: s}
 	}
 
 	if err := m.client.Init(config.APIVersion); err != nil {
@@ -260,4 +216,139 @@ func (m *dockerManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, e
 // for the host. For Docker this is not relevant.
 func (m *dockerManager) TimeTilNextPayment(_ *host.Host) time.Duration {
 	return time.Duration(0)
+}
+
+func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]string, error) {
+	containers, err := m.client.ListContainers(ctx, h)
+	if err != nil {
+		return nil, errors.Wrap(err, "error listing containers")
+	}
+
+	ids := []string{}
+	for _, container := range containers {
+		name := container.Names[0]
+		// names in Docker have leading slashes -- https://github.com/moby/moby/issues/6705
+		if !strings.HasPrefix(name, "/") {
+			return nil, errors.New("error reading container name")
+		}
+		name = name[1:len(name)]
+		ids = append(ids, name)
+	}
+
+	return ids, nil
+}
+
+// canImageBeRemoved returns true if there are no containers running the image
+func (m *dockerManager) canImageBeRemoved(ctx context.Context, h *host.Host, imageID string) (bool, error) {
+	containers, err := m.client.ListContainers(ctx, h)
+	if err != nil {
+		return false, errors.Wrap(err, "error listing containers")
+	}
+
+	for _, container := range containers {
+		if container.ImageID == imageID {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// RemoveOldestImage finds the oldest image without running containers and forcibly removes it
+func (m *dockerManager) RemoveOldestImage(ctx context.Context, h *host.Host) error {
+	// list images in order of most to least recently created
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return errors.Wrap(err, "Error listing images")
+	}
+
+	for i := len(images) - 1; i >= 0; i-- {
+		id := images[i].ID
+		canBeRemoved, err := m.canImageBeRemoved(ctx, h, id)
+		if err != nil {
+			return errors.Wrapf(err, "Error checking whether containers are running on image '%s'", id)
+		}
+		// remove image based on ID only if there are no containers running the image
+		if canBeRemoved {
+			err = m.client.RemoveImage(ctx, h, id)
+			if err != nil {
+				return errors.Wrapf(err, "Error removing image '%s'", id)
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
+// CalculateImageSpaceUsage returns the amount of bytes that images take up on disk
+func (m *dockerManager) CalculateImageSpaceUsage(ctx context.Context, h *host.Host) (int64, error) {
+	images, err := m.client.ListImages(ctx, h)
+	if err != nil {
+		return 0, errors.Wrap(err, "Error listing images")
+	}
+
+	spaceBytes := int64(0)
+	for _, image := range images {
+		spaceBytes += image.Size
+	}
+	return spaceBytes, nil
+}
+
+// CostForDuration estimates the cost for a span of time on the given container
+// host. The method divides the cost of that span on the parent host by an
+// estimate of the number of containers running during the same interval.
+func (m *dockerManager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time, s *evergreen.Settings) (float64, error) {
+	parent, err := h.GetParent()
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error retrieving parent for host '%s'", h.Id)
+	}
+
+	numContainers, err := parent.EstimateNumContainersForDuration(start, end)
+	if err != nil {
+		return 0, errors.Wrap(err, "Errors estimating number of containers running over interval")
+	}
+
+	// prevent division by zero error
+	if numContainers == 0 {
+		return 0, nil
+	}
+
+	// get cloud manager for parent
+	parentMgr, err := GetManager(ctx, parent.Provider, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error loading provider for parent host '%s'", parent.Id)
+	}
+
+	// get parent cost for time interval
+	calc, ok := parentMgr.(CostCalculator)
+	if !ok {
+		return 0, errors.Errorf("Type assertion failed: type %T does not hold a CostCaluclator", parentMgr)
+	}
+	cost, err := calc.CostForDuration(ctx, parent, start, end, s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error calculating cost for parent host '%s'", parent.Id)
+	}
+
+	return cost / numContainers, nil
+}
+
+// BuildContainerImage downloads and buils a container image onto parent specified
+// by URL and returns this URL
+func (m *dockerManager) BuildContainerImage(ctx context.Context, parent *host.Host, url string) error {
+	if !parent.HasContainers {
+		return errors.Errorf("Error provisioning image: '%s' is not a parent", parent.Id)
+	}
+
+	// Import correct base image if not already on host.
+	image, err := m.client.EnsureImageDownloaded(ctx, parent, url)
+	if err != nil {
+		return errors.Wrapf(err, "Unable to ensure that image '%s' is on host '%s'", url, parent.Id)
+	}
+
+	// Build image containing Evergreen executable.
+	_, err = m.client.BuildImageWithAgent(ctx, parent, image)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to build image '%s' with agent on host '%s'", url, parent.Id)
+	}
+
+	return nil
 }

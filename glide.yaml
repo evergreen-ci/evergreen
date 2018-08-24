@@ -13,9 +13,9 @@ import:
   - package: github.com/codegangsta/inject
   - package: github.com/docker/docker
   - package: github.com/docker/go-connections
+  - package: github.com/evergreen-ci/go-test2json
   - package: github.com/Microsoft/go-winio
   - package: github.com/gorilla/context
-  - package: github.com/gorilla/mux
   - package: github.com/gorilla/securecookie
   - package: github.com/gorilla/sessions
   - package: github.com/mitchellh/mapstructure
@@ -28,7 +28,6 @@ import:
   - package: golang.org/x/tools
     subpackages:
       - cmd/cover
-  - package: github.com/urfave/negroni
   - package: github.com/urfave/cli
   - package: github.com/evergreen-ci/crowd
   - package: github.com/kardianos/osext
@@ -53,3 +52,4 @@ import:
   - package: github.com/google/shlex
   - package: github.com/PuerkitoBio/rehttp
   - package: github.com/mholt/archiver
+  - package: github.com/evergreen-ci/shrub

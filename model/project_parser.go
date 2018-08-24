@@ -431,6 +431,9 @@ func createIntermediateProject(yml []byte) (*parserProject, []error) {
 	if err != nil {
 		return nil, []error{err}
 	}
+	if p.Functions == nil {
+		p.Functions = map[string]*YAMLCommandSet{}
+	}
 
 	return p, nil
 }

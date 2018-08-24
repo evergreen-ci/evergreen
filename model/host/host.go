@@ -73,10 +73,11 @@ type Host struct {
 
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
-	// True if this host was created manually by a user (i.e. with spawnhost)
-	UserHost      bool   `bson:"user_host" json:"user_host"`
-	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
-	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
+	// UserHost is alwayas false, and will be removed
+	UserHost           bool   `bson:"user_host" json:"user_host"`
+	AgentRevision      string `bson:"agent_revision" json:"agent_revision"`
+	NeedsNewAgent      bool   `bson:"needs_agent" json:"needs_agent"`
+	AgentDeployAttempt int    `bson:"agent_deploy_attempt" json:"agent_deploy_attempt"`
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
@@ -97,10 +98,15 @@ type Host struct {
 	// managed containers require different information based on host type
 	// True if this host is a parent of containers
 	HasContainers bool `bson:"has_containers,omitempty" json:"has_containers,omitempty"`
+	// stores URLs of container images already downloaded on a parent
+	ContainerImages map[string]bool `bson:"container_images,omitempty" json:"container_images,omitempty"`
 	// stores the ID of the host a container is on
 	ParentID string `bson:"parent_id,omitempty" json:"parent_id,omitempty"`
 	// stores last expected finish time among all containers on the host
 	LastContainerFinishTime time.Time `bson:"last_container_finish_time,omitempty" json:"last_container_finish_time,omitempty"`
+	// ContainerPoolSettings
+	ContainerPoolSettings *evergreen.ContainerPool `bson:"container_pool_settings,omitempty" json:"container_pool_settings,omitempty"`
+	ContainerBuildAttempt int                      `bson:"container_build_attempt" json:"container_build_attempt"`
 
 	// SpawnOptions holds data which the monitor uses to determine when to terminate hosts spawned by tasks.
 	SpawnOptions SpawnOptions `bson:"spawn_options,omitempty" json:"spawn_options,omitempty"`
@@ -129,6 +135,9 @@ type SpawnOptions struct {
 	// tears down a host if a task hangs or otherwise does not finish within an expected period of time.
 	TimeoutTeardown time.Time `bson:"timeout_teardown" json:"timeout_teardown"`
 
+	// TimeoutTeardown is the time after which Evergreen should give up trying to set up this host.
+	TimeoutSetup time.Time `bson:"timeout_setup" json:"timeout_setup"`
+
 	// TaskID is the task_id of the task to which this host is pinned. When the task finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	TaskID string `bson:"task_id,omitempty" json:"task_id,omitempty"`
@@ -136,6 +145,12 @@ type SpawnOptions struct {
 	// BuildID is the build_id of the build to which this host is pinned. When the build finishes,
 	// this host should be torn down. Only one of TaskID or BuildID should be set.
 	BuildID string `bson:"build_id,omitempty" json:"build_id,omitempty"`
+
+	// Retries is the number of times Evergreen should try to spawn this host.
+	Retries int `bson:"retries,omitempty" json:"retries,omitempty"`
+
+	// SpawnedByTask indicates that this host has been spawned by a task.
+	SpawnedByTask bool `bson:"spawned_by_task,omitempty" json:"spawned_by_task,omitempty"`
 }
 
 const (
@@ -429,7 +444,8 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	}
 
 	selector := bson.M{
-		IdKey: h.Id,
+		IdKey:     h.Id,
+		StatusKey: evergreen.HostRunning,
 	}
 
 	update := bson.M{
@@ -577,6 +593,7 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				ProvisionOptionsKey:  h.ProvisionOptions,
 				StartTimeKey:         h.StartTime,
 				HasContainersKey:     h.HasContainers,
+				ContainerImagesKey:   h.ContainerImages,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -751,8 +768,6 @@ func FindHostsToTerminate() ([]Host, error) {
 	}
 	hosts, err := Find(db.Query(query))
 
-	fmt.Println(len(hosts), query)
-
 	if db.ResultsNotFound(err) {
 		return []Host{}, nil
 	}
@@ -906,6 +921,43 @@ func (h *Host) UpdateLastContainerFinishTime(t time.Time) error {
 	return nil
 }
 
+// FindRunningHosts is the underlying query behind the hosts page's table
+func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
+	query := bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
+
+	if !includeSpawnHosts {
+		query[StartedByKey] = evergreen.User
+	}
+
+	pipeline := []bson.M{
+		{
+			"$match": query,
+		},
+		{
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": task.IdKey,
+				"as":           "task_full",
+			},
+		},
+		{
+			"$unwind": bson.M{
+				"path": "$task_full",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	}
+
+	var dbHosts []Host
+
+	if err := db.Aggregate(Collection, pipeline, &dbHosts); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return dbHosts, nil
+}
+
 // FindAllHostsSpawnedByTasks finds all running hosts spawned by the `createhost` command.
 func FindAllHostsSpawnedByTasks() ([]Host, error) {
 	query := db.Query(bson.M{
@@ -949,6 +1001,25 @@ func FindHostsSpawnedByBuild(buildID string) ([]Host, error) {
 	return hosts, nil
 }
 
+func FindTerminatedHostsRunningTasks() ([]Host, error) {
+	hosts, err := Find(db.Query(bson.M{
+		StatusKey: evergreen.HostTerminated,
+		"$and": []bson.M{
+			{RunningTaskKey: bson.M{"$exists": true}},
+			{RunningTaskKey: bson.M{"$ne": ""}}},
+	}))
+
+	if err == mgo.ErrNotFound {
+		err = nil
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding terminated hosts")
+	}
+
+	return hosts, nil
+}
+
 // CountContainersOnParents counts how many containers are children of the given group of hosts
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
@@ -959,6 +1030,16 @@ func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	return Count(query)
 }
 
+// FindRunningContainersOnParents returns the containers that are children of the given hosts
+func (hosts HostGroup) FindRunningContainersOnParents() ([]Host, error) {
+	ids := hosts.GetHostIds()
+	query := db.Query(bson.M{
+		StatusKey:   evergreen.HostRunning,
+		ParentIDKey: bson.M{"$in": ids},
+	})
+	return Find(query)
+}
+
 // GetHostIds returns a slice of host IDs for the given group of hosts
 func (hosts HostGroup) GetHostIds() []string {
 	var ids []string
@@ -966,4 +1047,66 @@ func (hosts HostGroup) GetHostIds() []string {
 		ids = append(ids, h.Id)
 	}
 	return ids
+}
+
+// FindAllRunningParentsByContainerPool returns a slice of hosts that are parents
+// of the container pool specified by the given ID
+func FindAllRunningParentsByContainerPool(poolId string) ([]Host, error) {
+	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
+	query := db.Query(bson.M{
+		HasContainersKey:    true,
+		StatusKey:           evergreen.HostRunning,
+		hostContainerPoolId: poolId,
+	}).Sort([]string{LastContainerFinishTimeKey})
+	return Find(query)
+}
+
+// CountUphostParents returns the number of initializing parent host intent documents
+func CountUphostParentsByContainerPool(poolId string) (int, error) {
+	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
+	return db.Count(Collection, bson.M{
+		HasContainersKey:    true,
+		StatusKey:           bson.M{"$in": evergreen.UphostStatus},
+		hostContainerPoolId: poolId,
+	})
+}
+
+func InsertMany(hosts []Host) error {
+	docs := make([]interface{}, len(hosts))
+	for idx := range hosts {
+		docs[idx] = hosts[idx]
+	}
+
+	return errors.WithStack(db.InsertMany(Collection, docs...))
+
+}
+
+// CountContainersRunningAtTime counts how many containers were running on the
+// given parent host at the specified time, using the host StartTime and
+// TerminationTime fields.
+func (h *Host) CountContainersRunningAtTime(timestamp time.Time) (int, error) {
+	query := db.Query(bson.M{
+		ParentIDKey:  h.Id,
+		StartTimeKey: bson.M{"$lt": timestamp},
+		"$or": []bson.M{
+			{TerminationTimeKey: bson.M{"$gt": timestamp}},
+			{TerminationTimeKey: time.Time{}},
+		},
+	})
+	return Count(query)
+}
+
+// EstimateNumberContainersForDuration estimates how many containers were running
+// on a given host during the specified time interval by averaging the counts
+// at the start and end. It is more accurate for shorter tasks.
+func (h *Host) EstimateNumContainersForDuration(start, end time.Time) (float64, error) {
+	containersAtStart, err := h.CountContainersRunningAtTime(start)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error counting containers running at %v", start)
+	}
+	containersAtEnd, err := h.CountContainersRunningAtTime(end)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Error counting containers running at %v", end)
+	}
+	return float64(containersAtStart+containersAtEnd) / 2, nil
 }

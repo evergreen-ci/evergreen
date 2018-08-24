@@ -16,7 +16,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 )
 
 const decoHostNotifyJobName = "deco-host-notify"
@@ -58,7 +57,7 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 		j.HasError = true
 	}
 
-	j.SetID(fmt.Sprintf("%s.%s.%d", decoHostNotifyJobName, h.Id, job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s.%s.%s", decoHostNotifyJobName, h.Id, util.RoundPartOfHour(10)))
 	j.SetPriority(-1)
 	return j
 }
@@ -97,14 +96,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 	}
 
 	conf := j.env.Settings()
-	opts := &send.JiraOptions{
-		Name:       "evergreen",
-		BaseURL:    conf.Jira.GetHostURL(),
-		Username:   conf.Jira.Username,
-		Password:   conf.Jira.Password,
-		HTTPClient: client,
-	}
-	sender, err := send.MakeJiraLogger(opts)
+	sender, err := j.env.GetSender(evergreen.SenderJIRAIssue)
 	if err != nil {
 		j.AddError(err)
 
@@ -128,9 +120,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 
 		return
 	}
-	defer func() { grip.Warning(sender.Close()) }()
 
-	grip.Warning(sender.SetErrorHandler(send.ErrorHandlerFromSender(grip.GetSender())))
 	descParts := []string{
 		fmt.Sprintf("Distro: [%s|%s/distros##%s]", j.Host.Distro.Id, conf.Ui.Url, j.Host.Distro.Id),
 		fmt.Sprintf("Host: [%s|%s/host/%s]", j.Host.Id, conf.Ui.Url, j.Host.Id),

@@ -8,8 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -101,8 +101,8 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
 	s.NotNil(err)
 	s.Nil(found)
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -234,8 +234,8 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleTaskFail() {
 	s.NotNil(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -245,8 +245,8 @@ func (s *TaskConnectorFetchByBuildSuite) TestFindFromMiddleBuildFail() {
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -325,7 +325,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit()
 	for pix := 0; pix < s.numProjects; pix++ {
 		for cix := 0; cix < s.numCommits; cix++ {
 			foundTasks, err := s.ctx.FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
-				fmt.Sprintf("commit_%d", cix), "", "", 0, 1)
+				fmt.Sprintf("commit_%d", cix), "", "", 0)
 			s.NoError(err)
 			s.Equal(s.numTasks, len(foundTasks))
 			for tix, t := range foundTasks {
@@ -336,23 +336,23 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommit()
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectFail() {
-	foundTests, err := s.ctx.FindTasksByProjectAndCommit("fake_project", "commit_0", "", "", 0, 1)
+	foundTests, err := s.ctx.FindTasksByProjectAndCommit("fake_project", "commit_0", "", "", 0)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByCommitFail() {
-	foundTests, err := s.ctx.FindTasksByProjectAndCommit("project_0", "fake_commit", "", "", 0, 1)
+	foundTests, err := s.ctx.FindTasksByProjectAndCommit("project_0", "fake_commit", "", "", 0)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -362,7 +362,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindByProjectAndCommitAn
 		for pix := 0; pix < s.numProjects; pix++ {
 			for cix := 0; cix < s.numCommits; cix++ {
 				foundTasks, err := s.ctx.FindTasksByProjectAndCommit(fmt.Sprintf("project_%d", pix),
-					fmt.Sprintf("commit_%d", cix), "", status, 0, 1)
+					fmt.Sprintf("commit_%d", cix), "", status, 0)
 				s.Nil(err)
 				s.Equal(s.numTasks/2, len(foundTasks))
 				for _, t := range foundTasks {
@@ -377,36 +377,28 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddle() {
 	commitId := "commit_1"
 	projectId := "project_1"
 	tids := s.taskIds[1][1]
-	for _, sort := range []int{1, -1} {
-		for i := 0; i < s.numTasks; i++ {
-			foundTasks, err := s.ctx.FindTasksByProjectAndCommit(projectId, commitId,
-				tids[i], "", 0, sort)
-			s.NoError(err)
+	for i := 0; i < s.numTasks; i++ {
+		foundTasks, err := s.ctx.FindTasksByProjectAndCommit(projectId, commitId, tids[i], "", 0)
+		s.NoError(err)
 
-			startAt := 0
-			if sort < 0 {
-				startAt = len(tids) - 1
-			}
+		startAt := 0
 
-			s.Equal((s.numTasks-startAt)-i*sort, len(foundTasks))
-			for ix, t := range foundTasks {
-				index := ix
-				if sort > 0 {
-					index += i
-				}
-				s.Equal(tids[index], t.Id)
-			}
+		s.Equal((s.numTasks-startAt)-i, len(foundTasks))
+		for ix, t := range foundTasks {
+			index := ix + i
+			s.Equal(tids[index], t.Id)
 		}
 	}
+
 }
 
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindFromMiddleFail() {
-	foundTests, err := s.ctx.FindTasksByProjectAndCommit("project_0", "commit_0", "fake_task", "", 0, 1)
+	foundTests, err := s.ctx.FindTasksByProjectAndCommit("project_0", "commit_0", "fake_task", "", 0)
 	s.Error(err)
 	s.Equal(0, len(foundTests))
 
-	s.IsType(&rest.APIError{}, err)
-	apiErr, ok := err.(*rest.APIError)
+	s.IsType(gimlet.ErrorResponse{}, err)
+	apiErr, ok := err.(gimlet.ErrorResponse)
 	s.True(ok)
 	s.Equal(http.StatusNotFound, apiErr.StatusCode)
 }
@@ -419,8 +411,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 	for i := 0; i < s.numTasks/limit; i++ {
 		index := i * limit
 		taskName := tids[index]
-		foundTasks, err := s.ctx.FindTasksByProjectAndCommit(projectId, commitId,
-			taskName, "", limit, 1)
+		foundTasks, err := s.ctx.FindTasksByProjectAndCommit(projectId, commitId, taskName, "", limit)
 		s.NoError(err)
 		s.Equal(limit, len(foundTasks))
 		for ix, t := range foundTasks {
@@ -432,7 +423,7 @@ func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindWithLimit() {
 func (s *TaskConnectorFetchByProjectAndCommitSuite) TestFindEmptyProjectAndCommit() {
 	projectId := "project_0"
 	commitId := "commit_0"
-	foundTasks, err := s.ctx.FindTasksByProjectAndCommit(projectId, commitId, "", "", 1, 1)
+	foundTasks, err := s.ctx.FindTasksByProjectAndCommit(projectId, commitId, "", "", 1)
 	s.NoError(err)
 	s.Equal(1, len(foundTasks))
 	task1 := foundTasks[0]

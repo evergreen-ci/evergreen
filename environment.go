@@ -17,7 +17,6 @@ import (
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -67,7 +66,7 @@ type Environment interface {
 	// Returns the settings object. The settings object is not
 	// necessarily safe for concurrent access.
 	Settings() *Settings
-	Session() db.Session
+	Session() *mgo.Session
 
 	// The Environment provides access to two queue's, a
 	// local-process level queue that is not persisted between
@@ -75,13 +74,17 @@ type Environment interface {
 	// to distribute work amongst the application tier.
 	//
 	// The LocalQueue is not durable, and results aren't available
-	// between process restarts.
+	// between process restarts. The RemoteQueue is not
+	// (generally) started by default.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
 	ClientConfig() *ClientConfig
+
+	// SaveConfig persists the configuration settings to the db
+	SaveConfig() error
 
 	// GetSender provides a grip Sender configured with the environment's
 	// settings. These Grip senders must be used with Composers that specify
@@ -151,9 +154,6 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	catcher.Add(e.initSenders())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
-	if confPath != "" {
-		catcher.Add(e.persistSettings())
-	}
 
 	return catcher.Resolve()
 }
@@ -211,6 +211,9 @@ func (e *envState) initDB(settings DBSettings) error {
 func (e *envState) createQueues(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
 	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+	if err := e.localQueue.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeLocal, e.localQueue)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for local queue")
+	}
 
 	// configure the remote mongodb-backed amboy
 	// queue.
@@ -226,6 +229,10 @@ func (e *envState) createQueues(ctx context.Context) error {
 	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
 	if err = rq.SetDriver(qmdb); err != nil {
 		return errors.WithStack(err)
+	}
+
+	if err = rq.SetRunner(pool.NewAbortablePool(e.settings.Amboy.PoolSizeRemote, rq)); err != nil {
+		return errors.Wrap(err, "problem configuring worker pool for remote queue")
 	}
 	e.remoteQueue = rq
 
@@ -313,7 +320,6 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(e.localQueue.Start(ctx))
-	catcher.Add(e.remoteQueue.Start(ctx))
 	catcher.Add(e.notificationsQueue.Start(ctx))
 
 	return catcher.Errors()
@@ -400,10 +406,11 @@ func (e *envState) initSenders() error {
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
 		sender, err = send.NewJiraLogger(&send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
+			Name:         "evergreen",
+			BaseURL:      jira.GetHostURL(),
+			Username:     jira.Username,
+			Password:     jira.Password,
+			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira issue logger")
@@ -411,10 +418,11 @@ func (e *envState) initSenders() error {
 		e.senders[SenderJIRAIssue] = sender
 
 		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
+			Name:         "evergreen",
+			BaseURL:      jira.GetHostURL(),
+			Username:     jira.Username,
+			Password:     jira.Password,
+			UseBasicAuth: true,
 		}, levelInfo)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup jira comment logger")
@@ -445,8 +453,9 @@ func (e *envState) initSenders() error {
 	e.senders[SenderEvergreenWebhook] = sender
 
 	catcher := grip.NewBasicCatcher()
-	for _, s := range e.senders {
+	for name, s := range e.senders {
 		catcher.Add(s.SetLevel(levelInfo))
+		catcher.Add(s.SetErrorHandler(util.MakeNotificationErrorHandler(name.String())))
 	}
 
 	return catcher.Resolve()
@@ -456,14 +465,56 @@ type BuildBaronProject struct {
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
 
-	// The alternative endpoint is only enabled for projects where AlternativeEndpointURL isn't the empty string.
-	AlternativeEndpointURL         string `mapstructure:"alt_endpoint_url" bson:"alt_endpoint_url"`
-	AlternativeEndpointUsername    string `mapstructure:"alt_endpoint_username" bson:"alt_endpoint_username"`
-	AlternativeEndpointPassword    string `mapstructure:"alt_endpoint_password" bson:"alt_endpoint_password"`
-	AlternativeEndpointTimeoutSecs int    `mapstructure:"alt_endpoint_timeout_secs" bson:"alt_endpoint_timeout_secs"`
+	// The BF Suggestion server as a source of suggestions is only enabled for projects where BFSuggestionServer isn't the empty string.
+	BFSuggestionServer      string `mapstructure:"bf_suggestion_server" bson:"bf_suggestion_server"`
+	BFSuggestionUsername    string `mapstructure:"bf_suggestion_username" bson:"bf_suggestion_username"`
+	BFSuggestionPassword    string `mapstructure:"bf_suggestion_password" bson:"bf_suggestion_password"`
+	BFSuggestionTimeoutSecs int    `mapstructure:"bf_suggestion_timeout_secs" bson:"bf_suggestion_timeout_secs"`
+	BFSuggestionFeaturesURL string `mapstructure:"bf_suggestion_features_url" bson:"bf_suggestion_features_url"`
 }
 
-func (e *envState) persistSettings() error {
+func (e *envState) Settings() *Settings {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.settings
+}
+
+func (e *envState) LocalQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.localQueue
+}
+
+func (e *envState) RemoteQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.remoteQueue
+}
+
+func (e *envState) Session() *mgo.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.session.Copy()
+}
+
+func (e *envState) ClientConfig() *ClientConfig {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	if e.clientConfig == nil {
+		e.initClientConfig()
+		if e.clientConfig == nil {
+			return nil
+		}
+	}
+
+	config := *e.clientConfig
+	return &config
+}
+
+func (e *envState) SaveConfig() error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot persist to DB")
 	}
@@ -511,47 +562,6 @@ func (e *envState) persistSettings() error {
 	}
 
 	return errors.WithStack(UpdateConfig(&copy))
-}
-
-func (e *envState) Settings() *Settings {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	return e.settings
-}
-
-func (e *envState) LocalQueue() amboy.Queue {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.localQueue
-}
-
-func (e *envState) RemoteQueue() amboy.Queue {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return e.remoteQueue
-}
-
-func (e *envState) Session() db.Session {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	return db.WrapSession(e.session.Copy())
-}
-
-func (e *envState) ClientConfig() *ClientConfig {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	if e.clientConfig == nil {
-		e.initClientConfig()
-		if e.clientConfig == nil {
-			return nil
-		}
-	}
-
-	config := *e.clientConfig
-	return &config
 }
 
 func (e *envState) GetSender(key SenderKey) (send.Sender, error) {

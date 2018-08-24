@@ -24,13 +24,13 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       resource_type: "VERSION",
       label: "this version succeeds",
     },
-        {
+    {
       trigger: "exceeds-duration",
       resource_type: "VERSION",
       label: "the runtime for this version exceeds some duration",
       extraFields: [
         {text: "Version duration (seconds)", key: "version-duration-secs", validator: validateDuration}
-      ]
+      ],
     },
     {
       trigger: "runtime-change",
@@ -38,22 +38,25 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       label: "the runtime for this version changes by some percentage",
       extraFields: [
         {text: "Percent change", key: "version-percent-change", validator: validatePercentage}
-      ]
+      ],
     },
     {
       trigger: "outcome",
       resource_type: "BUILD",
-      label: "a build-variant in this version finishes"
+      label: "a build-variant in this version finishes",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "failure",
       resource_type: "BUILD",
-      label: "a build-variant in this version fails"
+      label: "a build-variant in this version fails",
+      regex_selectors: buildRegexSelectors(),
     },
     {
       trigger: "success",
       resource_type: "BUILD",
-      label: "a build-variant in this version succeeds"
+      label: "a build-variant in this version succeeds",
+      regex_selectors: buildRegexSelectors(),
     },
   ];
   hash = $location.hash();
@@ -95,12 +98,11 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     promise = addSubscriber($mdDialog, $scope.triggers, omitMethods);
 
     $mdDialog.show(promise).then(function(data){
-      addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
       if (data.resource_type === "VERSION") {
         addSelectorsAndOwnerType(data, "version", $scope.version.Version.id);
 
       }else {
-        addInSelectorsAndOwnerType(data, "version", data.resource_type.toLowerCase(), $scope.version.Version.id);
+        addInSelectorsAndOwnerType(data, "version", "version", $scope.version.Version.id);
       }
       $scope.subscriptions.push(data);
       $scope.saveSubscriptions();

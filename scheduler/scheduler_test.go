@@ -46,17 +46,10 @@ func TestSpawnHosts(t *testing.T) {
 		distroIds := []string{"d1", "d2", "d3"}
 		Convey("if there are no hosts to be spawned, the Scheduler should not"+
 			" make any calls to the Manager", func() {
-			newHostsNeeded := map[string]int{
-				distroIds[0]: 0,
-				distroIds[1]: 0,
-				distroIds[2]: 0,
-			}
 
-			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
+			newHostsSpawned, err := spawnHosts(ctx, distro.Distro{}, 0, nil)
 			So(err, ShouldBeNil)
-			So(len(newHostsSpawned[distroIds[0]]), ShouldEqual, 0)
-			So(len(newHostsSpawned[distroIds[1]]), ShouldEqual, 0)
-			So(len(newHostsSpawned[distroIds[2]]), ShouldEqual, 0)
+			So(len(newHostsSpawned), ShouldEqual, 0)
 		})
 
 		Convey("if there are hosts to be spawned, the Scheduler should make"+
@@ -71,87 +64,94 @@ func TestSpawnHosts(t *testing.T) {
 
 			for _, id := range distroIds {
 				d := distro.Distro{Id: id, PoolSize: 3, Provider: evergreen.ProviderNameMock}
-				So(d.Insert(), ShouldBeNil)
+
+				newHostsSpawned, err := spawnHosts(ctx, d, newHostsNeeded[id], nil)
+				So(err, ShouldBeNil)
+
+				So(newHostsNeeded[id], ShouldEqual, len(newHostsSpawned))
 			}
-
-			newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
-			So(err, ShouldBeNil)
-			distroZeroHosts := newHostsSpawned[distroIds[0]]
-			distroOneHosts := newHostsSpawned[distroIds[1]]
-			distroTwoHosts := newHostsSpawned[distroIds[2]]
-			So(len(distroZeroHosts), ShouldEqual, 3)
-			So(distroZeroHosts[0].Distro.Id, ShouldEqual, distroIds[0])
-			So(distroZeroHosts[1].Distro.Id, ShouldEqual, distroIds[0])
-			So(distroZeroHosts[2].Distro.Id, ShouldEqual, distroIds[0])
-			So(len(distroOneHosts), ShouldEqual, 0)
-			So(len(distroTwoHosts), ShouldEqual, 1)
-			So(distroTwoHosts[0].Distro.Id, ShouldEqual, distroIds[2])
-		})
-
-		Reset(func() {
-			So(db.Clear(distro.Collection), ShouldBeNil)
-			So(db.Clear(host.Collection), ShouldBeNil)
 		})
 	})
 }
 
 func (s *SchedulerSuite) TestNumNewParentsNeeded() {
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 2}
+		ContainerPool: "test-pool"}
+	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	host3 := &host.Host{
 		Id:       "host3",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
+	}
+	host4 := &host.Host{
+		Id:                    "host4",
+		Distro:                d,
+		Status:                evergreen.HostUninitialized,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 
 	s.NoError(host1.Insert())
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
+	s.NoError(host4.Insert())
 
-	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
+	currentParents, err := host.FindAllRunningParentsByContainerPool(d.ContainerPool)
 	s.NoError(err)
-	existingContainers, err := host.FindAllRunningContainers()
+	numUphostParents, err := host.CountUphostParentsByContainerPool("test-pool")
+	s.NoError(err)
+	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
-	num := numNewParentsNeeded(len(currentParents), 1, len(existingContainers), d)
-	s.Equal(1, num)
+	parentsParams := newParentsNeededParams{
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
+	}
+	num := numNewParentsNeeded(parentsParams)
+	s.Equal(0, num)
 }
 
 func (s *SchedulerSuite) TestNumNewParentsNeeded2() {
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 3}
+		ContainerPool: "test-pool"}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
+
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	host3 := &host.Host{
 		Id:       "host3",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostTerminated,
 		ParentID: "host1",
 	}
@@ -160,12 +160,20 @@ func (s *SchedulerSuite) TestNumNewParentsNeeded2() {
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
+	currentParents, err := host.FindAllRunningParentsByContainerPool(d.ContainerPool)
 	s.NoError(err)
-	existingContainers, err := host.FindAllRunningContainers()
+	numUphostParents, err := host.CountUphostParentsByContainerPool("test-pool")
+	s.NoError(err)
+	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
-	num := numNewParentsNeeded(len(currentParents), 1, len(existingContainers), d)
+	parentsParams := newParentsNeededParams{
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
+	}
+	num := numNewParentsNeeded(parentsParams)
 	s.Equal(0, num)
 }
 
@@ -173,146 +181,197 @@ func (s *SchedulerSuite) TestSpawnHostsParents() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 2}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock,
+		ContainerPool: "test-pool"}
+	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	host3 := &host.Host{
 		Id:       "host3",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	s.NoError(d.Insert())
+	s.NoError(parent.Insert())
 	s.NoError(host1.Insert())
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	newHostsNeeded := map[string]int{
-		"distro": 1,
-	}
-	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
+	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
+	s.NoError(err)
+	numUphostParents, err := host.CountUphostParentsByContainerPool("test-pool")
+	s.NoError(err)
+	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
-	s.NoError(err)
-	existingContainers, err := host.FindAllRunningContainers()
-	s.NoError(err)
-	num := numNewParentsNeeded(len(currentParents), 1, len(existingContainers), d)
+	parentsParams := newParentsNeededParams{
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
+	}
+	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
 
-	s.Equal(1, len(newHostsSpawned["distro"]))
-	s.True(newHostsSpawned["distro"][0].HasContainers)
+	newHostsSpawned, err := spawnHosts(ctx, d, 1, pool)
+	s.NoError(err)
 
+	parents := 0
+	children := 0
+	for _, h := range newHostsSpawned {
+		if s.True(h.HasContainers) {
+			parents++
+		} else if s.NotEmpty(h.ParentID) {
+			children++
+		}
+	}
+
+	s.Equal(1, parents)
+	s.Equal(0, children)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 3}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock,
+		ContainerPool: "test-pool"}
+	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	host3 := &host.Host{
 		Id:       "host3",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostTerminated,
 		ParentID: "host1",
 	}
 	s.NoError(d.Insert())
+	s.NoError(parent.Insert())
 	s.NoError(host1.Insert())
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	newHostsNeeded := map[string]int{
-		"distro": 1,
-	}
-	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
+	newHostsSpawned, err := spawnHosts(ctx, d, 1, pool)
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
+	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
-	existingContainers, err := host.FindAllRunningContainers()
+	numUphostParents, err := host.CountUphostParentsByContainerPool("test-pool")
 	s.NoError(err)
-	num := numNewParentsNeeded(len(currentParents), 1, len(existingContainers), d)
+	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
+	s.NoError(err)
+
+	parentsParams := newParentsNeededParams{
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   1,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
+	}
+	num := numNewParentsNeeded(parentsParams)
 	s.Equal(0, num)
 
-	s.Equal(1, len(newHostsSpawned["distro"]))
-	s.NotEmpty(newHostsSpawned["distro"][0].ParentID)
+	s.Equal(1, len(newHostsSpawned))
+	s.NotEmpty(newHostsSpawned[0].ParentID)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsParentsAndSomeContainers() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 3}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameMock, ContainerPool: "test-pool"}
+	parent := distro.Distro{Id: "parent-distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 3}
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	host3 := &host.Host{
 		Id:       "host3",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
 	s.NoError(d.Insert())
+	s.NoError(parent.Insert())
 	s.NoError(host1.Insert())
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	newHostsNeeded := map[string]int{
-		"distro": 3,
-	}
-	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
+	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
+	s.NoError(err)
+	numUphostParents, err := host.CountUphostParentsByContainerPool("test-pool")
+	s.NoError(err)
+	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
-	s.NoError(err)
-	existingContainers, err := host.FindAllRunningContainers()
-	s.NoError(err)
-	num := numNewParentsNeeded(len(currentParents), 3, len(existingContainers), d)
+	parentsParams := newParentsNeededParams{
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   3,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
+	}
+	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
 
-	s.Equal(2, len(newHostsSpawned["distro"]))
-	s.True(newHostsSpawned["distro"][0].HasContainers)
-	s.NotEmpty(newHostsSpawned["distro"][1].ParentID)
+	newHostsSpawned, err := spawnHosts(ctx, d, 3, pool)
+	s.NoError(err)
+	s.Equal(2, len(newHostsSpawned))
+
+	parents := 0
+	children := 0
+
+	for _, h := range newHostsSpawned {
+		if h.HasContainers {
+			parents++
+		} else if h.ParentID != "" {
+			children++
+		}
+	}
+
+	s.Equal(1, children)
+	s.Equal(1, parents)
 }
 
 func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
@@ -320,18 +379,20 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 	defer cancel()
 
 	d := distro.Distro{Id: "distro", PoolSize: 1, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 2}
+		ContainerPool: "test-pool"}
+	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 2}
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
 		Id:       "host2",
-		Distro:   distro.Distro{Id: "distro"},
+		Distro:   d,
 		Status:   evergreen.HostRunning,
 		ParentID: "host1",
 	}
@@ -339,54 +400,62 @@ func (s *SchedulerSuite) TestSpawnHostsMaximumCapacity() {
 	s.NoError(host1.Insert())
 	s.NoError(host2.Insert())
 
-	newHostsNeeded := map[string]int{
-		"distro": 2,
-	}
-	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
+	newHostsSpawned, err := spawnHosts(ctx, d, 2, pool)
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
+	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
-	existingContainers, err := host.FindAllRunningContainers()
+	numUphostParents, err := host.CountUphostParentsByContainerPool("test-pool")
 	s.NoError(err)
-	num := numNewParentsNeeded(len(currentParents), 2, len(existingContainers), d)
+	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
+	s.NoError(err)
+
+	parentsParams := newParentsNeededParams{
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   2,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
+	}
+	num := numNewParentsNeeded(parentsParams)
 	s.Equal(1, num)
 
-	s.Equal(1, len(newHostsSpawned["distro"]))
-	s.NotEmpty(newHostsSpawned["distro"][0].ParentID)
-
+	s.Len(newHostsSpawned, 1)
+	s.NotEmpty(newHostsSpawned[0].ParentID)
 }
 
 func (s *SchedulerSuite) TestFindAvailableParent() {
 	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 2}
+		ContainerPool: "test-pool"}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 2}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
 
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
-		Id:            "host2",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host2",
+		Distro:                distro.Distro{Id: "parent-distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host3 := &host.Host{
 		Id:          "host3",
-		Distro:      distro.Distro{Id: "distro"},
+		Distro:      d,
 		Status:      evergreen.HostRunning,
 		ParentID:    "host1",
 		RunningTask: "task1",
 	}
 	host4 := &host.Host{
 		Id:          "host4",
-		Distro:      distro.Distro{Id: "distro"},
+		Distro:      d,
 		Status:      evergreen.HostRunning,
 		ParentID:    "host2",
 		RunningTask: "task2",
@@ -415,42 +484,44 @@ func (s *SchedulerSuite) TestFindAvailableParent() {
 	s.NoError(task1.Insert())
 	s.NoError(task2.Insert())
 
-	availableParent, err := findAvailableParent(d)
+	availableParent, err := getNumContainersOnParents(d)
 	s.NoError(err)
 
-	s.Equal("host2", availableParent.Id)
+	s.Equal(2, len(availableParent))
 }
 
 func (s *SchedulerSuite) TestFindNoAvailableParent() {
-	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock,
-		MaxContainers: 1}
+	d := distro.Distro{Id: "distro", PoolSize: 3, Provider: evergreen.ProviderNameMock}
+	pool := &evergreen.ContainerPool{Distro: "distro", Id: "test-pool", MaxContainers: 1}
 	durationOne := 20 * time.Minute
 	durationTwo := 30 * time.Minute
 
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host1",
+		Host:                  "host",
+		User:                  "user",
+		Distro:                distro.Distro{Id: "distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
-		Id:            "host2",
-		Distro:        distro.Distro{Id: "distro"},
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:                    "host2",
+		Distro:                distro.Distro{Id: "distro"},
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host3 := &host.Host{
 		Id:          "host3",
-		Distro:      distro.Distro{Id: "distro"},
+		Distro:      distro.Distro{Id: "distro", ContainerPool: "test-pool"},
 		Status:      evergreen.HostRunning,
 		ParentID:    "host1",
 		RunningTask: "task1",
 	}
 	host4 := &host.Host{
 		Id:          "host4",
-		Distro:      distro.Distro{Id: "distro"},
+		Distro:      distro.Distro{Id: "distro", ContainerPool: "test-pool"},
 		Status:      evergreen.HostRunning,
 		ParentID:    "host2",
 		RunningTask: "task2",
@@ -477,9 +548,9 @@ func (s *SchedulerSuite) TestFindNoAvailableParent() {
 	s.NoError(task1.Insert())
 	s.NoError(task2.Insert())
 
-	availableParent, err := findAvailableParent(d)
-	s.EqualError(err, "No available parent found for container")
-	s.Empty(availableParent.Id)
+	availableParent, err := getNumContainersOnParents(d)
+	s.NoError(err)
+	s.Equal(0, len(availableParent))
 }
 
 func (s *SchedulerSuite) TestSpawnContainersStatic() {
@@ -487,56 +558,77 @@ func (s *SchedulerSuite) TestSpawnContainersStatic() {
 	defer cancel()
 
 	hosts := []cloud.StaticHost{{Name: "host1"}, {Name: "host2"}, {Name: "host3"}}
-	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDockerStatic,
-		MaxContainers: 1, ProviderSettings: &map[string]interface{}{"hosts": hosts}}
+	d := distro.Distro{Id: "distro", Provider: evergreen.ProviderNameDocker,
+		ContainerPool: "test-pool"}
+	parent := distro.Distro{Id: "parent-distro", Provider: evergreen.ProviderNameStatic}
+	pool := &evergreen.ContainerPool{Distro: "parent-distro", Id: "test-pool", MaxContainers: 1}
 
 	host1 := &host.Host{
-		Id:            "host1",
-		Host:          "host",
-		User:          "user",
-		Distro:        distro.Distro{Id: "distro"},
-		Provider:      evergreen.ProviderNameDockerStatic,
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id:   "host1",
+		Host: "host",
+		User: "user",
+		Distro: distro.Distro{
+			Id:               "parent-distro",
+			ProviderSettings: &map[string]interface{}{"hosts": hosts},
+		},
+		Provider:              evergreen.ProviderNameStatic,
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host2 := &host.Host{
-		Id:            "host2",
-		Distro:        distro.Distro{Id: "distro"},
-		Provider:      evergreen.ProviderNameDockerStatic,
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id: "host2",
+		Distro: distro.Distro{
+			Id:               "parent-distro",
+			ProviderSettings: &map[string]interface{}{"hosts": hosts},
+		},
+		Provider:              evergreen.ProviderNameStatic,
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 	host3 := &host.Host{
-		Id:            "host3",
-		Distro:        distro.Distro{Id: "distro"},
-		Provider:      evergreen.ProviderNameDockerStatic,
-		Status:        evergreen.HostRunning,
-		HasContainers: true,
+		Id: "host3",
+		Distro: distro.Distro{
+			Id:               "parent-distro",
+			ProviderSettings: &map[string]interface{}{"hosts": hosts},
+		},
+		Provider:              evergreen.ProviderNameStatic,
+		Status:                evergreen.HostRunning,
+		HasContainers:         true,
+		ContainerPoolSettings: pool,
 	}
 
 	s.NoError(d.Insert())
+	s.NoError(parent.Insert())
 	s.NoError(host1.Insert())
 	s.NoError(host2.Insert())
 	s.NoError(host3.Insert())
 
-	newHostsNeeded := map[string]int{
-		"distro": 4,
-	}
-
-	newHostsSpawned, err := spawnHosts(ctx, newHostsNeeded)
+	newHostsSpawned, err := spawnHosts(ctx, d, 4, pool)
 	s.NoError(err)
 
-	currentParents, err := host.FindAllRunningParentsByDistro(d.Id)
+	currentParents, err := host.FindAllRunningParentsByContainerPool(pool.Id)
 	s.NoError(err)
 	s.Equal(3, len(currentParents))
-	existingContainers, err := host.FindAllRunningContainers()
+	numUphostParents, err := host.CountUphostParentsByContainerPool("test-pool")
 	s.NoError(err)
-	numNewParents := numNewParentsNeeded(len(currentParents), newHostsNeeded["distro"], len(existingContainers), d)
-	numNewParentsToSpawn := parentCapacity(d, numNewParents, len(currentParents), len(existingContainers), newHostsNeeded["distro"])
-	s.Equal(0, numNewParentsToSpawn)
+	existingContainers, err := host.HostGroup(currentParents).FindRunningContainersOnParents()
+	s.NoError(err)
 
-	s.Equal(3, len(newHostsSpawned["distro"]))
-	s.NotEmpty(newHostsSpawned["distro"][0].ParentID)
-	s.NotEmpty(newHostsSpawned["distro"][1].ParentID)
-	s.NotEmpty(newHostsSpawned["distro"][2].ParentID)
+	parentsParams := newParentsNeededParams{
+		numUphostParents:      numUphostParents,
+		numContainersNeeded:   4,
+		numExistingContainers: len(existingContainers),
+		maxContainers:         pool.MaxContainers,
+	}
+	numNewParents := numNewParentsNeeded(parentsParams)
+	numNewParentsToSpawn, err := parentCapacity(parent, numNewParents, len(currentParents), pool)
+	s.NoError(err)
+	s.Equal(0, numNewParentsToSpawn)
+	s.Len(newHostsSpawned, 3)
+
+	for _, h := range newHostsSpawned {
+		s.NotEmpty(h.ParentID)
+	}
 }

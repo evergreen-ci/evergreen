@@ -24,40 +24,36 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	// status overwrites
-	TaskBlocked = "blocked"
-	TaskPending = "pending"
-)
-
 var NumTestsToSearchForTestNames = 100
 
 type uiTaskData struct {
-	Id               string                  `json:"id"`
-	DisplayName      string                  `json:"display_name"`
-	Revision         string                  `json:"gitspec"`
-	BuildVariant     string                  `json:"build_variant"`
-	Distro           string                  `json:"distro"`
-	BuildId          string                  `json:"build_id"`
-	Status           string                  `json:"status"`
-	TaskWaiting      string                  `json:"task_waiting"`
-	Activated        bool                    `json:"activated"`
-	Restarts         int                     `json:"restarts"`
-	Execution        int                     `json:"execution"`
-	TotalExecutions  int                     `json:"total_executions"`
-	StartTime        int64                   `json:"start_time"`
-	DispatchTime     int64                   `json:"dispatch_time"`
-	FinishTime       int64                   `json:"finish_time"`
-	Requester        string                  `json:"r"`
-	ExpectedDuration time.Duration           `json:"expected_duration"`
-	Priority         int64                   `json:"priority"`
-	TimeTaken        time.Duration           `json:"time_taken"`
-	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	TestResults      []uiTestResult          `json:"test_results"`
-	Aborted          bool                    `json:"abort"`
-	MinQueuePos      int                     `json:"min_queue_pos"`
-	DependsOn        []uiDep                 `json:"depends_on"`
-	IngestTime       time.Time               `json:"ingest_time"`
+	Id                   string                  `json:"id"`
+	DisplayName          string                  `json:"display_name"`
+	Revision             string                  `json:"gitspec"`
+	BuildVariant         string                  `json:"build_variant"`
+	Distro               string                  `json:"distro"`
+	BuildId              string                  `json:"build_id"`
+	Status               string                  `json:"status"`
+	TaskWaiting          string                  `json:"task_waiting"`
+	Activated            bool                    `json:"activated"`
+	Restarts             int                     `json:"restarts"`
+	Execution            int                     `json:"execution"`
+	TotalExecutions      int                     `json:"total_executions"`
+	StartTime            int64                   `json:"start_time"`
+	DispatchTime         int64                   `json:"dispatch_time"`
+	FinishTime           int64                   `json:"finish_time"`
+	Requester            string                  `json:"r"`
+	ExpectedDuration     time.Duration           `json:"expected_duration"`
+	Priority             int64                   `json:"priority"`
+	TimeTaken            time.Duration           `json:"time_taken"`
+	TaskEndDetails       apimodels.TaskEndDetail `json:"task_end_details"`
+	TestResults          []uiTestResult          `json:"test_results"`
+	Aborted              bool                    `json:"abort"`
+	MinQueuePos          int                     `json:"min_queue_pos"`
+	DependsOn            []uiDep                 `json:"depends_on"`
+	OverrideDependencies bool                    `json:"override_dependencies"`
+	IngestTime           time.Time               `json:"ingest_time"`
+	EstWaitTime          time.Duration           `json:"wait_time"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -108,9 +104,10 @@ type uiDep struct {
 }
 
 type uiExecTask struct {
-	Id     string `json:"id"`
-	Name   string `json:"display_name"`
-	Status string `json:"status"`
+	Id        string        `json:"id"`
+	Name      string        `json:"display_name"`
+	Status    string        `json:"status"`
+	TimeTaken time.Duration `json:"time_taken"`
 }
 
 type uiTestResult struct {
@@ -197,39 +194,40 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uiTask := uiTaskData{
-		Id:                  tId,
-		DisplayName:         projCtx.Task.DisplayName,
-		Revision:            projCtx.Task.Revision,
-		Status:              projCtx.Task.Status,
-		TaskEndDetails:      projCtx.Task.Details,
-		Distro:              projCtx.Task.DistroId,
-		BuildVariant:        projCtx.Task.BuildVariant,
-		BuildId:             projCtx.Task.BuildId,
-		Activated:           projCtx.Task.Activated,
-		Restarts:            projCtx.Task.Restarts,
-		Execution:           projCtx.Task.Execution,
-		Requester:           projCtx.Task.Requester,
-		StartTime:           projCtx.Task.StartTime.UnixNano(),
-		DispatchTime:        projCtx.Task.DispatchTime.UnixNano(),
-		FinishTime:          projCtx.Task.FinishTime.UnixNano(),
-		ExpectedDuration:    projCtx.Task.ExpectedDuration,
-		TimeTaken:           projCtx.Task.TimeTaken,
-		Priority:            projCtx.Task.Priority,
-		Aborted:             projCtx.Task.Aborted,
-		DisplayOnly:         projCtx.Task.DisplayOnly,
-		IngestTime:          projCtx.Task.IngestTime,
-		CurrentTime:         time.Now().UnixNano(),
-		BuildVariantDisplay: projCtx.Build.DisplayName,
-		Message:             projCtx.Version.Message,
-		Project:             projCtx.Version.Identifier,
-		Author:              projCtx.Version.Author,
-		AuthorEmail:         projCtx.Version.AuthorEmail,
-		VersionId:           projCtx.Version.Id,
-		RepoOwner:           projCtx.ProjectRef.Owner,
-		Repo:                projCtx.ProjectRef.Repo,
-		Archived:            archived,
-		TotalExecutions:     totalExecutions,
-		PartOfDisplay:       projCtx.Task.IsPartOfDisplay(),
+		Id:                   tId,
+		DisplayName:          projCtx.Task.DisplayName,
+		Revision:             projCtx.Task.Revision,
+		Status:               projCtx.Task.Status,
+		TaskEndDetails:       projCtx.Task.Details,
+		Distro:               projCtx.Task.DistroId,
+		BuildVariant:         projCtx.Task.BuildVariant,
+		BuildId:              projCtx.Task.BuildId,
+		Activated:            projCtx.Task.Activated,
+		Restarts:             projCtx.Task.Restarts,
+		Execution:            projCtx.Task.Execution,
+		Requester:            projCtx.Task.Requester,
+		StartTime:            projCtx.Task.StartTime.UnixNano(),
+		DispatchTime:         projCtx.Task.DispatchTime.UnixNano(),
+		FinishTime:           projCtx.Task.FinishTime.UnixNano(),
+		ExpectedDuration:     projCtx.Task.ExpectedDuration,
+		TimeTaken:            projCtx.Task.TimeTaken,
+		Priority:             projCtx.Task.Priority,
+		Aborted:              projCtx.Task.Aborted,
+		DisplayOnly:          projCtx.Task.DisplayOnly,
+		IngestTime:           projCtx.Task.IngestTime,
+		OverrideDependencies: projCtx.Task.OverrideDependencies,
+		CurrentTime:          time.Now().UnixNano(),
+		BuildVariantDisplay:  projCtx.Build.DisplayName,
+		Message:              projCtx.Version.Message,
+		Project:              projCtx.Version.Identifier,
+		Author:               projCtx.Version.Author,
+		AuthorEmail:          projCtx.Version.AuthorEmail,
+		VersionId:            projCtx.Version.Id,
+		RepoOwner:            projCtx.ProjectRef.Owner,
+		Repo:                 projCtx.ProjectRef.Repo,
+		Archived:             archived,
+		TotalExecutions:      totalExecutions,
+		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
@@ -247,6 +245,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if uiTask.MinQueuePos < 0 {
 		uiTask.MinQueuePos = 0
+	}
+	if uiTask.Status == evergreen.TaskUndispatched {
+		uiTask.EstWaitTime, err = model.GetEstimatedStartTime(*projCtx.Task)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	var taskHost *host.Host
@@ -287,7 +292,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{Id: et.Id, Name: et.DisplayName, Status: et.ResultStatus()})
+			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
+				Id:        et.Id,
+				Name:      et.DisplayName,
+				TimeTaken: et.TimeTaken,
+				Status:    et.ResultStatus(),
+			})
 			for _, tr := range et.LocalTestResults {
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: &et.Id, TaskName: &et.DisplayName})
 			}
@@ -305,15 +315,19 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	usr := gimlet.GetUser(ctx)
 	pluginContext := projCtx.ToPluginContext(uis.Settings, usr)
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
+	isAdmin := false
+	if usr != nil {
+		isAdmin = projCtx.ProjectRef.IsAdmin(usr.Username(), uis.Settings)
+	}
 
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Task          uiTaskData
-		Host          *host.Host
-		PluginContent pluginData
-		JiraHost      string
+		Task           uiTaskData
+		Host           *host.Host
+		PluginContent  pluginData
+		JiraHost       string
+		IsProjectAdmin bool
 		ViewData
-	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
-		"task.html", "base_angular.html", "menu.html")
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, isAdmin, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {
@@ -370,134 +384,35 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+	taskMap := map[string]*task.Task{}
+	for i := range dependencies {
+		taskMap[dependencies[i].Id] = &dependencies[i]
+	}
 
-	idToUiDep := make(map[string]uiDep)
-	// match each task with its dependency requirements
-	for _, depTask := range dependencies {
-		for _, dep := range t.DependsOn {
-			if dep.TaskId == depTask.Id {
-				idToUiDep[depTask.Id] = uiDep{
-					Id:             depTask.Id,
-					Name:           depTask.DisplayName,
-					Status:         depTask.Status,
-					RequiredStatus: dep.Status,
-					Activated:      depTask.Activated,
-					BuildVariant:   depTask.BuildVariant,
-					Details:        depTask.Details,
-					//TODO EVG-614: add "Recursive: dep.Recursive," once Task.DependsOn includes all recursive dependencies
-				}
-			}
+	uiDependencies := []uiDep{}
+	for _, dep := range t.DependsOn {
+		depTask, ok := taskMap[dep.TaskId]
+		if !ok {
+			continue
 		}
+		uiDependencies = append(uiDependencies, uiDep{
+			Id:             dep.TaskId,
+			Name:           depTask.DisplayName,
+			Status:         depTask.Status,
+			RequiredStatus: dep.Status,
+			Activated:      depTask.Activated,
+			BuildVariant:   depTask.BuildVariant,
+			Details:        depTask.Details,
+			//TODO EVG-614: add "Recursive: dep.Recursive," once Task.DependsOn includes all recursive dependencies
+		})
 	}
 
-	idToDep := make(map[string]task.Task)
-	for _, dep := range dependencies {
-		idToDep[dep.Id] = dep
-	}
-
-	// TODO EVG 614: delete this section once Task.DependsOn includes all recursive dependencies
-	err = addRecDeps(idToDep, idToUiDep, make(map[string]bool))
+	status, err := t.BlockedState()
 	if err != nil {
 		return nil, "", err
 	}
 
-	// set the status for each of the uiDeps as "blocked" or "pending" if appropriate
-	// and get the status for task
-	status := setBlockedOrPending(*t, idToDep, idToUiDep)
-
-	uiDeps := make([]uiDep, 0, len(idToUiDep))
-	for _, dep := range idToUiDep {
-		uiDeps = append(uiDeps, dep)
-	}
-	return uiDeps, status, nil
-}
-
-// addRecDeps recursively finds all dependencies of tasks and adds them to tasks and uiDeps.
-// done is a hashtable of task IDs whose dependencies we have found.
-// TODO EVG-614: delete this function once Task.DependsOn includes all recursive dependencies.
-func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[string]bool) error {
-	curTask := make(map[string]bool)
-	depIds := make([]string, 0)
-	for _, t := range tasks {
-		if _, ok := done[t.Id]; !ok {
-			for _, dep := range t.DependsOn {
-				depIds = append(depIds, dep.TaskId)
-			}
-			curTask[t.Id] = true
-		}
-	}
-
-	if len(depIds) == 0 {
-		return nil
-	}
-
-	deps, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey, task.ActivatedKey,
-		task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
-
-	if err != nil {
-		return err
-	}
-
-	for _, dep := range deps {
-		tasks[dep.Id] = dep
-	}
-
-	for _, t := range tasks {
-		if _, ok := curTask[t.Id]; ok {
-			for _, dep := range t.DependsOn {
-				if uid, ok := uiDeps[dep.TaskId]; !ok ||
-					// only replace if the current uiDep is not strict and not recursive
-					(uid.RequiredStatus == model.AllStatuses && !uid.Recursive) {
-					depTask := tasks[dep.TaskId]
-					uiDeps[depTask.Id] = uiDep{
-						Id:             depTask.Id,
-						Name:           depTask.DisplayName,
-						Status:         depTask.Status,
-						RequiredStatus: dep.Status,
-						Activated:      depTask.Activated,
-						BuildVariant:   depTask.BuildVariant,
-						Details:        depTask.Details,
-						Recursive:      true,
-					}
-				}
-			}
-			done[t.Id] = true
-		}
-	}
-
-	return addRecDeps(tasks, uiDeps, done)
-}
-
-// setBlockedOrPending sets the status of all uiDeps to "blocked" or "pending" if appropriate
-// and returns "blocked", "pending", or the original status of task as appropriate.
-// A task is blocked if some recursive dependency is in an undesirable state.
-// A task is pending if some dependency has not finished.
-func setBlockedOrPending(t task.Task, tasks map[string]task.Task, uiDeps map[string]uiDep) string {
-	blocked := false
-	pending := false
-	for _, dep := range t.DependsOn {
-		depTask := tasks[dep.TaskId]
-
-		uid := uiDeps[depTask.Id]
-		uid.TaskWaiting = setBlockedOrPending(depTask, tasks, uiDeps)
-		uiDeps[depTask.Id] = uid
-		if uid.TaskWaiting == TaskBlocked {
-			blocked = true
-		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
-			if depTask.Status != dep.Status && dep.Status != model.AllStatuses {
-				blocked = true
-			}
-		} else {
-			pending = true
-		}
-	}
-	if blocked {
-		return TaskBlocked
-	}
-	if pending {
-		return TaskPending
-	}
-	return ""
+	return uiDependencies, status, nil
 }
 
 // async handler for polling the task log
@@ -696,6 +611,18 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		}
+		gimlet.WriteJSON(w, projCtx.Task)
+		return
+	case "override_dependencies":
+		if !projCtx.ProjectRef.IsAdmin(authUser.Username(), uis.Settings) {
+			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
+			return
+		}
+		err = projCtx.Task.SetOverrideDependencies(authUser.Username())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		gimlet.WriteJSON(w, projCtx.Task)
 		return

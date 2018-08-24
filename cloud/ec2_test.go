@@ -7,11 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -41,7 +44,7 @@ func (s *EC2Suite) SetupSuite() {
 }
 
 func (s *EC2Suite) SetupTest() {
-	s.Require().NoError(db.Clear(host.Collection))
+	s.Require().NoError(db.ClearCollections(host.Collection, task.Collection, model.ProjectVarsCollection))
 	s.onDemandOpts = &EC2ManagerOptions{
 		client:   &awsClientMock{},
 		provider: onDemandProvider,
@@ -78,10 +81,10 @@ func (s *EC2Suite) TestConstructor() {
 
 func (s *EC2Suite) TestValidateProviderSettings() {
 	p := &EC2ProviderSettings{
-		AMI:           "ami",
-		InstanceType:  "type",
-		SecurityGroup: "sg-123456",
-		KeyName:       "keyName",
+		AMI:              "ami",
+		InstanceType:     "type",
+		SecurityGroupIDs: []string{"sg-123456"},
+		KeyName:          "keyName",
 	}
 	s.NoError(p.Validate())
 	p.AMI = ""
@@ -94,18 +97,11 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	p.InstanceType = "type"
 
 	s.NoError(p.Validate())
-	p.SecurityGroup = ""
-	s.Error(p.Validate())
-	p.SecurityGroup = "sg-123456"
-	p.SecurityGroupIDs = []string{"sg-123456"}
-	s.Error(p.Validate())
 	p.SecurityGroupIDs = nil
+	s.Error(p.Validate())
+	p.SecurityGroupIDs = []string{"sg-123456"}
 
 	s.NoError(p.Validate())
-	p.KeyName = ""
-	s.Error(p.Validate())
-	p.KeyName = "keyName"
-
 	p.BidPrice = -1
 	s.Error(p.Validate())
 	p.BidPrice = 1
@@ -228,9 +224,9 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -286,10 +282,10 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"is_vpc":         true,
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -345,9 +341,9 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -401,10 +397,10 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"mount_points": []map[string]string{
 			map[string]string{"device_name": "device", "virtual_name": "virtual"},
 		},
-		"security_group": "sg-123456",
-		"subnet_id":      "subnet-123456",
-		"is_vpc":         true,
-		"user_data":      someUserData,
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -446,6 +442,124 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
+func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
+	h := &host.Host{}
+	h.Distro.Id = "distro_id"
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.ProviderSettings = &map[string]interface{}{
+		"ami":           "ami",
+		"instance_type": "instanceType",
+		"key_name":      "",
+		"mount_points": []map[string]string{
+			map[string]string{"device_name": "device", "virtual_name": "virtual"},
+		},
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := s.onDemandManager.SpawnHost(ctx, h)
+	s.Error(err)
+}
+
+func (s *EC2Suite) TestSpawnHostForTask() {
+	h := &host.Host{}
+	h.Distro.Id = "distro_id"
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.ProviderSettings = &map[string]interface{}{
+		"ami":           "ami",
+		"instance_type": "instanceType",
+		"key_name":      "",
+		"mount_points": []map[string]string{
+			map[string]string{"device_name": "device", "virtual_name": "virtual"},
+		},
+		"security_group_ids": []string{"sg-123456"},
+		"subnet_id":          "subnet-123456",
+		"is_vpc":             true,
+		"user_data":          someUserData,
+	}
+
+	project := "example_project"
+	t := &task.Task{
+		Id:      "task_1",
+		Project: project,
+	}
+	h.SpawnOptions.TaskID = "task_1"
+	h.StartedBy = "task_1"
+	h.SpawnOptions.SpawnedByTask = true
+	s.Require().NoError(t.Insert())
+	newVars := &model.ProjectVars{
+		Id: project,
+	}
+	s.Require().NoError(newVars.Insert())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := s.onDemandManager.SpawnHost(ctx, h)
+	s.NoError(err)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.True(ok)
+
+	runInput := *mock.RunInstancesInput
+	s.Equal("ami", *runInput.ImageId)
+	s.Equal("instanceType", *runInput.InstanceType)
+	s.Equal("evg_auto_example_project", *runInput.KeyName)
+	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
+	s.Nil(runInput.SecurityGroupIds)
+	s.Nil(runInput.SecurityGroups)
+	s.Nil(runInput.SubnetId)
+	describeInput := *mock.DescribeInstancesInput
+	s.Equal("instance_id", *describeInput.InstanceIds[0])
+	tagsInput := *mock.CreateTagsInput
+	s.Equal("instance_id", *tagsInput.Resources[0])
+	s.Len(tagsInput.Tags, 8)
+	var foundInstanceName bool
+	var foundDistroID bool
+	for _, tag := range tagsInput.Tags {
+		if *tag.Key == "name" {
+			foundInstanceName = true
+			s.Equal(*tag.Value, "instance_id")
+		}
+		if *tag.Key == "distro" {
+			foundDistroID = true
+			s.Equal(*tag.Value, "distro_id")
+		}
+	}
+	s.True(foundInstanceName)
+	s.True(foundDistroID)
+	s.Equal(base64OfSomeUserData, *runInput.UserData)
+
+	deleteInput := *mock.DeleteKeyPairInput
+	s.Equal("evg_auto_"+project, *deleteInput.KeyName)
+	createInput := *mock.CreateKeyPairInput
+	s.Equal("evg_auto_"+project, *createInput.KeyName)
+
+	k, err := model.GetAWSKeyForProject(project)
+	s.NoError(err)
+	s.Equal("evg_auto_"+project, k.Name)
+	s.Equal("key_material", k.Value)
+
+	// if we do it again, we shouldn't hit AWS for the key again
+	deleteInput.KeyName = aws.String("")
+	createInput.KeyName = aws.String("")
+	_, err = s.onDemandManager.SpawnHost(ctx, h)
+	s.NoError(err)
+	s.Equal("", *deleteInput.KeyName)
+	s.Equal("", *createInput.KeyName)
+	k, err = model.GetAWSKeyForProject(project)
+	s.NoError(err)
+	s.Equal("evg_auto_"+project, k.Name)
+	s.Equal("key_material", k.Value)
+}
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -644,9 +758,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
-				InstanceId: makeStringPtr("sir-1"),
-				State:      makeStringPtr(SpotStatusActive),
-				SpotInstanceRequestId: makeStringPtr("1"),
+				InstanceId: aws.String("sir-1"),
+				State:      aws.String(SpotStatusActive),
+				SpotInstanceRequestId: aws.String("1"),
 			},
 		},
 	}
@@ -661,13 +775,13 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			// This host returns with no id
 			&ec2.SpotInstanceRequest{
-				SpotInstanceRequestId: makeStringPtr("sir-1"),
-				State: makeStringPtr(ec2.SpotInstanceStateFailed),
+				SpotInstanceRequestId: aws.String("sir-1"),
+				State: aws.String(ec2.SpotInstanceStateFailed),
 			},
 			&ec2.SpotInstanceRequest{
-				InstanceId: makeStringPtr("i-3"),
-				State:      makeStringPtr(SpotStatusActive),
-				SpotInstanceRequestId: makeStringPtr("sir-3"),
+				InstanceId: aws.String("i-3"),
+				State:      aws.String(SpotStatusActive),
+				SpotInstanceRequestId: aws.String("sir-3"),
 			},
 		},
 	}
@@ -676,9 +790,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-3"),
+						InstanceId: aws.String("i-3"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 					},
 				},
@@ -686,9 +800,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-2"),
+						InstanceId: aws.String("i-2"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 					},
 				},
@@ -696,9 +810,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-4"),
+						InstanceId: aws.String("i-4"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameRunning),
+							Name: aws.String(ec2.InstanceStateNameRunning),
 						},
 					},
 				},
@@ -706,9 +820,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-5"),
+						InstanceId: aws.String("i-5"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameTerminated),
+							Name: aws.String(ec2.InstanceStateNameTerminated),
 						},
 					},
 				},
@@ -716,9 +830,9 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
-						InstanceId: makeStringPtr("i-6"),
+						InstanceId: aws.String("i-6"),
 						State: &ec2.InstanceState{
-							Name: makeStringPtr(ec2.InstanceStateNameShuttingDown),
+							Name: aws.String(ec2.InstanceStateNameShuttingDown),
 						},
 					},
 				},
@@ -786,15 +900,15 @@ func (s *EC2Suite) TestUserDataExpand() {
 
 func (s *EC2Suite) TestGetSecurityGroup() {
 	settings := EC2ProviderSettings{
-		SecurityGroup: "sg-1",
+		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
+	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1")}, settings.getSecurityGroups())
+	s.Equal([]*string{aws.String("sg-1")}, settings.getSecurityGroups())
 	settings = EC2ProviderSettings{
 		SecurityGroupIDs: []string{"sg-1", "sg-2"},
 	}
-	s.Equal([]*string{makeStringPtr("sg-1"), makeStringPtr("sg-2")}, settings.getSecurityGroups())
+	s.Equal([]*string{aws.String("sg-1"), aws.String("sg-2")}, settings.getSecurityGroups())
 }

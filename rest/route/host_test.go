@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -21,8 +20,9 @@ import (
 )
 
 type HostSuite struct {
-	sc   *data.MockConnector
-	data data.MockHostConnector
+	route *hostIDGetHandler
+	sc    *data.MockConnector
+	data  data.MockHostConnector
 
 	suite.Suite
 }
@@ -41,38 +41,51 @@ func (s *HostSuite) SetupSuite() {
 	}
 }
 
-func (s *HostSuite) TestFindByIdFirst() {
-	handler := &hostIDGetHandler{hostId: "host1"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
-	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+func (s *HostSuite) SetupTest() {
+	s.route = &hostIDGetHandler{
+		sc: s.sc,
+	}
+}
 
-	h, ok := (res.Result[0]).(*model.APIHost)
+func (s *HostSuite) TestFindByIdFirst() {
+	s.route.hostId = "host1"
+	res := s.route.Run(context.TODO())
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+
+	h, ok := res.Data().(*model.APIHost)
+	s.True(ok)
+	s.NotNil(res)
+
 	s.True(ok)
 	s.Equal(model.ToAPIString("host1"), h.Id)
 }
 
 func (s *HostSuite) TestFindByIdLast() {
-	handler := &hostIDGetHandler{hostId: "host2"}
-	res, err := handler.Execute(context.TODO(), s.sc)
-	s.NoError(err)
+	s.route.hostId = "host2"
+	res := s.route.Run(context.TODO())
 	s.NotNil(res)
-	s.Equal(1, len(res.Result))
+	s.Equal(http.StatusOK, res.Status())
 
-	h, ok := (res.Result[0]).(*model.APIHost)
+	h, ok := res.Data().(*model.APIHost)
+	s.True(ok)
+	s.NotNil(res)
+
 	s.True(ok)
 	s.Equal(model.ToAPIString("host2"), h.Id)
+
 }
 
 func (s *HostSuite) TestFindByIdFail() {
-	handler := &hostIDGetHandler{hostId: "host3"}
-	_, ok := handler.Execute(context.TODO(), s.sc)
-	s.Error(ok)
+	s.route.hostId = "host3"
+	res := s.route.Run(context.TODO())
+	s.NotNil(res)
+	s.Equal(http.StatusNotFound, res.Status(), "%+v", res)
+
 }
 
 type hostTerminateHostHandlerSuite struct {
-	rm *RouteManager
+	rm *hostTerminateHandler
 	sc *data.MockConnector
 
 	suite.Suite
@@ -84,101 +97,96 @@ func TestTerminateHostHandler(t *testing.T) {
 }
 
 func (s *hostTerminateHostHandlerSuite) SetupTest() {
-	s.rm = getHostTerminateRouteManager("", 2)
 	s.sc = getMockHostsConnector()
+	s.rm = makeTerminateHostRoute(s.sc).(*hostTerminateHandler)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
-		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
+		_ = s.rm.Run(context.TODO())
+
 	})
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
-	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
-	h.hostID = "host-that-doesn't-exist"
+	s.rm.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+	resp := s.rm.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
-	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
+	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host1"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.NotNil(err)
-	s.IsType(new(rest.APIError), err)
-	apiErr := err.(*rest.APIError)
+	resp := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, resp.Status())
+
+	apiErr := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[0].Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
-	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
+	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
 	s.Equal(evergreen.HostUninitialized, s.sc.CachedHosts[2].Status)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.NoError(err)
+	resp := h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
-	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
+	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.NoError(err)
+	resp := h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
-	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
+	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host3"
 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.NoError(err)
+	resp := h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
-	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
+	h := s.rm.Factory().(*hostTerminateHandler)
 	h.hostID = "host2"
 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
+	s.Equal(http.StatusUnauthorized, resp.Status())
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 }
 
 type hostChangeRDPPasswordHandlerSuite struct {
-	rm *RouteManager
+	rm gimlet.RouteHandler
 	sc *data.MockConnector
 	suite.Suite
 }
@@ -189,52 +197,49 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
-	s.rm = getHostChangeRDPPasswordRouteManager("", 2)
 	s.sc = getMockHostsConnector()
+	s.rm = makeHostChangePassword(s.sc)
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
-		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
+		_ = s.rm.Run(context.TODO())
 	})
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecute() {
-	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Equal("Error constructing host RDP password: No known provider for ''", err.Error())
+	resp := h.Run(ctx)
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "Error constructing host RDP password: No known provider for ''")
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFails() {
-	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host3"
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
-	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
@@ -251,48 +256,47 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPa
 		err := s.tryParseAndValidate(mod)
 
 		s.Error(err)
-		s.IsType(new(rest.APIError), err)
-		apiErr := err.(*rest.APIError)
+		s.IsType(gimlet.ErrorResponse{}, err)
+		apiErr := err.(gimlet.ErrorResponse)
 		s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	}
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
-	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Equal("Error constructing host RDP password: No known provider for ''", err.Error())
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
+	s.Contains(resp.Data().(gimlet.ErrorResponse).Message, "Error constructing host RDP password: No known provider for ''")
 }
 func (s *hostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost() {
-	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
 	r, err := makeMockHostRequest(mod)
 	s.NoError(err)
 
-	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h := s.rm.Factory().(*hostChangeRDPPasswordHandler)
 
-	return h.ParseAndValidate(context.TODO(), r)
+	return h.Parse(context.TODO(), r)
 }
 
 type hostExtendExpirationHandlerSuite struct {
-	rm *RouteManager
+	rm gimlet.RouteHandler
 	sc *data.MockConnector
 	suite.Suite
 }
@@ -303,25 +307,24 @@ func TestHostExtendExpirationHandler(t *testing.T) {
 }
 
 func (s *hostExtendExpirationHandlerSuite) SetupTest() {
-	s.rm = getHostExtendExpirationRouteManager("", 2)
 	s.sc = getMockHostsConnector()
+	s.rm = makeExtendHostExpiration(s.sc)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestHostExtendExpirationWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
-		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
+		_ = s.rm.Run(context.TODO())
 	})
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
-	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host-that-doesn't-exist"
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
@@ -340,84 +343,79 @@ func (s *hostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExp
 
 		err := s.tryParseAndValidate(mod)
 		s.Error(err)
-		s.IsType(new(rest.APIError), err)
-		apiErr := err.(*rest.APIError)
+		s.IsType(gimlet.ErrorResponse{}, err)
+		apiErr := err.(gimlet.ErrorResponse)
 		s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	}
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails() {
-	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 9001 * time.Hour
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
-	s.IsType(new(rest.APIError), err)
-	apiErr := err.(*rest.APIError)
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
+	apiErr := resp.Data().(gimlet.ErrorResponse)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecute() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
 
-	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.NoError(err)
+	resp := h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
 	expectedTime := s.sc.CachedHosts[0].ExpirationTime
 
-	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host1"
 	h.addHours = 8 * time.Hour
 
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+	ctx := gimlet.AttachUser(context.Background(), s.sc.MockUserConnector.CachedUsers["user0"])
+	resp := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, resp.Status())
 	s.Equal(expectedTime, s.sc.CachedHosts[0].ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
 
-	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.NoError(err)
+
+	resp := h.Run(ctx)
+	s.Equal(http.StatusOK, resp.Status())
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime
 
-	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h := s.rm.Factory().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Error(err)
+
+	resp := h.Run(ctx)
+	s.NotEqual(http.StatusOK, resp.Status())
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
@@ -425,9 +423,9 @@ func (s *hostExtendExpirationHandlerSuite) tryParseAndValidate(mod model.APISpaw
 	r, err := makeMockHostRequest(mod)
 	s.NoError(err)
 
-	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h := s.rm.Factory().(*hostExtendExpirationHandler)
 
-	return h.ParseAndValidate(context.TODO(), r)
+	return h.Parse(context.TODO(), r)
 }
 
 func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {

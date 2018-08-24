@@ -118,6 +118,8 @@ type APINotificationPreferences struct {
 	PatchFinishID         APIString `json:"patch_finish_id,omitempty"`
 	SpawnHostExpiration   APIString `json:"spawn_host_expiration"`
 	SpawnHostExpirationID APIString `json:"spawn_host_expiration_id,omitempty"`
+	SpawnHostOutcome      APIString `json:"spawn_host_outcome"`
+	SpawnHostOutcomeID    APIString `json:"spawn_host_outcome_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
@@ -128,15 +130,19 @@ func (n *APINotificationPreferences) BuildFromService(h interface{}) error {
 	case user.NotificationPreferences:
 		n.BuildBreak = ToAPIString(string(v.BuildBreak))
 		n.PatchFinish = ToAPIString(string(v.PatchFinish))
+		n.SpawnHostOutcome = ToAPIString(string(v.SpawnHostOutcome))
 		n.SpawnHostExpiration = ToAPIString(string(v.SpawnHostExpiration))
 		if v.BuildBreakID != "" {
-			n.BuildBreakID = ToAPIString(v.BuildBreakID.Hex())
+			n.BuildBreakID = ToAPIString(v.BuildBreakID)
 		}
 		if v.PatchFinishID != "" {
-			n.PatchFinishID = ToAPIString(v.PatchFinishID.Hex())
+			n.PatchFinishID = ToAPIString(v.PatchFinishID)
+		}
+		if v.SpawnHostOutcomeID != "" {
+			n.SpawnHostOutcomeID = ToAPIString(v.SpawnHostOutcomeID)
 		}
 		if v.SpawnHostExpirationID != "" {
-			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID.Hex())
+			n.SpawnHostExpirationID = ToAPIString(v.SpawnHostExpirationID)
 		}
 	default:
 		return errors.Errorf("incorrect type for APINotificationPreferences")
@@ -151,36 +157,29 @@ func (n *APINotificationPreferences) ToService() (interface{}, error) {
 	buildbreak := FromAPIString(n.BuildBreak)
 	patchFinish := FromAPIString(n.PatchFinish)
 	spawnHostExpiration := FromAPIString(n.SpawnHostExpiration)
+	spawnHostOutcome := FromAPIString(n.SpawnHostOutcome)
 	if !user.IsValidSubscriptionPreference(buildbreak) {
 		return nil, errors.New("Build break preference is not a valid type")
 	}
 	if !user.IsValidSubscriptionPreference(patchFinish) {
 		return nil, errors.New("Patch finish preference is not a valid type")
 	}
+	if !user.IsValidSubscriptionPreference(spawnHostExpiration) {
+		return nil, errors.New("Spawn Host Expiration preference is not a valid type")
+	}
+	if !user.IsValidSubscriptionPreference(spawnHostOutcome) {
+		return nil, errors.New("Spawn Host Outcome preference is not a valid type")
+	}
 	preferences := user.NotificationPreferences{
 		BuildBreak:          user.UserSubscriptionPreference(buildbreak),
 		PatchFinish:         user.UserSubscriptionPreference(patchFinish),
+		SpawnHostOutcome:    user.UserSubscriptionPreference(spawnHostOutcome),
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
 	}
-	var err error
-	if n.BuildBreakID != nil {
-		preferences.BuildBreakID, err = user.FormatObjectID(FromAPIString(n.BuildBreakID))
-		if err != nil {
-			return nil, err
-		}
-	}
-	if n.PatchFinishID != nil {
-		preferences.PatchFinishID, err = user.FormatObjectID(FromAPIString(n.PatchFinishID))
-		if err != nil {
-			return nil, err
-		}
-	}
-	if n.SpawnHostExpirationID != nil {
-		preferences.SpawnHostExpirationID, err = user.FormatObjectID(FromAPIString(n.SpawnHostExpirationID))
-		if err != nil {
-			return nil, err
-		}
-	}
+	preferences.BuildBreakID = FromAPIString(n.BuildBreakID)
+	preferences.PatchFinishID = FromAPIString(n.PatchFinishID)
+	preferences.SpawnHostOutcomeID = FromAPIString(n.PatchFinishID)
+	preferences.SpawnHostExpirationID = FromAPIString(n.SpawnHostExpirationID)
 	return preferences, nil
 }
 

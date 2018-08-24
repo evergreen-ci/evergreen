@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -106,21 +107,21 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
 	}
 	if t == nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
 	}
 	v, err := version.FindOneId(t.Version)
 	if err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
 	}
 	if v == nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
 	}
 	p := &Project{}
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
 
 	// Cache project data in maps for quick lookup
@@ -128,16 +129,16 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 
 	// Validate generated project against original project.
 	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
 	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	v.Config = config
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, &rest.APIError{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
 	return p, v, t, &cachedProject, nil
 }
@@ -175,18 +176,30 @@ func cacheProjectData(p *Project) projectMaps {
 func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *version.Version, p *Project) error {
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
+	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))
+	if err != nil {
+		return errors.Wrap(err, "problem finding builds for version")
+	}
+	buildSet := map[string]struct{}{}
+	for _, b := range builds {
+		buildSet[b.BuildVariant] = struct{}{}
+	}
 	for _, bv := range g.BuildVariants {
 		// If the buildvariant already exists, append tasks to it.
-		if _, ok := cachedProject.buildVariants[bv.Name]; ok {
+		if _, ok := buildSet[bv.Name]; ok {
 			newTVPairsForExistingVariants = appendTasks(newTVPairsForExistingVariants, bv, p)
 		} else {
 			// If the buildvariant does not exist, create it.
 			newTVPairsForNewVariants = appendTasks(newTVPairsForNewVariants, bv, p)
 		}
 	}
+	dependencies := IncludePatchDependencies(p, newTVPairsForExistingVariants.ExecTasks)
+	newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, dependencies...)
 	if err := AddNewTasks(true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
-		return errors.Wrap(err, "errors adding new builds")
+		return errors.Wrap(err, "errors adding new tasks")
 	}
+	dependencies = IncludePatchDependencies(p, newTVPairsForNewVariants.ExecTasks)
+	newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, dependencies...)
 	if err := AddNewBuilds(true, v, p, newTVPairsForNewVariants, g.TaskID); err != nil {
 		return errors.Wrap(err, "errors adding new builds")
 	}

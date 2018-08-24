@@ -10,20 +10,20 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.selectedDistro = {};
     $scope.userKeys = [];
     $scope.selectedKey = {};
-    $scope.userData = {};
     $scope.spawnInfo = {};
     $scope.extensionLength = {};
     $scope.curHostData;
     $scope.hostExtensionLengths = {};
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
     $scope.spawnReqSent = false;
+    $scope.useTaskConfig = false;
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24*7;
     $scope.saveKey = false;
     $scope.currKeyName = '';
     $scope.newKey = {
-      'name': 'New Key...',
+      'name': '',
       'key': '',
     };
 
@@ -146,7 +146,8 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       $scope.spawnReqSent = true;
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
-      $scope.spawnInfo.userData = $scope.userData.text;
+      $scope.spawnInfo.userData = $scope.userdata;
+      $scope.spawnInfo.useTaskConfig = $scope.useTaskConfig;
       if($scope.spawnTaskChecked && !!$scope.spawnTask){
         $scope.spawnInfo.task_id = $scope.spawnTask.id;
       }
@@ -236,7 +237,6 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             $scope.selectedDistro = $scope.spawnableDistros[selectedIndex].distro;
             $scope.spawnInfo.distroId = $scope.selectedDistro.name;
           }
-
         }
       };
     };

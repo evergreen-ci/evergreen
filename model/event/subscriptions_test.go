@@ -32,9 +32,9 @@ func (s *subscriptionsSuite) SetupTest() {
 	t5 := "slack_user"
 	s.subscriptions = []Subscription{
 		{
-			ID:      bson.NewObjectId(),
-			Type:    "type1",
-			Trigger: "trigger1",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type1",
+			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
 					Type: "data1",
@@ -50,9 +50,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:      bson.NewObjectId(),
-			Type:    "type1",
-			Trigger: "trigger1",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type1",
+			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
 					Type: "data2",
@@ -68,9 +68,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			OwnerType: OwnerTypePerson,
 		},
 		{
-			ID:      bson.NewObjectId(),
-			Type:    "type1",
-			Trigger: "trigger1",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type1",
+			Trigger:      "trigger1",
 			Selectors: []Selector{
 				{
 					Type: "data1",
@@ -94,9 +94,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			Owner: "someone",
 		},
 		{
-			ID:      bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
-			Type:    "type2",
-			Trigger: "trigger2",
+			ID:           "5949645c9acd9604fdd202d8",
+			ResourceType: "type2",
+			Trigger:      "trigger2",
 			Selectors: []Selector{
 				{
 					Type: "data",
@@ -116,9 +116,9 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 		},
 		{
-			ID:      bson.NewObjectId(),
-			Type:    "type2",
-			Trigger: "trigger2",
+			ID:           bson.NewObjectId().Hex(),
+			ResourceType: "type2",
+			Trigger:      "trigger2",
 			Selectors: []Selector{
 				{
 					Type: "data",
@@ -158,7 +158,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 			s.Equal(s.subscriptions[3].RegexSelectors, sub.RegexSelectors)
 			s.Equal(s.subscriptions[3].Subscriber, sub.Subscriber)
 		}
-		if sub.ID == bson.ObjectIdHex("5949645c9acd9604fdd202d8") {
+		if sub.ID == "5949645c9acd9604fdd202d8" {
 			s.Equal(s.subscriptions[3].TriggerData, sub.TriggerData)
 		}
 	}
@@ -285,7 +285,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
 		sub, err := FindSubscriptionByID(s.subscriptions[i].ID)
 		s.NoError(err)
 		s.NotNil(sub)
-		s.True(sub.ID.Valid())
+		s.NotEqual("", sub.ID)
 	}
 
 	s.NoError(db.ClearCollections(SubscriptionsCollection))

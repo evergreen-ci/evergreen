@@ -10,21 +10,21 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
-	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
+
+const tsFormat = "2006-01-02.15-04-05"
 
 // publicProjectFields are the fields needed by the UI
 // on base_angular and the menu
@@ -61,20 +61,10 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// construct a json-marshaling friendly representation of our supported triggers
-	allTaskTriggers := []interface{}{}
-	for _, taskTrigger := range alerts.AvailableTaskFailTriggers {
-		allTaskTriggers = append(allTaskTriggers, struct {
-			Id      string `json:"id"`
-			Display string `json:"display"`
-		}{taskTrigger.Id(), taskTrigger.Display()})
-	}
-
 	data := struct {
-		AllProjects       []model.ProjectRef
-		AvailableTriggers []interface{}
+		AllProjects []model.ProjectRef
 		ViewData
-	}{allProjects, allTaskTriggers, uis.GetCommonViewData(w, r, true, true)}
+	}{allProjects, uis.GetCommonViewData(w, r, true, true)}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
@@ -210,7 +200,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		SetupGithubHook      bool                        `json:"setup_github_hook"`
 		ForceRepotrackerRun  bool                        `json:"force_repotracker_run"`
 		Subscriptions        []restModel.APISubscription `json:"subscriptions"`
-		DeleteSubscriptions  []bson.ObjectId             `json:"delete_subscriptions"`
+		DeleteSubscriptions  []string                    `json:"delete_subscriptions"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -283,21 +273,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 
-	projectRef.Alerts = map[string][]model.AlertConfig{}
-	for triggerId, alerts := range responseRef.AlertConfig {
-		//TODO validate the triggerID, provider, and settings.
-		for _, alert := range alerts {
-			projectRef.Alerts[triggerId] = append(projectRef.Alerts[triggerId], model.AlertConfig{
-				Provider: alert.Provider,
-				Settings: bson.M(alert.Settings),
-			})
-		}
-	}
-
-	if !projectRef.Enabled {
-		projectRef.PRTestingEnabled = false
-	}
-
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -354,10 +329,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.ForceRepotrackerRun {
-		j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
-		if err = uis.queue.Put(j); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
+		if err := uis.queue.Put(j); err != nil {
+			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
 	}
 
@@ -387,6 +362,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 		subscription.OwnerType = event.OwnerTypeProject
 		subscription.Owner = projectRef.Identifier
+		if !trigger.ValidateTrigger(subscription.ResourceType, subscription.Trigger) {
+			catcher.Add(errors.Errorf("subscription type/trigger is invalid: %s/%s", subscription.ResourceType, subscription.Trigger))
+			continue
+		}
 		if err = subscription.Upsert(); err != nil {
 			catcher.Add(err)
 		}
@@ -547,14 +526,11 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// run the repotracker for the project
-	ts := util.RoundPartOfHour(5).Format("2006-01-02.15-04-05")
+	ts := util.RoundPartOfHour(1).Format(tsFormat)
 	j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
-	err = evergreen.GetEnvironment().RemoteQueue().Put(j)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
+	if err := uis.queue.Put(j); err != nil {
+		grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 	}
-
 	gimlet.WriteJSON(w, nil)
 }
 

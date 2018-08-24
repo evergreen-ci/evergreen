@@ -62,7 +62,10 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	case EvergreenWebhookSubscriberType:
 		s.Target = &WebhookSubscriber{}
 
-	case JIRAIssueSubscriberType, JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType:
+	case JIRAIssueSubscriberType:
+		s.Target = &JIRAIssueSubscriber{}
+
+	case JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType:
 		str := ""
 		s.Target = &str
 
@@ -89,6 +92,11 @@ func (s *Subscriber) String() string {
 	case WebhookSubscriber:
 		subscriberStr = v.String()
 	case *WebhookSubscriber:
+		subscriberStr = v.String()
+
+	case JIRAIssueSubscriber:
+		subscriberStr = v.String()
+	case *JIRAIssueSubscriber:
 		subscriberStr = v.String()
 
 	case string:
@@ -121,6 +129,15 @@ func (s *WebhookSubscriber) String() string {
 		return "NIL_URL"
 	}
 	return s.URL
+}
+
+type JIRAIssueSubscriber struct {
+	Project   string `bson:"project"`
+	IssueType string `bson:"issue_type"`
+}
+
+func (s *JIRAIssueSubscriber) String() string {
+	return fmt.Sprintf("%s-%s", s.Project, s.IssueType)
 }
 
 type GithubPullRequestSubscriber struct {

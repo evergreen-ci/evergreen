@@ -35,20 +35,5 @@
 	RouteManagers are structs that define all of the functionality of a particular
 	API route, including definitions of each of the methods it implements and the
 	path used to access it.
-
-	PaginationExecutor
-
-	PaginationExecutor is a type that handles gathering necessary information for
-	paginating and handles executing the necessary parts of the API request. The
-	PaginationExecutor type is an implemention of the RequestHandler so that writing paginated
-	endpoints does not necessarily require rewriting these methods; However, any of
-	these methods may be overwritten to provide additional flexibility and functionality.
-
-	PaginatorFunc
-
-	PaginatorFunc is a function type that defines how to perform pagination over a
-	specific resource. It is the only type that is required to be implemented when
-	adding paginated API resources.
-
 */
 package rest
