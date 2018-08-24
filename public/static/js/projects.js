@@ -109,7 +109,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     {
       trigger: "runtime-change",
       resource_type: "TASK",
-      label: "the runtime for a task changes by some percentage",
+      label: "the runtime for a successful task changes by some percentage",
       regex_selectors: taskRegexSelectors(),
       extraFields: [
         {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
