@@ -1717,7 +1717,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, ProjectRefCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, ProjectRefCollection, event.AllLogCollection))
 	ref := ProjectRef{
 		Identifier: "sample",
 	}
@@ -1863,19 +1863,23 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
 	assert.NoError(err)
 	assert.True(complete)
+
+	e, err := event.FindUnprocessedEvents()
+	assert.NoError(err)
+	assert.Len(e, 7)
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, event.AllLogCollection))
 
 	buildID := "buildtest"
 	testTask := task.Task{
 		Id:          "testone",
 		DisplayName: evergreen.CompileStage,
-		Activated:   false,
+		Activated:   true,
 		BuildId:     buildID,
 		Project:     "sample",
 		Status:      evergreen.TaskStarted,
@@ -1884,6 +1888,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	require.NoError(testTask.Insert())
 	anotherTask := task.Task{
 		Id:          "two",
+		Activated:   true,
 		DisplayName: "test 2",
 		BuildId:     buildID,
 		Project:     "sample",
@@ -1940,6 +1945,10 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
+
+	e, err := event.FindUnprocessedEvents()
+	assert.NoError(err)
+	assert.Len(e, 3)
 }
 
 func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
@@ -1952,7 +1961,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	testTask := task.Task{
 		Id:          "testone",
 		DisplayName: "dothings",
-		Activated:   false,
+		Activated:   true,
 		BuildId:     buildID,
 		Project:     "sample",
 		Status:      evergreen.TaskStarted,
@@ -1964,6 +1973,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		DisplayName: "test 2",
 		BuildId:     buildID,
 		Project:     "sample",
+		Activated:   true,
 		Status:      evergreen.TaskUndispatched,
 		StartTime:   time.Now().Add(-time.Hour),
 		DependsOn: []task.Dependency{
@@ -2016,6 +2026,10 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
+
+	e, err := event.FindUnprocessedEvents()
+	assert.NoError(err)
+	assert.Len(e, 3)
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {

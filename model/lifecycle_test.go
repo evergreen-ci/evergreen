@@ -71,37 +71,27 @@ func TestBuildSetPriority(t *testing.T) {
 func TestBuildRestart(t *testing.T) {
 	Convey("Restarting a build", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
-			"Error clearing test collection")
-		b := &build.Build{
-			Id: "build",
-			Tasks: []build.TaskCache{
-				{
-					Id:        "task1",
-					Status:    evergreen.TaskSucceeded,
-					Activated: true,
-				},
-				{
-					Id:        "task2",
-					Status:    evergreen.TaskDispatched,
-					Activated: true,
-				},
-				{
-					Id:        "task3",
-					Status:    evergreen.TaskDispatched,
-					Activated: true,
-				},
-				{
-					Id:        "task4",
-					Status:    evergreen.TaskDispatched,
-					Activated: true,
-				},
-			},
-		}
-		So(b.Insert(), ShouldBeNil)
-
 		Convey("with task abort should update the status of"+
 			" non in-progress tasks and abort in-progress ones", func() {
+
+			testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
+				"Error clearing test collection")
+			b := &build.Build{
+				Id: "build",
+				Tasks: []build.TaskCache{
+					{
+						Id:        "task1",
+						Status:    evergreen.TaskSucceeded,
+						Activated: true,
+					},
+					{
+						Id:        "task2",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+				},
+			}
+			So(b.Insert(), ShouldBeNil)
 
 			taskOne := &task.Task{
 				Id:          "task1",
@@ -139,6 +129,35 @@ func TestBuildRestart(t *testing.T) {
 
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
+
+			testutil.HandleTestingErr(db.ClearCollections(build.Collection), t,
+				"Error clearing test collection")
+			b := &build.Build{
+				Id: "build",
+				Tasks: []build.TaskCache{
+					{
+						Id:        "task1",
+						Status:    evergreen.TaskSucceeded,
+						Activated: true,
+					},
+					{
+						Id:        "task2",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+					{
+						Id:        "task3",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+					{
+						Id:        "task4",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+				},
+			}
+			So(b.Insert(), ShouldBeNil)
 
 			taskThree := &task.Task{
 				Id:          "task3",

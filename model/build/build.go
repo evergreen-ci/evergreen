@@ -84,6 +84,12 @@ func (b *Build) AllUnblockedTasksOrCompileFinished() (bool, string, error) {
 		if !b.Tasks[i].Activated {
 			continue
 		}
+		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
+			if b.Tasks[i].DisplayName == evergreen.CompileStage {
+				return true, evergreen.BuildFailed, nil
+			}
+			status = evergreen.BuildFailed
+		}
 		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
 			t, err := task.FindOneNoMerge(task.ById(b.Tasks[i].Id))
 			if err != nil {
@@ -101,16 +107,7 @@ func (b *Build) AllUnblockedTasksOrCompileFinished() (bool, string, error) {
 				allFinished = false
 			}
 		}
-		if b.Tasks[i].DisplayName == evergreen.CompileStage {
-			if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
-				return true, evergreen.BuildFailed, nil
-			}
-		}
-		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
-			status = evergreen.BuildFailed
-		}
 	}
-
 	err := catcher.Resolve()
 	if allFinished && err != nil {
 		return false, status, err
