@@ -1565,7 +1565,8 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }
 
-// BlockedState returns "blocked," "pending," or "" to represent the state of the task
+// BlockedState returns "blocked," "pending" (unsatisfied dependencies,
+// but unblocked), or "" (runnable) to represent the state of the task
 // with respect to its dependencies
 func (t *Task) BlockedState() (string, error) {
 	if t.DisplayOnly {

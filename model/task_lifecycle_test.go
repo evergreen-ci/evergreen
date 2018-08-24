@@ -1824,7 +1824,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ := b.AllCachedTasksOrCompileFinished()
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.False(complete)
 
 	updates = StatusChanges{}
@@ -1835,7 +1836,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ = b.AllCachedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.False(complete)
 
 	updates = StatusChanges{}
@@ -1846,7 +1848,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ = b.AllCachedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.False(complete)
 
 	updates = StatusChanges{}
@@ -1857,7 +1860,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ = b.AllCachedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.True(complete)
 }
 
@@ -1932,7 +1936,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
-	complete, _ := b.AllCachedTasksOrCompileFinished()
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())

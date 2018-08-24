@@ -6,6 +6,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -65,7 +68,7 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
-// AllCachedTasksOrCompileFinished returns true when either:
+// AllUnblockedTasksOrCompileFinished returns true when either:
 //  1. if there is a compile task, the compile task's status is one the ones
 //     listed in IsFailedTaskStatus
 //  2. or all activated tasks in the task cache have one of the statuses in
@@ -73,19 +76,34 @@ func (b *Build) IsFinished() bool {
 // returns boolean to indicate if tasks are complete, string with either
 // BuildFailed or BuildSucceded. The string is only valid when the boolean is
 // true
-func (b *Build) AllCachedTasksOrCompileFinished() (bool, string) {
+func (b *Build) AllUnblockedTasksOrCompileFinished() (bool, string, error) {
 	allFinished := true
 	status := evergreen.BuildSucceeded
+	catcher := grip.NewSimpleCatcher()
 	for i := range b.Tasks {
 		if !b.Tasks[i].Activated {
 			continue
 		}
 		if !evergreen.IsFinishedTaskStatus(b.Tasks[i].Status) {
-			allFinished = false
+			t, err := task.FindOneNoMerge(task.ById(b.Tasks[i].Id))
+			if err != nil {
+				return false, status, err
+			}
+			if t == nil {
+				return false, status, errors.Errorf("task %s doesn't exist", b.Tasks[i].Id)
+			}
+
+			blockedStatus, err := t.BlockedState()
+			if err != nil {
+				return false, status, err
+			}
+			if blockedStatus != "blocked" {
+				allFinished = false
+			}
 		}
 		if b.Tasks[i].DisplayName == evergreen.CompileStage {
 			if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
-				return true, evergreen.BuildFailed
+				return true, evergreen.BuildFailed, nil
 			}
 		}
 		if evergreen.IsFailedTaskStatus(b.Tasks[i].Status) {
@@ -93,7 +111,12 @@ func (b *Build) AllCachedTasksOrCompileFinished() (bool, string) {
 		}
 	}
 
-	return allFinished, status
+	err := catcher.Resolve()
+	if allFinished && err != nil {
+		return false, status, err
+	}
+
+	return allFinished, status, nil
 }
 
 // Find
