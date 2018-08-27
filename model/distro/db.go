@@ -20,6 +20,7 @@ var (
 	SSHOptionsKey       = bsonutil.MustHaveTag(Distro{}, "SSHOptions")
 	WorkDirKey          = bsonutil.MustHaveTag(Distro{}, "WorkDir")
 	SpawnAllowedKey     = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
+	TaskDisabledKey     = bsonutil.MustHaveTag(Distro{}, "TaskDisabled")
 	ExpansionsKey       = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey         = bsonutil.MustHaveTag(Distro{}, "Disabled")
 	ContainerPoolKey    = bsonutil.MustHaveTag(Distro{}, "ContainerPool")

@@ -30,6 +30,7 @@ type Distro struct {
 	SSHOptions  []string `bson:"ssh_options,omitempty" json:"ssh_options,omitempty" mapstructure:"ssh_options,omitempty"`
 
 	SpawnAllowed bool        `bson:"spawn_allowed" json:"spawn_allowed,omitempty" mapstructure:"spawn_allowed,omitempty"`
+	TaskDisabled bool        `bson:"task_disabled" json:"task_disabled,omitempty" mapstructure:"task_disabled,omitempty"`
 	Expansions   []Expansion `bson:"expansions,omitempty" json:"expansions,omitempty" mapstructure:"expansions,omitempty"`
 	Disabled     bool        `bson:"disabled,omitempty" json:"disabled,omitempty" mapstructure:"disabled,omitempty"`
 

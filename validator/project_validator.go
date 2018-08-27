@@ -94,6 +94,10 @@ func getDistroIds() ([]string, error) {
 	}
 	distroIds := []string{}
 	for _, d := range distros {
+		if d.TaskDisabled {
+			continue
+		}
+
 		if !util.StringSliceContains(distroIds, d.Id) {
 			distroIds = append(distroIds, d.Id)
 		}
