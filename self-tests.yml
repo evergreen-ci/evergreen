@@ -666,6 +666,7 @@ buildvariants:
       gobin: /opt/go1.8/go/bin/go
       goroot: /opt/go1.8/go
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      test_timeout: 15m
     tasks:
       - name: "dist"
       - name: ".smoke"

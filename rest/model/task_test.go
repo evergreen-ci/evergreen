@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -14,6 +16,7 @@ type taskCompare struct {
 }
 
 func TestTaskBuildFromService(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	Convey("With a list of models to compare", t, func() {
 		timeNow := time.Now()
 		cTime := timeNow.Add(10 * time.Minute)
