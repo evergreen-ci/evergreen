@@ -159,6 +159,7 @@ $(gopath)/src/%:
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
+	$(gobin) install github.com/evergreen-ci/evergreen
 	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -o $@ $<
