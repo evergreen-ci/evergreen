@@ -102,7 +102,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	beat := <-heartbeat
 	end := time.Now()
 	s.Equal(evergreen.TaskFailed, beat)
-	s.True(end.Sub(start) > 50*time.Millisecond) // canceled by context
+	s.True(end.Sub(start) > 49*time.Millisecond) // canceled by context
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {
