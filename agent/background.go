@@ -123,8 +123,9 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, c
 // callback timeout if it has one or to the defaultCallbackCmdTimeout.
 func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (context.Context, context.CancelFunc) {
 	timeout := defaultCallbackCmdTimeout
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.CallbackTimeout != 0 {
-		timeout = time.Duration(tc.taskConfig.Project.CallbackTimeout) * time.Second
+	taskConfig := tc.getTaskConfig()
+	if taskConfig != nil && taskConfig.Project != nil && taskConfig.Project.CallbackTimeout != 0 {
+		timeout = time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
 	}
 	return context.WithTimeout(ctx, timeout)
 }
