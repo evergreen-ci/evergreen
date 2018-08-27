@@ -40,21 +40,22 @@ type Mock struct {
 	apiKey     string
 
 	// mock behavior
-	NextTaskShouldFail     bool
-	NextTaskShouldConflict bool
-	GetPatchFileShouldFail bool
-	loggingShouldFail      bool
-	NextTaskResponse       *apimodels.NextTaskResponse
-	NextTaskIsNil          bool
-	EndTaskResponse        *apimodels.EndTaskResponse
-	EndTaskShouldFail      bool
-	EndTaskResult          endTaskResult
-	ShellExecFilename      string
-	TimeoutFilename        string
-	HeartbeatShouldAbort   bool
-	HeartbeatShouldErr     bool
-	TaskExecution          int
-	GetSubscriptionsFail   bool
+	NextTaskShouldFail          bool
+	NextTaskShouldConflict      bool
+	GetPatchFileShouldFail      bool
+	loggingShouldFail           bool
+	NextTaskResponse            *apimodels.NextTaskResponse
+	NextTaskIsNil               bool
+	EndTaskResponse             *apimodels.EndTaskResponse
+	EndTaskShouldFail           bool
+	EndTaskResult               endTaskResult
+	ShellExecFilename           string
+	TimeoutFilename             string
+	HeartbeatShouldAbort        bool
+	HeartbeatShouldErr          bool
+	HeartbeatShouldSometimesErr bool
+	TaskExecution               int
+	GetSubscriptionsFail        bool
 
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
@@ -194,6 +195,14 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, e
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (bool, error) {
 	if c.HeartbeatShouldAbort {
 		return true, nil
+	}
+	if c.HeartbeatShouldSometimesErr {
+		if c.HeartbeatShouldErr {
+			c.HeartbeatShouldErr = false
+			return false, errors.New("mock heartbeat error")
+		}
+		c.HeartbeatShouldErr = true
+		return false, nil
 	}
 	if c.HeartbeatShouldErr {
 		return false, errors.New("mock heartbeat error")
