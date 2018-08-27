@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -125,11 +124,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			}
 			at.DependsOn = dependsOn
 		}
-		start, err := model.GetEstimatedStartTime(*v)
-		if err != nil {
-			return errors.Wrap(err, "error getting estimated start time")
-		}
-		at.EstimatedStart = NewAPIDuration(start)
 	case string:
 		ll := logLinks{
 			AllLogLink:    ToAPIString(fmt.Sprintf(LogLinkFormat, v, FromAPIString(at.Id), at.Execution, "ALL")),
