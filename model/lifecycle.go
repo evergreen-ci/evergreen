@@ -73,6 +73,15 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 			},
 			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 		)
+		tasks, err := task.FindAllTasksFromBuildWithDependencies(buildId)
+		if err != nil {
+			return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
+		}
+		for _, t := range tasks {
+			for _, d := range t.DependsOn {
+				SetActiveState(d.TaskId, caller, active)
+			}
+		}
 	} else {
 
 		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
