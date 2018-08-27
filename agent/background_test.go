@@ -80,7 +80,7 @@ func (s *BackgroundSuite) TestTaskAbort() {
 func (s *BackgroundSuite) TestMaxHeartbeats() {
 	s.mockCommunicator.HeartbeatShouldErr = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	heartbeat := make(chan string)
 	start := time.Now()
@@ -88,13 +88,13 @@ func (s *BackgroundSuite) TestMaxHeartbeats() {
 	beat := <-heartbeat
 	end := time.Now()
 	s.Equal(evergreen.TaskFailed, beat)
-	s.True(end.Sub(start) < 20*time.Millisecond) // canceled before context expired
+	s.True(end.Sub(start) < 50*time.Millisecond) // canceled before context expired
 }
 
 func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	s.mockCommunicator.HeartbeatShouldSometimesErr = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	heartbeat := make(chan string)
 	start := time.Now()
@@ -102,7 +102,7 @@ func (s *BackgroundSuite) TestHeartbeatSometimesFailsDoesNotFailTask() {
 	beat := <-heartbeat
 	end := time.Now()
 	s.Equal(evergreen.TaskFailed, beat)
-	s.True(end.Sub(start) > 20*time.Millisecond) // canceled by context
+	s.True(end.Sub(start) > 50*time.Millisecond) // canceled by context
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {
