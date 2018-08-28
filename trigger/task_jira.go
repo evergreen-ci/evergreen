@@ -61,8 +61,7 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 		id = data.Task.OldTaskId
 	}
 
-	return taskLink(&evergreen.UIConfig{UiRoot: data.UIRoot})
-	return fmt.Sprintf("%s/task/%s/%d", data.UIRoot, url.PathEscape(id), execution), nil
+	return taskLink(data.UIRoot, id, execution), nil
 }
 
 // jiraTestFailure contains the required fields for generating a failure report.

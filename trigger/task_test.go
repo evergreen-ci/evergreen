@@ -196,6 +196,11 @@ func (s *taskSuite) TestAllTriggers() {
 	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.Len(n, 4)
+
+	s.task.DisplayOnly = true
+	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	s.NoError(err)
+	s.Empty(n)
 }
 
 func (s *taskSuite) TestSuccess() {

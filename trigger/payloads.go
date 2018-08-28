@@ -9,7 +9,6 @@ import (
 	"net/url"
 	ttemplate "text/template"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -266,18 +265,14 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	return nil, errors.Errorf("unknown type: '%s'", sub.Subscriber.Type)
 }
 
-func taskLink(ui *evergreen.UIConfig, taskID string, execution int) string {
-	taskID = url.PathEscape(taskID)
-	if execution < 0 {
-		return fmt.Sprintf("%s/task/%s", ui.Url, taskID)
-	}
-	return fmt.Sprintf("%s/task/%s/%d", ui.Url, taskID, execution)
+func taskLink(uiBase string, taskID string, execution int) string {
+	return fmt.Sprintf("%s/task/%s/%d", uiBase, url.PathEscape(taskID), execution)
 }
 
-func buildLink(ui *evergreen.UIConfig, buildID string) string {
-	return fmt.Sprintf("%s/build/%s/", ui.Url, url.PathEscape(buildID))
+func buildLink(uiBase string, buildID string) string {
+	return fmt.Sprintf("%s/build/%s/", uiBase, url.PathEscape(buildID))
 }
 
-func versionLink(ui *evergreen.UIConfig, versionID string) string {
-	return fmt.Sprintf("%s/version/%s/", ui.Url, url.PathEscape(versionID))
+func versionLink(uiBase string, versionID string) string {
+	return fmt.Sprintf("%s/version/%s/", uiBase, url.PathEscape(versionID))
 }

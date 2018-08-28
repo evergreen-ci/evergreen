@@ -224,7 +224,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		DisplayName:     t.task.DisplayName,
 		Object:          "task",
 		Project:         t.task.Project,
-		URL:             taskLink(&t.uiConfig, t.task.Id, t.task.Execution),
+		URL:             taskLink(t.uiConfig.Url, t.task.Id, t.task.Execution),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}
