@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -539,6 +540,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 func TestAllTasksFinished(t *testing.T) {
 	assert := assert.New(t)
 
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "error clearing collection")
 	b := &Build{
 		Id:      "b1",
 		Status:  evergreen.BuildStarted,
@@ -571,15 +573,15 @@ func TestAllTasksFinished(t *testing.T) {
 			},
 		},
 	}
-	assert.False(b.AllCachedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished())
 	b.Tasks[0].Status = evergreen.TaskFailed
-	assert.False(b.AllCachedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished())
 	b.Tasks[1].Status = evergreen.TaskSucceeded
-	assert.False(b.AllCachedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished())
 	b.Tasks[2].Status = evergreen.TaskSystemFailed
-	assert.False(b.AllCachedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished())
 	b.Tasks[3].Status = evergreen.TaskTestTimedOut
-	assert.True(b.AllCachedTasksOrCompileFinished())
+	assert.True(b.AllUnblockedTasksOrCompileFinished())
 
 	b.Tasks = []TaskCache{
 		{
@@ -599,9 +601,75 @@ func TestAllTasksFinished(t *testing.T) {
 		},
 	}
 
-	assert.False(b.AllCachedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished())
 	b.Tasks[0].Status = evergreen.TaskFailed
-	assert.True(b.AllCachedTasksOrCompileFinished())
+	assert.True(b.AllUnblockedTasksOrCompileFinished())
+
+	b.Tasks = []TaskCache{
+		{
+			Id:        "t0",
+			Status:    evergreen.TaskFailed,
+			Activated: true,
+		},
+		{
+			Id:        "t1",
+			Activated: true,
+			Status:    evergreen.TaskUnstarted,
+		},
+		{
+			Id:        "d0",
+			Activated: true,
+			Status:    evergreen.TaskStarted,
+		},
+	}
+
+	t0 := task.Task{
+		Id:     "t0",
+		Status: evergreen.TaskFailed,
+		Details: apimodels.TaskEndDetail{
+			Status: evergreen.TaskFailed,
+			Type:   "test",
+		},
+	}
+	t1 := task.Task{
+		Id:     "t1",
+		Status: evergreen.TaskUndispatched,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: t0.Id,
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+	}
+	d0 := task.Task{
+		Id:             "d0",
+		Status:         evergreen.TaskStarted,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{"e0", "e1"},
+	}
+	e0 := task.Task{
+		Id:     "e0",
+		Status: evergreen.TaskFailed,
+	}
+	e1 := task.Task{
+		Id: "e1",
+		DependsOn: []task.Dependency{
+			{
+				TaskId: e0.Id,
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+		Status: evergreen.TaskUndispatched,
+	}
+
+	assert.NoError(t0.Insert())
+	assert.NoError(t1.Insert())
+	assert.NoError(d0.Insert())
+	assert.NoError(e0.Insert())
+	assert.NoError(e1.Insert())
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
+	assert.True(complete)
 }
 
 func TestBuildSetCachedTaskFinished(t *testing.T) {

@@ -1565,11 +1565,15 @@ func (t *Task) GetJQL(searchProjects []string) string {
 	return fmt.Sprintf(jqlBFQuery, strings.Join(searchProjects, ", "), jqlClause)
 }
 
-// BlockedState returns "blocked," "pending," or "" to represent the state of the task
+// BlockedState returns "blocked," "pending" (unsatisfied dependencies,
+// but unblocked), or "" (runnable) to represent the state of the task
 // with respect to its dependencies
 func (t *Task) BlockedState() (string, error) {
 	if t.DisplayOnly {
 		return t.blockedStateForDisplayTask()
+	}
+	if len(t.DependsOn) == 0 {
+		return "", nil
 	}
 
 	dependencyIDs := []string{}
@@ -1608,6 +1612,9 @@ func (t *Task) blockedStateForDisplayTask() (string, error) {
 	execTasks, err := Find(ByIds(t.ExecutionTasks))
 	if err != nil {
 		return "", errors.Wrap(err, "error finding execution tasks")
+	}
+	if len(execTasks) == 0 {
+		return "", nil
 	}
 	state := ""
 	for _, execTask := range execTasks {
