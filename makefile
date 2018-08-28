@@ -73,7 +73,7 @@ lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
 lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg
-lintArgs += --enable=goimports
+lintArgs += --enable=goimports --disable="gotypex"
 # end lint configuration
 
 
@@ -159,7 +159,6 @@ $(gopath)/src/%:
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
-	$(gobin) install github.com/evergreen-ci/evergreen
 	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -o $@ $<
