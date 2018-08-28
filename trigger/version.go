@@ -81,6 +81,8 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 
 	data := commonTemplateData{
 		ID:              t.version.Id,
+		EventID:         t.event.ID,
+		SubscriptionID:  sub.ID,
 		DisplayName:     t.version.Id,
 		Object:          objectVersion,
 		Project:         t.version.Identifier,

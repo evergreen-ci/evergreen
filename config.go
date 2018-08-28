@@ -23,7 +23,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2018-08-02"
+	ClientVersion = "2018-08-24"
 
 	errNotFound = "not found"
 )
@@ -476,17 +476,6 @@ func GetServiceFlags() (*ServiceFlags, error) {
 		return nil, errors.New("unable to convert config section to service flags")
 	}
 	return flags, nil
-}
-
-type ClientBinary struct {
-	Arch string `yaml:"arch" json:"arch"`
-	OS   string `yaml:"os" json:"os"`
-	URL  string `yaml:"url" json:"url"`
-}
-
-type ClientConfig struct {
-	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"ClientBinaries"`
-	LatestRevision string         `yaml:"latest_revision" json:"LatestRevision"`
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

@@ -25,6 +25,7 @@ h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
 Host: {{host .}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
+Evergreen Subscription: {{.SubscriptionID}}; Evergreen Event: {{.EventID}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
 `
@@ -81,6 +82,8 @@ type jiraBuilder struct {
 
 type jiraTemplateData struct {
 	UIRoot             string
+	SubscriptionID     string
+	EventID            string
 	Task               *task.Task
 	Build              *build.Build
 	Host               *host.Host

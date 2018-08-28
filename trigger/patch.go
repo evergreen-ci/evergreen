@@ -130,6 +130,8 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 
 	data := commonTemplateData{
 		ID:                t.patch.Id.Hex(),
+		EventID:           t.event.ID,
+		SubscriptionID:    sub.ID,
 		DisplayName:       t.patch.Id.Hex(),
 		Description:       t.patch.Description,
 		Object:            objectPatch,

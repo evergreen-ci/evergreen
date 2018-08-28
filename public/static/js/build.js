@@ -20,10 +20,6 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
     $scope.buildResults[build._id] = [];
 
     for (var j = 0; j < build.tasks.length; ++j) {
-      if (!build.tasks[j].activated) {
-        build.tasks[j].status = 'unscheduled';
-      }
-
       $scope.buildResults[build._id].push({
         "class": $filter('statusFilter')(build.tasks[j]),
         "tooltip": build.tasks[j].display_name + " - " + $filter('statusLabel')(build.tasks[j]),

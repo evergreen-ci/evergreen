@@ -15,9 +15,11 @@ const (
 	groupsListApiEndpoint   = "groups.list"
 	groupsCreateApiEndpoint = "groups.create"
 
-	imListApiEndpoint = "im.list"
+	imListApiEndpoint   = "im.list"
+	mpimListApiEndpoint = "mpim.list"
 
 	filesUploadApiEndpoint = "files.upload"
+	filesInfoApiEndpoint   = "files.info"
 
 	usersInfoApiEndpoint = "users.info"
 	usersListApiEndpoint = "users.list"

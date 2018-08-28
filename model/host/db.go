@@ -23,59 +23,60 @@ const (
 )
 
 var (
-	IdKey                      = bsonutil.MustHaveTag(Host{}, "Id")
-	DNSKey                     = bsonutil.MustHaveTag(Host{}, "Host")
-	SecretKey                  = bsonutil.MustHaveTag(Host{}, "Secret")
-	UserKey                    = bsonutil.MustHaveTag(Host{}, "User")
-	TagKey                     = bsonutil.MustHaveTag(Host{}, "Tag")
-	DistroKey                  = bsonutil.MustHaveTag(Host{}, "Distro")
-	ProviderKey                = bsonutil.MustHaveTag(Host{}, "Provider")
-	ProvisionedKey             = bsonutil.MustHaveTag(Host{}, "Provisioned")
-	ProvisionTimeKey           = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
-	ExtIdKey                   = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
-	RunningTaskKey             = bsonutil.MustHaveTag(Host{}, "RunningTask")
-	RunningTaskGroupKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
-	RunningTaskBuildVariantKey = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
-	RunningTaskVersionKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
-	RunningTaskProjectKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
-	TaskDispatchTimeKey        = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
-	CreateTimeKey              = bsonutil.MustHaveTag(Host{}, "CreationTime")
-	ExpirationTimeKey          = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
-	TerminationTimeKey         = bsonutil.MustHaveTag(Host{}, "TerminationTime")
-	LTCTimeKey                 = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
-	LTCTaskKey                 = bsonutil.MustHaveTag(Host{}, "LastTask")
-	LTCGroupKey                = bsonutil.MustHaveTag(Host{}, "LastGroup")
-	LTCBVKey                   = bsonutil.MustHaveTag(Host{}, "LastBuildVariant")
-	LTCVersionKey              = bsonutil.MustHaveTag(Host{}, "LastVersion")
-	LTCProjectKey              = bsonutil.MustHaveTag(Host{}, "LastProject")
-	StatusKey                  = bsonutil.MustHaveTag(Host{}, "Status")
-	AgentRevisionKey           = bsonutil.MustHaveTag(Host{}, "AgentRevision")
-	AgentDeployAttemptKey      = bsonutil.MustHaveTag(Host{}, "AgentDeployAttempt")
-	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
-	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
-	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
-	VolumeSizeKey              = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
-	NotificationsKey           = bsonutil.MustHaveTag(Host{}, "Notifications")
-	LastCommunicationTimeKey   = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
-	UserHostKey                = bsonutil.MustHaveTag(Host{}, "UserHost")
-	ZoneKey                    = bsonutil.MustHaveTag(Host{}, "Zone")
-	ProjectKey                 = bsonutil.MustHaveTag(Host{}, "Project")
-	ProvisionOptionsKey        = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
-	ProvisionAttemptsKey       = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
-	TaskCountKey               = bsonutil.MustHaveTag(Host{}, "TaskCount")
-	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
-	TotalCostKey               = bsonutil.MustHaveTag(Host{}, "TotalCost")
-	TotalIdleTimeKey           = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
-	HasContainersKey           = bsonutil.MustHaveTag(Host{}, "HasContainers")
-	ParentIDKey                = bsonutil.MustHaveTag(Host{}, "ParentID")
-	ContainerImagesKey         = bsonutil.MustHaveTag(Host{}, "ContainerImages")
-	ContainerBuildAttempt      = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
-	LastContainerFinishTimeKey = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
-	SpawnOptionsKey            = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
-	ContainerPoolSettingsKey   = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
-	SpawnOptionsTaskIDKey      = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
-	SpawnOptionsBuildIDKey     = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
-	SpawnOptionsTimeoutKey     = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
+	IdKey                        = bsonutil.MustHaveTag(Host{}, "Id")
+	DNSKey                       = bsonutil.MustHaveTag(Host{}, "Host")
+	SecretKey                    = bsonutil.MustHaveTag(Host{}, "Secret")
+	UserKey                      = bsonutil.MustHaveTag(Host{}, "User")
+	TagKey                       = bsonutil.MustHaveTag(Host{}, "Tag")
+	DistroKey                    = bsonutil.MustHaveTag(Host{}, "Distro")
+	ProviderKey                  = bsonutil.MustHaveTag(Host{}, "Provider")
+	ProvisionedKey               = bsonutil.MustHaveTag(Host{}, "Provisioned")
+	ProvisionTimeKey             = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
+	ExtIdKey                     = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
+	RunningTaskKey               = bsonutil.MustHaveTag(Host{}, "RunningTask")
+	RunningTaskGroupKey          = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
+	RunningTaskBuildVariantKey   = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
+	RunningTaskVersionKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
+	RunningTaskProjectKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
+	TaskDispatchTimeKey          = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
+	CreateTimeKey                = bsonutil.MustHaveTag(Host{}, "CreationTime")
+	ExpirationTimeKey            = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
+	TerminationTimeKey           = bsonutil.MustHaveTag(Host{}, "TerminationTime")
+	LTCTimeKey                   = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
+	LTCTaskKey                   = bsonutil.MustHaveTag(Host{}, "LastTask")
+	LTCGroupKey                  = bsonutil.MustHaveTag(Host{}, "LastGroup")
+	LTCBVKey                     = bsonutil.MustHaveTag(Host{}, "LastBuildVariant")
+	LTCVersionKey                = bsonutil.MustHaveTag(Host{}, "LastVersion")
+	LTCProjectKey                = bsonutil.MustHaveTag(Host{}, "LastProject")
+	StatusKey                    = bsonutil.MustHaveTag(Host{}, "Status")
+	AgentRevisionKey             = bsonutil.MustHaveTag(Host{}, "AgentRevision")
+	AgentDeployAttemptKey        = bsonutil.MustHaveTag(Host{}, "AgentDeployAttempt")
+	NeedsNewAgentKey             = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
+	StartedByKey                 = bsonutil.MustHaveTag(Host{}, "StartedBy")
+	InstanceTypeKey              = bsonutil.MustHaveTag(Host{}, "InstanceType")
+	VolumeSizeKey                = bsonutil.MustHaveTag(Host{}, "VolumeTotalSize")
+	NotificationsKey             = bsonutil.MustHaveTag(Host{}, "Notifications")
+	LastCommunicationTimeKey     = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
+	UserHostKey                  = bsonutil.MustHaveTag(Host{}, "UserHost")
+	ZoneKey                      = bsonutil.MustHaveTag(Host{}, "Zone")
+	ProjectKey                   = bsonutil.MustHaveTag(Host{}, "Project")
+	ProvisionOptionsKey          = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
+	ProvisionAttemptsKey         = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
+	TaskCountKey                 = bsonutil.MustHaveTag(Host{}, "TaskCount")
+	StartTimeKey                 = bsonutil.MustHaveTag(Host{}, "StartTime")
+	TotalCostKey                 = bsonutil.MustHaveTag(Host{}, "TotalCost")
+	TotalIdleTimeKey             = bsonutil.MustHaveTag(Host{}, "TotalIdleTime")
+	HasContainersKey             = bsonutil.MustHaveTag(Host{}, "HasContainers")
+	ParentIDKey                  = bsonutil.MustHaveTag(Host{}, "ParentID")
+	ContainerImagesKey           = bsonutil.MustHaveTag(Host{}, "ContainerImages")
+	ContainerBuildAttempt        = bsonutil.MustHaveTag(Host{}, "ContainerBuildAttempt")
+	LastContainerFinishTimeKey   = bsonutil.MustHaveTag(Host{}, "LastContainerFinishTime")
+	SpawnOptionsKey              = bsonutil.MustHaveTag(Host{}, "SpawnOptions")
+	ContainerPoolSettingsKey     = bsonutil.MustHaveTag(Host{}, "ContainerPoolSettings")
+	SpawnOptionsTaskIDKey        = bsonutil.MustHaveTag(SpawnOptions{}, "TaskID")
+	SpawnOptionsBuildIDKey       = bsonutil.MustHaveTag(SpawnOptions{}, "BuildID")
+	SpawnOptionsTimeoutKey       = bsonutil.MustHaveTag(SpawnOptions{}, "TimeoutTeardown")
+	SpawnOptionsSpawnedByTaskKey = bsonutil.MustHaveTag(SpawnOptions{}, "SpawnedByTask")
 )
 
 // === Queries ===
@@ -176,7 +177,8 @@ func AllHostsSpawnedByTasksToTerminate() ([]Host, error) {
 func allHostsSpawnedByTasksTimedOut() ([]Host, error) {
 	query := db.Query(bson.M{
 		StatusKey: evergreen.HostRunning,
-		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTimeoutKey): bson.M{"$lte": time.Now()},
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true,
+		bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTimeoutKey):       bson.M{"$lte": time.Now()},
 	})
 	return Find(query)
 }
@@ -185,6 +187,9 @@ func allHostsSpawnedByTasksTimedOut() ([]Host, error) {
 func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 	const runningTasks = "running_tasks"
 	pipeline := []bson.M{
+		{"$match": bson.M{
+			StatusKey: bson.M{"$in": evergreen.UphostStatus},
+			bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true}},
 		{"$lookup": bson.M{
 			"from":         task.Collection,
 			"localField":   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsTaskIDKey),
@@ -192,7 +197,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 			"as":           runningTasks,
 		}},
 		{"$unwind": "$" + runningTasks},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}, StatusKey: bson.M{"$in": evergreen.UphostStatus}}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningTasks, task.StatusKey): bson.M{"$in": task.CompletedStatuses}}},
 		{"$project": bson.M{runningTasks: 0}},
 	}
 	var hosts []Host
@@ -206,6 +211,9 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 	const runningBuilds = "running_builds"
 	pipeline := []bson.M{
+		{"$match": bson.M{
+			StatusKey: bson.M{"$in": evergreen.UphostStatus},
+			bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true}},
 		{"$lookup": bson.M{
 			"from":         build.Collection,
 			"localField":   bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsBuildIDKey),
@@ -213,7 +221,7 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 			"as":           runningBuilds,
 		}},
 		{"$unwind": "$" + runningBuilds},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}, StatusKey: bson.M{"$in": evergreen.UphostStatus}}},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(runningBuilds, build.StatusKey): bson.M{"$in": build.CompletedStatuses}}},
 		{"$project": bson.M{runningBuilds: 0}},
 	}
 	var hosts []Host

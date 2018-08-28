@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -103,13 +104,24 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 					Details:     t.StatusDetails,
 					DisplayName: t.DisplayName,
 				}}
+
+			// TODO: this loop would probably work better
+			// as an aggregation.
 			if t.Status == evergreen.TaskStarted {
 				var taskFromDb *task.Task
 				taskFromDb, err = task.FindOne(task.ById(t.Id))
 				if err != nil {
 					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				} else if taskFromDb != nil {
+					uiT.ExpectedDuration = taskFromDb.ExpectedDuration
 				}
-				uiT.ExpectedDuration = taskFromDb.ExpectedDuration
+
+				grip.ErrorWhen(taskFromDb == nil, message.Fields{
+					"task_id": t.Id,
+					"version": projCtx.Version.Id,
+					"request": gimlet.GetRequestID(ctx),
+					"message": "version references task that does not exist",
+				})
 			}
 			uiTasks = append(uiTasks, uiT)
 			buildAsUI.TaskStatusCount.IncrementStatus(t.Status, t.StatusDetails)

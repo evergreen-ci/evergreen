@@ -375,7 +375,7 @@ class GearMenu extends React.PureComponent {
       {
         trigger: "runtime-change",
         resource_type: "TASK",
-        label: "the runtime for any task changes by some percentage",
+        label: "the runtime for a successful task changes by some percentage",
         extraFields: [
           {text: "Percent change", key: "task-percent-change", validator: validatePercentage}
         ],

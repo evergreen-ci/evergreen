@@ -51,7 +51,7 @@ type ChatPostMessageAPIResponse struct {
 }
 
 func (sl *Slack) buildRequestBodyForm(text string) *bytes.Buffer {
-	return bytes.NewBuffer([]byte("text=" + text))
+	return bytes.NewBuffer([]byte("text=" + url.QueryEscape(text)))
 }
 
 func (sl *Slack) buildChatPostMessageUrlValues(opt *ChatPostMessageOpt) (*url.Values, error) {

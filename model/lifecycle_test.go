@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
@@ -71,37 +72,27 @@ func TestBuildSetPriority(t *testing.T) {
 func TestBuildRestart(t *testing.T) {
 	Convey("Restarting a build", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
-			"Error clearing test collection")
-		b := &build.Build{
-			Id: "build",
-			Tasks: []build.TaskCache{
-				{
-					Id:        "task1",
-					Status:    evergreen.TaskSucceeded,
-					Activated: true,
-				},
-				{
-					Id:        "task2",
-					Status:    evergreen.TaskDispatched,
-					Activated: true,
-				},
-				{
-					Id:        "task3",
-					Status:    evergreen.TaskDispatched,
-					Activated: true,
-				},
-				{
-					Id:        "task4",
-					Status:    evergreen.TaskDispatched,
-					Activated: true,
-				},
-			},
-		}
-		So(b.Insert(), ShouldBeNil)
-
 		Convey("with task abort should update the status of"+
 			" non in-progress tasks and abort in-progress ones", func() {
+
+			testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
+				"Error clearing test collection")
+			b := &build.Build{
+				Id: "build",
+				Tasks: []build.TaskCache{
+					{
+						Id:        "task1",
+						Status:    evergreen.TaskSucceeded,
+						Activated: true,
+					},
+					{
+						Id:        "task2",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+				},
+			}
+			So(b.Insert(), ShouldBeNil)
 
 			taskOne := &task.Task{
 				Id:          "task1",
@@ -139,6 +130,35 @@ func TestBuildRestart(t *testing.T) {
 
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
+
+			testutil.HandleTestingErr(db.ClearCollections(build.Collection), t,
+				"Error clearing test collection")
+			b := &build.Build{
+				Id: "build",
+				Tasks: []build.TaskCache{
+					{
+						Id:        "task1",
+						Status:    evergreen.TaskSucceeded,
+						Activated: true,
+					},
+					{
+						Id:        "task2",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+					{
+						Id:        "task3",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+					{
+						Id:        "task4",
+						Status:    evergreen.TaskDispatched,
+						Activated: true,
+					},
+				},
+			}
+			So(b.Insert(), ShouldBeNil)
 
 			taskThree := &task.Task{
 				Id:          "task3",
@@ -307,6 +327,12 @@ func TestBuildSetActivated(t *testing.T) {
 					BuildId:   b.Id,
 					Status:    evergreen.TaskUndispatched,
 					Activated: true,
+					DependsOn: []task.Dependency{
+						{
+							TaskId: "dependency",
+							Status: evergreen.TaskSucceeded,
+						},
+					},
 				}
 
 				So(matching.Insert(), ShouldBeNil)
@@ -318,8 +344,25 @@ func TestBuildSetActivated(t *testing.T) {
 					Activated:   true,
 					ActivatedBy: user,
 				}
-
 				So(differentUser.Insert(), ShouldBeNil)
+
+				dependency := &task.Task{
+					Id:           "dependency",
+					BuildId:      "dependent_build",
+					Status:       evergreen.TaskUndispatched,
+					Activated:    false,
+					DispatchTime: util.ZeroTime,
+				}
+				So(dependency.Insert(), ShouldBeNil)
+
+				canary := &task.Task{
+					Id:           "canary",
+					BuildId:      "dependent_build",
+					Status:       evergreen.TaskUndispatched,
+					Activated:    false,
+					DispatchTime: util.ZeroTime,
+				}
+				So(canary.Insert(), ShouldBeNil)
 
 				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// the build should have been updated in the db
@@ -331,7 +374,7 @@ func TestBuildSetActivated(t *testing.T) {
 				// only the matching task should have been updated that has not been set by a user
 				deactivatedTasks, err := task.Find(task.ByActivation(false))
 				So(err, ShouldBeNil)
-				So(len(deactivatedTasks), ShouldEqual, 1)
+				So(len(deactivatedTasks), ShouldEqual, 3)
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
 
 				// task with the different user activating should be activated with that user
@@ -340,6 +383,10 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
+				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator), ShouldBeNil)
+				activatedTasks, err := task.Find(task.ByActivation(true))
+				So(err, ShouldBeNil)
+				So(len(activatedTasks), ShouldEqual, 5)
 			})
 
 			Convey("all of the undispatched task caches within the build"+

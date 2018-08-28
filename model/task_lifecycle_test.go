@@ -1717,7 +1717,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, ProjectRefCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, ProjectRefCollection, event.AllLogCollection))
 	ref := ProjectRef{
 		Identifier: "sample",
 	}
@@ -1824,7 +1824,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ := b.AllCachedTasksOrCompileFinished()
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.False(complete)
 
 	updates = StatusChanges{}
@@ -1835,7 +1836,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ = b.AllCachedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.False(complete)
 
 	updates = StatusChanges{}
@@ -1846,7 +1848,8 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ = b.AllCachedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.False(complete)
 
 	updates = StatusChanges{}
@@ -1857,21 +1860,26 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _ = b.AllCachedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	assert.NoError(err)
 	assert.True(complete)
+
+	e, err := event.FindUnprocessedEvents()
+	assert.NoError(err)
+	assert.Len(e, 7)
 }
 
 func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, event.AllLogCollection))
 
 	buildID := "buildtest"
 	testTask := task.Task{
 		Id:          "testone",
 		DisplayName: evergreen.CompileStage,
-		Activated:   false,
+		Activated:   true,
 		BuildId:     buildID,
 		Project:     "sample",
 		Status:      evergreen.TaskStarted,
@@ -1880,6 +1888,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	require.NoError(testTask.Insert())
 	anotherTask := task.Task{
 		Id:          "two",
+		Activated:   true,
 		DisplayName: "test 2",
 		BuildId:     buildID,
 		Project:     "sample",
@@ -1932,10 +1941,97 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
-	complete, _ := b.AllCachedTasksOrCompileFinished()
+	assert.NoError(err)
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
+
+	e, err := event.FindUnprocessedEvents()
+	assert.NoError(err)
+	assert.Len(e, 3)
+}
+
+func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, event.AllLogCollection))
+
+	buildID := "buildtest"
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: "dothings",
+		Activated:   true,
+		BuildId:     buildID,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+		StartTime:   time.Now().Add(-time.Hour),
+	}
+	require.NoError(testTask.Insert())
+	anotherTask := task.Task{
+		Id:          "two",
+		DisplayName: "test 2",
+		BuildId:     buildID,
+		Project:     "sample",
+		Activated:   true,
+		Status:      evergreen.TaskUndispatched,
+		StartTime:   time.Now().Add(-time.Hour),
+		DependsOn: []task.Dependency{
+			{
+				TaskId: testTask.Id,
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+	}
+	require.NoError(anotherTask.Insert())
+
+	b := &build.Build{
+		Id:        buildID,
+		Status:    evergreen.BuildStarted,
+		Activated: true,
+		Version:   "abc",
+		Tasks: []build.TaskCache{
+			{
+				Id:        testTask.Id,
+				Status:    evergreen.TaskStarted,
+				Activated: true,
+			},
+			{
+				Id:        anotherTask.Id,
+				Activated: true,
+				Status:    evergreen.TaskStarted,
+			},
+		},
+	}
+	require.NoError(b.Insert())
+
+	v := &version.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	require.NoError(v.Insert())
+
+	details := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+		Type:   "test",
+	}
+	updates := StatusChanges{}
+	assert.NoError(MarkEnd(&testTask, "", time.Now(), details, false, &updates))
+	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
+	assert.True(updates.BuildComplete)
+	assert.Equal(evergreen.VersionFailed, updates.VersionNewStatus)
+	assert.True(updates.VersionComplete)
+	b, err := build.FindOneId(buildID)
+	assert.NoError(err)
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	assert.True(complete)
+	assert.NoError(err)
+	assert.True(b.IsFinished())
+
+	e, err := event.FindUnprocessedEvents()
+	assert.NoError(err)
+	assert.Len(e, 3)
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {

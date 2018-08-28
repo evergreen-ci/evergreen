@@ -55,32 +55,32 @@ var All = db.Query(nil)
 
 // ById creates a query that finds a build by its _id.
 func ById(id string) db.Q {
-	return db.Query(bson.D{{IdKey, id}})
+	return db.Query(bson.M{IdKey: id})
 }
 
 // ByIds creates a query that finds all builds with the given ids.
 func ByIds(ids []string) db.Q {
-	return db.Query(bson.D{{IdKey, bson.D{{"$in", ids}}}})
+	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
 }
 
 // ByVersion creates a query that returns all builds for a given version.
 func ByVersion(version string) db.Q {
-	return db.Query(bson.D{{VersionKey, version}})
+	return db.Query(bson.M{VersionKey: version})
 }
 
 // ByVersions creates a query that finds all builds with the given version ids.
 func ByVersions(vIds []string) db.Q {
-	return db.Query(bson.D{{VersionKey, bson.D{{"$in", vIds}}}})
+	return db.Query(bson.M{VersionKey: bson.M{"$in": vIds}})
 }
 
 // ByVariant creates a query that finds all builds for a given variant.
 func ByVariant(bv string) db.Q {
-	return db.Query(bson.D{{BuildVariantKey, bv}})
+	return db.Query(bson.M{BuildVariantKey: bv})
 }
 
 // ByProject creates a query that finds all builds for a given project id.
 func ByProject(proj string) db.Q {
-	return db.Query(bson.D{{ProjectKey, proj}})
+	return db.Query(bson.M{ProjectKey: proj})
 }
 
 // ByProjectAndVariant creates a query that finds all completed builds for a given project

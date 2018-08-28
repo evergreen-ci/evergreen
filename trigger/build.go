@@ -244,6 +244,8 @@ func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride stri
 
 	data := commonTemplateData{
 		ID:              t.build.Id,
+		EventID:         t.event.ID,
+		SubscriptionID:  sub.ID,
 		DisplayName:     t.build.DisplayName,
 		Object:          objectBuild,
 		Project:         t.build.Project,

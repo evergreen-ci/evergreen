@@ -186,11 +186,12 @@ func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord,
 	return FindOne(db.Query(q).Limit(1))
 }
 
-func InsertNewTaskRegressionByTestRecord(subscriptionID, testName, taskDisplayName, variant, projectID string, revision int) error {
+func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  bson.NewObjectId(),
 		SubscriptionID:      subscriptionID,
 		Type:                taskRegressionByTest,
+		TaskId:              taskID,
 		ProjectId:           projectID,
 		TaskName:            taskDisplayName,
 		Variant:             variant,
@@ -202,11 +203,12 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, testName, taskDisplayNa
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTest)
 }
 
-func InsertNewTaskRegressionByTestWithNoTestsRecord(subscriptionID, taskDisplayName, taskStatus, variant, projectID string, revision int) error {
+func InsertNewTaskRegressionByTestWithNoTestsRecord(subscriptionID, taskID, taskDisplayName, taskStatus, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  bson.NewObjectId(),
 		SubscriptionID:      subscriptionID,
 		Type:                taskRegressionByTestWithNoTests,
+		TaskId:              taskID,
 		ProjectId:           projectID,
 		TaskName:            taskDisplayName,
 		TaskStatus:          taskStatus,

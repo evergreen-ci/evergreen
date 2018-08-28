@@ -91,7 +91,11 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	}
 
 	if t.IsPartOfDisplay() {
-		return updateDisplayTaskAndCache(t)
+		err = updateDisplayTaskAndCache(t)
+		if err != nil {
+			return err
+		}
+		taskId = t.DisplayTask.Id
 	}
 
 	return errors.WithStack(build.SetCachedTaskActivated(t.BuildId, taskId, active))
@@ -519,15 +523,24 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	failedTask := false
 	buildComplete := false
 	finishedTasks := 0
+	tasksToNotify := 0
 
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
+			state, _ := t.BlockedState()
+			if state == "blocked" {
+				tasksToNotify += 1
+				if evergreen.IsFailedTaskStatus(t.Status) {
+					failedTask = true
+				}
+			}
 			continue
 		}
 		var displayTask *task.Task
 		status := ""
 		finishedTasks++
+		tasksToNotify += 1
 
 		displayTask, err = t.GetDisplayTask()
 		if err != nil {
@@ -608,6 +621,13 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if finishedTasks >= len(buildTasks) {
 		buildComplete = true
 	}
+	if buildComplete || tasksToNotify >= len(buildTasks) {
+		updates.BuildNewStatus = evergreen.BuildSucceeded
+		if failedTask {
+			updates.BuildNewStatus = evergreen.BuildFailed
+		}
+		updates.BuildComplete = true
+	}
 
 	// if a compile task didn't fail, then the
 	// build is only finished when both the compile
@@ -637,31 +657,32 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				return err
 			}
 		}
-		updates.BuildNewStatus = b.Status
-		updates.BuildComplete = true
+	}
 
-		if err = MarkVersionCompleted(b.Version, finishTime, updates); err != nil {
-			err = errors.Wrap(err, "Error marking version as finished")
+	// These are deliberately out of the buildComplete block to ensure versions
+	// are iterated so version and patch notifications can be sent out
+	if err = MarkVersionCompleted(b.Version, finishTime, updates); err != nil {
+		err = errors.Wrap(err, "Error marking version as finished")
+		grip.Error(err)
+		return err
+	}
+
+	if evergreen.IsPatchRequester(b.Requester) {
+		if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
+			err = errors.Wrap(err, "Error marking patch as finished")
 			grip.Error(err)
 			return err
 		}
-
-		if evergreen.IsPatchRequester(b.Requester) {
-			if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
-				err = errors.Wrap(err, "Error marking patch as finished")
-				grip.Error(err)
-				return err
+		if updates.VersionComplete && len(updates.VersionNewStatus) != 0 {
+			patchStatus := evergreen.PatchFailed
+			if updates.VersionNewStatus == evergreen.VersionSucceeded {
+				patchStatus = evergreen.PatchSucceeded
 			}
-
-			if updates.VersionComplete && len(updates.VersionNewStatus) != 0 {
-				patchStatus := evergreen.PatchFailed
-				if updates.VersionNewStatus == evergreen.VersionSucceeded {
-					patchStatus = evergreen.PatchSucceeded
-				}
-				event.LogPatchStateChangeEvent(t.Version, patchStatus)
-			}
+			event.LogPatchStateChangeEvent(t.Version, patchStatus)
 		}
+	}
 
+	if buildComplete {
 		// update the build's makespan information if the task has finished
 		if err = updateMakespans(b); err != nil {
 			err = errors.Wrap(err, "Error updating makespan information")

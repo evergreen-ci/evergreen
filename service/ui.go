@@ -245,7 +245,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/signal-processing/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.signalProcessingPage).Get()
 
 	// Test Logs
-	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext).Handler(uis.testLog).Get()
+	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()
 	app.AddRoute("/test_log/{log_id}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()
 
 	// Build page
