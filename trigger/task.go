@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -133,6 +134,15 @@ type taskTriggers struct {
 	base
 }
 
+func (t *taskTriggers) Process(sub *event.Subscription) (*notification.Notification, error) {
+	pp.Println(t.task.DisplayOnly)
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
+	return t.base.Process(sub)
+}
+
 func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	var ok bool
 	t.data, ok = e.Data.(*event.TaskEventData)
@@ -152,11 +162,10 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	if t.task == nil {
 		return errors.New("couldn't find task")
 	}
-	if t.task.DisplayOnly {
-		err = t.task.MergeNewTestResults()
-		if err != nil {
-			return errors.Wrap(err, "error getting test results")
-		}
+
+	_, err = t.task.GetDisplayTask()
+	if err != nil {
+		return errors.Wrap(err, "error getting display task")
 	}
 
 	t.version, err = version.FindOne(version.ById(t.task.Version))
@@ -219,13 +228,20 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
+	displayName := t.task.DisplayName
+	status := t.task.Status
+	if t.task.DisplayTask != nil {
+		displayName = t.task.DisplayTask.DisplayName
+		status = t.task.DisplayTask.Status
+	}
+
 	data := commonTemplateData{
 		ID:              t.task.Id,
-		DisplayName:     t.task.DisplayName,
+		DisplayName:     displayName,
 		Object:          "task",
 		Project:         t.task.Project,
 		URL:             taskLink(t.uiConfig.Url, t.task.Id, t.task.Execution),
-		PastTenseStatus: t.data.Status,
+		PastTenseStatus: status,
 		apiModel:        &api,
 	}
 	slackColor := evergreenFailColor
@@ -243,7 +259,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data.slack = []message.SlackAttachment{
 		{
-			Title:     t.task.DisplayName,
+			Title:     displayName,
 			TitleLink: data.URL,
 			Text:      taskFormat(t.task),
 			Color:     slackColor,
@@ -671,11 +687,6 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 }
 
 func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, error) {
-	_, err := j.task.GetDisplayTask()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting display task")
-	}
-
 	buildDoc, err := build.FindOne(build.ById(j.task.BuildId))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")

@@ -199,8 +199,22 @@ func (s *taskSuite) TestAllTriggers() {
 
 	s.task.DisplayOnly = true
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	n, err = NotificationsFromEvent(&s.event)
 	s.NoError(err)
 	s.Empty(n)
+}
+
+func (s *taskSuite) TestExecutionTask() {
+	t := task.Task{
+		DisplayName:    "displaytask",
+		ExecutionTasks: []string{s.task.Id},
+	}
+	s.NoError(t.Insert())
+	n, err := NotificationsFromEvent(&s.event)
+	s.NoError(err)
+	s.Require().Len(n, 1)
+	s.Contains(*n[0].Payload.(*string), "displaytask")
+	s.Contains(*n[0].Payload.(*string), "https://evergreen.mongodb.com/task/test/0")
 }
 
 func (s *taskSuite) TestSuccess() {
