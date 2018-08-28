@@ -32,10 +32,9 @@ const (
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
-	UserManager  gimlet.UserManager
-	Settings     evergreen.Settings
-	clientConfig *evergreen.ClientConfig
-	queue        amboy.Queue
+	UserManager gimlet.UserManager
+	Settings    evergreen.Settings
+	queue       amboy.Queue
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
@@ -45,17 +44,14 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, 
 		return nil, errors.WithStack(err)
 	}
 
-	clientConfig := evergreen.GetEnvironment().ClientConfig()
-
 	if err := settings.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	as := &APIServer{
-		UserManager:  authManager,
-		Settings:     *settings,
-		clientConfig: clientConfig,
-		queue:        queue,
+		UserManager: authManager,
+		Settings:    *settings,
+		queue:       queue,
 	}
 
 	return as, nil
@@ -516,12 +512,6 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 }
 
-// Returns information about available updates for client binaries.
-// Replies 404 if this data is not configured.
-func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
-	gimlet.WriteJSON(w, as.clientConfig)
-}
-
 // GetSettings returns the global evergreen settings.
 func (as *APIServer) GetSettings() evergreen.Settings {
 	return as.Settings
@@ -545,7 +535,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/validate").Handler(as.validateProjectConfig).Post()
 
 	// Client auto-update routes
-	app.AddRoute("/update").Handler(as.getUpdate).Get()
 	app.AddRoute("/token").Handler(as.getUserSession).Post()
 	app.AddRoute("/").Version(2).Handler(home).Get()
 

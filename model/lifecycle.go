@@ -73,6 +73,17 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 			},
 			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 		)
+		tasks, err := task.FindAllTasksFromBuildWithDependencies(buildId)
+		if err != nil {
+			return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
+		}
+		catcher := grip.NewBasicCatcher()
+		for _, t := range tasks {
+			for _, d := range t.DependsOn {
+				catcher.Add(SetActiveState(d.TaskId, caller, active))
+			}
+		}
+		grip.Error(errors.Wrapf(catcher.Resolve(), "problem settings dependencies for build %s", buildId))
 	} else {
 
 		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
@@ -173,7 +184,11 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		if b.Activated {
 			activeBuilds += 1
 		}
-		if complete, buildStatus := b.AllCachedTasksOrCompileFinished(); complete {
+		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if complete {
 			buildsWithAllActiveTasksComplete += 1
 			if buildStatus != evergreen.BuildSucceeded {
 				versionStatusFromTasks = evergreen.VersionFailed

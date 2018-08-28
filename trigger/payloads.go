@@ -33,6 +33,8 @@ const (
 
 type commonTemplateData struct {
 	ID              string
+	EventID         string
+	SubscriptionID  string
 	DisplayName     string
 	Object          string
 	Project         string
@@ -49,7 +51,7 @@ type commonTemplateData struct {
 	githubDescription string
 }
 
-const emailSubjectTemplate string = `Evergreen: {{ .Object }} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+const emailSubjectTemplate string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 const emailTemplate string = `<html>
 <head>
 </head>
@@ -117,7 +119,9 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	}
 
 	// prevent Gmail from threading notifications with similar subjects
-	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s", t.Object, t.ID)}
+	m.Headers["X-Entity-Ref-Id"] = []string{fmt.Sprintf("%s-%s-%s", t.Object, t.SubscriptionID, t.EventID)}
+	m.Headers["X-Evergreen-Event-Id"] = []string{t.EventID}
+	m.Headers["X-Evergreen-Subscription-Id"] = []string{t.SubscriptionID}
 
 	return &m, nil
 }
@@ -192,6 +196,10 @@ func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	}
 	msg := buf.String()
 
+	if len(t.slack) > 0 {
+		t.slack[len(t.slack)-1].Footer = fmt.Sprintf("Subscription: %s; Event: %s", t.SubscriptionID, t.ID)
+	}
+
 	return &notification.SlackPayload{
 		Body:        msg,
 		Attachments: t.slack,
@@ -229,6 +237,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 	})
 
 	data.Headers = makeHeaders(selectors)
+	data.SubscriptionID = sub.ID
 
 	switch sub.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType:

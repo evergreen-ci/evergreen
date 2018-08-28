@@ -24,7 +24,7 @@ var NoteTaskIdKey = bsonutil.MustHaveTag(Note{}, "TaskId")
 func (n *Note) Upsert() error {
 	_, err := db.Upsert(
 		NotesCollection,
-		bson.D{{NoteTaskIdKey, n.TaskId}},
+		bson.M{NoteTaskIdKey: n.TaskId},
 		n,
 	)
 	return err
@@ -35,7 +35,7 @@ func NoteForTask(taskId string) (*Note, error) {
 	n := &Note{}
 	err := db.FindOneQ(
 		NotesCollection,
-		db.Query(bson.D{{NoteTaskIdKey, taskId}}),
+		db.Query(bson.M{NoteTaskIdKey: taskId}),
 		n,
 	)
 	if err == mgo.ErrNotFound {

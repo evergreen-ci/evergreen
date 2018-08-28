@@ -18,24 +18,34 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 		heartbeatInterval = a.opts.HeartbeatInterval
 	}
 
+	var failures int
+	var signalBeat string
+	var err error
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
-
-	failed, signalBeat := a.doHeartbeat(ctx, tc, 0)
-	if signalBeat != "" {
-		heartbeat <- signalBeat
-		return
-	}
 
 	for {
 		select {
 		case <-ticker.C:
-			failed, signalBeat = a.doHeartbeat(ctx, tc, failed)
+			signalBeat, err = a.doHeartbeat(ctx, tc)
 			if signalBeat == evergreen.TaskConflict {
 				cancel()
 			}
 			if signalBeat != "" {
 				heartbeat <- signalBeat
+				return
+			}
+			if err != nil {
+				failures++
+				grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failures, err)
+			} else {
+				failures = 0
+			}
+			if failures == maxHeartbeats {
+				grip.Error("Hit max heartbeats, aborting task")
+				// Presumably this won't work, but we should try to notify the user anyway
+				tc.logger.Task().Error("Hit max heartbeats, aborting task")
+				heartbeat <- evergreen.TaskFailed
 				return
 			}
 		case <-ctx.Done():
@@ -46,29 +56,20 @@ func (a *Agent) startHeartbeat(ctx context.Context, cancel context.CancelFunc, t
 	}
 }
 
-func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext, failed int) (int, string) {
+func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext) (string, error) {
 	abort, err := a.comm.Heartbeat(ctx, tc.task)
 	if abort {
 		grip.Info("Task aborted")
-		return failed, evergreen.TaskFailed
+		return evergreen.TaskFailed, nil
 	}
 	if err != nil {
 		if errors.Cause(err) == client.HTTPConflictError {
-			return failed, evergreen.TaskConflict
+			return evergreen.TaskConflict, err
 		}
-		failed++
-		grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failed, err)
-	} else {
-		grip.Debug("Sent heartbeat")
+		return "", err
 	}
-
-	if failed > maxHeartbeats {
-		grip.Error(errors.New("Exceeded max heartbeats"))
-		return failed, evergreen.TaskFailed
-
-	}
-
-	return failed, ""
+	grip.Debug("Sent heartbeat")
+	return "", nil
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
@@ -122,8 +123,9 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, c
 // callback timeout if it has one or to the defaultCallbackCmdTimeout.
 func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (context.Context, context.CancelFunc) {
 	timeout := defaultCallbackCmdTimeout
-	if tc.taskConfig != nil && tc.taskConfig.Project != nil && tc.taskConfig.Project.CallbackTimeout != 0 {
-		timeout = time.Duration(tc.taskConfig.Project.CallbackTimeout) * time.Second
+	taskConfig := tc.getTaskConfig()
+	if taskConfig != nil && taskConfig.Project != nil && taskConfig.Project.CallbackTimeout != 0 {
+		timeout = time.Duration(taskConfig.Project.CallbackTimeout) * time.Second
 	}
 	return context.WithTimeout(ctx, timeout)
 }

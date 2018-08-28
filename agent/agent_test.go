@@ -340,6 +340,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 
 func (s *AgentSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
+	s.a.opts.HeartbeatInterval = time.Nanosecond
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := s.a.runTask(ctx, cancel, s.tc)

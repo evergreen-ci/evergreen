@@ -8,7 +8,7 @@ imports:
 - name: github.com/nutmegdevelopment/sumologic
   version: 42ed9b372fa36887ba95cba2eab345991ca6e217
 - name: github.com/bluele/slack
-  version: 1f14901342cf5347555c2a6b0160d1a94f9c46ea
+  version: b4b4d354a079fbf4bd948faad01b32cecb2ffe03
 - name: github.com/mattn/go-xmpp
   version: f4550b5399387339df5ce4c3f88c1ef85333bdd5
 - name: github.com/shirou/gopsutil

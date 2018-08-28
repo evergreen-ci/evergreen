@@ -38,6 +38,8 @@ type SlackAttachment struct {
 
 	Fields     []*SlackAttachmentField `bson:"fields,omitempty" json:"fields,omitempty" yaml:"fields,omitempty"`
 	MarkdownIn []string                `bson:"mrkdwn_in,omitempty" json:"mrkdwn_in,omitempty" yaml:"mrkdwn_in,omitempty"`
+
+	Footer string `bson:"footer,omitempty" json:"footer,omitempty" yaml:"footer,omitempty"`
 }
 
 func (s *SlackAttachment) convert() *slack.Attachment {

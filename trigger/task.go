@@ -77,12 +77,12 @@ func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.A
 }
 
 func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
-	t, err := task.FindOneNoMerge(task.ById(taskID))
+	t, err := task.FindOneNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
 	if err != nil {
 		return false, errors.Wrapf(err, "error finding task '%s'", taskID)
 	}
 	if t == nil {
-		t, err = task.FindOneOldNoMerge(task.ById(taskID))
+		t, err = task.FindOneOldNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
 		if err != nil {
 			return false, errors.Wrapf(err, "error finding old task '%s'", taskID)
 		}
@@ -221,6 +221,8 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data := commonTemplateData{
 		ID:              t.task.Id,
+		EventID:         t.event.ID,
+		SubscriptionID:  sub.ID,
 		DisplayName:     t.task.DisplayName,
 		Object:          "task",
 		Project:         t.task.Project,
@@ -261,7 +263,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 			return nil, errors.Errorf("unexpected target data type: '%T'", sub.Subscriber.Target)
 		}
 		var err error
-		payload, err = t.makeJIRATaskPayload(issueSub.Project)
+		payload, err = t.makeJIRATaskPayload(sub.ID, issueSub.Project)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create jira payload for task")
 		}
@@ -504,6 +506,9 @@ func (t *taskTriggers) taskExceedsDuration(sub *event.Subscription) (*notificati
 }
 
 func (t *taskTriggers) taskRuntimeChange(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.Status != evergreen.TaskSucceeded {
+		return nil, nil
+	}
 
 	percentString, ok := sub.TriggerData[event.TaskPercentChangeKey]
 	if !ok {
@@ -601,11 +606,16 @@ func (t *taskTriggers) shouldIncludeTest(subID string, previousTask *task.Task, 
 			}
 
 		} else if !isTestStatusRegression(oldTestResult.Status, test.Status) {
-			return false, nil
+			if len(record.TaskId) != 0 {
+				isOld, err := taskFinishedTwoOrMoreDaysAgo(record.TaskId)
+				if err != nil || !isOld {
+					return false, errors.Wrap(err, "failed to fetch last alert age")
+				}
+			}
 		}
 	}
 
-	err = alertrecord.InsertNewTaskRegressionByTestRecord(subID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	err = alertrecord.InsertNewTaskRegressionByTestRecord(subID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to save alert record")
 	}
@@ -634,7 +644,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		if record != nil && !isTaskStatusRegression(record.TaskStatus, t.task.Status) {
 			return nil, nil
 		}
-		catcher.Add(alertrecord.InsertNewTaskRegressionByTestWithNoTestsRecord(sub.ID, t.task.DisplayName, t.task.Status, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber))
+		catcher.Add(alertrecord.InsertNewTaskRegressionByTestWithNoTestsRecord(sub.ID, t.task.Id, t.task.DisplayName, t.task.Status, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber))
 
 	} else {
 		if previousCompleteTask != nil {
@@ -670,7 +680,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	return n, catcher.Resolve()
 }
 
-func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, error) {
+func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.JiraIssue, error) {
 	buildDoc, err := build.FindOne(build.ById(j.task.BuildId))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
@@ -707,12 +717,14 @@ func (j *taskTriggers) makeJIRATaskPayload(project string) (*message.JiraIssue, 
 		project:  strings.ToUpper(project),
 		mappings: &evergreen.JIRANotificationsConfig{},
 		data: jiraTemplateData{
-			UIRoot:  j.uiConfig.Url,
-			Task:    j.task,
-			Version: versionDoc,
-			Project: projectRef,
-			Build:   buildDoc,
-			Host:    hostDoc,
+			UIRoot:         j.uiConfig.Url,
+			SubscriptionID: subID,
+			EventID:        j.event.ID,
+			Task:           j.task,
+			Version:        versionDoc,
+			Project:        projectRef,
+			Build:          buildDoc,
+			Host:           hostDoc,
 		},
 	}
 

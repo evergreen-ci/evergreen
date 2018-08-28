@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -81,6 +82,12 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 			}
 		}
 	}
+
+	start, err := dbModel.GetEstimatedStartTime(*foundTask)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error getting estimated start time"))
+	}
+	taskModel.EstimatedStart = model.NewAPIDuration(start)
 
 	err = taskModel.GetArtifacts()
 	if err != nil {

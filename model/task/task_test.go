@@ -1,4 +1,4 @@
-package task
+package task_test
 
 import (
 	"testing"
@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -26,26 +27,26 @@ func init() {
 	db.SetGlobalSessionProvider(conf.SessionFactory())
 }
 
-var depTaskIds = []Dependency{
+var depTaskIds = []task.Dependency{
 	{"td1", evergreen.TaskSucceeded},
 	{"td2", evergreen.TaskSucceeded},
 	{"td3", ""}, // Default == "success"
 	{"td4", evergreen.TaskFailed},
-	{"td5", AllStatuses},
+	{"td5", task.AllStatuses},
 }
 
 // update statuses of test tasks in the db
 func updateTestDepTasks(t *testing.T) {
 	// cases for success/default
 	for _, depTaskId := range depTaskIds[:3] {
-		testutil.HandleTestingErr(UpdateOne(
+		testutil.HandleTestingErr(task.UpdateOne(
 			bson.M{"_id": depTaskId.TaskId},
 			bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}},
 		), t, "Error setting task status")
 	}
 	// cases for * and failure
 	for _, depTaskId := range depTaskIds[3:] {
-		testutil.HandleTestingErr(UpdateOne(
+		testutil.HandleTestingErr(task.UpdateOne(
 			bson.M{"_id": depTaskId.TaskId},
 			bson.M{"$set": bson.M{"status": evergreen.TaskFailed}},
 		), t, "Error setting task status")
@@ -55,18 +56,18 @@ func updateTestDepTasks(t *testing.T) {
 func TestDependenciesMet(t *testing.T) {
 
 	var taskId string
-	var task *Task
-	var depTasks []*Task
+	var taskDoc *task.Task
+	var depTasks []*task.Task
 
 	Convey("With a task", t, func() {
 
 		taskId = "t1"
 
-		task = &Task{
+		taskDoc = &task.Task{
 			Id: taskId,
 		}
 
-		depTasks = []*Task{
+		depTasks = []*task.Task{
 			{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched},
 			{Id: depTaskIds[1].TaskId, Status: evergreen.TaskUndispatched},
 			{Id: depTaskIds[2].TaskId, Status: evergreen.TaskUndispatched},
@@ -74,30 +75,30 @@ func TestDependenciesMet(t *testing.T) {
 			{Id: depTaskIds[4].TaskId, Status: evergreen.TaskUndispatched},
 		}
 
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(task.Collection), ShouldBeNil)
 		for _, depTask := range depTasks {
 			So(depTask.Insert(), ShouldBeNil)
 		}
 
 		Convey("sanity check the local version of the function in the nil case", func() {
-			task.DependsOn = []Dependency{}
-			met, err := task.AllDependenciesSatisfied(map[string]Task{})
+			taskDoc.DependsOn = []task.Dependency{}
+			met, err := taskDoc.AllDependenciesSatisfied(map[string]task.Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 		})
 
 		Convey("if the task has no dependencies its dependencies should"+
 			" be met by default", func() {
-			task.DependsOn = []Dependency{}
-			met, err := task.DependenciesMet(map[string]Task{})
+			taskDoc.DependsOn = []task.Dependency{}
+			met, err := taskDoc.DependenciesMet(map[string]task.Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 		})
 
 		Convey("task with overridden dependencies should be met", func() {
-			task.DependsOn = depTaskIds
-			task.OverrideDependencies = true
-			met, err := task.DependenciesMet(map[string]Task{})
+			taskDoc.DependsOn = depTaskIds
+			taskDoc.OverrideDependencies = true
+			met, err := taskDoc.DependenciesMet(map[string]task.Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 		})
@@ -105,8 +106,8 @@ func TestDependenciesMet(t *testing.T) {
 		Convey("if only some of the tasks dependencies are finished"+
 			" successfully, then it should not think its dependencies are met",
 			func() {
-				task.DependsOn = depTaskIds
-				So(UpdateOne(
+				taskDoc.DependsOn = depTaskIds
+				So(task.UpdateOne(
 					bson.M{"_id": depTaskIds[0].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -114,26 +115,26 @@ func TestDependenciesMet(t *testing.T) {
 						},
 					},
 				), ShouldBeNil)
-				met, err := task.DependenciesMet(map[string]Task{})
+				met, err := taskDoc.DependenciesMet(map[string]task.Task{})
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
 			})
 
 		Convey("if all of the tasks dependencies are finished properly, it"+
 			" should correctly believe its dependencies are met", func() {
-			task.DependsOn = depTaskIds
+			taskDoc.DependsOn = depTaskIds
 			updateTestDepTasks(t)
-			met, err := task.DependenciesMet(map[string]Task{})
+			met, err := taskDoc.DependenciesMet(map[string]task.Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 		})
 
 		Convey("tasks not in the dependency cache should be pulled into the"+
 			" cache during dependency checking", func() {
-			dependencyCache := make(map[string]Task)
-			task.DependsOn = depTaskIds
+			dependencyCache := make(map[string]task.Task)
+			taskDoc.DependsOn = depTaskIds
 			updateTestDepTasks(t)
-			met, err := task.DependenciesMet(dependencyCache)
+			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 			for _, depTaskId := range depTaskIds[:4] {
@@ -145,9 +146,9 @@ func TestDependenciesMet(t *testing.T) {
 		Convey("cached dependencies should be used rather than fetching them"+
 			" from the database", func() {
 			updateTestDepTasks(t)
-			dependencyCache := make(map[string]Task)
-			task.DependsOn = depTaskIds
-			met, err := task.DependenciesMet(dependencyCache)
+			dependencyCache := make(map[string]task.Task)
+			taskDoc.DependsOn = depTaskIds
+			met, err := taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 
@@ -157,7 +158,7 @@ func TestDependenciesMet(t *testing.T) {
 			So(cachedTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 			cachedTask.Status = evergreen.TaskFailed
 			dependencyCache[depTaskIds[0].TaskId] = cachedTask
-			met, err = task.DependenciesMet(dependencyCache)
+			met, err = taskDoc.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeFalse)
 
@@ -165,16 +166,16 @@ func TestDependenciesMet(t *testing.T) {
 
 		Convey("new task resolver should error if cache is empty, but there are deps", func() {
 			updateTestDepTasks(t)
-			dependencyCache := make(map[string]Task)
-			task.DependsOn = depTaskIds
-			met, err := task.AllDependenciesSatisfied(dependencyCache)
+			dependencyCache := make(map[string]task.Task)
+			taskDoc.DependsOn = depTaskIds
+			met, err := taskDoc.AllDependenciesSatisfied(dependencyCache)
 			So(err, ShouldNotBeNil)
 			So(met, ShouldBeFalse)
 		})
 
 		Convey("extraneous tasks in the dependency cache should be ignored",
 			func() {
-				So(UpdateOne(
+				So(task.UpdateOne(
 					bson.M{"_id": depTaskIds[0].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -182,7 +183,7 @@ func TestDependenciesMet(t *testing.T) {
 						},
 					},
 				), ShouldBeNil)
-				So(UpdateOne(
+				So(task.UpdateOne(
 					bson.M{"_id": depTaskIds[1].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -190,7 +191,7 @@ func TestDependenciesMet(t *testing.T) {
 						},
 					},
 				), ShouldBeNil)
-				So(UpdateOne(
+				So(task.UpdateOne(
 					bson.M{"_id": depTaskIds[2].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -199,25 +200,25 @@ func TestDependenciesMet(t *testing.T) {
 					},
 				), ShouldBeNil)
 
-				dependencyCache := make(map[string]Task)
-				task.DependsOn = []Dependency{depTaskIds[0], depTaskIds[1],
+				dependencyCache := make(map[string]task.Task)
+				taskDoc.DependsOn = []task.Dependency{depTaskIds[0], depTaskIds[1],
 					depTaskIds[2]}
-				met, err := task.DependenciesMet(dependencyCache)
+				met, err := taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
 
-				met, err = task.AllDependenciesSatisfied(dependencyCache)
+				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
 
 				// remove the failed task from the dependencies (but not from
 				// the cache).  it should be ignored in the next pass
-				task.DependsOn = []Dependency{depTaskIds[0], depTaskIds[1]}
-				met, err = task.DependenciesMet(dependencyCache)
+				taskDoc.DependsOn = []task.Dependency{depTaskIds[0], depTaskIds[1]}
+				met, err = taskDoc.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
 
-				met, err = task.AllDependenciesSatisfied(dependencyCache)
+				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
 			})
@@ -227,9 +228,9 @@ func TestDependenciesMet(t *testing.T) {
 func TestSetTasksScheduledTime(t *testing.T) {
 	Convey("With some tasks", t, func() {
 
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(task.Collection), ShouldBeNil)
 
-		tasks := []Task{
+		tasks := []task.Task{
 			{Id: "t1", ScheduledTime: util.ZeroTime},
 			{Id: "t2", ScheduledTime: util.ZeroTime},
 			{Id: "t3", ScheduledTime: util.ZeroTime},
@@ -239,7 +240,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 		}
 		Convey("when updating ScheduledTime for some of the tasks", func() {
 			testTime := time.Unix(31337, 0)
-			So(SetTasksScheduledTime(tasks[1:], testTime), ShouldBeNil)
+			So(task.SetTasksScheduledTime(tasks[1:], testTime), ShouldBeNil)
 
 			Convey("the tasks should be updated in memory", func() {
 				So(tasks[0].ScheduledTime, ShouldResemble, util.ZeroTime)
@@ -251,13 +252,13 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					// because of minor differences between how mongo
 					// and golang store dates. The date from the db
 					// can be interpreted as being a few nanoseconds off
-					t1, err := FindOne(ById("t1"))
+					t1, err := task.FindOne(task.ById("t1"))
 					So(err, ShouldBeNil)
 					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, util.ZeroTime)
-					t2, err := FindOne(ById("t2"))
+					t2, err := task.FindOne(task.ById("t2"))
 					So(err, ShouldBeNil)
 					So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-					t3, err := FindOne(ById("t3"))
+					t3, err := task.FindOne(task.ById("t3"))
 					So(err, ShouldBeNil)
 					So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 				})
@@ -265,16 +266,16 @@ func TestSetTasksScheduledTime(t *testing.T) {
 				Convey("if we update a second time", func() {
 					newTime := time.Unix(99999999, 0)
 					So(newTime, ShouldHappenAfter, testTime)
-					So(SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
+					So(task.SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
 
 					Convey("only unset scheduled times should be updated", func() {
-						t1, err := FindOne(ById("t1"))
+						t1, err := task.FindOne(task.ById("t1"))
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
-						t2, err := FindOne(ById("t2"))
+						t2, err := task.FindOne(task.ById("t2"))
 						So(err, ShouldBeNil)
 						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-						t3, err := FindOne(ById("t3"))
+						t3, err := task.FindOne(task.ById("t3"))
 						So(err, ShouldBeNil)
 						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 					})
@@ -290,13 +291,13 @@ func TestTaskSetPriority(t *testing.T) {
 
 	Convey("With a task", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
-			" '%v' collection", Collection)
+		testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing"+
+			" '%v' collection", task.Collection)
 
-		tasks := []Task{
+		tasks := []task.Task{
 			{
 				Id:        "one",
-				DependsOn: []Dependency{{"two", ""}, {"three", ""}, {"four", ""}},
+				DependsOn: []task.Dependency{{"two", ""}, {"three", ""}, {"four", ""}},
 				Activated: true,
 			},
 			{
@@ -306,12 +307,12 @@ func TestTaskSetPriority(t *testing.T) {
 			},
 			{
 				Id:        "three",
-				DependsOn: []Dependency{{"five", ""}},
+				DependsOn: []task.Dependency{{"five", ""}},
 				Activated: true,
 			},
 			{
 				Id:        "four",
-				DependsOn: []Dependency{{"five", ""}},
+				DependsOn: []task.Dependency{{"five", ""}},
 				Activated: true,
 			},
 			{
@@ -334,38 +335,38 @@ func TestTaskSetPriority(t *testing.T) {
 			So(tasks[0].SetPriority(1, "user"), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, 1)
 
-			task, err := FindOne(ById("one"))
+			t, err := task.FindOne(task.ById("one"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Priority, ShouldEqual, 1)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("two"))
+			t, err = task.FindOne(task.ById("two"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Priority, ShouldEqual, 5)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 5)
 
-			task, err = FindOne(ById("three"))
+			t, err = task.FindOne(task.ById("three"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Priority, ShouldEqual, 1)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("four"))
+			t, err = task.FindOne(task.ById("four"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Id, ShouldEqual, "four")
-			So(task.Priority, ShouldEqual, 1)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "four")
+			So(t.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("five"))
+			t, err = task.FindOne(task.ById("five"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Id, ShouldEqual, "five")
-			So(task.Priority, ShouldEqual, 1)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "five")
+			So(t.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("six"))
+			t, err = task.FindOne(task.ById("six"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Id, ShouldEqual, "six")
-			So(task.Priority, ShouldEqual, 0)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "six")
+			So(t.Priority, ShouldEqual, 0)
 
 		})
 
@@ -376,44 +377,44 @@ func TestTaskSetPriority(t *testing.T) {
 			So(tasks[0].SetPriority(-1, "user"), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, -1)
 
-			task, err := FindOne(ById("one"))
+			t, err := task.FindOne(task.ById("one"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Priority, ShouldEqual, -1)
-			So(task.Activated, ShouldEqual, false)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, -1)
+			So(t.Activated, ShouldEqual, false)
 
-			task, err = FindOne(ById("two"))
+			t, err = task.FindOne(task.ById("two"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Priority, ShouldEqual, 5)
-			So(task.Activated, ShouldEqual, true)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 5)
+			So(t.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("three"))
+			t, err = task.FindOne(task.ById("three"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Priority, ShouldEqual, 1)
-			So(task.Activated, ShouldEqual, true)
+			So(t, ShouldNotBeNil)
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("four"))
+			t, err = task.FindOne(task.ById("four"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Id, ShouldEqual, "four")
-			So(task.Priority, ShouldEqual, 1)
-			So(task.Activated, ShouldEqual, true)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "four")
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("five"))
+			t, err = task.FindOne(task.ById("five"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Id, ShouldEqual, "five")
-			So(task.Priority, ShouldEqual, 1)
-			So(task.Activated, ShouldEqual, true)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "five")
+			So(t.Priority, ShouldEqual, 1)
+			So(t.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("six"))
+			t, err = task.FindOne(task.ById("six"))
 			So(err, ShouldBeNil)
-			So(task, ShouldNotBeNil)
-			So(task.Id, ShouldEqual, "six")
-			So(task.Priority, ShouldEqual, 0)
-			So(task.Activated, ShouldEqual, true)
+			So(t, ShouldNotBeNil)
+			So(t.Id, ShouldEqual, "six")
+			So(t.Priority, ShouldEqual, 0)
+			So(t.Activated, ShouldEqual, true)
 		})
 	})
 
@@ -421,10 +422,10 @@ func TestTaskSetPriority(t *testing.T) {
 
 func TestFindTasksByIds(t *testing.T) {
 	Convey("When calling FindTasksByIds...", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(task.Collection), ShouldBeNil)
 		Convey("only tasks with the specified ids should be returned", func() {
 
-			tasks := []Task{
+			tasks := []task.Task{
 				{
 					Id: "one",
 				},
@@ -440,7 +441,7 @@ func TestFindTasksByIds(t *testing.T) {
 				So(task.Insert(), ShouldBeNil)
 			}
 
-			dbTasks, err := Find(ByIds([]string{"one", "two"}))
+			dbTasks, err := task.Find(task.ByIds([]string{"one", "two"}))
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 2)
 			So(dbTasks[0].Id, ShouldNotEqual, "three")
@@ -451,7 +452,7 @@ func TestFindTasksByIds(t *testing.T) {
 
 func TestCountSimilarFailingTasks(t *testing.T) {
 	Convey("When calling CountSimilarFailingTasks...", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(task.Collection), ShouldBeNil)
 		Convey("only failed tasks with the same project, requester, display "+
 			"name and revision but different buildvariants should be returned",
 			func() {
@@ -461,7 +462,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 				buildVariant := "testVariant"
 				revision := "asdf ;lkj asdf ;lkj "
 
-				tasks := []Task{
+				tasks := []task.Task{
 					{
 						Id:           "one",
 						Project:      project,
@@ -559,7 +560,7 @@ func TestMarkAsDispatched(t *testing.T) {
 		hostId   string
 		buildId  string
 		distroId string
-		task     *Task
+		taskDoc  *task.Task
 		b        *build.Build
 	)
 
@@ -570,7 +571,7 @@ func TestMarkAsDispatched(t *testing.T) {
 		buildId = "b1"
 		distroId = "d1"
 
-		task = &Task{
+		taskDoc = &task.Task{
 			Id:      taskId,
 			BuildId: buildId,
 		}
@@ -583,10 +584,10 @@ func TestMarkAsDispatched(t *testing.T) {
 		}
 
 		testutil.HandleTestingErr(
-			db.ClearCollections(Collection, build.Collection),
+			db.ClearCollections(task.Collection, build.Collection),
 			t, "Error clearing test collections")
 
-		So(task.Insert(), ShouldBeNil)
+		So(taskDoc.Insert(), ShouldBeNil)
 		So(b.Insert(), ShouldBeNil)
 
 		Convey("when marking the task as dispatched, the fields for"+
@@ -594,20 +595,20 @@ func TestMarkAsDispatched(t *testing.T) {
 			" should be set to reflect this", func() {
 
 			// mark the task as dispatched
-			So(task.MarkAsDispatched(hostId, distroId, time.Now()), ShouldBeNil)
+			So(taskDoc.MarkAsDispatched(hostId, distroId, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in ©memory and
 			// in the db
-			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
-			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
-			So(task.HostId, ShouldEqual, hostId)
-			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
-			task, err := FindOne(ById(taskId))
+			So(taskDoc.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
+			So(taskDoc.Status, ShouldEqual, evergreen.TaskDispatched)
+			So(taskDoc.HostId, ShouldEqual, hostId)
+			So(taskDoc.LastHeartbeat, ShouldResemble, taskDoc.DispatchTime)
+			taskDoc, err := task.FindOne(task.ById(taskId))
 			So(err, ShouldBeNil)
-			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
-			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
-			So(task.HostId, ShouldEqual, hostId)
-			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
+			So(taskDoc.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
+			So(taskDoc.Status, ShouldEqual, evergreen.TaskDispatched)
+			So(taskDoc.HostId, ShouldEqual, hostId)
+			So(taskDoc.LastHeartbeat, ShouldResemble, taskDoc.DispatchTime)
 
 		})
 
@@ -617,18 +618,18 @@ func TestMarkAsDispatched(t *testing.T) {
 
 func TestTimeAggregations(t *testing.T) {
 	Convey("With multiple tasks with different times", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
-		task1 := Task{Id: "bogus",
+		So(db.Clear(task.Collection), ShouldBeNil)
+		task1 := task.Task{Id: "bogus",
 			ScheduledTime: time.Unix(1000, 0),
 			StartTime:     time.Unix(1010, 0),
 			FinishTime:    time.Unix(1030, 0),
 			DistroId:      "osx"}
-		task2 := Task{Id: "fake",
+		task2 := task.Task{Id: "fake",
 			ScheduledTime: time.Unix(1000, 0),
 			StartTime:     time.Unix(1020, 0),
 			FinishTime:    time.Unix(1050, 0),
 			DistroId:      "osx"}
-		task3 := Task{Id: "placeholder",
+		task3 := task.Task{Id: "placeholder",
 			ScheduledTime: time.Unix(1000, 0),
 			StartTime:     time.Unix(1060, 0),
 			FinishTime:    time.Unix(1180, 0),
@@ -638,10 +639,10 @@ func TestTimeAggregations(t *testing.T) {
 		So(task3.Insert(), ShouldBeNil)
 
 		Convey("on an aggregation on FinishTime - StartTime", func() {
-			timeMap, err := AverageTaskTimeDifference(
-				StartTimeKey,
-				FinishTimeKey,
-				DistroIdKey,
+			timeMap, err := task.AverageTaskTimeDifference(
+				task.StartTimeKey,
+				task.FinishTimeKey,
+				task.DistroIdKey,
 				util.ZeroTime)
 			So(err, ShouldBeNil)
 
@@ -654,10 +655,10 @@ func TestTimeAggregations(t *testing.T) {
 		})
 
 		Convey("on an aggregation on StartTime - ScheduledTime", func() {
-			timeMap, err := AverageTaskTimeDifference(
-				ScheduledTimeKey,
-				StartTimeKey,
-				DistroIdKey,
+			timeMap, err := task.AverageTaskTimeDifference(
+				task.ScheduledTimeKey,
+				task.StartTimeKey,
+				task.DistroIdKey,
 				util.ZeroTime)
 			So(err, ShouldBeNil)
 
@@ -672,27 +673,27 @@ func TestTimeAggregations(t *testing.T) {
 		Convey("but when given non-time fields", func() {
 
 			Convey("most cases should return an empty map", func() {
-				timeMap, err := AverageTaskTimeDifference(
-					IdKey,
-					DistroIdKey,
-					DistroIdKey,
+				timeMap, err := task.AverageTaskTimeDifference(
+					task.IdKey,
+					task.DistroIdKey,
+					task.DistroIdKey,
 					util.ZeroTime)
 				So(len(timeMap), ShouldEqual, 0)
 				So(err, ShouldBeNil)
-				timeMap, err = AverageTaskTimeDifference(
-					DistroIdKey,
-					SecretKey,
-					DistroIdKey,
+				timeMap, err = task.AverageTaskTimeDifference(
+					task.DistroIdKey,
+					task.SecretKey,
+					task.DistroIdKey,
 					util.ZeroTime)
 				So(len(timeMap), ShouldEqual, 0)
 				So(err, ShouldBeNil)
 			})
 
 			Convey("special key cases should cause real agg errors", func() {
-				timeMap, err := AverageTaskTimeDifference(
-					StartTimeKey,
+				timeMap, err := task.AverageTaskTimeDifference(
+					task.StartTimeKey,
 					"$$$$$$",
-					DistroIdKey,
+					task.DistroIdKey,
 					util.ZeroTime)
 				So(len(timeMap), ShouldEqual, 0)
 				So(err, ShouldNotBeNil)
@@ -703,10 +704,10 @@ func TestTimeAggregations(t *testing.T) {
 
 func TestEndingTask(t *testing.T) {
 	Convey("With tasks that are attempting to be marked as finished", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(task.Collection), ShouldBeNil)
 		Convey("a task that has a start time set", func() {
 			now := time.Now()
-			t := &Task{
+			t := &task.Task{
 				Id:        "taskId",
 				Status:    evergreen.TaskStarted,
 				StartTime: now.Add(-5 * time.Minute),
@@ -717,7 +718,7 @@ func TestEndingTask(t *testing.T) {
 			}
 
 			So(t.MarkEnd(now, details), ShouldBeNil)
-			t, err := FindOne(ById(t.Id))
+			t, err := task.FindOne(task.ById(t.Id))
 			So(err, ShouldBeNil)
 			So(t.Status, ShouldEqual, evergreen.TaskFailed)
 			So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
@@ -726,7 +727,7 @@ func TestEndingTask(t *testing.T) {
 		Convey("a task with no start time set should have one added", func() {
 			now := time.Now()
 			Convey("a task with a create time < 2 hours should have the start time set to the create time", func() {
-				t := &Task{
+				t := &task.Task{
 					Id:         "tid",
 					Status:     evergreen.TaskDispatched,
 					CreateTime: now.Add(-30 * time.Minute),
@@ -736,14 +737,14 @@ func TestEndingTask(t *testing.T) {
 					Status: evergreen.TaskFailed,
 				}
 				So(t.MarkEnd(now, details), ShouldBeNil)
-				t, err := FindOne(ById(t.Id))
+				t, err := task.FindOne(task.ById(t.Id))
 				So(err, ShouldBeNil)
 				So(t.StartTime.Unix(), ShouldEqual, t.CreateTime.Unix())
 				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 			Convey("a task with a create time > 2 hours should have the start time set to two hours"+
 				"before the finish time", func() {
-				t := &Task{
+				t := &task.Task{
 					Id:         "tid",
 					Status:     evergreen.TaskDispatched,
 					CreateTime: now.Add(-3 * time.Hour),
@@ -753,7 +754,7 @@ func TestEndingTask(t *testing.T) {
 					Status: evergreen.TaskFailed,
 				}
 				So(t.MarkEnd(now, details), ShouldBeNil)
-				t, err := FindOne(ById(t.Id))
+				t, err := task.FindOne(task.ById(t.Id))
 				So(err, ShouldBeNil)
 				startTime := now.Add(-2 * time.Hour)
 				So(t.StartTime.Unix(), ShouldEqual, startTime.Unix())
@@ -768,7 +769,7 @@ func TestEndingTask(t *testing.T) {
 func TestTaskResultOutcome(t *testing.T) {
 	assert := assert.New(t)
 
-	tasks := []Task{
+	tasks := []task.Task{
 		{Status: evergreen.TaskUndispatched, Activated: false},                                                                     // 0
 		{Status: evergreen.TaskUndispatched, Activated: true},                                                                      // 1
 		{Status: evergreen.TaskStarted},                                                                                            // 2
@@ -781,7 +782,7 @@ func TestTaskResultOutcome(t *testing.T) {
 		{Status: evergreen.TaskSetupFailed, Details: apimodels.TaskEndDetail{Type: "setup"}},                                       // 5
 	}
 
-	out := GetResultCounts(tasks)
+	out := task.GetResultCounts(tasks)
 	assert.Equal(len(tasks), out.Total)
 	assert.Equal(1, out.Inactive)
 	assert.Equal(1, out.Unstarted)
@@ -796,23 +797,23 @@ func TestTaskResultOutcome(t *testing.T) {
 
 	//
 
-	assert.Equal(1, GetResultCounts([]Task{tasks[0]}).Inactive)
-	assert.Equal(1, GetResultCounts([]Task{tasks[1]}).Unstarted)
-	assert.Equal(1, GetResultCounts([]Task{tasks[2]}).Started)
-	assert.Equal(1, GetResultCounts([]Task{tasks[3]}).Succeeded)
-	assert.Equal(1, GetResultCounts([]Task{tasks[4]}).Failed)
-	assert.Equal(1, GetResultCounts([]Task{tasks[5]}).SystemFailed)
-	assert.Equal(1, GetResultCounts([]Task{tasks[6]}).SystemTimedOut)
-	assert.Equal(1, GetResultCounts([]Task{tasks[7]}).SystemUnresponsive)
-	assert.Equal(1, GetResultCounts([]Task{tasks[8]}).TestTimedOut)
-	assert.Equal(1, GetResultCounts([]Task{tasks[9]}).SetupFailed)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[0]}).Inactive)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[1]}).Unstarted)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[2]}).Started)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[3]}).Succeeded)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[4]}).Failed)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[5]}).SystemFailed)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[6]}).SystemTimedOut)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[7]}).SystemUnresponsive)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[8]}).TestTimedOut)
+	assert.Equal(1, task.GetResultCounts([]task.Task{tasks[9]}).SetupFailed)
 }
 
 func TestMergeTestResultsBulk(t *testing.T) {
 	testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "error clearing collections")
 	assert := assert.New(t)
 
-	tasks := []Task{
+	tasks := []task.Task{
 		{
 			Id:        "task1",
 			Execution: 0,
@@ -858,7 +859,7 @@ func TestMergeTestResultsBulk(t *testing.T) {
 		Execution: 0,
 	}).Insert())
 
-	out, err := MergeTestResultsBulk(tasks, nil)
+	out, err := task.MergeTestResultsBulk(tasks, nil)
 	assert.NoError(err)
 	count := 0
 	for _, t := range out {
@@ -869,7 +870,7 @@ func TestMergeTestResultsBulk(t *testing.T) {
 	query := db.Query(bson.M{
 		testresult.StatusKey: evergreen.TestFailedStatus,
 	})
-	out, err = MergeTestResultsBulk(tasks, &query)
+	out, err = task.MergeTestResultsBulk(tasks, &query)
 	assert.NoError(err)
 	count = 0
 	for _, t := range out {
@@ -883,9 +884,9 @@ func TestMergeTestResultsBulk(t *testing.T) {
 
 func TestFindOldTasksByID(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, OldCollection))
+	assert.NoError(db.ClearCollections(task.Collection, task.OldCollection))
 
-	taskDoc := Task{
+	taskDoc := task.Task{
 		Id: "task",
 	}
 	assert.NoError(taskDoc.Insert())
@@ -894,7 +895,7 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.NoError(taskDoc.Archive())
 	taskDoc.Execution += 1
 
-	tasks, err := FindOld(ByOldTaskID("task"))
+	tasks, err := task.FindOld(task.ByOldTaskID("task"))
 	assert.NoError(err)
 	assert.Len(tasks, 2)
 	assert.Equal(0, tasks[0].Execution)
@@ -907,7 +908,7 @@ func TestFindOldTasksByID(t *testing.T) {
 
 func TestTaskStatusCount(t *testing.T) {
 	assert := assert.New(t)
-	counts := TaskStatusCount{}
+	counts := task.TaskStatusCount{}
 	details := apimodels.TaskEndDetail{
 		TimedOut:    true,
 		Description: "heartbeat",
@@ -926,9 +927,9 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(Collection, OldCollection))
+	require.NoError(db.ClearCollections(task.Collection, task.OldCollection))
 
-	taskDoc := Task{
+	taskDoc := task.Task{
 		Id: "task",
 	}
 	require.NoError(taskDoc.Insert())
@@ -946,14 +947,14 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	require.NoError(result0.Insert())
 	require.NoError(result1.Insert())
 
-	task00, err := FindOneIdOldOrNew("task", 0)
+	task00, err := task.FindOneIdOldOrNew("task", 0)
 	assert.NoError(err)
 	require.NotNil(task00)
 	assert.Equal("task_0", task00.Id)
 	assert.Equal(0, task00.Execution)
 	assert.Len(task00.LocalTestResults, 1)
 
-	task01, err := FindOneIdOldOrNew("task", 1)
+	task01, err := task.FindOneIdOldOrNew("task", 1)
 	assert.NoError(err)
 	require.NotNil(task01)
 	assert.Equal("task", task01.Id)
@@ -963,8 +964,8 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 
 func TestGetTestResultsForDisplayTask(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, testresult.Collection))
-	dt := Task{
+	assert.NoError(db.ClearCollections(task.Collection, testresult.Collection))
+	dt := task.Task{
 		Id:             "dt",
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"et"},
@@ -983,31 +984,31 @@ func TestGetTestResultsForDisplayTask(t *testing.T) {
 
 func TestBlockedState(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-	t1 := Task{
+	assert.NoError(db.ClearCollections(task.Collection))
+	t1 := task.Task{
 		Id: "t1",
-		DependsOn: []Dependency{
+		DependsOn: []task.Dependency{
 			{TaskId: "t2", Status: evergreen.TaskSucceeded},
 		},
 	}
 	assert.NoError(t1.Insert())
-	t2 := Task{
+	t2 := task.Task{
 		Id:     "t2",
 		Status: evergreen.TaskFailed,
-		DependsOn: []Dependency{
+		DependsOn: []task.Dependency{
 			{TaskId: "t3", Status: evergreen.TaskFailed},
 		},
 	}
 	assert.NoError(t2.Insert())
-	t3 := Task{
+	t3 := task.Task{
 		Id:     "t3",
 		Status: evergreen.TaskUnstarted,
-		DependsOn: []Dependency{
-			{TaskId: "t4", Status: AllStatuses},
+		DependsOn: []task.Dependency{
+			{TaskId: "t4", Status: task.AllStatuses},
 		},
 	}
 	assert.NoError(t3.Insert())
-	t4 := Task{
+	t4 := task.Task{
 		Id:     "t4",
 		Status: evergreen.TaskSucceeded,
 	}
@@ -1021,8 +1022,8 @@ func TestBlockedState(t *testing.T) {
 	assert.Equal("", state)
 	state, err = t2.BlockedState()
 	assert.NoError(err)
-	assert.Equal(taskPending, state)
+	assert.Equal("pending", state)
 	state, err = t1.BlockedState()
 	assert.NoError(err)
-	assert.Equal(taskBlocked, state)
+	assert.Equal("blocked", state)
 }

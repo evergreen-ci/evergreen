@@ -21,6 +21,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.newProject = {};
   $scope.newProjectMessage="";
 
+  $scope.repoChanged = false;
+  $scope.repoChange = function() {
+    if ($scope.repoChanged == false) {
+      $scope.repoChanged = true;
+    }
+  };
+
   $scope.isDirty = false;
   $scope.triggers = [
     {
@@ -102,7 +109,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     {
       trigger: "runtime-change",
       resource_type: "TASK",
-      label: "the runtime for a task changes by some percentage",
+      label: "the runtime for a successful task changes by some percentage",
       regex_selectors: taskRegexSelectors(),
       extraFields: [
         {text: "Percent change", key: "task-percent-change", validator: validatePercentage}

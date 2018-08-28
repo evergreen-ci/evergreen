@@ -695,6 +695,22 @@ func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
 	return findAllTaskIDs(q)
 }
 
+func FindAllTasksFromBuildWithDependencies(buildId string) ([]Task, error) {
+	q := db.Query(bson.M{
+		BuildIdKey:   buildId,
+		DependsOnKey: bson.M{"$not": bson.M{"$size": 0}},
+	}).WithFields(IdKey, DependsOnKey)
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, q, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task ids for versions")
+	}
+	return tasks, nil
+}
+
 // FindOneOld returns one task from the old tasks collection that satisfies the query.
 func FindOneOld(query db.Q) (*Task, error) {
 	task, err := FindOneOldNoMerge(query)

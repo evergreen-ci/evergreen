@@ -14,24 +14,60 @@ import (
 )
 
 // API files.upload: Uploads or creates a file.
-func (sl *Slack) FilesUpload(opt *FilesUploadOpt) error {
+func (sl *Slack) FilesUpload(opt *FilesUploadOpt) (file *UploadedFile, err error) {
 	req, err := sl.createFilesUploadRequest(opt)
+
 	if err != nil {
-		return err
+		return
 	}
+
 	body, err := sl.DoRequest(req)
+
 	if err != nil {
-		return err
+		return
 	}
+
 	res := new(FilesUploadAPIResponse)
 	err = json.Unmarshal(body, res)
+
 	if err != nil {
-		return err
+		return
 	}
-	if !res.Ok {
-		return errors.New(res.Error)
+
+	if res.Ok {
+		file = &res.File
+	} else {
+		err = errors.New(res.Error)
 	}
-	return nil
+
+	return
+}
+
+// API files.info: Retrieves information about a specified uploaded file.
+func (sl *Slack) FindFile(id string) (file *UploadedFile, err error) {
+	uv := sl.urlValues()
+	uv.Add("file", id)
+
+	body, err := sl.GetRequest(filesInfoApiEndpoint, uv)
+
+	if err != nil {
+		return
+	}
+
+	res := new(FilesUploadAPIResponse)
+	err = json.Unmarshal(body, res)
+
+	if err != nil {
+		return
+	}
+
+	if res.Ok {
+		file = &res.File
+	} else {
+		err = errors.New("File not found")
+	}
+
+	return
 }
 
 // option type for `files.upload` api
@@ -47,8 +83,22 @@ type FilesUploadOpt struct {
 
 // response of `files.upload` api
 type FilesUploadAPIResponse struct {
-	Ok    bool   `json:"ok"`
-	Error string `json:"error"`
+	Ok    bool         `json:"ok"`
+	Error string       `json:"error"`
+	File  UploadedFile `json:"file"`
+}
+
+type UploadedFile struct {
+	ID                 string `json:"id"`
+	Title              string `json:"title"`
+	Name               string `json:"name"`
+	MimeType           string `json:"mimetype"`
+	FileType           string `json:"filetype"`
+	User               string `json:"user"`
+	PrivateUrl         string `json:"url_private"`
+	PrivateDownloadUrl string `json:"url_private_download"`
+	Permalink          string `json:"permalink"`
+	PublicPermalink    string `json:"permalink_public"`
 }
 
 func (sl *Slack) createFilesUploadRequest(opt *FilesUploadOpt) (*http.Request, error) {

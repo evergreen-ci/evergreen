@@ -43,6 +43,7 @@ type APITask struct {
 	Logs               logLinks         `json:"logs"`
 	TimeTaken          APIDuration      `json:"time_taken_ms"`
 	ExpectedDuration   APIDuration      `json:"expected_duration_ms"`
+	EstimatedStart     APIDuration      `json:"est_wait_to_start_ms"`
 	EstimatedCost      float64          `json:"estimated_cost"`
 	PreviousExecutions []APITask        `json:"previous_executions,omitempty"`
 	GenerateTask       bool             `json:"generate_task"`
