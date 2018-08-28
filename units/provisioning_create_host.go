@@ -95,6 +95,15 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
+	if j.host.Status != evergreen.HostUninitialized {
+		grip.Notice(message.Fields{
+			"message": "host has already been started",
+			"status":  j.host.Status,
+			"host_id": j.host.Id,
+		})
+		return
+	}
+
 	if j.host.ParentID == "" {
 		numHosts, err := host.CountRunningHosts(j.host.Distro.Id)
 		if err != nil {
@@ -280,10 +289,10 @@ retryLoop:
 				// the new image
 				if i == 0 {
 					buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
-					grip.Debug(message.Fields{
-						"error":   j.env.RemoteQueue().Put(buildingContainerJob),
+					err = j.env.RemoteQueue().Put(buildingContainerJob)
+					grip.Error(message.WrapError(err, message.Fields{
 						"message": "Duplicate key being added to job to block building containers",
-					})
+					}))
 				}
 				timer.Reset(pollInterval)
 				continue
