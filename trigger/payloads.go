@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	ttemplate "text/template"
 
 	"github.com/evergreen-ci/evergreen"
@@ -266,6 +267,7 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 }
 
 func taskLink(ui *evergreen.UIConfig, taskID string, execution int) string {
+	taskID = url.PathEscape(taskID)
 	if execution < 0 {
 		return fmt.Sprintf("%s/task/%s", ui.Url, taskID)
 	}
@@ -273,9 +275,9 @@ func taskLink(ui *evergreen.UIConfig, taskID string, execution int) string {
 }
 
 func buildLink(ui *evergreen.UIConfig, buildID string) string {
-	return fmt.Sprintf("%s/build/%s/", ui.Url, buildID)
+	return fmt.Sprintf("%s/build/%s/", ui.Url, url.PathEscape(buildID))
 }
 
 func versionLink(ui *evergreen.UIConfig, versionID string) string {
-	return fmt.Sprintf("%s/version/%s/", ui.Url, versionID)
+	return fmt.Sprintf("%s/version/%s/", ui.Url, url.PathEscape(versionID))
 }

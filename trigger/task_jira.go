@@ -61,6 +61,7 @@ func getTaskURL(data *jiraTemplateData) (string, error) {
 		id = data.Task.OldTaskId
 	}
 
+	return taskLink(&evergreen.UIConfig{UiRoot: data.UIRoot})
 	return fmt.Sprintf("%s/task/%s/%d", data.UIRoot, url.PathEscape(id), execution), nil
 }
 
@@ -282,14 +283,14 @@ func (j *jiraBuilder) makeCustomFields() map[string]interface{} {
 // historyURL provides a full URL to the test's task history page.
 func historyURL(t *task.Task, testName, uiRoot string) string {
 	return fmt.Sprintf("%v/task_history/%v/%v#%v=fail",
-		uiRoot, t.Project, url.PathEscape(t.Id), testName)
+		uiRoot, url.PathEscape(t.Project), url.PathEscape(t.Id), url.QueryEscape(testName))
 }
 
 // logURL returns the full URL for linking to a test's logs.
 // Returns the empty string if no internal or external log is referenced.
 func logURL(test task.TestResult, root string) string {
 	if test.LogId != "" {
-		return root + "/test_log/" + test.LogId
+		return root + "/test_log/" + url.PathEscape(test.LogId)
 	}
 	return test.URL
 }
