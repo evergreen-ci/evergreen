@@ -77,11 +77,13 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 		if err != nil {
 			return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
 		}
+		catcher := grip.NewBasicCatcher()
 		for _, t := range tasks {
 			for _, d := range t.DependsOn {
-				SetActiveState(d.TaskId, caller, active)
+				catcher.Add(SetActiveState(d.TaskId, caller, active))
 			}
 		}
+		grip.Error(errors.Wrapf(catcher.Resolve(), "problem settings dependencies for build %s", buildId))
 	} else {
 
 		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.

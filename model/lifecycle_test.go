@@ -366,6 +366,7 @@ func TestBuildSetActivated(t *testing.T) {
 
 				So(SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 				activatedTasks, err := task.Find(task.ByActivation(true))
+				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
 			})
 
