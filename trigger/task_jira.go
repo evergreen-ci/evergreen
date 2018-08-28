@@ -21,8 +21,8 @@ import (
 
 // DescriptionTemplateString defines the content of the alert ticket.
 const descriptionTemplateString = `
-h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{if .Task.OldTaskId}}{{.Task.OldTaskId | urlquery}}{{else}}{{.Task.Id | urlquery}}{{end}}/{{.Task.Execution}}]
-Host: {{if .Host}}[{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]{{else}}N/A{{end}}
+h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{taskurl .}}]
+Host: {{host .}}
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
 Commit: [diff|https://github.com/{{.Project.Owner}}/{{.Project.Repo}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
@@ -35,7 +35,34 @@ const (
 )
 
 // descriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
-var descriptionTemplate = template.Must(template.New("Desc").Parse(descriptionTemplateString))
+var descriptionTemplate = template.Must(template.New("Desc").Funcs(template.FuncMap{
+	"taskurl": getTaskURL,
+	"host":    getHostMetadata,
+}).Parse(descriptionTemplateString))
+
+func getHostMetadata(data *jiraTemplateData) string {
+	if data.Host == nil {
+		return "N/A"
+	}
+
+	return fmt.Sprintf("[%s|%s/host/%s]", data.Host.Host, data.UIRoot, url.PathEscape(data.Host.Id))
+}
+
+func getTaskURL(data *jiraTemplateData) (string, error) {
+	if data.Task == nil {
+		return "", errors.New("task is nil")
+	}
+	id := data.Task.Id
+	execution := data.Task.Execution
+	if data.Task.DisplayTask != nil {
+		id = data.Task.DisplayTask.Id
+		execution = data.Task.DisplayTask.Execution
+	} else if len(data.Task.OldTaskId) != 0 {
+		id = data.Task.OldTaskId
+	}
+
+	return fmt.Sprintf("%s/task/%s/%d", data.UIRoot, url.PathEscape(id), execution), nil
+}
 
 // jiraTestFailure contains the required fields for generating a failure report.
 type jiraTestFailure struct {
@@ -151,7 +178,14 @@ func (j *jiraBuilder) getSummary() (string, error) {
 	subj.WriteString(makeSummaryPrefix(j.data.Task, len(failed)))
 
 	catcher := grip.NewSimpleCatcher()
-	_, err := fmt.Fprintf(subj, "%s on %s ", j.data.Task.DisplayName, j.data.Build.DisplayName)
+	if j.data.Task.DisplayTask != nil {
+		_, err := fmt.Fprintf(subj, j.data.Task.DisplayTask.DisplayName)
+		catcher.Add(err)
+	} else {
+		_, err := fmt.Fprintf(subj, j.data.Task.DisplayName)
+		catcher.Add(err)
+	}
+	_, err := fmt.Fprintf(subj, " on %s ", j.data.Build.DisplayName)
 	catcher.Add(err)
 	_, err = fmt.Fprintf(subj, "[%s @ %s] ", j.data.Project.DisplayName, j.data.Version.Revision[0:8])
 	catcher.Add(err)
