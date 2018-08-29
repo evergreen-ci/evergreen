@@ -140,11 +140,9 @@ class Root extends React.PureComponent {
     params.skip = this.nextSkip;
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
-        setTimeout(() => {
         this.updatePaginationContext(data);
         this.setState({data, nextSkip: this.nextSkip + data.versions.length});
         updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
-        }, 5000)
       })
   }
 
