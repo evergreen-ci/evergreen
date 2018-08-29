@@ -30,6 +30,8 @@ clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,free
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 clientSource := main/evergreen.go
+srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
+uiFiles := $(shell find public/static -name "*.js" -not -path "./public/static/app")
 
 xcPackages := agent command operations rest-client subprocess util
 distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/test.$(pkg))
@@ -192,7 +194,7 @@ $(buildDir)/make-tarball:scripts/make-tarball.go
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries)
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
 	./$< -name $@ --prefix $(name) $(foreach item,$(distTestContents) $(distContents),--item $(item)) $(foreach item,$(shell find . -maxdepth 2 -type d -name "testdata"),--item $(item)) --item makefile --item scripts --item config_test --exclude "public/node_modules"

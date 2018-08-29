@@ -113,6 +113,7 @@ class Root extends React.PureComponent {
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
     this.loadDataPortion();
     this.loadDataPortion = _.debounce(this.loadDataPortion, 100)
+    this.loadData = this.loadData.bind(this);
   }
 
   updatePaginationContext(data) {
@@ -135,9 +136,19 @@ class Root extends React.PureComponent {
     }
   }
 
-  loadDataPortion(filter) {
-    const params = filter ? {bv_filter: filter} : {}
-    params.skip = this.nextSkip;
+  loadData(direction) {
+    this.loadDataPortion(undefined, direction === -1 ? this.prevSkip : this.nextSkip);
+  }
+
+  loadDataPortion(filter, skip) {
+    const params = {};
+    if (this.state.data !== null && this.state.data.buildVariantFilter) {
+      params.filter = this.state.data.buildVariantFilter;
+    }
+    if (filter !== undefined) {
+      params.bv_filter = filter;
+    }
+    params.skip = skip === undefined ? this.nextSkip : skip;
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
         this.updatePaginationContext(data);
@@ -221,6 +232,7 @@ class Root extends React.PureComponent {
           isLoggedIn={this.props.user !== null}
           project={this.props.project}
           disabled={false}
+          loadData={this.loadData}
         />
         <Headers
           shortenCommitMessage={this.state.shortenCommitMessage}
@@ -254,7 +266,8 @@ function Toolbar ({collapsed,
   taskFilterFunc,
   isLoggedIn,
   project,
-  disabled
+  disabled,
+  loadData
 }) {
 
   var Form = ReactBootstrap.Form;
@@ -282,6 +295,7 @@ function Toolbar ({collapsed,
             buildVariantFilter={buildVariantFilter}
             taskFilter={taskFilter}
             disabled={disabled}
+            loadData={loadData}
           />
           <GearMenu
             project={project}
@@ -293,42 +307,47 @@ function Toolbar ({collapsed,
   )
 };
 
-function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilter, disabled}) {
-  var ButtonGroup = ReactBootstrap.ButtonGroup;
-
-  var nextURL= "";
-  var prevURL= "";
-
-  var prevURLParams = {};
-  var nextURLParams = {};
-
-  nextURLParams["skip"] = nextSkip;
-  prevURLParams["skip"] = prevSkip;
-  if (buildVariantFilter && buildVariantFilter != '') {
-    nextURLParams["bv_filter"] = buildVariantFilter;
-    prevURLParams["bv_filter"] = buildVariantFilter;
+class PageButtons extends React.PureComponent {
+  constructor(props) {
+    super(props);
+    this.loadNext = () => this.props.loadData(1);
+    this.loadPrev = () => this.props.loadData(-1);
   }
-  if (taskFilter && taskFilter != '') {
-    nextURLParams["task_filter"] = taskFilter;
-    prevURLParams["task_filter"] = taskFilter;
+
+  render() {
+    const ButtonGroup = ReactBootstrap.ButtonGroup;
+
+    const prevURLParams = {};
+    const nextURLParams = {};
+
+    nextURLParams["skip"] = this.props.nextSkip;
+    prevURLParams["skip"] = this.props.prevSkip;
+    if (this.props.buildVariantFilter && this.props.buildVariantFilter != '') {
+      nextURLParams["bv_filter"] = this.props.buildVariantFilter;
+      prevURLParams["bv_filter"] = this.props.buildVariantFilter;
+    }
+    if (this.props.taskFilter && this.props.taskFilter != '') {
+      nextURLParams["task_filter"] = this.props.taskFilter;
+      prevURLParams["task_filter"] = this.props.taskFilter;
+    }
+    const nextURL = "?" + generateURLParameters(nextURLParams);
+    const prevURL = "?" + generateURLParameters(prevURLParams);
+    return (
+      <span className="waterfall-form-item">
+        <ButtonGroup>
+          <PageButton pageURL={prevURL} disabled={this.props.disabled || this.props.prevSkip < 0} directionIcon="fa-chevron-left" loadData={this.loadPrev} />
+          <PageButton pageURL={nextURL} disabled={this.props.disabled || this.props.nextSkip < 0} directionIcon="fa-chevron-right" loadData={this.loadNext} />
+        </ButtonGroup>
+      </span>
+    );
   }
-  nextURL = "?" + generateURLParameters(nextURLParams);
-  prevURL = "?" + generateURLParameters(prevURLParams);
-  return (
-    <span className="waterfall-form-item">
-      <ButtonGroup>
-        <PageButton pageURL={prevURL} disabled={disabled || prevSkip < 0} directionIcon="fa-chevron-left" />
-        <PageButton pageURL={nextURL} disabled={disabled || nextSkip < 0} directionIcon="fa-chevron-right" />
-      </ButtonGroup>
-    </span>
-  );
 }
 
-function PageButton ({pageURL, directionIcon, disabled}) {
+function PageButton ({pageURL, directionIcon, disabled, loadData}) {
   var Button = ReactBootstrap.Button;
   var classes = "fa " + directionIcon;
   return (
-    <Button href={pageURL} disabled={disabled}><i className={classes}></i></Button>
+    <Button onClick={loadData} disabled={disabled}><i className={classes}></i></Button>
   );
 }
 
