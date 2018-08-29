@@ -147,7 +147,15 @@ function Grid(_ref) {
     data.rows.filter(function (row) {
       return row.build_variant.display_name.toLowerCase().indexOf(buildVariantFilter.toLowerCase()) != -1;
     }).map(function (row) {
-      return React.createElement(Variant, { row: row, project: project, collapseInfo: collapseInfo, versions: data.versions, taskFilter: taskFilter, currentTime: data.current_time });
+      return React.createElement(Variant, {
+        key: row.build_variant.display_name,
+        row: row,
+        project: project,
+        collapseInfo: collapseInfo,
+        versions: data.versions,
+        taskFilter: taskFilter,
+        currentTime: data.current_time
+      });
     })
   );
 };
@@ -185,13 +193,14 @@ function Variant(_ref2) {
         versions.map(function (version, i) {
           return React.createElement(
             'div',
-            { className: 'waterfall-build' },
-            React.createElement(Build, { key: version.ids[0],
+            { key: version.ids[0], className: 'waterfall-build' },
+            React.createElement(Build, {
               build: row.builds[version.ids[0]],
               rolledUp: version.rolled_up,
               collapseInfo: collapseInfo,
               taskFilter: taskFilter,
-              currentTime: currentTime })
+              currentTime: currentTime
+            })
           );
         })
       )
@@ -254,7 +263,7 @@ function ActiveBuild(_ref4) {
     'div',
     { className: 'active-build' },
     _.map(tasks, function (task) {
-      return React.createElement(Task, { task: task, currentTime: currentTime });
+      return React.createElement(Task, { key: task.id, task: task, currentTime: currentTime });
     })
   );
 }
@@ -504,7 +513,7 @@ function CollapsedBuild(_ref9) {
     'div',
     { className: 'collapsed-build' },
     _.map(taskTypes, function (count, status) {
-      return React.createElement(TaskSummary, { status: status, count: count, build: build });
+      return React.createElement(TaskSummary, { key: status, status: status, count: count, build: build });
     })
   );
 }

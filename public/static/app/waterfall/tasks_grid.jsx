@@ -131,8 +131,18 @@ function Grid ({data, project, collapseInfo, buildVariantFilter, taskFilter}) {
         data.rows.filter(function(row){
           return row.build_variant.display_name.toLowerCase().indexOf(buildVariantFilter.toLowerCase()) != -1;
         })
-        .map(function(row){
-          return <Variant row={row} project={project} collapseInfo={collapseInfo} versions={data.versions} taskFilter={taskFilter} currentTime={data.current_time}/>;
+        .map(function(row) {
+          return (
+            <Variant
+              key={row.build_variant.display_name}
+              row={row}
+              project={project}
+              collapseInfo={collapseInfo}
+              versions={data.versions}
+              taskFilter={taskFilter}
+              currentTime={data.current_time}
+            />
+          );
         })
       }
     </div>
@@ -157,14 +167,16 @@ function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}
           <div className="row build-cells">
             {
               versions.map(function(version, i){
-                  return(<div className="waterfall-build">
-                    <Build key={version.ids[0]}
-                                build={row.builds[version.ids[0]]}
-                                rolledUp={version.rolled_up}
-                                collapseInfo={collapseInfo}
-                                taskFilter={taskFilter}
-                                currentTime={currentTime}/>
-                  </div>
+                  return(
+                    <div key={version.ids[0]} className="waterfall-build">
+                      <Build
+                        build={row.builds[version.ids[0]]}
+                        rolledUp={version.rolled_up}
+                        collapseInfo={collapseInfo}
+                        taskFilter={taskFilter}
+                        currentTime={currentTime}
+                      />
+                    </div>
                   );
               })
             }
@@ -224,7 +236,7 @@ function ActiveBuild({tasks, taskFilter, currentTime}){
     <div className="active-build">
       {
         _.map(tasks, function(task){
-          return <Task task={task} currentTime={currentTime}/>
+          return <Task key={task.id} task={task} currentTime={currentTime}/>
         })
       }
     </div>
@@ -413,7 +425,7 @@ function CollapsedBuild({build, activeTaskStatuses}){
     <div className="collapsed-build">
       {
         _.map(taskTypes, function(count, status) {
-          return <TaskSummary status={status} count={count} build={build} />;
+          return <TaskSummary key={status} status={status} count={count} build={build} />;
         })
       }
     </div>
