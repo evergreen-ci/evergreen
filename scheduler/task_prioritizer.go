@@ -2,6 +2,8 @@ package scheduler
 
 import (
 	"fmt"
+	"reflect"
+	"runtime"
 	"sort"
 	"time"
 
@@ -158,6 +160,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error {
 	startAt := time.Now()
 	for i, setupFunc := range self.setupFuncs {
+		startAtFunc := time.Now()
 		if err := setupFunc(self); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":        "error running sorting setup",
@@ -168,6 +171,13 @@ func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error 
 			}))
 			return errors.Wrap(err, "Error running setup for sorting")
 		}
+		grip.Info(message.Fields{
+			"distro":        distroId,
+			"duration_secs": time.Since(startAtFunc).Seconds(),
+			"func":          runtime.FuncForPC(reflect.ValueOf(setupFunc).Pointer()).Name(),
+			"message":       "successfully ran setup func",
+			"operation":     "setupFunc",
+		})
 	}
 	grip.Debug(message.Fields{
 		"message":       "successfully ran sorting setup",
