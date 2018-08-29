@@ -680,9 +680,9 @@ function VersionHeaderTombstone() {
                 "div",
                 { className: "row" },
                 React.createElement(
-                  "span",
-                  { className: "waterfall-tombstone", style: { 'height': '17px' } },
-                  "\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0"
+                  "div",
+                  { className: "waterfall-tombstone", style: { 'height': '14px', 'width': '126px' } },
+                  "\xA0"
                 )
               )
             ),
@@ -693,17 +693,15 @@ function VersionHeaderTombstone() {
                 "div",
                 { className: "row" },
                 React.createElement(
-                  "span",
-                  { className: "waterfall-tombstone", style: { 'height': '15px' } },
-                  "\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0"
+                  "div",
+                  { className: "waterfall-tombstone", style: { 'marginTop': '5px', 'height': '14px', 'width': '78px' } },
+                  "\xA0"
                 ),
-                React.createElement("br", null),
                 React.createElement(
-                  "span",
-                  { className: "waterfall-tombstone", style: { 'height': '15px' } },
-                  "\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0"
-                ),
-                React.createElement("br", null)
+                  "div",
+                  { className: "waterfall-tombstone", style: { 'marginTop': '5px', 'height': '14px', 'width': '205px' } },
+                  "\xA0"
+                )
               )
             )
           )
@@ -919,9 +917,9 @@ function VariantTombstone() {
       "div",
       { className: "col-xs-2 build-variants" },
       React.createElement(
-        "span",
-        { className: "waterfall-tombstone" },
-        "\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0"
+        "div",
+        { className: "waterfall-tombstone", style: { 'height': '18px', 'width': '159px', 'float': 'right' } },
+        "\xA0"
       )
     ),
     React.createElement(

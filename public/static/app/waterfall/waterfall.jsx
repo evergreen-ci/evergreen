@@ -553,20 +553,13 @@ function VersionHeaderTombstone() {
             <div className="version-header-expanded">
               <div className="col-xs-12">
                 <div className="row">
-                  <span className="waterfall-tombstone" style={{'height': '17px'}}>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                  </span>
+                  <div className="waterfall-tombstone" style={{'height': '14px', 'width': '126px'}}>&nbsp;</div>
                 </div>
               </div>
               <div className="col-xs-12">
                 <div className="row">
-                  <span className="waterfall-tombstone" style={{'height': '15px'}}>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                  </span><br/>
-                  <span className="waterfall-tombstone" style={{'height': '15px'}}>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                  </span><br/>
-
+                  <div className="waterfall-tombstone" style={{'marginTop': '5px', 'height': '14px', 'width': '78px'}}>&nbsp;</div>
+                  <div className="waterfall-tombstone" style={{'marginTop': '5px', 'height': '14px', 'width': '205px'}}>&nbsp;</div>
                 </div>
               </div>
             </div>
@@ -693,9 +686,7 @@ function VariantTombstone() {
   return (
     <div className="row variant-row">
       <div className="col-xs-2 build-variants">
-        <span className="waterfall-tombstone">
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        </span>
+        <div className="waterfall-tombstone" style={{'height': '18px', 'width': '159px', 'float': 'right'}}>&nbsp;</div>
       </div>
       <div className="col-xs-10">
         <div className="row build-cells">
