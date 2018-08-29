@@ -114,6 +114,7 @@ class Root extends React.PureComponent {
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
     this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
+    this.loadDataPortion = this.loadDataPortion.bind(this);
     this.loadDataPortion();
     this.loadDataPortion = _.debounce(this.loadDataPortion, 100)
     this.loadData = this.loadData.bind(this);
@@ -147,10 +148,10 @@ class Root extends React.PureComponent {
     const params = {
       skip: skip === undefined ? this.nextSkip : skip
     };
-    if (this.state.data !== null && this.state.data.buildVariantFilter) {
-      params.bv_filter = this.state.data.buildVariantFilter;
+    if (this.state.buildVariantFilter) {
+      params.bv_filter = this.state.buildVariantFilter;
     }
-    if (filter !== undefined && filter !== this.state.data.buildVariantFilter) {
+    if (filter !== undefined && filter !== this.state.buildVariantFilter) {
       params.bv_filter = filter;
       params.skip = 0;
     }
@@ -160,7 +161,6 @@ class Root extends React.PureComponent {
     this.setState({data: null});
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
-          console.log(data);
         this.updatePaginationContext(data);
         this.setState({data, nextSkip: this.nextSkip + data.versions.length});
         updateURLParams(params.bv_filter, this.state.taskFilter, this.currentSkip, this.baseURL);

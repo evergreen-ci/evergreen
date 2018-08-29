@@ -144,6 +144,7 @@ var Root = function (_React$PureComponent2) {
     _this2.handleHeaderLinkClick = _this2.handleHeaderLinkClick.bind(_this2);
     _this2.handleBuildVariantFilter = _this2.handleBuildVariantFilter.bind(_this2);
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
+    _this2.loadDataPortion = _this2.loadDataPortion.bind(_this2);
     _this2.loadDataPortion();
     _this2.loadDataPortion = _.debounce(_this2.loadDataPortion, 100);
     _this2.loadData = _this2.loadData.bind(_this2);
@@ -184,10 +185,10 @@ var Root = function (_React$PureComponent2) {
       var params = {
         skip: skip === undefined ? this.nextSkip : skip
       };
-      if (this.state.data !== null && this.state.data.buildVariantFilter) {
-        params.bv_filter = this.state.data.buildVariantFilter;
+      if (this.state.buildVariantFilter) {
+        params.bv_filter = this.state.buildVariantFilter;
       }
-      if (filter !== undefined && filter !== this.state.data.buildVariantFilter) {
+      if (filter !== undefined && filter !== this.state.buildVariantFilter) {
         params.bv_filter = filter;
         params.skip = 0;
       }
@@ -198,7 +199,6 @@ var Root = function (_React$PureComponent2) {
       http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
-        console.log(data);
         _this3.updatePaginationContext(data);
         _this3.setState({ data: data, nextSkip: _this3.nextSkip + data.versions.length });
         updateURLParams(params.bv_filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
@@ -619,7 +619,6 @@ function Headers(_ref4) {
       userTz = _ref4.userTz,
       jiraHost = _ref4.jiraHost;
 
-  console.log(versions);
   if (versions === null) {
     return React.createElement(VersionHeaderTombstone, null);
   }
