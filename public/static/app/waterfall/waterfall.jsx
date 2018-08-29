@@ -48,6 +48,8 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
   if (Object.keys(params).length > 0) {
     const paramString = generateURLParameters(params);
     window.history.replaceState({}, '', baseURL + "?" + paramString);
+  } else {
+    window.history.replaceState({}, '', baseURL);
   }
 }
 
@@ -105,6 +107,7 @@ class Root extends React.PureComponent {
       data: null
     }
     this.nextSkip = getParameterByName('skip', href) || 0;
+    this.baseURL = "/waterfall/" + this.props.project
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
@@ -122,7 +125,6 @@ class Root extends React.PureComponent {
       return m + d.authors.length
     }, 0)
 
-    this.baseURL = "/waterfall/" + this.props.project
     this.currentSkip = data.current_skip
     this.nextSkip = this.currentSkip + versionsOnPage;
     this.prevSkip = this.currentSkip - data.previous_page_count
@@ -142,14 +144,16 @@ class Root extends React.PureComponent {
   }
 
   loadDataPortion(filter, skip) {
-    const params = {};
+    const params = {
+      skip: skip === undefined ? this.nextSkip : skip
+    };
     if (this.state.data !== null && this.state.data.buildVariantFilter) {
       params.bv_filter = this.state.data.buildVariantFilter;
     }
-    if (filter !== undefined) {
+    if (filter !== undefined && filter !== this.state.data.buildVariantFilter) {
       params.bv_filter = filter;
+      params.skip = 0;
     }
-    params.skip = skip === undefined ? this.nextSkip : skip;
     if (params.skip === -1) {
       delete params.skip;
     }
@@ -159,8 +163,8 @@ class Root extends React.PureComponent {
           console.log(data);
         this.updatePaginationContext(data);
         this.setState({data, nextSkip: this.nextSkip + data.versions.length});
-        updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
-      })
+        updateURLParams(params.bv_filter, this.state.taskFilter, this.currentSkip, this.baseURL);
+      });
   }
 
   handleCollapseChange(collapsed) {
@@ -214,7 +218,7 @@ class Root extends React.PureComponent {
         />
         <Headers
           shortenCommitMessage={this.state.shortenCommitMessage}
-          versions={this.state.data ? this.state.data.versions : null}
+          versions={this.state.data === null ? null : this.state.data.versions}
           onLinkClick={this.handleHeaderLinkClick}
           userTz={this.props.userTz}
           jiraHost={this.props.jiraHost}
@@ -233,44 +237,56 @@ class Root extends React.PureComponent {
 
 
 // Toolbar
-class Toolbar extends React.PureComponent {
-  render() {
-    const Form = ReactBootstrap.Form;
-    return (
-      <div className="row">
-        <div className="col-xs-12">
-          <Form inline className="waterfall-toolbar pull-right">
-            <CollapseButton collapsed={this.props.collapsed} onCheck={this.props.onCheck} disabled={this.props.disabled} />
-            <FilterBox
-              filterFunction={this.props.buildVariantFilterFunc}
-              placeholder={"Filter variant"}
-              currentFilter={this.props.buildVariantFilter}
-              disabled={this.props.disabled}
-            />
-            <FilterBox
-              filterFunction={this.props.taskFilterFunc}
-              placeholder={"Filter task"}
-              currentFilter={this.props.taskFilter}
-              disabled={this.props.collapsed || this.props.disabled}
-            />
-            <PageButtons
-              nextSkip={this.props.nextSkip}
-              prevSkip={this.props.prevSkip}
-              baseURL={this.props.baseURL}
-              buildVariantFilter={this.props.buildVariantFilter}
-              taskFilter={this.props.taskFilter}
-              disabled={this.props.disabled}
-              loadData={this.props.loadData}
-            />
-            <GearMenu
-              project={this.props.project}
-              isLoggedIn={this.props.isLoggedIn}
-            />
-          </Form>
-        </div>
+function Toolbar ({collapsed,
+  onCheck,
+  baseURL,
+  nextSkip,
+  prevSkip,
+  buildVariantFilter,
+  taskFilter,
+  buildVariantFilterFunc,
+  taskFilterFunc,
+  isLoggedIn,
+  project,
+  disabled,
+  loadData
+}) {
+
+  var Form = ReactBootstrap.Form;
+  return (
+    <div className="row">
+      <div className="col-xs-12">
+        <Form inline className="waterfall-toolbar pull-right">
+          <CollapseButton collapsed={collapsed} onCheck={onCheck} disabled={disabled} />
+          <FilterBox
+            filterFunction={buildVariantFilterFunc}
+            placeholder={"Filter variant"}
+            currentFilter={buildVariantFilter}
+            disabled={disabled}
+          />
+          <FilterBox
+            filterFunction={taskFilterFunc}
+            placeholder={"Filter task"}
+            currentFilter={taskFilter}
+            disabled={collapsed || disabled}
+          />
+          <PageButtons
+            nextSkip={nextSkip}
+            prevSkip={prevSkip}
+            baseURL={baseURL}
+            buildVariantFilter={buildVariantFilter}
+            taskFilter={taskFilter}
+            disabled={disabled}
+            loadData={loadData}
+          />
+          <GearMenu
+            project={project}
+            isLoggedIn={isLoggedIn}
+          />
+        </Form>
       </div>
-    );
-  }
+    </div>
+  )
 };
 
 class PageButtons extends React.PureComponent {
@@ -282,34 +298,18 @@ class PageButtons extends React.PureComponent {
 
   render() {
     const ButtonGroup = ReactBootstrap.ButtonGroup;
-
-    const prevURLParams = {};
-    const nextURLParams = {};
-
-    nextURLParams["skip"] = this.props.nextSkip;
-    prevURLParams["skip"] = this.props.prevSkip;
-    if (this.props.buildVariantFilter && this.props.buildVariantFilter != '') {
-      nextURLParams["bv_filter"] = this.props.buildVariantFilter;
-      prevURLParams["bv_filter"] = this.props.buildVariantFilter;
-    }
-    if (this.props.taskFilter && this.props.taskFilter != '') {
-      nextURLParams["task_filter"] = this.props.taskFilter;
-      prevURLParams["task_filter"] = this.props.taskFilter;
-    }
-    const nextURL = "?" + generateURLParameters(nextURLParams);
-    const prevURL = "?" + generateURLParameters(prevURLParams);
     return (
       <span className="waterfall-form-item">
         <ButtonGroup>
-          <PageButton pageURL={prevURL} disabled={this.props.disabled || this.props.prevSkip < 0} directionIcon="fa-chevron-left" loadData={this.loadPrev} />
-          <PageButton pageURL={nextURL} disabled={this.props.disabled || this.props.nextSkip < 0} directionIcon="fa-chevron-right" loadData={this.loadNext} />
+          <PageButton disabled={this.props.disabled || this.props.prevSkip < 0} directionIcon="fa-chevron-left" loadData={this.loadPrev} />
+          <PageButton disabled={this.props.disabled || this.props.nextSkip < 0} directionIcon="fa-chevron-right" loadData={this.loadNext} />
         </ButtonGroup>
       </span>
     );
   }
 }
 
-function PageButton ({pageURL, directionIcon, disabled, loadData}) {
+function PageButton ({directionIcon, disabled, loadData}) {
   var Button = ReactBootstrap.Button;
   var classes = "fa " + directionIcon;
   return (
