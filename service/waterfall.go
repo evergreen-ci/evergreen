@@ -23,16 +23,6 @@ const (
 	waterfallSkipParam     = "skip"
 )
 
-// Pull the skip value out of the http request
-func skipValue(r *http.Request) (int, error) {
-	// determine how many versions to skip
-	toSkipStr := r.FormValue(waterfallSkipParam)
-	if toSkipStr == "" {
-		toSkipStr = "0"
-	}
-	return strconv.Atoi(toSkipStr)
-}
-
 // uiStatus determines task status label.
 func uiStatus(task waterfallTask) string {
 	switch task.Status {
