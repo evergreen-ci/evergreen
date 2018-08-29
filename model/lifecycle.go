@@ -184,7 +184,11 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		if b.Activated {
 			activeBuilds += 1
 		}
-		if complete, buildStatus := b.AllCachedTasksOrCompileFinished(); complete {
+		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if complete {
 			buildsWithAllActiveTasksComplete += 1
 			if buildStatus != evergreen.BuildSucceeded {
 				versionStatusFromTasks = evergreen.VersionFailed

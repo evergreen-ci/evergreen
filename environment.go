@@ -101,6 +101,17 @@ type Environment interface {
 	Close(context.Context) error
 }
 
+type ClientBinary struct {
+	Arch string
+	OS   string
+	URL  string
+}
+
+type ClientConfig struct {
+	ClientBinaries []ClientBinary
+	LatestRevision string
+}
+
 type envState struct {
 	remoteQueue        amboy.Queue
 	localQueue         amboy.Queue
