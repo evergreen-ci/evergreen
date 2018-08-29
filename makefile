@@ -31,7 +31,7 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 
 clientSource := main/evergreen.go
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
-uiFiles := $(shell find public/static -name "*.js" -not -path "./public/static/app")
+uiFiles := $(shell find public/static -name "*.js" -name "*.css" -name "*.html" -not -path "./public/static/app")
 
 xcPackages := agent command operations rest-client subprocess util
 distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/test.$(pkg))

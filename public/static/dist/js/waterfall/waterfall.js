@@ -171,7 +171,8 @@ var Root = function (_React$PureComponent2) {
   }, {
     key: "loadData",
     value: function loadData(direction) {
-      this.loadDataPortion(undefined, direction === -1 ? this.prevSkip : this.nextSkip);
+      var skip = direction === -1 ? this.prevSkip : this.nextSkip;
+      this.loadDataPortion(undefined, skip);
     }
   }, {
     key: "loadDataPortion",
@@ -180,12 +181,16 @@ var Root = function (_React$PureComponent2) {
 
       var params = {};
       if (this.state.data !== null && this.state.data.buildVariantFilter) {
-        params.filter = this.state.data.buildVariantFilter;
+        params.bv_filter = this.state.data.buildVariantFilter;
       }
       if (filter !== undefined) {
         params.bv_filter = filter;
       }
       params.skip = skip === undefined ? this.nextSkip : skip;
+      if (params.skip === -1) {
+        delete params.skip;
+      }
+      this.setState({ data: null });
       http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
@@ -221,35 +226,7 @@ var Root = function (_React$PureComponent2) {
   }, {
     key: "render",
     value: function render() {
-      if (!this.state.data) {
-        return React.createElement(
-          "div",
-          null,
-          React.createElement(Toolbar, {
-            collapsed: this.state.collapsed,
-            onCheck: this.handleCollapseChange,
-            baseURL: this.baseURL,
-            nextSkip: this.nextSkip,
-            prevSkip: this.prevSkip,
-            buildVariantFilter: this.state.buildVariantFilter,
-            taskFilter: this.state.taskFilter,
-            buildVariantFilterFunc: this.handleBuildVariantFilter,
-            taskFilterFunc: this.handleTaskFilter,
-            isLoggedIn: this.props.user !== null,
-            project: this.props.project,
-            disabled: true
-          }),
-          React.createElement(VersionHeaderTombstone, null),
-          React.createElement(Grid, {
-            data: this.state.data,
-            collapseInfo: collapseInfo,
-            project: this.props.project,
-            buildVariantFilter: this.state.buildVariantFilter,
-            taskFilter: this.state.taskFilter
-          })
-        );
-      }
-      if (this.state.data.rows.length == 0) {
+      if (this.state.data && this.state.data.rows.length == 0) {
         return React.createElement(
           "div",
           null,
@@ -280,7 +257,7 @@ var Root = function (_React$PureComponent2) {
         }),
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage,
-          versions: this.state.data.versions,
+          versions: this.state.data ? this.state.data.versions : null,
           onLinkClick: this.handleHeaderLinkClick,
           userTz: this.props.userTz,
           jiraHost: this.props.jiraHost
@@ -302,78 +279,80 @@ var Root = function (_React$PureComponent2) {
 // Toolbar
 
 
-function Toolbar(_ref2) {
-  var collapsed = _ref2.collapsed,
-      onCheck = _ref2.onCheck,
-      baseURL = _ref2.baseURL,
-      nextSkip = _ref2.nextSkip,
-      prevSkip = _ref2.prevSkip,
-      buildVariantFilter = _ref2.buildVariantFilter,
-      taskFilter = _ref2.taskFilter,
-      buildVariantFilterFunc = _ref2.buildVariantFilterFunc,
-      taskFilterFunc = _ref2.taskFilterFunc,
-      isLoggedIn = _ref2.isLoggedIn,
-      project = _ref2.project,
-      disabled = _ref2.disabled,
-      loadData = _ref2.loadData;
+var Toolbar = function (_React$PureComponent3) {
+  _inherits(Toolbar, _React$PureComponent3);
 
+  function Toolbar() {
+    _classCallCheck(this, Toolbar);
 
-  var Form = ReactBootstrap.Form;
-  return React.createElement(
-    "div",
-    { className: "row" },
-    React.createElement(
-      "div",
-      { className: "col-xs-12" },
-      React.createElement(
-        Form,
-        { inline: true, className: "waterfall-toolbar pull-right" },
-        React.createElement(CollapseButton, { collapsed: collapsed, onCheck: onCheck, disabled: disabled }),
-        React.createElement(FilterBox, {
-          filterFunction: buildVariantFilterFunc,
-          placeholder: "Filter variant",
-          currentFilter: buildVariantFilter,
-          disabled: disabled
-        }),
-        React.createElement(FilterBox, {
-          filterFunction: taskFilterFunc,
-          placeholder: "Filter task",
-          currentFilter: taskFilter,
-          disabled: collapsed || disabled
-        }),
-        React.createElement(PageButtons, {
-          nextSkip: nextSkip,
-          prevSkip: prevSkip,
-          baseURL: baseURL,
-          buildVariantFilter: buildVariantFilter,
-          taskFilter: taskFilter,
-          disabled: disabled,
-          loadData: loadData
-        }),
-        React.createElement(GearMenu, {
-          project: project,
-          isLoggedIn: isLoggedIn
-        })
-      )
-    )
-  );
-};
+    return _possibleConstructorReturn(this, (Toolbar.__proto__ || Object.getPrototypeOf(Toolbar)).apply(this, arguments));
+  }
 
-var PageButtons = function (_React$PureComponent3) {
-  _inherits(PageButtons, _React$PureComponent3);
+  _createClass(Toolbar, [{
+    key: "render",
+    value: function render() {
+      var Form = ReactBootstrap.Form;
+      return React.createElement(
+        "div",
+        { className: "row" },
+        React.createElement(
+          "div",
+          { className: "col-xs-12" },
+          React.createElement(
+            Form,
+            { inline: true, className: "waterfall-toolbar pull-right" },
+            React.createElement(CollapseButton, { collapsed: this.props.collapsed, onCheck: this.props.onCheck, disabled: this.props.disabled }),
+            React.createElement(FilterBox, {
+              filterFunction: this.props.buildVariantFilterFunc,
+              placeholder: "Filter variant",
+              currentFilter: this.props.buildVariantFilter,
+              disabled: this.props.disabled
+            }),
+            React.createElement(FilterBox, {
+              filterFunction: this.props.taskFilterFunc,
+              placeholder: "Filter task",
+              currentFilter: this.props.taskFilter,
+              disabled: this.props.collapsed || this.props.disabled
+            }),
+            React.createElement(PageButtons, {
+              nextSkip: this.props.nextSkip,
+              prevSkip: this.props.prevSkip,
+              baseURL: this.props.baseURL,
+              buildVariantFilter: this.props.buildVariantFilter,
+              taskFilter: this.props.taskFilter,
+              disabled: this.props.disabled,
+              loadData: this.props.loadData
+            }),
+            React.createElement(GearMenu, {
+              project: this.props.project,
+              isLoggedIn: this.props.isLoggedIn
+            })
+          )
+        )
+      );
+    }
+  }]);
+
+  return Toolbar;
+}(React.PureComponent);
+
+;
+
+var PageButtons = function (_React$PureComponent4) {
+  _inherits(PageButtons, _React$PureComponent4);
 
   function PageButtons(props) {
     _classCallCheck(this, PageButtons);
 
-    var _this4 = _possibleConstructorReturn(this, (PageButtons.__proto__ || Object.getPrototypeOf(PageButtons)).call(this, props));
+    var _this5 = _possibleConstructorReturn(this, (PageButtons.__proto__ || Object.getPrototypeOf(PageButtons)).call(this, props));
 
-    _this4.loadNext = function () {
-      return _this4.props.loadData(1);
+    _this5.loadNext = function () {
+      return _this5.props.loadData(1);
     };
-    _this4.loadPrev = function () {
-      return _this4.props.loadData(-1);
+    _this5.loadPrev = function () {
+      return _this5.props.loadData(-1);
     };
-    return _this4;
+    return _this5;
   }
 
   _createClass(PageButtons, [{
@@ -412,11 +391,11 @@ var PageButtons = function (_React$PureComponent3) {
   return PageButtons;
 }(React.PureComponent);
 
-function PageButton(_ref3) {
-  var pageURL = _ref3.pageURL,
-      directionIcon = _ref3.directionIcon,
-      disabled = _ref3.disabled,
-      loadData = _ref3.loadData;
+function PageButton(_ref2) {
+  var pageURL = _ref2.pageURL,
+      directionIcon = _ref2.directionIcon,
+      disabled = _ref2.disabled,
+      loadData = _ref2.loadData;
 
   var Button = ReactBootstrap.Button;
   var classes = "fa " + directionIcon;
@@ -427,16 +406,16 @@ function PageButton(_ref3) {
   );
 }
 
-var FilterBox = function (_React$PureComponent4) {
-  _inherits(FilterBox, _React$PureComponent4);
+var FilterBox = function (_React$PureComponent5) {
+  _inherits(FilterBox, _React$PureComponent5);
 
   function FilterBox(props) {
     _classCallCheck(this, FilterBox);
 
-    var _this5 = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
+    var _this6 = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
 
-    _this5.applyFilter = _this5.applyFilter.bind(_this5);
-    return _this5;
+    _this6.applyFilter = _this6.applyFilter.bind(_this6);
+    return _this6;
   }
 
   _createClass(FilterBox, [{
@@ -458,16 +437,16 @@ var FilterBox = function (_React$PureComponent4) {
   return FilterBox;
 }(React.PureComponent);
 
-var CollapseButton = function (_React$PureComponent5) {
-  _inherits(CollapseButton, _React$PureComponent5);
+var CollapseButton = function (_React$PureComponent6) {
+  _inherits(CollapseButton, _React$PureComponent6);
 
   function CollapseButton(props) {
     _classCallCheck(this, CollapseButton);
 
-    var _this6 = _possibleConstructorReturn(this, (CollapseButton.__proto__ || Object.getPrototypeOf(CollapseButton)).call(this, props));
+    var _this7 = _possibleConstructorReturn(this, (CollapseButton.__proto__ || Object.getPrototypeOf(CollapseButton)).call(this, props));
 
-    _this6.handleChange = _this6.handleChange.bind(_this6);
-    return _this6;
+    _this7.handleChange = _this7.handleChange.bind(_this7);
+    return _this7;
   }
 
   _createClass(CollapseButton, [{
@@ -501,16 +480,16 @@ var CollapseButton = function (_React$PureComponent5) {
   return CollapseButton;
 }(React.PureComponent);
 
-var GearMenu = function (_React$PureComponent6) {
-  _inherits(GearMenu, _React$PureComponent6);
+var GearMenu = function (_React$PureComponent7) {
+  _inherits(GearMenu, _React$PureComponent7);
 
   function GearMenu(props) {
     _classCallCheck(this, GearMenu);
 
-    var _this7 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
+    var _this8 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
 
-    _this7.addNotification = _this7.addNotification.bind(_this7);
-    _this7.triggers = [{
+    _this8.addNotification = _this8.addNotification.bind(_this8);
+    _this8.triggers = [{
       trigger: "outcome",
       resource_type: "TASK",
       label: "any task finishes",
@@ -565,7 +544,7 @@ var GearMenu = function (_React$PureComponent6) {
       resource_type: "VERSION",
       label: "any version succeeds"
     }];
-    return _this7;
+    return _this8;
   }
 
   _createClass(GearMenu, [{
@@ -647,13 +626,16 @@ var GearMenu = function (_React$PureComponent6) {
 
 // Headers
 
-function Headers(_ref4) {
-  var shortenCommitMessage = _ref4.shortenCommitMessage,
-      versions = _ref4.versions,
-      onLinkClick = _ref4.onLinkClick,
-      userTz = _ref4.userTz,
-      jiraHost = _ref4.jiraHost;
+function Headers(_ref3) {
+  var shortenCommitMessage = _ref3.shortenCommitMessage,
+      versions = _ref3.versions,
+      onLinkClick = _ref3.onLinkClick,
+      userTz = _ref3.userTz,
+      jiraHost = _ref3.jiraHost;
 
+  if (versions === null) {
+    return React.createElement(VersionHeaderTombstone, null);
+  }
   return React.createElement(
     "div",
     { className: "row version-header" },
@@ -745,12 +727,12 @@ function VersionHeaderTombstone() {
   );
 }
 
-function ActiveVersionHeader(_ref5) {
-  var shortenCommitMessage = _ref5.shortenCommitMessage,
-      version = _ref5.version,
-      onLinkClick = _ref5.onLinkClick,
-      userTz = _ref5.userTz,
-      jiraHost = _ref5.jiraHost;
+function ActiveVersionHeader(_ref4) {
+  var shortenCommitMessage = _ref4.shortenCommitMessage,
+      version = _ref4.version,
+      onLinkClick = _ref4.onLinkClick,
+      userTz = _ref4.userTz,
+      jiraHost = _ref4.jiraHost;
 
   var message = version.messages[0];
   var author = version.authors[0];
@@ -818,10 +800,10 @@ var HideHeaderButton = function (_React$Component) {
   function HideHeaderButton(props) {
     _classCallCheck(this, HideHeaderButton);
 
-    var _this8 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
+    var _this9 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
 
-    _this8.onLinkClick = _this8.onLinkClick.bind(_this8);
-    return _this8;
+    _this9.onLinkClick = _this9.onLinkClick.bind(_this9);
+    return _this9;
   }
 
   _createClass(HideHeaderButton, [{
@@ -850,10 +832,10 @@ var HideHeaderButton = function (_React$Component) {
   return HideHeaderButton;
 }(React.Component);
 
-function RolledUpVersionHeader(_ref6) {
-  var version = _ref6.version,
-      userTz = _ref6.userTz,
-      jiraHost = _ref6.jiraHost;
+function RolledUpVersionHeader(_ref5) {
+  var version = _ref5.version,
+      userTz = _ref5.userTz,
+      jiraHost = _ref5.jiraHost;
 
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
@@ -893,14 +875,14 @@ function RolledUpVersionHeader(_ref6) {
     )
   );
 };
-function RolledUpVersionSummary(_ref7) {
-  var author = _ref7.author,
-      commit = _ref7.commit,
-      message = _ref7.message,
-      versionId = _ref7.versionId,
-      createTime = _ref7.createTime,
-      userTz = _ref7.userTz,
-      jiraHost = _ref7.jiraHost;
+function RolledUpVersionSummary(_ref6) {
+  var author = _ref6.author,
+      commit = _ref6.commit,
+      message = _ref6.message,
+      versionId = _ref6.versionId,
+      createTime = _ref6.createTime,
+      userTz = _ref6.userTz,
+      jiraHost = _ref6.jiraHost;
 
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A');
   commit = commit.substring(0, 10);

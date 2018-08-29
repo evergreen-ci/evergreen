@@ -137,20 +137,26 @@ class Root extends React.PureComponent {
   }
 
   loadData(direction) {
-    this.loadDataPortion(undefined, direction === -1 ? this.prevSkip : this.nextSkip);
+    const skip = direction === -1 ? this.prevSkip : this.nextSkip;
+    this.loadDataPortion(undefined, skip);
   }
 
   loadDataPortion(filter, skip) {
     const params = {};
     if (this.state.data !== null && this.state.data.buildVariantFilter) {
-      params.filter = this.state.data.buildVariantFilter;
+      params.bv_filter = this.state.data.buildVariantFilter;
     }
     if (filter !== undefined) {
       params.bv_filter = filter;
     }
     params.skip = skip === undefined ? this.nextSkip : skip;
+    if (params.skip === -1) {
+      delete params.skip;
+    }
+    this.setState({data: null});
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
+          console.log(data);
         this.updatePaginationContext(data);
         this.setState({data, nextSkip: this.nextSkip + data.versions.length});
         updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
@@ -178,35 +184,7 @@ class Root extends React.PureComponent {
   }
 
   render() {
-    if (!this.state.data) {
-        return (
-          <div>
-            <Toolbar
-              collapsed={this.state.collapsed}
-              onCheck={this.handleCollapseChange}
-              baseURL={this.baseURL}
-              nextSkip={this.nextSkip}
-              prevSkip={this.prevSkip}
-              buildVariantFilter={this.state.buildVariantFilter}
-              taskFilter={this.state.taskFilter}
-              buildVariantFilterFunc={this.handleBuildVariantFilter}
-              taskFilterFunc={this.handleTaskFilter}
-              isLoggedIn={this.props.user !== null}
-              project={this.props.project}
-              disabled={true}
-            />
-            <VersionHeaderTombstone />
-            <Grid
-              data={this.state.data}
-              collapseInfo={collapseInfo}
-              project={this.props.project}
-              buildVariantFilter={this.state.buildVariantFilter}
-              taskFilter={this.state.taskFilter}
-            />
-          </div>
-        );
-    }
-    if (this.state.data.rows.length == 0){
+    if (this.state.data && this.state.data.rows.length == 0){
       return (
         <div>
           There are no builds for this project.
@@ -236,7 +214,7 @@ class Root extends React.PureComponent {
         />
         <Headers
           shortenCommitMessage={this.state.shortenCommitMessage}
-          versions={this.state.data.versions}
+          versions={this.state.data ? this.state.data.versions : null}
           onLinkClick={this.handleHeaderLinkClick}
           userTz={this.props.userTz}
           jiraHost={this.props.jiraHost}
@@ -255,56 +233,44 @@ class Root extends React.PureComponent {
 
 
 // Toolbar
-function Toolbar ({collapsed,
-  onCheck,
-  baseURL,
-  nextSkip,
-  prevSkip,
-  buildVariantFilter,
-  taskFilter,
-  buildVariantFilterFunc,
-  taskFilterFunc,
-  isLoggedIn,
-  project,
-  disabled,
-  loadData
-}) {
-
-  var Form = ReactBootstrap.Form;
-  return (
-    <div className="row">
-      <div className="col-xs-12">
-        <Form inline className="waterfall-toolbar pull-right">
-          <CollapseButton collapsed={collapsed} onCheck={onCheck} disabled={disabled} />
-          <FilterBox
-            filterFunction={buildVariantFilterFunc}
-            placeholder={"Filter variant"}
-            currentFilter={buildVariantFilter}
-            disabled={disabled}
-          />
-          <FilterBox
-            filterFunction={taskFilterFunc}
-            placeholder={"Filter task"}
-            currentFilter={taskFilter}
-            disabled={collapsed || disabled}
-          />
-          <PageButtons
-            nextSkip={nextSkip}
-            prevSkip={prevSkip}
-            baseURL={baseURL}
-            buildVariantFilter={buildVariantFilter}
-            taskFilter={taskFilter}
-            disabled={disabled}
-            loadData={loadData}
-          />
-          <GearMenu
-            project={project}
-            isLoggedIn={isLoggedIn}
-          />
-        </Form>
+class Toolbar extends React.PureComponent {
+  render() {
+    const Form = ReactBootstrap.Form;
+    return (
+      <div className="row">
+        <div className="col-xs-12">
+          <Form inline className="waterfall-toolbar pull-right">
+            <CollapseButton collapsed={this.props.collapsed} onCheck={this.props.onCheck} disabled={this.props.disabled} />
+            <FilterBox
+              filterFunction={this.props.buildVariantFilterFunc}
+              placeholder={"Filter variant"}
+              currentFilter={this.props.buildVariantFilter}
+              disabled={this.props.disabled}
+            />
+            <FilterBox
+              filterFunction={this.props.taskFilterFunc}
+              placeholder={"Filter task"}
+              currentFilter={this.props.taskFilter}
+              disabled={this.props.collapsed || this.props.disabled}
+            />
+            <PageButtons
+              nextSkip={this.props.nextSkip}
+              prevSkip={this.props.prevSkip}
+              baseURL={this.props.baseURL}
+              buildVariantFilter={this.props.buildVariantFilter}
+              taskFilter={this.props.taskFilter}
+              disabled={this.props.disabled}
+              loadData={this.props.loadData}
+            />
+            <GearMenu
+              project={this.props.project}
+              isLoggedIn={this.props.isLoggedIn}
+            />
+          </Form>
+        </div>
       </div>
-    </div>
-  )
+    );
+  }
 };
 
 class PageButtons extends React.PureComponent {
@@ -537,6 +503,9 @@ class GearMenu extends React.PureComponent {
 // Headers
 
 function Headers ({shortenCommitMessage, versions, onLinkClick, userTz, jiraHost}) {
+  if (versions === null)  {
+    return (<VersionHeaderTombstone />);
+  }
   return (
     <div className="row version-header">
       <div className="variant-col col-xs-2 version-header-rolled"></div>
