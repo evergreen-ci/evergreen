@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -168,6 +169,75 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 	newQ, err := LoadTaskQueue("distro")
 	assert.NoError(err)
 	assert.Len(newQ.Queue, qLength-1)
+}
+
+func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection))
+
+	q := &TaskQueue{
+		Queue: []TaskQueueItem{
+			{Id: "one", Group: "foo", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "two", Group: "bar", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "three", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "four", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "five", Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "six", Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "seven", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "eight", Project: "aa", Version: "bb", BuildVariant: "a"},
+		},
+		Distro: "distro",
+	}
+	qLength := len(q.Queue)
+	assert.NoError(q.Save())
+	tasks := []task.Task{
+		{
+			Id:                "task_id",
+			TaskGroup:         "foo",
+			TaskGroupMaxHosts: 1,
+			BuildVariant:      "a",
+			Version:           "b",
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "outside_group",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+		{
+			Id:           "one",
+			TaskGroup:    "foo",
+			Project:      "a",
+			Version:      "b",
+			BuildVariant: "a",
+		},
+		{
+			Id:           "outside_group",
+			Project:      "a",
+			Version:      "b",
+			BuildVariant: "a",
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "one",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
+		},
+	}
+	for _, t := range tasks {
+		require.NoError(t.Insert())
+	}
+	spec := TaskSpec{
+		Group:        "foo",
+		BuildVariant: "a",
+		ProjectID:    "a",
+		Version:      "b",
+	}
+	assert.Error(q.BlockTaskGroupTasks(spec, "task_id"))
+	newQ, err := LoadTaskQueue("distro")
+	assert.NoError(err)
+	assert.Len(newQ.Queue, qLength)
 }
 
 func TestFindNextTaskEmptySpec(t *testing.T) {

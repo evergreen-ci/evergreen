@@ -690,12 +690,29 @@ func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
 	return findAllTaskIDs(q)
 }
 
+// FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
+func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
+	q := db.Query(bson.M{
+		VersionKey: versionId,
+	}).WithFields(IdKey, DependsOnKey)
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, q, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task ids for versions")
+	}
+	return tasks, nil
+}
+
 func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
 	q := db.Query(bson.M{BuildIdKey: buildId}).WithFields(IdKey)
 	return findAllTaskIDs(q)
 }
 
-func FindAllTasksFromBuildWithDependencies(buildId string) ([]Task, error) {
+// FindTasksFromBuildWithDependencies finds tasks from a build that have dependencies.
+func FindTasksFromBuildWithDependencies(buildId string) ([]Task, error) {
 	q := db.Query(bson.M{
 		BuildIdKey:   buildId,
 		DependsOnKey: bson.M{"$not": bson.M{"$size": 0}},
