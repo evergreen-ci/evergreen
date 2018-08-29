@@ -134,6 +134,7 @@ var Root = function (_React$PureComponent2) {
       taskFilter: taskFilter,
       data: null
     };
+    _this2.nextSkip = getParameterByName('skip', href) || 0;
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     _this2.handleCollapseChange = _this2.handleCollapseChange.bind(_this2);
@@ -172,12 +173,15 @@ var Root = function (_React$PureComponent2) {
       var _this3 = this;
 
       var params = filter ? { bv_filter: filter } : {};
-      http.get("/rest/v1/waterfall/" + this.props.project + "?" + this.nextSkip, { params: params }).then(function (_ref) {
+      params.skip = this.nextSkip;
+      http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
-        _this3.updatePaginationContext(data);
-        _this3.setState({ data: data });
-        updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
+        setTimeout(function () {
+          _this3.updatePaginationContext(data);
+          _this3.setState({ data: data, nextSkip: _this3.nextSkip + data.versions.length });
+          updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
+        }, 5000);
       });
     }
   }, {
@@ -347,7 +351,8 @@ function PageButtons(_ref3) {
       nextSkip = _ref3.nextSkip,
       baseURL = _ref3.baseURL,
       buildVariantFilter = _ref3.buildVariantFilter,
-      taskFilter = _ref3.taskFilter;
+      taskFilter = _ref3.taskFilter,
+      disabled = _ref3.disabled;
 
   var ButtonGroup = ReactBootstrap.ButtonGroup;
 
@@ -375,8 +380,8 @@ function PageButtons(_ref3) {
     React.createElement(
       ButtonGroup,
       null,
-      React.createElement(PageButton, { pageURL: prevURL, disabled: prevSkip < 0, directionIcon: "fa-chevron-left" }),
-      React.createElement(PageButton, { pageURL: nextURL, disabled: nextSkip < 0, directionIcon: "fa-chevron-right" })
+      React.createElement(PageButton, { pageURL: prevURL, disabled: disabled || prevSkip < 0, directionIcon: "fa-chevron-left" }),
+      React.createElement(PageButton, { pageURL: nextURL, disabled: disabled || nextSkip < 0, directionIcon: "fa-chevron-right" })
     )
   );
 }

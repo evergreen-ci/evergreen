@@ -645,7 +645,6 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 
 	if skipQ != "" {
 		skip, err = strconv.Atoi(skipQ)
-
 		if err != nil {
 			gimlet.WriteJSONResponse(
 				w, http.StatusNotFound, responseError{Message: errors.Wrapf(

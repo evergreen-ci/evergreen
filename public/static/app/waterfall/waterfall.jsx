@@ -103,7 +103,8 @@ class Root extends React.PureComponent {
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
       data: null
-    };
+    }
+    this.nextSkip = getParameterByName('skip', href) || 0;
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
@@ -135,13 +136,15 @@ class Root extends React.PureComponent {
   }
 
   loadDataPortion(filter) {
-    var params = filter ? {bv_filter: filter} : {}
-    const skip = data.current_skip || 0;
-    http.get(`/rest/v1/waterfall/${this.props.project}?${Skip}`, {params})
+    const params = filter ? {bv_filter: filter} : {}
+    params.skip = this.nextSkip;
+    http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
-        this.updatePaginationContext(data)
-        this.setState({data})
+        setTimeout(() => {
+        this.updatePaginationContext(data);
+        this.setState({data, nextSkip: this.nextSkip + data.versions.length});
         updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
+        }, 5000)
       })
   }
 
@@ -292,7 +295,7 @@ function Toolbar ({collapsed,
   )
 };
 
-function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilter}) {
+function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilter, disabled}) {
   var ButtonGroup = ReactBootstrap.ButtonGroup;
 
   var nextURL= "";
@@ -316,8 +319,8 @@ function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilt
   return (
     <span className="waterfall-form-item">
       <ButtonGroup>
-        <PageButton pageURL={prevURL} disabled={prevSkip < 0} directionIcon="fa-chevron-left" />
-        <PageButton pageURL={nextURL} disabled={nextSkip < 0} directionIcon="fa-chevron-right" />
+        <PageButton pageURL={prevURL} disabled={disabled || prevSkip < 0} directionIcon="fa-chevron-left" />
+        <PageButton pageURL={nextURL} disabled={disabled || nextSkip < 0} directionIcon="fa-chevron-right" />
       </ButtonGroup>
     </span>
   );
