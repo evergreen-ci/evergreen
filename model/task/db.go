@@ -221,6 +221,14 @@ func ByVersionsForNameAndVariant(versions []string, displayName, buildVariant st
 	})
 }
 
+func ByVersionForNameAndVariant(version string, displayName, buildVariant string) db.Q {
+	return db.Query(bson.M{
+		VersionKey:      version,
+		DisplayNameKey:  displayName,
+		BuildVariantKey: buildVariant,
+	})
+}
+
 // ByIntermediateRevisions creates a query that returns the tasks existing
 // between two revision order numbers, exclusive.
 func ByIntermediateRevisions(previousRevisionOrder, currentRevisionOrder int,
