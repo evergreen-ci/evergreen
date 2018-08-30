@@ -79,6 +79,15 @@ func (s *payloadSuite) TestEmailWithTaskContent() {
 	s.Contains(m.Body, "TASK")
 	s.Contains(m.Body, "theproject")
 	s.Contains(m.Body, "buildname")
+
+	s.t.Task.DisplayTask = &task.Task{
+		DisplayName: "thedisplaytask",
+	}
+	m, err = emailPayload(&s.t)
+	s.NoError(err)
+	s.Require().NotNil(m)
+	s.NotContains(m.Body, "thetask")
+	s.Contains(m.Body, "thedisplaytask")
 }
 
 func (s *payloadSuite) TestEvergreenWebhook() {

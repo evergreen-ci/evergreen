@@ -8,7 +8,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -24,10 +26,12 @@ func TestTaskTriggers(t *testing.T) {
 }
 
 type taskSuite struct {
-	event event.EventLogEntry
-	data  *event.TaskEventData
-	task  task.Task
-	subs  []event.Subscription
+	event      event.EventLogEntry
+	data       *event.TaskEventData
+	task       task.Task
+	build      build.Build
+	projectRef model.ProjectRef
+	subs       []event.Subscription
 
 	t *taskTriggers
 
@@ -40,7 +44,7 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, version.Collection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, version.Collection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection, build.Collection, model.ProjectRefCollection))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -57,6 +61,16 @@ func (s *taskSuite) SetupTest() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(s.task.Insert())
+
+	s.projectRef = model.ProjectRef{
+		Identifier: "test_project",
+	}
+	s.NoError(s.projectRef.Insert())
+
+	s.build = build.Build{
+		Id: "test_build_id",
+	}
+	s.NoError(s.build.Insert())
 
 	s.data = &event.TaskEventData{
 		Status: evergreen.TaskStarted,

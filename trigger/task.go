@@ -224,7 +224,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		return nil, errors.Wrap(err, "failed to fetch build while building email payload")
 	}
 	if buildDoc == nil {
-		return nil, errors.Wrap(err, "could not find build while building email payload")
+		return nil, errors.New("could not find build while building email payload")
 	}
 
 	projectRef, err := model.FindOneProjectRef(t.task.Project)
@@ -232,7 +232,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		return nil, errors.Wrap(err, "failed to fetch project ref while building email payload")
 	}
 	if projectRef == nil {
-		return nil, errors.Wrap(err, "could not find project ref while building email payload")
+		return nil, errors.New("could not find project ref while building email payload")
 	}
 
 	data := commonTemplateData{
@@ -292,6 +292,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to collect task data")
 		}
+		data.emailContent = emailTaskContentTemplate
 
 		payload, err = makeCommonPayload(sub, t.Selectors(), data)
 		if err != nil {
@@ -705,7 +706,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
 	}
 	if buildDoc == nil {
-		return nil, errors.Wrap(err, "could not find build while building jira task payload")
+		return nil, errors.New("could not find build while building jira task payload")
 	}
 
 	var hostDoc *host.Host
@@ -721,7 +722,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
 	}
 	if versionDoc == nil {
-		return nil, errors.Wrap(err, "could not find version while building jira task payload")
+		return nil, errors.New("could not find version while building jira task payload")
 	}
 
 	projectRef, err := model.FindOneProjectRef(j.task.Project)
@@ -729,7 +730,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
 	}
 	if projectRef == nil {
-		return nil, errors.Wrap(err, "could not find project ref while building jira task payload")
+		return nil, errors.New("could not find project ref while building jira task payload")
 	}
 
 	builder := jiraBuilder{

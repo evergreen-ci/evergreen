@@ -57,7 +57,11 @@
       <tr>
         <td width="90%">
           <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+            {{ if .Task.DisplayTask }}
             {{ .Task.DisplayName }}
+            {{ else }}
+            {{ .Task.DisplayTask.DisplayName }}
+            {{ end }}
           </span>
         </td>
         {{ if .Task.Details.TimedOut }}
