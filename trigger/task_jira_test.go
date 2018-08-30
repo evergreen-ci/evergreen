@@ -304,8 +304,6 @@ func TestJIRADescription(t *testing.T) {
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
 
-			So(len(desc), ShouldEqual, 562)
-
 			split := strings.Split(desc, "\n")
 
 			tests := []string{}
@@ -343,18 +341,39 @@ func TestJIRADescription(t *testing.T) {
 			j.data.Host = nil
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(len(desc), ShouldEqual, 529)
 			So(strings.Contains(desc, "Host: N/A"), ShouldBeTrue)
 		})
 		Convey("the description should return old_task_id if present", func() {
-			j.data.Task.Id = "new_task"
+			j.data.Task.Id = "new_task#!"
 			desc, err := j.getDescription()
 			So(err, ShouldBeNil)
-			So(strings.Contains(desc, "http://evergreen.ui/task/new_task/0"), ShouldBeTrue)
+			So(strings.Contains(desc, "http://evergreen.ui/task/new_task%23%21/0"), ShouldBeTrue)
 			j.data.Task.OldTaskId = "old_task_id"
 			desc, err = j.getDescription()
 			So(err, ShouldBeNil)
 			So(strings.Contains(desc, "http://evergreen.ui/task/old_task_id/0"), ShouldBeTrue)
+		})
+		Convey("execution tasks use display task's metadata", func() {
+			j.data.Task.DisplayTask = &task.Task{
+				Id:          "dt#!",
+				DisplayName: "displaytask",
+				DisplayOnly: true,
+				Details:     apimodels.TaskEndDetail{},
+				Project:     projectId,
+				LocalTestResults: []task.TestResult{
+					{TestFile: "shouldn't be here", Status: evergreen.TestFailedStatus, URL: "direct_link"},
+				},
+			}
+
+			summary, err := j.getSummary()
+			So(err, ShouldBeNil)
+			So(strings.Contains(summary, "new_task"), ShouldBeFalse)
+			So(strings.Contains(summary, "dt!#"), ShouldBeFalse)
+
+			desc, err := j.getDescription()
+			So(err, ShouldBeNil)
+			So(strings.Contains(desc, "http://evergreen.ui/task/dt%23%21/0"), ShouldBeTrue)
+			So(strings.Contains(desc, "shouldn't be here"), ShouldBeFalse)
 		})
 	})
 }
