@@ -23,16 +23,6 @@ const (
 	waterfallSkipParam     = "skip"
 )
 
-// Pull the skip value out of the http request
-func skipValue(r *http.Request) (int, error) {
-	// determine how many versions to skip
-	toSkipStr := r.FormValue(waterfallSkipParam)
-	if toSkipStr == "" {
-		toSkipStr = "0"
-	}
-	return strconv.Atoi(toSkipStr)
-}
-
 // uiStatus determines task status label.
 func uiStatus(task waterfallTask) string {
 	switch task.Status {
@@ -624,36 +614,10 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	skip, err := skipValue(r)
-	if err != nil {
-		skip = 0
-	}
-
-	variantQuery := strings.TrimSpace(r.URL.Query().Get(waterfallBVFilterParam))
-
-	// first, get all of the versions and variants we will need
-	vvData, err := getVersionsAndVariants(
-		skip, waterfallPerPageLimit, project, variantQuery,
-	)
-
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusNotFound, err)
-		return
-	}
-
-	finalData, err := waterfallDataAdaptor(
-		vvData, project, skip, variantQuery,
-	)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Data     waterfallData
 		JiraHost string
 		ViewData
-	}{finalData, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
+	}{uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }
 
 func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) {
@@ -671,7 +635,6 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 
 	if skipQ != "" {
 		skip, err = strconv.Atoi(skipQ)
-
 		if err != nil {
 			gimlet.WriteJSONResponse(
 				w, http.StatusNotFound, responseError{Message: errors.Wrapf(
@@ -682,7 +645,6 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 	}
 
 	limit, err := strconv.Atoi(query.Get("limit"))
-
 	if err != nil {
 		limit = waterfallPerPageLimit
 	}
@@ -690,7 +652,6 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 	variantQuery := strings.TrimSpace(query.Get(waterfallBVFilterParam))
 
 	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery)
-
 	if err != nil {
 		gimlet.WriteJSONResponse(
 			w, http.StatusNotFound, responseError{Message: errors.Wrap(
@@ -700,7 +661,6 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 	}
 
 	finalData, err := waterfallDataAdaptor(vvData, project, skip, variantQuery)
-
 	if err != nil {
 		gimlet.WriteJSONResponse(
 			w, http.StatusNotFound, responseError{Message: errors.Wrap(

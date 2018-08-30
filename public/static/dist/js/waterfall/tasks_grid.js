@@ -138,13 +138,24 @@ function Grid(_ref) {
       buildVariantFilter = _ref.buildVariantFilter,
       taskFilter = _ref.taskFilter;
 
+  if (!data) {
+    return React.createElement(GridTombstone, null);
+  }
   return React.createElement(
     'div',
     { className: 'waterfall-grid' },
     data.rows.filter(function (row) {
       return row.build_variant.display_name.toLowerCase().indexOf(buildVariantFilter.toLowerCase()) != -1;
     }).map(function (row) {
-      return React.createElement(Variant, { row: row, project: project, collapseInfo: collapseInfo, versions: data.versions, taskFilter: taskFilter, currentTime: data.current_time });
+      return React.createElement(Variant, {
+        key: row.build_variant.display_name,
+        row: row,
+        project: project,
+        collapseInfo: collapseInfo,
+        versions: data.versions,
+        taskFilter: taskFilter,
+        currentTime: data.current_time
+      });
     })
   );
 };
@@ -182,13 +193,14 @@ function Variant(_ref2) {
         versions.map(function (version, i) {
           return React.createElement(
             'div',
-            { className: 'waterfall-build' },
-            React.createElement(Build, { key: version.ids[0],
+            { key: version.ids[0], className: 'waterfall-build' },
+            React.createElement(Build, {
               build: row.builds[version.ids[0]],
               rolledUp: version.rolled_up,
               collapseInfo: collapseInfo,
               taskFilter: taskFilter,
-              currentTime: currentTime })
+              currentTime: currentTime
+            })
           );
         })
       )
@@ -222,7 +234,7 @@ function Build(_ref3) {
     if (activeTasks.length == 0) {
       return React.createElement(CollapsedBuild, { build: build, activeTaskStatuses: collapseInfo.activeTaskStatuses });
     }
-    // Can be modified to show combinations of tasks by statuses  
+    // Can be modified to show combinations of tasks by statuses
     var activeTasks = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses);
     return React.createElement(
       'div',
@@ -241,7 +253,6 @@ function ActiveBuild(_ref4) {
       taskFilter = _ref4.taskFilter,
       currentTime = _ref4.currentTime;
 
-
   if (taskFilter != null) {
     tasks = _.filter(tasks, function (task) {
       return task.display_name.toLowerCase().indexOf(taskFilter.toLowerCase()) != -1;
@@ -252,7 +263,7 @@ function ActiveBuild(_ref4) {
     'div',
     { className: 'active-build' },
     _.map(tasks, function (task) {
-      return React.createElement(Task, { task: task, currentTime: currentTime });
+      return React.createElement(Task, { key: task.id, task: task, currentTime: currentTime });
     })
   );
 }
@@ -502,13 +513,13 @@ function CollapsedBuild(_ref9) {
     'div',
     { className: 'collapsed-build' },
     _.map(taskTypes, function (count, status) {
-      return React.createElement(TaskSummary, { status: status, count: count, build: build });
+      return React.createElement(TaskSummary, { key: status, status: status, count: count, build: build });
     })
   );
 }
 
 // A TaskSummary is the class for one rolled up task type
-// A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks 
+// A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks
 function TaskSummary(_ref10) {
   var status = _ref10.status,
       count = _ref10.count,

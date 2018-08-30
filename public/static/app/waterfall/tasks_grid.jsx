@@ -122,22 +122,35 @@ function stringifyNanoseconds(input, skipDayMax, skipSecMax) {
 
 // The main class that binds to the root div. This contains all the distros, builds, and tasks
 function Grid ({data, project, collapseInfo, buildVariantFilter, taskFilter}) {
+  if (!data) {
+    return (<GridTombstone />);
+  }
   return (
     <div className="waterfall-grid">
       {
         data.rows.filter(function(row){
           return row.build_variant.display_name.toLowerCase().indexOf(buildVariantFilter.toLowerCase()) != -1;
         })
-        .map(function(row){
-          return <Variant row={row} project={project} collapseInfo={collapseInfo} versions={data.versions} taskFilter={taskFilter} currentTime={data.current_time}/>;
+        .map(function(row) {
+          return (
+            <Variant
+              key={row.build_variant.display_name}
+              row={row}
+              project={project}
+              collapseInfo={collapseInfo}
+              versions={data.versions}
+              taskFilter={taskFilter}
+              currentTime={data.current_time}
+            />
+          );
         })
       }
-    </div> 
+    </div>
   )
 };
 
 function filterActiveTasks(tasks, activeStatuses){
-  return _.filter(tasks, function(task) { 
+  return _.filter(tasks, function(task) {
       return _.contains(activeStatuses, task.status);
     });
 }
@@ -147,21 +160,23 @@ function filterActiveTasks(tasks, activeStatuses){
 function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}) {
       return (
       <div className="row variant-row">
-        <div className="col-xs-2 build-variants"> 
+        <div className="col-xs-2 build-variants">
           {row.build_variant.display_name}
         </div>
-        <div className="col-xs-10"> 
+        <div className="col-xs-10">
           <div className="row build-cells">
             {
               versions.map(function(version, i){
-                  return(<div className="waterfall-build">
-                    <Build key={version.ids[0]} 
-                                build={row.builds[version.ids[0]]} 
-                                rolledUp={version.rolled_up} 
-                                collapseInfo={collapseInfo}
-                                taskFilter={taskFilter} 
-                                currentTime={currentTime}/>
-                  </div>
+                  return(
+                    <div key={version.ids[0]} className="waterfall-build">
+                      <Build
+                        build={row.builds[version.ids[0]]}
+                        rolledUp={version.rolled_up}
+                        collapseInfo={collapseInfo}
+                        taskFilter={taskFilter}
+                        currentTime={currentTime}
+                      />
+                    </div>
                   );
               })
             }
@@ -171,19 +186,18 @@ function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}
     )
 }
 
-
 // Each Build class is one group of tasks for an version + build variant intersection
 // We case on whether or not a build is active or not, and return either an ActiveBuild or InactiveBuild respectively
 
 function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
   // inactive build
   if (rolledUp) {
-    return <InactiveBuild/>;
+    return (<InactiveBuild/>);
   }
 
   // no build for this version
   if (!build) {
-    return <EmptyBuild />  
+    return (<EmptyBuild />);
   }
 
 
@@ -195,7 +209,7 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
         <CollapsedBuild build={build} activeTaskStatuses={collapseInfo.activeTaskStatuses} />
       )
     }
-    // Can be modified to show combinations of tasks by statuses  
+    // Can be modified to show combinations of tasks by statuses
     var activeTasks = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses)
     return (
       <div>
@@ -203,7 +217,7 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
         <ActiveBuild tasks={activeTasks} currentTime={currentTime}/>
       </div>
     )
-  } 
+  }
   // uncollapsed active build
   return (
       <ActiveBuild tasks={build.tasks} taskFilter={taskFilter} currentTime={currentTime}/>
@@ -211,8 +225,7 @@ function Build({build, collapseInfo, rolledUp, taskFilter, currentTime}){
 }
 
 // At least one task in the version is not inactive, so we display all build tasks with their appropiate colors signifying their status
-function ActiveBuild({tasks, taskFilter, currentTime}){  
-
+function ActiveBuild({tasks, taskFilter, currentTime}){
   if (taskFilter != null){
     tasks = _.filter(tasks, function(task){
       return task.display_name.toLowerCase().indexOf(taskFilter.toLowerCase()) != -1;
@@ -220,10 +233,10 @@ function ActiveBuild({tasks, taskFilter, currentTime}){
   }
 
   return (
-    <div className="active-build"> 
+    <div className="active-build">
       {
         _.map(tasks, function(task){
-          return <Task task={task} currentTime={currentTime}/>
+          return <Task key={task.id} task={task} currentTime={currentTime}/>
         })
       }
     </div>
@@ -264,10 +277,10 @@ function TooltipContent({task, eta}) {
   if (task.failed_test_names.length > MaxFailedTestDisplay) {
     return (
         <span className="waterfall-tooltip">
-          <span>{topLineContent}</span> 
+          <span>{topLineContent}</span>
         <div className="header">
           <i className="fa fa-times icon"></i>
-          {task.failed_test_names.length} failed tests 
+          {task.failed_test_names.length} failed tests
           </div>
        </span>
         )
@@ -279,9 +292,9 @@ function TooltipContent({task, eta}) {
         {
           task.failed_test_names.map(function(failed_test_name){
             return (
-                <div> 
+                <div>
                  <i className="fa fa-times icon"></i>
-                  {endOfPath(failed_test_name)} 
+                  {endOfPath(failed_test_name)}
                 </div>
                 )
           })
@@ -384,7 +397,7 @@ function Task({task, currentTime}) {
       )
   return (
     <OverlayTrigger placement="top" overlay={tooltip} animation={false}>
-      <a href={"/task/" + task.id} className={"waterfall-box " + taskStatusClass(task)} />  
+      <a href={"/task/" + task.id} className={"waterfall-box " + taskStatusClass(task)} />
     </OverlayTrigger>
   )
 }
@@ -395,10 +408,10 @@ function CollapsedBuild({build, activeTaskStatuses}){
   var taskStats = build.taskStatusCount;
 
   var taskTypes = {
-    "success"      : taskStats.succeeded, 
-    "dispatched"   : taskStats.started, 
+    "success"      : taskStats.succeeded,
+    "dispatched"   : taskStats.started,
     "system-failed": taskStats.timed_out,
-    "undispatched" : taskStats.undispatched, 
+    "undispatched" : taskStats.undispatched,
     "inactive"     : taskStats.inactive,
     "failed"       : taskStats.failed,
   };
@@ -407,20 +420,20 @@ function CollapsedBuild({build, activeTaskStatuses}){
   taskTypes = _.pick(taskTypes, function(count, status){
     return count > 0 && !(_.contains(activeTaskStatuses, status))
   });
-  
+
   return (
     <div className="collapsed-build">
       {
         _.map(taskTypes, function(count, status) {
-          return <TaskSummary status={status} count={count} build={build} />;
-        }) 
+          return <TaskSummary key={status} status={status} count={count} build={build} />;
+        })
       }
     </div>
   )
 }
 
 // A TaskSummary is the class for one rolled up task type
-// A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks 
+// A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks
 function TaskSummary({status, count, build}){
   var id_link = "/build/" + build.id;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;

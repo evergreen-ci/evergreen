@@ -51,21 +51,27 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
   var params = {};
   if (bvFilter && bvFilter != '') params["bv_filter"] = bvFilter;
   if (taskFilter && taskFilter != '') params["task_filter"] = taskFilter;
-  params["skip"] = skip;
+  if (skip !== 0) {
+    params["skip"] = skip;
+  }
 
-  var paramString = generateURLParameters(params);
-  window.history.replaceState({}, '', baseURL + "?" + paramString);
+  if (Object.keys(params).length > 0) {
+    var paramString = generateURLParameters(params);
+    window.history.replaceState({}, '', baseURL + "?" + paramString);
+  } else {
+    window.history.replaceState({}, '', baseURL);
+  }
 }
 
 var JIRA_REGEX = /[A-Z]{1,10}-\d{1,6}/ig;
 
-var JiraLink = function (_React$Component) {
-  _inherits(JiraLink, _React$Component);
+var JiraLink = function (_React$PureComponent) {
+  _inherits(JiraLink, _React$PureComponent);
 
-  function JiraLink(props) {
+  function JiraLink() {
     _classCallCheck(this, JiraLink);
 
-    return _possibleConstructorReturn(this, (JiraLink.__proto__ || Object.getPrototypeOf(JiraLink)).call(this, props));
+    return _possibleConstructorReturn(this, (JiraLink.__proto__ || Object.getPrototypeOf(JiraLink)).apply(this, arguments));
   }
 
   _createClass(JiraLink, [{
@@ -103,21 +109,19 @@ var JiraLink = function (_React$Component) {
   }]);
 
   return JiraLink;
-}(React.Component);
+}(React.PureComponent);
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
 
 
-var Root = function (_React$PureComponent) {
-  _inherits(Root, _React$PureComponent);
+var Root = function (_React$PureComponent2) {
+  _inherits(Root, _React$PureComponent2);
 
   function Root(props) {
     _classCallCheck(this, Root);
 
     var _this2 = _possibleConstructorReturn(this, (Root.__proto__ || Object.getPrototypeOf(Root)).call(this, props));
-
-    _this2.updatePaginationContext(window.serverData);
 
     var href = window.location.href;
     var buildVariantFilter = getParameterByName('bv_filter', href) || '';
@@ -130,15 +134,20 @@ var Root = function (_React$PureComponent) {
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: _this2.props.data
+      data: null
     };
+    _this2.nextSkip = getParameterByName('skip', href) || 0;
+    _this2.baseURL = "/waterfall/" + _this2.props.project;
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     _this2.handleCollapseChange = _this2.handleCollapseChange.bind(_this2);
     _this2.handleHeaderLinkClick = _this2.handleHeaderLinkClick.bind(_this2);
     _this2.handleBuildVariantFilter = _this2.handleBuildVariantFilter.bind(_this2);
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
+    _this2.loadDataPortion = _this2.loadDataPortion.bind(_this2);
+    _this2.loadDataPortion();
     _this2.loadDataPortion = _.debounce(_this2.loadDataPortion, 100);
+    _this2.loadData = _this2.loadData.bind(_this2);
     return _this2;
   }
 
@@ -150,7 +159,6 @@ var Root = function (_React$PureComponent) {
         return m + d.authors.length;
       }, 0);
 
-      this.baseURL = "/waterfall/" + this.props.project;
       this.currentSkip = data.current_skip;
       this.nextSkip = this.currentSkip + versionsOnPage;
       this.prevSkip = this.currentSkip - data.previous_page_count;
@@ -164,17 +172,36 @@ var Root = function (_React$PureComponent) {
       }
     }
   }, {
+    key: "loadData",
+    value: function loadData(direction) {
+      var skip = direction === -1 ? this.prevSkip : this.nextSkip;
+      this.loadDataPortion(undefined, skip);
+    }
+  }, {
     key: "loadDataPortion",
-    value: function loadDataPortion(filter) {
+    value: function loadDataPortion(filter, skip) {
       var _this3 = this;
 
-      var params = filter ? { bv_filter: filter } : {};
+      var params = {
+        skip: skip === undefined ? this.nextSkip : skip
+      };
+      if (this.state.buildVariantFilter) {
+        params.bv_filter = this.state.buildVariantFilter;
+      }
+      if (filter !== undefined && filter !== this.state.buildVariantFilter) {
+        params.bv_filter = filter;
+        params.skip = 0;
+      }
+      if (params.skip === -1) {
+        delete params.skip;
+      }
+      this.setState({ data: null });
       http.get("/rest/v1/waterfall/" + this.props.project, { params: params }).then(function (_ref) {
         var data = _ref.data;
 
         _this3.updatePaginationContext(data);
-        _this3.setState({ data: data });
-        updateURLParams(filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
+        _this3.setState({ data: data, nextSkip: _this3.nextSkip + data.versions.length });
+        updateURLParams(params.bv_filter, _this3.state.taskFilter, _this3.currentSkip, _this3.baseURL);
       });
     }
   }, {
@@ -204,7 +231,7 @@ var Root = function (_React$PureComponent) {
   }, {
     key: "render",
     value: function render() {
-      if (this.state.data.rows.length == 0) {
+      if (this.state.data && this.state.data.rows.length == 0) {
         return React.createElement(
           "div",
           null,
@@ -229,11 +256,13 @@ var Root = function (_React$PureComponent) {
           buildVariantFilterFunc: this.handleBuildVariantFilter,
           taskFilterFunc: this.handleTaskFilter,
           isLoggedIn: this.props.user !== null,
-          project: this.props.project
+          project: this.props.project,
+          disabled: false,
+          loadData: this.loadData
         }),
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage,
-          versions: this.state.data.versions,
+          versions: this.state.data === null ? null : this.state.data.versions,
           onLinkClick: this.handleHeaderLinkClick,
           userTz: this.props.userTz,
           jiraHost: this.props.jiraHost
@@ -266,7 +295,9 @@ function Toolbar(_ref2) {
       buildVariantFilterFunc = _ref2.buildVariantFilterFunc,
       taskFilterFunc = _ref2.taskFilterFunc,
       isLoggedIn = _ref2.isLoggedIn,
-      project = _ref2.project;
+      project = _ref2.project,
+      disabled = _ref2.disabled,
+      loadData = _ref2.loadData;
 
 
   var Form = ReactBootstrap.Form;
@@ -279,25 +310,27 @@ function Toolbar(_ref2) {
       React.createElement(
         Form,
         { inline: true, className: "waterfall-toolbar pull-right" },
-        React.createElement(CollapseButton, { collapsed: collapsed, onCheck: onCheck }),
+        React.createElement(CollapseButton, { collapsed: collapsed, onCheck: onCheck, disabled: disabled }),
         React.createElement(FilterBox, {
           filterFunction: buildVariantFilterFunc,
           placeholder: "Filter variant",
           currentFilter: buildVariantFilter,
-          disabled: false
+          disabled: disabled
         }),
         React.createElement(FilterBox, {
           filterFunction: taskFilterFunc,
           placeholder: "Filter task",
           currentFilter: taskFilter,
-          disabled: collapsed
+          disabled: collapsed || disabled
         }),
         React.createElement(PageButtons, {
           nextSkip: nextSkip,
           prevSkip: prevSkip,
           baseURL: baseURL,
           buildVariantFilter: buildVariantFilter,
-          taskFilter: taskFilter
+          taskFilter: taskFilter,
+          disabled: disabled,
+          loadData: loadData
         }),
         React.createElement(GearMenu, {
           project: project,
@@ -308,69 +341,67 @@ function Toolbar(_ref2) {
   );
 };
 
-function PageButtons(_ref3) {
-  var prevSkip = _ref3.prevSkip,
-      nextSkip = _ref3.nextSkip,
-      baseURL = _ref3.baseURL,
-      buildVariantFilter = _ref3.buildVariantFilter,
-      taskFilter = _ref3.taskFilter;
+var PageButtons = function (_React$PureComponent3) {
+  _inherits(PageButtons, _React$PureComponent3);
 
-  var ButtonGroup = ReactBootstrap.ButtonGroup;
+  function PageButtons(props) {
+    _classCallCheck(this, PageButtons);
 
-  var nextURL = "";
-  var prevURL = "";
+    var _this4 = _possibleConstructorReturn(this, (PageButtons.__proto__ || Object.getPrototypeOf(PageButtons)).call(this, props));
 
-  var prevURLParams = {};
-  var nextURLParams = {};
-
-  nextURLParams["skip"] = nextSkip;
-  prevURLParams["skip"] = prevSkip;
-  if (buildVariantFilter && buildVariantFilter != '') {
-    nextURLParams["bv_filter"] = buildVariantFilter;
-    prevURLParams["bv_filter"] = buildVariantFilter;
+    _this4.loadNext = function () {
+      return _this4.props.loadData(1);
+    };
+    _this4.loadPrev = function () {
+      return _this4.props.loadData(-1);
+    };
+    return _this4;
   }
-  if (taskFilter && taskFilter != '') {
-    nextURLParams["task_filter"] = taskFilter;
-    prevURLParams["task_filter"] = taskFilter;
-  }
-  nextURL = "?" + generateURLParameters(nextURLParams);
-  prevURL = "?" + generateURLParameters(prevURLParams);
-  return React.createElement(
-    "span",
-    { className: "waterfall-form-item" },
-    React.createElement(
-      ButtonGroup,
-      null,
-      React.createElement(PageButton, { pageURL: prevURL, disabled: prevSkip < 0, directionIcon: "fa-chevron-left" }),
-      React.createElement(PageButton, { pageURL: nextURL, disabled: nextSkip < 0, directionIcon: "fa-chevron-right" })
-    )
-  );
-}
 
-function PageButton(_ref4) {
-  var pageURL = _ref4.pageURL,
-      directionIcon = _ref4.directionIcon,
-      disabled = _ref4.disabled;
+  _createClass(PageButtons, [{
+    key: "render",
+    value: function render() {
+      var ButtonGroup = ReactBootstrap.ButtonGroup;
+      return React.createElement(
+        "span",
+        { className: "waterfall-form-item" },
+        React.createElement(
+          ButtonGroup,
+          null,
+          React.createElement(PageButton, { disabled: this.props.disabled || this.props.prevSkip < 0, directionIcon: "fa-chevron-left", loadData: this.loadPrev }),
+          React.createElement(PageButton, { disabled: this.props.disabled || this.props.nextSkip < 0, directionIcon: "fa-chevron-right", loadData: this.loadNext })
+        )
+      );
+    }
+  }]);
+
+  return PageButtons;
+}(React.PureComponent);
+
+function PageButton(_ref3) {
+  var directionIcon = _ref3.directionIcon,
+      disabled = _ref3.disabled,
+      loadData = _ref3.loadData;
 
   var Button = ReactBootstrap.Button;
   var classes = "fa " + directionIcon;
   return React.createElement(
     Button,
-    { href: pageURL, disabled: disabled },
+    { onClick: loadData, disabled: disabled },
     React.createElement("i", { className: classes })
   );
 }
 
-var FilterBox = function (_React$PureComponent2) {
-  _inherits(FilterBox, _React$PureComponent2);
+var FilterBox = function (_React$PureComponent4) {
+  _inherits(FilterBox, _React$PureComponent4);
 
   function FilterBox(props) {
     _classCallCheck(this, FilterBox);
 
-    var _this4 = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
+    var _this5 = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
 
-    _this4.applyFilter = _this4.applyFilter.bind(_this4);
-    return _this4;
+    _this5.applyFilter = _this5.applyFilter.bind(_this5);
+    return _this5;
   }
 
   _createClass(FilterBox, [{
@@ -392,16 +423,16 @@ var FilterBox = function (_React$PureComponent2) {
   return FilterBox;
 }(React.PureComponent);
 
-var CollapseButton = function (_React$PureComponent3) {
-  _inherits(CollapseButton, _React$PureComponent3);
+var CollapseButton = function (_React$PureComponent5) {
+  _inherits(CollapseButton, _React$PureComponent5);
 
   function CollapseButton(props) {
     _classCallCheck(this, CollapseButton);
 
-    var _this5 = _possibleConstructorReturn(this, (CollapseButton.__proto__ || Object.getPrototypeOf(CollapseButton)).call(this, props));
+    var _this6 = _possibleConstructorReturn(this, (CollapseButton.__proto__ || Object.getPrototypeOf(CollapseButton)).call(this, props));
 
-    _this5.handleChange = _this5.handleChange.bind(_this5);
-    return _this5;
+    _this6.handleChange = _this6.handleChange.bind(_this6);
+    return _this6;
   }
 
   _createClass(CollapseButton, [{
@@ -425,7 +456,8 @@ var CollapseButton = function (_React$PureComponent3) {
           type: "checkbox",
           checked: this.props.collapsed,
           ref: "collapsedBuilds",
-          onChange: this.handleChange
+          onChange: this.handleChange,
+          disabled: this.props.disabled
         })
       );
     }
@@ -434,16 +466,16 @@ var CollapseButton = function (_React$PureComponent3) {
   return CollapseButton;
 }(React.PureComponent);
 
-var GearMenu = function (_React$PureComponent4) {
-  _inherits(GearMenu, _React$PureComponent4);
+var GearMenu = function (_React$PureComponent6) {
+  _inherits(GearMenu, _React$PureComponent6);
 
   function GearMenu(props) {
     _classCallCheck(this, GearMenu);
 
-    var _this6 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
+    var _this7 = _possibleConstructorReturn(this, (GearMenu.__proto__ || Object.getPrototypeOf(GearMenu)).call(this, props));
 
-    _this6.addNotification = _this6.addNotification.bind(_this6);
-    _this6.triggers = [{
+    _this7.addNotification = _this7.addNotification.bind(_this7);
+    _this7.triggers = [{
       trigger: "outcome",
       resource_type: "TASK",
       label: "any task finishes",
@@ -498,7 +530,7 @@ var GearMenu = function (_React$PureComponent4) {
       resource_type: "VERSION",
       label: "any version succeeds"
     }];
-    return _this6;
+    return _this7;
   }
 
   _createClass(GearMenu, [{
@@ -580,13 +612,16 @@ var GearMenu = function (_React$PureComponent4) {
 
 // Headers
 
-function Headers(_ref5) {
-  var shortenCommitMessage = _ref5.shortenCommitMessage,
-      versions = _ref5.versions,
-      onLinkClick = _ref5.onLinkClick,
-      userTz = _ref5.userTz,
-      jiraHost = _ref5.jiraHost;
+function Headers(_ref4) {
+  var shortenCommitMessage = _ref4.shortenCommitMessage,
+      versions = _ref4.versions,
+      onLinkClick = _ref4.onLinkClick,
+      userTz = _ref4.userTz,
+      jiraHost = _ref4.jiraHost;
 
+  if (versions === null) {
+    return React.createElement(VersionHeaderTombstone, null);
+  }
   return React.createElement(
     "div",
     { className: "row version-header" },
@@ -621,12 +656,67 @@ function Headers(_ref5) {
   );
 }
 
-function ActiveVersionHeader(_ref6) {
-  var shortenCommitMessage = _ref6.shortenCommitMessage,
-      version = _ref6.version,
-      onLinkClick = _ref6.onLinkClick,
-      userTz = _ref6.userTz,
-      jiraHost = _ref6.jiraHost;
+function VersionHeaderTombstone() {
+  return React.createElement(
+    "div",
+    { className: "row version-header" },
+    React.createElement("div", { className: "variant-col col-xs-2 version-header-rolled" }),
+    React.createElement(
+      "div",
+      { className: "col-xs-10" },
+      React.createElement(
+        "div",
+        { className: "row" },
+        React.createElement(
+          "div",
+          { className: "header-col" },
+          React.createElement(
+            "div",
+            { className: "version-header-expanded" },
+            React.createElement(
+              "div",
+              { className: "col-xs-12" },
+              React.createElement(
+                "div",
+                { className: "row" },
+                React.createElement(
+                  "div",
+                  { className: "waterfall-tombstone", style: { 'height': '14px', 'width': '126px' } },
+                  "\xA0"
+                )
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "col-xs-12" },
+              React.createElement(
+                "div",
+                { className: "row" },
+                React.createElement(
+                  "div",
+                  { className: "waterfall-tombstone", style: { 'marginTop': '5px', 'height': '14px', 'width': '78px' } },
+                  "\xA0"
+                ),
+                React.createElement(
+                  "div",
+                  { className: "waterfall-tombstone", style: { 'marginTop': '5px', 'height': '14px', 'width': '205px' } },
+                  "\xA0"
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+function ActiveVersionHeader(_ref5) {
+  var shortenCommitMessage = _ref5.shortenCommitMessage,
+      version = _ref5.version,
+      onLinkClick = _ref5.onLinkClick,
+      userTz = _ref5.userTz,
+      jiraHost = _ref5.jiraHost;
 
   var message = version.messages[0];
   var author = version.authors[0];
@@ -688,16 +778,16 @@ function ActiveVersionHeader(_ref6) {
   );
 };
 
-var HideHeaderButton = function (_React$Component2) {
-  _inherits(HideHeaderButton, _React$Component2);
+var HideHeaderButton = function (_React$Component) {
+  _inherits(HideHeaderButton, _React$Component);
 
   function HideHeaderButton(props) {
     _classCallCheck(this, HideHeaderButton);
 
-    var _this7 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
+    var _this8 = _possibleConstructorReturn(this, (HideHeaderButton.__proto__ || Object.getPrototypeOf(HideHeaderButton)).call(this, props));
 
-    _this7.onLinkClick = _this7.onLinkClick.bind(_this7);
-    return _this7;
+    _this8.onLinkClick = _this8.onLinkClick.bind(_this8);
+    return _this8;
   }
 
   _createClass(HideHeaderButton, [{
@@ -726,10 +816,10 @@ var HideHeaderButton = function (_React$Component2) {
   return HideHeaderButton;
 }(React.Component);
 
-function RolledUpVersionHeader(_ref7) {
-  var version = _ref7.version,
-      userTz = _ref7.userTz,
-      jiraHost = _ref7.jiraHost;
+function RolledUpVersionHeader(_ref6) {
+  var version = _ref6.version,
+      userTz = _ref6.userTz,
+      jiraHost = _ref6.jiraHost;
 
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
@@ -769,14 +859,14 @@ function RolledUpVersionHeader(_ref7) {
     )
   );
 };
-function RolledUpVersionSummary(_ref8) {
-  var author = _ref8.author,
-      commit = _ref8.commit,
-      message = _ref8.message,
-      versionId = _ref8.versionId,
-      createTime = _ref8.createTime,
-      userTz = _ref8.userTz,
-      jiraHost = _ref8.jiraHost;
+function RolledUpVersionSummary(_ref7) {
+  var author = _ref7.author,
+      commit = _ref7.commit,
+      message = _ref7.message,
+      versionId = _ref7.versionId,
+      createTime = _ref7.createTime,
+      userTz = _ref7.userTz,
+      jiraHost = _ref7.jiraHost;
 
   var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A');
   commit = commit.substring(0, 10);
@@ -808,6 +898,55 @@ function RolledUpVersionSummary(_ref8) {
       message
     ),
     React.createElement("br", null)
+  );
+}
+
+function TaskTombstones(num) {
+  var out = [];
+  for (var i = 0; i < num; ++i) {
+    out.push(React.createElement("a", { className: "waterfall-box inactive" }));
+  }
+  return out;
+}
+
+function VariantTombstone() {
+  return React.createElement(
+    "div",
+    { className: "row variant-row" },
+    React.createElement(
+      "div",
+      { className: "col-xs-2 build-variants" },
+      React.createElement(
+        "div",
+        { className: "waterfall-tombstone", style: { 'height': '18px', 'width': '159px', 'float': 'right' } },
+        "\xA0"
+      )
+    ),
+    React.createElement(
+      "div",
+      { className: "col-xs-10" },
+      React.createElement(
+        "div",
+        { className: "row build-cells" },
+        React.createElement(
+          "div",
+          { className: "waterfall-build" },
+          React.createElement(
+            "div",
+            { className: "active-build" },
+            TaskTombstones(1)
+          )
+        )
+      )
+    )
+  );
+}
+
+function GridTombstone() {
+  return React.createElement(
+    "div",
+    { className: "waterfall-grid" },
+    React.createElement(VariantTombstone, null)
   );
 }
 //# sourceMappingURL=waterfall.js.map
