@@ -1027,3 +1027,78 @@ func TestBlockedState(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("blocked", state)
 }
+
+func TestCircularDependency(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection))
+	t1 := task.Task{
+		Id:          "t1",
+		DisplayName: "t1",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []task.Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:          "t2",
+		DisplayName: "t2",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []task.Dependency{
+			{TaskId: "t1", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t2.Insert())
+	assert.NotPanics(func() {
+		_, err := t1.BlockedState()
+		assert.EqualError(err, "Cycle detected: t1, t2")
+	})
+}
+
+func TestSiblingDependency(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection))
+	t1 := task.Task{
+		Id:          "t1",
+		DisplayName: "t1",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []task.Dependency{
+			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+			{TaskId: "t3", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:          "t2",
+		DisplayName: "t2",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+		DependsOn: []task.Dependency{
+			{TaskId: "t4", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:          "t3",
+		DisplayName: "t3",
+		Activated:   true,
+		Status:      evergreen.TaskStarted,
+		DependsOn: []task.Dependency{
+			{TaskId: "t4", Status: evergreen.TaskSucceeded},
+		},
+	}
+	assert.NoError(t3.Insert())
+	t4 := task.Task{
+		Id:          "t4",
+		DisplayName: "t4",
+		Activated:   true,
+		Status:      evergreen.TaskSucceeded,
+	}
+	assert.NoError(t4.Insert())
+	state, err := t1.BlockedState()
+	assert.NoError(err)
+	assert.Equal("pending", state)
+}
