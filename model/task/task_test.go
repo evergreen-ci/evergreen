@@ -1053,7 +1053,7 @@ func TestCircularDependency(t *testing.T) {
 	assert.NoError(t2.Insert())
 	assert.NotPanics(func() {
 		_, err := t1.BlockedState()
-		assert.EqualError(err, "Cycle detected: t1, t2")
+		assert.Contains(err.Error(), "Dependency cycle detected")
 	})
 }
 

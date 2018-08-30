@@ -1653,7 +1653,7 @@ func (t *Task) CircularDependencies() error {
 	cycles := tarjan.Connections(dependencyMap)
 	for _, cycle := range cycles {
 		if len(cycle) > 1 {
-			catcher.Add(errors.Errorf("Cycle detected: %s", strings.Join(cycle, ", ")))
+			catcher.Add(errors.Errorf("Dependency cycle detected: %s", strings.Join(cycle, ",")))
 		}
 	}
 	return catcher.Resolve()
