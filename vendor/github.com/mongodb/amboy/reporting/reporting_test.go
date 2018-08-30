@@ -27,7 +27,7 @@ type ReportingSuite struct {
 
 func TestReportingSuiteBackedByMongoDB(t *testing.T) {
 	s := new(ReportingSuite)
-	dbName := "amboy"
+	dbName := "amboy_test"
 	opts := queue.DefaultMongoDBOptions()
 	session, err := mgo.Dial(opts.URI)
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func (s *ReportingSuite) TestJobTimingMustBeLongerThanASecond() {
 }
 
 func (s *ReportingSuite) TestJobTiming() {
-	for _, f := range []RuntimeFilter{Duration, Latency} {
+	for _, f := range []RuntimeFilter{Duration, Latency, Running} {
 		r, err := s.reporter.RecentTiming(s.ctx, time.Minute, f)
 		s.NoError(err)
 		s.NotNil(r)
