@@ -703,13 +703,9 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.Wrap(err, "could not find build while building jira task payload")
 	}
 
-	hostID := j.task.HostId
-	if len(j.task.HostId) != 0 && len(j.task.DisplayTask.HostId) != 0 {
-		hostID = j.task.DisplayTask.HostId
-	}
 	var hostDoc *host.Host
-	if len(hostID) != 0 {
-		hostDoc, err = host.FindOneId(hostID)
+	if len(j.task.HostId) != 0 {
+		hostDoc, err = host.FindOneId(j.task.HostId)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
 		}
