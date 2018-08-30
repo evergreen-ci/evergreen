@@ -9,8 +9,11 @@ import (
 	ttemplate "text/template"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
@@ -42,6 +45,11 @@ type commonTemplateData struct {
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
+	FailedTests     []task.TestResult
+
+	Task       *task.Task
+	ProjectRef *model.ProjectRef
+	Build      *build.Build
 
 	apiModel restModel.Model
 	slack    []message.SlackAttachment
@@ -49,17 +57,22 @@ type commonTemplateData struct {
 	githubContext     string
 	githubState       message.GithubState
 	githubDescription string
+
+	emailContent *template.Template
 }
 
-const emailSubjectTemplate string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
-const emailTemplate string = `<html>
+const emailSubjectTemplateString string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+
+var subjectTmpl = template.Must(template.New("subject").Parse(emailSubjectTemplateString))
+
+const emailBodyTemplateBase string = `<!DOCTYPE html>
+<html lang="en">
 <head>
+<meta charset="utf-8">
 </head>
 <body>
-<p>Hi,</p>
 
-<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
-<p>{{ .Description }}</p>
+{{ template "content" . }}
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
@@ -72,6 +85,18 @@ const emailTemplate string = `<html>
 </body>
 </html>
 `
+
+var emailBodyTemplate = template.Must(template.New("emailbody").Parse(emailBodyTemplateBase))
+
+const emailDefaultContentTemplateString = `{{ define "content"}}
+<p>Hi,</p>
+
+<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
+<p>{{ .Description }}</p>
+{{ end }}`
+
+var emailDefaultContentTemplate = template.Must(template.New("content").Parse(emailDefaultContentTemplateString))
+var emailTaskContentTemplate = template.Must(template.New("content").ParseFiles("trigger/templates/task_fail.html"))
 
 const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .DisplayName }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
@@ -89,21 +114,22 @@ func makeHeaders(selectors []event.Selector) http.Header {
 }
 
 func emailPayload(t *commonTemplateData) (*message.Email, error) {
-	bodyTmpl, err := template.New("emailBody").Parse(emailTemplate)
+	bodyTmpl, err := emailBodyTemplate.Clone()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse body template")
+		return nil, errors.Wrap(err, "failed to clone emailBodyTemplate")
+	}
+	if t.emailContent == nil {
+		bodyTmpl.AddParseTree("content", emailDefaultContentTemplate.Tree)
+	} else {
+		bodyTmpl.AddParseTree("content", t.emailContent.Tree)
 	}
 	buf := &bytes.Buffer{}
-	err = bodyTmpl.Execute(buf, t)
+	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute email template")
 	}
 	body := buf.String()
 
-	subjectTmpl, err := template.New("subject").Parse(emailSubjectTemplate)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse subject template")
-	}
 	buf = &bytes.Buffer{}
 	err = subjectTmpl.Execute(buf, t)
 	if err != nil {
@@ -238,6 +264,14 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 
 	data.Headers = makeHeaders(selectors)
 	data.SubscriptionID = sub.ID
+
+	if data.Task != nil {
+		for i := range data.Task.LocalTestResults {
+			if data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
+				data.FailedTests = append(data.FailedTests, data.Task.LocalTestResults[i])
+			}
+		}
+	}
 
 	switch sub.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType:

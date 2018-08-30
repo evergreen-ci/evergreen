@@ -219,6 +219,22 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
+	buildDoc, err := build.FindOne(build.ById(t.task.BuildId))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch build while building email payload")
+	}
+	if buildDoc == nil {
+		return nil, errors.Wrap(err, "could not find build while building email payload")
+	}
+
+	projectRef, err := model.FindOneProjectRef(t.task.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch project ref while building email payload")
+	}
+	if projectRef == nil {
+		return nil, errors.Wrap(err, "could not find project ref while building email payload")
+	}
+
 	data := commonTemplateData{
 		ID:              t.task.Id,
 		EventID:         t.event.ID,
@@ -229,6 +245,9 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		URL:             taskLink(&t.uiConfig, t.task.Id, t.task.Execution),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
+		Task:            t.task,
+		ProjectRef:      projectRef,
+		Build:           buildDoc,
 	}
 	slackColor := evergreenFailColor
 
