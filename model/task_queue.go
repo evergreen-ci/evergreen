@@ -155,7 +155,6 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 
 func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	catcher := grip.NewBasicCatcher()
-	tasksToBlock := []task.Task{}
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task %s", taskID)
@@ -169,22 +168,23 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
 	}
 	tg := p.FindTaskGroup(t.TaskGroup)
-	encounteredTask := false
-	for _, tgTask := range tg.Tasks {
-		if encounteredTask {
-			found, err := task.FindOne(task.ByVersionsForNameAndVariant([]string{t.Version}, tgTask, t.BuildVariant))
-			if err != nil {
-				catcher.Add(errors.Wrapf(err, "problem finding task %s", tgTask))
-			}
-			if found == nil {
-				catcher.Add(errors.Errorf("found nil task %s", tgTask))
-				continue
-			}
-			tasksToBlock = append(tasksToBlock, *found)
-		}
+
+	indexOfTask := -1
+	for i, tgTask := range tg.Tasks {
 		if t.DisplayName == tgTask {
-			encounteredTask = true
+			indexOfTask = i
 		}
+	}
+	if indexOfTask == -1 {
+		return errors.Errorf("Could not find task '%s' in task group", t.DisplayName)
+	}
+	taskNamesToBlock := []string{}
+	for i := indexOfTask + 1; i < len(tg.Tasks); i++ {
+		taskNamesToBlock = append(taskNamesToBlock, tg.Tasks[i])
+	}
+	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
+	if err != nil {
+		catcher.Add(errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", ")))
 	}
 
 	if err := ValidateNewGraph(t, tasksToBlock); err != nil {
