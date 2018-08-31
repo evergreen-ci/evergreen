@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -123,11 +124,30 @@ func TestFindTask(t *testing.T) {
 func TestBlockTaskGroupTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection))
+	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, version.Collection))
 
+	projectRef := &ProjectRef{Identifier: "a"}
+	assert.Nil(projectRef.Insert())
+	yml := `
+task_groups:
+- name: foo
+  tasks:
+  - task_id
+  - one
+tasks:
+- name: task_id
+- name: one
+`
+	v := version.Version{
+		Identifier: "a",
+		Revision:   "b",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Config:     yml,
+	}
+	require.NoError(v.Insert())
 	q := &TaskQueue{
 		Queue: []TaskQueueItem{
-			{Id: "one", Group: "foo", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "one_1", Group: "foo", Project: "a", Version: "b", BuildVariant: "a"},
 			{Id: "two", Group: "bar", Project: "a", Version: "b", BuildVariant: "a"},
 			{Id: "three", Project: "a", Version: "b", BuildVariant: "a"},
 			{Id: "four", Project: "a", Version: "b", BuildVariant: "a"},
@@ -142,18 +162,24 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 	assert.NoError(q.Save())
 	tasks := []task.Task{
 		{
-			Id:                "task_id",
+			Id:                "task_id_1",
+			DisplayName:       "task_id",
 			TaskGroup:         "foo",
 			TaskGroupMaxHosts: 1,
 			BuildVariant:      "a",
 			Version:           "b",
+			Project:           "a",
+			Revision:          "b",
 		},
 		{
-			Id:           "one",
-			TaskGroup:    "foo",
-			Project:      "a",
-			Version:      "b",
-			BuildVariant: "a",
+			Id:                "one_1",
+			DisplayName:       "one",
+			TaskGroup:         "foo",
+			TaskGroupMaxHosts: 1,
+			BuildVariant:      "a",
+			Version:           "b",
+			Project:           "a",
+			Revision:          "b",
 		},
 	}
 	for _, t := range tasks {
@@ -165,7 +191,7 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 		ProjectID:    "a",
 		Version:      "b",
 	}
-	assert.NoError(q.BlockTaskGroupTasks(spec, "task_id"))
+	assert.NoError(q.BlockTaskGroupTasks(spec, "task_id_1"))
 	newQ, err := LoadTaskQueue("distro")
 	assert.NoError(err)
 	assert.Len(newQ.Queue, qLength-1)

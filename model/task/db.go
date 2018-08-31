@@ -211,12 +211,14 @@ func ByStatusAndActivation(status string, active bool) db.Q {
 	})
 }
 
-func ByVersionsForNameAndVariant(versions []string, displayName, buildVariant string) db.Q {
+func ByVersionsForNameAndVariant(versions, displayNames []string, buildVariant string) db.Q {
 	return db.Query(bson.M{
 		VersionKey: bson.M{
 			"$in": versions,
 		},
-		DisplayNameKey:  displayName,
+		DisplayNameKey: bson.M{
+			"$in": displayNames,
+		},
 		BuildVariantKey: buildVariant,
 	})
 }

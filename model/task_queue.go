@@ -125,7 +125,7 @@ func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 	return false
 }
 
-func ValidateNewGraph(t *task.Task, tasksToBlock []string) error {
+func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 	tasksInVersion, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
 	if err != nil {
 		return errors.Wrap(err, "problem finding version for task")
@@ -141,7 +141,7 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []string) error {
 
 	// simulate proposed dependencies
 	for _, taskToBlock := range tasksToBlock {
-		tmap[taskToBlock] = append(tmap[taskToBlock], t.Id)
+		tmap[taskToBlock.Id] = append(tmap[taskToBlock.Id], t.Id)
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -155,12 +155,6 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []string) error {
 
 func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	catcher := grip.NewBasicCatcher()
-	tasksToBlock := []string{}
-	for _, it := range self.Queue {
-		if spec.Group == it.Group && spec.BuildVariant == it.BuildVariant && spec.Version == it.Version {
-			tasksToBlock = append(tasksToBlock, it.Id)
-		}
-	}
 	t, err := task.FindOneId(taskID)
 	if err != nil {
 		return errors.Wrapf(err, "problem finding task %s", taskID)
@@ -168,21 +162,38 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	if t == nil {
 		return errors.Errorf("found nil task %s", taskID)
 	}
+
+	p, err := FindProjectFromTask(t)
+	if err != nil {
+		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
+	}
+	tg := p.FindTaskGroup(t.TaskGroup)
+
+	indexOfTask := -1
+	for i, tgTask := range tg.Tasks {
+		if t.DisplayName == tgTask {
+			indexOfTask = i
+			break
+		}
+	}
+	if indexOfTask == -1 {
+		return errors.Errorf("Could not find task '%s' in task group", t.DisplayName)
+	}
+	taskNamesToBlock := []string{}
+	for i := indexOfTask + 1; i < len(tg.Tasks); i++ {
+		taskNamesToBlock = append(taskNamesToBlock, tg.Tasks[i])
+	}
+	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
+	if err != nil {
+		catcher.Add(errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", ")))
+	}
+
 	if err := ValidateNewGraph(t, tasksToBlock); err != nil {
 		return errors.Wrap(err, "problem validating proposed dependencies")
 	}
 	for _, taskToBlock := range tasksToBlock {
-		t, err := task.FindOneId(taskToBlock)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem finding task %s", taskToBlock))
-			continue
-		}
-		if t == nil {
-			catcher.Add(errors.Errorf("found nil task %s", taskToBlock))
-			continue
-		}
-		catcher.Add(t.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
-		catcher.Add(errors.Wrapf(self.DequeueTask(t.Id), "problem dequeueing task %s", t.Id))
+		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
+		catcher.Add(errors.Wrapf(self.DequeueTask(taskToBlock.Id), "problem dequeueing task %s", t.Id))
 	}
 	return catcher.Resolve()
 }
