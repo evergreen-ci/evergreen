@@ -94,13 +94,16 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	tasks = tasks[:lastIndex]
 	for i := range tasks {
 		taskModel := &model.APITask{}
-		err = taskModel.BuildFromService(&tasks[i])
-		if err != nil {
+
+		if err = taskModel.BuildFromService(&tasks[i]); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
-		err = taskModel.BuildFromService(tbh.sc.GetURL())
-		if err != nil {
+		if err = taskModel.GetArtifacts(); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+
+		if err = taskModel.BuildFromService(tbh.sc.GetURL()); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
@@ -112,13 +115,12 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 
-			err = taskModel.BuildPreviousExecutions(oldTasks)
-			if err != nil {
+			if err = taskModel.BuildPreviousExecutions(oldTasks); err != nil {
 				return gimlet.MakeJSONErrorResponder(err)
 			}
 		}
-		err = resp.AddData(taskModel)
-		if err != nil {
+
+		if err = resp.AddData(taskModel); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
