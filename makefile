@@ -35,7 +35,7 @@ xcPackages := agent command operations rest-client subprocess util
 distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/race.$(pkg))
 
-distArtifacts :=  ./public ./service/templates ./trigger/templates
+distArtifacts :=  ./public ./service/templates
 distContents := $(clientBinaries) $(distArtifacts)
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")

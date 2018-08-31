@@ -251,8 +251,8 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 	}
 	slackColor := evergreenFailColor
 
-	if len(t.task.TaskOldId) != 0 {
-		data.URL = taskLink(&t.uiConfig, t.task.TaskOldId, t.task.Execution)
+	if len(t.task.OldTaskId) != 0 {
+		data.URL = taskLink(&t.uiConfig, t.task.OldTaskId, t.task.Execution)
 	}
 
 	if data.PastTenseStatus == evergreen.TaskSystemFailed {

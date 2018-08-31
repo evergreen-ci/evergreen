@@ -86,6 +86,115 @@ const emailBodyTemplateBase string = `<!DOCTYPE html>
 </html>
 `
 
+const emailTaskFailTemplate = `
+{{ define "content" }}
+<table>
+<tr><td colspan="3" height="10" bgcolor="#3b291f"></td></tr>
+<tr><td colspan="3" height="20"></td></tr>
+<tr>
+  <td width="20"></td>
+  <td align="left">
+    <!-- table lvl 2 -->
+    <table cellpadding="0" cellspacing="0" width="100%">
+      {{ range .FailedTests }}
+        <tr>
+          <td width="90%">
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">TEST</span>
+          </td>
+          <td>&nbsp;</td>
+        </tr>
+        <tr>
+          <td width="90%">
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+              {{ .TestFile }}
+            </span>
+          </td>
+          {{ if eq $.Task.Details.Type "system" }}
+          <td style="padding:0 10px;background-color:#800080;">
+          {{ else }}
+          <td style="padding:0 10px;background-color:#ed1c24;">
+          {{ end }}
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">FAILED</span>
+          </td>
+        </tr>
+        <tr><td colspan="2" height="10"></td></tr>
+        <tr>
+          <td width="90%">
+            <a href="{{ .URL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view logs</a>
+          </td>
+          <td>&nbsp;</td>
+        </tr>
+      {{end}}
+
+      <tr><td colspan="2" height="30"></td></tr>
+      <tr>
+        <td width="90%"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">PROJECT</span></td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td width="90%">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+            {{ .ProjectRef.DisplayName }}
+          </span>
+        </td>
+      </tr>
+      <tr><td colspan="2" height="30"></td></tr>
+      <tr>
+        <td width="90%"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">TASK</span></td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td width="90%">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+            {{ if .Task.DisplayTask }}
+            {{ .Task.DisplayTask.DisplayName }}
+            {{ else }}
+            {{ .Task.DisplayName }}
+            {{ end }}
+          </span>
+        </td>
+        {{ if .Task.Details.TimedOut }}
+          {{ if eq .Task.Details.Type "system" }}
+          <td style="padding:0 10px;background-color:#800080;">
+          {{ else }}
+          <td style="padding:0 10px;background-color:#ed1c24;">
+          {{ end }}
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">
+              TIMED OUT
+            </span>
+          </td>
+        {{ else }}
+          <td>&nbsp;</td>
+        {{ end }}
+      </tr>
+      <tr><td colspan="2" height="10"></td></tr>
+      <tr>
+        <td width="90%">
+          <a href="{{ .URL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view task</a>
+        </td>
+        <td>&nbsp;</td>
+      </tr>
+
+      <tr>
+        <td colspan="2" height="30"></td>
+      </tr>
+      <tr>
+        <td colspan="2"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">BUILD VARIANT</span></td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;color:#333333" class="build">
+            {{ .Build.DisplayName }}
+          </span>
+        </td>
+      </tr>
+    </table>
+  </td>
+  <td width="20"></td>
+</tr>
+</table>
+{{ end }}`
+
 var emailBodyTemplate = template.Must(template.New("emailbody").Parse(emailBodyTemplateBase))
 
 const emailDefaultContentTemplateString = `{{ define "content"}}
@@ -96,7 +205,7 @@ const emailDefaultContentTemplateString = `{{ define "content"}}
 {{ end }}`
 
 var emailDefaultContentTemplate = template.Must(template.New("content").Parse(emailDefaultContentTemplateString))
-var emailTaskContentTemplate = template.Must(template.New("content").ParseFiles("trigger/templates/task_fail.html"))
+var emailTaskContentTemplate = template.Must(template.New("content").Parse(emailTaskFailTemplate))
 
 const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .DisplayName }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
@@ -223,7 +332,7 @@ func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	msg := buf.String()
 
 	if len(t.slack) > 0 {
-		t.slack[len(t.slack)-1].Footer = fmt.Sprintf("Subscription: %s; Event: %s", t.SubscriptionID, t.ID)
+		t.slack[len(t.slack)-1].Footer = fmt.Sprintf("Subscription: %s; Event: %s", t.SubscriptionID, t.EventID)
 	}
 
 	return &notification.SlackPayload{
