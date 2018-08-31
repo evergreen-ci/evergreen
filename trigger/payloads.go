@@ -229,9 +229,12 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 		return nil, errors.Wrap(err, "failed to clone emailBodyTemplate")
 	}
 	if t.emailContent == nil {
-		bodyTmpl.AddParseTree("content", emailDefaultContentTemplate.Tree)
+		_, err = bodyTmpl.AddParseTree("content", emailDefaultContentTemplate.Tree)
 	} else {
-		bodyTmpl.AddParseTree("content", t.emailContent.Tree)
+		_, err = bodyTmpl.AddParseTree("content", t.emailContent.Tree)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to email content")
 	}
 	buf := &bytes.Buffer{}
 	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", t)
