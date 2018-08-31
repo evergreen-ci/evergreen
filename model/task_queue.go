@@ -172,7 +172,7 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	encounteredTask := false
 	for _, tgTask := range tg.Tasks {
 		if encounteredTask {
-			found, err := task.FindOne(task.ByVersionForNameAndVariant(t.Version, tgTask, t.BuildVariant))
+			found, err := task.FindOne(task.ByVersionsForNameAndVariant([]string{t.Version}, tgTask, t.BuildVariant))
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem finding task %s", tgTask))
 			}
