@@ -20,7 +20,7 @@ function average (arr){
 
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $log, $q, PerfChartService,
+  $scope, $window, $http, $location, $log, $q, DrawPerfTrendChart,
   Stitch, STITCH_CONFIG
 ) {
     /* for debugging
@@ -174,7 +174,35 @@ mciModule.controller('PerfController', function PerfController(
     }
   })
 
-  //$scope.$watch('perftab',$scope.syncHash)
+  var drawTrendGraph = function(scope) {
+    scope.locked = false;
+    // Extract params
+    var trendSamples = scope.trendSamples,
+        tests = scope.perfSample.testNames(),
+        taskId = scope.task.id,
+        compareSamples = scope.comparePerfSamples;
+
+    // Creates new, non-isolated scope for charts
+    var chartsScope = scope.$new()
+    for (var i = 0; i < tests.length; i++) {
+      var key = tests[i];
+      var series = trendSamples.seriesByName[key];
+      var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
+
+      DrawPerfTrendChart({
+        series: series,
+        changePoints: scope.changePoints[key],
+        key: key,
+        scope: chartsScope,
+        containerId: containerId,
+        compareSamples: compareSamples,
+        threadMode: scope.threadLevelsRadio.value,
+        linearMode: scope.scaleModel.linearMode,
+        originMode: scope.rangeModel.originMode
+      });
+      scope.showToolbar = true
+    }
+  }
 
   // converts a percentage to a color. Higher -> greener, Lower -> redder.
   $scope.percentToColor = function(percent) {
@@ -433,7 +461,7 @@ mciModule.controller('PerfController', function PerfController(
 
   $scope.redrawGraphs = function(){
       setTimeout(function(){
-        drawTrendGraph($scope, PerfChartService);
+        drawTrendGraph($scope);
         drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id);
       }, 0)
   }
@@ -501,7 +529,7 @@ mciModule.controller('PerfController', function PerfController(
         $q.all([chartDataQ, changePointsQ.catch()])
           .then(function(ret) {
             setTimeout(function() {
-              drawTrendGraph($scope, PerfChartService)
+              drawTrendGraph($scope)
             }, 0)
           })
       })
@@ -715,36 +743,4 @@ function TestSample(sample){
     }
     return this._maxes[testName];
   }
-}
-
-var drawTrendGraph = function(scope, PerfChartService) {
-  scope.locked = false;
-  // Extract params
-  var trendSamples = scope.trendSamples,
-      tests = scope.perfSample.testNames(),
-      taskId = scope.task.id,
-      compareSamples = scope.comparePerfSamples;
-
-  // Creates new, non-isolated scope for charts
-  var chartsScope = scope.$new()
-  for (var i = 0; i < tests.length; i++) {
-    var key = tests[i];
-    var series = trendSamples.seriesByName[key];
-    var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
-
-    drawSingleTrendChart({
-      PerfChartService: PerfChartService,
-      series: series,
-      changePoints: scope.changePoints[key],
-      key: key,
-      scope: chartsScope,
-      containerId: containerId,
-      compareSamples: compareSamples,
-      threadMode: scope.threadLevelsRadio.value,
-      linearMode: scope.scaleModel.linearMode,
-      originMode: scope.rangeModel.originMode
-    });
-    scope.showToolbar = true
-  }
-
 }
