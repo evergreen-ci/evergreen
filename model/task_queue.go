@@ -173,6 +173,7 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	for i, tgTask := range tg.Tasks {
 		if t.DisplayName == tgTask {
 			indexOfTask = i
+			break
 		}
 	}
 	if indexOfTask == -1 {
