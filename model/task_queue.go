@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/tychoish/tarjan"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -123,22 +125,75 @@ func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 	return false
 }
 
+func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
+	tasksInVersion, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
+	if err != nil {
+		return errors.Wrap(err, "problem finding version for task")
+	}
+
+	// tmap maps tasks to their dependencies
+	tmap := map[string][]string{}
+	for _, t := range tasksInVersion {
+		for _, d := range t.DependsOn {
+			tmap[t.Id] = append(tmap[t.Id], d.TaskId)
+		}
+	}
+
+	// simulate proposed dependencies
+	for _, taskToBlock := range tasksToBlock {
+		tmap[taskToBlock.Id] = append(tmap[taskToBlock.Id], t.Id)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, group := range tarjan.Connections(tmap) {
+		if len(group) > 1 {
+			catcher.Add(errors.Errorf("Cycle detected: %s", strings.Join(group, ", ")))
+		}
+	}
+	return catcher.Resolve()
+}
+
 func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	catcher := grip.NewBasicCatcher()
-	for _, it := range self.Queue {
-		if spec.Group == it.Group && spec.BuildVariant == it.BuildVariant && spec.Version == it.Version {
-			t, err := task.FindOneId(it.Id)
-			if err != nil {
-				catcher.Add(errors.Wrapf(err, "problem finding task %s", it.Id))
-				continue
-			}
-			if t == nil {
-				catcher.Add(errors.Errorf("got nil task for %s", it.Id))
-				continue
-			}
-			catcher.Add(t.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
-			catcher.Add(errors.Wrapf(self.DequeueTask(it.Id), "problem dequeueing task %s", it.Id))
+	t, err := task.FindOneId(taskID)
+	if err != nil {
+		return errors.Wrapf(err, "problem finding task %s", taskID)
+	}
+	if t == nil {
+		return errors.Errorf("found nil task %s", taskID)
+	}
+
+	p, err := FindProjectFromTask(t)
+	if err != nil {
+		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
+	}
+	tg := p.FindTaskGroup(t.TaskGroup)
+
+	indexOfTask := -1
+	for i, tgTask := range tg.Tasks {
+		if t.DisplayName == tgTask {
+			indexOfTask = i
+			break
 		}
+	}
+	if indexOfTask == -1 {
+		return errors.Errorf("Could not find task '%s' in task group", t.DisplayName)
+	}
+	taskNamesToBlock := []string{}
+	for i := indexOfTask + 1; i < len(tg.Tasks); i++ {
+		taskNamesToBlock = append(taskNamesToBlock, tg.Tasks[i])
+	}
+	tasksToBlock, err := task.Find(task.ByVersionsForNameAndVariant([]string{t.Version}, taskNamesToBlock, t.BuildVariant))
+	if err != nil {
+		catcher.Add(errors.Wrapf(err, "problem finding tasks %s", strings.Join(taskNamesToBlock, ", ")))
+	}
+
+	if err := ValidateNewGraph(t, tasksToBlock); err != nil {
+		return errors.Wrap(err, "problem validating proposed dependencies")
+	}
+	for _, taskToBlock := range tasksToBlock {
+		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
+		catcher.Add(errors.Wrapf(self.DequeueTask(taskToBlock.Id), "problem dequeueing task %s", t.Id))
 	}
 	return catcher.Resolve()
 }

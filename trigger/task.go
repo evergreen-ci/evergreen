@@ -133,6 +133,14 @@ type taskTriggers struct {
 	base
 }
 
+func (t *taskTriggers) Process(sub *event.Subscription) (*notification.Notification, error) {
+	if t.task.DisplayOnly {
+		return nil, nil
+	}
+
+	return t.base.Process(sub)
+}
+
 func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	var ok bool
 	t.data, ok = e.Data.(*event.TaskEventData)
@@ -152,11 +160,10 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 	if t.task == nil {
 		return errors.New("couldn't find task")
 	}
-	if t.task.DisplayOnly {
-		err = t.task.MergeNewTestResults()
-		if err != nil {
-			return errors.Wrap(err, "error getting test results")
-		}
+
+	_, err = t.task.GetDisplayTask()
+	if err != nil {
+		return errors.Wrap(err, "error getting display task")
 	}
 
 	t.version, err = version.FindOne(version.ById(t.task.Version))
@@ -235,15 +242,22 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		return nil, errors.New("could not find project ref while building email payload")
 	}
 
+	displayName := t.task.DisplayName
+	status := t.task.Status
+	if t.task.DisplayTask != nil {
+		displayName = t.task.DisplayTask.DisplayName
+		status = t.task.DisplayTask.Status
+	}
+
 	data := commonTemplateData{
 		ID:              t.task.Id,
 		EventID:         t.event.ID,
 		SubscriptionID:  sub.ID,
-		DisplayName:     t.task.DisplayName,
+		DisplayName:     displayName,
 		Object:          "task",
 		Project:         t.task.Project,
-		URL:             taskLink(&t.uiConfig, t.task.Id, t.task.Execution),
-		PastTenseStatus: t.data.Status,
+		URL:             taskLink(t.uiConfig.Url, t.task.Id, t.task.Execution),
+		PastTenseStatus: status,
 		apiModel:        &api,
 		Task:            t.task,
 		ProjectRef:      projectRef,
@@ -268,7 +282,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 
 	data.slack = []message.SlackAttachment{
 		{
-			Title:     t.task.DisplayName,
+			Title:     displayName,
 			TitleLink: data.URL,
 			Text:      taskFormat(t.task),
 			Color:     slackColor,

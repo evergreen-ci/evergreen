@@ -164,12 +164,12 @@ func (s *QueueClientSuite) TestSetPrefixRoundTripsThroughGetter() {
 ////////////////////////////////////////////////////////////////////////
 
 func (s *QueueClientSuite) TestNewQueueClientPropogatesValidValuesToCreatedValues() {
-	nc, err := NewQueueClient("http://example.com", 8080, "amboy")
+	nc, err := NewQueueClient("http://example.com", 8080, "amboy_test")
 	s.NoError(err)
 
 	s.Equal(8080, nc.Port())
 	s.Equal("http://example.com", nc.Host())
-	s.Equal("amboy", nc.Prefix())
+	s.Equal("amboy_test", nc.Prefix())
 }
 
 func (s *QueueClientSuite) TestCorrectedNewQueueClientSettings() {
@@ -186,7 +186,7 @@ func (s *QueueClientSuite) TestNewQueueClientConstructorPropogatesErrorStateForH
 }
 
 func (s *QueueClientSuite) TestNewQueueClientFromExistingWithNilClientReturnsError() {
-	nc, err := NewQueueClientFromExisting(nil, "http://example.com", 2048, "amboy")
+	nc, err := NewQueueClientFromExisting(nil, "http://example.com", 2048, "amboy_test")
 	s.Error(err)
 	s.Nil(nc)
 }

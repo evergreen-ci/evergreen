@@ -121,6 +121,18 @@ func (r *queueReporter) RecentTiming(ctx context.Context, window time.Duration, 
 				counters[jt] = append(counters[jt], time.Since(ti.Created))
 			}
 		}
+	case Running:
+		for stat := range r.queue.JobStats(ctx) {
+			if !stat.Completed && stat.InProgress {
+				job, ok := r.queue.Get(stat.ID)
+				if !ok {
+					continue
+				}
+				ti := job.TimeInfo()
+				jt := job.Type().Name
+				counters[jt] = append(counters[jt], time.Since(ti.Start))
+			}
+		}
 	default:
 		return nil, errors.New("invalid job runtime filter")
 	}

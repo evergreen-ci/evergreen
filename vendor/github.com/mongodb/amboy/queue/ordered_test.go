@@ -46,6 +46,8 @@ func TestRemoteMongoDBOrderedQueueSuiteFourWorkers(t *testing.T) {
 	s := &OrderedQueueSuite{}
 	name := "test-" + uuid.NewV4().String()
 	uri := "mongodb://localhost"
+	opts := DefaultMongoDBOptions()
+	opts.DB = "amboy_test"
 	ctx, cancel := context.WithCancel(context.Background())
 
 	session, err := mgo.Dial(uri)
@@ -58,7 +60,7 @@ func TestRemoteMongoDBOrderedQueueSuiteFourWorkers(t *testing.T) {
 
 	s.setup = func() {
 		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
-		d := NewMongoDBDriver(name, DefaultMongoDBOptions())
+		d := NewMongoDBDriver(name, opts)
 		s.Require().NoError(d.Open(ctx))
 		s.Require().NoError(remote.SetDriver(d))
 		s.queue = remote
@@ -68,14 +70,14 @@ func TestRemoteMongoDBOrderedQueueSuiteFourWorkers(t *testing.T) {
 	s.tearDown = func() {
 		cancel()
 
-		grip.CatchError(session.DB("amboy").C(name + ".jobs").DropCollection())
-		grip.CatchError(session.DB("amboy").C(name + ".locks").DropCollection())
+		grip.CatchError(session.DB("amboy_test").C(name + ".jobs").DropCollection())
+		grip.CatchError(session.DB("amboy_test").C(name + ".locks").DropCollection())
 	}
 
 	s.reset = func() {
-		_, err = session.DB("amboy").C(name + ".jobs").RemoveAll(bson.M{})
+		_, err = session.DB("amboy_test").C(name + ".jobs").RemoveAll(bson.M{})
 		grip.CatchError(err)
-		_, err = session.DB("amboy").C(name + ".locks").RemoveAll(bson.M{})
+		_, err = session.DB("amboy_test").C(name + ".locks").RemoveAll(bson.M{})
 		grip.CatchError(err)
 	}
 

@@ -73,7 +73,7 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 			},
 			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 		)
-		tasks, err := task.FindAllTasksFromBuildWithDependencies(buildId)
+		tasks, err := task.FindTasksFromBuildWithDependencies(buildId)
 		if err != nil {
 			return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
 		}

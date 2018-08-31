@@ -8,7 +8,6 @@
 
 
 <script type="text/javascript">
-  window.serverData = {{ .Data }};
   window.userTz = {{GetTimezone .User}}
   window.jiraHost = {{.JiraHost}}
   window.user = {{if .User}}{{.User}}{{else}}null{{end}};

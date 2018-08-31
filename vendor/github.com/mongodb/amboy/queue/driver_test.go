@@ -51,9 +51,11 @@ func TestDriverSuiteWithPriorityInstance(t *testing.T) {
 func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests := new(DriverSuite)
 	tests.uuid = uuid.NewV4().String()
+	opts := DefaultMongoDBOptions()
+	opts.DB = "amboy_test"
 	mDriver := NewMongoDBDriver(
 		"test-"+tests.uuid,
-		DefaultMongoDBOptions()).(*mongoDB)
+		opts).(*mongoDB)
 
 	tests.driverConstructor = func() Driver {
 		return mDriver

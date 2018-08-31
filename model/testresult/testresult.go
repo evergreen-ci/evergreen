@@ -107,9 +107,9 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 }
 
 // TestResultsQuery is a query for returning test results to the REST v2 API.
-func TestResultsQuery(taskId, testId, status string, limit, execution int) db.Q {
+func TestResultsQuery(taskIds []string, testId, status string, limit, execution int) db.Q {
 	match := bson.M{
-		TaskIDKey:    taskId,
+		TaskIDKey:    bson.M{"$in": taskIds},
 		ExecutionKey: execution,
 	}
 	if status != "" {

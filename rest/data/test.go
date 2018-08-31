@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -13,8 +14,26 @@ import (
 type DBTestConnector struct{}
 
 func (tc *DBTestConnector) FindTestsByTaskId(taskId, testId, status string, limit, execution int) ([]testresult.TestResult, error) {
-
-	q := testresult.TestResultsQuery(taskId, testId, status, limit, execution)
+	t, err := task.FindOneId(taskId)
+	if err != nil {
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task not found %s", err.Error()),
+		}
+	}
+	if t == nil {
+		return []testresult.TestResult{}, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task not found %s", taskId),
+		}
+	}
+	var taskIds []string
+	if t.DisplayOnly {
+		taskIds = t.ExecutionTasks
+	} else {
+		taskIds = []string{taskId}
+	}
+	q := testresult.TestResultsQuery(taskIds, testId, status, limit, execution)
 	res, err := testresult.Find(q)
 	if err != nil {
 		return []testresult.TestResult{}, err

@@ -41,19 +41,21 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
     params["bv_filter"]= bvFilter;
   if (taskFilter && taskFilter != '')
     params["task_filter"]= taskFilter;
-  params["skip"] = skip
+  if (skip !== 0) {
+    params["skip"] = skip;
+  }
 
-  var paramString = generateURLParameters(params);
-  window.history.replaceState({}, '', baseURL + "?" + paramString);
+  if (Object.keys(params).length > 0) {
+    const paramString = generateURLParameters(params);
+    window.history.replaceState({}, '', baseURL + "?" + paramString);
+  } else {
+    window.history.replaceState({}, '', baseURL);
+  }
 }
 
 var JIRA_REGEX = /[A-Z]{1,10}-\d{1,6}/ig;
 
-class JiraLink extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
+class JiraLink extends React.PureComponent {
   render() {
     var contents
 
@@ -91,8 +93,6 @@ class Root extends React.PureComponent {
   constructor(props){
     super(props);
 
-    this.updatePaginationContext(window.serverData)
-
     const href = window.location.href
     var buildVariantFilter = getParameterByName('bv_filter', href) || ''
     var taskFilter = getParameterByName('task_filter', href) || ''
@@ -104,15 +104,20 @@ class Root extends React.PureComponent {
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
-      data: this.props.data
-    };
+      data: null
+    }
+    this.nextSkip = getParameterByName('skip', href) || 0;
+    this.baseURL = "/waterfall/" + this.props.project
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
     this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
+    this.loadDataPortion = this.loadDataPortion.bind(this);
+    this.loadDataPortion();
     this.loadDataPortion = _.debounce(this.loadDataPortion, 100)
+    this.loadData = this.loadData.bind(this);
   }
 
   updatePaginationContext(data) {
@@ -121,7 +126,6 @@ class Root extends React.PureComponent {
       return m + d.authors.length
     }, 0)
 
-    this.baseURL = "/waterfall/" + this.props.project
     this.currentSkip = data.current_skip
     this.nextSkip = this.currentSkip + versionsOnPage;
     this.prevSkip = this.currentSkip - data.previous_page_count
@@ -135,14 +139,32 @@ class Root extends React.PureComponent {
     }
   }
 
-  loadDataPortion(filter) {
-    var params = filter ? {bv_filter: filter} : {}
+  loadData(direction) {
+    const skip = direction === -1 ? this.prevSkip : this.nextSkip;
+    this.loadDataPortion(undefined, skip);
+  }
+
+  loadDataPortion(filter, skip) {
+    const params = {
+      skip: skip === undefined ? this.nextSkip : skip
+    };
+    if (this.state.buildVariantFilter) {
+      params.bv_filter = this.state.buildVariantFilter;
+    }
+    if (filter !== undefined && filter !== this.state.buildVariantFilter) {
+      params.bv_filter = filter;
+      params.skip = 0;
+    }
+    if (params.skip === -1) {
+      delete params.skip;
+    }
+    this.setState({data: null});
     http.get(`/rest/v1/waterfall/${this.props.project}`, {params})
       .then(({data}) => {
-        this.updatePaginationContext(data)
-        this.setState({data})
-        updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
-      })
+        this.updatePaginationContext(data);
+        this.setState({data, nextSkip: this.nextSkip + data.versions.length});
+        updateURLParams(params.bv_filter, this.state.taskFilter, this.currentSkip, this.baseURL);
+      });
   }
 
   handleCollapseChange(collapsed) {
@@ -166,7 +188,7 @@ class Root extends React.PureComponent {
   }
 
   render() {
-    if (this.state.data.rows.length == 0){
+    if (this.state.data && this.state.data.rows.length == 0){
       return (
         <div>
           There are no builds for this project.
@@ -191,10 +213,12 @@ class Root extends React.PureComponent {
           taskFilterFunc={this.handleTaskFilter}
           isLoggedIn={this.props.user !== null}
           project={this.props.project}
+          disabled={false}
+          loadData={this.loadData}
         />
         <Headers
           shortenCommitMessage={this.state.shortenCommitMessage}
-          versions={this.state.data.versions}
+          versions={this.state.data === null ? null : this.state.data.versions}
           onLinkClick={this.handleHeaderLinkClick}
           userTz={this.props.userTz}
           jiraHost={this.props.jiraHost}
@@ -223,25 +247,28 @@ function Toolbar ({collapsed,
   buildVariantFilterFunc,
   taskFilterFunc,
   isLoggedIn,
-  project}) {
+  project,
+  disabled,
+  loadData
+}) {
 
   var Form = ReactBootstrap.Form;
   return (
     <div className="row">
       <div className="col-xs-12">
         <Form inline className="waterfall-toolbar pull-right">
-          <CollapseButton collapsed={collapsed} onCheck={onCheck} />
+          <CollapseButton collapsed={collapsed} onCheck={onCheck} disabled={disabled} />
           <FilterBox
             filterFunction={buildVariantFilterFunc}
             placeholder={"Filter variant"}
             currentFilter={buildVariantFilter}
-            disabled={false}
+            disabled={disabled}
           />
           <FilterBox
             filterFunction={taskFilterFunc}
             placeholder={"Filter task"}
             currentFilter={taskFilter}
-            disabled={collapsed}
+            disabled={collapsed || disabled}
           />
           <PageButtons
             nextSkip={nextSkip}
@@ -249,6 +276,8 @@ function Toolbar ({collapsed,
             baseURL={baseURL}
             buildVariantFilter={buildVariantFilter}
             taskFilter={taskFilter}
+            disabled={disabled}
+            loadData={loadData}
           />
           <GearMenu
             project={project}
@@ -260,42 +289,31 @@ function Toolbar ({collapsed,
   )
 };
 
-function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilter}) {
-  var ButtonGroup = ReactBootstrap.ButtonGroup;
-
-  var nextURL= "";
-  var prevURL= "";
-
-  var prevURLParams = {};
-  var nextURLParams = {};
-
-  nextURLParams["skip"] = nextSkip;
-  prevURLParams["skip"] = prevSkip;
-  if (buildVariantFilter && buildVariantFilter != '') {
-    nextURLParams["bv_filter"] = buildVariantFilter;
-    prevURLParams["bv_filter"] = buildVariantFilter;
+class PageButtons extends React.PureComponent {
+  constructor(props) {
+    super(props);
+    this.loadNext = () => this.props.loadData(1);
+    this.loadPrev = () => this.props.loadData(-1);
   }
-  if (taskFilter && taskFilter != '') {
-    nextURLParams["task_filter"] = taskFilter;
-    prevURLParams["task_filter"] = taskFilter;
+
+  render() {
+    const ButtonGroup = ReactBootstrap.ButtonGroup;
+    return (
+      <span className="waterfall-form-item">
+        <ButtonGroup>
+          <PageButton disabled={this.props.disabled || this.props.prevSkip < 0} directionIcon="fa-chevron-left" loadData={this.loadPrev} />
+          <PageButton disabled={this.props.disabled || this.props.nextSkip < 0} directionIcon="fa-chevron-right" loadData={this.loadNext} />
+        </ButtonGroup>
+      </span>
+    );
   }
-  nextURL = "?" + generateURLParameters(nextURLParams);
-  prevURL = "?" + generateURLParameters(prevURLParams);
-  return (
-    <span className="waterfall-form-item">
-      <ButtonGroup>
-        <PageButton pageURL={prevURL} disabled={prevSkip < 0} directionIcon="fa-chevron-left" />
-        <PageButton pageURL={nextURL} disabled={nextSkip < 0} directionIcon="fa-chevron-right" />
-      </ButtonGroup>
-    </span>
-  );
 }
 
-function PageButton ({pageURL, directionIcon, disabled}) {
+function PageButton ({directionIcon, disabled, loadData}) {
   var Button = ReactBootstrap.Button;
   var classes = "fa " + directionIcon;
   return (
-    <Button href={pageURL} disabled={disabled}><i className={classes}></i></Button>
+    <Button onClick={loadData} disabled={disabled}><i className={classes}></i></Button>
   );
 }
 
@@ -334,6 +352,7 @@ class CollapseButton extends React.PureComponent {
           checked={this.props.collapsed}
           ref="collapsedBuilds"
           onChange={this.handleChange}
+          disabled={this.props.disabled}
         />
       </span>
     )
@@ -484,6 +503,9 @@ class GearMenu extends React.PureComponent {
 // Headers
 
 function Headers ({shortenCommitMessage, versions, onLinkClick, userTz, jiraHost}) {
+  if (versions === null)  {
+    return (<VersionHeaderTombstone />);
+  }
   return (
     <div className="row version-header">
       <div className="variant-col col-xs-2 version-header-rolled"></div>
@@ -521,6 +543,33 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz, jiraHost
 }
 
 
+function VersionHeaderTombstone() {
+  return (
+    <div className="row version-header">
+      <div className="variant-col col-xs-2 version-header-rolled"></div>
+      <div className="col-xs-10">
+        <div className="row">
+          <div className="header-col">
+            <div className="version-header-expanded">
+              <div className="col-xs-12">
+                <div className="row">
+                  <div className="waterfall-tombstone" style={{'height': '14px', 'width': '126px'}}>&nbsp;</div>
+                </div>
+              </div>
+              <div className="col-xs-12">
+                <div className="row">
+                  <div className="waterfall-tombstone" style={{'marginTop': '5px', 'height': '14px', 'width': '78px'}}>&nbsp;</div>
+                  <div className="waterfall-tombstone" style={{'marginTop': '5px', 'height': '14px', 'width': '205px'}}>&nbsp;</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz, jiraHost}) {
   var message = version.messages[0];
   var author = version.authors[0];
@@ -557,7 +606,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
           </div>
         </div>
       </div>
-  )
+  );
 };
 
 class HideHeaderButton extends React.Component{
@@ -621,6 +670,41 @@ function RolledUpVersionSummary ({author, commit, message, versionId, createTime
       <br />
       <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
       <br />
+    </div>
+  );
+}
+
+function TaskTombstones(num) {
+  const out = [];
+  for (let i = 0; i < num; ++i) {
+    out.push((<a className="waterfall-box inactive" />));
+  }
+  return out;
+}
+
+function VariantTombstone() {
+  return (
+    <div className="row variant-row">
+      <div className="col-xs-2 build-variants">
+        <div className="waterfall-tombstone" style={{'height': '18px', 'width': '159px', 'float': 'right'}}>&nbsp;</div>
+      </div>
+      <div className="col-xs-10">
+        <div className="row build-cells">
+          <div className="waterfall-build">
+            <div className="active-build">
+              {TaskTombstones(1)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GridTombstone() {
+  return (
+    <div className="waterfall-grid">
+      <VariantTombstone />
     </div>
   );
 }

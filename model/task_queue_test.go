@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -122,6 +124,82 @@ func TestFindTask(t *testing.T) {
 func TestBlockTaskGroupTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, version.Collection))
+
+	projectRef := &ProjectRef{Identifier: "a"}
+	assert.Nil(projectRef.Insert())
+	yml := `
+task_groups:
+- name: foo
+  tasks:
+  - task_id
+  - one
+tasks:
+- name: task_id
+- name: one
+`
+	v := version.Version{
+		Identifier: "a",
+		Revision:   "b",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Config:     yml,
+	}
+	require.NoError(v.Insert())
+	q := &TaskQueue{
+		Queue: []TaskQueueItem{
+			{Id: "one_1", Group: "foo", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "two", Group: "bar", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "three", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "four", Project: "a", Version: "b", BuildVariant: "a"},
+			{Id: "five", Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "six", Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "seven", Project: "aa", Version: "bb", BuildVariant: "a"},
+			{Id: "eight", Project: "aa", Version: "bb", BuildVariant: "a"},
+		},
+		Distro: "distro",
+	}
+	qLength := len(q.Queue)
+	assert.NoError(q.Save())
+	tasks := []task.Task{
+		{
+			Id:                "task_id_1",
+			DisplayName:       "task_id",
+			TaskGroup:         "foo",
+			TaskGroupMaxHosts: 1,
+			BuildVariant:      "a",
+			Version:           "b",
+			Project:           "a",
+			Revision:          "b",
+		},
+		{
+			Id:                "one_1",
+			DisplayName:       "one",
+			TaskGroup:         "foo",
+			TaskGroupMaxHosts: 1,
+			BuildVariant:      "a",
+			Version:           "b",
+			Project:           "a",
+			Revision:          "b",
+		},
+	}
+	for _, t := range tasks {
+		require.NoError(t.Insert())
+	}
+	spec := TaskSpec{
+		Group:        "foo",
+		BuildVariant: "a",
+		ProjectID:    "a",
+		Version:      "b",
+	}
+	assert.NoError(q.BlockTaskGroupTasks(spec, "task_id_1"))
+	newQ, err := LoadTaskQueue("distro")
+	assert.NoError(err)
+	assert.Len(newQ.Queue, qLength-1)
+}
+
+func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
 	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection))
 
 	q := &TaskQueue{
@@ -146,6 +224,12 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 			TaskGroupMaxHosts: 1,
 			BuildVariant:      "a",
 			Version:           "b",
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "outside_group",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
 		},
 		{
 			Id:           "one",
@@ -153,6 +237,18 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 			Project:      "a",
 			Version:      "b",
 			BuildVariant: "a",
+		},
+		{
+			Id:           "outside_group",
+			Project:      "a",
+			Version:      "b",
+			BuildVariant: "a",
+			DependsOn: []task.Dependency{
+				{
+					TaskId: "one",
+					Status: evergreen.TaskSucceeded,
+				},
+			},
 		},
 	}
 	for _, t := range tasks {
@@ -164,10 +260,10 @@ func TestBlockTaskGroupTasks(t *testing.T) {
 		ProjectID:    "a",
 		Version:      "b",
 	}
-	assert.NoError(q.BlockTaskGroupTasks(spec, "task_id"))
+	assert.Error(q.BlockTaskGroupTasks(spec, "task_id"))
 	newQ, err := LoadTaskQueue("distro")
 	assert.NoError(err)
-	assert.Len(newQ.Queue, qLength-1)
+	assert.Len(newQ.Queue, qLength)
 }
 
 func TestFindNextTaskEmptySpec(t *testing.T) {

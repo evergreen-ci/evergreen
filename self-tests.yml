@@ -97,6 +97,10 @@ variables:
   - &run-smoke-test
     name: smoke
     commands:
+      - command: timeout.update
+        params:
+          exec_timeout_secs: 900
+          timeout_secs: 900
       - func: get-project
       - func: set-up-mongodb
       - func: run-make

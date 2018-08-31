@@ -81,6 +81,11 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 				continue
 			}
 
+			ti := amboy.JobTimeInfo{
+				Start: time.Now(),
+			}
+			job.UpdateTimeInfo(ti)
+
 			if err := q.driver.Lock(ctx, job); err != nil {
 				grip.Warning(err)
 				continue

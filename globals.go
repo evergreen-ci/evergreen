@@ -148,7 +148,8 @@ func IsFailedTaskStatus(status string) bool {
 		status == TaskSystemFailed ||
 		status == TaskSystemTimedOut ||
 		status == TaskSystemUnresponse ||
-		status == TaskTestTimedOut
+		status == TaskTestTimedOut ||
+		status == TaskSetupFailed
 }
 
 // evergreen package names

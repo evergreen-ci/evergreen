@@ -54,7 +54,7 @@ func (t *spawnHostTriggers) slack() *notification.SlackPayload {
 		attachment.Fields = append(attachment.Fields,
 			&message.SlackAttachmentField{
 				Title: "With data from task",
-				Value: fmt.Sprintf("<%s|%s>", taskLink(&t.uiConfig, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
+				Value: fmt.Sprintf("<%s|%s>", taskLink(t.uiConfig.Url, t.host.ProvisionOptions.TaskId, -1), t.host.ProvisionOptions.TaskId),
 				Short: true,
 			})
 	}

@@ -86,7 +86,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		DisplayName:     t.version.Id,
 		Object:          objectVersion,
 		Project:         t.version.Identifier,
-		URL:             versionLink(&t.uiConfig, t.version.Id),
+		URL:             versionLink(t.uiConfig.Url, t.version.Id),
 		PastTenseStatus: t.data.Status,
 		apiModel:        &api,
 	}

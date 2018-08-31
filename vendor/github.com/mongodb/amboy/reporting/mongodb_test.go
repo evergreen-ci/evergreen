@@ -10,12 +10,15 @@ import (
 
 func TestMongoDBConstructors(t *testing.T) {
 	t.Run("NilSessionShouldError", func(t *testing.T) {
-		db, err := MakeDBQueueState("foo", queue.DefaultMongoDBOptions(), nil)
+		opts := queue.DefaultMongoDBOptions()
+		opts.DB = "amboy_test"
+		db, err := MakeDBQueueState("foo", opts, nil)
 		assert.Error(t, err)
 		assert.Nil(t, db)
 	})
 	t.Run("UnpingableSessionError", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
+		opts.DB = "amboy_test"
 		session, err := mgo.Dial(opts.URI)
 		assert.NoError(t, err)
 		session.Close()
@@ -26,6 +29,7 @@ func TestMongoDBConstructors(t *testing.T) {
 	})
 	t.Run("BuildNewConnector", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
+		opts.DB = "amboy_test"
 		session, err := mgo.Dial(opts.URI)
 		assert.NoError(t, err)
 		defer session.Close()
@@ -40,7 +44,9 @@ func TestMongoDBConstructors(t *testing.T) {
 		assert.NotZero(t, r.collection)
 	})
 	t.Run("DialWithNewConstructor", func(t *testing.T) {
-		r, err := NewDBQueueState("foo", queue.DefaultMongoDBOptions())
+		opts := queue.DefaultMongoDBOptions()
+		opts.DB = "amboy_test"
+		r, err := NewDBQueueState("foo", opts)
 		assert.NoError(t, err)
 		assert.NotNil(t, r)
 		db := r.(*dbQueueStat)
@@ -48,6 +54,7 @@ func TestMongoDBConstructors(t *testing.T) {
 	})
 	t.Run("DialWithBadURI", func(t *testing.T) {
 		opts := queue.DefaultMongoDBOptions()
+		opts.DB = "amboy_test"
 		opts.URI = "mongodb://lochost:26016"
 		r, err := NewDBQueueState("foo", opts)
 		assert.Error(t, err)
