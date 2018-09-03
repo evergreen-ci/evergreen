@@ -1053,6 +1053,9 @@ ul.tooltip-tasks li.tooltip-task {
   width: 50%;
   margin: 0 auto;
 }
+.login-panel .alert {
+  font-size: 1.5em;
+}
 #buildvariants,
 #tasks {
   list-style: none;
