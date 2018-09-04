@@ -185,7 +185,7 @@ $(buildDir)/.npmSetup:
 
 
 # distribution targets and implementation
-$(buildDir)/build-cross-compile:cmd/build-cross-compile.go makefile
+$(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
