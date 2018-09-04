@@ -47,13 +47,12 @@ type RuntimeFilter string
 const (
 	Duration RuntimeFilter = "completed"
 	Latency                = "latency"
-	Running                = "running"
 )
 
 // Validate returns an error if a filter value is not valid.
 func (t RuntimeFilter) Validate() error {
 	switch t {
-	case Duration, Latency, Running:
+	case Duration, Latency:
 		return nil
 	default:
 		return errors.Errorf("%s is not a valid runtime filter type", t)

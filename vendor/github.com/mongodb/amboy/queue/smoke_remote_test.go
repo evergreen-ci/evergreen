@@ -21,7 +21,6 @@ func TestSmokeRemoteQueueRunsJobsOnlyOnce(t *testing.T) {
 
 	assert := assert.New(t)
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 	name := uuid.NewV4().String()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	d := NewMongoDBDriver(name, opts)
@@ -53,7 +52,6 @@ func TestSmokeRemoteMultipleQueueRunsJobsOnlyOnce(t *testing.T) {
 
 	assert := assert.New(t) // nolint
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 	name := uuid.NewV4().String()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 

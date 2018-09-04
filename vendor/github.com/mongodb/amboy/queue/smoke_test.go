@@ -398,7 +398,6 @@ func TestSmokeRemoteUnorderedSingleThreadedWithMongoDBDriver(t *testing.T) {
 	name := strings.Replace(uuid.NewV4().String(), "-", ".", -1)
 
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	q := NewRemoteUnordered(1)
@@ -419,7 +418,6 @@ func TestSmokeRemoteUnorderedSingleRunnerWithMongoDBDriver(t *testing.T) {
 	name := strings.Replace(uuid.NewV4().String(), "-", ".", -1)
 
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	q := NewRemoteUnordered(1)
@@ -442,7 +440,6 @@ func TestSmokeRemoteUnorderedSingleRunnerWithMongoDBDriver(t *testing.T) {
 func TestSmokeRemoteUnorderedWorkerPoolsWithMongoDBDriver(t *testing.T) {
 	assert := assert.New(t) // nolint
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 	baseCtx, baseCancel := context.WithCancel(context.Background())
 	defer baseCancel()
 
@@ -543,7 +540,6 @@ func TestSmokeMultipleMongoDBBackedRemoteUnorderedQueuesWithTheSameName(t *testi
 	name := strings.Replace(uuid.NewV4().String(), "-", ".", -1)
 
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 
 	// create queues with two runners, mongodb backed drivers, and
 	// configure injectors
@@ -593,7 +589,6 @@ func TestSmokeMultipleMongoDBBackedRemoteOrderedQueuesWithTheSameName(t *testing
 	name := strings.Replace(uuid.NewV4().String(), "-", ".", -1)
 
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 
 	// create queues with two runners, mongodb backed drivers, and
 	// configure injectors
@@ -715,7 +710,6 @@ func TestSmokeSimpleRemoteOrderedWorkerPoolsWithMongoDBDriver(t *testing.T) {
 
 	assert := assert.New(t) // nolint
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 	baseCtx := context.Background()
 
 	session, err := mgo.DialWithTimeout(opts.URI, 5*time.Second)
@@ -751,7 +745,6 @@ func TestSmokeSimpleRemoteOrderedWithSingleThreadedAndMongoDBDriver(t *testing.T
 	name := strings.Replace(uuid.NewV4().String(), "-", ".", -1)
 
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	q := NewSimpleRemoteOrdered(1)
@@ -795,7 +788,6 @@ func TestSmokeSimpleRemoteOrderedWithSingleRunnerAndMongoDBDriver(t *testing.T) 
 	name := strings.Replace(uuid.NewV4().String(), "-", ".", -1)
 
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	q := NewSimpleRemoteOrdered(1)
@@ -922,7 +914,6 @@ func TestSmokeRemoteOrderedWithWorkerPoolsAndMongoDB(t *testing.T) {
 
 	assert := assert.New(t) // nolint
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 
 	session, err := mgo.DialWithTimeout(opts.URI, 5*time.Second)
 	assert.NoError(err)
@@ -958,7 +949,6 @@ func TestSmokeWaitUntilAdaptiveOrerQueuePools(t *testing.T) {
 func TestSmokeWaitUntilMongoDBQueue(t *testing.T) {
 	assert := assert.New(t) // nolint
 	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 	opts.CheckWaitUntil = true
 
 	for _, poolSize := range []int{4, 8} {

@@ -63,10 +63,8 @@ func TestRemoteUnorderedMongoDBSuite(t *testing.T) {
 	tests := new(RemoteUnorderedSuite)
 	name := "test-" + uuid.NewV4().String()
 	uri := "mongodb://localhost"
-	opts := DefaultMongoDBOptions()
-	opts.DB = "amboy_test"
 	tests.driverConstructor = func() Driver {
-		return NewMongoDBDriver(name, opts)
+		return NewMongoDBDriver(name, DefaultMongoDBOptions())
 	}
 
 	tests.tearDown = func() {
@@ -77,7 +75,7 @@ func TestRemoteUnorderedMongoDBSuite(t *testing.T) {
 			return
 		}
 
-		err = session.DB(opts.DB).DropDatabase()
+		err = session.DB("amboy").C(name + ".jobs").DropCollection()
 		if err != nil {
 			grip.Error(err)
 			return
@@ -330,7 +328,7 @@ checkResults:
 	s.Equal(created-numLocked, observed, fmt.Sprintf("%+v", s.queue.Stats()))
 }
 
-func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
+func (s RemoteUnorderedSuite) TestJobStatsIterator() {
 	s.require.NoError(s.queue.SetDriver(s.driver))
 
 	names := make(map[string]struct{})
@@ -353,16 +351,4 @@ func (s *RemoteUnorderedSuite) TestJobStatsIterator() {
 	}
 	s.Equal(len(names), counter)
 	s.Equal(counter, 30)
-}
-
-func (s *RemoteUnorderedSuite) TestTimeInfoPersists() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	s.require.NoError(s.queue.SetDriver(s.driver))
-	j := newMockJob()
-	s.Zero(j.TimeInfo())
-	s.NoError(s.queue.Put(j))
-	go s.queue.jobServer(ctx)
-	j2 := s.queue.Next(ctx)
-	s.NotZero(j2.TimeInfo())
 }
