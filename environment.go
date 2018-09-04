@@ -102,14 +102,14 @@ type Environment interface {
 }
 
 type ClientBinary struct {
-	Arch string
-	OS   string
-	URL  string
+	Arch string `yaml:"arch" json:"arch"`
+	OS   string `yaml:"os" json:"os"`
+	URL  string `yaml:"url" json:"url"`
 }
 
 type ClientConfig struct {
-	ClientBinaries []ClientBinary
-	LatestRevision string
+	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"ClientBinaries"`
+	LatestRevision string         `yaml:"latest_revision" json:"LatestRevision"`
 }
 
 type envState struct {
