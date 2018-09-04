@@ -1,27 +1,24 @@
 mciModule.controller('LoginCtrl', function($scope, $window, $location, mciLoginRestService) {
-
   $scope.credentials = {};
   $scope.errorMessage = '';
   $scope.redirect = $location.search().redirect;
   $scope.authenticate = function() {
     mciLoginRestService.authenticate(
-        $scope.credentials.username,
-        $scope.credentials.password,
-        {},
-        {
-          success: function(resp) {
-            redirect = $scope.redirect || "/";
-            $window.location.href = decodeURIComponent(redirect);
-          },
-          error: function(resp) {
-            $scope.errorMessage = resp.data.error;
-          }
+      $scope.credentials.username,
+      $scope.credentials.password,
+      {},
+      {
+        success: function(resp) {
+          redirect = $scope.redirect || "/";
+          $window.location.href = decodeURIComponent(redirect);
+        },
+        error: function(resp) {
+          $scope.errorMessage = resp.data;
         }
+      }
     );
   };
 });
-
-
 
 
 mciModule.controller('LoginModalCtrl', function($scope, $window, mciLoginRestService, $controller) {
@@ -38,6 +35,7 @@ mciModule.controller('LoginModalCtrl', function($scope, $window, mciLoginRestSer
     }
   };
 });
+
 
 mciModule.directive('loginModal', function() {
   return {
