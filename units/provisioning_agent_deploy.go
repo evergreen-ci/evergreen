@@ -205,8 +205,12 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 		})
 		return nil
 	}
-
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "prepping host finished successfully", "host": hostObj.Id})
+
+	// stop here if the host is a parent for containers - don't want the agent running
+	if hostObj.HasContainers {
+		return nil
+	}
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
