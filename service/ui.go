@@ -240,9 +240,8 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	app.AddRoute("/perfdiscovery/").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
 	app.AddRoute("/perfdiscovery/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.perfdiscoveryPage).Get()
 
-	// Signal Processing page
-	app.AddRoute("/signal-processing/").Wrap(needsLogin, needsContext).Handler(uis.signalProcessingPage).Get()
-	app.AddRoute("/signal-processing/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.signalProcessingPage).Get()
+	// Signal Processing page (UI-routing enabled for this route)
+	app.AddRoute("/perf-bb/{_}/{project_id}").Wrap(needsLogin, needsContext).Handler(uis.signalProcessingPage).Get()
 
 	// Test Logs
 	app.AddRoute("/test_log/{task_id}/{task_execution}/{test_name}").Wrap(needsContext, allowsCORS).Handler(uis.testLog).Get()
