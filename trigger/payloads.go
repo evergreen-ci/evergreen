@@ -9,8 +9,12 @@ import (
 	"net/url"
 	ttemplate "text/template"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
@@ -42,6 +46,11 @@ type commonTemplateData struct {
 	URL             string
 	PastTenseStatus string
 	Headers         http.Header
+	FailedTests     []task.TestResult
+
+	Task       *task.Task
+	ProjectRef *model.ProjectRef
+	Build      *build.Build
 
 	apiModel restModel.Model
 	slack    []message.SlackAttachment
@@ -49,17 +58,22 @@ type commonTemplateData struct {
 	githubContext     string
 	githubState       message.GithubState
 	githubDescription string
+
+	emailContent *template.Template
 }
 
-const emailSubjectTemplate string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
-const emailTemplate string = `<html>
+const emailSubjectTemplateString string = `Evergreen: {{ .Object }} {{.DisplayName}} in '{{ .Project }}' has {{ .PastTenseStatus }}!`
+
+var subjectTmpl = template.Must(template.New("subject").Parse(emailSubjectTemplateString))
+
+const emailBodyTemplateBase string = `<!DOCTYPE html>
+<html lang="en">
 <head>
+<meta charset="utf-8">
 </head>
 <body>
-<p>Hi,</p>
 
-<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
-<p>{{ .Description }}</p>
+{{ template "content" . }}
 
 <span style="overflow:hidden; float:left; display:none !important; line-height:0px;">
 {{ range $key, $value := .Headers }}
@@ -72,6 +86,127 @@ const emailTemplate string = `<html>
 </body>
 </html>
 `
+
+const emailTaskFailTemplate = `
+{{ define "content" }}
+<table>
+<tr><td colspan="3" height="10" bgcolor="#3b291f"></td></tr>
+<tr><td colspan="3" height="20"></td></tr>
+<tr>
+  <td width="20"></td>
+  <td align="left">
+    <!-- table lvl 2 -->
+    <table cellpadding="0" cellspacing="0" width="100%">
+      {{ range .FailedTests }}
+        <tr>
+          <td width="90%">
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">TEST</span>
+          </td>
+          <td>&nbsp;</td>
+        </tr>
+        <tr>
+          <td width="90%">
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+              {{ .TestFile }}
+            </span>
+          </td>
+          {{ if eq $.Task.Details.Type "system" }}
+          <td style="padding:0 10px;background-color:#800080;">
+          {{ else }}
+          <td style="padding:0 10px;background-color:#ed1c24;">
+          {{ end }}
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">FAILED</span>
+          </td>
+        </tr>
+        <tr><td colspan="2" height="10"></td></tr>
+        <tr>
+          <td width="90%">
+            <a href="{{ .URL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view logs</a>
+          </td>
+          <td>&nbsp;</td>
+        </tr>
+      {{end}}
+
+      <tr><td colspan="2" height="30"></td></tr>
+      <tr>
+        <td width="90%"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">PROJECT</span></td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td width="90%">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+            {{ .ProjectRef.DisplayName }}
+          </span>
+        </td>
+      </tr>
+      <tr><td colspan="2" height="30"></td></tr>
+      <tr>
+        <td width="90%"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">TASK</span></td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td width="90%">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+            {{ if .Task.DisplayTask }}
+            {{ .Task.DisplayTask.DisplayName }}
+            {{ else }}
+            {{ .Task.DisplayName }}
+            {{ end }}
+          </span>
+        </td>
+        {{ if .Task.Details.TimedOut }}
+          {{ if eq .Task.Details.Type "system" }}
+          <td style="padding:0 10px;background-color:#800080;">
+          {{ else }}
+          <td style="padding:0 10px;background-color:#ed1c24;">
+          {{ end }}
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">
+              TIMED OUT
+            </span>
+          </td>
+        {{ else }}
+          <td>&nbsp;</td>
+        {{ end }}
+      </tr>
+      <tr><td colspan="2" height="10"></td></tr>
+      <tr>
+        <td width="90%">
+          <a href="{{ .URL }}" style="font-family:Arial,sans-serif;font-weight:normal;font-size:13px;color:#006cbc" class="link">view task</a>
+        </td>
+        <td>&nbsp;</td>
+      </tr>
+
+      <tr>
+        <td colspan="2" height="30"></td>
+      </tr>
+      <tr>
+        <td colspan="2"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">BUILD VARIANT</span></td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;color:#333333" class="build">
+            {{ .Build.DisplayName }}
+          </span>
+        </td>
+      </tr>
+    </table>
+  </td>
+  <td width="20"></td>
+</tr>
+</table>
+{{ end }}`
+
+var emailBodyTemplate = template.Must(template.New("emailbody").Parse(emailBodyTemplateBase))
+
+const emailDefaultContentTemplateString = `{{ define "content"}}
+<p>Hi,</p>
+
+<p>Your Evergreen {{ .Object }} in '{{ .Project }}' <a href="{{ .URL }}">{{ .DisplayName }}</a> has {{ .PastTenseStatus }}.</p>
+<p>{{ .Description }}</p>
+{{ end }}`
+
+var emailDefaultContentTemplate = template.Must(template.New("content").Parse(emailDefaultContentTemplateString))
+var emailTaskContentTemplate = template.Must(template.New("content").Parse(emailTaskFailTemplate))
 
 const jiraCommentTemplate string = `Evergreen {{ .Object }} [{{ .DisplayName }}|{{ .URL }}] in '{{ .Project }}' has {{ .PastTenseStatus }}!`
 
@@ -89,21 +224,25 @@ func makeHeaders(selectors []event.Selector) http.Header {
 }
 
 func emailPayload(t *commonTemplateData) (*message.Email, error) {
-	bodyTmpl, err := template.New("emailBody").Parse(emailTemplate)
+	bodyTmpl, err := emailBodyTemplate.Clone()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse body template")
+		return nil, errors.Wrap(err, "failed to clone emailBodyTemplate")
+	}
+	if t.emailContent == nil {
+		_, err = bodyTmpl.AddParseTree("content", emailDefaultContentTemplate.Tree)
+	} else {
+		_, err = bodyTmpl.AddParseTree("content", t.emailContent.Tree)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to email content")
 	}
 	buf := &bytes.Buffer{}
-	err = bodyTmpl.Execute(buf, t)
+	err = bodyTmpl.ExecuteTemplate(buf, "emailbody", t)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute email template")
 	}
 	body := buf.String()
 
-	subjectTmpl, err := template.New("subject").Parse(emailSubjectTemplate)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse subject template")
-	}
 	buf = &bytes.Buffer{}
 	err = subjectTmpl.Execute(buf, t)
 	if err != nil {
@@ -197,7 +336,7 @@ func slack(t *commonTemplateData) (*notification.SlackPayload, error) {
 	msg := buf.String()
 
 	if len(t.slack) > 0 {
-		t.slack[len(t.slack)-1].Footer = fmt.Sprintf("Subscription: %s; Event: %s", t.SubscriptionID, t.ID)
+		t.slack[len(t.slack)-1].Footer = fmt.Sprintf("Subscription: %s; Event: %s", t.SubscriptionID, t.EventID)
 	}
 
 	return &notification.SlackPayload{
@@ -238,6 +377,14 @@ func makeCommonPayload(sub *event.Subscription, selectors []event.Selector,
 
 	data.Headers = makeHeaders(selectors)
 	data.SubscriptionID = sub.ID
+
+	if data.Task != nil {
+		for i := range data.Task.LocalTestResults {
+			if data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
+				data.FailedTests = append(data.FailedTests, data.Task.LocalTestResults[i])
+			}
+		}
+	}
 
 	switch sub.Subscriber.Type {
 	case event.GithubPullRequestSubscriberType:

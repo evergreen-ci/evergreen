@@ -4,6 +4,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -39,7 +43,7 @@ func (s *payloadSuite) SetupTest() {
 	}
 }
 
-func (s *payloadSuite) TestEmail() {
+func (s *payloadSuite) TestEmailWithNilContent() {
 	m, err := emailPayload(&s.t)
 	s.NoError(err)
 	s.Require().NotNil(m)
@@ -49,6 +53,41 @@ func (s *payloadSuite) TestEmail() {
 	s.Contains(m.Body, "> has failed.")
 	s.Contains(m.Body, `href="`+s.url+`"`)
 	s.Contains(m.Body, "X-Evergreen-test:something")
+}
+
+func (s *payloadSuite) TestEmailWithTaskContent() {
+	s.t.Object = "task"
+	s.t.Task = &task.Task{
+		Id:          "taskid",
+		DisplayName: "thetask",
+		Details: apimodels.TaskEndDetail{
+			TimedOut: false,
+		},
+	}
+	s.t.Build = &build.Build{
+		DisplayName: "buildname",
+	}
+	s.t.ProjectRef = &model.ProjectRef{
+		DisplayName: "theproject",
+	}
+	s.t.emailContent = emailTaskContentTemplate
+
+	m, err := emailPayload(&s.t)
+	s.NoError(err)
+	s.Require().NotNil(m)
+	s.Contains(m.Body, "thetask")
+	s.Contains(m.Body, "TASK")
+	s.Contains(m.Body, "theproject")
+	s.Contains(m.Body, "buildname")
+
+	s.t.Task.DisplayTask = &task.Task{
+		DisplayName: "thedisplaytask",
+	}
+	m, err = emailPayload(&s.t)
+	s.NoError(err)
+	s.Require().NotNil(m)
+	s.NotContains(m.Body, "thetask")
+	s.Contains(m.Body, "thedisplaytask")
 }
 
 func (s *payloadSuite) TestEvergreenWebhook() {

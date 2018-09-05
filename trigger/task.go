@@ -226,6 +226,22 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		return nil, errors.Wrap(err, "error building json model")
 	}
 
+	buildDoc, err := build.FindOne(build.ById(t.task.BuildId))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch build while building email payload")
+	}
+	if buildDoc == nil {
+		return nil, errors.New("could not find build while building email payload")
+	}
+
+	projectRef, err := model.FindOneProjectRef(t.task.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch project ref while building email payload")
+	}
+	if projectRef == nil {
+		return nil, errors.New("could not find project ref while building email payload")
+	}
+
 	displayName := t.task.DisplayName
 	status := t.task.Status
 	if t.task.DisplayTask != nil {
@@ -243,8 +259,15 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride strin
 		URL:             taskLink(t.uiConfig.Url, t.task.Id, t.task.Execution),
 		PastTenseStatus: status,
 		apiModel:        &api,
+		Task:            t.task,
+		ProjectRef:      projectRef,
+		Build:           buildDoc,
 	}
 	slackColor := evergreenFailColor
+
+	if len(t.task.OldTaskId) != 0 {
+		data.URL = taskLink(t.uiConfig.Url, t.task.OldTaskId, t.task.Execution)
+	}
 
 	if data.PastTenseStatus == evergreen.TaskSystemFailed {
 		slackColor = evergreenSystemFailColor
@@ -287,6 +310,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to collect task data")
 		}
+		data.emailContent = emailTaskContentTemplate
 
 		payload, err = makeCommonPayload(sub, t.Selectors(), data)
 		if err != nil {
@@ -700,7 +724,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
 	}
 	if buildDoc == nil {
-		return nil, errors.Wrap(err, "could not find build while building jira task payload")
+		return nil, errors.New("could not find build while building jira task payload")
 	}
 
 	var hostDoc *host.Host
@@ -716,7 +740,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
 	}
 	if versionDoc == nil {
-		return nil, errors.Wrap(err, "could not find version while building jira task payload")
+		return nil, errors.New("could not find version while building jira task payload")
 	}
 
 	projectRef, err := model.FindOneProjectRef(j.task.Project)
@@ -724,7 +748,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
 	}
 	if projectRef == nil {
-		return nil, errors.Wrap(err, "could not find project ref while building jira task payload")
+		return nil, errors.New("could not find project ref while building jira task payload")
 	}
 
 	builder := jiraBuilder{

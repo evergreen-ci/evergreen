@@ -8,7 +8,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -24,10 +26,12 @@ func TestTaskTriggers(t *testing.T) {
 }
 
 type taskSuite struct {
-	event event.EventLogEntry
-	data  *event.TaskEventData
-	task  task.Task
-	subs  []event.Subscription
+	event      event.EventLogEntry
+	data       *event.TaskEventData
+	task       task.Task
+	build      build.Build
+	projectRef model.ProjectRef
+	subs       []event.Subscription
 
 	t *taskTriggers
 
@@ -40,7 +44,7 @@ func (s *taskSuite) SetupSuite() {
 }
 
 func (s *taskSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, version.Collection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, task.Collection, task.OldCollection, version.Collection, event.SubscriptionsCollection, alertrecord.Collection, testresult.Collection, event.SubscriptionsCollection, build.Collection, model.ProjectRefCollection))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -57,6 +61,16 @@ func (s *taskSuite) SetupTest() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(s.task.Insert())
+
+	s.projectRef = model.ProjectRef{
+		Identifier: "test_project",
+	}
+	s.NoError(s.projectRef.Insert())
+
+	s.build = build.Build{
+		Id: "test_build_id",
+	}
+	s.NoError(s.build.Insert())
 
 	s.data = &event.TaskEventData{
 		Status: evergreen.TaskStarted,
@@ -288,6 +302,8 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should not do anything
+	s.build.Id = "test2"
+	s.NoError(s.build.Insert())
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
@@ -325,6 +341,8 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should generate
+	s.build.Id = "test2"
+	s.NoError(s.build.Insert())
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
@@ -362,6 +380,8 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should not generate
+	s.build.Id = "test2"
+	s.NoError(s.build.Insert())
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
@@ -401,6 +421,8 @@ func (s *taskSuite) TestRegression() {
 	s.Nil(n)
 
 	// successful task shouldn't generate
+	s.build.Id = "test3"
+	s.NoError(s.build.Insert())
 	s.task.Id = "test3"
 	s.task.Version = "test3"
 	s.task.BuildId = "test3"
@@ -414,6 +436,8 @@ func (s *taskSuite) TestRegression() {
 	s.Nil(n)
 
 	// formerly succeeding task should generate
+	s.build.Id = "test4"
+	s.NoError(s.build.Insert())
 	s.task.Id = "test4"
 	s.task.Version = "test4"
 	s.task.BuildId = "test4"
@@ -427,6 +451,8 @@ func (s *taskSuite) TestRegression() {
 	s.NotNil(n)
 
 	// Don't renotify if it's recent
+	s.build.Id = "test5"
+	s.NoError(s.build.Insert())
 	s.task.Id = "test5"
 	s.task.Version = "test5"
 	s.task.BuildId = "test5"
@@ -444,6 +470,8 @@ func (s *taskSuite) TestRegression() {
 			"finish_time": oldFinishTime,
 		},
 	}))
+	s.build.Id = "test6"
+	s.NoError(s.build.Insert())
 	s.task.Id = "test6"
 	s.task.Version = "test6"
 	s.task.BuildId = "test6"
@@ -456,12 +484,17 @@ func (s *taskSuite) TestRegression() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 
 	// if regression was trigged after an older success, we should generate
+	s.build.Id = "test7"
+	s.NoError(s.build.Insert())
 	s.task.Id = "test7"
 	s.task.Version = "test7"
 	s.task.BuildId = "test7"
 	s.task.RevisionOrderNumber = 7
 	s.task.Status = evergreen.TaskSucceeded
 	s.NoError(s.task.Insert())
+
+	s.build.Id = "test8"
+	s.NoError(s.build.Insert())
 	s.task.Id = "test8"
 	s.task.Version = "test8"
 	s.task.BuildId = "test8"
@@ -497,6 +530,9 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 		Id: s.task.Version,
 	}
 	s.NoError(v.Insert())
+
+	s.build.Id = s.task.BuildId
+	s.NoError(s.build.Insert())
 }
 
 func (s *taskSuite) makeTest(n, execution int, testName, testStatus string) {
@@ -749,6 +785,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Requester: evergreen.RepotrackerVersionRequester,
 		Status:    evergreen.TaskFailed,
 		Version:   "v1",
+		BuildId:   "test_build_id",
 		Project:   "myproj",
 	}
 	s.NoError(t1.Insert())
@@ -757,6 +794,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Requester: evergreen.RepotrackerVersionRequester,
 		Status:    evergreen.TaskFailed,
 		Version:   "v1",
+		BuildId:   "test_build_id",
 		Project:   "myproj",
 	}
 	s.NoError(t2.Insert())
@@ -771,6 +809,11 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		{ID: bson.NewObjectId(), TaskID: "t2", TestFile: "something", Status: evergreen.TestFailedStatus},
 	}
 	s.NoError(testresult.InsertMany(results))
+
+	ref := model.ProjectRef{
+		Identifier: "myproj",
+	}
+	s.NoError(ref.Insert())
 
 	willNotify := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
