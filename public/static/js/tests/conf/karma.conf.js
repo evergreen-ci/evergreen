@@ -27,7 +27,7 @@ module.exports = function(config) {
       'js/mci_module.js',
       'js/**/*.js',
       'plugins/*/js/*.js',
-      'app/!(waterfall)/*.js',
+      'app/!(waterfall|perf-bb)/*.js',
     ],
 
 
