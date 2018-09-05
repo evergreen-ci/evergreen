@@ -1580,6 +1580,13 @@ func (t *Task) BlockedState() (string, error) {
 		return "", err
 	}
 
+	return t.blockedStatePrivate()
+}
+
+func (t *Task) blockedStatePrivate() (string, error) {
+	if len(t.DependsOn) == 0 {
+		return "", nil
+	}
 	dependencyIDs := []string{}
 	for _, d := range t.DependsOn {
 		dependencyIDs = append(dependencyIDs, d.TaskId)
@@ -1595,7 +1602,7 @@ func (t *Task) BlockedState() (string, error) {
 	}
 	for _, dependency := range t.DependsOn {
 		depTask := taskMap[dependency.TaskId]
-		state, err := depTask.BlockedState()
+		state, err := depTask.blockedStatePrivate()
 		if err != nil {
 			return "", err
 		}
