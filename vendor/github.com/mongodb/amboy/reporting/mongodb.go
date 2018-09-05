@@ -234,6 +234,18 @@ func (db *dbQueueStat) RecentTiming(ctx context.Context, window time.Duration, f
 					},
 				}},
 			}})
+	case Running:
+		now := time.Now()
+		runtimes, err = db.aggregateRuntimes(
+			bson.M{"$match": bson.M{
+				"status.completed": false,
+				"status.in_prog":   true,
+			}},
+			bson.M{"$project": bson.M{
+				"duration": bson.M{
+					"$subtract": []interface{}{now, "$time_info.created"}},
+			}},
+		)
 	default:
 		return nil, errors.New("invalid job runtime filter")
 	}

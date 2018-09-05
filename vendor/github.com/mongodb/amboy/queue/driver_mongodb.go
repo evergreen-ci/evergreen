@@ -296,7 +296,7 @@ func (d *mongoDB) Save(j amboy.Job) error {
 	return nil
 }
 
-// SaveStatus persists only the status document in the job in the
+// SaveStatus persists only the status and time_info documents in the job in the
 // persistence layer. If the job does not exist, or the underlying
 // status document has changed incompatibly this operation produces
 // an error.
@@ -308,8 +308,9 @@ func (d *mongoDB) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
 	query := d.getAtomicQuery(id, stat.ModificationCount)
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
+	timeInfo := j.TimeInfo()
 
-	err := jobs.Update(query, bson.M{"$set": bson.M{"status": stat}})
+	err := jobs.Update(query, bson.M{"$set": bson.M{"status": stat, "time_info": timeInfo}})
 
 	if err != nil {
 		return errors.Wrapf(err, "problem updating status document for %s", id)
