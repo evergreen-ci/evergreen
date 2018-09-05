@@ -383,7 +383,7 @@ func (j *setupHostJob) expandScript(s string, settings *evergreen.Settings) (str
 
 // Provision the host, and update the database accordingly.
 func (j *setupHostJob) provisionHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
-	grip.Infoln(message.Fields{
+	grip.Info(message.Fields{
 		"job":     j.ID(),
 		"host":    h.Id,
 		"distro":  h.Distro.Id,

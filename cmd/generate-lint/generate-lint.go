@@ -94,7 +94,7 @@ func makeTarget(target string) string {
 func getAllTargets() ([]string, error) {
 	var targets []string
 
-	args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
+	args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' cmd/evergreen/evergreen.go")
 	cmd := exec.Command(args[0], args[1:]...)
 	allPackages, err := cmd.Output()
 	if err != nil {
