@@ -28,7 +28,7 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err := util.ExpandValues(c.CreateHost, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
 	}
 

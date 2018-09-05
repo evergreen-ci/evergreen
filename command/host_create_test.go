@@ -35,20 +35,17 @@ func TestCreateHostSuite(t *testing.T) {
 func (s *createHostSuite) SetupSuite() {
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &model.TaskConfig{
-		Expansions: &util.Expansions{},
+		Expansions: &util.Expansions{"vpc_id": "vpc-123456"},
 		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    &model.Project{}}
 	s.logger = s.comm.GetLoggerProducer(context.Background(), client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
-}
-
-func (s *createHostSuite) TearDownSuite() {
-	s.NoError(os.Remove(userdataFileName))
 }
 
 func (s *createHostSuite) SetupTest() {
 	s.params = map[string]interface{}{
 		"distro": "myDistro",
 		"scope":  "task",
+		"vpc_id": "${vpc_id}",
 	}
 	s.cmd = createHost{}
 }
@@ -106,6 +103,7 @@ func (s *createHostSuite) TestParamValidation() {
 }
 
 func (s *createHostSuite) TestPopulateUserdata() {
+	defer os.RemoveAll(userdataFileName)
 	userdataFile := []byte("some commands")
 	s.NoError(ioutil.WriteFile(userdataFileName, userdataFile, 0644))
 	s.cmd.CreateHost = &apimodels.CreateHost{UserdataFile: userdataFileName}
@@ -116,4 +114,5 @@ func (s *createHostSuite) TestPopulateUserdata() {
 func (s *createHostSuite) TestExecuteCommand() {
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
+	s.Equal("vpc-123456", s.comm.(*client.Mock).CreatedHost.VPC)
 }
