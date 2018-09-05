@@ -128,8 +128,7 @@ func cleanUpTimedOutTask(t task.Task) error {
 	if host.RunningTask == t.Id {
 		// clear out the host's running task
 		if err = host.ClearRunningAndSetLastTask(&t); err != nil {
-			return errors.Wrapf(err, "error clearing running task %v from host %v: %v",
-				t.Id, host.Id)
+			return errors.Wrapf(err, "error clearing running task %s from host %s", t.Id, host.Id)
 		}
 	}
 

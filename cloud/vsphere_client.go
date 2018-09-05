@@ -166,7 +166,7 @@ func (c *vsphereClientImpl) DeleteInstance(ctx context.Context, h *host.Host) er
 	// make sure the instance is powered off before removing
 	state, err := vm.PowerState(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "could not read power state", h.Id)
+		return errors.Wrapf(err, "could not read power state of %s", h.Id)
 	}
 
 	if state == types.VirtualMachinePowerStatePoweredOn {

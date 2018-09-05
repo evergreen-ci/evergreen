@@ -820,7 +820,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if revision == "" {
 		lastGoodVersion, err := version.FindOne(version.ByLastKnownGoodConfig(projectRef.Identifier))
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error finding recent valid version for %v: %v", projectRef.Identifier)
+			return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectRef.Identifier)
 		}
 		if lastGoodVersion != nil {
 			// for new repositories, we don't want to error out when we don't have
@@ -829,14 +829,14 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier, project)
 			if err != nil {
 				return nil, errors.Wrapf(err, "Error loading project from "+
-					"last good version for project, %v", lastGoodVersion.Identifier)
+					"last good version for project, %s", lastGoodVersion.Identifier)
 			}
 		} else {
 			// Check to see if there is a local configuration in the project ref
 			if projectRef.LocalConfig != "" {
 				err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
 				if err != nil {
-					return nil, errors.Wrapf(err, "Error loading local config for project ref, %v", projectRef.Identifier)
+					return nil, errors.Wrapf(err, "Error loading local config for project ref, %s", projectRef.Identifier)
 				}
 			}
 		}

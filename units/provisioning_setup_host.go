@@ -643,7 +643,7 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	if err = curlSetupCmd.Run(ctx); err != nil {
-		return nil, errors.Wrapf(err, "error running curl command for cli, %v: '%v'", curlOut.Buffer.String())
+		return nil, errors.Wrapf(err, "error running curl command for cli, %s", curlOut.Buffer.String())
 	}
 
 	// 4. Write a settings file for the user that owns the host, and scp it to the directory

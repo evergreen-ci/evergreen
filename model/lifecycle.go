@@ -353,7 +353,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 			err = resetTask(t.Id, caller)
 			if err != nil {
 				return errors.Wrapf(err,
-					"Restarting build %v failed, could not task.reset on task",
+					"Restarting build '%s' failed, could not task.reset on task '%s'",
 					buildId, t.Id)
 			}
 		}
@@ -394,7 +394,7 @@ func RestartBuildTasks(buildId string, caller string) error {
 			err = resetTask(t.Id, caller)
 			if err != nil {
 				return errors.Wrapf(err,
-					"Restarting build %v failed, could not task.reset on task",
+					"Restarting build '%s' failed, could not task.reset on task '%s'",
 					buildId, t.Id)
 			}
 		}
@@ -454,16 +454,16 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	taskIds := NewTaskIdTable(project, v)
 	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
+		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
 
 	if err = tasks.Insert(); err != nil {
-		return nil, errors.Wrapf(err, "error inserting tasks for build", b.Id)
+		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
 
 	// update the build to hold the new tasks
 	if err := RefreshTasksCache(b.Id); err != nil {
-		return nil, errors.Wrapf(err, "error updating task cache for %s", b.Id)
+		return nil, errors.Wrapf(err, "error updating task cache for '%s'", b.Id)
 	}
 
 	return b, nil
@@ -535,7 +535,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	if err = tasksForBuild.InsertUnordered(); err != nil && !db.IsDuplicateKey(err) {
-		return "", errors.Wrapf(err, "error inserting task for build", buildId)
+		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
 	}
 
 	// create task caches for all of the tasks, and place them into the build

@@ -175,14 +175,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new tasks for version `%v`", projCtx.Version.Id))
+				errors.Wrapf(err, "Error creating new tasks for version `%s`", projCtx.Version.Id))
 			return
 		}
 
 		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new builds for version `%v`", err, projCtx.Version.Id))
+				errors.Wrapf(err, "Error creating new builds for version `%s`", projCtx.Version.Id))
 			return
 		}
 

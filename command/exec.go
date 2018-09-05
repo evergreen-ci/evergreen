@@ -236,7 +236,7 @@ func (c *subprocessExec) runCommand(ctx context.Context, taskID string, proc sub
 	}
 	logger.Execution().Debugf("started foreground process with pid %d, waiting for completion", pid)
 
-	err := errors.Wrapf(proc.Wait(), "command with pid %s encountered error", pid)
+	err := errors.Wrapf(proc.Wait(), "command with pid %d encountered error", pid)
 
 	if c.ContinueOnError {
 		logger.Execution().Notice(err)

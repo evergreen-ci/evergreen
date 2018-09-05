@@ -93,7 +93,7 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, settings)
 	if err != nil {
-		j.AddError(errors.Wrapf(err, "error getting cloud host for host %v: %v", j.host.Id))
+		j.AddError(errors.Wrapf(err, "error getting cloud host for host %s", j.host.Id))
 		return
 	}
 

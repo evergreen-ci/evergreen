@@ -115,7 +115,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 
 	if j.parent.ContainerBuildAttempt >= containerBuildRetries {
 		j.AddError(errors.Wrapf(j.parent.SetTerminated(evergreen.User),
-			"failed 5 times to build and download image '%s' on parent '%s'", j.ImageURL, j.parent))
+			"failed 5 times to build and download image '%s' on parent '%s'", j.ImageURL, j.parent.Id))
 		return
 	}
 
