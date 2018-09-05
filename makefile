@@ -29,7 +29,7 @@ clientBuildDir := clients
 clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,freebsd_amd64),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
-clientSource := main/evergreen.go
+clientSource := cmd/evergreen/evergreen.go
 uiFiles := $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
 
 xcPackages := agent command operations rest-client subprocess util
@@ -99,12 +99,13 @@ phony += cli clis
 # end client build directives
 
 
+
 # start smoke test specific rules
-$(buildDir)/load-smoke-data:scripts/load-smoke-data.go
+$(buildDir)/load-smoke-data:cmd/load-smoke-data/load-smoke-data.go
 	$(gobin) build -o $@ $<
-$(buildDir)/set-var:scripts/set-var.go
+$(buildDir)/set-var:cmd/set-var/set-var.go
 	$(gobin) build -o $@ $<
-$(buildDir)/set-project-var:scripts/set-project-var.go
+$(buildDir)/set-project-var:cmd/set-project-var/set-project-var.go
 	$(gobin) build -o $@ $<
 set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
@@ -161,15 +162,17 @@ lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
 	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
-$(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
+$(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
+	@mkdir -p $(buildDir)
 	$(gobin) build -o $@ $<
+
 # end lint setup targets
 
 # generate lint JSON document for evergreen
 generate-lint:$(buildDir)/generate-lint.json
 $(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
 	./$(buildDir)/generate-lint
-$(buildDir)/generate-lint:scripts/generate-lint.go
+$(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
 	$(gobin) build -o $@ $<
 # end generate lint
 
@@ -182,11 +185,11 @@ $(buildDir)/.npmSetup:
 
 
 # distribution targets and implementation
-$(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
+$(buildDir)/build-cross-compile:cmd/build-cross-compile/build-cross-compile.go makefile
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
-$(buildDir)/make-tarball:scripts/make-tarball.go
+$(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@mkdir -p $(buildDir)
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
@@ -196,9 +199,9 @@ dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
-	./$< -name $@ --prefix $(name) $(foreach item,$(distTestContents) $(distContents),--item $(item)) $(foreach item,$(shell find . -maxdepth 2 -type d -name "testdata"),--item $(item)) --item makefile --item scripts --item config_test --exclude "public/node_modules"
+	./$< -name $@ --prefix $(name) $(foreach item,$(distTestContents) $(distContents),--item $(item)) $(foreach item,$(shell find . -maxdepth 2 -type d -name "testdata"),--item $(item)) --item makefile --item scripts --item cmd --item config_test --exclude "public/node_modules"
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
-	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
+	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item ./cmd --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
 # end main build
 
 
