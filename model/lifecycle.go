@@ -522,6 +522,16 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
+	tasksToLog := []string{}
+	for _, t := range tasksForBuild {
+		tasksToLog = append(tasksToLog, t.Id)
+	}
+	grip.Debug(message.Fields{
+		"ticket":  "EVG-5226",
+		"version": v.Id,
+		"variant": b.BuildVariant,
+		"tasks":   tasksToLog,
+	})
 
 	if err = tasksForBuild.InsertUnordered(); err != nil && !db.IsDuplicateKey(err) {
 		return "", errors.Wrapf(err, "error inserting task for build", buildId)
