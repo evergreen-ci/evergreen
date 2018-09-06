@@ -56,6 +56,7 @@ type Mock struct {
 	HeartbeatShouldSometimesErr bool
 	TaskExecution               int
 	GetSubscriptionsFail        bool
+	CreatedHost                 apimodels.CreateHost
 
 	AttachedFiles    map[string][]*artifact.File
 	LogID            string
@@ -526,6 +527,7 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 	if td.Secret == "" {
 		return errors.New("no task secret sent to CreateHost")
 	}
+	c.CreatedHost = options
 	return options.Validate()
 }
 

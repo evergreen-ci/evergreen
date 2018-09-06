@@ -81,7 +81,7 @@ type CreateHost struct {
 	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" plugin:"expand"`
 	Region          string      `mapstructure:"region" json:"region" plugin:"expand"`
 	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" plugin:"expand"`
-	Spot            bool        `mapstructure:"spot" json:"spot" plugin:"expand"`
+	Spot            bool        `mapstructure:"spot" json:"spot"`
 	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" plugin:"expand"`
 	UserdataFile    string      `mapstructure:"userdata_file" json:"-" plugin:"expand"`
 	UserdataCommand string      `json:"userdata_command" plugin:"expand"`
