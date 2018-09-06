@@ -491,7 +491,7 @@ func (m *ec2Manager) getKey(ctx context.Context, h *host.Host) (string, error) {
 	const keyPrefix = "evg_auto_"
 	t, err := task.FindOneId(h.StartedBy)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem finding task %s")
+		return "", errors.Wrapf(err, "problem finding task %s", h.StartedBy)
 	}
 	if t == nil {
 		return "", errors.Errorf("no task found %s", h.StartedBy)

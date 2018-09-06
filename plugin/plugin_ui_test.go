@@ -427,7 +427,7 @@ func TestUIDataInjection(t *testing.T) {
 								Page:     TaskPage,
 								Position: PageCenter,
 								DataFunc: func(ctx UIContext) (interface{}, error) {
-									return fmt.Sprintf("%v.%v@%v", ctx.User.Email, ctx.Settings.ApiUrl, nil), nil
+									return fmt.Sprintf("%v.%v@%v", ctx.User.Email(), ctx.Settings.ApiUrl, nil), nil
 								},
 							},
 						},
