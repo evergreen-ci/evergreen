@@ -76,13 +76,9 @@ func (b *Build) IsFinished() bool {
 // returns boolean to indicate if tasks are complete, string with either
 // BuildFailed or BuildSucceded. The string is only valid when the boolean is
 // true
-func (b *Build) AllUnblockedTasksOrCompileFinished() (bool, string, error) {
+func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (bool, string, error) {
 	allFinished := true
 	status := evergreen.BuildSucceeded
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(b.Version)
-	if err != nil {
-		return false, status, errors.Wrap(err, "error finding tasks with dependencies")
-	}
 	catcher := grip.NewSimpleCatcher()
 	for i := range b.Tasks {
 		if !b.Tasks[i].Activated {
@@ -112,7 +108,7 @@ func (b *Build) AllUnblockedTasksOrCompileFinished() (bool, string, error) {
 			}
 		}
 	}
-	err = catcher.Resolve()
+	err := catcher.Resolve()
 	if allFinished && err != nil {
 		return false, status, err
 	}
