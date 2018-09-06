@@ -949,16 +949,16 @@ func TestBlockedState(t *testing.T) {
 	}
 	assert.NoError(t4.Insert())
 
-	state, err := t4.BlockedState()
+	state, err := t4.BlockedState(nil)
 	assert.NoError(err)
 	assert.Equal("", state)
-	state, err = t3.BlockedState()
+	state, err = t3.BlockedState(nil)
 	assert.NoError(err)
 	assert.Equal("", state)
-	state, err = t2.BlockedState()
+	state, err = t2.BlockedState(nil)
 	assert.NoError(err)
 	assert.Equal("pending", state)
-	state, err = t1.BlockedState()
+	state, err = t1.BlockedState(nil)
 	assert.NoError(err)
 	assert.Equal("blocked", state)
 }
@@ -987,7 +987,7 @@ func TestCircularDependency(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 	assert.NotPanics(func() {
-		_, err := t1.BlockedState()
+		_, err := t1.BlockedState(nil)
 		assert.Contains(err.Error(), "Dependency cycle detected")
 	})
 }
@@ -1033,7 +1033,7 @@ func TestSiblingDependency(t *testing.T) {
 		Status:      evergreen.TaskSucceeded,
 	}
 	assert.NoError(t4.Insert())
-	state, err := t1.BlockedState()
+	state, err := t1.BlockedState(nil)
 	assert.NoError(err)
 	assert.Equal("pending", state)
 }

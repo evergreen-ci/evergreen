@@ -1569,14 +1569,14 @@ func (t *Task) GetJQL(searchProjects []string) string {
 // BlockedState returns "blocked," "pending" (unsatisfied dependencies,
 // but unblocked), or "" (runnable) to represent the state of the task
 // with respect to its dependencies
-func (t *Task) BlockedState() (string, error) {
+func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
 	if t.DisplayOnly {
-		return t.blockedStateForDisplayTask()
+		return t.blockedStateForDisplayTask(tasksWithDeps)
 	}
 	if len(t.DependsOn) == 0 {
 		return "", nil
 	}
-	if err := t.CircularDependencies(); err != nil {
+	if err := t.CircularDependencies(tasksWithDeps); err != nil {
 		return "", err
 	}
 
@@ -1619,7 +1619,7 @@ func (t *Task) blockedStatePrivate() (string, error) {
 	return "", nil
 }
 
-func (t *Task) blockedStateForDisplayTask() (string, error) {
+func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) {
 	execTasks, err := Find(ByIds(t.ExecutionTasks))
 	if err != nil {
 		return "", errors.Wrap(err, "error finding execution tasks")
@@ -1629,7 +1629,7 @@ func (t *Task) blockedStateForDisplayTask() (string, error) {
 	}
 	state := ""
 	for _, execTask := range execTasks {
-		etState, err := execTask.BlockedState()
+		etState, err := execTask.BlockedState(tasksWithDeps)
 		if err != nil {
 			return "", errors.Wrap(err, "error finding blocked state")
 		}
@@ -1642,16 +1642,19 @@ func (t *Task) blockedStateForDisplayTask() (string, error) {
 	return state, nil
 }
 
-func (t *Task) CircularDependencies() error {
-	tasks, err := FindAllTasksFromVersionWithDependencies(t.Version)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
+func (t *Task) CircularDependencies(tasksWithDeps []Task) error {
+	var err error
+	if tasksWithDeps == nil {
+		tasksWithDeps, err = FindAllTasksFromVersionWithDependencies(t.Version)
+		if err != nil {
+			return errors.Wrap(err, "error finding tasks with dependencies")
+		}
 	}
-	if len(tasks) == 0 {
+	if len(tasksWithDeps) == 0 {
 		return nil
 	}
 	dependencyMap := map[string][]string{}
-	for _, versionTask := range tasks {
+	for _, versionTask := range tasksWithDeps {
 		for _, dependency := range versionTask.DependsOn {
 			dependencyMap[versionTask.Id] = append(dependencyMap[versionTask.Id], dependency.TaskId)
 		}
