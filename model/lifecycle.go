@@ -535,6 +535,11 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	if err = tasksForBuild.InsertUnordered(); err != nil && !db.IsDuplicateKey(err) {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"message": "unable to bulk insert tasks",
+			"version": v.Id,
+			"build":   b.Id,
+		}))
 		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
 	}
 
