@@ -1037,3 +1037,28 @@ func TestSiblingDependency(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("pending", state)
 }
+
+func TestBulkInsert(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection))
+	t1 := Task{
+		Id:      "t1",
+		Version: "version",
+	}
+	t2 := Task{
+		Id:      "t2",
+		Version: "version",
+	}
+	t3 := Task{
+		Id:      "t3",
+		Version: "version",
+	}
+	tasks := Tasks{t1, t2, t3}
+	assert.NoError(tasks.InsertUnordered())
+	dbTasks, err := Find(ByVersion("version"))
+	assert.NoError(err)
+	assert.Len(dbTasks, 3)
+	for _, dbTask := range dbTasks {
+		assert.Equal("version", dbTask.Version)
+	}
+}

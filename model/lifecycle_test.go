@@ -1273,7 +1273,7 @@ func TestDeletingBuild(t *testing.T) {
 
 func TestSetNumDeps(t *testing.T) {
 	Convey("setNumDeps correctly sets NumDependents for each task", t, func() {
-		tasks := []*task.Task{
+		tasks := []task.Task{
 			{Id: "task1"},
 			{
 				Id:        "task2",

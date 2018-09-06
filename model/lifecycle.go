@@ -539,6 +539,12 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	if err = tasksForBuild.InsertUnordered(); err != nil && !db.IsDuplicateKey(err) {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"message": "unable to bulk insert tasks",
+			"version": v.Id,
+			"build":   b.Id,
+			"tasks":   tasksForBuild,
+		}))
 		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
 	}
 
@@ -548,7 +554,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 		if taskP.DisplayTask != nil {
 			continue // don't add execution parts of display tasks to the UI cache
 		}
-		tasks = append(tasks, *taskP)
+		tasks = append(tasks, taskP)
 	}
 	b.Tasks = CreateTasksCache(tasks)
 
@@ -679,7 +685,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			execTaskIds = append(execTaskIds, execTable.GetId(b.BuildVariant, et))
 		}
 		t := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
-		tasks = append(tasks, t)
+		tasks = append(tasks, *t)
 		for _, et := range dt.ExecutionTasks {
 			displayTasks[et] = t
 		}
@@ -758,7 +764,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		newTask.GeneratedBy = generatedBy
 		// append the task to the list of the created tasks
-		tasks = append(tasks, newTask)
+		tasks = append(tasks, *newTask)
 	}
 
 	// Set the NumDependents field
@@ -774,15 +780,15 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 // setNumDeps sets NumDependents for each task in tasks.
 // NumDependents is the number of tasks depending on the task. Only tasks created at the same time
 // and in the same variant are included.
-func setNumDeps(tasks []*task.Task) {
+func setNumDeps(tasks []task.Task) {
 	idToTask := make(map[string]*task.Task)
 	for i, task := range tasks {
-		idToTask[task.Id] = tasks[i]
+		idToTask[task.Id] = &tasks[i]
 	}
 
 	for _, task := range tasks {
 		// Recursively find all tasks that task depends on and increments their NumDependents field
-		setNumDepsRec(task, idToTask, make(map[string]bool))
+		setNumDepsRec(&task, idToTask, make(map[string]bool))
 	}
 }
 
