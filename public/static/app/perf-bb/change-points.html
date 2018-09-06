@@ -1,0 +1,30 @@
+<div class="toolbar">
+  <span class="legend">Mode:</span>
+  <label class="radio-inline" ng-repeat="item in spvm.mode.options">
+    <input type="radio" ng-model="spvm.mode.value" value="[[item.id]]" ng-change="spvm.modeChanged()" name="mode" />
+    [[item.name]]
+  </label>
+</div>
+
+<div
+  class="grid"
+  ui-grid="spvm.gridOptions"
+  ui-grid-auto-resize
+  ui-grid-resize-columns
+  ui-grid-move-columns
+  ui-grid-auto-resize
+  ui-grid-empty-base-layer
+  ui-grid-grouping
+>
+  <div class="ui-grid-overlay ng-cloak">
+    <md-progress-circular
+      mode="indeterminate"
+      md-diameter="70"
+      ng-show="spvm.isLoading"
+    >
+    </md-progress-circular>
+    <h1 ng-show="!spvm.isLoading && !spvm.gridOptions.data.length">
+      No data available!
+    </h1>
+  </div>
+</div>
