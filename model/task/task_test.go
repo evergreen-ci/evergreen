@@ -1027,3 +1027,28 @@ func TestBlockedState(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("blocked", state)
 }
+
+func TestBulkInsert(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection))
+	t1 := task.Task{
+		Id:      "t1",
+		Version: "version",
+	}
+	t2 := task.Task{
+		Id:      "t2",
+		Version: "version",
+	}
+	t3 := task.Task{
+		Id:      "t3",
+		Version: "version",
+	}
+	tasks := task.Tasks{t1, t2, t3}
+	assert.NoError(tasks.InsertUnordered())
+	dbTasks, err := task.Find(task.ByVersion("version"))
+	assert.NoError(err)
+	assert.Len(dbTasks, 3)
+	for _, dbTask := range dbTasks {
+		assert.Equal("version", dbTask.Version)
+	}
+}
