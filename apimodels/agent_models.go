@@ -3,7 +3,6 @@ package apimodels
 import (
 	"errors"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
 
@@ -76,17 +75,17 @@ type EndTaskResponse struct {
 
 type CreateHost struct {
 	// EC2-related settings
-	AMI             string            `mapstructure:"ami" json:"ami" plugin:"expand"`
-	Distro          string            `mapstructure:"distro" json:"distro" plugin:"expand"`
-	EBSDevices      []EbsDevice       `mapstructure:"ebs_block_device" json:"ebs_block_device" plugin:"expand"`
-	InstanceType    string            `mapstructure:"instance_type" json:"instance_type" plugin:"expand"`
-	Region          string            `mapstructure:"region" json:"region" plugin:"expand"`
-	SecurityGroups  []string          `mapstructure:"security_group_ids" json:"security_group_ids" plugin:"expand"`
-	Spot            util.StringOrBool `mapstructure:"spot" json:"spot" plugin:"expand"`
-	Subnet          string            `mapstructure:"subnet_id" json:"subnet_id" plugin:"expand"`
-	UserdataFile    string            `mapstructure:"userdata_file" json:"-" plugin:"expand"`
-	UserdataCommand string            `json:"userdata_command" plugin:"expand"`
-	VPC             string            `mapstructure:"vpc_id" json:"vpc_id" plugin:"expand"`
+	AMI             string      `mapstructure:"ami" json:"ami" plugin:"expand"`
+	Distro          string      `mapstructure:"distro" json:"distro" plugin:"expand"`
+	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" plugin:"expand"`
+	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" plugin:"expand"`
+	Region          string      `mapstructure:"region" json:"region" plugin:"expand"`
+	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" plugin:"expand"`
+	Spot            bool        `mapstructure:"spot" json:"spot"`
+	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" plugin:"expand"`
+	UserdataFile    string      `mapstructure:"userdata_file" json:"-" plugin:"expand"`
+	UserdataCommand string      `json:"userdata_command" plugin:"expand"`
+	VPC             string      `mapstructure:"vpc_id" json:"vpc_id" plugin:"expand"`
 
 	// authentication settings
 	AWSKeyID  string `mapstructure:"aws_access_key_id" json:"aws_access_key_id" plugin:"expand"`

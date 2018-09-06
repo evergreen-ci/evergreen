@@ -66,6 +66,7 @@ func (s *createHostSuite) TestParamValidation() {
 
 	// verify errors if missing required info for ami
 	s.params["ami"] = "ami"
+	s.params["vpc_id"] = ""
 	s.NoError(s.cmd.ParseParams(s.params))
 	err := s.cmd.expandAndValidate(s.conf)
 	s.Contains(err.Error(), "instance_type must be set if ami is set")
