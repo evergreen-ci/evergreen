@@ -180,11 +180,15 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	buildsWithAllActiveTasksComplete := 0
 	activeBuilds := 0
 	finished := true
+	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(versionId)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks with dependencies")
+	}
 	for _, b := range builds {
 		if b.Activated {
 			activeBuilds += 1
 		}
-		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished()
+		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished(tasksWithDeps)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -539,6 +543,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 			"message": "unable to bulk insert tasks",
 			"version": v.Id,
 			"build":   b.Id,
+			"tasks":   tasksForBuild,
 		}))
 		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
 	}
