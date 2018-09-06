@@ -519,6 +519,10 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(t.Version)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks with dependencies")
+	}
 
 	failedTask := false
 	buildComplete := false
@@ -528,7 +532,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if !t.IsFinished() {
-			state, _ := t.BlockedState()
+			state, _ := t.BlockedState(tasksWithDeps)
 			if state == "blocked" {
 				tasksToNotify += 1
 				if evergreen.IsFailedTaskStatus(t.Status) {

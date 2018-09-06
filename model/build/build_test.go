@@ -573,15 +573,15 @@ func TestAllTasksFinished(t *testing.T) {
 			},
 		},
 	}
-	assert.False(b.AllUnblockedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished(nil))
 	b.Tasks[0].Status = evergreen.TaskFailed
-	assert.False(b.AllUnblockedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished(nil))
 	b.Tasks[1].Status = evergreen.TaskSucceeded
-	assert.False(b.AllUnblockedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished(nil))
 	b.Tasks[2].Status = evergreen.TaskSystemFailed
-	assert.False(b.AllUnblockedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished(nil))
 	b.Tasks[3].Status = evergreen.TaskTestTimedOut
-	assert.True(b.AllUnblockedTasksOrCompileFinished())
+	assert.True(b.AllUnblockedTasksOrCompileFinished(nil))
 
 	b.Tasks = []TaskCache{
 		{
@@ -601,9 +601,9 @@ func TestAllTasksFinished(t *testing.T) {
 		},
 	}
 
-	assert.False(b.AllUnblockedTasksOrCompileFinished())
+	assert.False(b.AllUnblockedTasksOrCompileFinished(nil))
 	b.Tasks[0].Status = evergreen.TaskFailed
-	assert.True(b.AllUnblockedTasksOrCompileFinished())
+	assert.True(b.AllUnblockedTasksOrCompileFinished(nil))
 
 	b.Tasks = []TaskCache{
 		{
@@ -667,7 +667,7 @@ func TestAllTasksFinished(t *testing.T) {
 	assert.NoError(d0.Insert())
 	assert.NoError(e0.Insert())
 	assert.NoError(e1.Insert())
-	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.NoError(err)
 	assert.True(complete)
 }
