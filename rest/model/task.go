@@ -186,8 +186,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 	return interface{}(st), nil
 }
 
-func (at *APITask) GetArtifacts() error {
-	entries, err := artifact.FindAll(artifact.ByTaskId(FromAPIString(at.Id)))
+func (at *APITask) GetArtifacts(ids []string) error {
+	entries, err := artifact.FindAll(artifact.ByTaskIds(ids))
 	if err != nil {
 		return errors.Wrap(err, "error retrieving artifacts")
 	}

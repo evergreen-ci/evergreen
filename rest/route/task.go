@@ -76,7 +76,8 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		for i := range taskModel.PreviousExecutions {
-			if err = taskModel.PreviousExecutions[i].GetArtifacts(); err != nil {
+			id := model.FromAPIString(taskModel.PreviousExecutions[i].Id)
+			if err = taskModel.PreviousExecutions[i].GetArtifacts([]string{id}); err != nil {
 				return gimlet.MakeJSONErrorResponder(errors.Wrap(err,
 					"failed to fetch artifacts for previous executions"))
 			}
@@ -89,7 +90,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	taskModel.EstimatedStart = model.NewAPIDuration(start)
 
-	err = taskModel.GetArtifacts()
+	err = taskModel.GetArtifacts([]string{foundTask.Id})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "error retrieving artifacts"))
 	}

@@ -99,8 +99,14 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 
-		if err = taskModel.GetArtifacts(); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+		if tasks[i].DisplayOnly {
+			if err = taskModel.GetArtifacts(tasks[i].ExecutionTasks); err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
+		} else {
+			if err = taskModel.GetArtifacts([]string{tasks[i].Id}); err != nil {
+				return gimlet.MakeJSONErrorResponder(err)
+			}
 		}
 
 		if err = taskModel.BuildFromService(tbh.sc.GetURL()); err != nil {
