@@ -888,9 +888,9 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 
 func validateDuplicateTaskDefinition(p *model.Project) []ValidationError {
 	errors := []ValidationError{}
-	tasksFound := map[string]interface{}{}
 
 	for _, bv := range p.BuildVariants {
+		tasksFound := map[string]interface{}{}
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
