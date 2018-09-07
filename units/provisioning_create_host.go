@@ -104,7 +104,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host.ParentID == "" {
+	if j.host.ParentID == "" && !j.host.SpawnOptions.SpawnedByTask {
 		numHosts, err := host.CountRunningHosts(j.host.Distro.Id)
 		if err != nil {
 			j.AddError(errors.Wrap(err, "problem getting count of existing pool size"))
