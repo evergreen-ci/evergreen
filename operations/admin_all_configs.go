@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -13,6 +14,7 @@ import (
 func fetchAllProjectConfigs() cli.Command {
 	const (
 		includeDisabledFlagName = "include-disabled"
+		validateConfigsFlagName = "validate"
 	)
 
 	return cli.Command{
@@ -23,11 +25,16 @@ func fetchAllProjectConfigs() cli.Command {
 				Name:  includeDisabledFlagName,
 				Usage: "include disabled projects",
 			},
+			cli.BoolFlag{
+				Name:  validateConfigsFlagName,
+				Usage: "also validate each config downloaded",
+			},
 		},
 		Usage:  "download the configuration files of all evergreen projects to the current directory",
 		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
 			includeDisabled := c.BoolT(includeDisabledFlagName)
+			validate := c.Bool(validateConfigsFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -52,7 +59,7 @@ func fetchAllProjectConfigs() cli.Command {
 			catcher := grip.NewSimpleCatcher()
 			for _, p := range projects {
 				if p.Enabled || includeDisabled {
-					catcher.Add(fetchAndWriteConfig(rc, p.Identifier))
+					catcher.Add(fetchAndWriteConfig(ac, rc, p.Identifier, validate))
 				}
 			}
 
@@ -63,9 +70,11 @@ func fetchAllProjectConfigs() cli.Command {
 
 // fetchAndWriteConfig downloads the most recent config for a project
 // and writes it to "project_name.yml" locally.
-func fetchAndWriteConfig(c *legacyClient, project string) error {
-	grip.Infof("Downloading configuration for %s", project)
-	versions, err := c.GetRecentVersions(project)
+func fetchAndWriteConfig(ac *legacyClient, rc *legacyClient, project string, validate bool) error {
+	if !validate {
+		grip.Infof("Downloading configuration for %s", project)
+	}
+	versions, err := rc.GetRecentVersions(project)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch recent versions for %s", project)
 	}
@@ -73,7 +82,7 @@ func fetchAndWriteConfig(c *legacyClient, project string) error {
 		return errors.Errorf("WARNING: project %s has no versions", project)
 	}
 
-	config, err := c.GetConfig(versions[0])
+	config, err := rc.GetConfig(versions[0])
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch config for project %s, version %s", project, versions[0])
 	}
@@ -86,6 +95,26 @@ func fetchAndWriteConfig(c *legacyClient, project string) error {
 	err = ioutil.WriteFile(project+".yml", data, 0666)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write configuration for project %s", project)
+	}
+
+	if validate {
+		validationErrs, err := ac.ValidateLocalConfig(data)
+		if err != nil {
+			return errors.Wrap(err, "error validating config")
+		}
+
+		if len(validationErrs) == 0 {
+			grip.Infof("%s has no validation errors", project)
+		} else {
+			grip.Infof("validation errors for %s:\n", project)
+			for _, err := range validationErrs {
+				level := "Error"
+				if err.Level == validator.Warning {
+					level = "Warning"
+				}
+				grip.Infof("[%s] %s", level, err.Message)
+			}
+		}
 	}
 
 	return nil
