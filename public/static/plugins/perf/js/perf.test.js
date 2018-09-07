@@ -43,13 +43,16 @@ describe('PerfChartServiceTest', function() {
   })
 
   it('extracts value for all levels mode', function() {
-    var item = {threadResults: [{}, {}]}
+    var item = {threadResults: [
+      {threadLevel: 1},
+      {threadLevel: 2}
+    ]}
     item[cfg.valueAttr] = 1
     item.threadResults[0][cfg.valueAttr] = 2
     item.threadResults[1][cfg.valueAttr] = 3
 
     // dummy thread levels array
-    var levels = [{idx: 0}, {idx: 1}]
+    var levels = [{idx: 0, name: 1}, {idx: 1, name: 2}]
 
     expect(
       svc.getValueForAllLevels(levels[0])(item)

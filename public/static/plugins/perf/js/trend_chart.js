@@ -169,8 +169,9 @@ mciModule.factory('PerfChartService', function() {
   // thread `level` and series `item`
   function getValueForAllLevels(level) {
     return function(item) {
-      return item.threadResults[level.idx]
-        ? item.threadResults[level.idx][cfg.valueAttr]
+      var result = _.findWhere(item.threadResults, {threadLevel: level.name})
+      return result
+        ? result[cfg.valueAttr]
         : null
     }
   }
@@ -288,6 +289,13 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     updateActiveLevels()
 
+    // For given `activeLevels` returns those which exists in the `sample`
+    function threadLevelsForSample(sample, activeLevels) {
+      return _.filter(activeLevels, function(d) {
+        return _.includes(_.pluck(sample.threadResults, 'threadLevel'), d.name)
+      })
+    }
+
     // Array with combinations combinations of {level, changePoint}
     var changePointForLevel = []
     _.each(visibleChangePoints, function(point) {
@@ -342,18 +350,18 @@ mciModule.factory('DrawPerfTrendChart', function (
     })
 
     var xScale = d3.scale.linear()
-      .domain([0, ops.length - 1])
+      .domain([0, series.length - 1])
       .range([0, cfg.effectiveWidth])
 
     var yScale = linearMode ? d3.scale.linear() : d3.scale.log()
 
     function getOpsValues(sample) {
-      return _.chain(sample.threadResults)
-        .filter(function(d) { // Filter out inactive thread levels
-          return _.contains(activeLevelNames, d.threadLevel)
-        })
-        .pluck(cfg.valueAttr) // Extract thread level values
-        .value()
+      // For each active thread level extract values
+      // including undefined values for missing data
+      return _.map(activeLevelNames, function(d) {
+        var result = _.findWhere(sample.threadResults, {threadLevel: d})
+        return result && result[cfg.valueAttr]
+      })
     }
 
     function calculateYScaleDomain() {
@@ -438,6 +446,7 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     // multi line
     var mline = d3.svg.line()
+      .defined(_.identity)
       .x(function(d, i) {
         return xScale(i);
       })
@@ -447,10 +456,12 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     if (hasValues) {
       var maxline = d3.svg.line()
+        .defined(_.identity)
         .x(function(d, i) { return xScale(i) })
         .y(function(d) { return yScale(d3.max(d.ops_per_sec_values)) })
 
       var minline = d3.svg.line()
+        .defined(_.identity)
         .x(function(d, i) { return xScale(i) })
         .y(function(d) { return yScale(d3.min(d.ops_per_sec_values)) })
     }
@@ -596,7 +607,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       // Current revision marker
       var commitCircle = chartG
         .selectAll('circle.current')
-        .data(activeLevels)
+        .data(threadLevelsForSample(series[currentItemIdx], activeLevels))
 
       commitCircle
         .enter()
@@ -794,8 +805,19 @@ mciModule.factory('DrawPerfTrendChart', function (
     function redrawTooltip() {
       focusG.style('display', 'none')
 
+      // This function could be called just once
+      enableFocusGroup = _.once(
+        function() {
+          focusG.style('display', null)
+        }
+      )
+    }
+
+    redrawTooltip()
+
+    function updateToolitp(levels) {
       var focusedPoints = focusG.selectAll('circle')
-        .data(activeLevels)
+        .data(levels)
 
       focusedPointsRef = focusedPoints
         .attr({
@@ -814,7 +836,7 @@ mciModule.factory('DrawPerfTrendChart', function (
       focusedPoints.exit().remove()
 
       var focusedText = focusG.selectAll('text')
-        .data(activeLevels)
+        .data(levels)
 
       focusedTextRef = focusedText
         .attr({
@@ -831,16 +853,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         })
 
       focusedText.exit().remove()
-
-      // This function could be called just once
-      enableFocusGroup = _.once(
-        function() {
-          focusG.style('display', null)
-        }
-      )
     }
-
-    redrawTooltip()
 
     // -- CHANGE POINT HOVER --
     var toolTipG = chartG.append('g')
@@ -1068,14 +1081,21 @@ mciModule.factory('DrawPerfTrendChart', function (
       // List of per thread level values for selected item
       var values = threadMode == MAXONLY
         ? [item[cfg.valueAttr]]
-        : getOpsValues(item)
+        : _.filter(getOpsValues(item))
 
       var maxOps = _.max(values);
+
       // List of dot Y positions
       var yScaledValues = _.map(values, yScale)
       var opsLabelsY = PerfChartService.getOpsLabelYPosition(yScaledValues, cfg);
 
       focusG.attr('transform', d3Translate(x, 0))
+
+      // Add/Remove tooltip items (some data samples may not contain all thread levels)
+      updateToolitp(threadMode == MAXONLY
+        ? activeLevels
+        : threadLevelsForSample(item, activeLevels)
+      )
 
       focusedPointsRef.attr({
         cy: function(d, i) { return yScaledValues[i] },
@@ -1094,8 +1114,7 @@ mciModule.factory('DrawPerfTrendChart', function (
           }
         })
         .text(function(d, i) {
-          var value = values[i];
-          return formatNumber(value)
+          return formatNumber(values[i])
         });
 
       focusedLine.attr({
