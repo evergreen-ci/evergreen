@@ -121,3 +121,5 @@ imports:
     version: 7f4c682246a052cb61b758561ccf3276301d3e6f
   - name: gopkg.in/ldap.v2
     version: c6ce48312dc899d500d77926d9d3c33a0e01259c 
+  - name: gopkg.in/asn1-ber.v1
+    version: 379148ca0225df7a432012b8df0355c2a2063ac0
