@@ -136,7 +136,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		if err != nil {
 			return errors.Wrap(err, "couldn't open xunit file")
 		}
-		defer file.Close()
+		defer file.Close() // nolint
 
 		testSuites, err = parseXMLResults(file)
 		if err != nil {
