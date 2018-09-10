@@ -15,6 +15,10 @@ func sendJSONResults(ctx context.Context, conf *model.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator,
 	results *task.LocalTestResults) error {
 
+	if results == nil || len(results.Results) == 0 {
+		return errors.New("cannot send nil results")
+	}
+
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	for i, res := range results.Results {
