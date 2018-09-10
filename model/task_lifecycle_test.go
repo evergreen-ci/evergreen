@@ -1824,7 +1824,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1836,7 +1836,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1848,7 +1848,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.False(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.NoError(err)
 	assert.False(complete)
 
@@ -1860,7 +1860,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err = build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err = b.AllUnblockedTasksOrCompileFinished()
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.NoError(err)
 	assert.True(complete)
 
@@ -1942,7 +1942,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())
@@ -2024,7 +2024,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.True(updates.VersionComplete)
 	b, err := build.FindOneId(buildID)
 	assert.NoError(err)
-	complete, _, err := b.AllUnblockedTasksOrCompileFinished()
+	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.True(complete)
 	assert.NoError(err)
 	assert.True(b.IsFinished())

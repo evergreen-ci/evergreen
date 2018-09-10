@@ -411,7 +411,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 		})
 	}
 
-	status, err := t.BlockedState()
+	status, err := t.BlockedState(nil)
 	if err != nil {
 		return nil, "", err
 	}
