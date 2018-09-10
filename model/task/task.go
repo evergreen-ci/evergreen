@@ -15,7 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/tychoish/tarjan"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -1576,17 +1575,7 @@ func (t *Task) BlockedState(tasksWithDeps []Task) (string, error) {
 	if len(t.DependsOn) == 0 {
 		return "", nil
 	}
-	if err := t.CircularDependencies(tasksWithDeps); err != nil {
-		return "", err
-	}
 
-	return t.blockedStatePrivate()
-}
-
-func (t *Task) blockedStatePrivate() (string, error) {
-	if len(t.DependsOn) == 0 {
-		return "", nil
-	}
 	dependencyIDs := []string{}
 	for _, d := range t.DependsOn {
 		dependencyIDs = append(dependencyIDs, d.TaskId)
@@ -1602,7 +1591,7 @@ func (t *Task) blockedStatePrivate() (string, error) {
 	}
 	for _, dependency := range t.DependsOn {
 		depTask := taskMap[dependency.TaskId]
-		state, err := depTask.blockedStatePrivate()
+		state, err := depTask.BlockedState()
 		if err != nil {
 			return "", err
 		}
@@ -1640,31 +1629,4 @@ func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) 
 		}
 	}
 	return state, nil
-}
-
-func (t *Task) CircularDependencies(tasksWithDeps []Task) error {
-	var err error
-	if tasksWithDeps == nil {
-		tasksWithDeps, err = FindAllTasksFromVersionWithDependencies(t.Version)
-		if err != nil {
-			return errors.Wrap(err, "error finding tasks with dependencies")
-		}
-	}
-	if len(tasksWithDeps) == 0 {
-		return nil
-	}
-	dependencyMap := map[string][]string{}
-	for _, versionTask := range tasksWithDeps {
-		for _, dependency := range versionTask.DependsOn {
-			dependencyMap[versionTask.Id] = append(dependencyMap[versionTask.Id], dependency.TaskId)
-		}
-	}
-	catcher := grip.NewBasicCatcher()
-	cycles := tarjan.Connections(dependencyMap)
-	for _, cycle := range cycles {
-		if len(cycle) > 1 {
-			catcher.Add(errors.Errorf("Dependency cycle detected: %s", strings.Join(cycle, ",")))
-		}
-	}
-	return catcher.Resolve()
 }
