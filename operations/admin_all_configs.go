@@ -103,9 +103,7 @@ func fetchAndWriteConfig(ac *legacyClient, rc *legacyClient, project string, val
 			return errors.Wrap(err, "error validating config")
 		}
 
-		if len(validationErrs) == 0 {
-			grip.Infof("%s has no validation errors", project)
-		} else {
+		if len(validationErrs) > 0 {
 			grip.Infof("validation errors for %s:\n", project)
 			for _, err := range validationErrs {
 				level := "Error"
