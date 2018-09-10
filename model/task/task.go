@@ -1460,8 +1460,9 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 	}
 
 	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
-		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, util.ZeroTime, time.Now().Add(-taskCompletionEstimateWindow))
+		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, time.Now().Add(-taskCompletionEstimateWindow), time.Now())
 		grip.Notice(message.WrapError(err, message.Fields{
+
 			"name":      t.DisplayName,
 			"id":        t.Id,
 			"project":   t.Project,
