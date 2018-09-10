@@ -32,10 +32,6 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 clientSource := cmd/evergreen/evergreen.go
 uiFiles := $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
 
-xcPackages := agent command operations rest-client subprocess util
-distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/test.$(pkg))
-distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/race.$(pkg))
-
 distArtifacts :=  ./public ./service/templates
 distContents := $(clientBinaries) $(distArtifacts)
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
@@ -194,14 +190,8 @@ $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
-dist-test:$(buildDir)/dist-test.tar.gz
-dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
-$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
-	./$< -name $@ --prefix $(name) $(foreach item,$(distTestContents) $(distContents),--item $(item)) $(foreach item,$(shell find . -maxdepth 2 -type d -name "testdata"),--item $(item)) --item makefile --item scripts --item cmd --item config_test --exclude "public/node_modules"
-$(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
-	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item ./cmd --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
 # end main build
 
 
@@ -226,11 +216,6 @@ phony += lint lint-deps build build-race race test coverage coverage-html list-r
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
-run-cross:
-	@mkdir -p $(buildDir)
-	$(EVGHOME)/$(buildDir)/$(subst xc-,test.,$(CROSS_TARGET)) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
-	@grep -s -q -e "^PASS" $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
-
 # end front-ends
 
 
@@ -348,6 +333,7 @@ clean:
 phony += clean
 # end dependency targets
 
+
 # mongodb utility targets
 mongodb/.get-mongodb:
 	rm -rf mongodb
@@ -363,6 +349,7 @@ check-mongod: mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"
 # end mongodb targets
+
 
 # configure special (and) phony targets
 .FORCE:
