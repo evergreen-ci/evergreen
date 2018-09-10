@@ -207,31 +207,28 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	}
 	grip.Info(message.Fields{"runner": "taskrunner", "message": "prepping host finished successfully", "host": hostObj.Id})
 
-	// stop here if the host is a parent for containers - don't want the agent running
-	if hostObj.HasContainers {
-		return nil
-	}
-
-	// generate the host secret if none exists
-	if hostObj.Secret == "" {
-		if err = hostObj.CreateSecret(); err != nil {
-			return errors.Wrapf(err, "creating secret for %s", hostObj.Id)
+	if !hostObj.HasContainers {
+		// generate the host secret if none exists
+		if hostObj.Secret == "" {
+			if err = hostObj.CreateSecret(); err != nil {
+				return errors.Wrapf(err, "creating secret for %s", hostObj.Id)
+			}
 		}
-	}
 
-	// Start agent to listen for tasks
-	grip.Info(j.getHostMessage(hostObj))
-	if err = j.startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
-		event.LogHostAgentDeployFailed(hostObj.Id, err)
-		grip.Info(message.Fields{
-			"message": "error starting agent on remote",
-			"host":    j.HostID,
-			"job":     j.ID(),
-			"error":   err.Error(),
-		})
-		return nil
+		// Start agent to listen for tasks
+		grip.Info(j.getHostMessage(hostObj))
+		if err = j.startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
+			event.LogHostAgentDeployFailed(hostObj.Id, err)
+			grip.Info(message.Fields{
+				"message": "error starting agent on remote",
+				"host":    j.HostID,
+				"job":     j.ID(),
+				"error":   err.Error(),
+			})
+			return nil
+		}
+		grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host": hostObj.Id})
 	}
-	grip.Info(message.Fields{"runner": "taskrunner", "message": "agent successfully started for host", "host": hostObj.Id})
 
 	if err = hostObj.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
