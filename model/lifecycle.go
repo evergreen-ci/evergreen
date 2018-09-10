@@ -180,15 +180,11 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	buildsWithAllActiveTasksComplete := 0
 	activeBuilds := 0
 	finished := true
-	tasksWithDeps, err := task.FindAllTasksFromVersionWithDependencies(versionId)
-	if err != nil {
-		return errors.Wrap(err, "error finding tasks with dependencies")
-	}
 	for _, b := range builds {
 		if b.Activated {
 			activeBuilds += 1
 		}
-		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished(tasksWithDeps)
+		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished()
 		if err != nil {
 			return errors.WithStack(err)
 		}

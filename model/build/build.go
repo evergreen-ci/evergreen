@@ -76,7 +76,7 @@ func (b *Build) IsFinished() bool {
 // returns boolean to indicate if tasks are complete, string with either
 // BuildFailed or BuildSucceded. The string is only valid when the boolean is
 // true
-func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (bool, string, error) {
+func (b *Build) AllUnblockedTasksOrCompileFinished() (bool, string, error) {
 	allFinished := true
 	status := evergreen.BuildSucceeded
 	catcher := grip.NewSimpleCatcher()
@@ -99,7 +99,7 @@ func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (b
 				return false, status, errors.Errorf("task %s doesn't exist", b.Tasks[i].Id)
 			}
 
-			blockedStatus, err := t.BlockedState(tasksWithDeps)
+			blockedStatus, err := t.BlockedState()
 			if err != nil {
 				return false, status, err
 			}
