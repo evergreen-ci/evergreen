@@ -292,6 +292,10 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
+			if et == nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("task not found"))
+				return
+			}
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
 				Id:        et.Id,
 				Name:      et.DisplayName,
