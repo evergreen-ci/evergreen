@@ -1,0 +1,79 @@
+=== RUN   TestClientSuite
+=== RUN   TestClientSuite/Basic
+=== RUN   TestClientSuite/Basic/TestClientGetter
+=== RUN   TestClientSuite/Basic/TestCopyeConstructorUsesDifferentHTTPClient
+=== RUN   TestClientSuite/Basic/TestCorrectedNewClientSettings
+=== RUN   TestClientSuite/Basic/TestNewClientConstructorPropogatesErrorStateForHost
+=== RUN   TestClientSuite/Basic/TestNewClientFromExistingUsesExistinHTTPClient
+=== RUN   TestClientSuite/Basic/TestNewClientFromExistingWithNilClientReturnsError
+=== RUN   TestClientSuite/Basic/TestNewClientPropogatesValidValuesToCreatedValues
+=== RUN   TestClientSuite/Basic/TestPortSetterDisallowsPortsToBeZero
+=== RUN   TestClientSuite/Basic/TestPortSetterDisallowsTooBigPorts
+=== RUN   TestClientSuite/Basic/TestPortSetterRoundTripsValidPortsWithGetter
+=== RUN   TestClientSuite/Basic/TestSetHostRequiresHttpURL
+=== RUN   TestClientSuite/Basic/TestSetHostRoundTripsValidHostWithGetter
+=== RUN   TestClientSuite/Basic/TestSetHostStripsTrailingSlash
+=== RUN   TestClientSuite/Basic/TestSetPrefixRemovesTrailingAndLeadingSlashes
+=== RUN   TestClientSuite/Basic/TestSetPrefixRoundTripsThroughGetter
+=== RUN   TestClientSuite/Basic/TestURLGenerationWithEmptyPrefix
+=== RUN   TestClientSuite/Basic/TestURLGenerationWithNonDefaultPort
+=== RUN   TestClientSuite/Basic/TestURLGeneratiorWithoutDefaultPortInResult
+--- PASS: TestClientSuite/Basic (0.01s)
+    --- PASS: TestClientSuite/Basic/TestClientGetter (0.00s)
+    --- PASS: TestClientSuite/Basic/TestCopyeConstructorUsesDifferentHTTPClient (0.00s)
+    --- PASS: TestClientSuite/Basic/TestCorrectedNewClientSettings (0.00s)
+    --- PASS: TestClientSuite/Basic/TestNewClientConstructorPropogatesErrorStateForHost (0.00s)
+    --- PASS: TestClientSuite/Basic/TestNewClientFromExistingUsesExistinHTTPClient (0.00s)
+    --- PASS: TestClientSuite/Basic/TestNewClientFromExistingWithNilClientReturnsError (0.00s)
+    --- PASS: TestClientSuite/Basic/TestNewClientPropogatesValidValuesToCreatedValues (0.00s)
+    --- PASS: TestClientSuite/Basic/TestPortSetterDisallowsPortsToBeZero (0.00s)
+    --- PASS: TestClientSuite/Basic/TestPortSetterDisallowsTooBigPorts (0.00s)
+    --- PASS: TestClientSuite/Basic/TestPortSetterRoundTripsValidPortsWithGetter (0.00s)
+    --- PASS: TestClientSuite/Basic/TestSetHostRequiresHttpURL (0.00s)
+    --- PASS: TestClientSuite/Basic/TestSetHostRoundTripsValidHostWithGetter (0.00s)
+    --- PASS: TestClientSuite/Basic/TestSetHostStripsTrailingSlash (0.00s)
+    --- PASS: TestClientSuite/Basic/TestSetPrefixRemovesTrailingAndLeadingSlashes (0.00s)
+    --- PASS: TestClientSuite/Basic/TestSetPrefixRoundTripsThroughGetter (0.00s)
+    --- PASS: TestClientSuite/Basic/TestURLGenerationWithEmptyPrefix (0.00s)
+    --- PASS: TestClientSuite/Basic/TestURLGenerationWithNonDefaultPort (0.00s)
+    --- PASS: TestClientSuite/Basic/TestURLGeneratiorWithoutDefaultPortInResult (0.00s)
+=== RUN   TestClientSuite/Complex
+=== RUN   TestClientSuite/Complex/TestClientGetter
+=== RUN   TestClientSuite/Complex/TestCopyeConstructorUsesDifferentHTTPClient
+=== RUN   TestClientSuite/Complex/TestCorrectedNewClientSettings
+=== RUN   TestClientSuite/Complex/TestNewClientConstructorPropogatesErrorStateForHost
+=== RUN   TestClientSuite/Complex/TestNewClientFromExistingUsesExistinHTTPClient
+=== RUN   TestClientSuite/Complex/TestNewClientFromExistingWithNilClientReturnsError
+=== RUN   TestClientSuite/Complex/TestNewClientPropogatesValidValuesToCreatedValues
+=== RUN   TestClientSuite/Complex/TestPortSetterDisallowsPortsToBeZero
+=== RUN   TestClientSuite/Complex/TestPortSetterDisallowsTooBigPorts
+=== RUN   TestClientSuite/Complex/TestPortSetterRoundTripsValidPortsWithGetter
+=== RUN   TestClientSuite/Complex/TestSetHostRequiresHttpURL
+=== RUN   TestClientSuite/Complex/TestSetHostRoundTripsValidHostWithGetter
+=== RUN   TestClientSuite/Complex/TestSetHostStripsTrailingSlash
+=== RUN   TestClientSuite/Complex/TestSetPrefixRemovesTrailingAndLeadingSlashes
+=== RUN   TestClientSuite/Complex/TestSetPrefixRoundTripsThroughGetter
+=== RUN   TestClientSuite/Complex/TestURLGenerationWithEmptyPrefix
+=== RUN   TestClientSuite/Complex/TestURLGenerationWithNonDefaultPort
+=== RUN   TestClientSuite/Complex/TestURLGeneratiorWithoutDefaultPortInResult
+--- PASS: TestClientSuite/Complex (0.01s)
+    --- PASS: TestClientSuite/Complex/TestClientGetter (0.00s)
+    --- PASS: TestClientSuite/Complex/TestCopyeConstructorUsesDifferentHTTPClient (0.00s)
+    --- PASS: TestClientSuite/Complex/TestCorrectedNewClientSettings (0.00s)
+    --- PASS: TestClientSuite/Complex/TestNewClientConstructorPropogatesErrorStateForHost (0.00s)
+    --- PASS: TestClientSuite/Complex/TestNewClientFromExistingUsesExistinHTTPClient (0.00s)
+    --- PASS: TestClientSuite/Complex/TestNewClientFromExistingWithNilClientReturnsError (0.00s)
+    --- PASS: TestClientSuite/Complex/TestNewClientPropogatesValidValuesToCreatedValues (0.00s)
+    --- PASS: TestClientSuite/Complex/TestPortSetterDisallowsPortsToBeZero (0.00s)
+    --- PASS: TestClientSuite/Complex/TestPortSetterDisallowsTooBigPorts (0.00s)
+    --- PASS: TestClientSuite/Complex/TestPortSetterRoundTripsValidPortsWithGetter (0.00s)
+    --- PASS: TestClientSuite/Complex/TestSetHostRequiresHttpURL (0.00s)
+    --- PASS: TestClientSuite/Complex/TestSetHostRoundTripsValidHostWithGetter (0.00s)
+    --- PASS: TestClientSuite/Complex/TestSetHostStripsTrailingSlash (0.00s)
+    --- PASS: TestClientSuite/Complex/TestSetPrefixRemovesTrailingAndLeadingSlashes (0.00s)
+    --- PASS: TestClientSuite/Complex/TestSetPrefixRoundTripsThroughGetter (0.00s)
+    --- PASS: TestClientSuite/Complex/TestURLGenerationWithEmptyPrefix (0.00s)
+    --- PASS: TestClientSuite/Complex/TestURLGenerationWithNonDefaultPort (0.00s)
+    --- PASS: TestClientSuite/Complex/TestURLGeneratiorWithoutDefaultPortInResult (0.00s)
+--- PASS: TestClientSuite (0.02s)
+PASS

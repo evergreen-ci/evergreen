@@ -2,8 +2,10 @@ package command
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -189,4 +191,28 @@ func TestParserFunctionality(t *testing.T) {
 		So(results[0].Status, ShouldEqual, PASS)
 	})
 
+	Convey("deeply nested Subtests", t, func() {
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "7_simple.log"))
+		So(err, ShouldBeNil)
+
+		parser := &goTestParser{Suite: "test"}
+		err = parser.Parse(bytes.NewBuffer(logdata))
+		So(err, ShouldBeNil)
+
+		results := parser.Results()
+		So(len(results), ShouldEqual, 39)
+		for idx, r := range results {
+			if idx == 0 {
+				// first result is the inclosing test,
+				// and we should ignore that
+				continue
+			}
+			outcome := strings.Contains(r.Name, "Basic") || strings.Contains(r.Name, "Complex")
+			if !outcome {
+				fmt.Printf("result '%s' should contain either 'Basic' or 'Complex'", r.Name)
+			}
+			So(outcome, ShouldBeTrue)
+
+		}
+	})
 }
