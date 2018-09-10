@@ -38,7 +38,7 @@ func TestCheckDistro(t *testing.T) {
 			}
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
-			So(verrs, ShouldResemble, []ValidationError{})
+			So(verrs, ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
@@ -57,7 +57,7 @@ func TestCheckDistro(t *testing.T) {
 			So(dupe.Insert(), ShouldBeNil)
 			verrs, err := CheckDistro(ctx, d, conf, true)
 			So(err, ShouldBeNil)
-			So(verrs, ShouldNotResemble, []ValidationError{})
+			So(verrs, ShouldNotResemble, ValidationErrors{})
 		})
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
@@ -73,7 +73,7 @@ func TestCheckDistro(t *testing.T) {
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
-			So(verrs, ShouldResemble, []ValidationError{})
+			So(verrs, ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
@@ -89,7 +89,7 @@ func TestCheckDistro(t *testing.T) {
 			}
 			verrs, err := CheckDistro(ctx, d, conf, false)
 			So(err, ShouldBeNil)
-			So(verrs, ShouldNotResemble, []ValidationError{})
+			So(verrs, ShouldNotResemble, ValidationErrors{})
 			// empty ami for provider
 		})
 
@@ -105,7 +105,7 @@ func TestEnsureUniqueId(t *testing.T) {
 		distroIds := []string{"a", "b", "c"}
 		Convey("if a distro has a duplicate id, an error should be returned", func() {
 			err := ensureUniqueId(&distro.Distro{Id: "c"}, distroIds)
-			So(err, ShouldNotResemble, []ValidationError{})
+			So(err, ShouldNotResemble, ValidationErrors{})
 			So(len(err), ShouldEqual, 1)
 		})
 		Convey("if a distro doesn't have a duplicate id, no error should be returned", func() {
@@ -164,42 +164,42 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 		}
 		i++
 		Convey("an error should be returned if the distro does not contain an id", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain an architecture", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain a user", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain an ssh key", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain a working directory", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain a provider", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain a valid provider", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain any provider settings", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain all required provider settings", func() {
 			Convey("for ec2, it must have the ami", func() {
-				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 			})
 			Convey("for ec2, it must have the instance_type", func() {
-				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 			})
 			Convey("for ec2, it must have the security group", func() {
-				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, []ValidationError{})
+				So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 			})
 		})
 		Convey("no error should be returned if the distro contains all required provider settings", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldResemble, []ValidationError{})
+			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -214,7 +214,7 @@ func TestEnsureValidExpansions(t *testing.T) {
 				Expansions: []distro.Expansion{{"", "b"}, {"c", "d"}},
 			}
 			err := ensureValidExpansions(ctx, d, conf)
-			So(err, ShouldNotResemble, []ValidationError{})
+			So(err, ShouldNotResemble, ValidationErrors{})
 			So(len(err), ShouldEqual, 1)
 		})
 		Convey("if no expansion key is blank, no error should be returned", func() {
@@ -237,7 +237,7 @@ func TestEnsureValidSSHOptions(t *testing.T) {
 				SSHOptions: []string{"", "b", "", "d"},
 			}
 			err := ensureValidSSHOptions(ctx, d, conf)
-			So(err, ShouldNotResemble, []ValidationError{})
+			So(err, ShouldNotResemble, ValidationErrors{})
 			So(len(err), ShouldEqual, 1)
 		})
 		Convey("if no option is blank, no error should be returned", func() {
@@ -308,13 +308,13 @@ func TestEnsureValidContainerPool(t *testing.T) {
 	assert.NoError(d4.Insert())
 
 	err := ensureValidContainerPool(ctx, d1, conf)
-	assert.Equal(err, []ValidationError{{Error,
+	assert.Equal(err, ValidationErrors{{Error,
 		"error in container pool settings: container pool test-pool-invalid has invalid distro"}})
 	err = ensureValidContainerPool(ctx, d2, conf)
-	assert.Equal(err, []ValidationError{{Error,
+	assert.Equal(err, ValidationErrors{{Error,
 		"error in container pool settings: container pool test-pool-invalid has invalid distro"}})
 	err = ensureValidContainerPool(ctx, d3, conf)
-	assert.Equal(err, []ValidationError{{Error,
+	assert.Equal(err, ValidationErrors{{Error,
 		"distro container pool does not exist"}})
 	err = ensureValidContainerPool(ctx, d4, conf)
 	assert.Nil(err)

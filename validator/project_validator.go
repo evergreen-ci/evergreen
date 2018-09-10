@@ -12,10 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
 
-type projectValidator func(*model.Project) []ValidationError
+type projectValidator func(*model.Project) ValidationErrors
 
 type ValidationErrorLevel int64
 
@@ -37,6 +38,35 @@ func (vel ValidationErrorLevel) String() string {
 type ValidationError struct {
 	Level   ValidationErrorLevel `json:"level"`
 	Message string               `json:"message"`
+}
+
+type ValidationErrors []ValidationError
+
+func (v ValidationErrors) Raw() interface{} {
+	return v
+}
+func (v ValidationErrors) Loggable() bool {
+	return len(v) > 0
+}
+func (v ValidationErrors) String() string {
+	out := ""
+	for i, validationErr := range v {
+		if i > 0 {
+			out += "\n"
+		}
+		out += fmt.Sprintf("%s: %s", validationErr.Level.String(), validationErr.Message)
+	}
+
+	return out
+}
+func (v ValidationErrors) Annotate(key string, value interface{}) error {
+	return nil
+}
+func (v ValidationErrors) Priority() level.Priority {
+	return level.Info
+}
+func (v ValidationErrors) SetPriority(_ level.Priority) error {
+	return nil
 }
 
 // Functions used to validate the syntax of a project configuration file. Any
@@ -73,7 +103,7 @@ func (vr ValidationError) Error() string {
 	return vr.Message
 }
 
-func ValidationErrorsToString(ves []ValidationError) string {
+func ValidationErrorsToString(ves ValidationErrors) string {
 	var s bytes.Buffer
 	if len(ves) == 0 {
 		return s.String()
@@ -102,8 +132,8 @@ func getDistroIds() ([]string, error) {
 }
 
 // verify that the project configuration semantics is valid
-func CheckProjectSemantics(project *model.Project) []ValidationError {
-	validationErrs := []ValidationError{}
+func CheckProjectSemantics(project *model.Project) ValidationErrors {
+	validationErrs := ValidationErrors{}
 	for _, projectSemanticValidator := range projectSemanticValidators {
 		validationErrs = append(validationErrs,
 			projectSemanticValidator(project)...)
@@ -112,8 +142,8 @@ func CheckProjectSemantics(project *model.Project) []ValidationError {
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectSyntax(project *model.Project) ([]ValidationError, error) {
-	validationErrs := []ValidationError{}
+func CheckProjectSyntax(project *model.Project) (ValidationErrors, error) {
+	validationErrs := ValidationErrors{}
 	for _, projectSyntaxValidator := range projectSyntaxValidators {
 		validationErrs = append(validationErrs,
 			projectSyntaxValidator(project)...)
@@ -130,8 +160,8 @@ func CheckProjectSyntax(project *model.Project) ([]ValidationError, error) {
 
 // ensure that if any task spec references 'model.AllDependencies', it
 // references no other dependency
-func checkAllDependenciesSpec(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func checkAllDependenciesSpec(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	for _, task := range project.Tasks {
 		if len(task.DependsOn) > 1 {
 			for _, dependency := range task.DependsOn {
@@ -154,8 +184,8 @@ func checkAllDependenciesSpec(project *model.Project) []ValidationError {
 
 // Makes sure that the dependencies for the tasks in the project form a
 // valid dependency graph (no cycles).
-func checkDependencyGraph(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func checkDependencyGraph(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 
 	// map of task name and variant -> BuildVariantTaskUnit
 	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTaskUnit{}
@@ -279,10 +309,10 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 
 // Ensures that the project has at least one buildvariant and also that all the
 // fields required for any buildvariant definition are present
-func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func ensureHasNecessaryBVFields(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	if len(project.BuildVariants) == 0 {
-		return []ValidationError{
+		return ValidationErrors{
 			{
 				Message: fmt.Sprintf("project '%v' must specify at least one "+
 					"buildvariant", project.Identifier),
@@ -330,8 +360,8 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 }
 
 // Checks that the basic fields that are required by any project are present.
-func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func ensureHasNecessaryProjectFields(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 
 	if project.BatchTime < 0 {
 		errs = append(errs,
@@ -372,8 +402,8 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 // 1. a referenced task within a buildvariant task object exists in
 // the set of project tasks
 // 2. any referenced distro exists within the current setting's distro directory
-func ensureReferentialIntegrity(project *model.Project, distroIds []string) []ValidationError {
-	errs := []ValidationError{}
+func ensureReferentialIntegrity(project *model.Project, distroIds []string) ValidationErrors {
+	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
 	for _, task := range project.Tasks {
@@ -443,8 +473,8 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string) []Va
 
 // Ensures there aren't any duplicate buildvariant names specified in the given
 // project
-func validateBVNames(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func validateBVNames(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	buildVariantNames := map[string]bool{}
 	displayNames := map[string]int{}
 
@@ -483,8 +513,8 @@ func validateBVNames(project *model.Project) []ValidationError {
 }
 
 // produce a deprecation warning for specifying more than one distro for a task or build variant.
-func checkRunOnOnlyOneDistro(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func checkRunOnOnlyOneDistro(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 
 	offendingBVs := []string{}
 	offendingTasks := []string{}
@@ -521,8 +551,8 @@ func checkRunOnOnlyOneDistro(project *model.Project) []ValidationError {
 }
 
 // Checks each task definitions to determine if a command is specified
-func checkTaskCommands(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func checkTaskCommands(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	for _, task := range project.Tasks {
 		if len(task.Commands) == 0 {
 			errs = append(errs,
@@ -540,8 +570,8 @@ func checkTaskCommands(project *model.Project) []ValidationError {
 
 // Ensures there aren't any duplicate task names specified for any buildvariant
 // in this project
-func validateBVTaskNames(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func validateBVTaskNames(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
@@ -560,8 +590,8 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 	return errs
 }
 
-func validateDisplayTaskNames(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func validateDisplayTaskNames(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 
 	// build a map of task names
 	tn := map[string]struct{}{}
@@ -588,8 +618,8 @@ func validateDisplayTaskNames(project *model.Project) []ValidationError {
 
 // Helper for validating a set of plugin commands given a project/registry
 func validateCommands(section string, project *model.Project,
-	commands []model.PluginCommandConf) []ValidationError {
-	errs := []ValidationError{}
+	commands []model.PluginCommandConf) ValidationErrors {
+	errs := ValidationErrors{}
 
 	for _, cmd := range commands {
 		commandName := fmt.Sprintf("'%v' command", cmd.Command)
@@ -612,8 +642,8 @@ func validateCommands(section string, project *model.Project,
 
 // Ensures there any plugin commands referenced in a project's configuration
 // are specified in a valid format
-func validatePluginCommands(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func validatePluginCommands(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	seen := make(map[string]bool)
 
 	// validate each function definition
@@ -675,8 +705,8 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 }
 
 // Ensures there aren't any duplicate task names for this project
-func validateProjectTaskNames(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func validateProjectTaskNames(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	// create a map to hold the task names
 	taskNames := map[string]bool{}
 	for _, task := range project.Tasks {
@@ -694,8 +724,8 @@ func validateProjectTaskNames(project *model.Project) []ValidationError {
 }
 
 // validateProjectTaskIdsAndTags ensures that task tags and ids only contain valid characters
-func validateProjectTaskIdsAndTags(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func validateProjectTaskIdsAndTags(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	// create a map to hold the task names
 	for _, task := range project.Tasks {
 		// check task name
@@ -723,8 +753,8 @@ func validateProjectTaskIdsAndTags(project *model.Project) []ValidationError {
 
 // Makes sure that the dependencies for the tasks have the correct fields,
 // and that the fields reference valid tasks.
-func verifyTaskRequirements(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func verifyTaskRequirements(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	for _, bvt := range project.FindAllBuildVariantTasks() {
 		for _, r := range bvt.Requires {
 			if project.FindProjectTask(r.Name) == nil {
@@ -748,8 +778,8 @@ func verifyTaskRequirements(project *model.Project) []ValidationError {
 
 // Makes sure that the dependencies for the tasks have the correct fields,
 // and that the fields have valid values
-func verifyTaskDependencies(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func verifyTaskDependencies(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	// create a set of all the task names
 	taskNames := map[string]bool{}
 	for _, task := range project.Tasks {
@@ -800,8 +830,8 @@ func verifyTaskDependencies(project *model.Project) []ValidationError {
 	return errs
 }
 
-func validateTaskGroups(p *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func validateTaskGroups(p *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 
 	for _, tg := range p.TaskGroups {
 		// validate that there is at least 1 task
@@ -849,8 +879,8 @@ func validateTaskGroups(p *model.Project) []ValidationError {
 	return errs
 }
 
-func checkTaskGroups(p *model.Project) []ValidationError {
-	errs := []ValidationError{}
+func checkTaskGroups(p *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
 	tasksInTaskGroups := map[string]string{}
 	for _, tg := range p.TaskGroups {
 		if tg.MaxHosts < 1 {
@@ -885,19 +915,19 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 	return errs
 }
 
-func validateGenerateTasks(p *model.Project) []ValidationError {
+func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
 	return validateTimesCalledPerBuildVariant(p, ts, evergreen.GenerateTasksCommandName, 1)
 }
 
-func validateCreateHosts(p *model.Project) []ValidationError {
+func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
 	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
 	errs = append(errs, validateTimesCalledTotal(p, ts, evergreen.CreateHostCommandName, 25)...)
 	return errs
 }
 
-func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {
 			if count, ok := ts[t.Name]; ok {
@@ -913,7 +943,7 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 	return errs
 }
 
-func validateTimesCalledPerBuildVariant(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+func validateTimesCalledPerBuildVariant(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
 	for _, bv := range p.BuildVariants {
 		total := 0
 		for _, t := range bv.Tasks {
@@ -931,7 +961,7 @@ func validateTimesCalledPerBuildVariant(p *model.Project, ts map[string]int, com
 	return errs
 }
 
-func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName string, times int) (errs []ValidationError) {
+func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
 	total := 0
 	for _, bv := range p.BuildVariants {
 		for _, t := range bv.Tasks {

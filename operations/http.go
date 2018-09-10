@@ -129,13 +129,13 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 }
 
 // ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte) ([]validator.ValidationError, error) {
+func (ac *legacyClient) ValidateLocalConfig(data []byte) (validator.ValidationErrors, error) {
 	resp, err := ac.post("validate", bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusBadRequest {
-		errors := []validator.ValidationError{}
+		errors := validator.ValidationErrors{}
 		err = util.ReadJSONInto(resp.Body, &errors)
 		if err != nil {
 			return nil, NewAPIError(resp)

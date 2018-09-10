@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -105,13 +104,7 @@ func fetchAndWriteConfig(ac *legacyClient, rc *legacyClient, project string, val
 
 		if len(validationErrs) > 0 {
 			grip.Infof("validation errors for %s:\n", project)
-			for _, err := range validationErrs {
-				level := "Error"
-				if err.Level == validator.Warning {
-					level = "Warning"
-				}
-				grip.Infof("[%s] %s", level, err.Message)
-			}
+			grip.Info(validationErrs)
 		}
 	}
 
