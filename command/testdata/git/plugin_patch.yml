@@ -11,17 +11,18 @@ tasks:
         - command: git.get_project
           params:
             directory: src
+            token: ${github}
 
 modules:
 - name: enterprise
-  repo: git@github.com:10gen/mongo-enterprise-modules.git
+  repo: https://github.com/10gen/mongo-enterprise-modules.git
   prefix: src/mongo/db/modules
   branch: v2.6
 
 buildvariants:
 - name: linux-64
   display_name: Linux 64-bit
-  modules: 
+  modules:
     - enterprise
   test_flags: --continue-on-failure
   expansions:

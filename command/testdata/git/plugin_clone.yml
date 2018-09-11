@@ -11,10 +11,11 @@ tasks:
         - command: git.get_project
           params:
             directory: src
+            token: ${github}
 
 modules:
 - name: enterprise
-  repo: git@github.com:10gen/mongo-enterprise-modules.git
+  repo: https://github.com/10gen/mongo-enterprise-modules.git
   prefix: src/mongo/db/modules
   branch: v2.6
 
