@@ -422,15 +422,15 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 		t.Project, t.Requester))
 }
 
-// Find the previously completed task for the same requester + project +
+// Find the previously completed task for the same project +
 // build variant + display name combination as the specified task
 func (t *Task) PreviousCompletedTask(project string,
 	statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
 		statuses = CompletedStatuses
 	}
-	return FindOneNoMerge(ByBeforeRevisionWithStatuses(t.RevisionOrderNumber, statuses, t.BuildVariant,
-		t.DisplayName, project))
+	return FindOneNoMerge(ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber, statuses, t.BuildVariant,
+		t.DisplayName, project, evergreen.RepotrackerVersionRequester))
 }
 
 // SetExpectedDuration updates the expected duration field for the task

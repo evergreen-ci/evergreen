@@ -314,6 +314,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			BuildId:             b.Id,
 			Status:              evergreen.TaskUndispatched,
 			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		currentTask := &task.Task{
 			Id:                  "two",
@@ -324,6 +325,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Activated:           true,
 			BuildId:             b.Id,
 			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		tc := []build.TaskCache{
 			{
@@ -372,6 +374,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Project:             "sample",
 			DisplayOnly:         true,
 			ExecutionTasks:      []string{"execTaskOld"},
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		et1 := &task.Task{
 			Id:                  "execTaskOld",
@@ -383,6 +386,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			BuildId:             b1.Id,
 			Status:              evergreen.TaskUndispatched,
 			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		dt2 := &task.Task{
 			Id:                  "displayTaskNew",
@@ -395,6 +399,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Project:             "sample",
 			DisplayOnly:         true,
 			ExecutionTasks:      []string{"execTaskNew"},
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		et2 := &task.Task{
 			Id:                  "execTaskNew",
@@ -406,6 +411,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			BuildId:             b2.Id,
 			Status:              evergreen.TaskSucceeded,
 			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		dt3 := &task.Task{
 			Id:                  "displayTaskMulti",
@@ -418,6 +424,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Project:             "sample",
 			DisplayOnly:         true,
 			ExecutionTasks:      []string{"execTask1", "execTask2"},
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		et3 := &task.Task{
 			Id:                  "execTask1",
@@ -429,6 +436,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			BuildId:             b3.Id,
 			Status:              evergreen.TaskUndispatched,
 			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		et4 := &task.Task{
 			Id:                  "execTask2",
@@ -440,6 +448,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			BuildId:             b3.Id,
 			Status:              evergreen.TaskStarted,
 			Project:             "sample",
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		b1.Tasks = []build.TaskCache{
 			{
@@ -1527,19 +1536,22 @@ func TestStepback(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
 		"Error clearing task and build collections")
 	b1 := &build.Build{
-		Id:      "build1",
-		Status:  evergreen.BuildStarted,
-		Version: "v1",
+		Id:        "build1",
+		Status:    evergreen.BuildStarted,
+		Version:   "v1",
+		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	b2 := &build.Build{
-		Id:      "build2",
-		Status:  evergreen.BuildStarted,
-		Version: "v2",
+		Id:        "build2",
+		Status:    evergreen.BuildStarted,
+		Version:   "v2",
+		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	b3 := &build.Build{
-		Id:      "build3",
-		Status:  evergreen.BuildStarted,
-		Version: "v3",
+		Id:        "build3",
+		Status:    evergreen.BuildStarted,
+		Version:   "v3",
+		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	t1 := &task.Task{
 		Id:                  "t1",
@@ -1552,6 +1564,7 @@ func TestStepback(t *testing.T) {
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:              evergreen.TaskSucceeded,
 		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	t2 := &task.Task{
 		Id:                  "t2",
@@ -1564,6 +1577,7 @@ func TestStepback(t *testing.T) {
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:              evergreen.TaskInactive,
 		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	t3 := &task.Task{
 		Id:                  "t3",
@@ -1576,6 +1590,7 @@ func TestStepback(t *testing.T) {
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:              evergreen.TaskFailed,
 		RevisionOrderNumber: 3,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	dt1 := &task.Task{
 		Id:                  "dt1",
@@ -1590,6 +1605,7 @@ func TestStepback(t *testing.T) {
 		RevisionOrderNumber: 1,
 		DisplayOnly:         true,
 		ExecutionTasks:      []string{"et1"},
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	dt2 := &task.Task{
 		Id:                  "dt2",
@@ -1604,6 +1620,7 @@ func TestStepback(t *testing.T) {
 		RevisionOrderNumber: 2,
 		DisplayOnly:         true,
 		ExecutionTasks:      []string{"et2"},
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	dt3 := &task.Task{
 		Id:                  "dt3",
@@ -1618,6 +1635,7 @@ func TestStepback(t *testing.T) {
 		RevisionOrderNumber: 3,
 		DisplayOnly:         true,
 		ExecutionTasks:      []string{"et3"},
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	et1 := &task.Task{
 		Id:                  "et1",
@@ -1630,6 +1648,7 @@ func TestStepback(t *testing.T) {
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:              evergreen.TaskSucceeded,
 		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	et2 := &task.Task{
 		Id:                  "et2",
@@ -1642,6 +1661,7 @@ func TestStepback(t *testing.T) {
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:              evergreen.TaskInactive,
 		RevisionOrderNumber: 2,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	et3 := &task.Task{
 		Id:                  "et3",
@@ -1654,6 +1674,7 @@ func TestStepback(t *testing.T) {
 		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:              evergreen.TaskFailed,
 		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	p := &ProjectRef{
 		Identifier: "sample",
