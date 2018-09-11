@@ -153,7 +153,7 @@ functions:
         GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
         KARMA_REPORTER: junit
-        RACE_ENABLED: ${race_enabed}
+        RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
         XC_BUILD: ${xc_build}
@@ -349,102 +349,6 @@ tasks:
     tags: ["db", "test"]
     name: test-migrations
 
-  # race detector tests
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
-    name: race-auth
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race", "agent"]
-    name: race-subprocess
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["race", "db", "agent"]
-    name: race-command
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["race", "db"]
-    name: race-units
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-rest-route
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
-    name: race-rest-model
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race", "agent"]
-    name: race-rest-client
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "cli"]
-    name: race-operations
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-agent
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-db
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-repotracker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-scheduler
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-service
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-monitor
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-evergreen
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-thirdparty
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-util
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-validator
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-alertrecord
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-artifact
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-host
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-build
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-event
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-notification
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-task
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-model-version
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-rest-data
-  - <<: *run-go-test-suite-with-mongodb
-    name: race-plugin
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-trigger
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-migrations
 
 buildvariants:
   - name: ubuntu1604
@@ -500,11 +404,11 @@ buildvariants:
       - archlinux-test
     expansions:
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
-      race_enabed: true
+      race_detector: true
       test_timeout: 15m
     tasks:
       - name: "dist"
-      - name: ".race"
+      - name: ".test"
 
   - name: coverage
     display_name: Coverage
