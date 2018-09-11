@@ -269,7 +269,7 @@ testRunDeps := $(name)
 testArgs := -ldflags=$(ldFlags) -v 
 testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
 ifeq ($(OS),Windows_NT)
-testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(shell cygpath -m $(gopath))
+testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
 endif
 ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
