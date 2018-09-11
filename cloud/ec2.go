@@ -373,7 +373,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 		})
 	}
 
-	if ec2Settings.KeyName == "" {
+	if ec2Settings.KeyName == "" && !h.UserHost {
 		if !h.SpawnOptions.SpawnedByTask {
 			return nil, errors.New("key name must not be empty")
 		}
