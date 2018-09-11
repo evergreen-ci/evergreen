@@ -75,25 +75,6 @@ variables:
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
-  - &run-xc-test-suite
-    name: test
-    depends_on:
-      - name: dist-test
-    commands:
-      - func: get-dist-test
-      - func: set-up-credentials
-      - func: run-cross
-        vars: { target: "${task_name}" }
-  - &run-xc-test-suite-with-mongodb
-    name: test
-    depends_on:
-      - name: dist-test
-    commands:
-      - func: get-dist-test
-      - func: set-up-credentials
-      - func: set-up-mongodb
-      - func: run-cross
-        vars: { target: "${task_name}" }
   - &run-smoke-test
     name: smoke
     commands:
@@ -176,23 +157,6 @@ functions:
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
         XC_BUILD: ${xc_build}
-  get-dist-test:
-    command: s3.get
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
-      bucket: mciuploads
-      extract_to: ${workdir}/gopath/src/github.com/evergreen-ci/
-  run-cross:
-    command: subprocess.exec
-    params:
-      working_dir: gopath/src/github.com/evergreen-ci/evergreen
-      env:
-        EVGHOME: ${workdir}/gopath/src/github.com/evergreen-ci/evergreen/
-        SETTINGS_OVERRIDE: gopath/src/github.com/evergreen-ci/evergreen/creds.yml
-        CROSS_TARGET: ${target}
-      command: make run-cross
   set-up-credentials:
     command: subprocess.exec
     type: setup
@@ -264,24 +228,6 @@ tasks:
         vars:
           target: "coverage-html"
           make_args: "-k"
-  - name: dist-test
-    commands:
-      - func: get-project
-      - func: run-make
-        vars:
-          target: "${task_name}"
-      - command: s3.put
-        type: system
-        params:
-          optional: true
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: gopath/src/github.com/evergreen-ci/evergreen/bin/${task_name}.tar.gz
-          remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
-          bucket: mciuploads
-          content_type: application/x-gzip
-          permissions: public-read
-          display_name: dist-test-${distro_id}.tar.gz
   - <<: *run-smoke-test
     name: smoke-test-task
     tags: ["smoke"]
@@ -500,26 +446,6 @@ tasks:
     tags: ["db", "race"]
     name: race-migrations
 
-  # cross compiled test suites
-  - <<: *run-xc-test-suite
-    tags: ["nodb", "xc", "agent"]
-    name: xc-rest-client
-  - <<: *run-xc-test-suite
-    tags: ["nodb", "xc", "agent"]
-    name: xc-subprocess
-  - <<: *run-xc-test-suite-with-mongodb
-    tags: ["xc", "agent"]
-    name: xc-command
-  - <<: *run-xc-test-suite-with-mongodb
-    tags: ["db", "xc", "agent"]
-    name: xc-agent
-  - <<: *run-xc-test-suite-with-mongodb
-    tags: ["db", "xc", "cli"]
-    name: xc-operations
-  - <<: *run-xc-test-suite-with-mongodb
-    tags: ["db", "xc", "agent"]
-    name: xc-util
-
 buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
@@ -530,6 +456,23 @@ buildvariants:
       disable_coverage: yes
       goroot: /opt/go1.8/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
+    tasks:
+      - name: "dist"
+      - name: ".smoke"
+      - name: ".test"
+      - name: "js-test"
+      - name: generate-lint
+
+  - name: archlinux-docker
+    display_name: Archlinux Docker
+    run_on:
+      - archlinux-docker
+    expansions:
+      goos: linux
+      gobin: /opt/go1.8/go/bin/go
+      goroot: /opt/go1.8/go
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      test_timeout: 15m
     tasks:
       - name: "dist"
       - name: ".smoke"
@@ -600,7 +543,6 @@ buildvariants:
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
-      - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
 
@@ -618,10 +560,7 @@ buildvariants:
       goroot: /opt/go1.8/go
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.6.4.tgz
     tasks:
-      - name: "dist-test"
-        distros:
-          - ubuntu1604-test
-      - name: ".xc"
+      - name: ".agent .test"
 
   - name: rhel72-s390x
     display_name: RHEL 7.2 zLinux
@@ -637,10 +576,7 @@ buildvariants:
       goroot: /opt/go1.8/go
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.5.13.tgz
     tasks:
-      - name: "dist-test"
-        distros:
-          - ubuntu1604-test
-      - name: ".xc"
+      - name: ".agent .test"
 
   - name: ubuntu1604-arm64
     display_name: Ubuntu 16.04 ARM
@@ -656,24 +592,4 @@ buildvariants:
       goroot: /opt/go1.8/go
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.5.13.tgz
     tasks:
-      - name: "dist-test"
-        distros:
-          - ubuntu1604-test
-      - name: ".xc"
-
-  - name: archlinux-docker
-    display_name: Archlinux Docker
-    run_on:
-      - archlinux-docker
-    expansions:
-      goos: linux
-      gobin: /opt/go1.8/go/bin/go
-      goroot: /opt/go1.8/go
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
-      test_timeout: 15m
-    tasks:
-      - name: "dist"
-      - name: ".smoke"
-      - name: ".test"
-      - name: "js-test"
-      - name: generate-lint
+      - name: ".agent .test"
