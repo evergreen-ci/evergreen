@@ -266,10 +266,10 @@ lint-%:$(buildDir)/output.%.lint
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testArgs := -v
-testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent
+testArgs := -ldflags=$(ldFlags) -v 
+testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
 ifeq ($(OS),Windows_NT)
-testRunEnv := EVGHOME=$(shell cygpath -m `pwd`)
+testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(shell cygpath -m $(gopath))
 endif
 ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
