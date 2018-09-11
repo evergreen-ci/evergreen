@@ -294,11 +294,12 @@ testArgs += -timeout=$(TEST_TIMEOUT)
 else
 testArgs += -timeout=10m
 endif
+
 #  targets to run any tests in the top-level package
 $(buildDir)/output.%.test:.FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) 2>&1 | tee $@
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
 $(buildDir)/output.%.coverage:.FORCE
-	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$*,) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
