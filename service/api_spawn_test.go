@@ -30,6 +30,7 @@ func TestGetDockerfile(t *testing.T) {
 		"ARG BINARY_NAME",
 		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
 		"RUN chmod +x /root/${BINARY_NAME}",
+		"COPY /root/.ssh /root/.ssh",
 	}
 
 	assert.Equal(strings.Join(parts, "\n"), string(body))
