@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -33,25 +32,13 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 		StartTimeKey: bson.M{
 			"$gt": start,
 		},
+		FinishTimeKey: bson.M{
+			"$lte": end,
+		},
 	}
 
 	if name != "" {
 		match[DisplayNameKey] = name
-	}
-
-	// If we pass zerotime as a starting point then the end time
-	// means "all tasks that finshed after this point," otherwise
-	// it's a window in the conventional sense. The scheduler and
-	// the public function (ExpectedTaskDuration) use the
-	// unconventional sense of window.
-	if start == util.ZeroTime {
-		match[FinishTimeKey] = bson.M{
-			"$gte": end,
-		}
-	} else {
-		match[FinishTimeKey] = bson.M{
-			"$lte": end,
-		}
 	}
 
 	pipeline := []bson.M{
@@ -90,7 +77,7 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 // the average duration - grouped by task display name - for tasks that have
 // completed within a given threshold as determined by the window
 func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (map[string]time.Duration, error) {
-	results, err := getExpectedDurationsForWindow("", project, buildvariant, util.ZeroTime, time.Now().Add(-window))
+	results, err := getExpectedDurationsForWindow("", project, buildvariant, time.Now().Add(-window), time.Now())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
