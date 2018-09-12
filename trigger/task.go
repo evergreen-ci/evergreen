@@ -679,7 +679,6 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if len(testsToAlert) == 0 {
 		return nil, nil
 	}
-	// TODO EVG-3416 use testsToAlert in message formatting
 
 	n, err := t.generate(sub, "")
 	if err != nil {
