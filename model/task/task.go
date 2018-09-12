@@ -24,7 +24,7 @@ const (
 	taskKey  = "task"
 
 	// tasks should be unscheduled after ~a week
-	UnschedulableThreshold = 4 * 24 * time.Hour
+	UnschedulableThreshold = 7 * 24 * time.Hour
 
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
@@ -1460,9 +1460,9 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 	}
 
 	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
-		startAt := time.Now()
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, time.Now().Add(-taskCompletionEstimateWindow), time.Now())
 		grip.Notice(message.WrapError(err, message.Fields{
+
 			"name":      t.DisplayName,
 			"id":        t.Id,
 			"project":   t.Project,
@@ -1481,17 +1481,11 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 			return previous, true
 		}
 
-		grip.Debug(message.Fields{
-			"op":      "refresh cached expected task duration",
-			"dur":     time.Since(startAt).Seconds(),
-			"id":      t.Id,
-			"project": t.Project,
-		})
-
 		ret := time.Duration(vals[0].ExpectedDuration)
 		if ret == 0 {
 			return defaultTaskDuration, true
 		}
+
 		return ret, true
 	}), message.Fields{
 		"message": "problem setting cached value refresher",
