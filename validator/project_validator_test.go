@@ -1947,3 +1947,71 @@ func TestValidateCreateHosts(t *testing.T) {
 	errs = validateCreateHosts(&p)
 	assert.Len(errs, 1)
 }
+
+func TestDuplicateTaskInBV(t *testing.T) {
+	assert := assert.New(t)
+
+	// a bv with the same task in a task group and by itself should error
+	yml := `
+  tasks:
+  - name: t1
+  task_groups:
+  - name: tg1
+    tasks:
+    - t1
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - tg1
+    - t1
+  `
+	var p model.Project
+	err := model.LoadProjectInto([]byte(yml), "", &p)
+	assert.NoError(err)
+	errs := validateDuplicateTaskDefinition(&p)
+	assert.Len(errs, 1)
+	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
+
+	// same as above but reversed in order
+	yml = `
+  tasks:
+  - name: t1
+  task_groups:
+  - name: tg1
+    tasks:
+    - t1
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - t1
+    - tg1
+  `
+	err = model.LoadProjectInto([]byte(yml), "", &p)
+	assert.NoError(err)
+	errs = validateDuplicateTaskDefinition(&p)
+	assert.Len(errs, 1)
+	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
+
+	// a bv with 2 task groups with the same task should error
+	yml = `
+  tasks:
+  - name: t1
+  task_groups:
+  - name: tg1
+    tasks:
+    - t1
+  - name: tg2
+    tasks:
+    - t1
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - tg1
+    - tg2
+  `
+	err = model.LoadProjectInto([]byte(yml), "", &p)
+	assert.NoError(err)
+	errs = validateDuplicateTaskDefinition(&p)
+	assert.Len(errs, 1)
+	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
+}

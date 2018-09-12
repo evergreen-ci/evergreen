@@ -910,6 +910,7 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 		StartTime:           s.task.StartTime.Add(-time.Hour),
 		RevisionOrderNumber: -1,
 		Status:              evergreen.TaskSucceeded,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
 	s.NoError(lastGreen.Insert())

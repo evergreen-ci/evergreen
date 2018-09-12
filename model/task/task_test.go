@@ -1053,7 +1053,7 @@ func TestBulkInsert(t *testing.T) {
 		Id:      "t3",
 		Version: "version",
 	}
-	tasks := Tasks{t1, t2, t3}
+	tasks := Tasks{&t1, &t2, &t3}
 	assert.NoError(tasks.InsertUnordered())
 	dbTasks, err := Find(ByVersion("version"))
 	assert.NoError(err)

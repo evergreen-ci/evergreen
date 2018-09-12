@@ -55,12 +55,15 @@ func SkipWindows(t *testing.T, testName string) {
 func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings, testName string) {
 	// make sure an override file is provided
 	if (*settingsOverride) == "" {
-		msg := "Integration tests need a settings override file to be provided"
 		if os.Getenv(EnvOverride) == "" {
-			panic(msg)
-		} else {
-			*settingsOverride = os.Getenv(EnvOverride)
+			panic("Integration tests need a settings override file to be provided")
 		}
+
+		*settingsOverride = os.Getenv(EnvOverride)
+	}
+
+	if !filepath.IsAbs(*settingsOverride) {
+		*settingsOverride = filepath.Join(evergreen.FindEvergreenHome(), *settingsOverride)
 	}
 
 	// grab the file with the integration test settings

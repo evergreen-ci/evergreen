@@ -180,6 +180,11 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 			continue
 		}
 
+		if len(parser.order) == 0 && len(parser.logs) == 0 {
+			logger.Task().Debugf("go test output file %s did not contain any results", outputFile)
+			continue
+		}
+
 		// build up the test logs
 		logLines := parser.Logs()
 		testLog := model.TestLog{
@@ -188,10 +193,16 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 			TaskExecution: conf.Task.Execution,
 			Lines:         logLines,
 		}
+
 		// save the results
 		results = append(results, ToModelTestResults(parser.Results()).Results)
 		logs = append(logs, testLog)
 
 	}
+
+	if len(results) == 0 && len(logs) == 0 {
+		return nil, nil, errors.New("go test output files contained no results")
+	}
+
 	return logs, results, nil
 }

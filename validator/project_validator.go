@@ -58,6 +58,7 @@ var projectSyntaxValidators = []projectValidator{
 	validateTaskGroups,
 	validateGenerateTasks,
 	validateCreateHosts,
+	validateDuplicateTaskDefinition,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -883,6 +884,48 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 		}
 	}
 	return errs
+}
+
+func validateDuplicateTaskDefinition(p *model.Project) []ValidationError {
+	errors := []ValidationError{}
+
+	for _, bv := range p.BuildVariants {
+		tasksFound := map[string]interface{}{}
+		for _, t := range bv.Tasks {
+
+			if t.IsGroup {
+				tg := p.FindTaskGroup(t.Name)
+				if tg == nil {
+					continue
+				}
+				for _, tgTask := range tg.Tasks {
+					err := checkOrAddTask(tgTask, bv.Name, tasksFound)
+					if err != nil {
+						errors = append(errors, *err)
+					}
+				}
+			} else {
+				err := checkOrAddTask(t.Name, bv.Name, tasksFound)
+				if err != nil {
+					errors = append(errors, *err)
+				}
+			}
+
+		}
+	}
+
+	return errors
+}
+
+func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *ValidationError {
+	if _, found := tasksFound[task]; found {
+		return &ValidationError{
+			Message: fmt.Sprintf("task '%s' in '%s' is listed more than once, likely through a task group", task, variant),
+			Level:   Error,
+		}
+	}
+	tasksFound[task] = nil
+	return nil
 }
 
 func validateGenerateTasks(p *model.Project) []ValidationError {
