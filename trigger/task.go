@@ -429,8 +429,8 @@ func isTaskRegression(subID string, t *task.Task) (bool, *alertrecord.AlertRecor
 		return false, nil, nil
 	}
 
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.RevisionOrderNumber,
-		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project))
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber,
+		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester))
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
 	}
@@ -665,8 +665,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 		return nil, nil
 	}
 
-	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
+	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequester(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.RepotrackerVersionRequester))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}
@@ -822,8 +822,8 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 	if t.task.Status != evergreen.TaskFailed || t.task.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatuses(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project))
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequester(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.RepotrackerVersionRequester))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}

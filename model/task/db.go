@@ -263,20 +263,6 @@ func ByBuildIdAfterTaskId(buildId, taskId string) db.Q {
 	}).Sort([]string{"+" + IdKey})
 }
 
-func ByBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant, displayName, project string) db.Q {
-	return db.Query(bson.M{
-		BuildVariantKey: buildVariant,
-		DisplayNameKey:  displayName,
-		RevisionOrderNumberKey: bson.M{
-			"$lt": revisionOrder,
-		},
-		StatusKey: bson.M{
-			"$in": statuses,
-		},
-		ProjectKey: project,
-	}).Sort([]string{"-" + RevisionOrderNumberKey})
-}
-
 func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayName string, project string) db.Q {
 	return db.Query(bson.M{
 		BuildVariantKey: buildVariant,
@@ -289,6 +275,7 @@ func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string,
 		},
 		ActivatedKey: true,
 		ProjectKey:   project,
+		RequesterKey: evergreen.RepotrackerVersionRequester,
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 

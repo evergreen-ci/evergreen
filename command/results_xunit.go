@@ -109,7 +109,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 
 	reportFilePaths, err := getFilePaths(conf.WorkDir, c.Files)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	var (
@@ -121,10 +121,22 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.New("operation canceled")
 		}
 
+		stat, err := os.Stat(reportFileLoc)
+		if os.IsNotExist(err) {
+			logger.Task().Infof("result file '%s' does not exist", reportFileLoc)
+			continue
+		}
+
+		if stat.IsDir() {
+			logger.Task().Infof("result file '%s' is a directory", reportFileLoc)
+			continue
+		}
+
 		file, err = os.Open(reportFileLoc)
 		if err != nil {
 			return errors.Wrap(err, "couldn't open xunit file")
 		}
+		defer file.Close() // nolint
 
 		testSuites, err = parseXMLResults(file)
 		if err != nil {
@@ -167,6 +179,10 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		}
 	}
 
+	if len(tests) == 0 {
+		return errors.New("no test results found")
+	}
+
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	for i, log := range logs {
@@ -174,12 +190,12 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.New("operation canceled")
 		}
 
-		logId, err := sendJSONLogs(ctx, logger, comm, td, log)
+		logID, err := sendJSONLogs(ctx, logger, comm, td, log)
 		if err != nil {
 			logger.Task().Warningf("problem uploading logs for %s", log.Name)
 			continue
 		}
-		tests[logIdxToTestIdx[i]].LogId = logId
+		tests[logIdxToTestIdx[i]].LogId = logID
 		tests[logIdxToTestIdx[i]].LineNum = 1
 	}
 

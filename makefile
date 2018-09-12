@@ -32,10 +32,6 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 clientSource := cmd/evergreen/evergreen.go
 uiFiles := $(shell find public/static -not -path "./public/static/app" -name "*.js" -o -name "*.css" -o -name "*.html")
 
-xcPackages := agent command operations rest-client subprocess util
-distTestContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/test.$(pkg))
-distTestRaceContents := $(foreach pkg,$(if $(XC_BUILD),$(xcPackages),$(packages)),$(buildDir)/race.$(pkg))
-
 distArtifacts :=  ./public ./service/templates
 distContents := $(clientBinaries) $(distArtifacts)
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
@@ -94,7 +90,7 @@ endif
 cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_DETECTOR),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 phony += cli clis
 # end client build directives
 
@@ -145,9 +141,6 @@ smoke-start-server:$(localClientBinary) load-smoke-data
 #   this block has no project specific configuration but defines
 #   variables that project specific information depends on
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
-raceOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).race)
-testBin := $(foreach target,$(packages),$(buildDir)/test.$(target))
-raceBin := $(foreach target,$(packages),$(buildDir)/race.$(target))
 lintTargets := $(foreach target,$(packages),lint-$(target))
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
@@ -194,14 +187,8 @@ $(buildDir)/make-tarball:cmd/make-tarball/make-tarball.go
 	@GOOS="" GOARCH="" $(gobin) build -o $@ $<
 	@echo $(gobin) build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
-dist-test:$(buildDir)/dist-test.tar.gz
-dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item)) --exclude "public/node_modules"
-$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
-	./$< -name $@ --prefix $(name) $(foreach item,$(distTestContents) $(distContents),--item $(item)) $(foreach item,$(shell find . -maxdepth 2 -type d -name "testdata"),--item $(item)) --item makefile --item scripts --item cmd --item config_test --exclude "public/node_modules"
-$(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
-	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item ./cmd --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/" --exclude "public/node_modules"
 # end main build
 
 
@@ -211,42 +198,17 @@ build-alltests:$(testBin)
 build-all:build-alltests build
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
-race:$(foreach target,$(packages),race-$(target))
 js-test:$(buildDir)/.npmSetup
 	cd $(nodeDir) && ./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
 	@echo -e "test targets:" $(foreach target,$(packages),\\n\\ttest-$(target))
-list-race:
-	@echo -e "test (race detector) targets:" $(foreach target,$(packages),\\n\\trace-$(target))
-phony += lint lint-deps build build-race race test coverage coverage-html list-race list-tests
-.PRECIOUS:$(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
-.PRECIOUS:$(foreach target,$(packages),$(buildDir)/test.$(target))
-.PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
+phony += lint lint-deps build test coverage coverage-html list-tests
+.PRECIOUS:$(testOutput) $(coverageOutput) $(coverageHtmlOutput)
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 .PRECIOUS:$(buildDir)/output.lint
-run-cross:
-	@mkdir -p $(buildDir)
-	$(EVGHOME)/$(buildDir)/$(subst xc-,test.,$(CROSS_TARGET)) $(testArgs) | tee $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
-	@grep -s -q -e "^PASS" $(buildDir)/output.$(subst xc-,,$(CROSS_TARGET)).test
-
 # end front-ends
-
-
-# convenience targets for runing tests and coverage tasks on a
-# specific package.
-race-%:$(buildDir)/output.%.race
-	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
-test-%:$(buildDir)/output.%.test
-	@grep -s -q -e "^PASS" $<
-coverage-%:$(buildDir)/output.%.coverage
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
-html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
-	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
-lint-%:$(buildDir)/output.%.lint
-	@grep -v -s -q "^--- FAIL" $<
-# end convienence targets
 
 
 # start vendoring configuration
@@ -286,67 +248,78 @@ phony += vendor-clean
 # end vendoring tooling configuration
 
 
+# convenience targets for runing tests and coverage tasks on a
+# specific package.
+test-%:$(buildDir)/output.%.test
+	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
+coverage-%:$(buildDir)/output.%.coverage
+	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
+html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
+	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
+lint-%:$(buildDir)/output.%.lint
+	@grep -v -s -q "^--- FAIL" $<
+# end convienence targets
+
+
 # start test and coverage artifacts
 #    This varable includes everything that the tests actually need to
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testArgs := -test.v
-testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent
+testArgs := -ldflags=$(ldFlags) -v
+testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
 ifeq ($(OS),Windows_NT)
-testRunEnv := EVGHOME=$(shell cygpath -m `pwd`)
+testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
 endif
 ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
 endif
 ifneq (,$(RUN_TEST))
-testArgs += -test.run='$(RUN_TEST)'
+testArgs += -run='$(RUN_TEST)'
 endif
 ifneq (,$(RUN_CASE))
 testArgs += -testify.m='$(RUN_CASE)'
 endif
+ifneq (,$(SKIP_LONG))
+testArgs += -short
+endif
 ifneq (,$(RUN_COUNT))
-testArgs += -test.count='$(RUN_COUNT)'
+testArgs += -count='$(RUN_COUNT)'
+endif
+ifneq (,$(RACE_DETECTOR))
+testArgs += -race
 endif
 ifneq (,$(TEST_TIMEOUT))
-testArgs += -test.timeout=$(TEST_TIMEOUT)
+testArgs += -timeout=$(TEST_TIMEOUT)
 else
-testArgs += -test.timeout=10m
+testArgs += -timeout=10m
 endif
-#  targets to compile
-$(buildDir)/test.%:$(testSrcFiles)
-	GOPATH=$(gopath) $(gobin) test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
-$(buildDir)/race.%:$(testSrcFiles)
-	$(gobin) test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
-$(buildDir)/test.$(name):$(testSrcFiles)
-	$(gobin) test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
-$(buildDir)/race.$(name):$(testSrcFiles)
-	$(gobin) test -ldflags=$(ldFlags) -race -c -o $@ ./
-#  targets to run the tests and report the output
-$(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
-$(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+$(buildDir)/:
+	mkdir -p $@
+$(buildDir)/output.%.test:$(buildDir)/ .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
+$(buildDir)/output.%.coverage:$(buildDir)/ .FORCE
+	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
+	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
 $(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
 	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
 $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 #  targets to process and generate coverage reports
-$(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=./$@ 2>&1 | tee $(subst coverage,test,$@)
-	@-[ -f $@ ] && $(gobin) tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(gobin) tool cover -html=$< -o $@
 # end test and coverage artifacts
 
+
 # clean and other utility targets
 clean:
-	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/race.* $(buildDir)/output.* $(clientBuildDir)
+	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/output.* $(clientBuildDir)
 	rm -rf $(gopath)/pkg/
 phony += clean
 # end dependency targets
+
 
 # mongodb utility targets
 mongodb/.get-mongodb:
@@ -363,6 +336,7 @@ check-mongod: mongodb/.get-mongodb
 	./mongodb/mongo --nodb --eval "assert.soon(function(x){try{var d = new Mongo(\"localhost:27017\"); return true}catch(e){return false}}, \"timed out connecting\")"
 	@echo "mongod is up"
 # end mongodb targets
+
 
 # configure special (and) phony targets
 .FORCE:
