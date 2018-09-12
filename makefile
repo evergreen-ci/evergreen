@@ -266,7 +266,7 @@ lint-%:$(buildDir)/output.%.lint
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testArgs := -ldflags=$(ldFlags) -v 
+testArgs := -ldflags=$(ldFlags) -v
 testRunEnv := EVGHOME=$(shell pwd) GOCONVEY_REPORTER=silent GOPATH=$(gopath)
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`) GOPATH=$(gopath)
@@ -294,11 +294,12 @@ testArgs += -timeout=$(TEST_TIMEOUT)
 else
 testArgs += -timeout=10m
 endif
-
 #  targets to run any tests in the top-level package
-$(buildDir)/output.%.test:.FORCE
+$(buildDir)/:
+	mkdir -p $@
+$(buildDir)/output.%.test:$(buildDir)/ .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) 2>&1 | tee $@
-$(buildDir)/output.%.coverage:.FORCE
+$(buildDir)/output.%.coverage:$(buildDir)/ .FORCE
 	$(testRunEnv) $(gobin) test $(testArgs) ./$(if $(subst $(name),,$*),$(subst -,/,$*),) -covermode=count -coverprofile $@ | tee $(buildDir)/output.$*.test
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 #  targets to generate gotest output from the linter.
