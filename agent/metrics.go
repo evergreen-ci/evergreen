@@ -15,6 +15,7 @@ import (
 const (
 	sysInfoCollectorInterval = 30 * time.Second
 	procInfoInterval         = 10 * time.Second
+	metricsCollectionEnabled = false
 )
 
 // metricsCollector holds the functionality for running two system

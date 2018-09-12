@@ -211,13 +211,15 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 		"task_secret": tc.task.Secret,
 	})
 
-	metrics := &metricsCollector{
-		comm:     a.comm,
-		taskData: tc.task,
-	}
+	if metricsCollectionEnabled {
+		metrics := &metricsCollector{
+			comm:     a.comm,
+			taskData: tc.task,
+		}
 
-	if err = metrics.start(ctx); err != nil {
-		return errors.Wrap(err, "problem setting up metrics collection")
+		if err = metrics.start(ctx); err != nil {
+			return errors.Wrap(err, "problem setting up metrics collection")
+		}
 	}
 
 	// Defers are LIFO. We cancel all agent task threads, then any procs started by the agent, then remove the task directory.
