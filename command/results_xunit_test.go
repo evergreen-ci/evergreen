@@ -147,7 +147,7 @@ func TestParseAndUpload(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "failed to setup test data")
 
 	conf := modelData.TaskConfig
-	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "command", "testdata", "xunit")
+	conf.WorkDir = filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit")
 	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 	err = xr.parseAndUploadResults(ctx, conf, logger, comm)
