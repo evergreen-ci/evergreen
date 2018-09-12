@@ -36,7 +36,7 @@ const (
 	defaultTaskDuration = 10 * time.Minute
 
 	// length of time to cache the expected duration in the task document
-	predictionTTL = 15 * time.Minute
+	predictionTTL = 8 * time.Hour
 
 	taskBlocked = "blocked"
 	taskPending = "pending"
@@ -1462,7 +1462,6 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
 		vals, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, time.Now().Add(-taskCompletionEstimateWindow), time.Now())
 		grip.Notice(message.WrapError(err, message.Fields{
-
 			"name":      t.DisplayName,
 			"id":        t.Id,
 			"project":   t.Project,
@@ -1485,7 +1484,6 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 		if ret == 0 {
 			return defaultTaskDuration, true
 		}
-
 		return ret, true
 	}), message.Fields{
 		"message": "problem setting cached value refresher",
