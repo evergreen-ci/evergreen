@@ -109,7 +109,7 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 		ID:             t.host.Id,
 		Distro:         t.host.Distro.Id,
 		ExpirationTime: t.host.ExpirationTime,
-		URL:            fmt.Sprintf("%s/ui/spawn", t.hostBase.uiConfig.Url),
+		URL:            fmt.Sprintf("%s/spawn", t.hostBase.uiConfig.Url),
 	}
 	t.event = e
 	return nil
