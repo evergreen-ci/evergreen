@@ -34,7 +34,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "linux-64", configFile, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
 		conf := modelData.TaskConfig
-		conf.WorkDir = "."
+		conf.WorkDir = pwd
 		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 		conf.Expansions.Update(map[string]string{
