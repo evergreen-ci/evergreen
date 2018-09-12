@@ -2,10 +2,11 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -15,7 +16,7 @@ func Validate() cli.Command {
 		Name:   "validate",
 		Usage:  "verify that an evergreen project config is valid",
 		Flags:  addPathFlag(),
-		Before: requirePathFlag,
+		Before: mergeBeforeFuncs(setPlainLogger, requirePathFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			path := c.String(pathFlagName)
@@ -35,36 +36,39 @@ func Validate() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			confFile, err := ioutil.ReadFile(path)
+			fileInfo, err := os.Stat(path)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "problem getting file info")
 			}
 
-			projErrors, err := ac.ValidateLocalConfig(confFile)
-			if err != nil {
-				return nil
-			}
-			numErrors, numWarnings := 0, 0
-			if len(projErrors) > 0 {
-				for i, e := range projErrors {
-					if e.Level == validator.Warning {
-						numWarnings++
-					} else if e.Level == validator.Error {
-						numErrors++
-					}
-					fmt.Printf("%v) %v: %v\n\n", i+1, e.Level, e.Message)
+			if fileInfo.Mode()&os.ModeDir != 0 { // directory
+				files, err := ioutil.ReadDir(path)
+				if err != nil {
+					return errors.Wrap(err, "problem reading directory")
 				}
-
-				if numErrors > 0 {
-					return errors.Errorf("Project file has %d warnings, %d errors.", numWarnings, numErrors)
+				catcher := grip.NewSimpleCatcher()
+				for _, file := range files {
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac))
 				}
-
-				fmt.Printf("Project file has %d unresolved warnings! Please address these soon.\n", numWarnings)
-				return nil
+				return catcher.Resolve()
 			}
-			fmt.Println("Valid!")
-			return nil
 
+			return validateFile(path, ac)
 		},
 	}
+}
+
+func validateFile(path string, ac *legacyClient) error {
+	confFile, err := ioutil.ReadFile(path)
+	if err != nil {
+		return errors.Wrap(err, "problem reading file")
+	}
+
+	projErrors, err := ac.ValidateLocalConfig(confFile)
+	if err != nil {
+		return nil
+	}
+	grip.Info(path)
+	grip.Info(projErrors)
+	return nil
 }
