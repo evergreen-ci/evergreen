@@ -53,6 +53,9 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 			},
 		},
 		{
+			"$sample": 1000,
+		},
+		{
 			"$group": bson.M{
 				"_id": fmt.Sprintf("$%v", DisplayNameKey),
 				"exp_dur": bson.M{
