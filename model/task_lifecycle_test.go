@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -342,7 +343,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		So(previousTask.Insert(), ShouldBeNil)
 		So(currentTask.Insert(), ShouldBeNil)
 		Convey("activating a previous task should set the previous task's active field to true", func() {
-			So(DeactivatePreviousTasks(currentTask.Id, userName), ShouldBeNil)
+			So(DeactivatePreviousTasks(currentTask, userName), ShouldBeNil)
 			var err error
 			previousTask, err = task.FindOne(task.ById(previousTask.Id))
 			So(err, ShouldBeNil)
@@ -482,7 +483,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		So(et3.Insert(), ShouldBeNil)
 		So(et4.Insert(), ShouldBeNil)
 		Convey("deactivating a display task should deactivate its child tasks", func() {
-			So(DeactivatePreviousTasks(dt2.Id, userName), ShouldBeNil)
+			So(DeactivatePreviousTasks(dt2, userName), ShouldBeNil)
 			dbTask, err := task.FindOne(task.ById(dt1.Id))
 			So(err, ShouldBeNil)
 			So(dbTask.Activated, ShouldBeFalse)
@@ -2215,4 +2216,167 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	oldTask, err := task.FindOneOld(task.ById("dt_0"))
 	assert.NoError(err)
 	assert.Equal(detail.Description, oldTask.Details.Description)
+}
+
+func TestEvalStepback(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, distro.Collection, build.Collection))
+	yml := `
+stepback: true
+buildvariants:
+- name: "bv"
+  run_on: distro
+  tasks:
+  - name: task
+  - name: generator
+tasks:
+- name: task
+- name: generator
+  `
+	proj := ProjectRef{
+		Identifier:  "proj",
+		LocalConfig: yml,
+	}
+	assert.NoError(proj.Insert())
+	d := distro.Distro{
+		Id: "distro",
+	}
+	assert.NoError(d.Insert())
+	stepbackTask := task.Task{
+		Id:                  "t2",
+		BuildId:             "b2",
+		Status:              evergreen.TaskUndispatched,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           false,
+		RevisionOrderNumber: 2,
+		DispatchTime:        util.ZeroTime,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(stepbackTask.Insert())
+	b2 := build.Build{
+		Id:           "b2",
+		BuildVariant: "bv",
+		Tasks:        []build.TaskCache{{Id: "t2"}},
+	}
+	assert.NoError(b2.Insert())
+	finishedTask := task.Task{
+		Id:                  "t3",
+		BuildId:             "b3",
+		Status:              evergreen.TaskUndispatched,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 3,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(finishedTask.Insert())
+	b3 := build.Build{
+		Id:           "b3",
+		BuildVariant: "bv",
+		Tasks:        []build.TaskCache{{Id: "t3"}},
+	}
+	assert.NoError(b3.Insert())
+
+	// should not step back if there was never a successful task
+	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskFailed, false))
+	checkTask, err := task.FindOneId(stepbackTask.Id)
+	assert.NoError(err)
+	assert.False(checkTask.Activated)
+
+	// should step back if there is one
+	prevComplete := task.Task{
+		Id:                  "t1",
+		BuildId:             "b1",
+		Status:              evergreen.TaskSucceeded,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(prevComplete.Insert())
+	b1 := build.Build{
+		Id:           "b1",
+		BuildVariant: "bv",
+		Tasks:        []build.TaskCache{{Id: "t1"}, {Id: "g1"}},
+	}
+	assert.NoError(b1.Insert())
+	assert.NoError(evalStepback(&finishedTask, "", evergreen.TaskFailed, false))
+	checkTask, err = task.FindOneId(stepbackTask.Id)
+	assert.NoError(err)
+	assert.True(checkTask.Activated)
+
+	// generated task should step back its generator
+	prevComplete = task.Task{
+		Id:                  "g1",
+		BuildId:             "b1",
+		Status:              evergreen.TaskSucceeded,
+		BuildVariant:        "bv",
+		DisplayName:         "generator",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(prevComplete.Insert())
+	stepbackTask = task.Task{
+		Id:                  "g4",
+		BuildId:             "b4",
+		Status:              evergreen.TaskUndispatched,
+		BuildVariant:        "bv",
+		DisplayName:         "generator",
+		Project:             "proj",
+		Activated:           false,
+		RevisionOrderNumber: 4,
+		DispatchTime:        util.ZeroTime,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(stepbackTask.Insert())
+	b4 := build.Build{
+		Id:           "b4",
+		BuildVariant: "bv",
+		Tasks:        []build.TaskCache{{Id: "g4"}},
+	}
+	assert.NoError(b4.Insert())
+	generator := task.Task{
+		Id:                  "g5",
+		BuildId:             "b5",
+		Status:              evergreen.TaskSucceeded,
+		BuildVariant:        "bv",
+		DisplayName:         "generator",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 5,
+		DispatchTime:        util.ZeroTime,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(generator.Insert())
+	generated := task.Task{
+		Id:                  "t5",
+		BuildId:             "b5",
+		Status:              evergreen.TaskFailed,
+		BuildVariant:        "bv",
+		DisplayName:         "task",
+		Project:             "proj",
+		Activated:           true,
+		RevisionOrderNumber: 5,
+		GeneratedBy:         "g5",
+		DispatchTime:        util.ZeroTime,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(generated.Insert())
+	b5 := build.Build{
+		Id:           "b5",
+		BuildVariant: "bv",
+		Tasks:        []build.TaskCache{{Id: "g5"}},
+	}
+	assert.NoError(b5.Insert())
+	assert.NoError(evalStepback(&generated, "", evergreen.TaskFailed, false))
+	checkTask, err = task.FindOneId(stepbackTask.Id)
+	assert.NoError(err)
+	assert.True(checkTask.Activated)
 }
