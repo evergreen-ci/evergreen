@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -23,6 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -31,6 +33,7 @@ import (
 
 type GitGetProjectSuite struct {
 	suite.Suite
+	settings *evergreen.Settings
 
 	modelData1 *modelutil.TestModelData // test model for TestGitPlugin
 	modelData2 *modelutil.TestModelData // test model for TestValidateGitCommands
@@ -43,30 +46,37 @@ func init() {
 }
 
 func TestGitGetProjectSuite(t *testing.T) {
-	suite.Run(t, new(GitGetProjectSuite))
+	s := new(GitGetProjectSuite)
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestGitGetProjectSuite")
+	s.settings = settings
+
+	suite.Run(t, s)
 }
 
 func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
 		version.Collection, host.Collection, model.TaskLogCollection))
 	var err error
-	testConfig := testutil.TestConfig()
 	s.NoError(err)
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
-	s.modelData1, err = modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath1, modelutil.NoPatch)
+	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "test", "rhel55", configPath1, modelutil.NoPatch)
 	s.NoError(err)
+	s.modelData1.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 
-	s.modelData2, err = modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "test", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
+	s.modelData2.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.modelData2.TaskConfig.BuildVariant.Modules = []string{"sample"}
 	err = plugintest.SetupPatchData(s.modelData1, patchPath, s.T())
 	s.NoError(err)
 
-	s.modelData3, err = modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "test", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
+	s.modelData3.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.modelData3.TaskConfig.GithubPatchData = patch.GithubPatch{
 		PRNumber:   9001,
 		BaseOwner:  "evergreen-ci",

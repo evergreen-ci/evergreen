@@ -21,13 +21,14 @@ import (
 )
 
 func TestPatchPluginAPI(t *testing.T) {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPluginAPI")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
-	testConfig := testutil.TestConfig()
 	cwd := testutil.GetDirectoryOfFile()
 
 	// skipping because, to work, this test requires that the
@@ -39,7 +40,8 @@ func TestPatchPluginAPI(t *testing.T) {
 		patchFile := filepath.Join(cwd, "testdata", "git", "test.patch")
 
 		testCommand := &gitFetchProject{Directory: "dir"}
-		modelData, err := modelutil.SetupAPITestData(testConfig, "testTask", "testvar", configPath, modelutil.NoPatch)
+		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.NoPatch)
+		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 		err = plugintest.SetupPatchData(modelData, patchFile, t)
@@ -90,11 +92,12 @@ func TestPatchPluginAPI(t *testing.T) {
 }
 
 func TestPatchPlugin(t *testing.T) {
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestPatchPlugin")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cwd := testutil.GetDirectoryOfFile()
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	db.SetGlobalSessionProvider(settings.SessionFactory())
 	Convey("With patch plugin installed into plugin registry", t, func() {
 		testutil.HandleTestingErr(db.Clear(version.Collection), t,
 			"unable to clear versions collection")
@@ -105,7 +108,8 @@ func TestPatchPlugin(t *testing.T) {
 
 		patchFile := filepath.Join(cwd, "testdata", "git", "testmodule.patch")
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")
-		modelData, err := modelutil.SetupAPITestData(testConfig, "testTask", "testvar", configPath, modelutil.InlinePatch)
+		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.InlinePatch)
+		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 		err = plugintest.SetupPatchData(modelData, patchFile, t)
