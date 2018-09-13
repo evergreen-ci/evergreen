@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 )
 
 type taskGroupData struct {
@@ -25,7 +28,10 @@ type taskGroupData struct {
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
 	newHostsNeeded := 0
+	startAt := time.Now()
 	groupedData := groupByTaskGroup(hostAllocatorData.existingHosts, hostAllocatorData.taskQueueItems)
+	groupDataRuntime := time.Since(startAt)
+	startAt = time.Now()
 	for tg, data := range groupedData {
 		var maxHosts int
 		if tg == "" {
@@ -53,12 +59,16 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 		// add up total number of hosts needed for all groups
 		newHostsNeeded += newHosts
 	}
+	calcRuntime := time.Since(startAt)
 
 	grip.Info(message.Fields{
-		"runner":        RunnerName,
-		"distro":        hostAllocatorData.distro.Id,
-		"num_new_hosts": newHostsNeeded,
-		"message":       "requesting new hosts",
+		"runner":         RunnerName,
+		"distro":         hostAllocatorData.distro.Id,
+		"num_new_hosts":  newHostsNeeded,
+		"message":        "requesting new hosts",
+		"group_dur_secs": groupDataRuntime.Seconds(),
+		"group_num":      len(groupedData),
+		"calc_dur_secs":  calcRuntime.Seconds(),
 	})
 
 	return newHostsNeeded, nil
@@ -123,6 +133,7 @@ func makeTaskGroupString(group, bv, project, version string) string {
 func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model.TaskQueueItem, existingHosts []host.Host,
 	freeHostFraction float64, usesContainers bool, containerPool *evergreen.ContainerPool, maxHosts int) (int, error) {
 
+	evalStartAt := time.Now()
 	if !d.IsEphemeral() {
 		return 0, nil
 	}
@@ -149,25 +160,15 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	scheduledTasksDuration := calcScheduledTasksDuration(newTaskQueue)
 
 	// determine how many free hosts we have that are already up
+	startAt := time.Now()
 	numFreeHosts, err := calcExistingFreeHosts(existingHosts, freeHostFraction, maxDuration)
 	if err != nil {
 		return numNewHosts, err
 	}
+	freeHostDur := time.Since(startAt)
 
 	// calculate how many new hosts are needed (minus the hosts for long tasks)
 	numNewHosts = calcNewHostsNeeded(scheduledTasksDuration, maxDuration, numFreeHosts, hostsForLongTasks)
-
-	// calculate the same values for 0 and 1 values of the fraction (just for reporting purposes)
-	freeHostsIfZero, err := calcExistingFreeHosts(existingHosts, 0, maxDuration)
-	if err != nil {
-		return numNewHosts, err
-	}
-	freeHostsIfOne, err := calcExistingFreeHosts(existingHosts, 1, maxDuration)
-	if err != nil {
-		return numNewHosts, err
-	}
-	newHostsIfZero := calcNewHostsNeeded(scheduledTasksDuration, maxDuration, freeHostsIfZero, hostsForLongTasks)
-	newHostsIfOne := calcNewHostsNeeded(scheduledTasksDuration, maxDuration, freeHostsIfOne, hostsForLongTasks)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > len(taskQueue) {
@@ -205,6 +206,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 	for _, t := range taskQueue {
 		queueTasks = append(queueTasks, t.Id)
 	}
+
 	grip.Info(message.Fields{
 		"message":                      "queue state report",
 		"runner":                       RunnerName,
@@ -219,10 +221,8 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskQueue []model
 		"long_tasks":                   hostsForLongTasks,
 		"scheduled_tasks_runtime":      int64(scheduledTasksDuration),
 		"scheduled_tasks_runtime_span": scheduledTasksDuration.String(),
-		"free_hosts_if_zero_factor":    freeHostsIfZero,
-		"free_hosts_if_one_factor":     freeHostsIfOne,
-		"new_hosts_if_zero_factor":     newHostsIfZero,
-		"new_hosts_if_one_factor":      newHostsIfOne,
+		"op_dur_free_host_secs":        freeHostDur.Seconds(),
+		"op_dur_total_secs":            time.Since(evalStartAt).Seconds(),
 	})
 
 	return numNewHosts, nil
@@ -293,7 +293,6 @@ func calcExistingFreeHosts(existingHosts []host.Host, freeHostFactor float64, ma
 // the final value is scaled by some fraction representing how confident we are that
 // the hosts will actually be free in the expected amount of time
 func getSoonToBeFreeHosts(existingHosts []host.Host, freeHostFactor float64, maxDurationPerHost time.Duration) (float64, error) {
-	var freeHosts float64
 	runningTaskIds := []string{}
 
 	for _, existingDistroHost := range existingHosts {
@@ -303,31 +302,55 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, freeHostFactor float64, max
 	}
 
 	if len(runningTaskIds) == 0 {
-		return freeHosts, nil
+		return 0.0, nil
 	}
 
 	runningTasks, err := task.Find(task.ByIds(runningTaskIds))
 	if err != nil {
-		return freeHosts, err
+		return 0.0, err
 	}
 
+	nums := make(chan float64, len(runningTasks))
+	source := make(chan task.Task, len(runningTasks))
 	for _, t := range runningTasks {
-		expectedDuration := t.FetchExpectedDuration()
-		elapsedTime := time.Since(t.StartTime)
-		timeLeft := expectedDuration - elapsedTime
-
-		// calculate what fraction of the host will be free within the max duration.
-		// for example if we estimate 20 minutes left on the task and the target duration
-		// for tasks is 30 minutes, assume that this host can be 1/3 of a free host
-		freeHostFraction := float64(maxDurationPerHost-timeLeft) / float64(maxDurationPerHost)
-		if freeHostFraction < 0 {
-			freeHostFraction = 0
-		}
-		if freeHostFraction > 1 {
-			freeHostFraction = 1
-		}
-		freeHosts += freeHostFactor * freeHostFraction // tune this by the free host factor
+		source <- t
 	}
+	close(source)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(runtime.NumCPU())
+
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go func() {
+			defer recovery.LogStackTraceAndContinue("panic during free host calculation")
+			defer wg.Done()
+			for t := range source {
+				expectedDuration := t.FetchExpectedDuration()
+				elapsedTime := time.Since(t.StartTime)
+				timeLeft := expectedDuration - elapsedTime
+
+				// calculate what fraction of the host will be free within the max duration.
+				// for example if we estimate 20 minutes left on the task and the target duration
+				// for tasks is 30 minutes, assume that this host can be 1/3 of a free host
+				freeHostFraction := float64(maxDurationPerHost-timeLeft) / float64(maxDurationPerHost)
+				if freeHostFraction < 0 {
+					freeHostFraction = 0
+				}
+				if freeHostFraction > 1 {
+					freeHostFraction = 1
+				}
+				nums <- freeHostFactor * freeHostFraction // tune this by the free host factor
+			}
+		}()
+	}
+	wg.Wait()
+	close(nums)
+
+	var freeHosts float64
+	for n := range nums {
+		freeHosts += n
+	}
+
 	return freeHosts, nil
 }
 
