@@ -11,7 +11,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) []ValidationError
+type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) ValidationErrors
 
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
@@ -25,8 +25,8 @@ var distroSyntaxValidators = []distroValidator{
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
 // a slice of any validation errors found.
-func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]ValidationError, error) {
-	validationErrs := []ValidationError{}
+func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, newDistro bool) (ValidationErrors, error) {
+	validationErrs := ValidationErrors{}
 	distroIds := []string{}
 	var err error
 	if newDistro {
@@ -45,9 +45,9 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 }
 
 // ensureStaticHostsAreNotSpawnable makes sure that any static distro cannot also be spawnable.
-func ensureStaticHostsAreNotSpawnable(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureStaticHostsAreNotSpawnable(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if d.SpawnAllowed && d.Provider == evergreen.ProviderNameStatic {
-		return []ValidationError{
+		return ValidationErrors{
 			{
 				Message: fmt.Sprintf("static distro %s cannot be spawnable", d.Id),
 				Level:   Error,
@@ -59,8 +59,8 @@ func ensureStaticHostsAreNotSpawnable(ctx context.Context, d *distro.Distro, s *
 }
 
 // ensureHasRequiredFields check that the distro configuration has all the required fields
-func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
-	errs := []ValidationError{}
+func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	errs := ValidationErrors{}
 
 	if d.Id == "" {
 		errs = append(errs, ValidationError{
@@ -134,40 +134,40 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 }
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
-func ensureUniqueId(d *distro.Distro, distroIds []string) []ValidationError {
+func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
 	if util.StringSliceContains(distroIds, d.Id) {
-		return []ValidationError{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
+		return ValidationErrors{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}
 	return nil
 }
 
 // ensureValidExpansions checks that no expansion option key is blank.
-func ensureValidExpansions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureValidExpansions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	for _, e := range d.Expansions {
 		if e.Key == "" {
-			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank expansion key")}}
+			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank expansion key")}}
 		}
 	}
 	return nil
 }
 
 // ensureValidSSHOptions checks that no SSH option key is blank.
-func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	for _, o := range d.SSHOptions {
 		if o == "" {
-			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
+			return ValidationErrors{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
 		}
 	}
 	return nil
 }
 
-func ensureHasNonZeroID(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureHasNonZeroID(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if d == nil {
-		return []ValidationError{{Error, "distro cannot be nil"}}
+		return ValidationErrors{{Error, "distro cannot be nil"}}
 	}
 
 	if d.Id == "" {
-		return []ValidationError{{Error, "distro must specify id"}}
+		return ValidationErrors{{Error, "distro must specify id"}}
 	}
 
 	return nil
@@ -175,17 +175,17 @@ func ensureHasNonZeroID(ctx context.Context, d *distro.Distro, s *evergreen.Sett
 
 // ensureValidContainerPool checks that a distro's container pool exists and
 // has a valid distro capable of hosting containers
-func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureValidContainerPool(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
 	if d.ContainerPool != "" {
 		// check if container pool exists
 		pool := s.ContainerPools.GetContainerPool(d.ContainerPool)
 		if pool == nil {
-			return []ValidationError{{Error, "distro container pool does not exist"}}
+			return ValidationErrors{{Error, "distro container pool does not exist"}}
 		}
 		// warn if container pool exists without valid distro
 		err := distro.ValidateContainerPoolDistros(s)
 		if err != nil {
-			return []ValidationError{{Error, "error in container pool settings: " + err.Error()}}
+			return ValidationErrors{{Error, "error in container pool settings: " + err.Error()}}
 		}
 	}
 	return nil

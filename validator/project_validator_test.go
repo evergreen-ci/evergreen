@@ -38,7 +38,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, []ValidationError{})
+			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
 			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
 		})
 
@@ -58,7 +58,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldResemble, []ValidationError{})
+			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
 			So(len(verifyTaskDependencies(project)), ShouldEqual, 0)
 		})
 
@@ -76,7 +76,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, []ValidationError{})
+			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
 			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
 		})
 
@@ -97,7 +97,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldNotResemble, []ValidationError{})
+			So(verifyTaskDependencies(project), ShouldNotResemble, ValidationErrors{})
 			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
 		})
 
@@ -118,7 +118,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskDependencies(project), ShouldResemble, []ValidationError{})
+			So(verifyTaskDependencies(project), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -149,7 +149,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 3)
 		})
 
@@ -174,7 +174,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
 		})
 
@@ -195,7 +195,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
 		})
 
@@ -228,7 +228,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 						Tasks: []model.BuildVariantTaskUnit{{Name: "testSpecial"}}},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
 		})
 
@@ -255,16 +255,16 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
 
 			project.BuildVariants[0].Tasks[0].DependsOn = nil
 			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskUnitDependency{{Name: "NOPE"}}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
 
 			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskUnitDependency{{Name: "compile", Variant: "bvNOPE"}}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
 		})
 
@@ -309,7 +309,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 4)
 		})
 
@@ -345,7 +345,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 3)
 		})
 
@@ -369,7 +369,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
 		})
 
@@ -405,7 +405,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 				},
 			}
-			So(checkDependencyGraph(project), ShouldResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if there is no cycle in the cross-variant dependency graph, no error should"+
@@ -440,7 +440,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if there is no cycle in the * dependency graph, no error should be returned", func() {
@@ -472,7 +472,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("if there is no cycle in the ** dependency graph, no error should be returned", func() {
@@ -504,7 +504,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 			}
 
-			So(checkDependencyGraph(project), ShouldResemble, []ValidationError{})
+			So(checkDependencyGraph(project), ShouldResemble, ValidationErrors{})
 		})
 
 	})
@@ -525,7 +525,7 @@ func TestVerifyTaskRequirements(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskRequirements(p), ShouldNotResemble, []ValidationError{})
+			So(verifyTaskRequirements(p), ShouldNotResemble, ValidationErrors{})
 			So(len(verifyTaskRequirements(p)), ShouldEqual, 2)
 		})
 		Convey("projects with requirements for non-existing variants should error", func() {
@@ -541,7 +541,7 @@ func TestVerifyTaskRequirements(t *testing.T) {
 					},
 				},
 			}
-			So(verifyTaskRequirements(p), ShouldNotResemble, []ValidationError{})
+			So(verifyTaskRequirements(p), ShouldNotResemble, ValidationErrors{})
 			So(len(verifyTaskRequirements(p)), ShouldEqual, 2)
 		})
 		Convey("projects with requirements for a normal project configuration should pass", func() {
@@ -566,7 +566,7 @@ func TestVerifyTaskRequirements(t *testing.T) {
 					{Name: "v2", Tasks: all},
 				},
 			}
-			So(verifyTaskRequirements(p), ShouldResemble, []ValidationError{})
+			So(verifyTaskRequirements(p), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -581,7 +581,7 @@ func TestValidateBVNames(t *testing.T) {
 				},
 			}
 			validationResults := validateBVNames(project)
-			So(validationResults, ShouldNotResemble, []ValidationError{})
+			So(validationResults, ShouldNotResemble, ValidationErrors{})
 			So(len(validationResults), ShouldEqual, 1)
 			So(validationResults[0].Level, ShouldEqual, Error)
 		})
@@ -619,7 +619,7 @@ func TestValidateBVNames(t *testing.T) {
 					{Name: "windows"},
 				},
 			}
-			So(validateBVNames(project), ShouldNotResemble, []ValidationError{})
+			So(validateBVNames(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateBVNames(project)), ShouldEqual, 2)
 		})
 
@@ -631,7 +631,7 @@ func TestValidateBVNames(t *testing.T) {
 					{Name: "windows"},
 				},
 			}
-			So(validateBVNames(project), ShouldResemble, []ValidationError{})
+			So(validateBVNames(project), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -651,7 +651,7 @@ func TestValidateBVTaskNames(t *testing.T) {
 					},
 				},
 			}
-			So(validateBVTaskNames(project), ShouldNotResemble, []ValidationError{})
+			So(validateBVTaskNames(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateBVTaskNames(project)), ShouldEqual, 1)
 		})
 
@@ -670,7 +670,7 @@ func TestValidateBVTaskNames(t *testing.T) {
 					},
 				},
 			}
-			So(validateBVTaskNames(project), ShouldNotResemble, []ValidationError{})
+			So(validateBVTaskNames(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateBVTaskNames(project)), ShouldEqual, 2)
 		})
 
@@ -687,7 +687,7 @@ func TestValidateBVTaskNames(t *testing.T) {
 					},
 				},
 			}
-			So(validateBVTaskNames(project), ShouldResemble, []ValidationError{})
+			So(validateBVTaskNames(project), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -709,7 +709,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					},
 				}
 				So(checkAllDependenciesSpec(project), ShouldNotResemble,
-					[]ValidationError{})
+					ValidationErrors{})
 				So(len(checkAllDependenciesSpec(project)), ShouldEqual, 1)
 			})
 		Convey("if a task references only all dependencies, no error should "+
@@ -724,7 +724,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					},
 				},
 			}
-			So(checkAllDependenciesSpec(project), ShouldResemble, []ValidationError{})
+			So(checkAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("if a task references any other dependencies, no error should "+
 			"be returned", func() {
@@ -738,7 +738,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					},
 				},
 			}
-			So(checkAllDependenciesSpec(project), ShouldResemble, []ValidationError{})
+			So(checkAllDependenciesSpec(project), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -752,7 +752,7 @@ func TestValidateProjectTaskNames(t *testing.T) {
 					{Name: "compile"},
 				},
 			}
-			So(validateProjectTaskNames(project), ShouldNotResemble, []ValidationError{})
+			So(validateProjectTaskNames(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateProjectTaskNames(project)), ShouldEqual, 1)
 		})
 		Convey("ensure unique task names do not throw an error", func() {
@@ -761,7 +761,7 @@ func TestValidateProjectTaskNames(t *testing.T) {
 					{Name: "compile"},
 				},
 			}
-			So(validateProjectTaskNames(project), ShouldResemble, []ValidationError{})
+			So(validateProjectTaskNames(project), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -774,7 +774,7 @@ func TestValidateProjectTaskIdsAndTags(t *testing.T) {
 					{Name: "compile", Tags: []string{"a", "!b", "ccc ccc", "d", ".e", "f\tf"}},
 				},
 			}
-			So(validateProjectTaskIdsAndTags(project), ShouldNotResemble, []ValidationError{})
+			So(validateProjectTaskIdsAndTags(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateProjectTaskIdsAndTags(project)), ShouldEqual, 4)
 		})
 		Convey("ensure bad task names throw an error", func() {
@@ -786,7 +786,7 @@ func TestValidateProjectTaskIdsAndTags(t *testing.T) {
 					{Name: "Fun!"},
 				},
 			}
-			So(validateProjectTaskIdsAndTags(project), ShouldNotResemble, []ValidationError{})
+			So(validateProjectTaskIdsAndTags(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validateProjectTaskIdsAndTags(project)), ShouldEqual, 2)
 		})
 	})
@@ -801,7 +801,7 @@ func TestCheckTaskCommands(t *testing.T) {
 					{Name: "compile"},
 				},
 			}
-			So(checkTaskCommands(project), ShouldNotResemble, []ValidationError{})
+			So(checkTaskCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(checkTaskCommands(project)), ShouldEqual, 1)
 		})
 		Convey("ensure tasks that have at least one command do not throw any errors",
@@ -821,7 +821,7 @@ func TestCheckTaskCommands(t *testing.T) {
 						},
 					},
 				}
-				So(validateProjectTaskNames(project), ShouldResemble, []ValidationError{})
+				So(validateProjectTaskNames(project), ShouldResemble, ValidationErrors{})
 			})
 		Convey("ensure that plugin commands have setup type",
 			func() {
@@ -841,7 +841,7 @@ func TestCheckTaskCommands(t *testing.T) {
 						},
 					},
 				}
-				So(validateProjectTaskNames(project), ShouldResemble, []ValidationError{})
+				So(validateProjectTaskNames(project), ShouldResemble, ValidationErrors{})
 			})
 	})
 }
@@ -867,7 +867,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				},
 			}
 			So(ensureReferentialIntegrity(project, distroIds), ShouldNotResemble,
-				[]ValidationError{})
+				ValidationErrors{})
 			So(len(ensureReferentialIntegrity(project, distroIds)), ShouldEqual, 1)
 		})
 
@@ -887,7 +887,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				},
 			}
 			So(ensureReferentialIntegrity(project, distroIds), ShouldResemble,
-				[]ValidationError{})
+				ValidationErrors{})
 		})
 
 		Convey("an error should be thrown if a referenced distro for a "+
@@ -901,7 +901,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				},
 			}
 			So(ensureReferentialIntegrity(project, distroIds), ShouldNotResemble,
-				[]ValidationError{})
+				ValidationErrors{})
 			So(len(ensureReferentialIntegrity(project, distroIds)), ShouldEqual, 1)
 		})
 
@@ -915,7 +915,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, distroIds), ShouldResemble, []ValidationError{})
+			So(ensureReferentialIntegrity(project, distroIds), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -937,7 +937,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
 		Convey("an error should be thrown if a referenced function command is invalid (invalid params)", func() {
@@ -953,7 +953,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if a function plugin command is valid", func() {
@@ -969,7 +969,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if a function 'a' references "+
 			"any another function", func() {
@@ -994,7 +994,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
 		Convey("errors should be thrown if a function 'a' references "+
@@ -1012,7 +1012,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 2)
 		})
 
@@ -1027,7 +1027,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if a referenced pre plugin command is valid", func() {
@@ -1044,7 +1044,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if a referenced post plugin command is invalid", func() {
 			project := &model.Project{
@@ -1058,7 +1058,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if a referenced post plugin command is valid", func() {
@@ -1075,7 +1075,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if a referenced timeout plugin command is invalid", func() {
 			project := &model.Project{
@@ -1089,7 +1089,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if a referenced timeout plugin command is valid", func() {
@@ -1107,7 +1107,7 @@ func TestValidatePluginCommands(t *testing.T) {
 				},
 			}
 
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("no error should be thrown if a referenced plugin for a task does exist", func() {
 			project := &model.Project{
@@ -1128,7 +1128,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("no error should be thrown if a referenced plugin that exists contains unneeded parameters", func() {
 			project := &model.Project{
@@ -1150,7 +1150,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if a referenced plugin contains invalid parameters", func() {
 			params := map[string]interface{}{
@@ -1183,7 +1183,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldNotResemble, ValidationErrors{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
 		Convey("no error should be thrown if a referenced plugin that "+
@@ -1219,7 +1219,7 @@ func TestValidatePluginCommands(t *testing.T) {
 						},
 					},
 				}
-				So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+				So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 			})
 		Convey("no error should be thrown if a referenced plugin contains all "+
 			"the necessary and valid parameters", func() {
@@ -1253,7 +1253,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -1279,7 +1279,7 @@ func TestCheckProjectSyntax(t *testing.T) {
 
 	verrs, err := CheckProjectSyntax(project)
 	assert.NoError(err)
-	assert.Equal([]ValidationError{}, verrs)
+	assert.Equal(ValidationErrors{}, verrs)
 
 	assert.NoError(db.Clear(distro.Collection))
 }
@@ -1304,7 +1304,7 @@ func TestCheckProjectSemantics(t *testing.T) {
 
 			project, err := model.FindProject("", projectRef)
 			So(err, ShouldBeNil)
-			So(CheckProjectSemantics(project), ShouldResemble, []ValidationError{})
+			So(CheckProjectSemantics(project), ShouldResemble, ValidationErrors{})
 		})
 
 		Reset(func() {
@@ -1387,7 +1387,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier: "test",
 			}
 			So(ensureHasNecessaryBVFields(project),
-				ShouldNotResemble, []ValidationError{})
+				ShouldNotResemble, ValidationErrors{})
 			So(len(ensureHasNecessaryBVFields(project)),
 				ShouldEqual, 1)
 		})
@@ -1397,7 +1397,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				BuildVariants: []model.BuildVariant{{}},
 			}
 			So(ensureHasNecessaryBVFields(project),
-				ShouldNotResemble, []ValidationError{})
+				ShouldNotResemble, ValidationErrors{})
 			So(len(ensureHasNecessaryBVFields(project)),
 				ShouldEqual, 2)
 		})
@@ -1413,7 +1413,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				},
 			}
 			So(ensureHasNecessaryBVFields(project),
-				ShouldNotResemble, []ValidationError{})
+				ShouldNotResemble, ValidationErrors{})
 			So(len(ensureHasNecessaryBVFields(project)),
 				ShouldEqual, 1)
 		})
@@ -1428,7 +1428,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				},
 			}
 			So(ensureHasNecessaryBVFields(project),
-				ShouldNotResemble, []ValidationError{})
+				ShouldNotResemble, ValidationErrors{})
 			So(len(ensureHasNecessaryBVFields(project)),
 				ShouldEqual, 1)
 		})
@@ -1444,7 +1444,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				},
 			}
 			So(ensureHasNecessaryBVFields(project),
-				ShouldResemble, []ValidationError{})
+				ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if the buildvariant has no "+
 			"run_on field and at least one task has no distro field "+
@@ -1459,7 +1459,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				},
 			}
 			So(ensureHasNecessaryBVFields(project),
-				ShouldNotResemble, []ValidationError{})
+				ShouldNotResemble, ValidationErrors{})
 			So(len(ensureHasNecessaryBVFields(project)),
 				ShouldEqual, 1)
 		})
@@ -1483,7 +1483,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				},
 			}
 			So(ensureHasNecessaryBVFields(project),
-				ShouldResemble, []ValidationError{})
+				ShouldResemble, ValidationErrors{})
 		})
 	})
 }

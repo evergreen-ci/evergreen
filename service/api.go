@@ -470,7 +470,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	validationErr := validator.ValidationError{}
 	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
-		gimlet.WriteJSONError(w, []validator.ValidationError{validationErr})
+		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
 	}
 	syntaxErrs, err := validator.CheckProjectSyntax(project)
@@ -483,7 +483,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		gimlet.WriteJSONError(w, append(syntaxErrs, semanticErrs...))
 		return
 	}
-	gimlet.WriteJSON(w, []validator.ValidationError{})
+	gimlet.WriteJSON(w, validator.ValidationErrors{})
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
