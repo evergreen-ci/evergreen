@@ -2,8 +2,10 @@ package data
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -113,6 +115,7 @@ buildvariants:
 	providerSettings := map[string]interface{}{
 		"ami":      "ami-1234",
 		"vpc_name": "my_vpc",
+		"key_name": "myKey",
 	}
 	d := distro.Distro{
 		Id:               "distro",
@@ -139,5 +142,8 @@ buildvariants:
 		assert.Equal("me", h.StartedBy)
 		assert.True(h.UserHost)
 		assert.Equal(t1.Id, h.ProvisionOptions.TaskId)
+		settings := *h.Distro.ProviderSettings
+		assert.NotEmpty(settings["key_name"])
+		assert.InDelta(time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 	}
 }

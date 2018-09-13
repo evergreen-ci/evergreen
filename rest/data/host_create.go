@@ -89,6 +89,11 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 
 	hosts := []host.Host{}
 	for _, createHost := range createHostCmds {
+		err = createHost.Validate()
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
 		for i := 0; i < createHost.NumHosts; i++ {
 			intent, err := dc.MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
@@ -96,6 +101,9 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			}
 			hosts = append(hosts, *intent)
 		}
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	return errors.Wrap(host.InsertMany(hosts), "error inserting host documents")
@@ -148,7 +156,9 @@ func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string
 	if createHost.InstanceType != "" {
 		ec2Settings.InstanceType = createHost.InstanceType
 	}
-	ec2Settings.KeyName = createHost.KeyName // never use the distro's key
+	if userID == "" {
+		ec2Settings.KeyName = createHost.KeyName // never use the distro's key
+	}
 	if createHost.Region != "" {
 		ec2Settings.Region = createHost.Region
 	}
@@ -173,8 +183,9 @@ func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string
 	if userID != "" {
 		options.UserName = userID
 		options.UserHost = true
+		expiration := cloud.DefaultSpawnHostExpiration
+		options.ExpirationDuration = &expiration
 		options.ProvisionOptions = &host.ProvisionOptions{
-			LoadCLI: true,
 			TaskId:  taskID,
 			OwnerId: userID,
 		}
