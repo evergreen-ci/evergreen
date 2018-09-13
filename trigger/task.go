@@ -589,25 +589,6 @@ func isTestStatusRegression(oldStatus, newStatus string) bool {
 	return false
 }
 
-func isTaskStatusRegression(oldStatus, newStatus string) bool {
-	switch oldStatus {
-	case evergreen.TaskFailed:
-		if newStatus == evergreen.TaskSystemFailed || newStatus == evergreen.TaskTestTimedOut {
-			return true
-		}
-
-	case evergreen.TaskSystemFailed:
-		if newStatus == evergreen.TaskFailed || newStatus == evergreen.TaskTestTimedOut {
-			return true
-		}
-
-	case evergreen.TaskSucceeded:
-		return isFailedTaskStatus(newStatus)
-	}
-
-	return false
-}
-
 func testMatchesRegex(testName string, sub *event.Subscription) bool {
 	regex, ok := sub.TriggerData[event.TestRegexKey]
 	if !ok || regex == "" {
@@ -664,50 +645,39 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if t.task.Requester != evergreen.RepotrackerVersionRequester || !isFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
+	// if no tests, alert only if it's a regression in task status
+	if len(t.task.LocalTestResults) == 0 {
+		return t.taskRegression(sub)
+	}
 
+	catcher := grip.NewBasicCatcher()
 	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequester(t.task.RevisionOrderNumber,
 		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.RepotrackerVersionRequester))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}
 
-	record, err := alertrecord.FindByLastTaskRegressionByTestWithNoTests(sub.ID, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch alertrecord")
+	if previousCompleteTask != nil {
+		t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask)
 	}
 
-	catcher := grip.NewBasicCatcher()
-	// if no tests, alert only if it's a regression in task status
-	if len(t.task.LocalTestResults) == 0 {
-		if record != nil && !isTaskStatusRegression(record.TaskStatus, t.task.Status) {
-			return nil, nil
+	testsToAlert := []task.TestResult{}
+	for i := range t.task.LocalTestResults {
+		if !testMatchesRegex(t.task.LocalTestResults[i].TestFile, sub) {
+			continue
 		}
-		catcher.Add(alertrecord.InsertNewTaskRegressionByTestWithNoTestsRecord(sub.ID, t.task.Id, t.task.DisplayName, t.task.Status, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber))
-
-	} else {
-		if previousCompleteTask != nil {
-			t.oldTestResults = mapTestResultsByTestFile(previousCompleteTask)
+		var shouldInclude bool
+		shouldInclude, err = t.shouldIncludeTest(sub.ID, previousCompleteTask, &t.task.LocalTestResults[i])
+		if err != nil {
+			catcher.Add(err)
+			continue
 		}
-
-		testsToAlert := []task.TestResult{}
-		for i := range t.task.LocalTestResults {
-			if !testMatchesRegex(t.task.LocalTestResults[i].TestFile, sub) {
-				continue
-			}
-			var shouldInclude bool
-			shouldInclude, err = t.shouldIncludeTest(sub.ID, previousCompleteTask, &t.task.LocalTestResults[i])
-			if err != nil {
-				catcher.Add(err)
-				continue
-			}
-			if shouldInclude {
-				testsToAlert = append(testsToAlert, t.task.LocalTestResults[i])
-			}
+		if shouldInclude {
+			testsToAlert = append(testsToAlert, t.task.LocalTestResults[i])
 		}
-		if len(testsToAlert) == 0 {
-			return nil, nil
-		}
-		// TODO EVG-3416 use testsToAlert in message formatting
+	}
+	if len(testsToAlert) == 0 {
+		return nil, nil
 	}
 
 	n, err := t.generate(sub, "")

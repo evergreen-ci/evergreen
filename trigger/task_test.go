@@ -592,24 +592,6 @@ func (s *taskSuite) TestRegressionByTestSimpleRegression() {
 	s.makeTask(5, evergreen.TaskFailed)
 	s.makeTest(5, 0, "test_1", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
-
-	// transition to system failure
-	s.makeTask(6, evergreen.TaskSucceeded)
-	s.makeTest(6, 0, "", evergreen.TestSucceededStatus)
-	s.tryDoubleTrigger(false)
-
-	s.makeTask(7, evergreen.TaskSystemFailed)
-	s.makeTest(7, 0, "", evergreen.TestFailedStatus)
-	s.tryDoubleTrigger(true)
-
-	// Transition from system failure to failure
-	s.makeTask(8, evergreen.TaskSystemFailed)
-	s.makeTest(8, 0, "", evergreen.TestFailedStatus)
-	s.tryDoubleTrigger(true)
-
-	// system fail with no tests
-	s.makeTask(9, evergreen.TaskSystemFailed)
-	s.tryDoubleTrigger(true)
 }
 
 func (s *taskSuite) TestRegressionByTestWithNonAlertingStatuses() {
@@ -688,40 +670,13 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
 	s.makeTest(18, 2, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
-
-	// make it system fail this time; it should generate
-	s.NoError(s.task.Archive())
-	s.task.Status = evergreen.TaskSystemFailed
-	s.task.Execution = 3
-	s.data.Status = s.task.Status
-	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	s.tryDoubleTrigger(true)
-
-	// but not on the repeat run
-	s.NoError(s.task.Archive())
-	s.task.Status = evergreen.TaskSystemFailed
-	s.task.Execution = 4
-	s.NoError(db.Update(task.Collection, bson.M{"_id": s.task.Id}, &s.task))
-	s.tryDoubleTrigger(false)
 }
 
 func (s *taskSuite) TestRegressionByTestWithTestsWithoutTasks() {
 	s.NoError(db.ClearCollections(task.Collection, testresult.Collection))
 
-	// no tests, but system fail should generate
-	s.makeTask(20, evergreen.TaskSystemFailed)
-	s.tryDoubleTrigger(true)
-
-	// but not in subsequent task
-	s.makeTask(21, evergreen.TaskSystemFailed)
-	s.tryDoubleTrigger(false)
-
-	// add a test, it should alert even if the task status is the same
-	s.makeTask(22, evergreen.TaskSystemFailed)
-	s.makeTest(22, 0, "", evergreen.TestFailedStatus)
-	s.tryDoubleTrigger(true)
-
 	// TaskFailed with no tests should generate
+	s.makeTask(22, evergreen.TaskSucceeded)
 	s.makeTask(23, evergreen.TaskFailed)
 	s.tryDoubleTrigger(true)
 
@@ -869,25 +824,6 @@ func TestIsTestRegression(t *testing.T) {
 	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSilentlyFailedStatus))
 	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSkippedStatus))
 	assert.False(isTestStatusRegression(evergreen.TestSilentlyFailedStatus, evergreen.TestSucceededStatus))
-}
-
-func TestIsTaskRegression(t *testing.T) {
-	assert := assert.New(t)
-
-	assert.False(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskSucceeded))
-	assert.True(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskSystemFailed))
-	assert.True(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskFailed))
-	assert.True(isTaskStatusRegression(evergreen.TaskSucceeded, evergreen.TaskTestTimedOut))
-
-	assert.False(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskSucceeded))
-	assert.False(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskSystemFailed))
-	assert.True(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskFailed))
-	assert.True(isTaskStatusRegression(evergreen.TaskSystemFailed, evergreen.TaskTestTimedOut))
-
-	assert.False(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskSucceeded))
-	assert.True(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskSystemFailed))
-	assert.False(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskFailed))
-	assert.True(isTaskStatusRegression(evergreen.TaskFailed, evergreen.TaskTestTimedOut))
 }
 
 func TestMapTestResultsByTestFile(t *testing.T) {
