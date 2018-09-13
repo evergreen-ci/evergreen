@@ -47,12 +47,30 @@ mciModule.factory('PerfChartService', function() {
         key: 'variance',
         display: 'Variance',
       }, {
+        key: 'bfs',
+        display: 'Tickets',
+        nonStat: true,
+        formatter: function(val) { return (
+          val.length == 0 ? 'None' :
+          val.length == 1 ? val[0].key :
+          /* else */        val[0].key + ' and ' + val.length - 1 + ' more'
+        )},
+      }, {
         key: 'skewness',
         display: 'Skewness',
+        visible: false,
       }, {
         key: 'kurtosis',
         display: 'Kurtosis',
-      }],
+        visible: false,
+      }].filter(function(d) {
+        // Filter out non-visible items
+        return d.visible !== false
+      }).map(function(d, i) {
+        // Enumerate all items (required for rendering heterogeneous lists by d3js)
+        d.idx = i
+        return d
+      }),
     },
     valueAttr: 'ops_per_sec',
     yAxis: {
@@ -195,6 +213,7 @@ mciModule.factory('DrawPerfTrendChart', function (
     // Extract params
     var series = params.series,
         changePoints = params.changePoints,
+        buildFailures = params.buildFailures,
         key = params.key,
         scope = params.scope,
         containerId = params.containerId,
@@ -226,6 +245,10 @@ mciModule.factory('DrawPerfTrendChart', function (
       })
       .each(hydrateChangePoint) // Add some useful meta data
       .value()
+
+    var visibleBFs = _.filter(buildFailures, function(d) {
+      return _.findWhere(series, {revision: d.first_failing_revision})
+    })
 
     var cfg = PerfChartService.cfg;
     document.getElementById(containerId).innerHTML = '';
@@ -296,9 +319,28 @@ mciModule.factory('DrawPerfTrendChart', function (
       })
     }
 
+    var bfsForLevel = []
+    _.each(visibleBFs, function(bf) {
+      _.each(levelsMeta, function(level) {
+        if (_.find(bfsForLevel, function(d) {
+          d.level == level && d.bf.first_failing_revision == bf.first_failing_revision
+        })) {
+          return
+        }
+
+        bfsForLevel.push({
+          level: level,
+          bf: bf,
+        })
+      })
+    })
+
     // Array with combinations combinations of {level, changePoint}
     var changePointForLevel = []
     _.each(visibleChangePoints, function(point) {
+      point.bfs = _.where(
+        buildFailures, {first_failing_revision: point.suspect_revision}
+      ) || []
       var level = _.findWhere(levelsMeta, {name: point.thread_level})
       var levels = level ? [level] : levelsMeta
 
@@ -544,6 +586,7 @@ mciModule.factory('DrawPerfTrendChart', function (
           redrawRefLines()
           redrawTooltip()
           redrawChangePoints()
+          redrawBFs()
         })
 
       redrawLegend()
@@ -702,6 +745,38 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     redrawRefLines()
 
+    function redrawBFs() {
+      var bfs = bfsG.selectAll('g.bf')
+        .data(_.filter(bfsForLevel, function(d) {
+          return d.level.isActive
+        }))
+
+      bfs
+        .enter()
+        .append('g')
+        .attr({
+          class: 'bf',
+        })
+        .append('path')
+        .attr({
+          d: 'M-5,0L0,8L5,0L0,-8Z',
+        })
+        .style({
+          stroke: 'green',
+          fill: '#00FF00',
+          'stroke-width': 2,
+        })
+
+      bfs.attr({
+        transform: function(d) {
+          var idx = idxByRevision(series, d.bf.first_failing_revision)
+          return d3Translate(xScale(idx), yScale(getValueFor(d.level)(series[idx])))
+        },
+      })
+
+      bfs.exit().remove()
+    }
+
     function redrawChangePoints() {
       // Render change points
       var pointsAndSegments = _.chain(changePointForLevel)
@@ -776,6 +851,11 @@ mciModule.factory('DrawPerfTrendChart', function (
 
       changePointPoints.exit().remove()
     }
+
+    var bfsG = chartG.append('g')
+      .attr('class', 'g-bfs')
+
+    redrawBFs()
 
     var changePointsG = chartG.append('g')
       .attr('class', 'g-change-points')
@@ -887,24 +967,53 @@ mciModule.factory('DrawPerfTrendChart', function (
         'stroke-width': 1,
       })
 
+    function translateToolTipItem(d) {
+      return d3Translate(0, cfg.toolTip.interlineSpace * (d.idx + .67))
+    }
+
     var toolTipItem = toolTipG
-      .selectAll('text')
-      .data(cfg.toolTip.labels)
+      .selectAll('g.stat')
+      // Display all statistical items
+      // Non-statistical items are handled separately
+      .data(
+        _.filter(cfg.toolTip.labels, function(d) {
+            return d.nonStat !== true
+          }
+        )
+      )
       .enter()
       .append('g')
-      .attr('transform', function(d, i) { return d3Translate(0, cfg.toolTip.interlineSpace * (i + .67)) })
-
-    toolTipItem
-      .append('text')
       .attr({
-        x: -5,
-        y: 0,
-        'text-anchor': 'end',
+        class: 'stat',
+        transform: translateToolTipItem,
       })
-      .text(_.property('display'))
-      .style({
-        'font-weight': 'bold',
+
+    var nonStatToolTipItem = toolTipG
+      .selectAll('g.non-stat')
+      .data(_.where(cfg.toolTip.labels, {nonStat: true}))
+      .enter()
+      .append('g')
+      .attr({
+        class: 'non-stat',
+        transform: translateToolTipItem,
       })
+
+    function placeTitle(d) {
+      return d
+        .append('text')
+        .attr({
+          x: -5,
+          y: 0,
+          'text-anchor': 'end',
+        })
+        .text(_.property('display'))
+        .style({
+          'font-weight': 'bold',
+        })
+    }
+
+    toolTipItem.call(placeTitle)
+    nonStatToolTipItem.call(placeTitle)
 
     toolTipItem
       .append('text')
@@ -929,6 +1038,14 @@ mciModule.factory('DrawPerfTrendChart', function (
         x: cfg.toolTip.colOffset[3],
         y: 0,
         class: 'next',
+      })
+
+    nonStatToolTipItem
+      .append('text')
+      .attr({
+        x: cfg.toolTip.colOffset[0] + 5,
+        y: 0,
+        class: 'value',
       })
 
     // For given 1d directional segment with length `len` and offset `pos`
@@ -976,13 +1093,19 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     function changePointMouseOver(point) {
+      function extractToolTipValue(item, obj) {
+        // Get raw value of the stat item
+        var rawValue = _.isFunction(item.key)
+          ? item.key(obj)
+          : obj[item.key]
+        // Apply formatting if defined
+        return item.formatter ? item.formatter(rawValue) : rawValue
+      }
+
       function statTextFor(statItemName) {
         return function(d) {
           var cpStat = point.statistics[statItemName]
-          if (_.isFunction(d.key)) {
-            return d.key(cpStat)
-          }
-          return cpStat[d.key]
+          return extractToolTipValue(d, cpStat)
         }
       }
 
@@ -991,6 +1114,9 @@ mciModule.factory('DrawPerfTrendChart', function (
 
       toolTipItem.select('text.next')
         .text(_.compose(formatNumber, statTextFor('next')))
+
+      nonStatToolTipItem.select('text.value')
+        .text(function(d) { return extractToolTipValue(d, point) })
 
       toolTipG
         .transition()
@@ -1063,6 +1189,10 @@ mciModule.factory('DrawPerfTrendChart', function (
       if (hash != scope.$parent.currentHash) {
         scope.$parent.currentHash = hash;
         scope.$parent.currentHashDate = d.createTime
+        scope.$parent.bfs = _.pluck(
+          _.where(visibleBFs, {first_failing_revision: hash}),
+          'key'
+        )
         scope.$emit('hashChanged', hash)
         scope.$parent.$digest()
       }
@@ -1107,7 +1237,17 @@ mciModule.factory('DrawPerfTrendChart', function (
           transform: function(d, i) {
             // transform the hover text location based on the list index
             var x = 0
-            if (series) {
+
+            // Catch NS_LOOKUP_ERROR. Checking `this` and `this.getBBox` don't work
+            // FIXME Should be a better way. Probably, complete refactoring required
+            try {
+              this.getBBox()
+            } catch (e) {
+              return
+            }
+
+            // this.getBBox might not exist when the sample doesn't exist
+            if (series && this.getBBox) {
               x = (cfg.focus.labelOffset.x + this.getBBox().width) * idx / series.length
             }
             return d3Translate(-x, 0)
