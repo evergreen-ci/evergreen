@@ -188,10 +188,14 @@ mciModule.controller('PerfController', function PerfController(
       var key = tests[i];
       var series = trendSamples.seriesByName[key];
       var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
+      var cps = scope.changePoints
+      var bfs = scope.buildFailures
 
       DrawPerfTrendChart({
         series: series,
-        changePoints: scope.changePoints[key],
+        // Concat orfaned change points and build failures
+        changePoints: (cps[key] || []).concat(cps[undefined] || []),
+        buildFailures: (bfs[key] || []).concat(bfs[undefined] || []),
         key: key,
         scope: chartsScope,
         containerId: containerId,
@@ -468,7 +472,7 @@ mciModule.controller('PerfController', function PerfController(
 
   if($scope.conf.enabled){
     if($location.hash().length>0){
-      try{
+      try {
         var hashparsed = JSON.parse(decodeURIComponent($location.hash()))
         if('hiddenGraphs' in hashparsed){
           for(var i=0;i<hashparsed.hiddenGraphs.length;i++){
@@ -519,6 +523,33 @@ mciModule.controller('PerfController', function PerfController(
           $scope.changePoints = data
         })
 
+        var buildFailuresQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
+          return db
+            .db(STITCH_CONFIG.PERF.DB_PERF)
+            .collection(STITCH_CONFIG.PERF.COLL_BUILD_FAILURES)
+            .aggregate([
+              {$match: {
+                project: $scope.task.branch,
+                tasks: $scope.task.display_name,
+                buildvariants: $scope.task.build_variant,
+              }},
+              // Denormalization
+              {$unwind: {path: '$tasks', preserveNullAndEmptyArrays: true}},
+              {$unwind: {path: '$buildvariants', preserveNullAndEmptyArrays: true}},
+              {$unwind: {path: '$project', preserveNullAndEmptyArrays: true}},
+              {$unwind: {path: '$tests', preserveNullAndEmptyArrays: true}},
+              {$unwind: {path: '$first_failing_revision', preserveNullAndEmptyArrays: true}},
+            ])
+        }).then(
+          function(docs) {
+            return _.groupBy(docs, 'tests')
+          }, function(err) {
+            $log.error('Cannot load build failures!', err)
+            return {} // Try to recover an error
+        }).then(function(data) {
+          $scope.buildFailures = data
+        })
+
         // Populate the trend data
         var chartDataQ = $http.get("/plugin/json/history/" + $scope.task.id + "/perf").then(
           function(resp) {
@@ -526,7 +557,7 @@ mciModule.controller('PerfController', function PerfController(
           })
 
         // Once trend chart data and change points get loaded
-        $q.all([chartDataQ, changePointsQ.catch()])
+        $q.all([chartDataQ, changePointsQ.catch(), buildFailuresQ.catch()])
           .then(function(ret) {
             setTimeout(function() {
               drawTrendGraph($scope)

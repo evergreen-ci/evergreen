@@ -345,8 +345,15 @@
           <div class="col-lg-1 perf-trendchart-sidebar">
               <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
               <div>[[dateLabel]]</div>
-              <div>ops per sec:</div>
-              <div><b>[[hoverSamples[k].ops_per_sec | number:0]]</b> </div>
+              ops/s:&nbsp;
+              <b>[[hoverSamples[k].ops_per_sec | number:0]]</b>
+              <div>
+                bfs:&nbsp;
+                <span ng-repeat="bf in bfs">
+                  <span ng-bind-html="bf | escapeHtml | jiraLinkify"></span>
+                  <span ng-if="!$last">, </span>
+                </span>
+              </div>
               <div ng-show="!comparePerfSample">
                 <button ng-click="addComparisonHash(hoverSamples[k].revision)">Compare</button>
               </div>
