@@ -78,6 +78,7 @@ tasks:
       - command: git.get_project
         params:
           directory: src
+          token: "token foo"
       - command: shell.exec
         params:
           script: |
@@ -94,14 +95,14 @@ tasks:
             mkdir upload
             echo ${task_name} > upload/s3
       - command: subprocess.exec
-        params: 
+        params:
           working_dir: archive
           binary: /bin/bash
-          args: 
+          args:
             - "-c"
             - "touch foo"
       - command: subprocess.exec
-        params: 
+        params:
           working_dir: archive
           command: "/usr/bin/touch bar"
       - command: archive.targz_pack
