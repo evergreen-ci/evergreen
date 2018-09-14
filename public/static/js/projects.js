@@ -87,6 +87,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       resource_type: "TASK",
       label: "a previously passing task fails",
       regex_selectors: taskRegexSelectors(),
+      extraFields: [
+        {text: "Re-notify after how many hours (default 48)", key: "renotify-interval", validator: validateDuration}
+      ]
     },
     {
       trigger: "regression-by-test",
@@ -94,7 +97,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       label: "a previously passing test in a task fails",
       regex_selectors: taskRegexSelectors(),
       extraFields: [
-        {text: "Test names matching regex", key: "test-regex", validator: null}
+        {text: "Test names matching regex", key: "test-regex", validator: null},
+        {text: "Re-notify after how many hours (default 48)", key: "renotify-interval", validator: validateDuration}
       ]
     },
     {

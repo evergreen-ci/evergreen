@@ -45,6 +45,7 @@ const (
 	VersionDurationKey                                = "version-duration-secs"
 	VersionPercentChangeKey                           = "version-percent-change"
 	TestRegexKey                                      = "test-regex"
+	RenotifyIntervalKey                               = "renotify-interval"
 	ImplicitSubscriptionPatchOutcome                  = "patch-outcome"
 	ImplicitSubscriptionBuildBreak                    = "build-break"
 	ImplicitSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
@@ -287,6 +288,9 @@ func (s *Subscription) runCustomValidation() error {
 	}
 	if testRegex, ok := s.TriggerData[TestRegexKey]; ok {
 		catcher.Add(validateRegex(testRegex))
+	}
+	if renotifyInterval, ok := s.TriggerData[RenotifyIntervalKey]; ok {
+		catcher.Add(validatePositiveInt(renotifyInterval))
 	}
 	return catcher.Resolve()
 }
