@@ -38,6 +38,7 @@ mciModule.directive('hazardLevelCell', function() {
     )
 
     scope.level = levels[idx]
+    scope.count = weights.length
   }
 
   function renderUnfoldedItem(scope, row) {

@@ -187,6 +187,8 @@ mciModule.controller('SignalProcessingCtrl', function(
         name: 'Revision',
         field: 'suspect_revision',
         type: 'string',
+        cellFilter: 'limitTo:7',
+        width: 100,
         sort: {
           priority: 0,
         },
@@ -248,7 +250,6 @@ mciModule.controller('SignalProcessingCtrl', function(
       {
         name: 'Create Time',
         field: 'create_time',
-        visible: false,
         type: 'date',
       },
       {
