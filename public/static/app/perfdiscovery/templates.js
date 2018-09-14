@@ -28,7 +28,7 @@ mciModule.run(function($templateCache) {
 
   $templateCache.put('perf-discovery-ratio',
     '<div class="ui-grid-cell-contents" style="background: {{color}}">' +
-      '{{ratio | percentage | number : 0}}' +
+      '{{sign}}{{normRatio}}%' +
     '</div>'
   )
 
