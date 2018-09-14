@@ -116,12 +116,12 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 smoke-test-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
-	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (killall $<; exit 1)
-	killall $<
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (pkill -f $<; exit 1)
+	pkill -f $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
-	./$< service deploy test-endpoints || (killall $<; exit 1)
-	killall $<
+	./$< service deploy test-endpoints || (pkill -f $<; exit 1)
+	pkill -f $<
 smoke-start-server:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web
 # end smoke test rules
