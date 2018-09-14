@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -94,7 +95,11 @@ func makeTarget(target string) string {
 func getAllTargets() ([]string, error) {
 	var targets []string
 
-	args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' cmd/evergreen/evergreen.go")
+	gobin := os.Getenv("GO_BIN_PATH")
+	if gobin == "" {
+		gobin = "go"
+	}
+	args, _ := shlex.Split(fmt.Sprintf("%s list -f '{{ join .Deps  \"\\n\"}}' cmd/evergreen/evergreen.go", gobin))
 	cmd := exec.Command(args[0], args[1:]...)
 	allPackages, err := cmd.Output()
 	if err != nil {
