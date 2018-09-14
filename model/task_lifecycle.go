@@ -507,14 +507,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		return errors.WithStack(err)
 	}
 
-	initialBuildStatus := b.Status
-	oldTaskCacheInfo := []string{}
-	if b.Project == "mci" && b.Status == evergreen.BuildFailed {
-		for i := range b.Tasks {
-			oldTaskCacheInfo = append(oldTaskCacheInfo, fmt.Sprintf("'%s': %s", b.Tasks[i].Id, b.Tasks[i].Status))
-		}
-	}
-
 	buildTasks, err := task.Find(task.ByBuildId(b.Id))
 	if err != nil {
 		return errors.WithStack(err)
@@ -564,13 +556,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 
 		// update the build's status when a test task isn't successful
 		if t.Status != evergreen.TaskSucceeded {
-			grip.InfoWhen(b.Project == "mci" && initialBuildStatus == evergreen.BuildStarted, message.Fields{
-				"message":     "marking build as failed",
-				"lookhere":    "evg-3455",
-				"new_status":  evergreen.BuildFailed,
-				"task_id":     t.Id,
-				"task_status": t.Status,
-			})
 			err = b.UpdateStatus(evergreen.BuildFailed)
 			if err != nil {
 				err = errors.Wrap(err, "Error updating build status")
@@ -595,18 +580,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		}
 	}
 
-	// this will be logged if a restart changes the status, or when
-	// the situation that caused the original issue with notifications arises
-	grip.InfoWhen(b.Project == "mci" && initialBuildStatus == evergreen.BuildFailed && !failedTask, message.Fields{
-		"lookhere":             "evg-3455",
-		"message":              "build was failed, but is now being overridden to succeeded",
-		"initial_build_status": initialBuildStatus,
-		"build_status":         b.Status,
-		"had_failed_tasks":     failedTask,
-		"old_task_cache":       oldTaskCacheInfo,
-		"this_task":            taskId,
-	})
-
 	if b.Status == evergreen.BuildCreated {
 		if err = b.UpdateStatus(evergreen.BuildStarted); err != nil {
 			err = errors.Wrap(err, "Error updating build status")
@@ -616,12 +589,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		updates.BuildNewStatus = evergreen.BuildStarted
 	}
 
-	grip.InfoWhen(finishedTasks > len(buildTasks), message.Fields{
-		"lookhere":       "evg-3455",
-		"message":        "finishedTasks > len(buildTasks)",
-		"finished_tasks": finishedTasks,
-		"build_tasks":    len(buildTasks),
-	})
 	if finishedTasks >= len(buildTasks) {
 		buildComplete = true
 	}
@@ -647,13 +614,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 
 		} else {
-			grip.InfoWhen(b.Project == "mci" && initialBuildStatus == evergreen.BuildStarted, message.Fields{
-				"message":     "marking build as failed",
-				"lookhere":    "evg-3455",
-				"new_status":  evergreen.BuildFailed,
-				"task_id":     t.Id,
-				"task_status": t.Status,
-			})
 			// some task failed
 			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
 				err = errors.Wrap(err, "Error marking build as finished")
