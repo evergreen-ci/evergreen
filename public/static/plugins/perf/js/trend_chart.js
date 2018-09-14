@@ -759,7 +759,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         })
         .append('path')
         .attr({
-          d: 'M-5,0L0,8L5,0L0,-8Z',
+          d: 'M-5,0L0,8L5,0L0,-8Z', // Rhomb figure, marker for a BF
         })
         .style({
           stroke: 'green',
