@@ -26,7 +26,7 @@ type taskGroupData struct {
 }
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
-	if hostAllocatorData.distro.PoolSize == len(hostAllocatorData.existingHosts) {
+	if len(hostAllocatorData.existingHosts) >= hostAllocatorData.distro.PoolSize {
 		return 0, nil
 	}
 
