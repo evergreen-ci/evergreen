@@ -76,7 +76,12 @@ func newAlertRecord(subID string, t *task.Task, alertType string) *alertrecord.A
 	}
 }
 
-func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
+func taskFinishedTwoOrMoreDaysAgo(taskID string, sub *event.Subscription) (bool, error) {
+	renotify, found := sub.TriggerData[event.RenotifyIntervalKey]
+	renotifyInterval, err := strconv.Atoi(renotify)
+	if renotify == "" || err != nil || !found {
+		renotifyInterval = 48
+	}
 	t, err := task.FindOneNoMerge(task.ById(taskID).WithFields(task.FinishTimeKey))
 	if err != nil {
 		return false, errors.Wrapf(err, "error finding task '%s'", taskID)
@@ -91,7 +96,7 @@ func taskFinishedTwoOrMoreDaysAgo(taskID string) (bool, error) {
 		}
 	}
 
-	return time.Since(t.FinishTime) >= 48*time.Hour, nil
+	return time.Since(t.FinishTime) >= time.Duration(renotifyInterval)*time.Hour, nil
 }
 
 func getShouldExecuteError(t, previousTask *task.Task) message.Fields {
@@ -410,7 +415,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(sub *event.Subscription
 }
 
 func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.Notification, error) {
-	shouldNotify, alert, err := isTaskRegression(sub.ID, t.task)
+	shouldNotify, alert, err := isTaskRegression(sub, t.task)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +429,7 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 	return n, errors.Wrap(alert.Insert(), "failed to process regression trigger")
 }
 
-func isTaskRegression(subID string, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
+func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
 	if t.Status != evergreen.TaskFailed || t.Requester != evergreen.RepotrackerVersionRequester {
 		return false, nil, nil
 	}
@@ -435,7 +440,7 @@ func isTaskRegression(subID string, t *task.Task) (bool, *alertrecord.AlertRecor
 		return false, nil, errors.Wrap(err, "error fetching previous task")
 	}
 
-	shouldSend, err := shouldSendTaskRegression(subID, t, previousTask)
+	shouldSend, err := shouldSendTaskRegression(sub, t, previousTask)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "failed to determine if we should send notification")
 	}
@@ -443,7 +448,7 @@ func isTaskRegression(subID string, t *task.Task) (bool, *alertrecord.AlertRecor
 		return false, nil, nil
 	}
 
-	rec := newAlertRecord(subID, t, alertrecord.TaskFailTransitionId)
+	rec := newAlertRecord(sub.ID, t, alertrecord.TaskFailTransitionId)
 	rec.RevisionOrderNumber = -1
 	if previousTask != nil {
 		rec.RevisionOrderNumber = previousTask.RevisionOrderNumber
@@ -452,7 +457,7 @@ func isTaskRegression(subID string, t *task.Task) (bool, *alertrecord.AlertRecor
 	return true, rec, nil
 }
 
-func shouldSendTaskRegression(subID string, t *task.Task, previousTask *task.Task) (bool, error) {
+func shouldSendTaskRegression(sub *event.Subscription, t *task.Task, previousTask *task.Task) (bool, error) {
 	if t.Status != evergreen.TaskFailed {
 		return false, nil
 	}
@@ -463,7 +468,7 @@ func shouldSendTaskRegression(subID string, t *task.Task, previousTask *task.Tas
 	if previousTask.Status == evergreen.TaskSucceeded {
 		// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
 		// a sent alert for a transition after the same previously passing task.
-		q := alertrecord.ByLastFailureTransition(subID, t.DisplayName, t.BuildVariant, t.Project)
+		q := alertrecord.ByLastFailureTransition(sub.ID, t.DisplayName, t.BuildVariant, t.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
 		if err != nil {
 			errMessage := getShouldExecuteError(t, previousTask)
@@ -487,7 +492,7 @@ func shouldSendTaskRegression(subID string, t *task.Task, previousTask *task.Tas
 	}
 	if previousTask.Status == evergreen.TaskFailed {
 		// check if enough time has passed since our last transition alert
-		q := alertrecord.ByLastFailureTransition(subID, t.DisplayName, t.BuildVariant, t.Project)
+		q := alertrecord.ByLastFailureTransition(sub.ID, t.DisplayName, t.BuildVariant, t.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
 		if err != nil {
 			errMessage := getShouldExecuteError(t, previousTask)
@@ -520,7 +525,7 @@ func shouldSendTaskRegression(subID string, t *task.Task, previousTask *task.Tas
 			return maybeSend, nil
 		}
 
-		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId)
+		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId, sub)
 	}
 	return false, nil
 }
@@ -605,11 +610,11 @@ func testMatchesRegex(testName string, sub *event.Subscription) bool {
 	return false
 }
 
-func (t *taskTriggers) shouldIncludeTest(subID string, previousTask *task.Task, test *task.TestResult) (bool, error) {
+func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, test *task.TestResult) (bool, error) {
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
-	record, err := alertrecord.FindByLastTaskRegressionByTest(subID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	record, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
 	if err != nil {
 		return false, errors.Wrap(err, "Failed to fetch alert record")
 	}
@@ -626,7 +631,7 @@ func (t *taskTriggers) shouldIncludeTest(subID string, previousTask *task.Task, 
 
 		} else if !isTestStatusRegression(oldTestResult.Status, test.Status) {
 			if len(record.TaskId) != 0 {
-				isOld, err := taskFinishedTwoOrMoreDaysAgo(record.TaskId)
+				isOld, err := taskFinishedTwoOrMoreDaysAgo(record.TaskId, sub)
 				if err != nil || !isOld {
 					return false, errors.Wrap(err, "failed to fetch last alert age")
 				}
@@ -634,7 +639,7 @@ func (t *taskTriggers) shouldIncludeTest(subID string, previousTask *task.Task, 
 		}
 	}
 
-	err = alertrecord.InsertNewTaskRegressionByTestRecord(subID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to save alert record")
 	}
@@ -667,7 +672,7 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 			continue
 		}
 		var shouldInclude bool
-		shouldInclude, err = t.shouldIncludeTest(sub.ID, previousCompleteTask, &t.task.LocalTestResults[i])
+		shouldInclude, err = t.shouldIncludeTest(sub, previousCompleteTask, &t.task.LocalTestResults[i])
 		if err != nil {
 			catcher.Add(err)
 			continue
