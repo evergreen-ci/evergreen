@@ -382,7 +382,6 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
-      - name: generate-lint
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
