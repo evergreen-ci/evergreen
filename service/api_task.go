@@ -526,6 +526,11 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if nextTask == nil {
 		// if the task is empty, still send it with an status ok and check it on the other side
 		grip.Infof("no task to assign host %v", h.Id)
+		if err := h.ClearLastTask(); err != nil {
+			grip.Error(errors.Wrap(err, "problem clearing last task"))
+			gimlet.WriteJSONInternalError(w, err)
+			return
+		}
 		gimlet.WriteJSON(w, response)
 		return
 	}
