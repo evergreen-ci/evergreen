@@ -26,6 +26,10 @@ type taskGroupData struct {
 }
 
 func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAllocatorData) (int, error) {
+	if len(hostAllocatorData.existingHosts) >= hostAllocatorData.distro.PoolSize {
+		return 0, nil
+	}
+
 	// split tasks/hosts by task group (including those with no group) and find # of hosts needed for each
 	newHostsNeeded := 0
 	startAt := time.Now()
@@ -42,6 +46,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData HostAl
 			}
 			maxHosts = data.tasks[0].GroupMaxHosts
 		}
+
 		// calculate number of hosts needed for this group
 		newHosts, err := evalHostUtilization(ctx,
 			hostAllocatorData.distro,
