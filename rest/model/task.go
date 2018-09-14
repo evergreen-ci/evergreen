@@ -49,6 +49,8 @@ type APITask struct {
 	GenerateTask       bool             `json:"generate_task"`
 	GeneratedBy        string           `json:"generated_by"`
 	Artifacts          []APIFile        `json:"artifacts"`
+	DisplayOnly        bool             `json:"display_only"`
+	ExecutionTasks     []APIString      `json:"execution_tasks,omitempty"`
 }
 
 type logLinks struct {
@@ -115,6 +117,14 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			EstimatedCost:    v.Cost,
 			GenerateTask:     v.GenerateTask,
 			GeneratedBy:      v.GeneratedBy,
+			DisplayOnly:      v.DisplayOnly,
+		}
+		if len(v.ExecutionTasks) > 0 {
+			ets := []APIString{}
+			for _, t := range v.ExecutionTasks {
+				ets = append(ets, ToAPIString(t))
+			}
+			at.ExecutionTasks = ets
 		}
 
 		if len(v.DependsOn) > 0 {
@@ -175,7 +185,16 @@ func (ad *APITask) ToService() (interface{}, error) {
 		Cost:             ad.EstimatedCost,
 		GenerateTask:     ad.GenerateTask,
 		GeneratedBy:      ad.GeneratedBy,
+		DisplayOnly:      ad.DisplayOnly,
 	}
+	if len(ad.ExecutionTasks) > 0 {
+		ets := []string{}
+		for _, t := range ad.ExecutionTasks {
+			ets = append(ets, FromAPIString(t))
+		}
+		st.ExecutionTasks = ets
+	}
+
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 
 	for i, depId := range ad.DependsOn {
@@ -186,8 +205,18 @@ func (ad *APITask) ToService() (interface{}, error) {
 	return interface{}(st), nil
 }
 
-func (at *APITask) GetArtifacts(ids []string) error {
-	entries, err := artifact.FindAll(artifact.ByTaskIds(ids))
+func (at *APITask) GetArtifacts() error {
+	var err error
+	var entries []artifact.Entry
+	if at.DisplayOnly {
+		ets := []string{}
+		for _, t := range at.ExecutionTasks {
+			ets = append(ets, FromAPIString(t))
+		}
+		entries, err = artifact.FindAll(artifact.ByTaskIds(ets))
+	} else {
+		entries, err = artifact.FindAll(artifact.ByTaskId(FromAPIString(at.Id)))
+	}
 	if err != nil {
 		return errors.Wrap(err, "error retrieving artifacts")
 	}
