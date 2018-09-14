@@ -507,13 +507,6 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		return errors.WithStack(err)
 	}
 
-	oldTaskCacheInfo := []string{}
-	if b.Project == "mci" && b.Status == evergreen.BuildFailed {
-		for i := range b.Tasks {
-			oldTaskCacheInfo = append(oldTaskCacheInfo, fmt.Sprintf("'%s': %s", b.Tasks[i].Id, b.Tasks[i].Status))
-		}
-	}
-
 	buildTasks, err := task.Find(task.ByBuildId(b.Id))
 	if err != nil {
 		return errors.WithStack(err)
