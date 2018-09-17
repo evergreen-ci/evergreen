@@ -35,7 +35,7 @@ func TestCreateHostSuite(t *testing.T) {
 func (s *createHostSuite) SetupSuite() {
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &model.TaskConfig{
-		Expansions: &util.Expansions{"vpc_id": "vpc-123456"},
+		Expansions: &util.Expansions{"subnet_id": "subnet-123456"},
 		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    &model.Project{}}
 	s.logger = s.comm.GetLoggerProducer(context.Background(), client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
@@ -43,9 +43,9 @@ func (s *createHostSuite) SetupSuite() {
 
 func (s *createHostSuite) SetupTest() {
 	s.params = map[string]interface{}{
-		"distro": "myDistro",
-		"scope":  "task",
-		"vpc_id": "${vpc_id}",
+		"distro":    "myDistro",
+		"scope":     "task",
+		"subnet_id": "${subnet_id}",
 	}
 	s.cmd = createHost{}
 }
@@ -66,19 +66,16 @@ func (s *createHostSuite) TestParamValidation() {
 
 	// verify errors if missing required info for ami
 	s.params["ami"] = "ami"
-	s.params["vpc_id"] = ""
 	s.NoError(s.cmd.ParseParams(s.params))
 	err := s.cmd.expandAndValidate(s.conf)
 	s.Contains(err.Error(), "instance_type must be set if ami is set")
 	s.Contains(err.Error(), "must specify security_group_ids if ami is set")
 	s.Contains(err.Error(), "instance_type must be set if ami is set")
-	s.Contains(err.Error(), "vpc_id must be set if ami is set")
 
 	// valid AMI info
 	s.params["instance_type"] = "instance"
 	s.params["security_group_ids"] = []string{"foo"}
 	s.params["subnet_id"] = "subnet"
-	s.params["vpc_id"] = "vpc"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(s.conf))
 
@@ -115,5 +112,5 @@ func (s *createHostSuite) TestPopulateUserdata() {
 func (s *createHostSuite) TestExecuteCommand() {
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
-	s.Equal("vpc-123456", s.comm.(*client.Mock).CreatedHost.VPC)
+	s.Equal("subnet-123456", s.comm.(*client.Mock).CreatedHost.Subnet)
 }
