@@ -323,6 +323,7 @@ retryLoop:
 	}
 
 	if len(uploadedFiles) == 0 && s3pc.skipMissing {
+		logger.Task().Info("s3 put uploaded no files")
 		return nil
 	}
 
