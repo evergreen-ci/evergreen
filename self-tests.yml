@@ -367,10 +367,10 @@ buildvariants:
       - name: "js-test"
       - name: generate-lint
 
-  - name: archlinux-docker
-    display_name: Archlinux Docker
+  - name: ubuntu1604-docker
+    display_name: Ubuntu 16.04 (Docker)
     run_on:
-      - archlinux-docker
+      - ubuntu1604-container
     expansions:
       goos: linux
       gobin: /opt/go1.8/go/bin/go
