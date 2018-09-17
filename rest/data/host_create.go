@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -111,11 +110,6 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 }
 
 func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
-	grip.Info(message.Fields{
-		"message":    "temporary logging for EVG-5306, createHost",
-		"ticket":     "EVG-5306",
-		"createHost": createHost,
-	})
 	provider := evergreen.ProviderNameEc2OnDemand
 	if createHost.Spot {
 		provider = evergreen.ProviderNameEc2Spot
@@ -216,13 +210,7 @@ func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string
 		options.SpawnOptions.SpawnedByTask = true
 	}
 
-	intent := cloud.NewIntent(d, d.GenerateName(), provider, options)
-	grip.Info(message.Fields{
-		"message": "temporary logging for EVG-5306, intent host",
-		"ticket":  "EVG-5306",
-		"intent":  intent.Distro.ProviderSettings,
-	})
-	return intent, nil
+	return cloud.NewIntent(d, d.GenerateName(), provider, options), nil
 }
 
 // MockCreateHostConnector mocks `DBCreateHostConnector`.
