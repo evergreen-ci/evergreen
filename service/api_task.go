@@ -262,7 +262,13 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			Version:      t.Version,
 		}
 		// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+		// This must clear the last task because it will fail if it retries (EVG-5331).
 		if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && t.Status != evergreen.TaskSucceeded {
+			if err := h.ClearLastTask(); err != nil {
+				grip.Error(errors.Wrap(err, "problem clearing last task"))
+				gimlet.WriteJSONInternalError(w, err)
+				return
+			}
 			if err := taskQueue.BlockTaskGroupTasks(spec, t.Id); err != nil {
 				return nil, errors.Wrapf(err, "problem blocking task group tasks for %s", t.Id)
 			}
