@@ -401,24 +401,6 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	return nil
 }
 
-// ClearLastTask unsets the last task from the db.
-func (h *Host) ClearLastTask() error {
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$unset": bson.M{
-				LTCTimeKey:    1,
-				LTCTaskKey:    1,
-				LTCGroupKey:   1,
-				LTCBVKey:      1,
-				LTCVersionKey: 1,
-				LTCProjectKey: 1,
-			},
-		})
-}
-
 // ClearRunningTask unsets the running task on the host.
 func (h *Host) ClearRunningTask() error {
 	err := UpdateOne(
@@ -852,8 +834,8 @@ func FindAllRunningParentsOrdered() ([]Host, error) {
 // FindAllRunningParentsOnDistro finds all running hosts of a given distro with child containers
 func FindAllRunningParentsByDistro(distroId string) ([]Host, error) {
 	query := db.Query(bson.M{
-		StatusKey:        evergreen.HostRunning,
-		HasContainersKey: true,
+		StatusKey:                                          evergreen.HostRunning,
+		HasContainersKey:                                   true,
 		bsonutil.GetDottedKeyName(DistroKey, distro.IdKey): distroId,
 	}).Sort([]string{LastContainerFinishTimeKey})
 	return Find(query)
@@ -961,7 +943,7 @@ func FindRunningHosts(includeSpawnHosts bool) ([]Host, error) {
 		},
 		{
 			"$unwind": bson.M{
-				"path":                       "$task_full",
+				"path": "$task_full",
 				"preserveNullAndEmptyArrays": true,
 			},
 		},

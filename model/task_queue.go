@@ -383,11 +383,19 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 // versions of the task queue
 func (self *TaskQueue) DequeueTask(taskId string) error {
 	// first, remove from the in-memory queue
+	found := false
 	for idx, queueItem := range self.Queue {
 		if queueItem.Id == taskId {
+			found = true
 			self.Queue = append(self.Queue[:idx], self.Queue[idx+1:]...)
 			continue
 		}
+	}
+
+	// validate that the task is there
+	if !found {
+		return errors.Errorf("task id %s was not present in queue for distro %s",
+			taskId, self.Distro)
 	}
 
 	return errors.WithStack(db.Update(
