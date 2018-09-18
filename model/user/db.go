@@ -23,6 +23,12 @@ var (
 	SettingsKey     = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey       = bsonutil.MustHaveTag(DBUser{}, "APIKey")
 	PubKeysKey      = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
+	LoginCacheKey   = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
+)
+
+var (
+	LoginCacheTokenKey = bsonutil.MustHaveTag(LoginCache{}, "Token")
+	LoginCacheTTLKey   = bsonutil.MustHaveTag(LoginCache{}, "TTL")
 )
 
 var (
@@ -77,6 +83,34 @@ func FindOne(query db.Q) (*DBUser, error) {
 		return nil, nil
 	}
 	return u, err
+}
+
+// FindOneByToken gets a DBUser by cached login token.
+func FindOneByToken(token string) (*DBUser, error) {
+	u := &DBUser{}
+	query := db.Query(bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token})
+	err := db.FindOneQ(Collection, query, u)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding user by token")
+	}
+	return u, nil
+}
+
+// FindOneById gets a DBUser by ID.
+func FindOneById(id string) (*DBUser, error) {
+	u := &DBUser{}
+	query := ById(id)
+	err := db.FindOneQ(Collection, query, u)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding user by id")
+	}
+	return u, nil
 }
 
 // Find gets all DBUser for the given query.

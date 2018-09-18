@@ -29,6 +29,14 @@ type CrowdConfig struct {
 	Urlroot  string `bson:"url_root" json:"url_root" yaml:"urlroot"`
 }
 
+// LDAPConfig contains settings for interacting with an LDAP server.
+type LDAPConfig struct {
+	URL   string `bson:"url" json:"url" yaml:"url"`
+	Port  string `bson:"port" json:"port" yaml:"port"`
+	Path  string `bson:"path" json:"path" yaml:"path"`
+	Group string `bson:"group" json:"group" yaml:"group"`
+}
+
 // GithubAuthConfig holds settings for interacting with Github Authentication including the
 // ClientID, ClientSecret and CallbackUri which are given when registering the application
 // Furthermore,

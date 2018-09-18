@@ -26,7 +26,7 @@ func TestSimpleAuthenticator(t *testing.T) {
 	assert.Len(auth.(*simpleAuthenticator).users, 0)
 
 	// constructor avoids nils
-	usr := NewBasicUser("id", "email", "key", []string{})
+	usr := NewBasicUser("id", "name", "email", "key", []string{})
 	auth = NewSimpleAuthenticator([]User{usr}, nil)
 	assert.NotNil(auth)
 	assert.NotNil(auth.(*simpleAuthenticator).groups)
@@ -38,11 +38,11 @@ func TestSimpleAuthenticator(t *testing.T) {
 	assert.True(auth.CheckAuthenticated(usr))
 
 	// a second user shouldn't validate
-	usr2 := NewBasicUser("id2", "email", "key", []string{})
+	usr2 := NewBasicUser("id2", "name", "email", "key", []string{})
 	assert.False(auth.CheckAuthenticated(usr2))
 
-	usr3 := NewBasicUser("id3", "email", "key", []string{"admin"})
-	usr3broken := NewBasicUser("id3", "email", "yek", []string{"admin"})
+	usr3 := NewBasicUser("id3", "name", "email", "key", []string{"admin"})
+	usr3broken := NewBasicUser("id3", "name", "email", "yek", []string{"admin"})
 	auth = NewSimpleAuthenticator([]User{usr3}, map[string][]string{
 		"none":  []string{"_"},
 		"admin": []string{"id3"}})
@@ -78,7 +78,7 @@ func TestBasicAuthenticator(t *testing.T) {
 	// usernames
 	assert.False(auth.CheckAuthenticated(nil))
 	assert.False(auth.CheckAuthenticated(&basicUser{}))
-	usr := NewBasicUser("id", "email", "key", []string{})
+	usr := NewBasicUser("id", "name", "email", "key", []string{})
 	assert.True(auth.CheckAuthenticated(usr))
 
 	auth = NewBasicAuthenticator(map[string][]string{"one": []string{"id"}}, nil)
