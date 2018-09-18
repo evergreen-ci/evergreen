@@ -171,9 +171,7 @@ func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string
 	if createHost.UserdataCommand != "" {
 		ec2Settings.UserData = createHost.UserdataCommand
 	}
-	if createHost.VPC != "" {
-		ec2Settings.VpcName = createHost.VPC
-	}
+	ec2Settings.IsVpc = true // task-spawned hosts do not support ec2 classic
 	if err := mapstructure.Decode(ec2Settings, &d.ProviderSettings); err != nil {
 		return nil, errors.Wrap(err, "error marshaling provider settings")
 	}
