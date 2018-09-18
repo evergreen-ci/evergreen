@@ -157,6 +157,7 @@ functions:
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
         XC_BUILD: ${xc_build}
+        NO_SSH: ${no_ssh}
   set-up-credentials:
     command: subprocess.exec
     type: setup
@@ -377,6 +378,7 @@ buildvariants:
       goroot: /opt/go1.8/go
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
       test_timeout: 15m
+      no_ssh: true
     tasks:
       - name: "dist"
       - name: ".smoke"
