@@ -534,9 +534,6 @@ mciModule.controller('PerfController', function PerfController(
                 buildvariants: $scope.task.build_variant,
               }},
               // Denormalization
-              {$unwind: {path: '$tasks', preserveNullAndEmptyArrays: true}},
-              {$unwind: {path: '$buildvariants', preserveNullAndEmptyArrays: true}},
-              {$unwind: {path: '$project', preserveNullAndEmptyArrays: true}},
               {$unwind: {path: '$tests', preserveNullAndEmptyArrays: true}},
               {$unwind: {path: '$first_failing_revision', preserveNullAndEmptyArrays: true}},
             ])
