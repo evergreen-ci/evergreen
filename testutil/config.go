@@ -68,6 +68,13 @@ func MockConfig() *evergreen.Settings {
 				Password: "crowdpw",
 				Urlroot:  "crowdurl",
 			},
+			LDAP: &evergreen.LDAPConfig{
+				URL:                "url",
+				Port:               "port",
+				Path:               "path",
+				Group:              "group",
+				ExpireAfterMinutes: 60,
+			},
 			Naive: &evergreen.NaiveAuthConfig{
 				Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pw"}},
 			},
