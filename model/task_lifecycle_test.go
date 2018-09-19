@@ -888,7 +888,7 @@ func TestTryResetTask(t *testing.T) {
 			userName := "testUser"
 			b := &build.Build{
 				Id:      "buildtest",
-				Status:  evergreen.BuildStarted,
+				Status:  evergreen.BuildSucceeded,
 				Version: "abc",
 			}
 			v := &version.Version{
@@ -904,6 +904,15 @@ func TestTryResetTask(t *testing.T) {
 				Project:     "sample",
 				Status:      evergreen.TaskSucceeded,
 			}
+			otherTask := &task.Task{
+				Id:          "testtwo",
+				DisplayName: "foo",
+				Activated:   true,
+				BuildId:     b.Id,
+				Execution:   1,
+				Project:     "sample",
+				Status:      evergreen.TaskSucceeded,
+			}
 			detail := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
@@ -912,12 +921,16 @@ func TestTryResetTask(t *testing.T) {
 				{
 					Id: testTask.Id,
 				},
+				{
+					Id: otherTask.Id,
+				},
 			}
 
 			var err error
 
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
+			So(otherTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
 			Convey("should reset and add a task to the old tasks collection", func() {
 				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
@@ -934,6 +947,11 @@ func TestTryResetTask(t *testing.T) {
 				So(oldTask.Execution, ShouldEqual, 1)
 				So(oldTask.Details, ShouldResemble, *detail)
 				So(oldTask.FinishTime, ShouldNotResemble, util.ZeroTime)
+
+				// should also reset the build status to "started"
+				buildFromDb, err := build.FindOne(build.ById(b.Id))
+				So(err, ShouldBeNil)
+				So(buildFromDb.Status, ShouldEqual, evergreen.BuildStarted)
 			})
 
 		})
