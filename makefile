@@ -51,7 +51,7 @@ endif
 #   separately. This is a temporary solution: eventually we should
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
-lintDeps += github.com/evergreen-ci/evg-lint/...
+lintDeps += github.com/evergreen-ci/evg-lint
 #   include test files and give linters 40s to run to avoid timeouts
 lintArgs := --tests --deadline=10m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
@@ -63,6 +63,7 @@ lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
+lintArgs += --disable="megacheck" --enable="unused" --enable="gosimple"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"
