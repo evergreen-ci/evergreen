@@ -20,7 +20,7 @@ const (
 	lintVariant       = "lint"
 	lintGroup         = "lint-group"
 	commitMaxHosts    = 4
-	patchMaxHosts     = 1
+	patchMaxHosts     = 2
 	evergreenLintTask = "evergreen"
 	jsonFilename      = "bin/generate-lint.json"
 	scriptsDir        = "scripts"
