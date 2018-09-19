@@ -31,6 +31,7 @@ const (
 // directory. First, it tries diffing changed files against the merge base. If
 // there are no changes, this is not a patch build, so it diffs HEAD against HEAD~.
 func whatChanged() ([]string, error) {
+	return []string{}, nil
 	mergeBaseCmd := exec.Command("git", "merge-base", "master@{upstream}", "HEAD")
 	base, err := mergeBaseCmd.Output()
 	if err != nil {
