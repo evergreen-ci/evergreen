@@ -409,7 +409,6 @@ func (h *Host) ClearLastTask() error {
 		},
 		bson.M{
 			"$unset": bson.M{
-				LTCTimeKey:    1,
 				LTCTaskKey:    1,
 				LTCGroupKey:   1,
 				LTCBVKey:      1,
