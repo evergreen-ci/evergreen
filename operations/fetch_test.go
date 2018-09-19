@@ -20,20 +20,12 @@ func TestClone(t *testing.T) {
 	if len(tokenParts) > 0 {
 		token = tokenParts[1]
 	}
-	nossh := os.Getenv("NO_SSH") != ""
 
 	passingCases := map[string]cloneOptions{
 		"SimpleHTTPS": cloneOptions{
 			owner:      "evergreen-ci",
 			repository: "sample",
 			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
-			branch:     "master",
-			token:      token,
-		},
-		"PrivateHTTPS": cloneOptions{
-			owner:      "10gen",
-			repository: "kernel-tools",
-			revision:   "cabca3defc4b251c8a0be268969606717e01f906",
 			branch:     "master",
 			token:      token,
 		},
@@ -60,15 +52,6 @@ func TestClone(t *testing.T) {
 			branch:     "master",
 			token:      "foo",
 		},
-	}
-
-	if !nossh {
-		passingCases["SimpleSSH"] = cloneOptions{
-			owner:      "evergreen-ci",
-			repository: "sample",
-			revision:   "cf46076567e4949f9fc68e0634139d4ac495c89b",
-			branch:     "master",
-		}
 	}
 
 	for name, opts := range passingCases {
