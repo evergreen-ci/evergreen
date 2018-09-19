@@ -209,10 +209,12 @@ func clone(opts cloneOptions) error {
 		url = fmt.Sprintf("git@github.com:%v/%v.git", opts.owner, opts.repository)
 	}
 	cloneOpts := git.CloneOptions{
-		URL:           url,
-		Depth:         int(opts.depth),
-		ReferenceName: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", opts.branch)),
-		Progress:      os.Stdout,
+		URL:      url,
+		Depth:    int(opts.depth),
+		Progress: os.Stdout,
+	}
+	if opts.branch != "" {
+		cloneOpts.ReferenceName = plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", opts.branch))
 	}
 	repo, err := git.PlainCloneContext(ctx, opts.rootDir, false, &cloneOpts)
 	if err != nil {
