@@ -123,7 +123,7 @@ imports:
   - name: gopkg.in/src-d/go-git.v4
     version: bf3b1f1fb9e0a04d0f87511a7ded2562b48a19d8
   - name: github.com/xanzy/ssh-agent
-    version: ba9c9e33906f58169366275e3450db66139a31a9
+    version: 640f0ab560aeb89d523bb6ac322b1244d5c3796c
   - name: github.com/jbenet/go-context
     version: d14ea06fba99483203c19d92cfcd13ebe73135f4
   - name: github.com/kevinburke/ssh_config
