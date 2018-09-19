@@ -93,15 +93,22 @@ func SetCachedTaskActivated(buildId, taskId string, active bool) error {
 // ResetCachedTask resets the given task
 // in the cache of the given build.
 func ResetCachedTask(buildId, taskId string) error {
-	return updateOneTaskCache(buildId, taskId, bson.M{
-		"$set": bson.M{
-			TasksKey + ".$." + TaskCacheStartTimeKey: util.ZeroTime,
-			TasksKey + ".$." + TaskCacheStatusKey:    evergreen.TaskUndispatched,
+	return UpdateOne(
+		bson.M{
+			IdKey: buildId,
+			TasksKey + "." + TaskCacheIdKey: taskId,
 		},
-		"$unset": bson.M{
-			TasksKey + ".$." + TaskCacheStatusDetailsKey: "",
+		bson.M{
+			"$set": bson.M{
+				TasksKey + ".$." + TaskCacheStartTimeKey: util.ZeroTime,
+				TasksKey + ".$." + TaskCacheStatusKey:    evergreen.TaskUndispatched,
+				StatusKey: evergreen.BuildStarted,
+			},
+			"$unset": bson.M{
+				TasksKey + ".$." + TaskCacheStatusDetailsKey: "",
+			},
 		},
-	})
+	)
 }
 
 // UpdateCachedTask sets the status and increments the time taken for a task
