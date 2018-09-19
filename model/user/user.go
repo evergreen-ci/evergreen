@@ -5,6 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
@@ -23,6 +25,12 @@ type DBUser struct {
 	Settings     UserSettings `bson:"settings"`
 	APIKey       string       `bson:"apikey"`
 	SystemRoles  []string     `bson:"roles"`
+	LoginCache   LoginCache   `bson:"login_cache,omitempty"`
+}
+
+type LoginCache struct {
+	Token string    `bson:"token"`
+	TTL   time.Time `bson:"ttl"`
 }
 
 type GithubUser struct {
@@ -93,7 +101,7 @@ func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
 	}
 	userWithoutKey := bson.M{
 		IdKey: u.Id,
-		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$ne": keyName},
+		bsonutil.GetDottedKeyName(PubKeysKey, pubKeyNameKey): bson.M{"$ne": keyName},
 	}
 	update := bson.M{
 		"$push": bson.M{PubKeysKey: key},
@@ -112,13 +120,13 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 
 	selector := bson.M{
 		IdKey: u.Id,
-		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$eq": keyName},
+		bsonutil.GetDottedKeyName(PubKeysKey, pubKeyNameKey): bson.M{"$eq": keyName},
 	}
 	c := mgo.Change{
 		Update: bson.M{
 			"$pull": bson.M{
 				PubKeysKey: bson.M{
-					PubKeyNameKey: keyName,
+					pubKeyNameKey: keyName,
 				},
 			},
 		},
@@ -182,4 +190,45 @@ func FormatObjectID(id string) (bson.ObjectId, error) {
 		return "", errors.Errorf("%s is not a valid ObjectId", id)
 	}
 	return bson.ObjectIdHex(id), nil
+}
+
+// PutLoginCache generates, saves, and returns a new token, and sets the TTL to now.
+func PutLoginCache(g gimlet.User) (string, error) {
+	u, err := FindOneById(g.Username())
+	if err != nil {
+		return "", errors.Wrap(err, "problem finding user by id")
+	}
+	if u == nil {
+		return "", errors.Errorf("no user '%s' found", g.Username())
+	}
+	token := util.RandomString()
+	if err := UpdateOne(
+		bson.M{IdKey: u.Id},
+		bson.M{"$set": bson.M{
+			bsonutil.GetDottedKeyName(loginCacheKey, loginCacheTokenKey): token,
+			bsonutil.GetDottedKeyName(loginCacheKey, loginCacheTTLKey):   time.Now(),
+		}},
+	); err != nil {
+		return "", errors.Wrap(err, "problem setting new token in database")
+	}
+	return token, nil
+}
+
+// GetLoginCache retrieve a cached user by token.
+// It returns an error if and only if there was an error retrieving the user from the cache.
+// It returns (<user>, true, nil) if the user is present in the cache and is valid.
+// It returns (<user>, false, nil) if the user is present in the cache but has expired.
+// It returns (nil, false, nil) if the user is not present in the cache.
+func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, error) {
+	u, err := FindOneByToken(token)
+	if err != nil {
+		return nil, false, errors.Wrap(err, "problem getting user from cache")
+	}
+	if u == nil {
+		return nil, false, nil
+	}
+	if time.Since(u.LoginCache.TTL) > expireAfter {
+		return u, false, nil
+	}
+	return u, true, nil
 }

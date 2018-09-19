@@ -37,6 +37,10 @@ func (s *UserTestSuite) SetupTest() {
 					LastKnownAs: "octocat",
 				},
 			},
+			LoginCache: LoginCache{
+				Token: "1234",
+				TTL:   time.Now(),
+			},
 		},
 		&DBUser{
 			Id: "Test2",
@@ -48,6 +52,10 @@ func (s *UserTestSuite) SetupTest() {
 				},
 			},
 			APIKey: "67890",
+			LoginCache: LoginCache{
+				Token: "4321",
+				TTL:   time.Now().Add(-time.Hour),
+			},
 		},
 	}
 
@@ -135,5 +143,80 @@ func (s *UserTestSuite) TestFindByGithubUID() {
 
 	u, err = FindByGithubUID(-1)
 	s.NoError(err)
+	s.Nil(u)
+}
+
+func (s *UserTestSuite) TestFindOneByToken() {
+	u, err := FindOneByToken("1234")
+	s.NoError(err)
+	s.NotNil(u)
+	s.Equal("Test1", u.Id)
+
+	u, err = FindOneByToken("4321")
+	s.NoError(err)
+	s.NotNil(u)
+	s.Equal("Test2", u.Id)
+
+	u, err = FindOneByToken("1111")
+	s.NoError(err)
+	s.Nil(u)
+}
+
+func (s *UserTestSuite) TestFindOneById() {
+	u, err := FindOneById(s.users[0].Id)
+	s.NoError(err)
+	s.NotNil(u)
+	s.Equal("Test1", u.Id)
+
+	u, err = FindOneById(s.users[1].Id)
+	s.NoError(err)
+	s.NotNil(u)
+	s.Equal("Test2", u.Id)
+
+	u, err = FindOneByToken("1111")
+	s.NoError(err)
+	s.Nil(u)
+}
+
+func (s *UserTestSuite) TestPutLoginCache() {
+	token1, err := PutLoginCache(s.users[0])
+	s.NoError(err)
+	s.NotEmpty(token1)
+
+	token2, err := PutLoginCache(s.users[1])
+	s.NoError(err)
+	s.NotEmpty(token2)
+
+	token3, err := PutLoginCache(&DBUser{Id: "asdf"})
+	s.Error(err)
+	s.Empty(token3)
+
+	u1, err := FindOneById(s.users[0].Id)
+	s.NoError(err)
+	s.Equal(s.users[0].Id, u1.Id)
+
+	u2, err := FindOneById(s.users[1].Id)
+	s.NoError(err)
+	s.Equal(s.users[1].Id, u2.Id)
+
+	s.NotEqual(u1.LoginCache.Token, u2.LoginCache.Token)
+	s.WithinDuration(time.Now(), u1.LoginCache.TTL, time.Second)
+	s.WithinDuration(time.Now(), u2.LoginCache.TTL, time.Second)
+}
+
+func (s *UserTestSuite) TestGetLoginCache() {
+	u, valid, err := GetLoginCache("1234", time.Minute)
+	s.NoError(err)
+	s.True(valid)
+	s.Equal("Test1", u.Username())
+
+	u, valid, err = GetLoginCache("4321", time.Minute)
+	s.NoError(err)
+	s.False(valid)
+	s.Equal("Test2", u.Username())
+
+	u, valid, err = GetLoginCache("asdf", time.Minute)
+	s.NoError(err)
+	s.False(valid)
 	s.Nil(u)
 }

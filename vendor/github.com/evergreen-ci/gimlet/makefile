@@ -1,7 +1,7 @@
 # start project configuration
 name := gimlet
 buildDir := build
-packages := $(name)
+packages := $(name) ldap
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -179,6 +179,7 @@ $(buildDir)/output.lint:$(buildDir)/run-linter $(buildDir)/.lintSetup .FORCE
 vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
+	rm -rf vendor/gopkg.in/asn1-ber.v1/tests/
 phony += vendor-clean
 # end vendoring tooling configuration
 

@@ -5,15 +5,17 @@ imports:
   version: 50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da
 - name: github.com/gorilla/mux
   version: ac112f7d75a0714af1bd86ab17749b31f7809640
-
 - name: gopkg.in/yaml.v2
   version: a83829b6f1293c91addabc89d0571c246397bbf4
-
 - name: github.com/mongodb/grip
   version: 5d6dffc047e01c5553d48459d68a2d4f6c11a6ff
 - name: github.com/urfave/negroni
   version: 3444e69ea1ef03a77998d11fc56e7f0a34f7213c
-
 - name: github.com/stretchr/testify
   version: 890a5c3458b43e6104ff5da8dfa139d013d77544
-devImports: []
+- name: gopkg.in/ldap.v2
+  version: c6ce48312dc899d500d77926d9d3c33a0e01259c
+- name: gopkg.in/asn1-ber.v1
+  version: 379148ca0225df7a432012b8df0355c2a2063ac0
+- name: github.com/pkg/errors
+  version: ff09b135c25aae272398c51a07235b90a75aa4f0
