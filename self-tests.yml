@@ -365,7 +365,6 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
-      - name: generate-lint
 
   - name: ubuntu1604-docker
     display_name: Ubuntu 16.04 (Docker)
@@ -408,6 +407,13 @@ buildvariants:
     tasks:
       - name: "dist"
       - name: ".test"
+
+  - name: lint
+    display_name: Lint
+    run_on:
+      - archlinux-test
+    tasks:
+      - name: generate-lint
 
   - name: coverage
     display_name: Coverage
