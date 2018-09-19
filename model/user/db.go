@@ -13,20 +13,22 @@ const (
 )
 
 var (
-	IdKey              = bsonutil.MustHaveTag(DBUser{}, "Id")
-	FirstNameKey       = bsonutil.MustHaveTag(DBUser{}, "FirstName")
-	LastNameKey        = bsonutil.MustHaveTag(DBUser{}, "LastName")
-	DispNameKey        = bsonutil.MustHaveTag(DBUser{}, "DispName")
-	EmailAddressKey    = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
-	PatchNumberKey     = bsonutil.MustHaveTag(DBUser{}, "PatchNumber")
-	CreatedAtKey       = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
-	SettingsKey        = bsonutil.MustHaveTag(DBUser{}, "Settings")
-	APIKeyKey          = bsonutil.MustHaveTag(DBUser{}, "APIKey")
-	PubKeysKey         = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
-	loginCacheKey      = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
-	loginCacheTokenKey = bsonutil.MustHaveTag(LoginCache{}, "Token")
-	loginCacheTTLKey   = bsonutil.MustHaveTag(LoginCache{}, "TTL")
-	pubKeyNameKey      = bsonutil.MustHaveTag(PubKey{}, "Name")
+	IdKey               = bsonutil.MustHaveTag(DBUser{}, "Id")
+	FirstNameKey        = bsonutil.MustHaveTag(DBUser{}, "FirstName")
+	LastNameKey         = bsonutil.MustHaveTag(DBUser{}, "LastName")
+	DispNameKey         = bsonutil.MustHaveTag(DBUser{}, "DispName")
+	EmailAddressKey     = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
+	PatchNumberKey      = bsonutil.MustHaveTag(DBUser{}, "PatchNumber")
+	CreatedAtKey        = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
+	SettingsKey         = bsonutil.MustHaveTag(DBUser{}, "Settings")
+	APIKeyKey           = bsonutil.MustHaveTag(DBUser{}, "APIKey")
+	PubKeysKey          = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
+	LoginCacheKey       = bsonutil.MustHaveTag(DBUser{}, "LoginCache")
+	LoginCacheTokenKey  = bsonutil.MustHaveTag(LoginCache{}, "Token")
+	LoginCacheTTLKey    = bsonutil.MustHaveTag(LoginCache{}, "TTL")
+	PubKeyNameKey       = bsonutil.MustHaveTag(PubKey{}, "Name")
+	PubKeyKey           = bsonutil.MustHaveTag(PubKey{}, "Key")
+	PubKeyNCreatedAtKey = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
 )
 
 //nolint: deadcode, megacheck
@@ -80,7 +82,7 @@ func FindOne(query db.Q) (*DBUser, error) {
 // FindOneByToken gets a DBUser by cached login token.
 func FindOneByToken(token string) (*DBUser, error) {
 	u := &DBUser{}
-	query := db.Query(bson.M{bsonutil.GetDottedKeyName(loginCacheKey, loginCacheTokenKey): token})
+	query := db.Query(bson.M{bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token})
 	err := db.FindOneQ(Collection, query, u)
 	if err == mgo.ErrNotFound {
 		return nil, nil

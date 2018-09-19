@@ -101,7 +101,7 @@ func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
 	}
 	userWithoutKey := bson.M{
 		IdKey: u.Id,
-		bsonutil.GetDottedKeyName(PubKeysKey, pubKeyNameKey): bson.M{"$ne": keyName},
+		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$ne": keyName},
 	}
 	update := bson.M{
 		"$push": bson.M{PubKeysKey: key},
@@ -120,13 +120,13 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 
 	selector := bson.M{
 		IdKey: u.Id,
-		bsonutil.GetDottedKeyName(PubKeysKey, pubKeyNameKey): bson.M{"$eq": keyName},
+		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$eq": keyName},
 	}
 	c := mgo.Change{
 		Update: bson.M{
 			"$pull": bson.M{
 				PubKeysKey: bson.M{
-					pubKeyNameKey: keyName,
+					PubKeyNameKey: keyName,
 				},
 			},
 		},
@@ -205,8 +205,8 @@ func PutLoginCache(g gimlet.User) (string, error) {
 	if err := UpdateOne(
 		bson.M{IdKey: u.Id},
 		bson.M{"$set": bson.M{
-			bsonutil.GetDottedKeyName(loginCacheKey, loginCacheTokenKey): token,
-			bsonutil.GetDottedKeyName(loginCacheKey, loginCacheTTLKey):   time.Now(),
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token,
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   time.Now(),
 		}},
 	); err != nil {
 		return "", errors.Wrap(err, "problem setting new token in database")
