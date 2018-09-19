@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -120,6 +121,11 @@ func TestCLIFetchSource(t *testing.T) {
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
+	tokenParts := strings.Split(testConfig.Credentials["github"], " ")
+	var token string
+	if len(tokenParts) > 0 {
+		token = tokenParts[1]
+	}
 
 	Convey("with a task containing patches and modules", t, func() {
 		testSetup := setupCLITestHarness()
@@ -162,7 +168,7 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(testTask, ShouldNotBeNil)
 
-		err = fetchSource(ac, rc, "", testTask.Id, false)
+		err = fetchSource(ac, rc, "", testTask.Id, token, false)
 		So(err, ShouldBeNil)
 
 		fileStat, err := os.Stat("./source-patch-1_sample/README.md")

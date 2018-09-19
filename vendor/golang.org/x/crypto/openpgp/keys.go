@@ -6,11 +6,12 @@ package openpgp
 
 import (
 	"crypto/rsa"
+	"io"
+	"time"
+
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/errors"
 	"golang.org/x/crypto/openpgp/packet"
-	"io"
-	"time"
 )
 
 // PublicKeyType is the armor type for a PGP public key.
@@ -90,13 +91,16 @@ func (e *Entity) primaryIdentity() *Identity {
 func (e *Entity) encryptionKey(now time.Time) (Key, bool) {
 	candidateSubkey := -1
 
+	// Iterate the keys to find the newest key
+	var maxTime time.Time
 	for i, subkey := range e.Subkeys {
 		if subkey.Sig.FlagsValid &&
 			subkey.Sig.FlagEncryptCommunications &&
 			subkey.PublicKey.PubKeyAlgo.CanEncrypt() &&
-			!subkey.Sig.KeyExpired(now) {
+			!subkey.Sig.KeyExpired(now) &&
+			(maxTime.IsZero() || subkey.Sig.CreationTime.After(maxTime)) {
 			candidateSubkey = i
-			break
+			maxTime = subkey.Sig.CreationTime
 		}
 	}
 
@@ -303,8 +307,6 @@ func readToNextPublicKey(packets *packet.Reader) (err error) {
 			return
 		}
 	}
-
-	panic("unreachable")
 }
 
 // ReadEntity reads an entity (public key, identities, subkeys etc) from the
@@ -323,9 +325,8 @@ func ReadEntity(packets *packet.Reader) (*Entity, error) {
 		if e.PrivateKey, ok = p.(*packet.PrivateKey); !ok {
 			packets.Unread(p)
 			return nil, errors.StructuralError("first packet was not a public/private key")
-		} else {
-			e.PrimaryKey = &e.PrivateKey.PublicKey
 		}
+		e.PrimaryKey = &e.PrivateKey.PublicKey
 	}
 
 	if !e.PrimaryKey.PubKeyAlgo.CanSign() {
@@ -460,15 +461,20 @@ const defaultRSAKeyBits = 2048
 func NewEntity(name, comment, email string, config *packet.Config) (*Entity, error) {
 	currentTime := config.Now()
 
+	bits := defaultRSAKeyBits
+	if config != nil && config.RSABits != 0 {
+		bits = config.RSABits
+	}
+
 	uid := packet.NewUserId(name, comment, email)
 	if uid == nil {
 		return nil, errors.InvalidArgumentError("user id field contained invalid characters")
 	}
-	signingPriv, err := rsa.GenerateKey(config.Random(), defaultRSAKeyBits)
+	signingPriv, err := rsa.GenerateKey(config.Random(), bits)
 	if err != nil {
 		return nil, err
 	}
-	encryptingPriv, err := rsa.GenerateKey(config.Random(), defaultRSAKeyBits)
+	encryptingPriv, err := rsa.GenerateKey(config.Random(), bits)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +486,7 @@ func NewEntity(name, comment, email string, config *packet.Config) (*Entity, err
 	}
 	isPrimaryId := true
 	e.Identities[uid.Id] = &Identity{
-		Name:   uid.Name,
+		Name:   uid.Id,
 		UserId: uid,
 		SelfSignature: &packet.Signature{
 			CreationTime: currentTime,
@@ -493,6 +499,17 @@ func NewEntity(name, comment, email string, config *packet.Config) (*Entity, err
 			FlagCertify:  true,
 			IssuerKeyId:  &e.PrimaryKey.KeyId,
 		},
+	}
+
+	// If the user passes in a DefaultHash via packet.Config,
+	// set the PreferredHash for the SelfSignature.
+	if config != nil && config.DefaultHash != 0 {
+		e.Identities[uid.Id].SelfSignature.PreferredHash = []uint8{hashToHashId(config.DefaultHash)}
+	}
+
+	// Likewise for DefaultCipher.
+	if config != nil && config.DefaultCipher != 0 {
+		e.Identities[uid.Id].SelfSignature.PreferredSymmetric = []uint8{uint8(config.DefaultCipher)}
 	}
 
 	e.Subkeys = make([]Subkey, 1)

@@ -53,3 +53,15 @@ import:
   - package: github.com/PuerkitoBio/rehttp
   - package: github.com/mholt/archiver
   - package: github.com/evergreen-ci/shrub
+
+  # git library and its dependencies
+  - package: gopkg.in/src-d/go-git.v4
+  - package: github.com/xanzy/ssh-agent
+  - package: github.com/jbenet/go-context
+  - package: github.com/kevinburke/ssh_config
+  - package: github.com/src-d/gcfg
+  - package: gopkg.in/src-d/go-billy.v4
+  - package: github.com/pelletier/go-buffruneio
+  - package: github.com/sergi/go-diff/
+  - package: gopkg.in/warnings.v0
+  - package: golang.org/x/text
