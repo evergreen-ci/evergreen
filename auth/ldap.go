@@ -19,10 +19,10 @@ func NewLDAPUserManager(conf *evergreen.LDAPConfig) (gimlet.UserManager, error) 
 		Port:          conf.Port,
 		Path:          conf.Path,
 		Group:         conf.Group,
-		PutCache:      putCache,
-		GetCache:      getCache,
-		GetUser:       getUser,
-		GetCreateUser: getCreateUser,
+		PutCache:      func(u gimlet.User) (string, error) { return user.PutLoginCache(u) },
+		GetCache:      func(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) },
+		GetUser:       func(id string) (gimlet.User, error) { return getUserByID(id) },
+		GetCreateUser: func(u gimlet.User) (gimlet.User, error) { return getOrCreateUser(u) },
 	}
 	um, err := ldap.NewUserService(opts)
 	if err != nil {
@@ -30,8 +30,3 @@ func NewLDAPUserManager(conf *evergreen.LDAPConfig) (gimlet.UserManager, error) 
 	}
 	return um, nil
 }
-
-func putCache(u gimlet.User) (string, error)           { return user.PutLoginCache(u) }
-func getCache(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) }
-func getUser(id string) (gimlet.User, error)           { return getUserByID(id) }
-func getCreateUser(u gimlet.User) (gimlet.User, error) { return getOrCreateUser(u) }
