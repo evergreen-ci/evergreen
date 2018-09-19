@@ -382,20 +382,6 @@ buildvariants:
       - name: ".test"
       - name: "js-test"
 
-  - name: ubuntu1604-debug
-    display_name: Ubuntu 16.04 Debug
-    run_on:
-      - ubuntu1604-test
-    expansions:
-      debug: 1
-      gobin: /opt/go1.8/go/bin/go
-      goroot: /opt/go1.8/go
-    tasks:
-      - name: "dist"
-        depends_on:
-          - name: "dist"
-            variant: "ubuntu1604"
-
   - name: race-detector
     display_name: Race Detector
     run_on:
