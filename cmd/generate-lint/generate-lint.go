@@ -17,7 +17,7 @@ import (
 
 const (
 	lintPrefix        = "lint"
-	lintVariant       = "ubuntu1604"
+	lintVariant       = "lint"
 	lintGroup         = "lint-group"
 	commitMaxHosts    = 4
 	patchMaxHosts     = 1
@@ -80,13 +80,6 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 }
 
 // makeTask returns a task map that can be marshaled into a JSON document.
-func getDisplayTask(targets []string) shrub.DisplayTaskDefinition {
-	def := shrub.DisplayTaskDefinition{Name: lintPrefix}
-	for _, et := range targets {
-		def.Components = append(def.Components, et)
-	}
-	return def
-}
 
 func makeTarget(target string) string {
 	return fmt.Sprintf("%s-%s", lintPrefix, target)
@@ -172,7 +165,7 @@ func generateTasks() (*shrub.Configuration, error) {
 	group.TeardownTask.Command().Function("remove-test-results")
 	group.Task(lintTargets...)
 
-	conf.Variant(lintVariant).DisplayTasks(getDisplayTask(lintTargets)).AddTasks(lintGroup)
+	conf.Variant(lintVariant).AddTasks(lintGroup)
 
 	return conf, nil
 }
