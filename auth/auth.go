@@ -20,6 +20,12 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error
 			return nil, err
 		}
 	}
+	if authConfig.LDAP != nil {
+		manager, err = NewLDAPUserManager(authConfig.LDAP)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if authConfig.Naive != nil {
 		if manager != nil {
 			return nil, errors.New("Cannot have multiple forms of authentication in configuration")
