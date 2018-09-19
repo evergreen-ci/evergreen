@@ -247,13 +247,6 @@ func (s *AdminSuite) TestAuthConfig() {
 			Password: "crowdpw",
 			Urlroot:  "crowdurl",
 		},
-		LDAP: &LDAPConfig{
-			URL:                "url",
-			Port:               "port",
-			Path:               "path",
-			Group:              "group",
-			ExpireAfterMinutes: 60,
-		},
 		Naive: &NaiveAuthConfig{
 			Users: []*AuthUser{&AuthUser{Username: "user", Password: "pw"}},
 		},

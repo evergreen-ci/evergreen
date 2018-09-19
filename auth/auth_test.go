@@ -11,12 +11,6 @@ import (
 func TestLoadUserManager(t *testing.T) {
 	Convey("When Loading a UserManager from an AuthConfig", t, func() {
 		c := evergreen.CrowdConfig{}
-		l := evergreen.LDAPConfig{
-			URL:   "url",
-			Port:  "port",
-			Path:  "path",
-			Group: "group",
-		}
 		g := evergreen.GithubAuthConfig{}
 		n := evergreen.NaiveAuthConfig{}
 		Convey("a UserManager should not be able to be created in an empty AuthConfig", func() {
@@ -27,17 +21,18 @@ func TestLoadUserManager(t *testing.T) {
 		})
 		Convey("a UserManager should not be able to be created if there are more than one AuthConfig type", func() {
 			a := evergreen.AuthConfig{
-				Crowd: &c,
-				Naive: &n,
-			}
+				Crowd:  &c,
+				Naive:  &n,
+				Github: nil}
 			um, err := LoadUserManager(a)
 			So(err, ShouldNotBeNil)
 			So(um, ShouldBeNil)
 		})
 		Convey("a UserManager should not be able to be created if one AuthConfig type is Github", func() {
 			a := evergreen.AuthConfig{
-				Github: &g,
-			}
+				Crowd:  nil,
+				Naive:  nil,
+				Github: &g}
 			um, err := LoadUserManager(a)
 			So(err, ShouldNotBeNil)
 			So(um, ShouldBeNil)
@@ -45,17 +40,9 @@ func TestLoadUserManager(t *testing.T) {
 
 		Convey("a UserManager should be able to be created if one AuthConfig type is Crowd", func() {
 			a := evergreen.AuthConfig{
-				Crowd: &c,
-			}
-			um, err := LoadUserManager(a)
-			So(err, ShouldBeNil)
-			So(um, ShouldNotBeNil)
-		})
-
-		Convey("a UserManager should be able to be created if one AuthConfig type is LDAP", func() {
-			a := evergreen.AuthConfig{
-				LDAP: &l,
-			}
+				Crowd:  &c,
+				Naive:  nil,
+				Github: nil}
 			um, err := LoadUserManager(a)
 			So(err, ShouldBeNil)
 			So(um, ShouldNotBeNil)
@@ -63,8 +50,9 @@ func TestLoadUserManager(t *testing.T) {
 
 		Convey("a UserManager should be able to be created if one AuthConfig type is Naive", func() {
 			a := evergreen.AuthConfig{
-				Naive: &n,
-			}
+				Crowd:  nil,
+				Naive:  &n,
+				Github: nil}
 			um, err := LoadUserManager(a)
 			So(err, ShouldBeNil)
 			So(um, ShouldNotBeNil)

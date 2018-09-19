@@ -320,7 +320,6 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 
 type APIAuthConfig struct {
 	Crowd  *APICrowdConfig      `json:"crowd"`
-	LDAP   *APILDAPConfig       `json:"ldap"`
 	Naive  *APINaiveAuthConfig  `json:"naive"`
 	Github *APIGithubAuthConfig `json:"github"`
 }
@@ -331,12 +330,6 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 		if v.Crowd != nil {
 			a.Crowd = &APICrowdConfig{}
 			if err := a.Crowd.BuildFromService(v.Crowd); err != nil {
-				return err
-			}
-		}
-		if v.LDAP != nil {
-			a.LDAP = &APILDAPConfig{}
-			if err := a.LDAP.BuildFromService(v.LDAP); err != nil {
 				return err
 			}
 		}
@@ -360,7 +353,6 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 
 func (a *APIAuthConfig) ToService() (interface{}, error) {
 	var crowd *evergreen.CrowdConfig
-	var ldap *evergreen.LDAPConfig
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
 	i, err := a.Crowd.ToService()
@@ -369,13 +361,6 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	}
 	if i != nil {
 		crowd = i.(*evergreen.CrowdConfig)
-	}
-	i, err = a.LDAP.ToService()
-	if err != nil {
-		return nil, err
-	}
-	if i != nil {
-		ldap = i.(*evergreen.LDAPConfig)
 	}
 	i, err = a.Naive.ToService()
 	if err != nil {
@@ -393,7 +378,6 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 	}
 	return evergreen.AuthConfig{
 		Crowd:  crowd,
-		LDAP:   ldap,
 		Naive:  naive,
 		Github: github,
 	}, nil
@@ -428,44 +412,6 @@ func (a *APICrowdConfig) ToService() (interface{}, error) {
 		Username: FromAPIString(a.Username),
 		Password: FromAPIString(a.Password),
 		Urlroot:  FromAPIString(a.Urlroot),
-	}, nil
-}
-
-type APILDAPConfig struct {
-	URL                APIString `json:"url"`
-	Port               APIString `json:"port"`
-	Path               APIString `json:"path"`
-	Group              APIString `json:"group"`
-	ExpireAfterMinutes int       `json:"expire_after_minutes"`
-}
-
-func (a *APILDAPConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *evergreen.LDAPConfig:
-		if v == nil {
-			return nil
-		}
-		a.URL = ToAPIString(v.URL)
-		a.Port = ToAPIString(v.Port)
-		a.Path = ToAPIString(v.Path)
-		a.Group = ToAPIString(v.Group)
-		a.ExpireAfterMinutes = v.ExpireAfterMinutes
-	default:
-		return errors.Errorf("%T is not a supported type", h)
-	}
-	return nil
-}
-
-func (a *APILDAPConfig) ToService() (interface{}, error) {
-	if a == nil {
-		return nil, nil
-	}
-	return &evergreen.LDAPConfig{
-		URL:                FromAPIString(a.URL),
-		Port:               FromAPIString(a.Port),
-		Path:               FromAPIString(a.Path),
-		Group:              FromAPIString(a.Group),
-		ExpireAfterMinutes: a.ExpireAfterMinutes,
 	}, nil
 }
 
@@ -725,7 +671,7 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		SMTP:                    smtp.(evergreen.SMTPConfig),
+		SMTP: smtp.(evergreen.SMTPConfig),
 	}, nil
 }
 
