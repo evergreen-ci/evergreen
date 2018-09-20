@@ -77,6 +77,9 @@ func (b *Build) IsFinished() bool {
 // BuildFailed or BuildSucceded. The string is only valid when the boolean is
 // true
 func (b *Build) AllUnblockedTasksOrCompileFinished(tasksWithDeps []task.Task) (bool, string, error) {
+	if !b.Activated {
+		return false, b.Status, nil
+	}
 	allFinished := true
 	status := evergreen.BuildSucceeded
 	catcher := grip.NewSimpleCatcher()

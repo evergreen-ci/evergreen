@@ -187,8 +187,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	for _, b := range builds {
 		if b.Activated {
 			activeBuilds += 1
-		} else {
-			continue
 		}
 		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished(tasksWithDeps)
 		if err != nil {
