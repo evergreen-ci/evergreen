@@ -63,8 +63,7 @@ func (sf *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
 				// allow the user to specify their own CA certs file
 				tlsConfig.InsecureSkipVerify = true
 				dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-					conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
-					return conn, err
+					return tls.Dial("tcp", addr.String(), tlsConfig)
 				}
 			}
 

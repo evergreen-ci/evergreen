@@ -108,12 +108,15 @@ func (self *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					if t.DisplayOnly {
 						files := []displayTaskFiles{}
 						for _, execTaskID := range t.ExecutionTasks {
-							execTaskFiles, err := getAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: context.Task.Execution}})
+							var execTaskFiles []artifact.File
+							execTaskFiles, err = getAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: context.Task.Execution}})
 							if err != nil {
 								return nil, err
 							}
 							strippedFiles := stripHiddenFiles(execTaskFiles, context.User)
-							execTask, err := task.FindOne(task.ById(execTaskID))
+
+							var execTask *task.Task
+							execTask, err = task.FindOne(task.ById(execTaskID))
 							if err != nil {
 								return nil, err
 							}

@@ -55,22 +55,22 @@ func (d *Distro) Update() error {
 
 // Remove removes one distro.
 func Remove(id string) error {
-	return db.Remove(Collection, bson.D{{IdKey, id}})
+	return db.Remove(Collection, bson.M{IdKey: id})
 }
 
 // ById returns a query that contains an Id selector on the string, id.
 func ById(id string) db.Q {
-	return db.Query(bson.D{{IdKey, id}})
+	return db.Query(bson.M{IdKey: id})
 }
 
 // ByProvider returns a query that contains a Provider selector on the string, p.
 func ByProvider(p string) db.Q {
-	return db.Query(bson.D{{ProviderKey, p}})
+	return db.Query(bson.M{ProviderKey: p})
 }
 
 // BySpawnAllowed returns a query that contains the SpawnAllowed selector.
 func BySpawnAllowed() db.Q {
-	return db.Query(bson.D{{SpawnAllowedKey, true}})
+	return db.Query(bson.M{SpawnAllowedKey: true})
 }
 
 // ByActive returns a query that selects only active distros

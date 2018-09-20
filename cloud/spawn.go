@@ -151,8 +151,15 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 		return errors.Wrap(err, "Error constructing host RDP password")
 	}
 
-	stdout := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
-	stderr := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	stdout := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024,
+	}
+
+	stderr := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024,
+	}
 
 	opts := subprocess.OutputOptions{Error: stderr, Output: stdout}
 	if err = pwdUpdateCmd.SetOutput(opts); err != nil {

@@ -78,7 +78,10 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 			NetworkSettingsBase: types.NetworkSettingsBase{
 				Ports: nat.PortMap{
 					"22/tcp": []nat.PortBinding{
-						{"0.0.0.0", "5000"},
+						{
+							HostIP:   "0.0.0.0",
+							HostPort: "5000",
+						},
 					},
 				},
 			},

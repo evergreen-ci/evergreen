@@ -127,7 +127,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.Empty(tag)
 
 		var bytes []byte
-		bytes, err := json.Marshal(entries[0])
+		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON, string(bytes))
 	})

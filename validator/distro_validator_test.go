@@ -211,7 +211,7 @@ func TestEnsureValidExpansions(t *testing.T) {
 	Convey("When validating a distro's expansions...", t, func() {
 		Convey("if any key is blank, an error should be returned", func() {
 			d := &distro.Distro{
-				Expansions: []distro.Expansion{{"", "b"}, {"c", "d"}},
+				Expansions: []distro.Expansion{{Key: "", Value: "b"}, {Key: "c", Value: "d"}},
 			}
 			err := ensureValidExpansions(ctx, d, conf)
 			So(err, ShouldNotResemble, ValidationErrors{})
@@ -219,7 +219,7 @@ func TestEnsureValidExpansions(t *testing.T) {
 		})
 		Convey("if no expansion key is blank, no error should be returned", func() {
 			d := &distro.Distro{
-				Expansions: []distro.Expansion{{"a", "b"}, {"c", "d"}},
+				Expansions: []distro.Expansion{{Key: "a", Value: "b"}, {Key: "c", Value: "d"}},
 			}
 			err := ensureValidExpansions(ctx, d, conf)
 			So(err, ShouldBeNil)

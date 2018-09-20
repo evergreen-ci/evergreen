@@ -88,7 +88,7 @@ func ToModelTestResults(results []*goTestResult) task.LocalTestResults {
 		}
 		modelResults = append(modelResults, convertedResult)
 	}
-	return task.LocalTestResults{modelResults}
+	return task.LocalTestResults{Results: modelResults}
 }
 
 // goTestParser parses tests following go test output format.

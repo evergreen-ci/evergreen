@@ -594,7 +594,8 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSON(w, projCtx.Task)
 		return
 	case "set_priority":
-		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
+		var priority int64
+		priority, err = strconv.ParseInt(putParams.Priority, 10, 64)
 		if err != nil {
 			http.Error(w, "Bad priority value, must be int", http.StatusBadRequest)
 			return

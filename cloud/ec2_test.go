@@ -758,8 +758,8 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 	mock.DescribeSpotInstanceRequestsOutput = &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
-				InstanceId: aws.String("sir-1"),
-				State:      aws.String(SpotStatusActive),
+				InstanceId:            aws.String("sir-1"),
+				State:                 aws.String(SpotStatusActive),
 				SpotInstanceRequestId: aws.String("1"),
 			},
 		},
@@ -776,11 +776,11 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			// This host returns with no id
 			&ec2.SpotInstanceRequest{
 				SpotInstanceRequestId: aws.String("sir-1"),
-				State: aws.String(ec2.SpotInstanceStateFailed),
+				State:                 aws.String(ec2.SpotInstanceStateFailed),
 			},
 			&ec2.SpotInstanceRequest{
-				InstanceId: aws.String("i-3"),
-				State:      aws.String(SpotStatusActive),
+				InstanceId:            aws.String("i-3"),
+				State:                 aws.String(SpotStatusActive),
 				SpotInstanceRequestId: aws.String("sir-3"),
 			},
 		},

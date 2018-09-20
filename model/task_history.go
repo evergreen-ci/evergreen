@@ -596,13 +596,13 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 
 	if isTimeout {
 		statusQuery = append(statusQuery, bson.M{
-			task.StatusKey:                                     evergreen.TaskFailed,
+			task.StatusKey: evergreen.TaskFailed,
 			task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
 		})
 	}
 	if isSysFail {
 		statusQuery = append(statusQuery, bson.M{
-			task.StatusKey:                                 evergreen.TaskFailed,
+			task.StatusKey: evergreen.TaskFailed,
 			task.DetailsKey + "." + task.TaskEndDetailType: evergreen.CommandTypeSystem,
 		})
 	}
@@ -893,13 +893,13 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 
 	if isTimeout {
 		statusQuery = append(statusQuery, bson.M{
-			task.StatusKey:                                     evergreen.TaskFailed,
+			task.StatusKey: evergreen.TaskFailed,
 			task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
 		})
 	}
 	if isSysFail {
 		statusQuery = append(statusQuery, bson.M{
-			task.StatusKey:                                 evergreen.TaskFailed,
+			task.StatusKey: evergreen.TaskFailed,
 			task.DetailsKey + "." + task.TaskEndDetailType: evergreen.CommandTypeSystem,
 		})
 	}

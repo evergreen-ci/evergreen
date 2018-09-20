@@ -164,6 +164,9 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	if t.IsPartOfDisplay() {
 		return fmt.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
 	}
+
+	var execTask *task.Task
+
 	// if we've reached the max number of executions for this task, mark it as finished and failed
 	if t.Execution >= evergreen.MaxTaskExecution {
 		// restarting from the UI bypasses the restart cap
@@ -176,7 +179,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 				updates := StatusChanges{}
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
-						execTask, err := task.FindOne(task.ById(etId))
+						execTask, err = task.FindOne(task.ById(etId))
 						if err != nil {
 							return errors.Wrap(err, "error finding execution task")
 						}
@@ -201,7 +204,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 			if t.DisplayOnly {
 				execTasks := map[string]string{}
 				for _, et := range t.ExecutionTasks {
-					execTask, err := task.FindOne(task.ById(et))
+					execTask, err = task.FindOne(task.ById(et))
 					if err != nil {
 						continue
 					}

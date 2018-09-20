@@ -41,12 +41,9 @@ func (dc *DBCreateHostConnector) ListHostsForTask(taskID string) ([]host.Host, e
 		return nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: catcher.String()}
 	}
 	hosts := []host.Host{}
-	for _, h := range hostsSpawnedByBuild {
-		hosts = append(hosts, h)
-	}
-	for _, h := range hostsSpawnedByTask {
-		hosts = append(hosts, h)
-	}
+	hosts = append(hosts, hostsSpawnedByBuild...)
+	hosts = append(hosts, hostsSpawnedByTask...)
+
 	return hosts, nil
 }
 

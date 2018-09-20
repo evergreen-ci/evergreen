@@ -116,7 +116,6 @@ func (t *hostTriggers) Fetch(e *event.EventLogEntry) error {
 }
 
 func (t *hostTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl string) (*notification.Notification, error) {
-	const legacyAlertsSubscription = "legacy-alerts"
 	var payload interface{}
 	var err error
 	switch sub.Subscriber.Type {

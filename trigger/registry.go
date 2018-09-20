@@ -11,7 +11,7 @@ import (
 var registry = triggerRegistry{
 	handlers:               map[registryKey]eventHandlerFactory{},
 	handlersByResourceType: map[string][]eventHandlerFactory{},
-	lock: sync.RWMutex{},
+	lock:                   sync.RWMutex{},
 }
 
 type registryKey struct {

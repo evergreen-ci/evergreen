@@ -604,10 +604,8 @@ func testMatchesRegex(testName string, sub *event.Subscription) bool {
 		"source":  "test-trigger",
 		"message": "bad regex in db",
 	}))
-	if match {
-		return true
-	}
-	return false
+
+	return match
 }
 
 func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *task.Task, test *task.TestResult) (bool, error) {
@@ -631,7 +629,8 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 
 		} else if !isTestStatusRegression(oldTestResult.Status, test.Status) {
 			if len(record.TaskId) != 0 {
-				isOld, err := taskFinishedTwoOrMoreDaysAgo(record.TaskId, sub)
+				var isOld bool
+				isOld, err = taskFinishedTwoOrMoreDaysAgo(record.TaskId, sub)
 				if err != nil || !isOld {
 					return false, errors.Wrap(err, "failed to fetch last alert age")
 				}

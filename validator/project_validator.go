@@ -210,7 +210,10 @@ func checkDependencyGraph(project *model.Project) ValidationErrors {
 		}
 		for _, t := range tasksToAdd {
 			t.Populate(project.GetSpecForTask(t.Name))
-			node := model.TVPair{bv.Name, t.Name}
+			node := model.TVPair{
+				Variant:  bv.Name,
+				TaskName: t.Name,
+			}
 
 			tasksByNameAndVariant[node] = t
 			visited[node] = false
@@ -793,7 +796,7 @@ func verifyTaskDependencies(project *model.Project) ValidationErrors {
 
 		for _, dep := range task.DependsOn {
 			// make sure the dependency is not specified more than once
-			if depNames[model.TVPair{dep.Name, dep.Variant}] {
+			if depNames[model.TVPair{TaskName: dep.Name, Variant: dep.Variant}] {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("project '%v' contains a "+
@@ -802,7 +805,7 @@ func verifyTaskDependencies(project *model.Project) ValidationErrors {
 					},
 				)
 			}
-			depNames[model.TVPair{dep.Name, dep.Variant}] = true
+			depNames[model.TVPair{TaskName: dep.Name, Variant: dep.Variant}] = true
 
 			// check that the status is valid
 			switch dep.Status {

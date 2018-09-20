@@ -36,7 +36,7 @@ func SetTasksCache(buildId string, tasks []TaskCache) error {
 func updateOneTaskCache(buildId, taskId string, updateDoc bson.M) error {
 	return UpdateOne(
 		bson.M{
-			IdKey: buildId,
+			IdKey:                           buildId,
 			TasksKey + "." + TaskCacheIdKey: taskId,
 		},
 		updateDoc,
@@ -95,14 +95,14 @@ func SetCachedTaskActivated(buildId, taskId string, active bool) error {
 func ResetCachedTask(buildId, taskId string) error {
 	return UpdateOne(
 		bson.M{
-			IdKey: buildId,
+			IdKey:                           buildId,
 			TasksKey + "." + TaskCacheIdKey: taskId,
 		},
 		bson.M{
 			"$set": bson.M{
 				TasksKey + ".$." + TaskCacheStartTimeKey: util.ZeroTime,
 				TasksKey + ".$." + TaskCacheStatusKey:    evergreen.TaskUndispatched,
-				StatusKey: evergreen.BuildStarted,
+				StatusKey:                                evergreen.BuildStarted,
 			},
 			"$unset": bson.M{
 				TasksKey + ".$." + TaskCacheStatusDetailsKey: "",

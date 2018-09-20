@@ -71,7 +71,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 		return nil, errors.Wrapf(err, "Error getting host IP for parent host %s", parentHost.Id)
 	}
 
-	if err := settings.Validate(); err != nil {
+	if err = settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid Docker settings for host '%s'", h.Id)
 	}
 
@@ -83,7 +83,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, parentHost, h, settings); err != nil {
+	if err = m.client.CreateContainer(ctx, parentHost, h, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", hostIP)
 		grip.Error(err)
 		return nil, err
@@ -231,7 +231,7 @@ func (m *dockerManager) GetContainers(ctx context.Context, h *host.Host) ([]stri
 		if !strings.HasPrefix(name, "/") {
 			return nil, errors.New("error reading container name")
 		}
-		name = name[1:len(name)]
+		name = name[1:]
 		ids = append(ids, name)
 	}
 

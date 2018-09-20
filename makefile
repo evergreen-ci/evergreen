@@ -197,7 +197,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 build:cli
 build-alltests:$(testBin)
 build-all:build-alltests build
-lint:$(buildDir)/output.lint
+lint:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages),test-$(target))
 js-test:$(buildDir)/.npmSetup
 	cd $(nodeDir) && ./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)

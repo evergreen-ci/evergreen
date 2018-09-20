@@ -632,7 +632,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 	if err != nil {
 		return errors.Wrap(err, "problem getting region from host")
 	}
-	if err := m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
@@ -754,7 +754,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 		if err != nil {
 			return errors.Wrap(err, "problem getting region from host")
 		}
-		if err := m.client.Create(m.credentials, r); err != nil {
+		if err = m.client.Create(m.credentials, r); err != nil {
 			return errors.Wrap(err, "error creating client")
 		}
 		defer m.client.Close()
@@ -833,7 +833,7 @@ func (m *ec2Manager) makeNewKey(ctx context.Context, name string, h *host.Host) 
 	if err != nil {
 		return "", errors.Wrap(err, "problem getting region from host")
 	}
-	if err := m.client.Create(m.credentials, r); err != nil {
+	if err = m.client.Create(m.credentials, r); err != nil {
 		return "", errors.Wrap(err, "error creating client")
 	}
 	_, err = m.client.DeleteKeyPair(ctx, &ec2.DeleteKeyPairInput{KeyName: aws.String(name)})
@@ -876,7 +876,8 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 			return "", errors.Wrap(err, "error getting instance info")
 		}
 	} else {
-		instanceId, err := m.client.GetSpotInstanceId(ctx, h)
+		var instanceId string
+		instanceId, err = m.client.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}

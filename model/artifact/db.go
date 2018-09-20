@@ -27,7 +27,7 @@ type TaskIDAndExecution struct {
 
 // ByTaskId returns a query for entries with the given Task Id
 func ByTaskId(id string) db.Q {
-	return db.Query(bson.D{{TaskIdKey, id}})
+	return db.Query(bson.M{TaskIdKey: id})
 }
 
 // ByTaskIdAndExecution returns a query for entries with the given Task Id and
@@ -73,7 +73,7 @@ func ByTaskIds(taskIds []string) db.Q {
 
 // ByBuildId returns all entries with the given Build Id, sorted by Task name
 func ByBuildId(id string) db.Q {
-	return db.Query(bson.D{{BuildIdKey, id}}).Sort([]string{TaskNameKey})
+	return db.Query(bson.M{BuildIdKey: id}).Sort([]string{TaskNameKey})
 }
 
 // === DB Logic ===

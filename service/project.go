@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/trigger"
 	"github.com/evergreen-ci/evergreen/units"
@@ -37,7 +36,7 @@ type UIProjectFields struct {
 
 // filterAuthorizedProjects iterates through a list of projects and returns a list of all the projects that a user
 // is authorized to view and edit the settings of.
-func (uis *UIServer) filterAuthorizedProjects(u *user.DBUser) ([]model.ProjectRef, error) {
+func (uis *UIServer) filterAuthorizedProjects(u gimlet.User) ([]model.ProjectRef, error) {
 	allProjects, err := model.FindAllProjectRefs()
 	if err != nil {
 		return nil, err
@@ -331,7 +330,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if responseRef.ForceRepotrackerRun {
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		j := units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), projectRef.Identifier)
-		if err := uis.queue.Put(j); err != nil {
+		if err = uis.queue.Put(j); err != nil {
 			grip.Error(errors.Wrap(err, "problem creating catchup job from UI"))
 		}
 	}

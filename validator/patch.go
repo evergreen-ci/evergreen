@@ -69,7 +69,8 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 		// overwrite project fields with the project ref to disallow tracking a
 		// different project or doing other crazy things via config patches
-		verrs, err := CheckProjectSyntax(project)
+		var verrs ValidationErrors
+		verrs, err = CheckProjectSyntax(project)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

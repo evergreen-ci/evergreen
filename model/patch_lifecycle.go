@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -118,17 +119,20 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 		var patchFilePath string
 		var err error
 		if patchPart.PatchSet.Patch == "" {
-			reader, err := db.GetGridFile(patch.GridFSPrefix, patchPart.PatchSet.PatchFileId)
+			var reader io.ReadCloser
+			reader, err = db.GetGridFile(patch.GridFSPrefix, patchPart.PatchSet.PatchFileId)
 			if err != nil {
 				return nil, errors.Wrap(err, "Can't fetch patch file from gridfs")
 			}
 			defer reader.Close()
-			bytes, err := ioutil.ReadAll(reader)
+
+			var data []byte
+			data, err = ioutil.ReadAll(reader)
 			if err != nil {
 				return nil, errors.Wrap(err, "Can't read patch file contents from gridfs")
 			}
 
-			patchFilePath, err = util.WriteToTempFile(string(bytes))
+			patchFilePath, err = util.WriteToTempFile(string(data))
 			if err != nil {
 				return nil, errors.Wrap(err, "could not write temporary patch file")
 			}
