@@ -17,7 +17,7 @@ mciModule.component('tagInput', {
 
       ngModel.$parsers.push(function(val) {
         // Split by comma and trim at the same time
-        return val ? _.filter(val.split(/\s*,\s*/)) : []
+        return val ? _.filter(val.trim().split(/\s*,\s*/)) : []
       })
     }
 
