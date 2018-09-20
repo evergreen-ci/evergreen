@@ -381,38 +381,6 @@ func (as *APIServer) TaskProcessInfo(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, struct{}{})
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to the API server's home :)\n")
-}
-
-func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
-	userCredentials := struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}{}
-
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &userCredentials); err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "Error reading user credentials"))
-		return
-	}
-	userToken, err := as.UserManager.CreateUserToken(userCredentials.Username, userCredentials.Password)
-	if err != nil {
-		gimlet.WriteJSONResponse(w, http.StatusUnauthorized, err.Error())
-		return
-	}
-
-	dataOut := struct {
-		User struct {
-			Name string `json:"name"`
-		} `json:"user"`
-		Token string `json:"token"`
-	}{}
-	dataOut.User.Name = userCredentials.Username
-	dataOut.Token = userToken
-	gimlet.WriteJSON(w, dataOut)
-
-}
-
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["identifier"]
@@ -533,10 +501,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	// Project lookup and validation routes
 	app.AddRoute("/ref/{identifier}").Handler(as.fetchProjectRef).Get()
 	app.AddRoute("/validate").Handler(as.validateProjectConfig).Post()
-
-	// Client auto-update routes
-	app.AddRoute("/token").Handler(as.getUserSession).Post()
-	app.AddRoute("/").Version(2).Handler(home).Get()
 
 	// Internal status reporting
 	app.AddRoute("/runtimes/").Handler(as.listRuntimes).Get()
