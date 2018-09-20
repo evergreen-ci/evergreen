@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
@@ -52,14 +53,10 @@ func pprofCmdline(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, strings.Join(os.Args, "\x00"))
 }
 
-func pprofSleep(w http.ResponseWriter, d time.Duration) {
-	var clientGone <-chan bool
-	if cn, ok := w.(http.CloseNotifier); ok {
-		clientGone = cn.CloseNotify()
-	}
+func pprofSleep(ctx context.Context, d time.Duration) {
 	select {
 	case <-time.After(d):
-	case <-clientGone:
+	case <-ctx.Done():
 	}
 }
 
@@ -83,7 +80,7 @@ func pprofProfile(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Could not enable CPU profiling: %s\n", err)
 		return
 	}
-	pprofSleep(w, time.Duration(sec)*time.Second)
+	pprofSleep(r.Context(), time.Duration(sec)*time.Second)
 	pprof.StopCPUProfile()
 }
 
@@ -107,7 +104,7 @@ func pprofTrace(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Could not enable tracing: %s\n", err)
 		return
 	}
-	pprofSleep(w, time.Duration(sec*float64(time.Second)))
+	pprofSleep(r.Context(), time.Duration(sec*float64(time.Second)))
 	runtimeTrace.Stop()
 }
 
