@@ -187,6 +187,8 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 	for _, b := range builds {
 		if b.Activated {
 			activeBuilds += 1
+		} else {
+			continue
 		}
 		complete, buildStatus, err := b.AllUnblockedTasksOrCompileFinished(tasksWithDeps)
 		if err != nil {
@@ -207,13 +209,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time, updates *Statu
 		}
 	}
 	if activeBuilds > 0 && buildsWithAllActiveTasksComplete >= activeBuilds {
-		grip.Debug(message.Fields{
-			"ticket":   "EVG-5287",
-			"active":   activeBuilds,
-			"complete": buildsWithAllActiveTasksComplete,
-			"builds":   builds,
-			"finished": finished,
-		})
 		updates.VersionComplete = true
 		updates.VersionNewStatus = versionStatusFromTasks
 		event.LogVersionStateChangeEvent(versionId, status)
