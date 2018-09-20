@@ -4,72 +4,47 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadUserManager(t *testing.T) {
-	Convey("When Loading a UserManager from an AuthConfig", t, func() {
-		c := evergreen.CrowdConfig{}
-		l := evergreen.LDAPConfig{
-			URL:   "url",
-			Port:  "port",
-			Path:  "path",
-			Group: "group",
-		}
-		g := evergreen.GithubAuthConfig{}
-		n := evergreen.NaiveAuthConfig{}
-		Convey("a UserManager should not be able to be created in an empty AuthConfig", func() {
-			a := evergreen.AuthConfig{}
-			um, err := LoadUserManager(a)
-			So(err, ShouldNotBeNil)
-			So(um, ShouldBeNil)
-		})
-		Convey("a UserManager should not be able to be created if there are more than one AuthConfig type", func() {
-			a := evergreen.AuthConfig{
-				Crowd: &c,
-				Naive: &n,
-			}
-			um, err := LoadUserManager(a)
-			So(err, ShouldNotBeNil)
-			So(um, ShouldBeNil)
-		})
-		Convey("a UserManager should not be able to be created if one AuthConfig type is Github", func() {
-			a := evergreen.AuthConfig{
-				Github: &g,
-			}
-			um, err := LoadUserManager(a)
-			So(err, ShouldNotBeNil)
-			So(um, ShouldBeNil)
-		})
+	c := evergreen.CrowdConfig{}
+	l := evergreen.LDAPConfig{
+		URL:   "url",
+		Port:  "port",
+		Path:  "path",
+		Group: "group",
+	}
+	g := evergreen.GithubAuthConfig{
+		ClientId:     "client_id",
+		ClientSecret: "client_secret",
+	}
+	n := evergreen.NaiveAuthConfig{}
 
-		Convey("a UserManager should be able to be created if one AuthConfig type is Crowd", func() {
-			a := evergreen.AuthConfig{
-				Crowd: &c,
-			}
-			um, err := LoadUserManager(a)
-			So(err, ShouldBeNil)
-			So(um, ShouldNotBeNil)
-		})
+	a := evergreen.AuthConfig{}
+	um, err := LoadUserManager(a)
+	assert.Error(t, err, "a UserManager should not be able to be created in an empty AuthConfig")
+	assert.Nil(t, um, "a UserManager should not be able to be created in an empty AuthConfig")
 
-		Convey("a UserManager should be able to be created if one AuthConfig type is LDAP", func() {
-			a := evergreen.AuthConfig{
-				LDAP: &l,
-			}
-			um, err := LoadUserManager(a)
-			So(err, ShouldBeNil)
-			So(um, ShouldNotBeNil)
-		})
+	a = evergreen.AuthConfig{Github: &g}
+	um, err = LoadUserManager(a)
+	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Github")
+	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Github")
 
-		Convey("a UserManager should be able to be created if one AuthConfig type is Naive", func() {
-			a := evergreen.AuthConfig{
-				Naive: &n,
-			}
-			um, err := LoadUserManager(a)
-			So(err, ShouldBeNil)
-			So(um, ShouldNotBeNil)
-		})
-	})
+	a = evergreen.AuthConfig{Crowd: &c}
+	um, err = LoadUserManager(a)
+	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Crowd")
+	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Crowd")
+
+	a = evergreen.AuthConfig{LDAP: &l}
+	um, err = LoadUserManager(a)
+	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is LDAP")
+	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is LDAP")
+
+	a = evergreen.AuthConfig{Naive: &n}
+	um, err = LoadUserManager(a)
+	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Naive")
+	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Naive")
 }
 
 func TestSuperUserValidation(t *testing.T) {

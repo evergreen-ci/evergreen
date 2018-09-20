@@ -14,41 +14,34 @@ import (
 func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error) {
 	var manager gimlet.UserManager
 	var err error
-	if authConfig.Crowd != nil {
-		manager, err = NewCrowdUserManager(authConfig.Crowd)
-		if err != nil {
-			return nil, err
-		}
-	}
 	if authConfig.LDAP != nil {
 		manager, err = NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "problem setting up ldap authentication")
 		}
-	}
-	if authConfig.Naive != nil {
-		if manager != nil {
-			return nil, errors.New("Cannot have multiple forms of authentication in configuration")
-		}
-		manager, err = NewNaiveUserManager(authConfig.Naive)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if authConfig.Github != nil {
-		if manager != nil {
-			return nil, errors.New("Cannot have multiple forms of authentication in configuration")
-		}
-		manager, err = NewGithubUserManager(authConfig.Github)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if manager != nil {
 		return manager, nil
 	}
-
+	if authConfig.Crowd != nil {
+		manager, err = NewCrowdUserManager(authConfig.Crowd)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem setting up crowd authentication")
+		}
+		return manager, nil
+	}
+	if authConfig.Naive != nil {
+		manager, err = NewNaiveUserManager(authConfig.Naive)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem setting up naive authentication")
+		}
+		return manager, nil
+	}
+	if authConfig.Github != nil {
+		manager, err = NewGithubUserManager(authConfig.Github)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem setting up github authentication")
+		}
+		return manager, nil
+	}
 	return nil, errors.New("Must have at least one form of authentication, currently there are none")
 }
 

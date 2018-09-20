@@ -50,10 +50,10 @@ type GithubAuthConfig struct {
 
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
-	LDAP   *LDAPConfig       `bson:"ldap" json:"ldap" yaml:"ldap"`
-	Crowd  *CrowdConfig      `bson:"crowd" json:"crowd" yaml:"crowd"`
-	Naive  *NaiveAuthConfig  `bson:"naive" json:"naive" yaml:"naive"`
-	Github *GithubAuthConfig `bson:"github" json:"github" yaml:"github"`
+	LDAP   *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
+	Crowd  *CrowdConfig      `bson:"crowd,omitempty" json:"crowd" yaml:"crowd"`
+	Naive  *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
+	Github *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 }
 
 func (c *AuthConfig) SectionId() string { return "auth" }
