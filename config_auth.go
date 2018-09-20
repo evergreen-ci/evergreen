@@ -35,7 +35,7 @@ type LDAPConfig struct {
 	Port               string `bson:"port" json:"port" yaml:"port"`
 	Path               string `bson:"path" json:"path" yaml:"path"`
 	Group              string `bson:"group" json:"group" yaml:"group"`
-	ExpireAfterMinutes int    `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
+	ExpireAfterMinutes string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
 }
 
 // GithubAuthConfig holds settings for interacting with Github Authentication including the

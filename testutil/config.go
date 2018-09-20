@@ -73,7 +73,7 @@ func MockConfig() *evergreen.Settings {
 				Port:               "port",
 				Path:               "path",
 				Group:              "group",
-				ExpireAfterMinutes: 60,
+				ExpireAfterMinutes: "60",
 			},
 			Naive: &evergreen.NaiveAuthConfig{
 				Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pw"}},

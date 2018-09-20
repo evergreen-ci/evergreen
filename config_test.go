@@ -252,7 +252,7 @@ func (s *AdminSuite) TestAuthConfig() {
 			Port:               "port",
 			Path:               "path",
 			Group:              "group",
-			ExpireAfterMinutes: 60,
+			ExpireAfterMinutes: "60",
 		},
 		Naive: &NaiveAuthConfig{
 			Users: []*AuthUser{&AuthUser{Username: "user", Password: "pw"}},

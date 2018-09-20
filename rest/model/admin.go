@@ -436,7 +436,7 @@ type APILDAPConfig struct {
 	Port               APIString `json:"port"`
 	Path               APIString `json:"path"`
 	Group              APIString `json:"group"`
-	ExpireAfterMinutes int       `json:"expire_after_minutes"`
+	ExpireAfterMinutes APIString `json:"expire_after_minutes"`
 }
 
 func (a *APILDAPConfig) BuildFromService(h interface{}) error {
@@ -449,7 +449,7 @@ func (a *APILDAPConfig) BuildFromService(h interface{}) error {
 		a.Port = ToAPIString(v.Port)
 		a.Path = ToAPIString(v.Path)
 		a.Group = ToAPIString(v.Group)
-		a.ExpireAfterMinutes = v.ExpireAfterMinutes
+		a.ExpireAfterMinutes = ToAPIString(v.ExpireAfterMinutes)
 	default:
 		return errors.Errorf("%T is not a supported type", h)
 	}
@@ -465,7 +465,7 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 		Port:               FromAPIString(a.Port),
 		Path:               FromAPIString(a.Path),
 		Group:              FromAPIString(a.Group),
-		ExpireAfterMinutes: a.ExpireAfterMinutes,
+		ExpireAfterMinutes: FromAPIString(a.ExpireAfterMinutes),
 	}, nil
 }
 
