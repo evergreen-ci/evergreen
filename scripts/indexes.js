@@ -137,7 +137,7 @@ db.subscriptions.ensureIndex({ "owner_type": 1, "owner" : 1})
 
 //======users======//
 db.users.ensureIndex({ "settings.github_user.uid": 1 }, { unique: true })
-db.users.ensureIndex({ "login_cache.token": 1}, { unique: true })
+db.users.ensureIndex({ "login_cache.token": 1}, { unique: true, sparse: true })
 
 //======notifications======//
 db.notifications.ensureIndex({ "sent_at": 1 })
