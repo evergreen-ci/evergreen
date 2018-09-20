@@ -9,13 +9,9 @@ import (
 
 func TestNaiveAuthManager(t *testing.T) {
 	Convey("When creating a UserManager with a Naive authentication", t, func() {
-		n := evergreen.NaiveAuthConfig{
-			Users: nil,
-		}
+		n := evergreen.NaiveAuthConfig{}
 		authConfig := evergreen.AuthConfig{
-			Crowd:  nil,
-			Naive:  &n,
-			Github: nil,
+			Naive: &n,
 		}
 		userManager, err := LoadUserManager(authConfig)
 		So(err, ShouldBeNil)

@@ -35,7 +35,7 @@ type LDAPConfig struct {
 	Port               string `bson:"port" json:"port" yaml:"port"`
 	Path               string `bson:"path" json:"path" yaml:"path"`
 	Group              string `bson:"group" json:"group" yaml:"group"`
-	ExpireAfterMinutes int    `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
+	ExpireAfterMinutes string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
 }
 
 // GithubAuthConfig holds settings for interacting with Github Authentication including the
@@ -50,9 +50,10 @@ type GithubAuthConfig struct {
 
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
-	Crowd  *CrowdConfig      `bson:"crowd" json:"crowd" yaml:"crowd"`
-	Naive  *NaiveAuthConfig  `bson:"naive" json:"naive" yaml:"naive"`
-	Github *GithubAuthConfig `bson:"github" json:"github" yaml:"github"`
+	LDAP   *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
+	Crowd  *CrowdConfig      `bson:"crowd,omitempty" json:"crowd" yaml:"crowd"`
+	Naive  *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
+	Github *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 }
 
 func (c *AuthConfig) SectionId() string { return "auth" }
@@ -70,6 +71,7 @@ func (c *AuthConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"crowd":  c.Crowd,
+			"ldap":   c.LDAP,
 			"naive":  c.Naive,
 			"github": c.Github,
 		},
@@ -79,7 +81,7 @@ func (c *AuthConfig) Set() error {
 
 func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.Crowd == nil && c.Naive == nil && c.Github == nil {
+	if c.Crowd == nil && c.LDAP == nil && c.Naive == nil && c.Github == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 	if c.Naive != nil {

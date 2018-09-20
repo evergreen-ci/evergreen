@@ -57,6 +57,7 @@ Admin Settings
             <li class="link" ng-click="scrollTo('ui')">UI Config</li>
             <div>Authentication</div>
             <li class="link" ng-click="scrollTo('crowd')">Crowd</li>
+            <li class="link" ng-click="scrollTo('ldap')">LDAP</li>
             <li class="link" ng-click="scrollTo('github')">Github</li>
             <li class="link" ng-click="scrollTo('naive')">Naive</li>
             <div>External Communication</div>
@@ -490,7 +491,42 @@ Admin Settings
 
             </section>
 
+
             <section layout="row" flex>
+
+              <md-card flex=50 id="ldap">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>LDAP Authentication</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('auth','ldap')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>URL</label>
+                    <input type="text" ng-model="Settings.auth.ldap.url">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Port</label>
+                    <input type="text" ng-model="Settings.auth.ldap.port">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Path</label>
+                    <input type="text" ng-model="Settings.auth.ldap.path">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Group</label>
+                    <input type="text" ng-model="Settings.auth.ldap.group">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Expire After Minutes</label>
+                    <input type="text" ng-model="Settings.auth.ldap.expire_after_minutes">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
               <md-card flex=50 id="crowd">
                 <md-card-title>
                   <md-card-title-text>
@@ -513,6 +549,30 @@ Admin Settings
                     <label>URL root</label>
                     <input type="text" ng-model="Settings.auth.crowd.url_root">
                   </md-input-container>
+                </md-card-content>
+              </md-card>
+
+            </section>
+
+            <section layout="row" flex>
+
+              <md-card flex=50 id="naive" style="max-width:49%">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Naive Authentication</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('auth','naive')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-chips md-transform-chip="transformNaiveUser($chip)"
+                  ng-model="Settings.auth.naive.users"
+                  placeholder="Enter a user in json format">
+                  <md-chip-template>
+                    username:[[$chip.username]], password:[[$chip.password]], display_name:[[$chip.display_name]], email:[[$chip.email]]
+                  </md-chip-template>
+                  </md-chips>
                 </md-card-content>
               </md-card>
 
@@ -547,30 +607,6 @@ Admin Settings
               </md-card>
 
             </section>
-
-            <section layout="row" flex>
-
-              <md-card flex=50 id="naive" style="max-width:49%">
-                <md-card-title>
-                  <md-card-title-text>
-                    <span>Naive Authentication</span>
-                  </md-card-title-text>
-                  <md-button ng-click="clearSection('auth','naive')">
-                    <i class="fa fa-trash"></i>
-                  </md-button>
-                </md-card-title>
-                <md-card-content>
-                  <md-chips md-transform-chip="transformNaiveUser($chip)"
-                  ng-model="Settings.auth.naive.users"
-                  placeholder="Enter a user in json format">
-                  <md-chip-template>
-                    username:[[$chip.username]], password:[[$chip.password]], display_name:[[$chip.display_name]], email:[[$chip.email]]
-                  </md-chip-template>
-                </md-chips>
-              </md-card-content>
-            </md-card>
-
-          </section>
 
           <section layout="row" flex>
 

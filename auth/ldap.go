@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,7 +13,11 @@ import (
 
 // NewLDAPUserManager creates a user manager for an LDAP server.
 func NewLDAPUserManager(conf *evergreen.LDAPConfig) (gimlet.UserManager, error) {
-	expireAfter := time.Duration(conf.ExpireAfterMinutes) * time.Minute
+	minutes, err := strconv.ParseInt(conf.ExpireAfterMinutes, 10, 64)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem parsing string as int '%s'", conf.ExpireAfterMinutes)
+	}
+	expireAfter := time.Duration(minutes) * time.Minute
 	opts := ldap.CreationOpts{
 		URL:           conf.URL,
 		Port:          conf.Port,
