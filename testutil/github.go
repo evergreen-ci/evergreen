@@ -12,7 +12,7 @@ func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, 
 		Number: github.Int(prNumber),
 		Repo: &github.Repository{
 			FullName: github.String(baseRepoName),
-			PushedAt: &github.Timestamp{time.Now().Truncate(time.Millisecond)},
+			PushedAt: &github.Timestamp{Time: time.Now().Truncate(time.Millisecond)},
 		},
 		Sender: &github.User{
 			Login: github.String(user),

@@ -6,6 +6,7 @@ packages := $(name) agent operations cloud command db subprocess util plugin uni
 packages += thirdparty auth scheduler model validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
 packages += model-grid rest-client rest-data rest-route rest-model migrations trigger model-alertrecord
+lintOnlyPackages := testutil model-manifest
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -51,7 +52,6 @@ endif
 #   separately. This is a temporary solution: eventually we should
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
-lintDeps += github.com/evergreen-ci/evg-lint/...
 #   include test files and give linters 40s to run to avoid timeouts
 lintArgs := --tests --deadline=10m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
@@ -142,7 +142,6 @@ smoke-start-server:$(localClientBinary) load-smoke-data
 #   this block has no project specific configuration but defines
 #   variables that project specific information depends on
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
-lintTargets := $(foreach target,$(packages),lint-$(target))
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 $(gopath)/src/%:
@@ -154,6 +153,7 @@ $(gopath)/src/%:
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
+	$(gobin) get github.com/evergreen-ci/evg-lint/...
 	@mkdir -p $(buildDir)
 	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
@@ -197,7 +197,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries) $(uiFiles)
 build:cli
 build-alltests:$(testBin)
 build-all:build-alltests build
-lint:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
+lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages),test-$(target))
 js-test:$(buildDir)/.npmSetup
 	cd $(nodeDir) && ./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)

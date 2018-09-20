@@ -43,5 +43,5 @@ func (m *Manifest) TryInsert() (bool, error) {
 
 // ById returns a query that contains an Id selector on the string, id.
 func ById(id string) db.Q {
-	return db.Query(bson.D{{IdKey, id}})
+	return db.Query(bson.M{IdKey: id})
 }
