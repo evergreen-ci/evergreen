@@ -461,6 +461,15 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
 
+	grip.DebugWhen(b.BuildVariant == "rhel-62-64-bit-mobile", message.Fields{
+		"ticket":  "EVG-5307",
+		"message": "adding tasks",
+		"build":   b,
+		"tasks":   tasks,
+		"version": v,
+		"taskIds": taskIds,
+	})
+
 	if err = tasks.Insert(); err != nil {
 		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
