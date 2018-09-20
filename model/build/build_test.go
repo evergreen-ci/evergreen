@@ -542,9 +542,10 @@ func TestAllTasksFinished(t *testing.T) {
 
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "error clearing collection")
 	b := &Build{
-		Id:      "b1",
-		Status:  evergreen.BuildStarted,
-		Version: "abc",
+		Id:        "b1",
+		Status:    evergreen.BuildStarted,
+		Activated: true,
+		Version:   "abc",
 		Tasks: []TaskCache{
 			{
 				Id:        "t1",
@@ -670,6 +671,12 @@ func TestAllTasksFinished(t *testing.T) {
 	complete, _, err := b.AllUnblockedTasksOrCompileFinished(nil)
 	assert.NoError(err)
 	assert.True(complete)
+
+	// inactive build should not be complete
+	b.Activated = false
+	complete, _, err = b.AllUnblockedTasksOrCompileFinished(nil)
+	assert.NoError(err)
+	assert.False(complete)
 }
 
 func TestBuildSetCachedTaskFinished(t *testing.T) {
