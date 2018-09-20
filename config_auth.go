@@ -50,6 +50,7 @@ type GithubAuthConfig struct {
 
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
+	LDAP   *LDAPConfig       `bson:"ldap" json:"ldap" yaml:"ldap"`
 	Crowd  *CrowdConfig      `bson:"crowd" json:"crowd" yaml:"crowd"`
 	Naive  *NaiveAuthConfig  `bson:"naive" json:"naive" yaml:"naive"`
 	Github *GithubAuthConfig `bson:"github" json:"github" yaml:"github"`
@@ -70,6 +71,7 @@ func (c *AuthConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
 			"crowd":  c.Crowd,
+			"ldap":   c.LDAP,
 			"naive":  c.Naive,
 			"github": c.Github,
 		},
@@ -79,7 +81,7 @@ func (c *AuthConfig) Set() error {
 
 func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.Crowd == nil && c.Naive == nil && c.Github == nil {
+	if c.Crowd == nil && c.LDAP == nil && c.Naive == nil && c.Github == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 	if c.Naive != nil {
