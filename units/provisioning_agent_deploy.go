@@ -89,8 +89,7 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		err := j.host.IncAgentDeployAttempt()
-		if err != nil {
+		if err = j.host.IncAgentDeployAttempt(); err != nil {
 			j.AddError(err)
 			grip.Warning(message.WrapError(err, message.Fields{
 				"host_id":      j.HostID,

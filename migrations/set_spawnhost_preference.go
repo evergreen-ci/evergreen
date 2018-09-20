@@ -84,7 +84,7 @@ func makeSpawnhostExpirationPreferenceMigration(database string) db.MigrationOpe
 		defer session.Close()
 
 		var userId string
-		var userSettings userSettings
+		var userSettingsVal userSettings
 		var email string
 		for _, raw := range rawD {
 			switch raw.Name {
@@ -93,7 +93,7 @@ func makeSpawnhostExpirationPreferenceMigration(database string) db.MigrationOpe
 					return errors.Wrap(err, "error unmarshaling id")
 				}
 			case settingsKey:
-				if err := raw.Value.Unmarshal(&userSettings); err != nil {
+				if err := raw.Value.Unmarshal(&userSettingsVal); err != nil {
 					return errors.Wrap(err, "error unmarshaling settings")
 				}
 			case emailKey:
@@ -103,7 +103,7 @@ func makeSpawnhostExpirationPreferenceMigration(database string) db.MigrationOpe
 			}
 		}
 		// don't do anything if there's a preference already
-		if userSettings.Notifications.SpawnHostExpiration != "" || userSettings.Notifications.SpawnHostExpirationID.Valid() {
+		if userSettingsVal.Notifications.SpawnHostExpiration != "" || userSettingsVal.Notifications.SpawnHostExpirationID.Valid() {
 			return nil
 		}
 

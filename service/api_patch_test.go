@@ -44,7 +44,11 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "problem setting up test server")
 
 			_, err = modelUtil.SetupPatches(modelUtil.ExternalPatch, testData.Build,
-				modelUtil.PatchRequest{"recursive", filepath.Join(testDirectory, "testdata/testmodule.patch"), githash})
+				modelUtil.PatchRequest{
+					ModuleName: "recursive",
+					FilePath:   filepath.Join(testDirectory, "testdata/testmodule.patch"),
+					Githash:    githash,
+				})
 			testutil.HandleTestingErr(err, t, "problem setting up patch")
 
 			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)
@@ -68,7 +72,11 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
 			testutil.HandleTestingErr(err, t, "problem setting up test server")
 			_, err = modelUtil.SetupPatches(modelUtil.InlinePatch, testData.Build,
-				modelUtil.PatchRequest{"evgHome", filepath.Join(testDirectory, "testdata/testaddsmodule.patch"), githash})
+				modelUtil.PatchRequest{
+					ModuleName: "evgHome",
+					FilePath:   filepath.Join(testDirectory, "testdata/testaddsmodule.patch"),
+					Githash:    githash,
+				})
 			testutil.HandleTestingErr(err, t, "problem setting up patch")
 
 			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)

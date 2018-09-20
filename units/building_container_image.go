@@ -90,8 +90,7 @@ func (j *buildingContainerImageJob) Run(ctx context.Context) {
 	}
 
 	defer func() {
-		err := j.parent.IncContainerBuildAttempt()
-		if err != nil {
+		if err = j.parent.IncContainerBuildAttempt(); err != nil {
 			j.AddError(err)
 			grip.Warning(message.WrapError(err, message.Fields{
 				"host_id":      j.parent.Id,

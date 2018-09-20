@@ -19,7 +19,7 @@ const (
 	testResultsCollection = "testresults"
 )
 
-//nolint: deadcode, megacheck
+//nolint: deadcode, megacheck, unused
 const (
 	migrationTestResultsLegacyExecution = "testresults-legacy-no-execution"
 	migrationTestResultsOldTasks        = "testresults-oldtasks"
@@ -115,6 +115,7 @@ func addExecutionToTasksGenerator(env anser.Environment, args migrationGenerator
 	return anser.NewSimpleMigrationGenerator(env, opts, bson.M{"$set": bson.M{"execution": 0}}), nil
 }
 
+// nolint: unused
 func testResultsGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "tasks_testresults"
 
@@ -139,6 +140,7 @@ func testResultsGenerator(env anser.Environment, args migrationGeneratorFactoryO
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
+// nolint: unused
 func oldTestResultsGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "old_tasks_testresults"
 

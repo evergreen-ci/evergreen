@@ -597,8 +597,8 @@ func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	return &ec2.RequestSpotInstancesOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
-				InstanceId: aws.String("instance_id"),
-				State:      aws.String(SpotStatusOpen),
+				InstanceId:            aws.String("instance_id"),
+				State:                 aws.String(SpotStatusOpen),
 				SpotInstanceRequestId: aws.String("instance_id"),
 			},
 		},
@@ -614,8 +614,8 @@ func (c *awsClientMock) DescribeSpotInstanceRequests(ctx context.Context, input 
 	return &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
-				InstanceId: aws.String("instance_id"),
-				State:      aws.String(SpotStatusActive),
+				InstanceId:            aws.String("instance_id"),
+				State:                 aws.String(SpotStatusActive),
 				SpotInstanceRequestId: aws.String("instance_id"),
 			},
 		},

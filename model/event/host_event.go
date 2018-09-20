@@ -168,7 +168,7 @@ func UpdateExecutions(hostId, taskId string, execution int) error {
 	taskIdKey := bsonutil.MustHaveTag(HostEventData{}, "TaskId")
 	executionKey := bsonutil.MustHaveTag(HostEventData{}, "Execution")
 	query := bson.M{
-		"r_id": hostId,
+		"r_id":                    hostId,
 		DataKey + "." + taskIdKey: taskId,
 	}
 	update := bson.M{

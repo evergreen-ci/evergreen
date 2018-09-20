@@ -5,6 +5,7 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -138,7 +139,7 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 
 		// Extend http client timeout for ImageImport
 		normalTimeout := c.httpClient.Timeout
-		dockerClient, err := c.changeTimeout(h, imageImportTimeout)
+		dockerClient, err = c.changeTimeout(h, imageImportTimeout)
 		if err != nil {
 			return "", errors.Wrap(err, "Error changing http client timeout")
 		}
@@ -150,7 +151,8 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 			"image_name": imageName,
 			"image_url":  url,
 		})
-		resp, err := dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
+		var resp io.ReadCloser
+		resp, err = dockerClient.ImageImport(ctx, source, imageName, types.ImageImportOptions{})
 		if err != nil {
 			return "", errors.Wrapf(err, "Error importing image from %s", url)
 		}

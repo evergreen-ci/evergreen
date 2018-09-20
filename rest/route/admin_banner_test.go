@@ -20,7 +20,6 @@ func TestSetBanner(t *testing.T) {
 	sc := &data.MockConnector{}
 
 	// test getting the route handler
-	const route = "/admin/banner"
 	routeManager := makeSetAdminBanner(sc)
 	assert.NotNil(routeManager)
 	assert.IsType(&bannerPostHandler{}, routeManager)
@@ -95,8 +94,6 @@ func TestFetchBanner(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "userName"})
-	const route = "/admin/banner"
-	const version = 2
 	connector := &data.MockConnector{
 		MockAdminConnector: data.MockAdminConnector{
 			MockSettings: &evergreen.Settings{

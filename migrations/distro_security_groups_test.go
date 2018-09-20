@@ -95,18 +95,18 @@ func (s *securityGroupSuite) TestMigration() {
 		s.NoError(j.Error())
 	}
 
-	var distro distro
+	var distroVal distro
 	migratedQuery := evgdb.Query(db.Document{
 		"_id": "d1",
 	})
-	s.NoError(evgdb.FindOneQ(distroCollection, migratedQuery, &distro))
-	s.Equal("", distro.Settings.SecurityGroup)
-	s.Equal([]string{"sg-1"}, distro.Settings.SecurityGroups)
+	s.NoError(evgdb.FindOneQ(distroCollection, migratedQuery, &distroVal))
+	s.Equal("", distroVal.Settings.SecurityGroup)
+	s.Equal([]string{"sg-1"}, distroVal.Settings.SecurityGroups)
 
 	noopQuery := evgdb.Query(db.Document{
 		"_id": "d2",
 	})
-	s.NoError(evgdb.FindOneQ(distroCollection, noopQuery, &distro))
-	s.Equal("", distro.Settings.SecurityGroup)
-	s.Equal([]string{"sg-2"}, distro.Settings.SecurityGroups)
+	s.NoError(evgdb.FindOneQ(distroCollection, noopQuery, &distroVal))
+	s.Equal("", distroVal.Settings.SecurityGroup)
+	s.Equal([]string{"sg-2"}, distroVal.Settings.SecurityGroups)
 }

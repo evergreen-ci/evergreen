@@ -321,7 +321,8 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		// "Ignore" a version if all changes are to ignored files
 		if len(project.Ignore) > 0 {
-			filenames, err := repoTracker.GetChangedFiles(ctx, revision)
+			var filenames []string
+			filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 			if err != nil {
 				return nil, errors.Wrap(err, "error checking GitHub for ignored files")
 			}

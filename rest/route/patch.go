@@ -357,7 +357,6 @@ func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 
 type patchAbortHandler struct {
 	patchId string
-	user    gimlet.User
 	sc      data.Connector
 }
 

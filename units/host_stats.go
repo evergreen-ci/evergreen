@@ -101,8 +101,8 @@ func (j *hostStatsJob) Run(_ context.Context) {
 			j.logger.Warning(message.Fields{
 				"message":         "long running host spawned by task",
 				"id":              h.Id,
-				"duration":        time.Now().Sub(h.StartTime).Seconds(),
-				"duration_string": time.Now().Sub(h.StartTime).String(),
+				"duration":        time.Since(h.StartTime).Seconds(),
+				"duration_string": time.Since(h.StartTime).String(),
 				"spawned_by":      h.User,
 				"task_scope":      h.SpawnOptions.TaskID,
 				"build_scope":     h.SpawnOptions.BuildID,

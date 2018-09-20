@@ -63,7 +63,6 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 // It also updates the task cache for the build document.
 func SetBuildActivation(buildId string, active bool, caller string) error {
 	var err error
-
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
 		_, err = task.UpdateAll(
@@ -73,7 +72,11 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 			},
 			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 		)
-		tasks, err := task.FindTasksFromBuildWithDependencies(buildId)
+		if err != nil {
+			return errors.Wrap(err, "problem updating tasks for activation")
+		}
+		var tasks []task.Task
+		tasks, err = task.FindTasksFromBuildWithDependencies(buildId)
 		if err != nil {
 			return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
 		}

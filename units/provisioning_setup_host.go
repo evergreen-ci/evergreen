@@ -223,7 +223,7 @@ func (j *setupHostJob) runHostSetup(ctx context.Context, targetHost *host.Host, 
 			targetHost.Id, targetHost.Provider)
 	}
 
-	if err := j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
+	if err = j.setDNSName(ctx, targetHost, cloudMgr, settings); err != nil {
 		return errors.Wrap(err, "error settings DNS name")
 	}
 
@@ -582,7 +582,10 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
-	mkdirOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	mkdirOutput := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024,
+	}
 	opts := subprocess.OutputOptions{Output: mkdirOutput, SendErrorToOutput: true}
 	makeShellCmd := subprocess.NewRemoteCommand(
 		fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir),
@@ -612,7 +615,10 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 			mkdirOutput.Buffer.String())
 	}
 
-	curlOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	curlOut := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024,
+	}
 	opts.Output = curlOut
 
 	// place the binary into the directory
@@ -669,9 +675,15 @@ func (j *setupHostJob) loadClient(ctx context.Context, target *host.Host, settin
 	}
 	defer os.Remove(tempFileName)
 
-	scpOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	scpOut := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024,
+	}
 
-	output := subprocess.OutputOptions{Output: scpOut, SendErrorToOutput: true}
+	output := subprocess.OutputOptions{
+		Output:            scpOut,
+		SendErrorToOutput: true,
+	}
 
 	scpYmlCommand := subprocess.NewSCPCommand(
 		tempFileName,
@@ -722,7 +734,10 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
-	cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	cmdOutput := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024,
+	}
 	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
 	makeShellCmd := subprocess.NewRemoteCommand(
 		fetchCmd,

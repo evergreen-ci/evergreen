@@ -170,7 +170,8 @@ func (c *vsphereClientImpl) DeleteInstance(ctx context.Context, h *host.Host) er
 	}
 
 	if state == types.VirtualMachinePowerStatePoweredOn {
-		task, err := vm.PowerOff(ctx)
+		var task *object.Task
+		task, err = vm.PowerOff(ctx)
 		if err != nil {
 			return errors.Wrap(err, "failed to create power off task")
 		}

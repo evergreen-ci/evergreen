@@ -738,7 +738,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 
 		Convey("with a host with a last communication time > 10 mins", func() {
 			anotherHost := Host{
-				Id: "anotherID",
+				Id:                    "anotherID",
 				LastCommunicationTime: now.Add(-time.Duration(20) * time.Minute),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
@@ -752,7 +752,7 @@ func TestFindNeedsNewAgent(t *testing.T) {
 
 		Convey("with a host with a normal LCT", func() {
 			anotherHost := Host{
-				Id: "testhost",
+				Id:                    "testhost",
 				LastCommunicationTime: now.Add(time.Duration(5) * time.Minute),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
@@ -823,7 +823,7 @@ func TestHostElapsedCommTime(t *testing.T) {
 		StartTime:    now.Add(-1 * time.Minute),
 	}
 	hostWithNoCreateTime := Host{
-		Id: "hostWithNoCreateTime",
+		Id:                    "hostWithNoCreateTime",
 		LastCommunicationTime: now.Add(-15 * time.Minute),
 	}
 	hostWithOnlyCreateTime := Host{

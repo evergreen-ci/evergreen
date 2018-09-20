@@ -175,9 +175,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 }
 
 func (s *AdminRouteSuite) TestRevertRoute() {
-	const route = "/admin/revert"
-	const version = 2
-
 	routeManager := makeRevertRouteManager(s.sc)
 	user := &user.DBUser{Id: "userName"}
 	ctx := gimlet.AttachUser(context.Background(), user)

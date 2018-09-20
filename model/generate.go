@@ -120,7 +120,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
 	}
 	p := &Project{}
-	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
+	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
 		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
 
@@ -128,7 +128,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 	cachedProject := cacheProjectData(p)
 
 	// Validate generated project against original project.
-	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
+	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
 		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 

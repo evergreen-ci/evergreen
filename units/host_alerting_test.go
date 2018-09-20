@@ -42,7 +42,7 @@ func (s *hostAlertSuite) TestLongRunningTasks() {
 	}
 	s.NoError(t.Insert())
 	h := host.Host{
-		Id: "h2",
+		Id:                    "h2",
 		LastCommunicationTime: time.Now(),
 		Status:                evergreen.HostRunning,
 		Provider:              evergreen.ProviderNameMock,

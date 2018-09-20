@@ -545,7 +545,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							taskMatchQuery := bson.M{
 								"$or": []bson.M{
 									bson.M{
-										task.StatusKey:                                     evergreen.TaskFailed,
+										task.StatusKey: evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
 									}},
 								task.ProjectKey:      "project",
@@ -569,7 +569,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							taskMatchQuery := bson.M{
 								"$or": []bson.M{
 									bson.M{
-										task.StatusKey:                                 evergreen.TaskFailed,
+										task.StatusKey: evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailType: evergreen.CommandTypeSystem,
 									}},
 								task.ProjectKey:      "project",
@@ -592,11 +592,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							taskMatchQuery := bson.M{
 								"$or": []bson.M{
 									bson.M{
-										task.StatusKey:                                     evergreen.TaskFailed,
+										task.StatusKey: evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
 									},
 									bson.M{
-										task.StatusKey:                                 evergreen.TaskFailed,
+										task.StatusKey: evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailType: evergreen.CommandTypeSystem,
 									},
 								},
@@ -627,11 +627,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": evergreen.CommandTypeSystem,
 										}},
 									bson.M{
-										task.StatusKey:                                     evergreen.TaskFailed,
+										task.StatusKey: evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
 									},
 									bson.M{
-										task.StatusKey:                                 evergreen.TaskFailed,
+										task.StatusKey: evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailType: evergreen.CommandTypeSystem,
 									},
 								},

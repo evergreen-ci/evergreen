@@ -179,7 +179,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// with the agent. This state allows intent documents to stay around until
 	// SpawnHost returns, but NOT as as initializing hosts that could still be
 	// spawned by Evergreen.
-	if err := j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
+	if err = j.host.SetStatus(evergreen.HostBuilding, evergreen.User, ""); err != nil {
 		return errors.Wrapf(err, "problem setting host %s status to building", j.host.Id)
 	}
 
@@ -187,8 +187,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// already has the image. If it does not, it should download it and wait
 	// on the job until it is finished downloading.
 	if j.host.ParentID != "" {
-		err := j.waitForContainerImageBuild(ctx)
-		if err != nil {
+		if err = j.waitForContainerImageBuild(ctx); err != nil {
 			return errors.Wrap(err, "problem building container image")
 		}
 	}
@@ -246,7 +245,7 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts)
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
 			WaitUntil: j.start.Add(time.Minute),
-			MaxTime:   j.TimeInfo().MaxTime - (time.Now().Sub(j.start)) - time.Minute,
+			MaxTime:   j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute,
 		})
 		err := j.env.RemoteQueue().Put(job)
 		grip.Critical(message.WrapError(err, message.Fields{

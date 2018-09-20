@@ -28,7 +28,7 @@ var SubscriberTypes = []string{
 	SlackSubscriberType,
 }
 
-//nolint: deadcode, megacheck
+//nolint: deadcode, megacheck, unused
 var (
 	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
 	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")

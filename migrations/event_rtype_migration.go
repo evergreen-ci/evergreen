@@ -9,7 +9,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-//nolint: deadcode, megacheck
+//nolint: deadcode, megacheck, unused
 const (
 	migrationEventRtypeRestructureAllLogs  = "event-rtype-to-root-alllogs"
 	migrationEventRtypeRestructureTaskLogs = "event-rtype-to-root-tasklogs"

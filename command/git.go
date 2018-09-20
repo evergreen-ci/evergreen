@@ -246,7 +246,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 		logger.Execution().Infof("Fetching module: %s", moduleName)
 
-		module, err := conf.Project.GetModuleByName(moduleName)
+		var module *model.Module
+		module, err = conf.Project.GetModuleByName(moduleName)
 		if err != nil {
 			logger.Execution().Errorf("Couldn't get module %s: %v", moduleName, err)
 			continue
@@ -268,7 +269,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			}
 		}
 
-		moduleCmds, err := c.buildModuleCloneCommand(module.Repo, moduleBase, revision)
+		var moduleCmds []string
+		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, moduleBase, revision)
 		if err != nil {
 			return err
 		}

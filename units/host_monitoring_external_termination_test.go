@@ -40,7 +40,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 
 	// this host should be picked up and updated to running
 	h := &host.Host{
-		Id: "h1",
+		Id:                    "h1",
 		LastCommunicationTime: time.Now().Add(-15 * time.Minute),
 		Status:                evergreen.HostRunning,
 		Provider:              evergreen.ProviderNameMock,

@@ -287,7 +287,7 @@ func (p *Patch) SetActivation(activated bool) error {
 func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	// check that a patch for this module exists
 	query := bson.M{
-		IdKey: p.Id,
+		IdKey:                                 p.Id,
 		PatchesKey + "." + ModulePatchNameKey: modulePatch.ModuleName,
 	}
 	update := bson.M{

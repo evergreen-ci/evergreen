@@ -585,7 +585,7 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 
 	apiSubs := []model.APISubscription{}
 
-	if err := json.Unmarshal(bytes, &apiSubs); err != nil {
+	if err = json.Unmarshal(bytes, &apiSubs); err != nil {
 		apiSub := model.APISubscription{}
 		if err = json.Unmarshal(bytes, &apiSub); err != nil {
 			return nil, errors.Wrap(err, "failed to unmarshal subscriptions")

@@ -214,9 +214,9 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		// add a 'status' literal string to each group. This sets up the
 		// documents for redacting in next stage.
 		{"$project": bson.M{
-			"tid": 1,
-			"t":   "$_id.t",
-			"v":   "$_id.v",
+			"tid":                             1,
+			"t":                               "$_id.t",
+			"v":                               "$_id.v",
 			"l." + task.TestResultStatusKey:   1,
 			"l." + task.TestResultTestFileKey: 1,
 			"status": bson.M{
