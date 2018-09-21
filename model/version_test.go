@@ -26,7 +26,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			}
 			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
 			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
-			testutil.HandleTestingErr(err, t, "error finding last known good: %s", lastGood.Id)
+			testutil.HandleTestingErr(err, t, "error finding last known good")
 			So(lastGood, ShouldBeNil)
 		})
 		Convey("a version should be returned if there is a last known good configuration", func() {
