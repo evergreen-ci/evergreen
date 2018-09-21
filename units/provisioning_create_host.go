@@ -19,9 +19,7 @@ import (
 
 const (
 	createHostJobName = "provisioning-create-host"
-	// For container build
-	maxPollAttempts = 60
-	pollInterval    = 15 * time.Second
+	maxPollAttempts   = 100
 )
 
 func init() {
@@ -95,7 +93,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}
 
-	if j.host.Status != evergreen.HostUninitialized {
+	if j.host.Status != evergreen.HostUninitialized && j.host.Status != evergreen.HostBuilding {
 		grip.Notice(message.Fields{
 			"message": "host has already been started",
 			"status":  j.host.Status,
@@ -187,8 +185,13 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// already has the image. If it does not, it should download it and wait
 	// on the job until it is finished downloading.
 	if j.host.ParentID != "" {
-		if err = j.waitForContainerImageBuild(ctx); err != nil {
+		j.MaxAttempts = maxPollAttempts
+		ready, err := j.isImageBuilt(ctx)
+		if err != nil {
 			return errors.Wrap(err, "problem building container image")
+		}
+		if !ready {
+			return nil
 		}
 	}
 
@@ -243,8 +246,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 func (j *createHostJob) tryRequeue(ctx context.Context) {
 	if j.shouldRetryCreateHost(ctx) && j.env.RemoteQueue().Started() {
 		job := NewHostCreateJob(j.env, *j.host, fmt.Sprintf("attempt-%d", j.CurrentAttempt+1), j.CurrentAttempt+1, j.MaxAttempts)
+		wait := time.Minute
+		if j.host.ParentID != "" {
+			wait = 10 * time.Second
+		}
 		job.UpdateTimeInfo(amboy.JobTimeInfo{
-			WaitUntil: j.start.Add(time.Minute),
+			WaitUntil: j.start.Add(wait),
 			MaxTime:   j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute,
 		})
 		err := j.env.RemoteQueue().Put(job)
@@ -265,43 +272,24 @@ func (j *createHostJob) shouldRetryCreateHost(ctx context.Context) bool {
 		ctx.Err() == nil
 }
 
-func (j *createHostJob) waitForContainerImageBuild(ctx context.Context) error {
+func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 	imageURL := (*j.host.Distro.ProviderSettings)["image_url"].(string)
 
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-
-	var ok bool
-	// Continuously poll DB to see if image is ready
-retryLoop:
-	for i := 0; i < maxPollAttempts; i++ {
-		select {
-		case <-ctx.Done():
-			return errors.New("building container image cancelled")
-		case <-timer.C:
-			parent, err := host.FindOneId(j.host.ParentID)
-			if err != nil {
-				return errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
-			}
-			if ok = parent.ContainerImages[imageURL]; !ok {
-				//  If the image is not already present on the parent, run job to build
-				// the new image
-				if i == 0 {
-					buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
-					err = j.env.RemoteQueue().Put(buildingContainerJob)
-					grip.Debug(message.WrapError(err, message.Fields{
-						"message": "Duplicate key being added to job to block building containers",
-					}))
-				}
-				timer.Reset(pollInterval)
-				continue
-			}
-			// Image is present on parent, can move on to SpawnHost
-			break retryLoop
-		}
+	parent, err := host.FindOneId(j.host.ParentID)
+	if err != nil {
+		return false, errors.Wrapf(err, "problem getting parent for '%s'", j.host.Id)
 	}
-	if !ok {
-		return errors.Errorf("Verifying image ready for '%s' timed out", imageURL)
+	if ok := parent.ContainerImages[imageURL]; ok {
+		return true, nil
 	}
-	return nil
+	//  If the image is not already present on the parent, run job to build
+	// the new image
+	if j.CurrentAttempt == 1 {
+		buildingContainerJob := NewBuildingContainerImageJob(j.env, parent, imageURL, j.host.Provider)
+		err = j.env.RemoteQueue().Put(buildingContainerJob)
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message": "Duplicate key being added to job to block building containers",
+		}))
+	}
+	return false, nil
 }
