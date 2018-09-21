@@ -767,12 +767,14 @@ mciModule.factory('DrawPerfTrendChart', function (
           'stroke-width': 2,
         })
 
-      bfs.attr({
-        transform: function(d) {
-          var idx = idxByRevision(series, d.bf.first_failing_revision)
-          return d3Translate(xScale(idx), yScale(getValueFor(d.level)(series[idx])))
-        },
-      })
+      bfs
+        .transition()
+        .attr({
+          transform: function(d) {
+            var idx = idxByRevision(series, d.bf.first_failing_revision)
+            return d3Translate(xScale(idx), yScale(getValueFor(d.level)(series[idx])))
+          },
+        })
 
       bfs.exit().remove()
     }
@@ -796,6 +798,13 @@ mciModule.factory('DrawPerfTrendChart', function (
             class: 'point change-point-segment',
           })
         .append('line')
+        .style({
+          stroke: 'red',
+          'stroke-width': '4',
+        })
+
+      changePointSegments.select('line')
+        .transition()
         .attr({
           x1: function(d) { return xScale(d.changePoint._meta.firstRevIdx) },
           x2: function(d) { return xScale(d.changePoint._meta.lastRevIdx) },
@@ -805,10 +814,6 @@ mciModule.factory('DrawPerfTrendChart', function (
           y2: function(d) {
             return yScale(getValueFor(d.level)(series[d.changePoint._meta.lastRevIdx]))
           },
-        })
-        .style({
-          stroke: 'red',
-          'stroke-width': '4',
         })
 
       changePointSegments.exit().remove()
