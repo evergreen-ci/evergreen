@@ -186,7 +186,7 @@ func mockGetUserByID(id string) (gimlet.User, error) {
 }
 
 func mockGetOrCreateUser(user gimlet.User) (gimlet.User, error) {
-	u := gimlet.NewBasicUser("foo", "", "", "", []string{})
+	u := gimlet.NewBasicUser(user.Username(), user.DisplayName(), user.Email(), user.GetAPIKey(), []string{})
 	return u, nil
 }
 
@@ -406,7 +406,7 @@ func (s *LDAPSuite) TestGetUser() {
 }
 
 func (s *LDAPSuite) TestGetOrCreateUser() {
-	basicUser := gimlet.MakeBasicUser()
+	basicUser := gimlet.NewBasicUser("foo", "", "", "", []string{})
 	user, err := s.um.GetOrCreateUser(basicUser)
 	s.NoError(err)
 	s.Equal("foo", user.Username())

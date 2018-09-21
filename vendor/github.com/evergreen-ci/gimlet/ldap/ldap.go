@@ -33,9 +33,8 @@ type CreationOpts struct {
 	connect connectFunc // connect changes connection behavior for testing
 }
 
-// PutUserGetToken is a function provided by the client to cache users. If the user is already in the
-// cache, it returns the user's token from the cache. If the user is not in the cache, it generates,
-// saves, and returns a new token. Updating the user's TTL should happen in this function.
+// PutUserGetToken is a function provided by the client to cache users. It generates, saves, and
+// returns a new token. Updating the user's TTL should happen in this function.
 type PutUserGetToken func(gimlet.User) (string, error)
 
 // GetUserByToken is a function provided by the client to retrieve cached users by token.
@@ -124,9 +123,13 @@ func (u *userService) CreateUserToken(username, password string) (string, error)
 	if err := u.authorize(username); err != nil {
 		return "", errors.Wrapf(err, "failed to authorize user '%s'", username)
 	}
-	user, err := u.getUser(username)
+	user, err := u.getUserFromLDAP(username)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to get user '%s'", username)
+	}
+	user, err = u.GetOrCreateUser(user)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting or creating user")
 	}
 	token, err := u.PutCache(user)
 	if err != nil {
@@ -230,7 +233,7 @@ func (u *userService) validateGroup(username string) error {
 	return errors.Errorf("user '%s' is not a member of group '%s'", username, u.Group)
 }
 
-func (u *userService) getUser(username string) (gimlet.User, error) {
+func (u *userService) getUserFromLDAP(username string) (gimlet.User, error) {
 	result, err := u.conn.Search(
 		ldap.NewSearchRequest(
 			u.Path,
