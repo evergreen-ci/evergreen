@@ -44,6 +44,7 @@ mciModule.controller('PerfController', function PerfController(
   $scope.perfTagData = {}
   $scope.compareForm = {}
   $scope.savedCompares = []
+  $scope.jiraHost = $window.jiraHost
 
   $scope.isGraphHidden = function(k){
     return $scope.hiddenGraphs[k] == true

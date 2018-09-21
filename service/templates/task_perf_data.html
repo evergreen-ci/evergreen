@@ -350,7 +350,7 @@
               <div>
                 bfs:&nbsp;
                 <span ng-repeat="bf in bfs">
-                  <span ng-bind-html="bf | escapeHtml | jiraLinkify"></span>
+                  <span ng-bind-html="bf | escapeHtml | jiraLinkify : jiraHost "></span>
                   <span ng-if="!$last">, </span>
                 </span>
               </div>
