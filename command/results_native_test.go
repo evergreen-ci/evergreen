@@ -51,7 +51,7 @@ func TestAttachResults(t *testing.T) {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
@@ -100,7 +100,7 @@ func TestAttachRawResults(t *testing.T) {
 				for _, command := range projTask.Commands {
 
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					// create a plugin communicator

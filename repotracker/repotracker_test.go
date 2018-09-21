@@ -52,7 +52,7 @@ func TestFetchRevisions(t *testing.T) {
 			"limit of 4 commits where only 3 exist", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 4
 			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
-				"Error running repository process %v")
+				"Error running repository process %s", repoTracker.Id)
 			numVersions, err := version.Count(version.All)
 			testutil.HandleTestingErr(err, t, "Error finding all versions")
 			So(numVersions, ShouldEqual, 3)
@@ -62,7 +62,7 @@ func TestFetchRevisions(t *testing.T) {
 			"limit of 2 commits where 3 exist", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
-				"Error running repository process %v")
+				"Error running repository process %s", repoTracker.Id)
 			numVersions, err := version.Count(version.All)
 			testutil.HandleTestingErr(err, t, "Error finding all versions")
 			So(numVersions, ShouldEqual, 2)
@@ -99,10 +99,10 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			revisions := []model.Revision{revisionOne}
 
 			resultVersion, err := repoTracker.StoreRevisions(ctx, revisions)
-			testutil.HandleTestingErr(err, t, "Error storing repository revisions %v")
+			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s", revisionOne.Revision)
 
 			newestVersion, err := version.FindOne(version.ByMostRecentForRequester(projectRef.String(), evergreen.RepotrackerVersionRequester))
-			testutil.HandleTestingErr(err, t, "Error retreiving newest version %v")
+			testutil.HandleTestingErr(err, t, "Error retreiving newest version %s", newestVersion.Id)
 
 			So(resultVersion, ShouldResemble, newestVersion)
 			So(resultVersion.AuthorID, ShouldEqual, "")
@@ -119,12 +119,12 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			revisions := []model.Revision{revisionOne, revisionTwo}
 
 			_, err := repoTracker.StoreRevisions(ctx, revisions)
-			testutil.HandleTestingErr(err, t, "Error storing repository revisions %v")
+			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
 			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
-			testutil.HandleTestingErr(err, t, "Error retrieving first stored version %v")
+			testutil.HandleTestingErr(err, t, "Error retrieving first stored version %s", versionOne.Id)
 			versionTwo, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionTwo.Revision))
-			testutil.HandleTestingErr(err, t, "Error retreiving second stored version %v")
+			testutil.HandleTestingErr(err, t, "Error retreiving second stored version %s", versionTwo.Revision)
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
 			So(versionTwo.Revision, ShouldEqual, revisionTwo.Revision)

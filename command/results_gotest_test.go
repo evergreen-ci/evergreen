@@ -40,14 +40,14 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %s", curWD)
 			conf.WorkDir = curWD
 
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
@@ -100,14 +100,14 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %s", curWD)
 			conf.WorkDir = curWD
 
 			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 

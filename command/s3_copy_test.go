@@ -46,7 +46,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			for _, task := range conf.Project.Tasks {
 				for _, command := range task.Commands {
 					pluginCmds, err := Render(command, conf.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %s", command.Command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					err = pluginCmds[0].Execute(ctx, comm, logger, conf)

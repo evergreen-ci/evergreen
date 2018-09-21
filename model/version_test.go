@@ -24,9 +24,9 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Errors:     []string{"error 1", "error 2"},
 			}
-			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %v")
+			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
 			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
-			testutil.HandleTestingErr(err, t, "error finding last known good: %v")
+			testutil.HandleTestingErr(err, t, "error finding last known good: %s", lastGood.Id)
 			So(lastGood, ShouldBeNil)
 		})
 		Convey("a version should be returned if there is a last known good configuration", func() {
@@ -34,9 +34,9 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Identifier: identifier,
 				Requester:  evergreen.RepotrackerVersionRequester,
 			}
-			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %v")
+			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
 			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
-			testutil.HandleTestingErr(err, t, "error finding last known good: %v")
+			testutil.HandleTestingErr(err, t, "error finding last known good: %s", lastGood.Id)
 			So(lastGood, ShouldNotBeNil)
 		})
 		Convey("most recent version should be found if there are several recent good configs", func() {
@@ -47,17 +47,17 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				RevisionOrderNumber: 1,
 				Config:              "1",
 			}
-			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %v")
+			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
 			v.Id = "5"
 			v.RevisionOrderNumber = 5
 			v.Config = "5"
-			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %v")
+			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
 			v.Id = "2"
 			v.RevisionOrderNumber = 2
 			v.Config = "2"
-			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %v")
+			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
 			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
-			testutil.HandleTestingErr(err, t, "error finding last known good: %v")
+			testutil.HandleTestingErr(err, t, "error finding last known good: %s", v.Id)
 			So(lastGood, ShouldNotBeNil)
 			So(lastGood.Config, ShouldEqual, "5")
 		})

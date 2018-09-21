@@ -54,7 +54,7 @@ func clearAll(t *testing.T) {
 			build.Collection,
 			task.Collection,
 			distro.Collection,
-		), t, "Error clearing test collection: %v")
+		), t, "Error clearing test collection")
 }
 
 // resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
