@@ -121,10 +121,17 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 // EnsureImageDownloaded checks if the image in s3 specified by the URL already exists,
 // and if not, creates a new image from the remote tarball.
 func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Host, url string) (string, error) {
+	start := time.Now()
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to generate docker client")
 	}
+	grip.Info(message.Fields{
+		"operation": "EnsureImageDownloaded",
+		"details":   "generateclient",
+		"duration":  time.Since(start),
+		"span":      time.Since(start).String(),
+	})
 
 	// Extract image name from url
 	baseName := path.Base(url)
@@ -132,6 +139,12 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 
 	// Check if image already exists on host
 	_, _, err = dockerClient.ImageInspectWithRaw(ctx, imageName)
+	grip.Info(message.Fields{
+		"operation": "EnsureImageDownloaded",
+		"details":   "ImageInspectWithRaw",
+		"duration":  time.Since(start),
+		"span":      time.Since(start).String(),
+	})
 	if err == nil {
 		// Image already exists
 		return imageName, nil
@@ -156,6 +169,12 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 		if err != nil {
 			return "", errors.Wrapf(err, "Error importing image from %s", url)
 		}
+		grip.Info(message.Fields{
+			"operation": "EnsureImageDownloaded",
+			"details":   "ImageImport",
+			"duration":  time.Since(start),
+			"span":      time.Since(start).String(),
+		})
 		grip.Info(msg)
 
 		// Wait until ImageImport finishes
@@ -163,6 +182,13 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 		if err != nil {
 			return "", errors.Wrap(err, "Error reading ImageImport response")
 		}
+
+		grip.Info(message.Fields{
+			"operation": "EnsureImageDownloaded",
+			"details":   "readall",
+			"duration":  time.Since(start),
+			"span":      time.Since(start).String(),
+		})
 
 		// Reset http client timeout
 		_, err = c.changeTimeout(h, normalTimeout)
@@ -180,11 +206,18 @@ func (c *dockerClientImpl) EnsureImageDownloaded(ctx context.Context, h *host.Ho
 // host from a Dockfile in the root directory, which adds the Evergreen binary
 func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host, baseImage string) (string, error) {
 	const dockerfileRoute = "dockerfile"
+	start := time.Now()
 
 	dockerClient, err := c.generateClient(h)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to generate docker client")
 	}
+	grip.Info(message.Fields{
+		"operation": "BuildImageWithAgent",
+		"details":   "generateclient",
+		"duration":  time.Since(start),
+		"span":      time.Since(start).String(),
+	})
 
 	// modify tag for new image
 	provisionedImage := fmt.Sprintf(provisionedImageTag, baseImage)
@@ -221,6 +254,12 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	if err != nil {
 		return "", errors.Wrapf(err, "Error building Docker image from base image %s", baseImage)
 	}
+	grip.Info(message.Fields{
+		"operation": "BuildImageWithAgent",
+		"details":   "ImageBuild",
+		"duration":  time.Since(start),
+		"span":      time.Since(start).String(),
+	})
 	grip.Info(msg)
 
 	// wait for ImageBuild to complete -- success response otherwise returned
@@ -229,6 +268,12 @@ func (c *dockerClientImpl) BuildImageWithAgent(ctx context.Context, h *host.Host
 	if err != nil {
 		return "", errors.Wrap(err, "Error reading ImageBuild response")
 	}
+	grip.Info(message.Fields{
+		"operation": "BuildImageWithAgent",
+		"details":   "ReadAll",
+		"duration":  time.Since(start),
+		"span":      time.Since(start).String(),
+	})
 
 	return provisionedImage, nil
 }
