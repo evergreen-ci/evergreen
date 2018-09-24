@@ -168,6 +168,9 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 		return errors.Wrapf(err, "problem getting project for task %s", t.Id)
 	}
 	tg := p.FindTaskGroup(t.TaskGroup)
+	if tg == nil {
+		return errors.Errorf("unable to find task group '%s' for task '%s'", t.TaskGroup, taskID)
+	}
 
 	indexOfTask := -1
 	for i, tgTask := range tg.Tasks {
