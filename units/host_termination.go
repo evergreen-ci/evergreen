@@ -199,6 +199,23 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}))
 
 		if !util.StringSliceContains(evergreen.UphostStatus, j.host.Status) {
+			if err := j.host.Terminate(evergreen.User); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":     j.host.Id,
+					"provider": j.host.Distro.Provider,
+					"job_type": j.Type().Name,
+					"job":      j.ID(),
+					"message":  "problem terminating instance",
+				}))
+				return
+			}
+			grip.Info(message.Fields{
+				"host":     j.host.Id,
+				"provider": j.host.Distro.Provider,
+				"job_type": j.Type().Name,
+				"job":      j.ID(),
+				"message":  "terminated instance because cloud status is unknown and host is not up",
+			})
 			return
 		}
 
