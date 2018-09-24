@@ -899,7 +899,7 @@ func (h *Host) GetParent() (*Host, error) {
 // IsIdleParent determines whether a host with containers has exclusively
 // terminated containers
 func (h *Host) IsIdleParent() (bool, error) {
-	const idleTimeCutoff = 10 * time.Minute
+	const idleTimeCutoff = 20 * time.Minute
 	if !h.HasContainers {
 		return false, nil
 	}
