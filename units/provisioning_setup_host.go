@@ -24,7 +24,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -137,25 +136,12 @@ func (j *setupHostJob) setupHost(ctx context.Context, h *host.Host, settings *ev
 		event.LogHostProvisionError(h.Id)
 
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "provisioning host encountered error",
-			"job":     j.ID(),
-			"distro":  h.Distro.Id,
-			"hostid":  h.Id,
+			"message":  "provisioning host encountered error",
+			"job":      j.ID(),
+			"distro":   h.Distro.Id,
+			"hostid":   h.Id,
+			"attempts": h.ProvisionAttempts,
 		}))
-
-		mailer, err := j.env.GetSender(evergreen.SenderEmail)
-		if err != nil {
-			return errors.Wrapf(err, "problem sending host init error email for host %s", h.Id)
-		}
-		mailer.Send(message.NewEmailMessage(level.Error, message.Email{
-			From:       settings.Notify.SMTP.From,
-			Recipients: settings.Notify.SMTP.AdminEmail,
-			Subject: fmt.Sprintf("%v Evergreen provisioning failure on %v",
-				provisionFailurePreface, h.Distro.Id),
-			Body: fmt.Sprintf("Provisioning failed on %s host -- %s: see %s/host/%s",
-				h.Distro.Id, h.Id, settings.Ui.Url, h.Id),
-		}))
-
 	}
 
 	// ProvisionHost allows hosts to fail provisioning a few
