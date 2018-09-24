@@ -147,7 +147,9 @@ func (j *createHostJob) Run(ctx context.Context) {
 }
 
 func (j *createHostJob) createHost(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
+	var cloudManager cloud.Manager
+	var err error
+	if err = ctx.Err(); err != nil {
 		return errors.Wrap(err, "canceling create host because context is canceled")
 	}
 	hostStartTime := j.start
@@ -159,7 +161,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"max_attempts": j.MaxAttempts,
 	})
 
-	cloudManager, err := cloud.GetManager(ctx, j.host.Provider, j.env.Settings())
+	cloudManager, err = cloud.GetManager(ctx, j.host.Provider, j.env.Settings())
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message": "problem getting cloud provider for host",
