@@ -585,15 +585,14 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 	query[PriorityKey] = 0
-	query[ActivatedByKey] = ""
 
 	if distroID != "" {
 		query[DistroIdKey] = distroID
 	}
 
 	query["$and"] = []bson.M{
-		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
-		{CreateTimeKey: bson.M{"$gt": util.ZeroTime}},
+		{ActivatedTimeKey: bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}},
+		{ActivatedTimeKey: bson.M{"$gt": util.ZeroTime}},
 	}
 
 	update := bson.M{

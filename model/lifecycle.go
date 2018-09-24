@@ -70,7 +70,7 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 				task.BuildIdKey: buildId,
 				task.StatusKey:  evergreen.TaskUndispatched,
 			},
-			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
+			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller, task.ActivatedTimeKey: time.Now()}},
 		)
 		if err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
