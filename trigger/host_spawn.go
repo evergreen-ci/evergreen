@@ -128,7 +128,7 @@ func (t *spawnHostTriggers) generate(sub *event.Subscription) (*notification.Not
 		return nil, errors.Errorf("unsupported subscriber type: %s", sub.ResourceType)
 	}
 
-	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
 func spawnHostURL(base string) string {

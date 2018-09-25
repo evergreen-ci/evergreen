@@ -323,7 +323,7 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 		}
 	}
 
-	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
 func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType, pastTenseOverride string) (*notification.Notification, error) {
@@ -693,7 +693,11 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 }
 
 func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.JiraIssue, error) {
-	buildDoc, err := build.FindOne(build.ById(j.task.BuildId))
+	return JIRATaskPayload(subID, project, j.uiConfig.Url, j.event.ID, j.task)
+}
+
+func JIRATaskPayload(subID, project, uiUrl, eventID string, t *task.Task) (*message.JiraIssue, error) {
+	buildDoc, err := build.FindOne(build.ById(t.BuildId))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch build while building jira task payload")
 	}
@@ -702,14 +706,14 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 	}
 
 	var hostDoc *host.Host
-	if len(j.task.HostId) != 0 {
-		hostDoc, err = host.FindOneId(j.task.HostId)
+	if len(t.HostId) != 0 {
+		hostDoc, err = host.FindOneId(t.HostId)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to fetch host while building jira task payload")
 		}
 	}
 
-	versionDoc, err := version.FindOneId(j.task.Version)
+	versionDoc, err := version.FindOneId(t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
 	}
@@ -717,7 +721,7 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		return nil, errors.New("could not find version while building jira task payload")
 	}
 
-	projectRef, err := model.FindOneProjectRef(j.task.Project)
+	projectRef, err := model.FindOneProjectRef(t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch project ref while building jira task payload")
 	}
@@ -729,10 +733,10 @@ func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.Jira
 		project:  strings.ToUpper(project),
 		mappings: &evergreen.JIRANotificationsConfig{},
 		data: jiraTemplateData{
-			UIRoot:         j.uiConfig.Url,
+			UIRoot:         uiUrl,
 			SubscriptionID: subID,
-			EventID:        j.event.ID,
-			Task:           j.task,
+			EventID:        eventID,
+			Task:           t,
 			Version:        versionDoc,
 			Project:        projectRef,
 			Build:          buildDoc,

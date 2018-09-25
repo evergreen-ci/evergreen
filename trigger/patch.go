@@ -182,5 +182,5 @@ func (t *patchTriggers) generate(sub *event.Subscription) (*notification.Notific
 		return nil, errors.Wrap(err, "failed to build notification")
 	}
 
-	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }

@@ -130,7 +130,7 @@ func (t *hostTriggers) generate(sub *event.Subscription, subjectTempl, bodyTempl
 		return nil, errors.Wrap(err, "unable to parse templates")
 	}
 
-	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
 func hostExpirationEmailPayload(t hostTemplateData, subjectString, bodyString string, selectors []event.Selector) (*message.Email, error) {

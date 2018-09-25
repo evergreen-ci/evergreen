@@ -48,7 +48,7 @@ func makeEventNotificationJob() *eventNotificationJob {
 	return j
 }
 
-func newEventNotificationJob(id string) amboy.Job {
+func NewEventNotificationJob(id string) amboy.Job {
 	j := makeEventNotificationJob()
 	j.NotificationID = id
 

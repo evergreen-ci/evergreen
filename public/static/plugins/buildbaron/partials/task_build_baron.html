@@ -87,9 +87,9 @@
                   <button class="btn btn-success" ng-click="fileTicket()">File Ticket</button>
                 </div>
               </div>
-              <div ng-show="!creatingTicket && ticketKey">
+              <div ng-show="createdTicket">
                 <div class="row">
-                  <h4>Created <a ng-href=https://jira.mongodb.org/browse/[[ticketKey]]>[[ticketKey]]</a></h4>
+                  <h4>Ticket successfully queued for creation</h4>
                 </div>
                 <div class="row">
                   <button class="btn btn-default" ng-click="clearTicket()">File Another</button>

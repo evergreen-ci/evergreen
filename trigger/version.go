@@ -121,7 +121,7 @@ func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride st
 		return nil, errors.Wrap(err, "failed to build notification")
 	}
 
-	return notification.New(t.event, sub.Trigger, &sub.Subscriber, payload)
+	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
 func (t *versionTriggers) versionOutcome(sub *event.Subscription) (*notification.Notification, error) {

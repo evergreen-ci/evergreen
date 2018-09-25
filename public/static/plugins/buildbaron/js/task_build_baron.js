@@ -113,9 +113,8 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
     $http.post('/plugin/buildbaron/file_ticket',
         {task: $scope.taskId, tests: $scope.ticketTests}).then(
       function(resp) {
-        var data = resp.data;
-        $scope.ticketKey = data.key
         $scope.creatingTicket = false;
+        $scope.createdTicket = true;
       },
     function(resp) {
       var jqXHR = resp.data;
@@ -203,7 +202,6 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
   $scope.newTicket = false;
   $scope.ticketTests = [];
   $scope.creatingTicket = false;
-  $scope.ticketKey = "";
 
   $scope.setTask = function(task) {
     $scope.task = task;
@@ -229,7 +227,6 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
 
   $scope.clearTicket = function(){
     $scope.newTicket = true;
-    $scope.ticketKey = "";
     $scope.ticketTests = [];
     $scope.setTask($window.task_data);
   }
