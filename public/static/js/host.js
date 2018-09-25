@@ -3,6 +3,7 @@ mciModule.controller('HostCtrl', function($scope, $window) {
   $scope.host = $window.host;
   $scope.running_task = $window.runningTask;
   $scope.events = $window.events.reverse();
+  $scope.containers = $window.containers;
 
   $scope.host.uptime = "N/A";
   if ($scope.host.host_type !== "static") {

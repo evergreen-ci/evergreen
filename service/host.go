@@ -69,12 +69,22 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var containers []host.Host
+	if h.HasContainers {
+		containers, err = h.GetContainers()
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Events      []event.EventLogEntry
 		Host        *host.Host
 		RunningTask *task.Task
+		Containers  []host.Host
 		ViewData
-	}{events, h, runningTask, uis.GetCommonViewData(w, r, false, true)},
+	}{events, h, runningTask, containers, uis.GetCommonViewData(w, r, false, true)},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 
