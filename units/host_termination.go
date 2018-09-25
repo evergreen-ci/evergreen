@@ -199,6 +199,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}))
 
 		if !util.StringSliceContains(evergreen.UphostStatus, j.host.Status) {
+			if err := j.host.Terminate(evergreen.User); err != nil {
+				j.AddError(err)
+			}
 			return
 		}
 
