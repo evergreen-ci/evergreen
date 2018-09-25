@@ -29,10 +29,9 @@ import (
 )
 
 const (
-	provisionRetryLimit     = 15
-	setupHostJobName        = "provisioning-setup-host"
-	scpTimeout              = time.Minute
-	provisionFailurePreface = "[PROVISION-FAILURE]"
+	provisionRetryLimit = 15
+	setupHostJobName    = "provisioning-setup-host"
+	scpTimeout          = time.Minute
 )
 
 func init() {

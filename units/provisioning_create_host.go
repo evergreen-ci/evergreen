@@ -187,8 +187,9 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	// already has the image. If it does not, it should download it and wait
 	// on the job until it is finished downloading.
 	if j.host.ParentID != "" {
+		var ready bool
 		j.MaxAttempts = maxPollAttempts
-		ready, err := j.isImageBuilt(ctx)
+		ready, err = j.isImageBuilt(ctx)
 		if err != nil {
 			return errors.Wrap(err, "problem building container image")
 		}
