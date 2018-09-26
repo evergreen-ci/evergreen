@@ -11,6 +11,7 @@
   var events = {{.Events}}.reverse()
   var userTz = {{GetTimezone $.User}}
   var runningTask = {{.RunningTask}}
+  var containers = {{.Containers}}
 </script>
 {{end}}
 
@@ -94,10 +95,24 @@ Evergreen - Host {{.Host.Id}}
           <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Distro</b> </div>
           <a ng-href="/distros##[[host.distro._id]]">
             <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.distro._id]]</div>
-          <a>
+          </a>
+        </div>
+        <div class="row" ng-show="host.parent_id">
+          <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Parent</b> </div>
+          <a ng-href="/host/[[host.parent_id]]">
+            <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.parent_id]]</div>
+          </a>
+        </div>
+        <div class="row" ng-show="host.has_containers">
+          <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Containers</b> </div>
+          <div ng-repeat="container in containers">
+            <a ng-href="/host/[[container.id]]">
+              <div class="host-info col-lg-8 col-md-8 col-sm-9">[[container.id]]</div>
+            </a>
+          </div>
         </div>
       </div>
-      </div>
+    </div>
   </div>
   <div class="row">
     <div class="col-lg-7 col-md-7" ng-show="(running_task && running_task.id) || host.elapsed != 'N/A' || host.uptime != 'N/A'">
