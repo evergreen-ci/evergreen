@@ -186,7 +186,9 @@ func NewTaskHistoryIterator(name string, buildVariants []string, projectName str
 
 func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevisions int, before, include bool) ([]version.Version, bool, error) {
 	versionQuery := bson.M{
-		version.RequesterKey:  evergreen.RepotrackerVersionRequester,
+		version.RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 		version.IdentifierKey: iter.ProjectName,
 	}
 
@@ -286,7 +288,9 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 	versionStartBoundary, versionEndBoundary := versions[0], versions[len(versions)-1]
 
 	matchStage := bson.M{
-		task.RequesterKey:   evergreen.RepotrackerVersionRequester,
+		task.RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 		task.ProjectKey:     iter.ProjectName,
 		task.DisplayNameKey: iter.TaskName,
 		task.RevisionOrderNumberKey: bson.M{

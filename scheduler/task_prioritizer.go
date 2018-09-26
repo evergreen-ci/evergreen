@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -254,7 +255,7 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 		switch {
 		case task.Priority > evergreen.MaxTaskPriority:
 			priorityTasks = append(priorityTasks, task)
-		case task.Requester == evergreen.RepotrackerVersionRequester:
+		case util.StringSliceContains(evergreen.SystemVersionRequesterTypes, task.Requester):
 			repoTrackerTasks = append(repoTrackerTasks, task)
 		case evergreen.IsPatchRequester(task.Requester):
 			patchTasks = append(patchTasks, task)

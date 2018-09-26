@@ -49,7 +49,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 				continue
 			}
 
-			mostRecentVersion, err := version.FindOne(version.ByMostRecentForRequester(proj.Identifier, evergreen.RepotrackerVersionRequester))
+			mostRecentVersion, err := version.FindOne(version.ByMostRecentSystemRequester(proj.Identifier))
 			catcher.Add(err)
 			if mostRecentVersion == nil {
 				grip.Warning(message.Fields{

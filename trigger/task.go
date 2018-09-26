@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -430,12 +431,12 @@ func (t *taskTriggers) taskRegression(sub *event.Subscription) (*notification.No
 }
 
 func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
-	if t.Status != evergreen.TaskFailed || t.Requester != evergreen.RepotrackerVersionRequester {
+	if t.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return false, nil, nil
 	}
 
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber,
-		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester))
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
+		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes))
 	if err != nil {
 		return false, nil, errors.Wrap(err, "error fetching previous task")
 	}
@@ -646,7 +647,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 }
 
 func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.Requester != evergreen.RepotrackerVersionRequester || !isFailedTaskStatus(t.task.Status) {
+	if !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
 	// if no tests, alert only if it's a regression in task status
@@ -655,8 +656,8 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	catcher := grip.NewBasicCatcher()
-	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequester(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.RepotrackerVersionRequester))
+	previousCompleteTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}
@@ -797,11 +798,11 @@ func detailStatusToHumanSpeak(status string) string {
 
 // this is very similar to taskRegression, but different enough
 func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notification, error) {
-	if t.task.Status != evergreen.TaskFailed || t.task.Requester != evergreen.RepotrackerVersionRequester {
+	if t.task.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) {
 		return nil, nil
 	}
-	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequester(t.task.RevisionOrderNumber,
-		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.RepotrackerVersionRequester))
+	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
+		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes))
 	if err != nil {
 		return nil, errors.Wrap(err, "error fetching previous task")
 	}

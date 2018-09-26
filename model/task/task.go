@@ -429,8 +429,8 @@ func (t *Task) PreviousCompletedTask(project string,
 	if len(statuses) == 0 {
 		statuses = CompletedStatuses
 	}
-	return FindOneNoMerge(ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber, statuses, t.BuildVariant,
-		t.DisplayName, project, evergreen.RepotrackerVersionRequester))
+	return FindOneNoMerge(ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses, t.BuildVariant,
+		t.DisplayName, project, evergreen.SystemVersionRequesterTypes))
 }
 
 // SetExpectedDuration updates the expected duration field for the task

@@ -201,6 +201,10 @@ var (
 		ProviderNameVsphere,
 		ProviderNameMock,
 	}
+	SystemVersionRequesterTypes = []string{
+		RepotrackerVersionRequester,
+		TriggerRequester,
+	}
 )
 
 const (
@@ -216,6 +220,8 @@ const (
 	PatchVersionRequester       = "patch_request"
 	GithubPRRequester           = "github_pull_request"
 	RepotrackerVersionRequester = "gitter_request"
+	TriggerRequester            = "trigger_request"
+	UserInitiatedRequester      = "user_initiated"
 )
 
 const (

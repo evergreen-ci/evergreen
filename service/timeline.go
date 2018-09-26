@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
@@ -21,7 +20,7 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	skip, perPage := getSkipAndLimit(r, DefaultSkip, DefaultLimit)
-	data, err := getTimelineData(project.Identifier, evergreen.RepotrackerVersionRequester, skip, perPage)
+	data, err := getTimelineData(project.Identifier, skip, perPage)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error getting timeline data: %v", err.Error()), http.StatusInternalServerError)
 		return

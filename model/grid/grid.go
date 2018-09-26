@@ -88,7 +88,9 @@ func FetchCells(current version.Version, depth int) (Grid, error) {
 		// Stage 1: Get all builds from the current version going back
 		// as far as depth versions.
 		{"$match": bson.M{
-			build.RequesterKey: evergreen.RepotrackerVersionRequester,
+			build.RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 			build.RevisionOrderNumberKey: bson.M{
 				"$lte": current.RevisionOrderNumber,
 				"$gte": (current.RevisionOrderNumber - depth),
@@ -149,8 +151,10 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 				"$lte": current.RevisionOrderNumber,
 				"$gte": (current.RevisionOrderNumber - depth),
 			},
-			task.ProjectKey:   current.Identifier,
-			task.RequesterKey: evergreen.RepotrackerVersionRequester,
+			task.ProjectKey: current.Identifier,
+			task.RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 			task.StatusKey: bson.M{
 				"$in": []string{
 					evergreen.TaskFailed,
@@ -280,8 +284,10 @@ func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFai
 				"$lte": current.RevisionOrderNumber,
 				"$gte": (current.RevisionOrderNumber - depth),
 			},
-			task.ProjectKey:   current.Identifier,
-			task.RequesterKey: evergreen.RepotrackerVersionRequester,
+			task.ProjectKey: current.Identifier,
+			task.RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 		}},
 		// Join test results to this task
 		{"$lookup": bson.M{

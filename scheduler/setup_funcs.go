@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -25,7 +26,7 @@ func cachePreviousTasks(comparator *CmpBasedTaskComparator) error {
 		prevTask := &task.Task{}
 
 		// only relevant for repotracker tasks
-		if t.Requester == evergreen.RepotrackerVersionRequester {
+		if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 			prevTask, err = t.PreviousCompletedTask(t.Project, []string{})
 			if err != nil {
 				return errors.Wrap(err, "cachePreviousTasks")
@@ -50,7 +51,7 @@ func cacheSimilarFailing(comparator *CmpBasedTaskComparator) error {
 		numSimilarFailing := 0
 
 		// only relevant for repotracker tasks
-		if t.Requester == evergreen.RepotrackerVersionRequester {
+		if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 			numSimilarFailing, err = t.CountSimilarFailingTasks()
 			if err != nil {
 				return errors.Wrap(err, "cacheSimilarFailing")

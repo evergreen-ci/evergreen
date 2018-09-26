@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -198,7 +199,7 @@ func (t *versionTriggers) versionRuntimeChange(sub *event.Subscription) (*notifi
 }
 
 func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notification.Notification, error) {
-	if t.data.Status != evergreen.VersionFailed || t.version.Requester != evergreen.RepotrackerVersionRequester {
+	if t.data.Status != evergreen.VersionFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.version.Requester) {
 		return nil, nil
 	}
 

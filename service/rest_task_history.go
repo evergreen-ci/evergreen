@@ -131,6 +131,8 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 		params.TaskRequestType = evergreen.PatchVersionRequester
 	case "", "commit", "gitter", "gitter_request", "repotracker":
 		params.TaskRequestType = evergreen.RepotrackerVersionRequester
+	case "trigger":
+		params.TaskRequestType = evergreen.TriggerRequester
 	case "all", "both", "any":
 		params.TaskRequestType = ""
 	default:

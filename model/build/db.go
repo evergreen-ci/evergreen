@@ -98,8 +98,10 @@ func ByProjectAndVariant(project, variant, requester string, statuses []string) 
 // a revision + buildvariant combionation.
 func ByRevisionAndVariant(revision, variant string) db.Q {
 	return db.Query(bson.M{
-		RevisionKey:     revision,
-		RequesterKey:    evergreen.RepotrackerVersionRequester,
+		RevisionKey: revision,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 		BuildVariantKey: variant,
 	})
 }
@@ -107,8 +109,10 @@ func ByRevisionAndVariant(revision, variant string) db.Q {
 // ByRevision creates a query that returns all builds for a revision.
 func ByRevision(revision string) db.Q {
 	return db.Query(bson.M{
-		RevisionKey:  revision,
-		RequesterKey: evergreen.RepotrackerVersionRequester,
+		RevisionKey: revision,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 	})
 }
 
@@ -134,7 +138,9 @@ func ByRecentlySuccessfulForProjectAndVariant(revision int, project, variant str
 		BuildVariantKey:        variant,
 		ProjectKey:             project,
 		StatusKey:              evergreen.BuildSucceeded,
-		RequesterKey:           evergreen.RepotrackerVersionRequester,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
@@ -174,9 +180,11 @@ func ByBetweenBuilds(current, previous *Build) db.Q {
 // Results are sorted by revision order, descending.
 func ByBeforeRevision(project, buildVariant string, revision int) db.Q {
 	return db.Query(bson.M{
-		ProjectKey:             project,
-		BuildVariantKey:        buildVariant,
-		RequesterKey:           evergreen.RepotrackerVersionRequester,
+		ProjectKey:      project,
+		BuildVariantKey: buildVariant,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 		RevisionOrderNumberKey: bson.M{"$lt": revision},
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
@@ -186,9 +194,11 @@ func ByBeforeRevision(project, buildVariant string, revision int) db.Q {
 // Results are sorted by revision order, ascending.
 func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 	return db.Query(bson.M{
-		ProjectKey:             project,
-		BuildVariantKey:        buildVariant,
-		RequesterKey:           evergreen.RepotrackerVersionRequester,
+		ProjectKey:      project,
+		BuildVariantKey: buildVariant,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 		RevisionOrderNumberKey: bson.M{"$gte": revision},
 	}).Sort([]string{RevisionOrderNumberKey})
 }
@@ -197,8 +207,10 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 // that are versions (not patches), that have finished.
 func ByRecentlyFinished(limit int) db.Q {
 	return db.Query(bson.M{
-		RequesterKey: evergreen.RepotrackerVersionRequester,
-		StatusKey:    bson.M{"$in": evergreen.CompletedStatuses},
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		StatusKey: bson.M{"$in": evergreen.CompletedStatuses},
 	}).Sort([]string{RevisionOrderNumberKey}).Limit(limit)
 }
 

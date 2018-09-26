@@ -43,12 +43,13 @@ type ProjectRef struct {
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
 
-	// TODO: remove the alerts field above
 	NotifyOnBuildFailure bool `bson:"notify_on_failure" json:"notify_on_failure"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
+
+	Triggers []TriggerDefinition `bson:"triggers,omitempty" json:"triggers,omitempty"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -65,6 +66,20 @@ type AlertConfig struct {
 	// Data contains provider-specific on how a notification should be delivered.
 	// Typed as bson.M so that the appropriate provider can parse out necessary details
 	Settings bson.M `bson:"settings" json:"settings"`
+}
+
+type TriggerDefinition struct {
+	// completion of specified task(s) in the project listed here will cause a build in the current project
+	Project string `bson:"project" json:"project"`
+
+	// filters for this trigger
+	BuildVariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
+	TaskRegex         string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
+	Status            string `bson:"status,omitempty" json:"status,omitempty"`
+
+	// definitions for tasks to run for this trigger
+	ConfigFile string `bson:"config_file,omitempty" json:"config_file,omitempty"`
+	Command    string `bson:"command,omitempty" json:"command,omitempty"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
@@ -100,6 +115,7 @@ var (
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
+	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
 )
 
 const (
@@ -310,6 +326,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
 				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
+				projectRefTriggersKey:           projectRef.Triggers,
 			},
 		},
 	)
