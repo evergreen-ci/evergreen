@@ -40,6 +40,7 @@ type MountPoint struct {
 	Size        int64  `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
 	Iops        int64  `mapstructure:"iops" json:"iops,omitempty" bson:"iops,omitempty"`
 	SnapshotID  string `mapstructure:"snapshot_id" json:"snapshot_id,omitempty" bson:"snapshot_id,omitempty"`
+	VolumeType  string `mapstructure:"volume_type" json:"volume_type,omitempty" bson:"volume_type,omitempty"`
 }
 
 var (
@@ -61,6 +62,7 @@ var (
 	VirtualNameKey = bsonutil.MustHaveTag(MountPoint{}, "VirtualName")
 	DeviceNameKey  = bsonutil.MustHaveTag(MountPoint{}, "DeviceName")
 	SizeKey        = bsonutil.MustHaveTag(MountPoint{}, "Size")
+	VolumeTypeKey  = bsonutil.MustHaveTag(MountPoint{}, "VolumeType")
 )
 
 // type/consts for price evaluation based on OS
@@ -271,6 +273,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			m.Ebs = &ec2aws.EbsBlockDevice{
 				DeleteOnTermination: aws.Bool(true),
 				VolumeSize:          aws.Int64(mount.Size),
+				VolumeType:          aws.String(mount.VolumeType),
 			}
 			if mount.Iops != 0 {
 				m.Ebs.Iops = aws.Int64(mount.Iops)
