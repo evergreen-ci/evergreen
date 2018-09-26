@@ -33,7 +33,8 @@ type CrowdConfig struct {
 type LDAPConfig struct {
 	URL                string `bson:"url" json:"url" yaml:"url"`
 	Port               string `bson:"port" json:"port" yaml:"port"`
-	Path               string `bson:"path" json:"path" yaml:"path"`
+	UserPath           string `bson:"path" json:"path" yaml:"path"`
+	ServicePath        string `bson:"service_path" json:"service_path" yaml:"service_path"`
 	Group              string `bson:"group" json:"group" yaml:"group"`
 	ExpireAfterMinutes string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
 }
