@@ -51,7 +51,7 @@ type dockerClientImpl struct {
 // template string for new images with agent
 const (
 	provisionedImageTag = "%s:provisioned"
-	imageImportTimeout  = 15 * time.Minute
+	imageImportTimeout  = 10 * time.Minute
 )
 
 // generateClient generates a Docker client that can talk to the specified host
