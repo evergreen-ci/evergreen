@@ -728,7 +728,7 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		SMTP: smtp.(evergreen.SMTPConfig),
+		SMTP:                    smtp.(evergreen.SMTPConfig),
 	}, nil
 }
 
