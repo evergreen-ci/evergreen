@@ -401,23 +401,6 @@ func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	return nil
 }
 
-// ClearLastTask unsets the last task from the db.
-func (h *Host) ClearLastTask() error {
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$unset": bson.M{
-				LTCTaskKey:    1,
-				LTCGroupKey:   1,
-				LTCBVKey:      1,
-				LTCVersionKey: 1,
-				LTCProjectKey: 1,
-			},
-		})
-}
-
 // ClearRunningTask unsets the running task on the host.
 func (h *Host) ClearRunningTask() error {
 	err := UpdateOne(

@@ -153,7 +153,7 @@ func ValidateNewGraph(t *task.Task, tasksToBlock []task.Task) error {
 	return catcher.Resolve()
 }
 
-func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
+func BlockTaskGroupTasks(taskID string) error {
 	catcher := grip.NewBasicCatcher()
 	t, err := task.FindOneId(taskID)
 	if err != nil {
@@ -196,7 +196,6 @@ func (self *TaskQueue) BlockTaskGroupTasks(spec TaskSpec, taskID string) error {
 	}
 	for _, taskToBlock := range tasksToBlock {
 		catcher.Add(taskToBlock.AddDependency(task.Dependency{TaskId: taskID, Status: evergreen.TaskSucceeded}))
-		catcher.Add(errors.Wrapf(self.DequeueTask(taskToBlock.Id), "problem dequeueing task %s", t.Id))
 	}
 	return catcher.Resolve()
 }
