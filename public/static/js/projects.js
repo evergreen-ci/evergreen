@@ -256,7 +256,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
         // Divide aliases into two categories (gh/patch aliases)
         [$scope.github_aliases, $scope.patch_aliases] = _.partition(
-          $scope.aliases, d => d.alias == '__github'
+          $scope.aliases, function(d) { return d.alias == '__github' }
         )
 
         $scope.settingsFormData = {
