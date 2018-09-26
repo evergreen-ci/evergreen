@@ -7,7 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
@@ -224,4 +230,48 @@ func TestRaceSuggesters(t *testing.T) {
 		"expected error from fallback to be returned since both failed")
 	assert.Nil(tickets)
 	assert.Equal(jiraSource, source)
+}
+
+func TestMakeTicket(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, version.Collection, build.Collection, model.ProjectRefCollection))
+	t1 := task.Task{
+		Id:      "t1",
+		Version: "v",
+		Project: "proj",
+		BuildId: "b",
+	}
+	assert.NoError(t1.Insert())
+	v := version.Version{
+		Id:       "v",
+		Revision: "1234567890",
+	}
+	assert.NoError(v.Insert())
+	b := build.Build{
+		Id: "b",
+	}
+	assert.NoError(b.Insert())
+	p := model.ProjectRef{
+		Identifier: "proj",
+	}
+	assert.NoError(p.Insert())
+	uis := UIServer{
+		Settings: evergreen.Settings{
+			Ui: evergreen.UIConfig{
+				Url: "www.example.com",
+			},
+		},
+	}
+
+	n, err := uis.makeNotification("MCI", &t1)
+	assert.NoError(err)
+	assert.NotNil(n)
+	assert.EqualValues(event.JIRAIssueSubscriber{
+		Project:   "MCI",
+		IssueType: jiraIssueType,
+	}, n.Subscriber.Target)
+	// test that creating another ticket creates another notification
+	n, err = uis.makeNotification("MCI", &t1)
+	assert.NoError(err)
+	assert.NotNil(n)
 }

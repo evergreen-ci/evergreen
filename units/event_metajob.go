@@ -165,7 +165,7 @@ func (j *eventMetaJob) dispatch(notifications []notification.Notification) error
 	catcher := grip.NewSimpleCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
-			catcher.Add(j.q.Put(newEventNotificationJob(notifications[i].ID)))
+			catcher.Add(j.q.Put(NewEventNotificationJob(notifications[i].ID)))
 		} else {
 			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
 		}

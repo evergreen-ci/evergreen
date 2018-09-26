@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,8 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/trigger"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mitchellh/mapstructure"
@@ -26,6 +30,7 @@ const (
 	maxNoteSize        = 16 * 1024 // 16KB
 	jiraSource         = "JIRA"
 	bfSuggestionSource = "BF Suggestion Server"
+	jiraIssueType      = "Build Failure"
 )
 
 func bbGetConfig(settings *evergreen.Settings) map[string]evergreen.BuildBaronProject {
@@ -296,6 +301,70 @@ func (uis *UIServer) bbJiraSearch(rw http.ResponseWriter, r *http.Request) {
 		featuresURL = ""
 	}
 	gimlet.WriteJSON(rw, searchReturnInfo{Issues: tickets, Search: jql, Source: source, FeaturesURL: featuresURL})
+}
+
+// bbFileTicket creates a JIRA ticket for a task with the given test failures.
+func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		TaskId  string   `json:"task"`
+		TestIds []string `json:"tests"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		gimlet.WriteJSONInternalError(w, err.Error())
+	}
+
+	// Find information about the task
+	t, err := task.FindOne(task.ById(input.TaskId))
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, err.Error())
+		return
+	}
+	if t == nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound, fmt.Sprintf("task not found for id %s", input.TaskId))
+		return
+	}
+
+	n, err := uis.makeNotification(uis.buildBaronProjects[t.Project].TicketCreateProject, t)
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, err.Error())
+		return
+	}
+	err = uis.queue.Put(units.NewEventNotificationJob(n.ID))
+	if err != nil {
+		gimlet.WriteJSONInternalError(w, fmt.Sprintf("error inserting notification job: %s", err.Error()))
+		return
+	}
+
+	event.LogJiraIssueCreated(t.Id, t.Execution, uis.buildBaronProjects[t.Project].TicketCreateProject)
+	gimlet.WriteJSON(w, nil)
+}
+
+func (uis *UIServer) makeNotification(project string, t *task.Task) (*notification.Notification, error) {
+	payload, err := trigger.JIRATaskPayload("", project, uis.Settings.Ui.Url, "", t)
+	if err != nil {
+		return nil, err
+	}
+	sub := event.Subscriber{
+		Type: event.JIRAIssueSubscriberType,
+		Target: event.JIRAIssueSubscriber{
+			Project:   project,
+			IssueType: jiraIssueType,
+		},
+	}
+	n, err := notification.New("", util.RandomString(), &sub, payload)
+	if err != nil {
+		return nil, err
+	}
+	if n == nil {
+		return nil, errors.New("unexpected error creating notification")
+	}
+
+	err = notification.InsertMany(*n)
+	if err != nil {
+		return nil, errors.Wrap(err, "error inserting notification")
+	}
+	return n, nil
 }
 
 type searchReturnInfo struct {

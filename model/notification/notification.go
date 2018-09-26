@@ -20,15 +20,12 @@ import (
 // from the given event, with the given trigger, for the given subscriber.
 // This function will produce an ID that will collide to prevent duplicate
 // notifications from being inserted
-func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string { //nolint: interfacer
-	return fmt.Sprintf("%s-%s-%s", event.ID, trigger, subscriber.String())
+func makeNotificationID(eventID, trigger string, subscriber *event.Subscriber) string { //nolint: interfacer
+	return fmt.Sprintf("%s-%s-%s", eventID, trigger, subscriber.String())
 }
 
 // New returns a new Notification, with a correctly initialised ID
-func New(e *event.EventLogEntry, trigger string, subscriber *event.Subscriber, payload interface{}) (*Notification, error) {
-	if e == nil {
-		return nil, errors.New("cannot create notification from nil event")
-	}
+func New(eventID, trigger string, subscriber *event.Subscriber, payload interface{}) (*Notification, error) {
 	if len(trigger) == 0 {
 		return nil, errors.New("cannot create notification from nil trigger")
 	}
@@ -40,7 +37,7 @@ func New(e *event.EventLogEntry, trigger string, subscriber *event.Subscriber, p
 	}
 
 	return &Notification{
-		ID:         makeNotificationID(e, trigger, subscriber),
+		ID:         makeNotificationID(eventID, trigger, subscriber),
 		Subscriber: *subscriber,
 		Payload:    payload,
 	}, nil
