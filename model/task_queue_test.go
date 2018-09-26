@@ -145,21 +145,6 @@ tasks:
 		Config:     yml,
 	}
 	require.NoError(v.Insert())
-	q := &TaskQueue{
-		Queue: []TaskQueueItem{
-			{Id: "one_1", Group: "foo", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "two", Group: "bar", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "three", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "four", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "five", Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"},
-			{Id: "six", Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"},
-			{Id: "seven", Project: "aa", Version: "bb", BuildVariant: "a"},
-			{Id: "eight", Project: "aa", Version: "bb", BuildVariant: "a"},
-		},
-		Distro: "distro",
-	}
-	qLength := len(q.Queue)
-	assert.NoError(q.Save())
 	tasks := []task.Task{
 		{
 			Id:                "task_id_1",
@@ -185,16 +170,10 @@ tasks:
 	for _, t := range tasks {
 		require.NoError(t.Insert())
 	}
-	spec := TaskSpec{
-		Group:        "foo",
-		BuildVariant: "a",
-		ProjectID:    "a",
-		Version:      "b",
-	}
-	assert.NoError(q.BlockTaskGroupTasks(spec, "task_id_1"))
-	newQ, err := LoadTaskQueue("distro")
+	assert.NoError(BlockTaskGroupTasks("task_id_1"))
+	found, err := task.FindOneId("one_1")
 	assert.NoError(err)
-	assert.Len(newQ.Queue, qLength-1)
+	assert.Equal("task_id_1", found.DependsOn[0].TaskId)
 }
 
 func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
@@ -202,21 +181,6 @@ func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection))
 
-	q := &TaskQueue{
-		Queue: []TaskQueueItem{
-			{Id: "one", Group: "foo", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "two", Group: "bar", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "three", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "four", Project: "a", Version: "b", BuildVariant: "a"},
-			{Id: "five", Group: "foo", Project: "aa", Version: "bb", BuildVariant: "a"},
-			{Id: "six", Group: "bar", Project: "aa", Version: "bb", BuildVariant: "a"},
-			{Id: "seven", Project: "aa", Version: "bb", BuildVariant: "a"},
-			{Id: "eight", Project: "aa", Version: "bb", BuildVariant: "a"},
-		},
-		Distro: "distro",
-	}
-	qLength := len(q.Queue)
-	assert.NoError(q.Save())
 	tasks := []task.Task{
 		{
 			Id:                "task_id",
@@ -254,16 +218,10 @@ func TestBlockTaskGroupTasksFailsWithCircularDependencies(t *testing.T) {
 	for _, t := range tasks {
 		require.NoError(t.Insert())
 	}
-	spec := TaskSpec{
-		Group:        "foo",
-		BuildVariant: "a",
-		ProjectID:    "a",
-		Version:      "b",
-	}
-	assert.Error(q.BlockTaskGroupTasks(spec, "task_id"))
-	newQ, err := LoadTaskQueue("distro")
+	assert.Error(BlockTaskGroupTasks("task_id"))
+	found, err := task.FindOneId("one")
 	assert.NoError(err)
-	assert.Len(newQ.Queue, qLength)
+	assert.Empty(found.DependsOn)
 }
 
 func TestFindNextTaskEmptySpec(t *testing.T) {

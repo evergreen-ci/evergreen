@@ -124,6 +124,20 @@ func cleanUpTimedOutTask(t task.Task) error {
 		return errors.WithStack(t.MarkUnscheduled())
 	}
 
+	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && t.Status != evergreen.TaskSucceeded {
+		if err := model.BlockTaskGroupTasks(t.Id); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem blocking task group tasks",
+				"task_id": t.Id,
+			}))
+		}
+		grip.Debug(message.Fields{
+			"message": "blocked task group tasks for task",
+			"task_id": t.Id,
+		})
+	}
+
 	// if the host still has the task as its running task, clear it.
 	if host.RunningTask == t.Id {
 		// clear out the host's running task

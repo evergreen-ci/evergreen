@@ -179,6 +179,20 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
+	if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && details.Status != evergreen.TaskSucceeded {
+		if err := model.BlockTaskGroupTasks(t.Id); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem blocking task group tasks",
+				"task_id": t.Id,
+			}))
+		}
+		grip.Debug(message.Fields{
+			"message": "blocked task group tasks for task",
+			"task_id": t.Id,
+		})
+	}
+
 	// clear the running task on the host now that the task has finished
 	if err = currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
@@ -260,20 +274,6 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			BuildVariant: t.BuildVariant,
 			ProjectID:    t.Project,
 			Version:      t.Version,
-		}
-		// For a single-host task group, if a task fails, block and dequeue later tasks in that group.
-		// This must clear the last task because it will fail if it retries (EVG-5331).
-		if t.TaskGroup != "" && t.TaskGroupMaxHosts == 1 && t.Status != evergreen.TaskSucceeded {
-			if err := currentHost.ClearLastTask(); err != nil {
-				grip.Error(errors.Wrap(err, "problem clearing last task"))
-			}
-			if err := taskQueue.BlockTaskGroupTasks(spec, t.Id); err != nil {
-				return nil, errors.Wrapf(err, "problem blocking task group tasks for %s", t.Id)
-			}
-			grip.Debug(message.Fields{
-				"message": "blocked task group tasks",
-				"task_id": t.Id,
-			})
 		}
 	}
 
