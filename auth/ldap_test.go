@@ -16,7 +16,8 @@ func TestNewLDAPUserManager(t *testing.T) {
 	conf = &evergreen.LDAPConfig{
 		URL:                "url",
 		Port:               "port",
-		Path:               "path",
+		UserPath:           "path",
+		ServicePath:        "bot",
 		Group:              "group",
 		ExpireAfterMinutes: "60",
 	}

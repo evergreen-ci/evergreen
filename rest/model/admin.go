@@ -434,7 +434,8 @@ func (a *APICrowdConfig) ToService() (interface{}, error) {
 type APILDAPConfig struct {
 	URL                APIString `json:"url"`
 	Port               APIString `json:"port"`
-	Path               APIString `json:"path"`
+	UserPath           APIString `json:"path"`
+	ServicePath        APIString `json:"service_path"`
 	Group              APIString `json:"group"`
 	ExpireAfterMinutes APIString `json:"expire_after_minutes"`
 }
@@ -447,7 +448,8 @@ func (a *APILDAPConfig) BuildFromService(h interface{}) error {
 		}
 		a.URL = ToAPIString(v.URL)
 		a.Port = ToAPIString(v.Port)
-		a.Path = ToAPIString(v.Path)
+		a.UserPath = ToAPIString(v.UserPath)
+		a.ServicePath = ToAPIString(v.ServicePath)
 		a.Group = ToAPIString(v.Group)
 		a.ExpireAfterMinutes = ToAPIString(v.ExpireAfterMinutes)
 	default:
@@ -463,7 +465,8 @@ func (a *APILDAPConfig) ToService() (interface{}, error) {
 	return &evergreen.LDAPConfig{
 		URL:                FromAPIString(a.URL),
 		Port:               FromAPIString(a.Port),
-		Path:               FromAPIString(a.Path),
+		UserPath:           FromAPIString(a.UserPath),
+		ServicePath:        FromAPIString(a.ServicePath),
 		Group:              FromAPIString(a.Group),
 		ExpireAfterMinutes: FromAPIString(a.ExpireAfterMinutes),
 	}, nil
@@ -725,7 +728,7 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 	return evergreen.NotifyConfig{
 		BufferTargetPerInterval: a.BufferTargetPerInterval,
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
-		SMTP:                    smtp.(evergreen.SMTPConfig),
+		SMTP: smtp.(evergreen.SMTPConfig),
 	}, nil
 }
 

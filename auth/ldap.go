@@ -21,7 +21,8 @@ func NewLDAPUserManager(conf *evergreen.LDAPConfig) (gimlet.UserManager, error) 
 	opts := ldap.CreationOpts{
 		URL:           conf.URL,
 		Port:          conf.Port,
-		Path:          conf.Path,
+		UserPath:      conf.UserPath,
+		ServicePath:   conf.ServicePath,
 		Group:         conf.Group,
 		PutCache:      user.PutLoginCache,
 		GetCache:      func(token string) (gimlet.User, bool, error) { return user.GetLoginCache(token, expireAfter) },

@@ -133,7 +133,7 @@ lint-%:$(buildDir)/output.%.lint
 #    tests have compile and runtime deps. This varable has everything
 #    that the tests actually need to run. (The "build" target is
 #    intentional and makes these targets rerun as expected.)
-testRunDeps := $(testSrcFiles) build 
+testRunDeps := $(testSrcFiles) build
 testArgs := -test.v
 ifneq (,$(RUN_TEST))
 testArgs += -test.run='$(RUN_TEST)'
