@@ -5,6 +5,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.isAdmin = $window.isSuperUser || $window.isAdmin;
   $scope.isSuperUser = $window.isSuperUser;
 
+
   $scope.projectVars = {};
   $scope.patchVariants = [];
   $scope.projectRef = {};
@@ -250,14 +251,23 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false;
 
-        $scope.aliases = _.sortBy(data.aliases || [], function(v) {
+        $scope.aliases = data.aliases || [];
+        $scope.aliases = _.sortBy($scope.aliases, function(v) {
           return v.alias + v.variant + v.task;
         });
 
-        // Divide aliases into two categories (gh/patch aliases)
-        [$scope.github_aliases, $scope.patch_aliases] = _.partition(
-          $scope.aliases, function(d) { return d.alias == '__github' }
-        )
+        $scope.github_aliases = _.filter($scope.aliases, function(patch) {
+          return patch.alias == "__github";
+        });
+        $scope.patch_aliases = _.filter($scope.aliases, function(patch) {
+          return patch.alias != "__github";
+        });
+        for (var i = 0; i < $scope.patch_aliases.length; i++) {
+          var alias = $scope.patch_aliases[i];
+          if (alias.tags) {
+            alias.tags_temp = alias.tags.join(',');
+          }
+        }
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
@@ -349,21 +359,24 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
         return;
       }
     }
-
     if ($scope.patch_alias) {
       $scope.addPatchAlias();
     }
+    for (var i = 0; i < $scope.patch_aliases.length; i++) {
+      var alias = $scope.patch_aliases[i];
+      if (alias.tags_temp) {
+        alias.tags = alias.tags_temp.split(',');
+      }
+    }
 
     $scope.settingsFormData.subscriptions = _.filter($scope.subscriptions, function(d) {
-      return d.changed;
+        return d.changed;
     });
 
     $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.patch_aliases);
-
     if ($scope.admin_name) {
       $scope.addAdmin();
     }
-
     $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).then(
       function(resp) {
         var data = resp.data;
@@ -406,6 +419,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.addPatchAlias = function() {
     if ($scope.patch_alias.alias && $scope.patch_alias.variant && ($scope.patch_alias.task || $scope.patch_alias.tags_temp)) {
       item = Object.assign({}, $scope.patch_alias)
+      if ($scope.patch_alias.tags) {
+        item.tags = $scope.patch_alias.tags.split(',');
+      }
       $scope.patch_aliases = $scope.patch_aliases.concat([item]);
       delete $scope.patch_alias
     }
