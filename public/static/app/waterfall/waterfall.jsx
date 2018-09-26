@@ -173,7 +173,7 @@ class Root extends React.PureComponent {
   }
 
   handleBuildVariantFilter(filter) {
-    this.loadDataPortion(filter)
+    this.loadDataPortion(filter, 0)
     updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
     this.setState({buildVariantFilter: filter});
   }
