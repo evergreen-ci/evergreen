@@ -159,8 +159,8 @@ Evergreen - Distros
       <td><input ng-readonly="readOnly" required name="devName" type="text" ng-model="mount_point.device_name" class="form-control"></td>
       <td><input ng-readonly="readOnly" ng-required="!mount_point.size" name="virtName" type="text" ng-model="mount_point.virtual_name" class="form-control"></td>
       <td><input ng-readonly="readOnly" ng-required="!mount_point.virtual_name" name="volType" type="text" ng-model="mount_point.volume_type" class="form-control"></td>
-      <td><input ng-readonly="readOnly" ng-required="!mount_point.virtual_name" name="iops" type="number" type="text" ng-model="mount_point.iops" class="form-control"></td>
-      <td><input ng-readonly="readOnly" type="number" ng-required="!mount_point.virtual_name" name="devSize" type="text" ng-model="mount_point.size" class="form-control"></td>
+      <td><input ng-readonly="readOnly" ng-required="!mount_point.virtual_name" name="iops" type="number" ng-model="mount_point.iops" class="form-control"></td>
+      <td><input ng-readonly="readOnly" ng-required="!mount_point.virtual_name" name="devSize" type="number" ng-model="mount_point.size" class="form-control"></td>
       <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeMount(mount_point)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
           </tr>
         </tbody>
