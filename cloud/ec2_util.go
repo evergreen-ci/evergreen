@@ -273,13 +273,16 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping,
 			m.Ebs = &ec2aws.EbsBlockDevice{
 				DeleteOnTermination: aws.Bool(true),
 				VolumeSize:          aws.Int64(mount.Size),
-				VolumeType:          aws.String(mount.VolumeType),
+				VolumeType:          aws.String(ec2aws.VolumeTypeGp2),
 			}
 			if mount.Iops != 0 {
 				m.Ebs.Iops = aws.Int64(mount.Iops)
 			}
 			if mount.SnapshotID != "" {
 				m.Ebs.SnapshotId = aws.String(mount.SnapshotID)
+			}
+			if mount.VolumeType != "" {
+				m.Ebs.VolumeType = aws.String(mount.VolumeType)
 			}
 		} else { // With a virtual name, this is an instance store
 			m.VirtualName = aws.String(mount.VirtualName)
