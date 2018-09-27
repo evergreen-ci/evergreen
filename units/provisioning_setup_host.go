@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -723,7 +724,16 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024,
 	}
-	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
+	tokenString, err := j.env.Settings().GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving github token")
+	}
+	splitToken := strings.Split(tokenString, " ")
+	if len(splitToken) != 2 || splitToken[0] != "token" {
+		return errors.New("token format was invalid, expected 'token [token]'")
+	}
+	oauthToken := splitToken[1]
+	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s -k %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, oauthToken, target.Distro.WorkDir)
 	makeShellCmd := subprocess.NewRemoteCommand(
 		fetchCmd,
 		hostSSHInfo.Hostname,
