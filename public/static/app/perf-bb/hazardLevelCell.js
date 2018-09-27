@@ -12,7 +12,7 @@ mciModule.directive('hazardLevelCell', function() {
       return 0
     }
     return Math.log(
-      point.statistics.next.mean / point.statistics.previous.mean
+      point.statistics.previous.mean / point.statistics.next.mean
     )
   }
 
@@ -46,8 +46,8 @@ mciModule.directive('hazardLevelCell', function() {
     var b = scope.row.entity.statistics.previous.mean
     scope.ratio = 100 * (a > b ? a / b - 1 : -b / a + 1)
     scope.color = (
-      scope.ratio > 0 ? 'red' :
-      scope.ratio < 0 ? 'green' :
+      scope.ratio > 0 ? 'green' :
+      scope.ratio < 0 ? 'red' :
       'black'
     )
   }
