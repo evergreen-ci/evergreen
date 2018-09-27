@@ -192,7 +192,7 @@ func FormatObjectID(id string) (bson.ObjectId, error) {
 	return bson.ObjectIdHex(id), nil
 }
 
-// PutLoginCache generates, saves, and returns a new token, and sets the TTL to now.
+// PutLoginCache generates a token if one does not exist, and sets the TTL to now.
 func PutLoginCache(g gimlet.User) (string, error) {
 	u, err := FindOneById(g.Username())
 	if err != nil {
@@ -201,15 +201,24 @@ func PutLoginCache(g gimlet.User) (string, error) {
 	if u == nil {
 		return "", errors.Errorf("no user '%s' found", g.Username())
 	}
-	token := util.RandomString()
-	if err := UpdateOne(
-		bson.M{IdKey: u.Id},
-		bson.M{"$set": bson.M{
+
+	// Always update the TTL. If the user doesn't have a token, generate and set it.
+	token := u.LoginCache.Token
+	var update bson.M
+	if token == "" {
+		token = util.RandomString()
+		update = bson.M{"$set": bson.M{
 			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): token,
 			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   time.Now(),
-		}},
-	); err != nil {
-		return "", errors.Wrap(err, "problem setting new token in database")
+		}}
+	} else {
+		update = bson.M{"$set": bson.M{
+			bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey): time.Now(),
+		}}
+	}
+
+	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+		return "", errors.Wrap(err, "problem updating user cache")
 	}
 	return token, nil
 }

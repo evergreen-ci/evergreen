@@ -57,6 +57,17 @@ func (s *UserTestSuite) SetupTest() {
 				TTL:   time.Now().Add(-time.Hour),
 			},
 		},
+		&DBUser{
+			Id: "Test3",
+			PubKeys: []PubKey{
+				{
+					Name:      "key1",
+					Key:       "ssh-mock 12345",
+					CreatedAt: time.Now(),
+				},
+			},
+			APIKey: "67890",
+		},
 	}
 
 	for _, user := range s.users {
@@ -202,6 +213,28 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.NotEqual(u1.LoginCache.Token, u2.LoginCache.Token)
 	s.WithinDuration(time.Now(), u1.LoginCache.TTL, time.Second)
 	s.WithinDuration(time.Now(), u2.LoginCache.TTL, time.Second)
+
+	// Put to first user again, ensuring token stays the same but TTL changes
+	time.Sleep(time.Millisecond) // sleep to check TTL changed
+	token4, err := PutLoginCache(s.users[0])
+	s.NoError(err)
+	u4, err := FindOneById(s.users[0].Id)
+	s.NoError(err)
+	s.Equal(u1.LoginCache.Token, u4.LoginCache.Token)
+	s.NotEqual(u1.LoginCache.TTL, u4.LoginCache.TTL)
+	s.Equal(token1, token4)
+
+	// Fresh user with no token should generate new token
+	token5, err := PutLoginCache(s.users[2])
+	s.NoError(err)
+	u5, err := FindOneById(s.users[2].Id)
+	s.Equal(token5, u5.LoginCache.Token)
+	s.NoError(err)
+	s.NotEmpty(token5)
+	s.NotEqual(token1, token5)
+	s.NotEqual(token2, token5)
+	s.NotEqual(token3, token5)
+	s.NotEqual(token4, token5)
 }
 
 func (s *UserTestSuite) TestGetLoginCache() {
