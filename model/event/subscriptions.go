@@ -456,7 +456,6 @@ func NewPatchOutcomeSubscriptionByOwner(owner string, sub Subscriber) Subscripti
 	return NewSubscriptionByOwner(owner, sub, ResourceTypePatch, triggerOutcome)
 }
 
-// TODO PM-794: also create one of these for requester = trigger?
 func NewBuildBreakSubscriptionByOwner(owner string, sub Subscriber) Subscription {
 	return Subscription{
 		ID:           bson.NewObjectId().Hex(),

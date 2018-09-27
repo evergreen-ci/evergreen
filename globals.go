@@ -221,7 +221,7 @@ const (
 	GithubPRRequester           = "github_pull_request"
 	RepotrackerVersionRequester = "gitter_request"
 	TriggerRequester            = "trigger_request"
-	UserInitiatedRequester      = "user_initiated"
+	AdHocRequester              = "ad_hoc"
 )
 
 const (
