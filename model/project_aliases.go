@@ -88,13 +88,12 @@ func (p *ProjectAlias) Upsert() error {
 	update := bson.M{
 		aliasKey:     p.Alias,
 		projectIDKey: p.ProjectID,
+		tagsKey:      p.Tags,
 		variantKey:   p.Variant,
 	}
 	if p.Task != "" {
 		update[taskKey] = p.Task
 	}
-
-	update[tagsKey] = p.Tags
 
 	_, err := db.Upsert(ProjectAliasCollection, bson.M{
 		idKey: p.ID,
