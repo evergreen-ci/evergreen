@@ -84,8 +84,9 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	Convey("When storing revisions gotten from a repository...", t, func() {
 		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
-		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef,
-			testConfig.Credentials["github"])}
+		token, err := testConfig.GetGithubOauthToken()
+		So(err, ShouldBeNil)
+		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef, token)}
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}

@@ -72,8 +72,9 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	var gitBranch *github.Branch
 	modules := make(map[string]*manifest.Module)
 	for _, module := range project.Modules {
+		var token string
 		owner, repo := module.GetRepoOwnerAndName()
-		token, err := as.Settings.GetGithubOauthToken()
+		token, err = as.Settings.GetGithubOauthToken()
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error getting github token"))
 			return
