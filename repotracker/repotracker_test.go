@@ -33,6 +33,8 @@ func TestFetchRevisions(t *testing.T) {
 	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t, func() {
 		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
+		token, err := testConfig.GetGithubOauthToken()
+		So(err, ShouldBeNil)
 
 		resetProjectRefs()
 
@@ -40,7 +42,7 @@ func TestFetchRevisions(t *testing.T) {
 		repoTracker := RepoTracker{
 			testConfig,
 			projectRef,
-			NewGithubRepositoryPoller(projectRef, testConfig.Credentials["github"]),
+			NewGithubRepositoryPoller(projectRef, token),
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
@@ -254,6 +256,7 @@ func TestBatchTimes(t *testing.T) {
 
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
+		So(db.ClearCollections(version.Collection, distro.Collection), ShouldBeNil)
 		previouslyActivatedVersion := version.Version{
 			Id:         "previously activated",
 			Identifier: "testproject",

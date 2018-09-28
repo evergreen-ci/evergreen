@@ -73,7 +73,12 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	modules := make(map[string]*manifest.Module)
 	for _, module := range project.Modules {
 		owner, repo := module.GetRepoOwnerAndName()
-		gitBranch, err = thirdparty.GetBranchEvent(ctx, as.Settings.Credentials["github"], owner, repo, module.Branch)
+		token, err := as.Settings.GetGithubOauthToken()
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error getting github token"))
+			return
+		}
+		gitBranch, err = thirdparty.GetBranchEvent(ctx, token, owner, repo, module.Branch)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name))

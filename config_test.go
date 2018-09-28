@@ -71,7 +71,7 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(settings.Credentials["github"])
 
-	token, err = settings.GetGithubOauthToken()
+	token, err = settings.GetGithubOauthString()
 	assert.NoError(err)
 	assert.Equal(settings.Credentials["github"], token)
 
