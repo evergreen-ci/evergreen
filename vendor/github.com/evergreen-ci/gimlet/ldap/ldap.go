@@ -123,7 +123,7 @@ func (u *userService) GetUserByToken(_ context.Context, token string) (gimlet.Us
 		return nil, errors.New("token is not present in cache")
 	}
 	if !valid {
-		if err := u.authorize(user.Username()); err != nil {
+		if err := u.validateGroup(user.Username()); err != nil {
 			return nil, errors.Wrap(err, "could not authorize user")
 		}
 
@@ -136,10 +136,10 @@ func (u *userService) GetUserByToken(_ context.Context, token string) (gimlet.Us
 
 // CreateUserToken creates and returns a new user token from a username and password.
 func (u *userService) CreateUserToken(username, password string) (string, error) {
-	if err := u.authenticate(username, password); err != nil {
+	if err := u.login(username, password); err != nil {
 		return "", errors.Wrapf(err, "failed to authenticate user '%s'", username)
 	}
-	if err := u.authorize(username); err != nil {
+	if err := u.validateGroup(username); err != nil {
 		return "", errors.Wrapf(err, "failed to authorize user '%s'", username)
 	}
 	user, err := u.getUserFromLDAP(username)
@@ -176,26 +176,39 @@ func (u *userService) GetOrCreateUser(user gimlet.User) (gimlet.User, error) {
 	return u.cache.GetOrCreate(user)
 }
 
-// authenticate returns nil if the user and password are valid, an error otherwise.
-func (u *userService) authenticate(username, password string) error {
+// bind wraps u.conn.Bind, reconnecting if the LDAP server has closed the connection.
+// https://github.com/go-ldap/ldap/issues/113
+func (u *userService) bind(username, password string) error {
 	if err := u.ensureConnected(); err != nil {
 		return errors.Wrap(err, "problem connecting to ldap server")
 	}
-	if err := u.login(username, password); err != nil {
-		return errors.Wrapf(err, "failed to authenticate user '%s'", username)
+	if err := u.conn.Bind(username, password); err == nil {
+		return nil
 	}
-	return nil
+	conn, err := u.connect(u.url, u.port)
+	if err != nil {
+		return errors.Wrap(err, "could not connect to LDAP server")
+	}
+	u.conn = conn
+	return u.conn.Bind(username, password)
 }
 
-// authorize returns nil if the user is a member of u.Group, an error otherwise.
-func (u *userService) authorize(username string) error {
+// search wraps u.conn.Search, reconnecting if the LDAP server has closed the connection.
+// https://github.com/go-ldap/ldap/issues/113
+func (u *userService) search(searchRequest *ldap.SearchRequest) (*ldap.SearchResult, error) {
 	if err := u.ensureConnected(); err != nil {
-		return errors.Wrap(err, "problem connecting to ldap server")
+		return nil, errors.Wrap(err, "problem connecting to ldap server")
 	}
-	if err := u.validateGroup(username); err != nil {
-		return errors.Wrapf(err, "failed to authorize user '%s'", username)
+	s, err := u.conn.Search(searchRequest)
+	if err == nil {
+		return s, nil
 	}
-	return nil
+	conn, err := u.connect(u.url, u.port)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not connect to LDAP server")
+	}
+	u.conn = conn
+	return u.conn.Search(searchRequest)
 }
 
 func (u *userService) ensureConnected() error {
@@ -220,7 +233,7 @@ func connect(url, port string) (ldap.Client, error) {
 
 func (u *userService) login(username, password string) error {
 	fullPath := fmt.Sprintf("uid=%s,%s", username, u.userPath)
-	return errors.Wrapf(u.conn.Bind(fullPath, password), "could not validate user '%s'", username)
+	return errors.Wrapf(u.bind(fullPath, password), "could not validate user '%s'", username)
 }
 
 func (u *userService) validateGroup(username string) error {
@@ -235,7 +248,7 @@ func (u *userService) validateGroup(username string) error {
 			continue
 		}
 
-		result, err = u.conn.Search(
+		result, err = u.search(
 			ldap.NewSearchRequest(
 				path,
 				ldap.ScopeWholeSubtree,
@@ -283,7 +296,7 @@ func (u *userService) getUserFromLDAP(username string) (gimlet.User, error) {
 	)
 
 	for idx, path := range []string{u.userPath, u.servicePath} {
-		result, err = u.conn.Search(
+		result, err = u.search(
 			ldap.NewSearchRequest(
 				path,
 				ldap.ScopeWholeSubtree,
