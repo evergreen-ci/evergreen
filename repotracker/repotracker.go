@@ -18,7 +18,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -36,6 +36,11 @@ type RepoTracker struct {
 	*evergreen.Settings
 	*model.ProjectRef
 	RepoPoller
+}
+
+type VersionErrors struct {
+	Errors   []string
+	Warnings []string
 }
 
 // The RepoPoller interface specifies behavior required of all repository poller
@@ -188,34 +193,6 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	return nil
 }
 
-// Verifies that the given revision order number is higher than the latest number stored for the project.
-func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
-	latest, err := version.FindOne(version.ByMostRecentSystemRequester(projectId))
-	if err != nil || latest == nil {
-		return errors.Wrap(err, "Error getting latest version")
-	}
-
-	if latest.Revision == revision {
-		grip.Critical(message.Fields{
-			"project":   projectId,
-			"runner":    RunnerName,
-			"rev_num":   revOrderNum,
-			"revision":  revision,
-			"latest_id": latest.Id,
-		})
-		return errors.New("refusing to add a new version with a duplicate revision id")
-	}
-
-	// When there are no versions in the db yet, sanity check is moot
-	if latest != nil {
-		if revOrderNum <= latest.RevisionOrderNumber {
-			return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
-				revOrderNum, latest.RevisionOrderNumber)
-		}
-	}
-	return nil
-}
-
 // Constructs all versions stored from recent repository revisions
 // The additional complexity is due to support for project modifications on patch builds.
 // We need to parse the remote config as it existed when each revision was created.
@@ -229,7 +206,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 	}()
 	ref := repoTracker.ProjectRef
-
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
 		grip.Infof("Processing revision %s in project %s", revision, ref.Identifier)
@@ -238,7 +214,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		existingVersion, err := version.FindOne(version.ByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem looking up version for project",
-			"runner":   RunnerName,
 			"project":  ref.Identifier,
 			"revision": revision,
 		}))
@@ -246,7 +221,6 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		if existingVersion != nil {
 			grip.Info(message.Fields{
 				"message":  "skipping creating version because it already exists",
-				"runner":   RunnerName,
 				"project":  ref.Identifier,
 				"revision": revision,
 			})
@@ -256,94 +230,80 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			continue
 		}
 
-		// Create the stub of the version (not stored in DB yet)
-		v, err := NewVersionFromRevision(ref, revisions[i])
-		grip.Info(message.WrapError(err, message.Fields{
-			"message": "problem creating version for project",
-			"runner":  RunnerName,
-			"project": ref.Identifier,
-		}))
-
-		if err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier, revisions[i].Revision); err != nil {
-			// something seriously wrong (bad data in db?) so fail now
-			//
-			// this will get caught at the top level where it's logged as an alert.
-			//
-			// since all repotracker code now runs in an
-			// amboy job, it won't actually retry, and it
-			// won't take down the worker.
-			panic(err)
-		}
+		var versionErrs *VersionErrors
 		project, err := repoTracker.GetProjectConfig(ctx, revision)
 		if err != nil {
-			projectError, isProjectError := err.(projectConfigError)
-			if isProjectError {
-				if len(projectError.Warnings) > 0 {
-					// Store the warnings and keep going. If we don't have
-					// any true errors, the version will still be created.
-					v.Warnings = projectError.Warnings
+			// this is an error that implies the file is invalid - create a version and store the error
+			projErr, isProjErr := err.(projectConfigError)
+			if isProjErr {
+				versionErrs = &VersionErrors{
+					Warnings: projErr.Warnings,
+					Errors:   projErr.Errors,
 				}
-				if len(projectError.Errors) > 0 {
-					// Store just the stub version with the project errors
-					v.Errors = projectError.Errors
-					if err = v.Insert(); err != nil {
-						grip.Error(message.WrapError(err, message.Fields{
-							"message":  "failed storing stub version in project",
+				if len(versionErrs.Errors) > 0 {
+					stubVersion, dbErr := shellVersionFromRevision(ref, revisions[i])
+					if dbErr != nil {
+						grip.Error(message.WrapError(dbErr, message.Fields{
+							"message":  "error creating shell version",
 							"project":  ref.Identifier,
 							"revision": revision,
-							"runner":   RunnerName,
-							"version":  v.Id,
 						}))
-						return nil, err
 					}
-					newestVersion = v
+					stubVersion.Errors = versionErrs.Errors
+					stubVersion.Warnings = versionErrs.Warnings
+					err = stubVersion.Insert()
+					grip.Error(message.WrapError(err, message.Fields{
+						"message":  "error inserting shell version",
+						"project":  ref.Identifier,
+						"revision": revision,
+					}))
+					newestVersion = stubVersion
 					continue
 				}
 			} else {
-				// Fatal error - don't store the stub
 				grip.Error(message.WrapError(err, message.Fields{
-					"message":  "could not store project stub",
+					"message":  "error getting project config",
 					"project":  ref.Identifier,
 					"revision": revision,
-					"runner":   RunnerName,
-					"version":  v.Id,
 				}))
 				return nil, err
 			}
 		}
 
-		// We have a config, so turn it into a usable yaml string to store with the version doc
-		projectYamlBytes, err := yaml.Marshal(project)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error marshaling config")
-		}
-		v.Config = string(projectYamlBytes)
-
 		// "Ignore" a version if all changes are to ignored files
+		var ignore bool
 		if len(project.Ignore) > 0 {
 			var filenames []string
 			filenames, err = repoTracker.GetChangedFiles(ctx, revision)
 			if err != nil {
-				return nil, errors.Wrap(err, "error checking GitHub for ignored files")
+				grip.Error(message.WrapError(err, message.Fields{
+					"message":  "error checking GitHub for ignored files",
+					"project":  ref.Identifier,
+					"revision": revision,
+				}))
+				continue
 			}
 			if project.IgnoresAllFiles(filenames) {
-				v.Ignored = true
+				ignore = true
 			}
 		}
 
-		// We rebind newestVersion each iteration, so the last binding will be the newest version
-		err = errors.Wrapf(createVersionItems(v, ref, project),
-			"Error creating version items for %s in project %s",
-			v.Id, ref.Identifier)
+		v, err := CreateVersionFromConfig(ref, project, &revisions[i], ignore, versionErrs)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"runner":  RunnerName,
-				"project": ref.Identifier,
+				"message":  "error creating version",
+				"project":  ref.Identifier,
+				"revision": revision,
 			}))
-			return nil, err
+			continue
 		}
 		if err = addBuildBreakSubscriptions(v, ref); err != nil {
-			return nil, err
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "error creating build break subscriptions",
+				"project":  ref.Identifier,
+				"revision": revision,
+			}))
+			continue
 		}
 
 		newestVersion = v
@@ -384,7 +344,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 			})
 
 			grip.Error(message.WrapError(err, msg))
-			return nil, projectConfigError{[]string{msg.String()}, nil}
+			return nil, projectConfigError{Errors: []string{msg.String()}, Warnings: nil}
 		}
 		// If we get here then we have an infrastructural error - e.g.
 		// a thirdparty.APIUnmarshalError (indicating perhaps an API has
@@ -417,163 +377,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 
 		return nil, err
 	}
-
-	validationStart := time.Now()
-	// check if project config is valid
-	verrs, err := validator.CheckProjectSyntax(project)
-	if err != nil {
-		return nil, err
-	}
-	validationDuration := time.Since(validationStart)
-
-	if len(verrs) != 0 {
-
-		// We have syntax errors in the project.
-		// Format them, as we need to store + display them to the user
-		var projectErrors, projectWarnings []string
-
-		for _, e := range verrs {
-			if e.Level == validator.Warning {
-				projectWarnings = append(projectWarnings, e.Error())
-			} else {
-				projectErrors = append(projectErrors, e.Error())
-			}
-		}
-
-		grip.Notice(message.Fields{
-			"runner":      RunnerName,
-			"operation":   "project config validation",
-			"warnings":    projectWarnings,
-			"errors":      projectErrors,
-			"hasErrors":   len(projectErrors) > 0,
-			"hasWarnings": len(projectWarnings) > 0,
-			"duration":    validationDuration,
-			"span":        validationDuration.String(),
-		})
-
-		return project, projectConfigError{projectErrors, projectWarnings}
-	}
 	return project, nil
-}
-
-// NewVersionFromRevision populates a new Version with metadata from a model.Revision.
-// Does not populate its config or store anything in the database.
-func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version.Version, error) {
-	u, err := user.FindByGithubUID(rev.AuthorGithubUID)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", rev.AuthorGithubUID),
-	}))
-
-	number, err := model.GetNewRevisionOrderNumber(ref.Identifier)
-	if err != nil {
-		return nil, err
-	}
-	v := &version.Version{
-		Author:              rev.Author,
-		AuthorEmail:         rev.AuthorEmail,
-		Branch:              ref.Branch,
-		CreateTime:          rev.CreateTime,
-		Id:                  util.CleanName(fmt.Sprintf("%v_%v", ref.String(), rev.Revision)),
-		Identifier:          ref.Identifier,
-		Message:             rev.RevisionMessage,
-		Owner:               ref.Owner,
-		RemotePath:          ref.RemotePath,
-		Repo:                ref.Repo,
-		RepoKind:            ref.RepoKind,
-		Requester:           evergreen.RepotrackerVersionRequester,
-		Revision:            rev.Revision,
-		Status:              evergreen.VersionCreated,
-		RevisionOrderNumber: number,
-	}
-	if u != nil {
-		v.AuthorID = u.Id
-	}
-	return v, nil
-}
-
-// createVersionItems populates and stores all the tasks and builds for a version according to
-// the given project config.
-func createVersionItems(v *version.Version, ref *model.ProjectRef, project *model.Project) error {
-	// generate all task Ids so that we can easily reference them for dependencies
-	taskIds := model.NewTaskIdTable(project, v)
-
-	// create all builds for the version
-	for _, buildvariant := range project.BuildVariants {
-		if buildvariant.Disabled {
-			continue
-		}
-
-		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil, "")
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem getting activatation time for variant",
-				"variant": buildvariant.Name,
-				"project": ref.Identifier,
-			}))
-			return errors.WithStack(err)
-		}
-
-		var lastActivation *time.Time
-		if lastActivated != nil {
-			for _, buildStatus := range lastActivated.BuildVariants {
-				if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
-					lastActivation = &buildStatus.ActivateAt
-					break
-				}
-			}
-		}
-
-		var activateAt time.Time
-		if lastActivation == nil {
-			// if we don't have a last activation time then prepare to activate it immediately.
-			activateAt = time.Now()
-		} else {
-			activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
-		}
-
-		grip.Info(message.Fields{
-			"message": "activating build",
-			"name":    buildvariant.Name,
-			"project": ref.Identifier,
-			"version": v.Id,
-			"time":    activateAt,
-			"runner":  RunnerName,
-		})
-
-		v.BuildIds = append(v.BuildIds, buildId)
-		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
-			BuildVariant: buildvariant.Name,
-			Activated:    false,
-			ActivateAt:   activateAt,
-			BuildId:      buildId,
-		})
-	}
-
-	err := v.Insert()
-	if err != nil && !db.IsDuplicateKey(err) {
-		grip.Error(message.WrapError(err, message.Fields{
-			"runner":  RunnerName,
-			"message": "problem inserting version",
-			"id":      v.Id,
-		}))
-		for _, buildStatus := range v.BuildVariants {
-			if buildErr := model.DeleteBuild(buildStatus.BuildId); buildErr != nil {
-				grip.Error(message.WrapError(buildErr, message.Fields{
-					"runner":     RunnerName,
-					"message":    "issue deleting build",
-					"version_id": v.Id,
-					"build_id":   buildStatus.BuildId,
-				}))
-			}
-		}
-		return errors.WithStack(err)
-	}
-	return nil
 }
 
 func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
@@ -657,4 +461,188 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	}
 
 	return subscriber, nil
+}
+
+func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, rev *model.Revision, ignore bool, versionErrs *VersionErrors) (*version.Version, error) {
+	if ref == nil || config == nil {
+		return nil, errors.New("project ref and project cannot be nil")
+	}
+
+	// create a version document
+	v, err := shellVersionFromRevision(ref, *rev)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create shell version")
+	}
+	if err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier, rev.Revision); err != nil {
+		return nil, errors.Wrap(err, "inconsistent version order")
+	}
+	configYaml, err := yaml.Marshal(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "error marshaling config")
+	}
+	v.Config = string(configYaml)
+	v.Ignored = ignore
+
+	// validate the project
+	verrs, err := validator.CheckProjectSyntax(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "error validating project")
+	}
+	if len(verrs) > 0 || versionErrs != nil {
+		// We have syntax errors in the project.
+		// Format them, as we need to store + display them to the user
+		var projectErrors, projectWarnings []string
+		for _, e := range verrs {
+			if e.Level == validator.Warning {
+				projectWarnings = append(projectWarnings, e.Error())
+			} else {
+				projectErrors = append(projectErrors, e.Error())
+			}
+		}
+		v.Warnings = projectWarnings
+		v.Errors = projectErrors
+		if versionErrs != nil && versionErrs.Warnings != nil {
+			v.Warnings = append(v.Warnings, versionErrs.Warnings...)
+		}
+		if versionErrs != nil && versionErrs.Errors != nil {
+			v.Errors = append(v.Errors, versionErrs.Errors...)
+		}
+		if len(v.Errors) > 0 {
+			return v, errors.Wrap(v.Insert(), "error inserting version")
+		}
+	}
+
+	return v, errors.Wrap(createVersionItems(v, ref, config), "error creating version items")
+}
+
+// shellVersionFromRevision populates a new Version with metadata from a model.Revision.
+// Does not populate its config or store anything in the database.
+func shellVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version.Version, error) {
+	u, err := user.FindByGithubUID(rev.AuthorGithubUID)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", rev.AuthorGithubUID),
+	}))
+
+	number, err := model.GetNewRevisionOrderNumber(ref.Identifier)
+	if err != nil {
+		return nil, err
+	}
+	v := &version.Version{
+		Author:              rev.Author,
+		AuthorEmail:         rev.AuthorEmail,
+		Branch:              ref.Branch,
+		CreateTime:          rev.CreateTime,
+		Id:                  util.CleanName(fmt.Sprintf("%v_%v", ref.String(), rev.Revision)),
+		Identifier:          ref.Identifier,
+		Message:             rev.RevisionMessage,
+		Owner:               ref.Owner,
+		RemotePath:          ref.RemotePath,
+		Repo:                ref.Repo,
+		RepoKind:            ref.RepoKind,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Revision:            rev.Revision,
+		Status:              evergreen.VersionCreated,
+		RevisionOrderNumber: number,
+	}
+	if u != nil {
+		v.AuthorID = u.Id
+	}
+	return v, nil
+}
+
+// Verifies that the given revision order number is higher than the latest number stored for the project.
+func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
+	latest, err := version.FindOne(version.ByMostRecentSystemRequester(projectId))
+	if err != nil || latest == nil {
+		return errors.Wrap(err, "Error getting latest version")
+	}
+
+	if latest.Revision == revision {
+		grip.Critical(message.Fields{
+			"project":   projectId,
+			"message":   "attempting to add a duplicate version",
+			"rev_num":   revOrderNum,
+			"revision":  revision,
+			"latest_id": latest.Id,
+		})
+		return errors.New("refusing to add a new version with a duplicate revision id")
+	}
+
+	// When there are no versions in the db yet, sanity check is moot
+	if latest != nil {
+		if revOrderNum <= latest.RevisionOrderNumber {
+			return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
+				revOrderNum, latest.RevisionOrderNumber)
+		}
+	}
+	return nil
+}
+
+// createVersionItems populates and stores all the tasks and builds for a version according to
+// the given project config.
+func createVersionItems(v *version.Version, ref *model.ProjectRef, project *model.Project) error {
+	// generate all task Ids so that we can easily reference them for dependencies
+	taskIds := model.NewTaskIdTable(project, v)
+
+	// create all builds for the version
+	for _, buildvariant := range project.BuildVariants {
+		if buildvariant.Disabled {
+			continue
+		}
+
+		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil, "")
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
+		if err != nil {
+			return errors.Wrap(err, "problem getting activatation time for variant")
+		}
+
+		var lastActivation *time.Time
+		if lastActivated != nil {
+			for _, buildStatus := range lastActivated.BuildVariants {
+				if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
+					lastActivation = &buildStatus.ActivateAt
+					break
+				}
+			}
+		}
+
+		var activateAt time.Time
+		if lastActivation == nil {
+			// if we don't have a last activation time then prepare to activate it immediately.
+			activateAt = time.Now()
+		} else {
+			activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+		}
+
+		v.BuildIds = append(v.BuildIds, buildId)
+		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
+			BuildVariant: buildvariant.Name,
+			Activated:    false,
+			ActivateAt:   activateAt,
+			BuildId:      buildId,
+		})
+	}
+
+	err := v.Insert()
+	if err != nil && !db.IsDuplicateKey(err) {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem inserting version",
+			"id":      v.Id,
+		}))
+		for _, buildStatus := range v.BuildVariants {
+			if buildErr := model.DeleteBuild(buildStatus.BuildId); buildErr != nil {
+				grip.Error(message.WrapError(buildErr, message.Fields{
+					"message":    "issue deleting build",
+					"version_id": v.Id,
+					"build_id":   buildStatus.BuildId,
+				}))
+			}
+		}
+		return errors.WithStack(err)
+	}
+	return nil
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -38,26 +37,15 @@ func TestFetchRevisions(t *testing.T) {
 
 		resetProjectRefs()
 
-		grip.Alertf("project: %+v", projectRef)
 		repoTracker := RepoTracker{
 			testConfig,
-			projectRef,
-			NewGithubRepositoryPoller(projectRef, token),
+			evgProjectRef,
+			NewGithubRepositoryPoller(evgProjectRef, token),
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 10
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
-		})
-
-		Convey("Only get 3 revisions from the given repository if given a "+
-			"limit of 4 commits where only 3 exist", func() {
-			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 4
-			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
-				"Error running repository process %s", repoTracker.Id)
-			numVersions, err := version.Count(version.All)
-			testutil.HandleTestingErr(err, t, "Error finding all versions")
-			So(numVersions, ShouldEqual, 3)
 		})
 
 		Convey("Only get 2 revisions from the given repository if given a "+
@@ -86,7 +74,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		So(err, ShouldBeNil)
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
-		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef, token)}
+		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef, token)}
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
@@ -98,13 +86,13 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			" in the database for this project, which should be retrieved when we search"+
 			" for this project's most recent version", func() {
 			createTime := time.Now()
-			revisionOne := *createTestRevision("firstRevision", createTime)
+			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", createTime)
 			revisions := []model.Revision{revisionOne}
 
 			resultVersion, err := repoTracker.StoreRevisions(ctx, revisions)
 			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s", revisionOne.Revision)
 
-			newestVersion, err := version.FindOne(version.ByMostRecentSystemRequester(projectRef.String()))
+			newestVersion, err := version.FindOne(version.ByMostRecentSystemRequester(evgProjectRef.String()))
 			testutil.HandleTestingErr(err, t, "Error retreiving newest version %s", newestVersion.Id)
 
 			So(resultVersion, ShouldResemble, newestVersion)
@@ -116,17 +104,17 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			createTime := time.Now()
 			laterCreateTime := createTime.Add(time.Duration(4 * time.Hour))
 
-			revisionOne := *createTestRevision("one", laterCreateTime)
-			revisionTwo := *createTestRevision("two", createTime)
+			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", laterCreateTime)
+			revisionTwo := *createTestRevision("d8e95fcffa1055fb9e2793fa47fec39d61dd1500", createTime)
 
 			revisions := []model.Revision{revisionOne, revisionTwo}
 
 			_, err := repoTracker.StoreRevisions(ctx, revisions)
 			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
-			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
+			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
 			testutil.HandleTestingErr(err, t, "Error retrieving first stored version %s", versionOne.Id)
-			versionTwo, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionTwo.Revision))
+			versionTwo, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionTwo.Revision))
 			testutil.HandleTestingErr(err, t, "Error retreiving second stored version %s", versionTwo.Revision)
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
@@ -135,7 +123,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(versionTwo.AuthorID, ShouldEqual, "")
 		})
 		Convey("if an evergreen user can be associated with the commit, record it", func() {
-			revisionOne := *createTestRevision("firstRevision", time.Now())
+			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", time.Now())
 			revisions := []model.Revision{revisionOne}
 			revisions[0].AuthorGithubUID = 1234
 
@@ -152,7 +140,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			_, err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
+			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
 			So(err, ShouldBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
