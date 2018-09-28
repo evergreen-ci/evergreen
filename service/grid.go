@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/grid"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
@@ -27,7 +26,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	// If no version was specified in the URL, grab the latest version on the project
 	if projCtx.Version == nil {
 		var v []version.Version
-		v, err = version.Find(version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
+		v, err = version.Find(version.ByMostRecentSystemRequester(project.Identifier).Limit(1))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding version"))
 			return

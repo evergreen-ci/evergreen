@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -197,8 +198,8 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			tasks, err = task.Find(task.ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber, statuses,
-				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...))
+			tasks, err = task.Find(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
+				buildVariant, taskName, project.Identifier, []string{request}).Limit(limit).WithFields(fields...))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
@@ -237,7 +238,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Populate the versions field if with commits, otherwise patches field
-	if request == evergreen.RepotrackerVersionRequester {
+	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
 		versions, err := version.Find(version.ByIds(versionIds).
 			WithFields(version.IdKey, version.CreateTimeKey, version.MessageKey,
 				version.AuthorKey, version.RevisionKey, version.RevisionOrderNumberKey).

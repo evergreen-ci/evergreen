@@ -51,6 +51,9 @@ type Version struct {
 	// AuthorID is an optional reference to the Evergreen user that authored
 	// this comment, if they can be identified
 	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
+
+	// ID of the document that triggered this version to be created
+	TriggerID string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
 }
 
 func (v *Version) LastSuccessful() (*Version, error) {
@@ -106,7 +109,9 @@ func FindDuplicateVersions(since time.Time) ([]DuplicateVersions, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
-				RequesterKey: evergreen.RepotrackerVersionRequester,
+				RequesterKey: bson.M{
+					"$in": evergreen.SystemVersionRequesterTypes,
+				},
 				CreateTimeKey: bson.M{
 					"$gte": since,
 				},
@@ -157,8 +162,10 @@ func GetHistory(versionId string, N int) ([]Version, error) {
 	siblingVersions, err := Find(db.Query(
 		bson.M{
 			RevisionOrderNumberKey: v.RevisionOrderNumber,
-			RequesterKey:           evergreen.RepotrackerVersionRequester,
-			IdentifierKey:          v.Identifier,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+			IdentifierKey: v.Identifier,
 		}).WithoutFields(ConfigKey).Sort([]string{RevisionOrderNumberKey}).Limit(2*N + 1))
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -181,8 +188,10 @@ func GetHistory(versionId string, N int) ([]Version, error) {
 			//TODO encapsulate this query in version pkg
 			db.Query(bson.M{
 				RevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
-				RequesterKey:           evergreen.RepotrackerVersionRequester,
-				IdentifierKey:          v.Identifier,
+				RequesterKey: bson.M{
+					"$in": evergreen.SystemVersionRequesterTypes,
+				},
+				IdentifierKey: v.Identifier,
 			}).WithoutFields(ConfigKey).Sort([]string{RevisionOrderNumberKey}).Limit(N - versionIndex))
 		if err != nil {
 			return nil, errors.WithStack(err)
@@ -199,8 +208,10 @@ func GetHistory(versionId string, N int) ([]Version, error) {
 	if numSiblings-versionIndex < N {
 		previousVersions, err := Find(db.Query(bson.M{
 			RevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
-			RequesterKey:           evergreen.RepotrackerVersionRequester,
-			IdentifierKey:          v.Identifier,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
+			IdentifierKey: v.Identifier,
 		}).WithoutFields(ConfigKey).Sort([]string{fmt.Sprintf("-%v", RevisionOrderNumberKey)}).Limit(N))
 		if err != nil {
 			return nil, errors.WithStack(err)

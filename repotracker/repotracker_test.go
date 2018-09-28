@@ -104,7 +104,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			resultVersion, err := repoTracker.StoreRevisions(ctx, revisions)
 			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s", revisionOne.Revision)
 
-			newestVersion, err := version.FindOne(version.ByMostRecentForRequester(projectRef.String(), evergreen.RepotrackerVersionRequester))
+			newestVersion, err := version.FindOne(version.ByMostRecentSystemRequester(projectRef.String()))
 			testutil.HandleTestingErr(err, t, "Error retreiving newest version %s", newestVersion.Id)
 
 			So(resultVersion, ShouldResemble, newestVersion)

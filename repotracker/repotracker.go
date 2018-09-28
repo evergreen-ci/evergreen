@@ -190,7 +190,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
 func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
-	latest, err := version.FindOne(version.ByMostRecentForRequester(projectId, evergreen.RepotrackerVersionRequester))
+	latest, err := version.FindOne(version.ByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
 		return errors.Wrap(err, "Error getting latest version")
 	}

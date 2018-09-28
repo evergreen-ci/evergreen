@@ -40,6 +40,7 @@ var (
 	IdentifierKey          = bsonutil.MustHaveTag(Version{}, "Identifier")
 	RemoteKey              = bsonutil.MustHaveTag(Version{}, "Remote")
 	RemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")
+	TriggerIDKey           = bsonutil.MustHaveTag(Version{}, "TriggerID")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -61,7 +62,9 @@ func ByLastKnownGoodConfig(projectId string) db.Q {
 	return db.Query(
 		bson.M{
 			IdentifierKey: projectId,
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 			ErrorsKey: bson.M{
 				"$exists": false,
 			},
@@ -74,7 +77,9 @@ func ByProjectIdAndRevision(projectId, revision string) db.Q {
 		bson.M{
 			IdentifierKey: projectId,
 			RevisionKey:   revision,
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 		})
 }
 
@@ -84,7 +89,9 @@ func ByProjectIdAndRevisionPrefix(projectId, revisionPrefix string) db.Q {
 		bson.M{
 			IdentifierKey: projectId,
 			RevisionKey:   bson.M{"$regex": fmt.Sprintf("^%s[0-9a-f]{%d}$", revisionPrefix, lengthHash)},
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 		})
 }
 
@@ -95,7 +102,9 @@ func ByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q {
 		bson.M{
 			IdentifierKey:          projectId,
 			RevisionOrderNumberKey: bson.M{"$lte": revisionOrderNumber},
-			RequesterKey:           evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 		})
 }
 
@@ -106,8 +115,10 @@ func ByLastVariantActivation(projectId, variant string) db.Q {
 		bson.M{
 			IdentifierKey: projectId,
 			// TODO make this `Ignored: false` after EVG-764  has time to burn in
-			IgnoredKey:   bson.M{"$ne": true},
-			RequesterKey: evergreen.RepotrackerVersionRequester,
+			IgnoredKey: bson.M{"$ne": true},
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 			BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
 					BuildStatusActivatedKey: true,
@@ -123,16 +134,20 @@ func ByProjectId(projectId string) db.Q {
 	return db.Query(
 		bson.M{
 			IdentifierKey: projectId,
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 		})
 }
 
 // ByProjectId finds all versions within a project, ordered by most recently created to oldest.
 // The requester controls if it should search patch or non-patch versions.
-func ByMostRecentForRequester(projectId, requester string) db.Q {
+func ByMostRecentSystemRequester(projectId string) db.Q {
 	return db.Query(
 		bson.M{
-			RequesterKey:  requester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 			IdentifierKey: projectId,
 		},
 	).Sort([]string{"-" + RevisionOrderNumberKey})
@@ -143,7 +158,9 @@ func ByMostRecentForRequester(projectId, requester string) db.Q {
 func ByMostRecentNonIgnored(projectId string) db.Q {
 	return db.Query(
 		bson.M{
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 			IdentifierKey: projectId,
 			IgnoredKey:    bson.M{"$ne": true},
 		},
@@ -153,7 +170,9 @@ func ByMostRecentNonIgnored(projectId string) db.Q {
 func BySuccessfulBeforeRevision(project string, beforeRevision int) db.Q {
 	return db.Query(
 		bson.M{
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 			IdentifierKey: project,
 			StatusKey:     evergreen.VersionSucceeded,
 			RevisionOrderNumberKey: bson.M{
@@ -169,7 +188,9 @@ func BaseVersionFromPatch(projectId, revision string) db.Q {
 		bson.M{
 			IdentifierKey: projectId,
 			RevisionKey:   revision,
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			RequesterKey: bson.M{
+				"$in": evergreen.SystemVersionRequesterTypes,
+			},
 		})
 }
 

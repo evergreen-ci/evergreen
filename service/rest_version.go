@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -121,9 +120,7 @@ func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
 	projectId := gimlet.GetVars(r)["project_id"]
 
-	versions, err := version.Find(
-		version.ByMostRecentForRequester(
-			projectId, evergreen.RepotrackerVersionRequester).Limit(NumRecentVersions))
+	versions, err := version.Find(version.ByMostRecentSystemRequester(projectId).Limit(NumRecentVersions))
 
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)

@@ -125,7 +125,7 @@ func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 //// Functions to create and populate the models
 ///////////////////////////////////////////////////////////////////////////
 
-func getTimelineData(projectName, requester string, versionsToSkip, versionsPerPage int) (*timelineData, error) {
+func getTimelineData(projectName string, versionsToSkip, versionsPerPage int) (*timelineData, error) {
 	data := &timelineData{}
 
 	// get the total number of versions in the database (used for pagination)
@@ -135,7 +135,7 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 	}
 	data.TotalVersions = totalVersions
 
-	q := version.ByMostRecentForRequester(projectName, requester).WithoutFields(version.ConfigKey).
+	q := version.ByMostRecentSystemRequester(projectName).WithoutFields(version.ConfigKey).
 		Skip(versionsToSkip * versionsPerPage).Limit(versionsPerPage)
 
 	// get the most recent versions, to display in their entirety on the page

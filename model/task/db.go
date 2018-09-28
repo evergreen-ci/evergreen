@@ -275,15 +275,19 @@ func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string,
 		},
 		ActivatedKey: true,
 		ProjectKey:   project,
-		RequesterKey: evergreen.RepotrackerVersionRequester,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
-func ByBeforeRevisionWithStatusesAndRequester(revisionOrder int, statuses []string, buildVariant, displayName, project, requester string) db.Q {
+func ByBeforeRevisionWithStatusesAndRequesters(revisionOrder int, statuses []string, buildVariant, displayName, project string, requesters []string) db.Q {
 	return db.Query(bson.M{
 		BuildVariantKey: buildVariant,
 		DisplayNameKey:  displayName,
-		RequesterKey:    requester,
+		RequesterKey: bson.M{
+			"$in": requesters,
+		},
 		RevisionOrderNumberKey: bson.M{
 			"$lt": revisionOrder,
 		},

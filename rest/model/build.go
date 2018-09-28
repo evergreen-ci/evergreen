@@ -12,8 +12,10 @@ import (
 )
 
 var (
-	commitOrigin = "commit"
-	patchOrigin  = "patch"
+	commitOrigin  = "commit"
+	patchOrigin   = "patch"
+	triggerOrigin = "trigger"
+	triggerAdHoc  = "ad_hoc"
 )
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
@@ -71,10 +73,17 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	apiBuild.PredictedMakespan = NewAPIDuration(v.PredictedMakespan)
 	apiBuild.ActualMakespan = NewAPIDuration(v.ActualMakespan)
 	var origin string
-	if v.Requester == evergreen.RepotrackerVersionRequester {
+	switch v.Requester {
+	case evergreen.RepotrackerVersionRequester:
 		origin = commitOrigin
-	} else if evergreen.IsPatchRequester(v.Requester) {
+	case evergreen.GithubPRRequester:
 		origin = patchOrigin
+	case evergreen.PatchVersionRequester:
+		origin = patchOrigin
+	case evergreen.TriggerRequester:
+		origin = triggerOrigin
+	case evergreen.AdHocRequester:
+		origin = triggerAdHoc
 	}
 	apiBuild.Origin = ToAPIString(origin)
 	apiBuild.TaskCache = []APITaskCache{}

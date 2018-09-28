@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -167,7 +168,8 @@ func bySimilarFailing(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int
 
 func tasksAreFromOneProject(t1, t2 task.Task) bool { return t1.Project == t2.Project }
 func tasksAreCommitBuilds(t1, t2 task.Task) bool {
-	if t1.Requester == evergreen.RepotrackerVersionRequester && t2.Requester == evergreen.RepotrackerVersionRequester {
+	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) &&
+		util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t1.Requester) {
 		return true
 	}
 	return false
