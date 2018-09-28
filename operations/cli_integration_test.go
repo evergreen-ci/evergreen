@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -120,17 +119,14 @@ func TestCLIFetchSource(t *testing.T) {
 	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
-	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
-	tokenParts := strings.Split(testConfig.Credentials["github"], " ")
-	var token string
-	if len(tokenParts) > 0 {
-		token = tokenParts[1]
-	}
 
 	Convey("with a task containing patches and modules", t, func() {
+		evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
+		token, err := testConfig.GetGithubOauthToken()
+		So(err, ShouldBeNil)
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()
-		err := os.RemoveAll("source-patch-1_sample")
+		err = os.RemoveAll("source-patch-1_sample")
 		So(err, ShouldBeNil)
 
 		// first, create a patch

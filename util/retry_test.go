@@ -114,7 +114,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func TestRetryableOauthClient(t *testing.T) {
 	assert := assert.New(t)
-	c, err := GetRetryableOauth2HTTPClient("token hi", rehttp.RetryMaxRetries(4),
+	c, err := GetRetryableOauth2HTTPClient("hi", rehttp.RetryMaxRetries(4),
 		RehttpDelay(time.Nanosecond, 5))
 	assert.NoError(err)
 	defer PutHTTPClient(c)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -255,12 +254,8 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
-	token := strings.Split(githubOauthToken, " ")
-	s.Require().Len(token, 2)
-	s.Require().Equal("token", token[0])
-
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token[1]},
+		&oauth2.Token{AccessToken: githubOauthToken},
 	)
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

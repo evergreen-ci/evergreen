@@ -169,14 +169,18 @@ func TestGetPatchedProject(t *testing.T) {
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
 				configPatch := resetPatchSetup(t, configFilePath)
-				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
+				token, err := patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				project, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
 				configPatch := resetProjectlessPatchSetup(t)
-				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
+				token, err := patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				project, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
@@ -189,7 +193,9 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
 
-				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
+				token, err := patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				project, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
@@ -211,12 +217,16 @@ func TestFinalizePatch(t *testing.T) {
 		t, func() {
 			configPatch := resetPatchSetup(t, configFilePath)
 			Convey("a patched config should drive version creation", func() {
-				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
+				token, err := patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				project, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
+				token, err = patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				// ensure the relevant builds/tasks were created
@@ -233,12 +243,16 @@ func TestFinalizePatch(t *testing.T) {
 				"drive version creation", func() {
 				patchedConfigFile := "fakeInPatchSoNotPatched"
 				configPatch := resetPatchSetup(t, patchedConfigFile)
-				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
+				token, err := patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				project, err := GetPatchedProject(ctx, configPatch, token)
 				So(err, ShouldBeNil)
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
+				token, err = patchTestConfig.GetGithubOauthToken()
+				So(err, ShouldBeNil)
+				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, token)
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				So(err, ShouldBeNil)

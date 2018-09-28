@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -454,13 +455,25 @@ func CreateSession(settings DBSettings) *db.SessionFactory {
 	return db.NewSessionFactory(settings.Url, settings.DB, settings.SSL, safety, defaultMgoDialTimeout)
 }
 
-func (s *Settings) GetGithubOauthToken() (string, error) {
+func (s *Settings) GetGithubOauthString() (string, error) {
 	token, ok := s.Credentials["github"]
 	if ok && token != "" {
 		return token, nil
 	}
 
 	return "", errors.New("no github token in settings")
+}
+
+func (s *Settings) GetGithubOauthToken() (string, error) {
+	oauthString, err := s.GetGithubOauthString()
+	if err != nil {
+		return "", err
+	}
+	splitToken := strings.Split(oauthString, " ")
+	if len(splitToken) != 2 || splitToken[0] != "token" {
+		return "", errors.New("token format was invalid, expected 'token [token]'")
+	}
+	return splitToken[1], nil
 }
 
 func GetServiceFlags() (*ServiceFlags, error) {

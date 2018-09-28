@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -119,12 +118,6 @@ func GetOAuth2HTTPClient(oauthToken string) (*http.Client, error) {
 	if oauthToken == "" {
 		return nil, errors.New("oauth token cannot be empty")
 	}
-
-	splitToken := strings.Split(oauthToken, " ")
-	if len(splitToken) != 2 || splitToken[0] != "token" {
-		return nil, errors.New("token format was invalid, expected 'token [token]'")
-	}
-	oauthToken = splitToken[1]
 
 	return oauthClientPool.getOrMake(oauthToken).Get().(*http.Client), nil
 }

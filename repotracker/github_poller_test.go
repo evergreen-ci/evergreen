@@ -101,11 +101,13 @@ func dropTestDB(t *testing.T) {
 func TestGetRevisionsSinceWithPaging(t *testing.T) {
 	dropTestDB(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetRevisionsSince")
-	grp := &GithubRepositoryPoller{
-		ProjectRef: evgProjectRef,
-		OauthToken: testConfig.Credentials[evgProjectRef.RepoKind],
-	}
 	Convey("When fetching commits from the evergreen repository", t, func() {
+		token, err := testConfig.GetGithubOauthToken()
+		So(err, ShouldBeNil)
+		grp := &GithubRepositoryPoller{
+			ProjectRef: evgProjectRef,
+			OauthToken: token,
+		}
 		Convey("fetching > the size of a github page should succeed", func() {
 			distantEvgRevision, err := getDistantEVGRevision()
 			So(err, ShouldBeNil)
@@ -128,7 +130,9 @@ func TestGetRevisionsSince(t *testing.T) {
 	Convey("When fetching github revisions (by commit) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
 		self.ProjectRef = projectRef
-		self.OauthToken = testConfig.Credentials[self.ProjectRef.RepoKind]
+		token, err := testConfig.GetGithubOauthToken()
+		So(err, ShouldBeNil)
+		self.OauthToken = token
 
 		Convey("There should be only two revisions since the first revision",
 			func() {
@@ -197,7 +201,9 @@ func TestGetRemoteConfig(t *testing.T) {
 				BatchTime:   60,
 				Tracked:     true,
 			}
-			self.OauthToken = testConfig.Credentials[self.ProjectRef.RepoKind]
+			token, err := testConfig.GetGithubOauthToken()
+			So(err, ShouldBeNil)
+			self.OauthToken = token
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
@@ -232,7 +238,9 @@ func TestGetAllRevisions(t *testing.T) {
 	Convey("When fetching recent github revisions (by count) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
 		self.ProjectRef = projectRef
-		self.OauthToken = testConfig.Credentials[self.ProjectRef.RepoKind]
+		token, err := testConfig.GetGithubOauthToken()
+		So(err, ShouldBeNil)
+		self.OauthToken = token
 
 		// Even though we're requesting far more revisions than exists in the
 		// remote repository, we should only get the revisions that actually
@@ -273,7 +281,9 @@ func TestGetChangedFiles(t *testing.T) {
 
 	Convey("When fetching changed files from evergreen-ci/evergreen ", t, func() {
 		grp.ProjectRef = evgProjectRef
-		grp.OauthToken = testConfig.Credentials[grp.ProjectRef.RepoKind]
+		token, err := testConfig.GetGithubOauthToken()
+		So(err, ShouldBeNil)
+		grp.OauthToken = token
 
 		r1 := "b11fcb25624c6a0649dd35b895f5b550d649a128"
 		Convey("the revision "+r1+" should have 8 files", func() {

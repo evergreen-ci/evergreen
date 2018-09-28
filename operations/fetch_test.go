@@ -3,7 +3,6 @@ package operations
 import (
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -15,11 +14,8 @@ import (
 func TestClone(t *testing.T) {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, settings, "TestClone")
-	tokenParts := strings.Split(settings.Credentials["github"], " ")
-	var token string
-	if len(tokenParts) > 0 {
-		token = tokenParts[1]
-	}
+	token, err := settings.GetGithubOauthToken()
+	assert.NoError(t, err)
 
 	passingCases := map[string]cloneOptions{
 		"SimpleHTTPS": cloneOptions{

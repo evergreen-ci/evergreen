@@ -391,12 +391,8 @@ func (e *envState) initSenders() error {
 
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
-		splitToken := strings.Split(githubToken, " ")
-		if len(splitToken) != 2 {
-			return errors.New("token format should be 'token ...'")
-		}
 		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token: splitToken[1],
+			Token: githubToken,
 		}, "")
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup github status logger")

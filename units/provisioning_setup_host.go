@@ -723,7 +723,11 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context, taskId, cliPath,
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024,
 	}
-	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
+	token, err := j.env.Settings().GetGithubOauthToken()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving github token")
+	}
+	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s -k %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, token, target.Distro.WorkDir)
 	makeShellCmd := subprocess.NewRemoteCommand(
 		fetchCmd,
 		hostSSHInfo.Hostname,
