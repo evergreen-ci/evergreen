@@ -9,6 +9,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   var dataUtil = PerfDiscoveryDataService
   var PD = PERF_DISCOVERY
   var grid
+  var gridApi
   vm.refCtx = [0, 0]
   vm.jiraHost = $window.JiraHost
 
@@ -105,7 +106,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         gridUtil.applyMultiselectOptions(
           res,
           ['build', 'storageEngine', 'task', 'threads'],
-          vm.gridOptions
+          vm.gridApi
         )
         return res
       })
@@ -190,6 +191,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     enableFiltering: true,
     enableGridMenu: true,
     onRegisterApi: function(gridApi) {
+      vm.gridApi = gridApi
       grid = gridApi.grid;
 
       // Using _.once, because this behavior is required on init only

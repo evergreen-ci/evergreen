@@ -9,12 +9,14 @@ describe('PerfDiscoveryServiceTest', function() {
 
   it('returns col object by col name', function() {
     var colB = {field: 'b'}
-    var gridOptions = {
-      columnDefs: [{field: 'a'}, colB]
+    var gridApi = {
+      grid: {
+        columns: [{field: 'a'}, colB],
+      },
     }
 
     expect(
-      gridUtil.getColAccessor(gridOptions)('b')
+      gridUtil.getColAccessor(gridApi)('b')
     ).toBe(colB)
   })
 
@@ -25,21 +27,23 @@ describe('PerfDiscoveryServiceTest', function() {
       {a: 'a2', b: 'b2'}, // duplicate
     ]
     var fields = ['a']
-    var gridOptions = {
-      columnDefs: [
-        {field: 'a', filter: {options: []}},
-        {field: 'b', filter: {options: []}},
-      ]
+    var gridApi = {
+      grid: {
+        columns: [
+          {field: 'a', filter: {options: []}},
+          {field: 'b', filter: {options: []}},
+        ],
+      },
     }
 
-    gridUtil.applyMultiselectOptions(data, fields, gridOptions)
+    gridUtil.applyMultiselectOptions(data, fields, gridApi)
 
     expect(
-      gridOptions.columnDefs[0].filter.options
+      gridApi.grid.columns[0].filter.options
     ).toEqual(['a1', 'a2'])
 
     expect(
-      gridOptions.columnDefs[1].filter.options
+      gridApi.grid.columns[1].filter.options
     ).toEqual([])
   })
 
