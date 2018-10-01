@@ -1,25 +1,25 @@
 mciModule.factory('EvgUiGridUtil', function() {
   // Allows to get ui grid col options
-  // :parm gridOptions: ui grid options
-  // :returns: Function (with gridOptions stored in the context)
-  function getColAccessor(gridOptions) {
+  // :param gridOptions: ui grid api
+  // :returns: Function (with gridApi stored in the context)
+  function getColAccessor(gridApi) {
     // :param fieldName: ui grid field name
     // :returns: ui grid col object
     return function(fieldName) {
-      return _.findWhere(gridOptions.columnDefs, {
+      return _.findWhere(gridApi.grid.columns, {
         field: fieldName
       })
     }
   }
 
   // Applies filter options to ui grid columns
-  // Options is unique set of unique items for each given field
+  // Options are unique set of unique items for each given field
   // :param field: List of strings (field names)
-  // :param gridOptions: ui grid options object
+  // :param gridAou: ui grid api
   // :returns: none
-  function applyMultiselectOptions(data, fields, gridOptions) {
+  function applyMultiselectOptions(data, fields, gridApi) {
     // Create a column accessor function
-    var colAccessor = getColAccessor(gridOptions)
+    var colAccessor = getColAccessor(gridApi)
 
     // Apply options data to column options
     _.each(fields, function(d) {

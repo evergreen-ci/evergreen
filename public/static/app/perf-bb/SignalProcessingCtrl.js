@@ -1,7 +1,10 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $window, $scope, MDBQueryAdaptor, Stitch, FORMAT, STITCH_CONFIG
+  $window, $scope, EvgUiGridUtil, MDBQueryAdaptor, Stitch, FORMAT,
+  STITCH_CONFIG, uiGridConstants
 ) {
   var vm = this;
+  // Ui grid col accessor
+  var getCol
 
   // TODO later this might be replaced with some sort of pagination
   var LIMIT = 500
@@ -64,16 +67,11 @@ mciModule.controller('SignalProcessingCtrl', function(
     })
   }
 
-  // Helper function which returns `col` for given `gridApi` and `colName`
-  function getCol(gridApi, colName) {
-    return _.findWhere(gridApi.grid.columns, {field: colName})
-  }
-
   // Enhances filtering state with some contextual meta data
   // This data is required by expression compiler
   function getFilteringContext(state) {
     return _.reduce(state.filtering, function(m, v, k) {
-      var col = getCol(vm.gridApi, k)
+      var col = getCol(k)
       if (!col) return m // Error! Associated col does not found
       return m.concat({
         field: k,
@@ -110,6 +108,12 @@ mciModule.controller('SignalProcessingCtrl', function(
 
   vm.modeChanged = function() {
     state.mode = vm.mode.value
+    // Show/hide column depending on mode
+    var col = getCol('processed_type')
+    state.mode == 'processed' ? col.showColumn() : col.hideColumn()
+    // Propagate col visibility change event
+    vm.gridApi.core.notifyDataChange(uiGridConstants.dataChange.COLUMN)
+
     loadData(state)
   }
 
@@ -135,6 +139,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     useExternalSorting: true,
     onRegisterApi: function(api) {
       vm.gridApi = api
+      getCol = EvgUiGridUtil.getColAccessor(api)
       api.core.on.sortChanged($scope, function(grid, cols) {
         state.sorting = _.map(cols, function(col) {
           return {
@@ -202,18 +207,21 @@ mciModule.controller('SignalProcessingCtrl', function(
         field: 'value',
         cellFilter: 'number:2',
         type: 'number',
+        visible: false,
       },
       {
         name: 'Value to Avg',
         field: 'value_to_avg',
         cellFilter: 'number:2',
         type: 'number',
+        visible: false,
       },
       {
         name: 'Probability',
         field: 'probability',
         cellFilter: 'number:2',
         type: 'number',
+        visible: false,
       },
       {
         name: 'Average',
@@ -244,7 +252,6 @@ mciModule.controller('SignalProcessingCtrl', function(
       {
         name: 'Thread Level',
         field: 'thread_level',
-        visible: false,
         type: 'number',
       },
       {
