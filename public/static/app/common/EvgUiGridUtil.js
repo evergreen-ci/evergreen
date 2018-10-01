@@ -6,7 +6,7 @@ mciModule.factory('EvgUiGridUtil', function() {
     // :param fieldName: ui grid field name
     // :returns: ui grid col object
     return function(fieldName) {
-      return _.findWhere(gridApi.grid.colums, {
+      return _.findWhere(gridApi.grid.columns, {
         field: fieldName
       })
     }
