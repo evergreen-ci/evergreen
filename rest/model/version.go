@@ -13,6 +13,7 @@ type APIVersion struct {
 	FinishTime APITime   `json:"finish_time"`
 	Revision   APIString `json:"revision"`
 	Order      int       `json:"order"`
+	Project    APIString `json:"project"`
 
 	Author        APIString     `json:"author"`
 	AuthorEmail   APIString     `json:"author_email"`
@@ -51,6 +52,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	apiVersion.Repo = ToAPIString(v.Repo)
 	apiVersion.Branch = ToAPIString(v.Branch)
 	apiVersion.Order = v.RevisionOrderNumber
+	apiVersion.Project = ToAPIString(v.Identifier)
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {

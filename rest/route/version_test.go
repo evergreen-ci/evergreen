@@ -33,7 +33,7 @@ func TestVersionSuite(t *testing.T) {
 
 // Declare field variables to use across routes related to version.
 var timeField time.Time
-var versionId, revision, author, authorEmail, msg, status, repo, branch string
+var versionId, revision, author, authorEmail, msg, status, repo, branch, project string
 
 // SetupSuite sets up the test suite for routes related to version.
 // More version-related routes will be implemented later.
@@ -48,6 +48,7 @@ func (s *VersionSuite) SetupSuite() {
 	status = "status"
 	repo = "repo"
 	branch = "branch"
+	project = "project"
 
 	s.bv = append(s.bv, "buildvariant1", "buildvariant2")
 	s.bi = append(s.bi, "buildId1", "buildId2")
@@ -76,6 +77,7 @@ func (s *VersionSuite) SetupSuite() {
 		Repo:          repo,
 		Branch:        branch,
 		BuildVariants: buildVariants,
+		Identifier:    project,
 	}
 
 	testBuild1 := build.Build{
@@ -132,6 +134,7 @@ func (s *VersionSuite) TestFindByVersionId() {
 	s.Equal(model.ToAPIString(status), h.Status)
 	s.Equal(model.ToAPIString(repo), h.Repo)
 	s.Equal(model.ToAPIString(branch), h.Branch)
+	s.Equal(model.ToAPIString(project), h.Project)
 }
 
 // TestFindAllBuildsForVersion tests the route for finding all builds for a version.
