@@ -5,6 +5,10 @@ mciModule.controller('HostCtrl', function($scope, $window) {
   $scope.events = $window.events.reverse();
   $scope.containers = $window.containers;
 
+  // Spawned by task aliases
+  $scope.spawnedByTask = $scope.host.spawn_options.spawned_by_task
+  $scope.taskId = $scope.host.spawn_options.task_id
+
   $scope.host.uptime = "N/A";
   if ($scope.host.host_type !== "static") {
       var uptime;
