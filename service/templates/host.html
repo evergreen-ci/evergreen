@@ -85,7 +85,10 @@ Evergreen - Host {{.Host.Id}}
       <div class="mci-pod">
         <div class="row">
           <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Started By</b> </div>
-          <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.started_by]]</div>
+          <div class="host-info col-lg-8 col-md-8 col-sm-9">
+            <a ng-if="spawnedByTask" ng-href="/task/[[taskId]]" target="_blank">Task</a>
+            <span ng-if="!spawnedByTask">[[host.started_by]]</span>
+          </div>
         </div>
         <div class="row">
           <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Cloud Provider</b> </div>
