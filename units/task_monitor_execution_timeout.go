@@ -148,6 +148,7 @@ func cleanUpTimedOutTask(t task.Task) error {
 
 	detail := &apimodels.TaskEndDetail{
 		Description: task.AgentHeartbeat,
+		Type:        evergreen.CommandTypeSystem,
 		TimedOut:    true,
 		Status:      evergreen.TaskFailed,
 	}

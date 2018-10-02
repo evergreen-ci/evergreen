@@ -436,6 +436,7 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 		StartedByKey:     evergreen.User,
 		HasContainersKey: bson.M{"$ne": true},
 		ParentIDKey:      bson.M{"$exists": false},
+		RunningTaskKey:   bson.M{"$exists": false},
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
