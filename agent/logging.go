@@ -6,8 +6,6 @@ import (
 	"os"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/subprocess"
-	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -38,39 +36,13 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 		senders []send.Sender
 	)
 
-	if os.Getenv(subprocess.MarkerAgentPID) == "" {
-		grip.Notice("agent logger running within an agent; skipping external log configuration")
-	} else {
-		if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
-			sender, err = send.NewSplunkLogger("evergreen.agent", splunk, send.LevelInfo{Default: level.Info, Threshold: level.Alert})
-			if err != nil {
-				return nil, errors.Wrap(err, "problem creating the splunk logger")
-			}
-
-			sender, err = logger.NewQueueBackedSender(ctx, sender, 2, 10)
-			if err != nil {
-				return nil, errors.Wrap(err, "problem creating the splunk buffer")
-			}
-
-			senders = append(senders, sender)
+	if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
+		grip.Info("configuring splunk sender")
+		sender, err = send.NewSplunkLogger("evergreen.agent", splunk, send.LevelInfo{Default: level.Alert, Threshold: level.Alert})
+		if err != nil {
+			return nil, errors.Wrap(err, "problem creating the splunk logger")
 		}
-
-		if endpoint := os.Getenv("GRIP_SUMO_ENDPOINT"); endpoint != "" {
-			sender, err = send.NewSumo(taskId, endpoint)
-			if err != nil {
-				return nil, errors.Wrap(err, "problem creating the sumo logic sender")
-			}
-			if err = sender.SetLevel(send.LevelInfo{Default: level.Info, Threshold: level.Alert}); err != nil {
-				return nil, errors.Wrap(err, "problem setting level for alert remote object")
-			}
-
-			sender, err = logger.NewQueueBackedSender(ctx, sender, 2, 10)
-			if err != nil {
-				return nil, errors.Wrap(err, "problem creating the splunk buffer")
-			}
-
-			senders = append(senders, sender)
-		}
+		senders = append(senders, sender)
 	}
 
 	if prefix == "" {
