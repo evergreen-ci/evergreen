@@ -393,6 +393,47 @@ func ByRecentlyFinished(finishTime time.Time, project string, requester string) 
 	return db.Query(query)
 }
 
+// Returns query which targets list of tasks
+// And allow filter by project_id, status, start_time (gte), finish_time (lte)
+func WithinTimePeriod(startedAfter, finishedBefore time.Time, project, status string) db.Q {
+	q := []bson.M{}
+
+	if !startedAfter.IsZero() {
+		q = append(q, bson.M{
+			StartTimeKey: bson.M{
+				"$gte": startedAfter,
+			},
+		})
+	}
+
+	// Filter by end date
+	if !finishedBefore.IsZero() {
+		q = append(q, bson.M{
+			FinishTimeKey: bson.M{
+				"$lte": finishedBefore,
+			},
+		})
+	}
+
+	// Filter by status
+	if status != "" {
+		q = append(q, bson.M{
+			StatusKey: status,
+		})
+	}
+
+	// Filter by project id
+	if project != "" {
+		q = append(q, bson.M{
+			ProjectKey: project,
+		})
+	}
+
+	return db.Query(bson.M{
+		"$and": q,
+	})
+}
+
 func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, statuses []string) db.Q {
 	return db.Query(bson.M{
 		IdKey: bson.M{

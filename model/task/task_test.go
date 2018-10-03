@@ -841,6 +841,93 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.Equal("task", tasks[1].OldTaskId)
 }
 
+func TestFindWithinTimePeriod(t *testing.T) {
+	assert := assert.New(t)
+
+	Convey("Project filter", t, func() {
+		assert.NoError(db.ClearCollections(Collection, OldCollection))
+
+		taskDocs := []Task{
+			Task{
+				Id:      "task1",
+				Project: "proj",
+			},
+			Task{
+				Id:      "task2",
+				Project: "other",
+			},
+		}
+
+		for _, taskDoc := range taskDocs {
+			assert.NoError(taskDoc.Insert())
+			assert.NoError(taskDoc.Archive())
+		}
+
+		tasks, err := Find(WithinTimePeriod(time.Time{}, time.Time{}, "proj", ""))
+		assert.NoError(err)
+		assert.Len(tasks, 1)
+		assert.Equal(tasks[0].Id, "task1")
+	})
+
+	Convey("startedAfter and finishedBefore filter", t, func() {
+		assert.NoError(db.ClearCollections(Collection, OldCollection))
+
+		taskDocs := []Task{
+			Task{
+				Id:         "task1",
+				FinishTime: time.Now().AddDate(0, 0, -2), // Should match
+				StartTime:  time.Now().AddDate(0, 0, -5), // Shouldn't match
+			},
+			Task{
+				Id:         "task2",
+				FinishTime: time.Now().AddDate(0, 0, -2), // Should match
+				StartTime:  time.Now().AddDate(0, 0, -3), // Should match
+			},
+			Task{
+				Id:         "task3",
+				FinishTime: time.Now(),                   // Shouldn't match
+				StartTime:  time.Now().AddDate(0, 0, -3), // Should match
+			},
+		}
+
+		for _, taskDoc := range taskDocs {
+			assert.NoError(taskDoc.Insert())
+			assert.NoError(taskDoc.Archive())
+		}
+
+		tasks, err := Find(WithinTimePeriod(
+			time.Now().AddDate(0, 0, -4), time.Now().AddDate(0, 0, -1), "", ""))
+		assert.NoError(err)
+		assert.Len(tasks, 1)
+		assert.Equal(tasks[0].Id, "task2")
+	})
+
+	Convey("Status filter", t, func() {
+		assert.NoError(db.ClearCollections(Collection, OldCollection))
+
+		taskDocs := []Task{
+			Task{
+				Id:     "task1",
+				Status: "statusA",
+			},
+			Task{
+				Id:     "task2",
+				Status: "statusB",
+			},
+		}
+
+		for _, taskDoc := range taskDocs {
+			assert.NoError(taskDoc.Insert())
+			assert.NoError(taskDoc.Archive())
+		}
+
+		tasks, err := Find(WithinTimePeriod(time.Time{}, time.Time{}, "", "statusA"))
+		assert.NoError(err)
+		assert.Len(tasks, 1)
+		assert.Equal(tasks[0].Id, "task1")
+	})
+}
+
 func TestTaskStatusCount(t *testing.T) {
 	assert := assert.New(t)
 	counts := TaskStatusCount{}

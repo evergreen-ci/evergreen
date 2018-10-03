@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -143,7 +144,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 		at.Logs = ll
 	default:
-		return errors.New("Incorrect type when unmarshalling task")
+		return errors.New(fmt.Sprintf("Incorrect type %s when unmarshalling task", reflect.TypeOf(t)))
 	}
 
 	return nil
