@@ -8,8 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -17,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 func init() {
@@ -588,4 +591,136 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(addBuildBreakSubscriptions(&v3, &proj2))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
+}
+
+type CreateVersionFromConfigSuite struct {
+	ref *model.ProjectRef
+	rev *model.Revision
+	d   *distro.Distro
+	suite.Suite
+}
+
+func TestCreateVersionFromConfigSuite(t *testing.T) {
+	suite.Run(t, new(CreateVersionFromConfigSuite))
+}
+
+func (s *CreateVersionFromConfigSuite) SetupTest() {
+	s.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
+	s.ref = &model.ProjectRef{
+		Repo:       "evergreen",
+		Owner:      "evergreen-ci",
+		Identifier: "mci",
+		Branch:     "master",
+		RemotePath: "self-tests.yml",
+		RepoKind:   "github",
+		Enabled:    true,
+	}
+	s.rev = &model.Revision{
+		Author:          "me",
+		AuthorGithubUID: 123,
+		Revision:        "abc",
+		RevisionMessage: "message",
+		CreateTime:      time.Now(),
+	}
+	s.d = &distro.Distro{
+		Id: "d",
+	}
+	s.NoError(s.d.Insert())
+}
+
+func (s *CreateVersionFromConfigSuite) TestCreateBasicVersion() {
+	configYml := `
+buildvariants:
+- name: bv
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := version.FindOneId(v.Id)
+	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
+	s.Equal(evergreen.VersionCreated, dbVersion.Status)
+	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
+
+	dbBuild, err := build.FindOneId(v.BuildIds[0])
+	s.NoError(err)
+	s.Equal(v.Id, dbBuild.Version)
+	s.Len(dbBuild.Tasks, 2)
+
+	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(dbTasks, 2)
+}
+
+func (s *CreateVersionFromConfigSuite) TestInvalidConfigErrors() {
+	configYml := `
+buildvariants:
+- name: bv
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := version.FindOneId(v.Id)
+	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
+	s.Require().Len(dbVersion.Errors, 1)
+	s.Equal("buildvariant 'bv' in project 'mci' must either specify run_on field or have every task specify a distro.", dbVersion.Errors[0])
+
+	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	s.NoError(err)
+	s.Nil(dbBuild)
+
+	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(dbTasks, 0)
+}
+
+func (s *CreateVersionFromConfigSuite) TestErrorsMerged() {
+	configYml := `
+buildvariants:
+- name: bv
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	vErrs := VersionErrors{
+		Errors:   []string{"err1"},
+		Warnings: []string{"warn1", "warn2"},
+	}
+	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, &vErrs)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := version.FindOneId(v.Id)
+	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
+	s.Len(dbVersion.Errors, 2)
+	s.Len(dbVersion.Warnings, 2)
 }
