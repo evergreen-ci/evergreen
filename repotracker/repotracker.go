@@ -214,6 +214,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		existingVersion, err := version.FindOne(version.ByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem looking up version for project",
+			"runner":   RunnerName,
 			"project":  ref.Identifier,
 			"revision": revision,
 		}))
@@ -221,6 +222,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		if existingVersion != nil {
 			grip.Info(message.Fields{
 				"message":  "skipping creating version because it already exists",
+				"runner":   RunnerName,
 				"project":  ref.Identifier,
 				"revision": revision,
 			})
@@ -245,6 +247,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":  "error creating shell version",
+							"runner":   RunnerName,
 							"project":  ref.Identifier,
 							"revision": revision,
 						}))
@@ -254,6 +257,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					err = stubVersion.Insert()
 					grip.Error(message.WrapError(err, message.Fields{
 						"message":  "error inserting shell version",
+						"runner":   RunnerName,
 						"project":  ref.Identifier,
 						"revision": revision,
 					}))
@@ -263,6 +267,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			} else {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":  "error getting project config",
+					"runner":   RunnerName,
 					"project":  ref.Identifier,
 					"revision": revision,
 				}))
@@ -278,6 +283,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message":  "error checking GitHub for ignored files",
+					"runner":   RunnerName,
 					"project":  ref.Identifier,
 					"revision": revision,
 				}))
@@ -292,6 +298,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error creating version",
+				"runner":   RunnerName,
 				"project":  ref.Identifier,
 				"revision": revision,
 			}))
@@ -300,6 +307,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		if err = addBuildBreakSubscriptions(v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error creating build break subscriptions",
+				"runner":   RunnerName,
 				"project":  ref.Identifier,
 				"revision": revision,
 			}))
@@ -560,6 +568,7 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 	if latest.Revision == revision {
 		grip.Critical(message.Fields{
 			"project":   projectId,
+			"runner":    RunnerName,
 			"message":   "attempting to add a duplicate version",
 			"rev_num":   revOrderNum,
 			"revision":  revision,
@@ -618,6 +627,14 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 			activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
 		}
 
+		grip.Debug(message.Fields{
+			"message": "activating build",
+			"name":    buildvariant.Name,
+			"project": ref.Identifier,
+			"version": v.Id,
+			"time":    activateAt,
+			"runner":  RunnerName,
+		})
 		v.BuildIds = append(v.BuildIds, buildId)
 		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
 			BuildVariant: buildvariant.Name,
@@ -631,12 +648,14 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 	if err != nil && !db.IsDuplicateKey(err) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem inserting version",
+			"runner":  RunnerName,
 			"id":      v.Id,
 		}))
 		for _, buildStatus := range v.BuildVariants {
 			if buildErr := model.DeleteBuild(buildStatus.BuildId); buildErr != nil {
 				grip.Error(message.WrapError(buildErr, message.Fields{
 					"message":    "issue deleting build",
+					"runner":     RunnerName,
 					"version_id": v.Id,
 					"build_id":   buildStatus.BuildId,
 				}))
