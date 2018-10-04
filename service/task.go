@@ -145,8 +145,10 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	// if there is an execution number, the task might be in the old_tasks collection, so we
 	// query that collection and set projCtx.Task to the old task if it exists.
+	var execution int
+	var err error
 	if executionStr != "" {
-		execution, err := strconv.Atoi(executionStr)
+		execution, err = strconv.Atoi(executionStr)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
 			return
@@ -287,7 +289,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
 		for _, t := range projCtx.Task.ExecutionTasks {
-			et, err := task.FindOneIdOldOrNew(t, totalExecutions)
+			et, err := task.FindOneIdOldOrNew(t, execution)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
