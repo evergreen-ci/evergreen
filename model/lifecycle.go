@@ -539,6 +539,15 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
+	grip.DebugWhen(b.BuildVariant == "rhel-62-64-bit-mobile", message.Fields{
+		"ticket":  "EVG-5307",
+		"message": "adding task",
+		"build":   b,
+		"tasks":   tasksForBuild,
+		"version": v,
+		"taskIds": taskIds,
+	})
+
 	if err = tasksForBuild.InsertUnordered(); err != nil {
 		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
 	}
