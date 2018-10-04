@@ -107,7 +107,7 @@ type projectTaskGetHandler struct {
 	startedAfter   time.Time
 	finishedBefore time.Time
 	projectId      string
-	status         string
+	statuses       []string
 	sc             data.Connector
 }
 
@@ -131,7 +131,7 @@ func (h *projectTaskGetHandler) Parse(ctx context.Context, r *http.Request) erro
 	vals := r.URL.Query()
 	startedAfter := vals.Get("started_after")
 	finishedBefore := vals.Get("finished_before")
-	status := vals.Get("status")
+	statuses := vals["status"]
 
 	// Parse started-after
 	if startedAfter != "" {
@@ -159,8 +159,8 @@ func (h *projectTaskGetHandler) Parse(ctx context.Context, r *http.Request) erro
 	}
 
 	// Parse status
-	if status != "" {
-		h.status = status
+	if len(statuses) > 0 {
+		h.statuses = statuses
 	}
 
 	return nil
@@ -172,7 +172,7 @@ func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	tasks, err := h.sc.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.status)
+	tasks, err := h.sc.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}

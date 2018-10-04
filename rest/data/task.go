@@ -34,9 +34,9 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 }
 
 func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
-	project, status string) ([]task.Task, error) {
+	project string, statuses []string) ([]task.Task, error) {
 
-	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, project, status))
+	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, project, statuses))
 
 	if err != nil {
 		return nil, err
@@ -244,7 +244,7 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 	return nil, nil
 }
 
-func (mtc *MockTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time, project, status string) ([]task.Task, error) {
+func (mtc *MockTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time, project string, status []string) ([]task.Task, error) {
 	return mtc.CachedTasks, mtc.StoredError
 }
 

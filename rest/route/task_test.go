@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
-	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -166,9 +165,8 @@ func TestFetchArtifacts(t *testing.T) {
 }
 
 type ProjectTaskWithinDatesSuite struct {
-	sc   *data.MockConnector
-	data data.MockTaskConnector
-	h    *projectTaskGetHandler
+	sc *data.MockConnector
+	h  *projectTaskGetHandler
 
 	suite.Suite
 }
@@ -177,27 +175,25 @@ func (s *ProjectTaskWithinDatesSuite) SetupTest() {
 	s.h = &projectTaskGetHandler{sc: s.sc}
 }
 
-func (s *ProjectTaskWithinDatesSuite) TestParseProjectTaskWithinDates(t *testing.T) {
-	Convey("Should parse all arguments", t, func() {
-		r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/projects/projA/versions/tasks"+
-			"?status=statusA&started-after=2018-01-01&finished-before=2019-02-02", &bytes.Buffer{})
-		s.Require().NoError(err)
-		err = s.h.Parse(context.Background(), r)
-		s.NoError(err)
-		s.Equal(s.h.projectId, "projA")
-		s.Equal(s.h.status, "statusA")
-		s.Equal(s.h.startedAfter, time.Date(2018, time.January, 1, 0, 0, 0, 0, time.UTC))
-		s.Equal(s.h.finishedBefore, time.Date(2018, time.February, 2, 0, 0, 0, 0, time.UTC))
-	})
+func (s *ProjectTaskWithinDatesSuite) TestParseAllArguments(t *testing.T) {
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/projects/projA/versions/tasks"+
+		"?status=A&status=B&started-after=2018-01-01&finished-before=2019-02-02", &bytes.Buffer{})
+	s.Require().NoError(err)
+	err = s.h.Parse(context.Background(), r)
+	s.NoError(err)
+	s.Equal(s.h.projectId, "projA")
+	s.Subset([]string{"A", "B"}, s.h.statuses)
+	s.Equal(s.h.startedAfter, time.Date(2018, time.January, 1, 0, 0, 0, 0, time.UTC))
+	s.Equal(s.h.finishedBefore, time.Date(2018, time.February, 2, 0, 0, 0, 0, time.UTC))
+}
 
-	Convey("Should has default values", t, func() {
-		r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/projects/projA/versions/tasks", &bytes.Buffer{})
-		s.Require().NoError(err)
-		err = s.h.Parse(context.Background(), r)
-		s.NoError(err)
-		s.Equal(s.h.projectId, "")
-		s.Equal(s.h.status, "")
-		s.True(s.h.startedAfter.Unix()-time.Now().AddDate(0, 0, -7).Unix() <= 0)
-		s.Equal(s.h.finishedBefore, time.Time{})
-	})
+func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues(t *testing.T) {
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/projects/projA/versions/tasks", &bytes.Buffer{})
+	s.Require().NoError(err)
+	err = s.h.Parse(context.Background(), r)
+	s.NoError(err)
+	s.Equal(s.h.projectId, "")
+	s.Equal(s.h.statuses, []string{})
+	s.True(s.h.startedAfter.Unix()-time.Now().AddDate(0, 0, -7).Unix() <= 0)
+	s.Equal(s.h.finishedBefore, time.Time{})
 }

@@ -395,7 +395,7 @@ func ByRecentlyFinished(finishTime time.Time, project string, requester string) 
 
 // Returns query which targets list of tasks
 // And allow filter by project_id, status, start_time (gte), finish_time (lte)
-func WithinTimePeriod(startedAfter, finishedBefore time.Time, project, status string) db.Q {
+func WithinTimePeriod(startedAfter, finishedBefore time.Time, project string, statuses []string) db.Q {
 	q := []bson.M{}
 
 	if !startedAfter.IsZero() {
@@ -416,9 +416,11 @@ func WithinTimePeriod(startedAfter, finishedBefore time.Time, project, status st
 	}
 
 	// Filter by status
-	if status != "" {
+	if len(statuses) > 0 {
 		q = append(q, bson.M{
-			StatusKey: status,
+			StatusKey: bson.M{
+				"$in": statuses,
+			},
 		})
 	}
 
