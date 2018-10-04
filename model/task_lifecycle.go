@@ -54,22 +54,11 @@ func SetActiveState(taskId string, caller string, active bool) error {
 			event.LogTaskActivated(taskId, t.Execution, caller)
 		}
 
-		if t.DistroId == "" {
-			var project *Project
-			project, err = FindProjectFromTask(t)
-			if err != nil {
-				return errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
-			}
-
-			var distro string
-			distro, err = project.FindDistroNameForTask(t)
-			if err != nil {
-				return errors.Wrapf(err, "problem finding distro for activating task '%s'", taskId)
-			}
-			err = t.SetDistro(distro)
-			if err != nil {
-				return errors.Wrapf(err, "problem setting distro for activating task '%s'", taskId)
-			}
+		if t.DistroId == "" && !t.DisplayOnly {
+			grip.Critical(message.Fields{
+				"message": "task is missing distro id",
+				"task_id": t.Id,
+			})
 		}
 
 		// If the task was not activated by step back, and either the caller is not evergreen
