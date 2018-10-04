@@ -157,7 +157,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		oldTaskId := fmt.Sprintf("%v_%v", projCtx.Task.Id, executionStr)
 
 		// Try to find the task in the old_tasks collection.
-		taskFromDb, err := task.FindOneOld(task.ById(oldTaskId))
+		var taskFromDb *task.Task
+		taskFromDb, err = task.FindOneOld(task.ById(oldTaskId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -183,7 +184,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		tId = projCtx.Task.OldTaskId
 
 		// Get total number of executions for executions drop down
-		mostRecentExecution, err := task.FindOne(task.ById(tId))
+		var mostRecentExecution *task.Task
+		mostRecentExecution, err = task.FindOne(task.ById(tId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding most recent execution by id %s", tId))
