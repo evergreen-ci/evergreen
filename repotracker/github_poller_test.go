@@ -77,10 +77,13 @@ func resetProjectRefs() {
 		Tracked:     true,
 	}
 	evgProjectRef = &model.ProjectRef{
-		Repo:     "evergreen",
-		Owner:    "evergreen-ci",
-		Branch:   "master",
-		RepoKind: "github",
+		Repo:       "evergreen",
+		Owner:      "evergreen-ci",
+		Identifier: "mci",
+		Branch:     "master",
+		RemotePath: "self-tests.yml",
+		RepoKind:   "github",
+		Enabled:    true,
 	}
 }
 

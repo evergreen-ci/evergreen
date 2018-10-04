@@ -8,16 +8,18 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 func init() {
@@ -38,26 +40,15 @@ func TestFetchRevisions(t *testing.T) {
 
 		resetProjectRefs()
 
-		grip.Alertf("project: %+v", projectRef)
 		repoTracker := RepoTracker{
 			testConfig,
-			projectRef,
-			NewGithubRepositoryPoller(projectRef, token),
+			evgProjectRef,
+			NewGithubRepositoryPoller(evgProjectRef, token),
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 10
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
-		})
-
-		Convey("Only get 3 revisions from the given repository if given a "+
-			"limit of 4 commits where only 3 exist", func() {
-			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 4
-			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
-				"Error running repository process %s", repoTracker.Id)
-			numVersions, err := version.Count(version.All)
-			testutil.HandleTestingErr(err, t, "Error finding all versions")
-			So(numVersions, ShouldEqual, 3)
 		})
 
 		Convey("Only get 2 revisions from the given repository if given a "+
@@ -86,7 +77,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		So(err, ShouldBeNil)
 		token, err := testConfig.GetGithubOauthToken()
 		So(err, ShouldBeNil)
-		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef, token)}
+		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef, token)}
 
 		// insert distros used in testing.
 		d := distro.Distro{Id: "test-distro-one"}
@@ -98,13 +89,13 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			" in the database for this project, which should be retrieved when we search"+
 			" for this project's most recent version", func() {
 			createTime := time.Now()
-			revisionOne := *createTestRevision("firstRevision", createTime)
+			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", createTime)
 			revisions := []model.Revision{revisionOne}
 
 			resultVersion, err := repoTracker.StoreRevisions(ctx, revisions)
 			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s", revisionOne.Revision)
 
-			newestVersion, err := version.FindOne(version.ByMostRecentSystemRequester(projectRef.String()))
+			newestVersion, err := version.FindOne(version.ByMostRecentSystemRequester(evgProjectRef.String()))
 			testutil.HandleTestingErr(err, t, "Error retreiving newest version %s", newestVersion.Id)
 
 			So(resultVersion, ShouldResemble, newestVersion)
@@ -116,17 +107,17 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			createTime := time.Now()
 			laterCreateTime := createTime.Add(time.Duration(4 * time.Hour))
 
-			revisionOne := *createTestRevision("one", laterCreateTime)
-			revisionTwo := *createTestRevision("two", createTime)
+			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", laterCreateTime)
+			revisionTwo := *createTestRevision("d8e95fcffa1055fb9e2793fa47fec39d61dd1500", createTime)
 
 			revisions := []model.Revision{revisionOne, revisionTwo}
 
 			_, err := repoTracker.StoreRevisions(ctx, revisions)
 			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
-			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
+			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
 			testutil.HandleTestingErr(err, t, "Error retrieving first stored version %s", versionOne.Id)
-			versionTwo, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionTwo.Revision))
+			versionTwo, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionTwo.Revision))
 			testutil.HandleTestingErr(err, t, "Error retreiving second stored version %s", versionTwo.Revision)
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
@@ -135,7 +126,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(versionTwo.AuthorID, ShouldEqual, "")
 		})
 		Convey("if an evergreen user can be associated with the commit, record it", func() {
-			revisionOne := *createTestRevision("firstRevision", time.Now())
+			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", time.Now())
 			revisions := []model.Revision{revisionOne}
 			revisions[0].AuthorGithubUID = 1234
 
@@ -152,7 +143,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			_, err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
+			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
 			So(err, ShouldBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
@@ -600,4 +591,136 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	assert.NoError(addBuildBreakSubscriptions(&v3, &proj2))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
+}
+
+type CreateVersionFromConfigSuite struct {
+	ref *model.ProjectRef
+	rev *model.Revision
+	d   *distro.Distro
+	suite.Suite
+}
+
+func TestCreateVersionFromConfigSuite(t *testing.T) {
+	suite.Run(t, new(CreateVersionFromConfigSuite))
+}
+
+func (s *CreateVersionFromConfigSuite) SetupTest() {
+	s.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
+	s.ref = &model.ProjectRef{
+		Repo:       "evergreen",
+		Owner:      "evergreen-ci",
+		Identifier: "mci",
+		Branch:     "master",
+		RemotePath: "self-tests.yml",
+		RepoKind:   "github",
+		Enabled:    true,
+	}
+	s.rev = &model.Revision{
+		Author:          "me",
+		AuthorGithubUID: 123,
+		Revision:        "abc",
+		RevisionMessage: "message",
+		CreateTime:      time.Now(),
+	}
+	s.d = &distro.Distro{
+		Id: "d",
+	}
+	s.NoError(s.d.Insert())
+}
+
+func (s *CreateVersionFromConfigSuite) TestCreateBasicVersion() {
+	configYml := `
+buildvariants:
+- name: bv
+  run_on: d
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := version.FindOneId(v.Id)
+	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
+	s.Equal(evergreen.VersionCreated, dbVersion.Status)
+	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
+
+	dbBuild, err := build.FindOneId(v.BuildIds[0])
+	s.NoError(err)
+	s.Equal(v.Id, dbBuild.Version)
+	s.Len(dbBuild.Tasks, 2)
+
+	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(dbTasks, 2)
+}
+
+func (s *CreateVersionFromConfigSuite) TestInvalidConfigErrors() {
+	configYml := `
+buildvariants:
+- name: bv
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, nil)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := version.FindOneId(v.Id)
+	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
+	s.Require().Len(dbVersion.Errors, 1)
+	s.Equal("buildvariant 'bv' in project 'mci' must either specify run_on field or have every task specify a distro.", dbVersion.Errors[0])
+
+	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	s.NoError(err)
+	s.Nil(dbBuild)
+
+	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	s.NoError(err)
+	s.Len(dbTasks, 0)
+}
+
+func (s *CreateVersionFromConfigSuite) TestErrorsMerged() {
+	configYml := `
+buildvariants:
+- name: bv
+  tasks:
+  - name: task1
+  - name: task2
+tasks:
+- name: task1
+- name: task2
+`
+	p := &model.Project{}
+	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	s.NoError(err)
+	vErrs := VersionErrors{
+		Errors:   []string{"err1"},
+		Warnings: []string{"warn1", "warn2"},
+	}
+	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, &vErrs)
+	s.NoError(err)
+	s.Require().NotNil(v)
+
+	dbVersion, err := version.FindOneId(v.Id)
+	s.NoError(err)
+	s.Equal(v.Config, dbVersion.Config)
+	s.Len(dbVersion.Errors, 2)
+	s.Len(dbVersion.Warnings, 2)
 }
