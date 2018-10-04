@@ -258,7 +258,7 @@ func (j *createHostJob) tryRequeue(ctx context.Context) {
 			MaxTime:   j.TimeInfo().MaxTime - (time.Since(j.start)) - time.Minute,
 		})
 		err := j.env.RemoteQueue().Put(job)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "failed to requeue setup job",
 			"host":     j.host.Id,
 			"job":      j.ID(),
