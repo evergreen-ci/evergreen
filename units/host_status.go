@@ -93,6 +93,15 @@ func (j *cloudHostReadyJob) Run(ctx context.Context) {
 				j.AddError(errors.Errorf("programmer error: length of statuses != length of hosts"))
 				continue
 			}
+			hostIDs := []string{}
+			for _, h := range hosts {
+				hostIDs = append(hostIDs, h.Id)
+			}
+			grip.Debug(message.Fields{
+				"message":  "EVG-5444 debugging batch host job",
+				"hosts":    hostIDs,
+				"statuses": statuses,
+			})
 			for i := range hosts {
 				j.AddError(errors.Wrap(setCloudHostStatus(ctx, m, hosts[i], statuses[i]), "error settings cloud host status"))
 			}
