@@ -67,18 +67,14 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
     }
 
     _.map($scope.tempCredentials, function(elem, index) {
-      if (!$scope.Settings.credentials) {
-        $scope.Settings.credentials = {};
-      }
+      $scope.Settings.credentials = {};
       for (var key in elem) {
         $scope.Settings.credentials[key] = elem[key];
       }
     });
 
     _.map($scope.tempExpansions, function(elem, index) {
-      if (!$scope.Settings.expansions) {
-        $scope.Settings.expansions = {};
-      }
+      $scope.Settings.expansions = {};
       for (var key in elem) {
         $scope.Settings.expansions[key] = elem[key];
       }
@@ -248,7 +244,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
     return user;
   }
 
-  $scope.addKVpair = function(chip, property) {
+  $scope.addCredential = function(chip) {
     var obj = {};
     pieces = chip.split(":");
     if (pieces.length !== 2) {
@@ -256,12 +252,29 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
       return null;
     }
     var key = pieces[0];
-    if ($scope.Settings[property][key]) {
-      alert("Duplicate key: " + key);
+    if ($scope.tempCredentials[key]) {
+      alert("Duplicate credential: " + key);
       return null;
     }
     obj[key] = pieces[1];
-    $scope.Settings[property][key] = pieces[1];
+    $scope.tempCredentials[key] = pieces[1];
+    return obj;
+  }
+
+  $scope.addExpansion = function(chip) {
+    var obj = {};
+    pieces = chip.split(":");
+    if (pieces.length !== 2) {
+      alert("Input must be in the format of key:value");
+      return null;
+    }
+    var key = pieces[0];
+    if ($scope.tempExpansions[key]) {
+      alert("Duplicate expansion: " + key);
+      return null;
+    }
+    obj[key] = pieces[1];
+    $scope.tempExpansions[key] = pieces[1];
     return obj;
   }
 
