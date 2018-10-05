@@ -135,7 +135,7 @@ func (h *projectTaskGetHandler) Parse(ctx context.Context, r *http.Request) erro
 
 	// Parse started-after
 	if startedAfter != "" {
-		h.startedAfter, err = time.ParseInLocation(model.APIDateFormat, startedAfter, time.FixedZone("", 0))
+		h.startedAfter, err = time.ParseInLocation(time.RFC3339, startedAfter, time.UTC)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", startedAfter, err.Error()),
@@ -149,7 +149,7 @@ func (h *projectTaskGetHandler) Parse(ctx context.Context, r *http.Request) erro
 
 	// Parse finished-before
 	if finishedBefore != "" {
-		h.finishedBefore, err = time.ParseInLocation(model.APIDateFormat, finishedBefore, time.FixedZone("", 0))
+		h.finishedBefore, err = time.ParseInLocation(time.RFC3339, finishedBefore, time.UTC)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", finishedBefore, err.Error()),
