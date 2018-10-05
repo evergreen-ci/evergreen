@@ -946,21 +946,11 @@ func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (C
 		if err != nil {
 			return StatusUnknown, errors.Wrap(err, "Got an error checking spot details")
 		}
-		grip.Info(message.Fields{
-			"message":    "EVG-5444 host provisioning state errors",
-			"host_id":    h.Id,
-			"state_name": *instanceInfo.State.Name,
-		})
 		return ec2StatusToEvergreenStatus(*instanceInfo.State.Name), nil
 	}
 
 	//Spot request is not fulfilled. Either it's failed/closed for some reason,
 	//or still pending evaluation
-	grip.Info(message.Fields{
-		"message": "EVG-5444 host provisioning state errors",
-		"host_id": h.Id,
-		"state":   *spotInstance.State,
-	})
 	return cloudStatusFromSpotStatus(*spotInstance.State), nil
 }
 
