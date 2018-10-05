@@ -15,24 +15,23 @@ describe('AdminSettingsController', function() {
     });
   }));
 
-  describe('addKVpair', function () {
+  describe('addCredential', function () {
     var validChip = "foo:bar";
     var invalidChip = "foobar";
-    var property = "someProp";
 
     it('returns a chip object for valid input', function() {
-      scope.Settings[property] = {};
-      expect(scope.addKVpair(validChip, property)).toEqual(
+      scope.tempCredentials = {};
+      expect(scope.addCredential(validChip)).toEqual(
         {"foo": "bar"}
       );
       // adding the same thing twice is an error
-      expect(scope.addKVpair(validChip, property)).toBe(
+      expect(scope.addCredential(validChip)).toBe(
         null
       );
     });
 
     it('returns null for invalid chips', function() {
-      expect(scope.addKVpair(invalidChip, property)).toBe(
+      expect(scope.addCredential(invalidChip)).toBe(
         null
       );
     });
