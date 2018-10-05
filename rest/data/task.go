@@ -33,6 +33,18 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return t, nil
 }
 
+func (tc *DBTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time,
+	project string, statuses []string) ([]task.Task, error) {
+
+	tasks, err := task.Find(task.WithinTimePeriod(startedAfter, finishedBefore, project, statuses))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
+}
+
 // FindTasksByBuildId uses the service layer's task type to query the backing database for a
 // list of task that matches buildId. It accepts the startTaskId and a limit
 // to allow for pagination of the queries. It returns results sorted by taskId.
@@ -230,6 +242,10 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 		}
 	}
 	return nil, nil
+}
+
+func (mtc *MockTaskConnector) FindTaskWithinTimePeriod(startedAfter, finishedBefore time.Time, project string, status []string) ([]task.Task, error) {
+	return mtc.CachedTasks, mtc.StoredError
 }
 
 func (mtc *MockTaskConnector) FindOldTasksByIDWithDisplayTasks(id string) ([]task.Task, error) {

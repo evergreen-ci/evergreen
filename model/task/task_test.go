@@ -841,6 +841,95 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.Equal("task", tasks[1].OldTaskId)
 }
 
+func TestWithinTimePeriodProjectFilter(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection, OldCollection))
+
+	taskDocs := []Task{
+		Task{
+			Id:      "task1",
+			Project: "proj",
+		},
+		Task{
+			Id:      "task2",
+			Project: "other",
+		},
+	}
+
+	for _, taskDoc := range taskDocs {
+		assert.NoError(taskDoc.Insert())
+	}
+
+	tasks, err := Find(WithinTimePeriod(time.Time{}, time.Time{}, "proj", []string{}))
+	assert.NoError(err)
+	assert.Len(tasks, 1)
+	assert.Equal(tasks[0].Id, "task1")
+}
+
+func TestWithinTimePeriodDatesFilter(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection, OldCollection))
+
+	taskDocs := []Task{
+		Task{
+			Id:         "task1",
+			FinishTime: time.Now().AddDate(0, 0, -2), // Should match
+			StartTime:  time.Now().AddDate(0, 0, -5), // Shouldn't match
+		},
+		Task{
+			Id:         "task2",
+			FinishTime: time.Now().AddDate(0, 0, -2), // Should match
+			StartTime:  time.Now().AddDate(0, 0, -3), // Should match
+		},
+		Task{
+			Id:         "task3",
+			FinishTime: time.Now(),                   // Shouldn't match
+			StartTime:  time.Now().AddDate(0, 0, -3), // Should match
+		},
+	}
+
+	for _, taskDoc := range taskDocs {
+		assert.NoError(taskDoc.Insert())
+	}
+
+	tasks, err := Find(WithinTimePeriod(
+		time.Now().AddDate(0, 0, -4), time.Now().AddDate(0, 0, -1), "", []string{}))
+	assert.NoError(err)
+	assert.Len(tasks, 1)
+	assert.Equal(tasks[0].Id, "task2")
+}
+
+func TestWithinTimePeriodStatusesFilter(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection, OldCollection))
+
+	taskDocs := []Task{
+		Task{
+			Id:     "task1",
+			Status: "A",
+		},
+		Task{
+			Id:     "task2",
+			Status: "B",
+		},
+		Task{
+			Id:     "task3",
+			Status: "C",
+		},
+	}
+
+	for _, taskDoc := range taskDocs {
+		assert.NoError(taskDoc.Insert())
+	}
+
+	statuses := []string{"A", "B"}
+
+	tasks, err := Find(WithinTimePeriod(time.Time{}, time.Time{}, "", statuses))
+	assert.NoError(err)
+	assert.Len(tasks, 2)
+	assert.Subset([]string{tasks[0].Status, tasks[1].Status}, statuses)
+}
+
 func TestTaskStatusCount(t *testing.T) {
 	assert := assert.New(t)
 	counts := TaskStatusCount{}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -95,6 +96,111 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(taskModel)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for the tasks for a project
+//
+//    /projects/{project_id}/versions/tasks
+type projectTaskGetHandler struct {
+	startedAfter   time.Time
+	finishedBefore time.Time
+	projectId      string
+	statuses       []string
+	sc             data.Connector
+}
+
+func makeFetchProjectTasks(sc data.Connector) gimlet.RouteHandler {
+	return &projectTaskGetHandler{
+		sc: sc,
+	}
+}
+
+func (h *projectTaskGetHandler) Factory() gimlet.RouteHandler {
+	return &projectTaskGetHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *projectTaskGetHandler) Parse(ctx context.Context, r *http.Request) error {
+	// Parse project_id
+	h.projectId = gimlet.GetVars(r)["project_id"]
+
+	var err error
+	vals := r.URL.Query()
+	startedAfter := vals.Get("started_after")
+	finishedBefore := vals.Get("finished_before")
+	statuses := vals["status"]
+
+	// Parse started-after
+	if startedAfter != "" {
+		h.startedAfter, err = time.ParseInLocation(time.RFC3339, startedAfter, time.UTC)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", startedAfter, err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	} else {
+		// Default is 7 days before now
+		h.startedAfter = time.Now().AddDate(0, 0, -7)
+	}
+
+	// Parse finished-before
+	if finishedBefore != "" {
+		h.finishedBefore, err = time.ParseInLocation(time.RFC3339, finishedBefore, time.UTC)
+		if err != nil {
+			return gimlet.ErrorResponse{
+				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", finishedBefore, err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	}
+
+	// Parse status
+	if len(statuses) > 0 {
+		h.statuses = statuses
+	}
+
+	return nil
+}
+
+func (h *projectTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
+	resp := gimlet.NewResponseBuilder()
+	if err := resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	tasks, err := h.sc.FindTaskWithinTimePeriod(h.startedAfter, h.finishedBefore, h.projectId, h.statuses)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	for _, task := range tasks {
+		taskModel := &model.APITask{}
+		err = taskModel.BuildFromService(&task)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "API model error"))
+		}
+
+		if err = resp.AddData(taskModel); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
+	// Consistent response regardless data existence
+	respData := resp.Data()
+	switch d := respData.(type) {
+	case []interface{}:
+		if len(d) == 0 {
+			// make([]int, 0) is used to force searilization of empty array as [] in JSON
+			// Type (`int`) doesn't matter and could be any, since the array is empty
+			return gimlet.NewJSONResponse(make([]int, 0))
+		}
+	}
+
+	return resp
 }
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It

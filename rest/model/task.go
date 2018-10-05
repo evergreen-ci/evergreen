@@ -143,7 +143,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 		at.Logs = ll
 	default:
-		return errors.New("Incorrect type when unmarshalling task")
+		return errors.New(fmt.Sprintf("Incorrect type %T when unmarshalling task", t))
 	}
 
 	return nil
