@@ -193,6 +193,20 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	if currentHost.RunningTask == "" {
+		grip.Error(message.Fields{
+			"message":                 "host is not assigned task, not clearing, asking agent to exit",
+			"task_id":                 t.Id,
+			"task_status_from_db":     t.Status,
+			"task_details_from_db":    t.Details,
+			"task_details_from_agent": details,
+			"host_id":                 currentHost.Id,
+		})
+		endTaskResp.ShouldExit = true
+		gimlet.WriteJSON(w, endTaskResp)
+		return
+	}
+
 	// clear the running task on the host now that the task has finished
 	if err = currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
