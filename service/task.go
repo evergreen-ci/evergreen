@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -297,8 +298,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if et == nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("task not found"))
-				return
+				grip.Error(message.Fields{
+					"message": "execution task not found",
+					"task":    t,
+					"parent":  projCtx.Task.Id,
+				})
+				continue
 			}
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{
 				Id:        et.Id,

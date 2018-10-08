@@ -464,15 +464,6 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
 
-	grip.DebugWhen(b.BuildVariant == "rhel-62-64-bit-mobile", message.Fields{
-		"ticket":  "EVG-5307",
-		"message": "adding tasks",
-		"build":   b,
-		"tasks":   tasks,
-		"version": v,
-		"taskIds": taskIds,
-	})
-
 	if err = tasks.Insert(); err != nil {
 		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
@@ -538,15 +529,6 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
-
-	grip.DebugWhen(b.BuildVariant == "rhel-62-64-bit-mobile", message.Fields{
-		"ticket":  "EVG-5307",
-		"message": "adding task",
-		"build":   b,
-		"tasks":   tasksForBuild,
-		"version": v,
-		"taskIds": taskIds,
-	})
 
 	if err = tasksForBuild.InsertUnordered(); err != nil {
 		return "", errors.Wrapf(err, "error inserting task for build '%s'", buildId)
@@ -686,7 +668,18 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 		execTaskIds := []string{}
 		for _, et := range dt.ExecutionTasks {
-			execTaskIds = append(execTaskIds, execTable.GetId(b.BuildVariant, et))
+			execTaskId := execTable.GetId(b.BuildVariant, et)
+			if execTaskId == "" {
+				grip.Error(message.Fields{
+					"message":         "execution task not found",
+					"variant":         b.BuildVariant,
+					"exec_task":       et,
+					"available_tasks": execTable,
+					"project":         project.Identifier,
+				})
+				continue
+			}
+			execTaskIds = append(execTaskIds)
 		}
 		t := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
 		t.GeneratedBy = generatedBy
