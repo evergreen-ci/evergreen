@@ -118,6 +118,10 @@ LOOP:
 				}
 				return errors.Wrap(err, "error getting next task")
 			}
+			if nextTask.ShouldExit {
+				grip.Notice("Next task response indicates agent should exit")
+				return nil
+			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
 					return errors.New("task response missing secret")
