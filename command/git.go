@@ -76,7 +76,7 @@ func buildHTTPCloneCommand(location *url.URL, branch, dir, token string) ([]stri
 		tokenFlag = fmt.Sprintf("-c 'credential.%s://%s.username=%s'", location.Scheme, location.Host, token)
 	}
 
-	clone := fmt.Sprintf("GIT_ASKPASS='true' git %s clone '%s' '%s'", tokenFlag, location.String(), dir)
+	clone := fmt.Sprintf("git %s clone '%s' '%s'", tokenFlag, location.String(), dir)
 
 	if branch != "" {
 		clone = fmt.Sprintf("%s --branch '%s'", clone, branch)
