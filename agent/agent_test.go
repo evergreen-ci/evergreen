@@ -85,7 +85,7 @@ func (s *AgentSuite) TestNextTaskResponseShouldExit() {
 	defer cancel()
 
 	err := s.a.loop(ctx)
-	s.Error(err)
+	s.NoError(err)
 }
 
 func (s *AgentSuite) TestTaskWithoutSecret() {
