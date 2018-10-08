@@ -542,6 +542,10 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		spotOut, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: spotHostIDs,
 		})
+		grip.Debug(message.Fields{
+			"message": "EVG-5444 logging DescribeSpotInstanceRequests output",
+			"output":  spotOut,
+		})
 		if err != nil {
 			return nil, errors.Wrap(err, "error describing spot instances")
 		}
@@ -562,6 +566,10 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	hostsToCheck = append(hostsToCheck, onDemandHostIDs...)
 	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: hostsToCheck,
+	})
+	grip.Debug(message.Fields{
+		"message": "EVG-5444 logging DescribeInstances output",
+		"output":  out,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "error describing instances")
