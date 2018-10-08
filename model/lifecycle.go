@@ -679,7 +679,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 				})
 				continue
 			}
-			execTaskIds = append(execTaskIds)
+			execTaskIds = append(execTaskIds, execTaskId)
 		}
 		t := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
 		t.GeneratedBy = generatedBy
