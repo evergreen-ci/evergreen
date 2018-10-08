@@ -1253,6 +1253,13 @@ ul.tooltip-tasks li.tooltip-task {
   height: 37em;
   overflow-y: scroll;
 }
+.signal-processing .input-2-char {
+  width: 45px;
+}
+.signal-processing .warning-message {
+  font-style: italic;
+  color: #ed271c;
+}
 textarea {
   background-position: bottom right;
   background-repeat: no-repeat;
