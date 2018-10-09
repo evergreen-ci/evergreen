@@ -12,4 +12,10 @@ mciModule.run(function($templateCache) {
       '</div>' +
     '</div>'
   )
+
+  $templateCache.put('ui-grid-link',
+    '<div class="ui-grid-cell-contents">' +
+      '<a ng-href="{{col.colDef._link(row, col)}}" target="_blank" rel="noopener">{{COL_FIELD}}</a>' +
+    '</div>'
+  )
 })

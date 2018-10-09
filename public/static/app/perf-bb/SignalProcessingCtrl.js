@@ -1,6 +1,6 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $window, $scope, EvgUiGridUtil, MDBQueryAdaptor, Stitch, FORMAT,
-  STITCH_CONFIG, uiGridConstants
+  $window, $scope, EvgUiGridUtil, EvgUtil, MDBQueryAdaptor, Stitch,
+  FORMAT, STITCH_CONFIG, uiGridConstants
 ) {
   var vm = this;
   // Ui grid col accessor
@@ -58,12 +58,30 @@ mciModule.controller('SignalProcessingCtrl', function(
       }
       theMostRecentPromise
         .then(function() {
+          // Hydrate data (generate build id and version id)
+          hydrateData(docs)
           vm.gridOptions.data = docs
         }, function(err) {
           console.error(err)
         }).finally(function() {
           vm.isLoading = false
         })
+    })
+  }
+
+  function hydrateData(docs) {
+    _.each(docs, function(doc) {
+      // '_' is reqiored to distinguish generate data
+      doc._versionId = EvgUtil.generateVersionId({
+        project: project,
+        revision: doc.suspect_revision,
+      })
+      doc._buildId = EvgUtil.generateBuildId({
+        project: project,
+        revision: doc.suspect_revision,
+        buildVariant: doc.variant,
+        dateCreated: doc.createTime,
+      })
     })
   }
 
@@ -177,11 +195,19 @@ mciModule.controller('SignalProcessingCtrl', function(
         name: 'Variant',
         field: 'variant',
         type: 'string',
+        _link: function(row, col) {
+          return '/build/' + row.entity._buildId
+        },
+        cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Task',
         field: 'task',
         type: 'string',
+        _link: function(row, col) {
+          return '/task/' + row.entity.task_id
+        },
+        cellTemplate: 'ui-grid-link',
       },
       {
         name: 'Test',
