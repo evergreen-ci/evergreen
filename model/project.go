@@ -431,7 +431,7 @@ func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []strin
 }
 
 // TaskIdTable builds a TaskIdTable for the given version and project
-func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
+func NewTaskIdTable(p *Project, v *version.Version, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
@@ -440,8 +440,10 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
-		if evergreen.IsPatchRequester(v.Requester) {
+		if evergreen.IsPatchRequester(v.Requester) || v.Requester == evergreen.TriggerRequester {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+		} else if v.Requester == evergreen.TriggerRequester {
+			rev = fmt.Sprintf("%s_%s", sourceRev, defID)
 		}
 		for _, t := range bv.Tasks {
 			if tg := p.FindTaskGroup(t.Name); tg != nil {

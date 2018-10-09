@@ -43,6 +43,15 @@ type VersionErrors struct {
 	Warnings []string
 }
 
+type VersionMetadata struct {
+	Revision      *model.Revision
+	TriggerID     string
+	TriggerType   string
+	EventID       string
+	DefinitionID  string
+	SourceVersion *version.Version
+}
+
 // The RepoPoller interface specifies behavior required of all repository poller
 // implementations
 type RepoPoller interface {
@@ -228,7 +237,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := shellVersionFromRevision(ref, revisions[i])
+					stubVersion, dbErr := shellVersionFromRevision(ref, VersionMetadata{Revision: &revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":  "error creating shell version",
@@ -279,7 +288,10 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		v, err := CreateVersionFromConfig(ref, project, &revisions[i], ignore, versionErrs)
+		metadata := VersionMetadata{
+			Revision: &revisions[i],
+		}
+		v, err := CreateVersionFromConfig(ref, project, metadata, ignore, versionErrs)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error creating version",
@@ -289,7 +301,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
-		if err = addBuildBreakSubscriptions(v, ref); err != nil {
+		if err = AddBuildBreakSubscriptions(v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":  "error creating build break subscriptions",
 				"runner":   RunnerName,
@@ -384,7 +396,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 	return project, nil
 }
 
-func addBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
+func AddBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
 	subscriptionBase := event.Subscription{
 		ResourceType: event.ResourceTypeVersion,
 		Trigger:      "build-break",
@@ -467,17 +479,17 @@ func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
 	return subscriber, nil
 }
 
-func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, rev *model.Revision, ignore bool, versionErrs *VersionErrors) (*version.Version, error) {
+func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*version.Version, error) {
 	if ref == nil || config == nil {
 		return nil, errors.New("project ref and project cannot be nil")
 	}
 
 	// create a version document
-	v, err := shellVersionFromRevision(ref, *rev)
+	v, err := shellVersionFromRevision(ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
-	if err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier, rev.Revision); err != nil {
+	if err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier, metadata.Revision.Revision); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 	configYaml, err := yaml.Marshal(config)
@@ -516,15 +528,15 @@ func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, rev *
 		}
 	}
 
-	return v, errors.Wrap(createVersionItems(v, ref, config), "error creating version items")
+	return v, errors.Wrap(createVersionItems(v, ref, metadata, config), "error creating version items")
 }
 
 // shellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func shellVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version.Version, error) {
-	u, err := user.FindByGithubUID(rev.AuthorGithubUID)
+func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (*version.Version, error) {
+	u, err := user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
 	grip.Error(message.WrapError(err, message.Fields{
-		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", rev.AuthorGithubUID),
+		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", metadata.Revision.AuthorGithubUID),
 	}))
 
 	number, err := model.GetNewRevisionOrderNumber(ref.Identifier)
@@ -532,21 +544,29 @@ func shellVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*versi
 		return nil, err
 	}
 	v := &version.Version{
-		Author:              rev.Author,
-		AuthorEmail:         rev.AuthorEmail,
+		Author:              metadata.Revision.Author,
+		AuthorEmail:         metadata.Revision.AuthorEmail,
 		Branch:              ref.Branch,
-		CreateTime:          rev.CreateTime,
-		Id:                  util.CleanName(fmt.Sprintf("%v_%v", ref.String(), rev.Revision)),
+		CreateTime:          metadata.Revision.CreateTime,
 		Identifier:          ref.Identifier,
-		Message:             rev.RevisionMessage,
+		Message:             metadata.Revision.RevisionMessage,
 		Owner:               ref.Owner,
 		RemotePath:          ref.RemotePath,
 		Repo:                ref.Repo,
 		RepoKind:            ref.RepoKind,
 		Requester:           evergreen.RepotrackerVersionRequester,
-		Revision:            rev.Revision,
+		Revision:            metadata.Revision.Revision,
 		Status:              evergreen.VersionCreated,
 		RevisionOrderNumber: number,
+		TriggerID:           metadata.TriggerID,
+		TriggerType:         metadata.TriggerType,
+		TriggerEvent:        metadata.EventID,
+	}
+	if metadata.TriggerType != "" {
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.DefinitionID))
+		v.Requester = evergreen.TriggerRequester
+	} else {
+		v.Id = util.CleanName(fmt.Sprintf("%s_%s", ref.String(), metadata.Revision.Revision))
 	}
 	if u != nil {
 		v.AuthorID = u.Id
@@ -561,18 +581,6 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 		return errors.Wrap(err, "Error getting latest version")
 	}
 
-	if latest.Revision == revision {
-		grip.Critical(message.Fields{
-			"project":   projectId,
-			"runner":    RunnerName,
-			"message":   "attempting to add a duplicate version",
-			"rev_num":   revOrderNum,
-			"revision":  revision,
-			"latest_id": latest.Id,
-		})
-		return errors.New("refusing to add a new version with a duplicate revision id")
-	}
-
 	// When there are no versions in the db yet, sanity check is moot
 	if latest != nil {
 		if revOrderNum <= latest.RevisionOrderNumber {
@@ -585,9 +593,13 @@ func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
-func createVersionItems(v *version.Version, ref *model.ProjectRef, project *model.Project) error {
+func createVersionItems(v *version.Version, ref *model.ProjectRef, metadata VersionMetadata, project *model.Project) error {
 	// generate all task Ids so that we can easily reference them for dependencies
-	taskIds := model.NewTaskIdTable(project, v)
+	sourceRev := ""
+	if metadata.SourceVersion != nil {
+		sourceRev = metadata.SourceVersion.Revision
+	}
+	taskIds := model.NewTaskIdTable(project, v, sourceRev, metadata.DefinitionID)
 
 	// create all builds for the version
 	for _, buildvariant := range project.BuildVariants {
@@ -595,7 +607,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 			continue
 		}
 
-		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil, "")
+		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil, "", sourceRev, metadata.DefinitionID)
 		if err != nil {
 			return errors.WithStack(err)
 		}

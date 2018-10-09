@@ -146,6 +146,11 @@ type Task struct {
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
+
+	// Fields set if triggered by an upstream build
+	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
+	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning

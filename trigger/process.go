@@ -1,8 +1,15 @@
 package trigger
 
 import (
+	"regexp"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -71,4 +78,191 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	}
 
 	return notifications, catcher.Resolve()
+}
+
+type projectProcessor func(ProcessorArgs) (*version.Version, error)
+
+type ProcessorArgs struct {
+	SourceVersion     *version.Version
+	DownstreamProject model.ProjectRef
+	File              string
+	Command           string
+	TriggerID         string
+	TriggerType       string
+	EventID           string
+	DefinitionID      string
+}
+
+func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
+	switch e.EventType {
+	case event.TaskFinished:
+		t, err := task.FindOneId(e.ResourceId)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding task")
+		}
+		if t == nil {
+			return nil, errors.Errorf("task '%s' not found", e.ResourceId)
+		}
+		return triggerDownstreamProjectsForTask(t, e, processor)
+	case event.BuildStateChange:
+		if e.ResourceType != event.ResourceTypeBuild {
+			return nil, nil
+		}
+		data, ok := e.Data.(*event.BuildEventData)
+		if !ok {
+			return nil, errors.Errorf("unable to convert %#v to BuildEventData", e.Data)
+		}
+		if data.Status != evergreen.BuildFailed && data.Status != evergreen.BuildSucceeded {
+			return nil, nil
+		}
+		b, err := build.FindOneId(e.ResourceId)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding build")
+		}
+		if b == nil {
+			return nil, errors.Errorf("build '%s' not found", e.ResourceId)
+		}
+		return triggerDownstreamProjectsForBuild(b, e, processor)
+	default:
+		return nil, nil
+	}
+}
+
+func triggerDownstreamProjectsForTask(t *task.Task, e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
+	if t.Requester != evergreen.RepotrackerVersionRequester {
+		return nil, nil
+	}
+	downstreamProjects, err := model.FindDownstreamProjects(t.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project ref")
+	}
+	sourceVersion, err := version.FindOneId(t.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding version")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	versions := []version.Version{}
+projectLoop:
+	for _, ref := range downstreamProjects {
+
+		for _, trigger := range ref.Triggers {
+			if trigger.Level != model.ProjectTriggerLevelTask {
+				continue
+			}
+			if trigger.Project != t.Project {
+				continue
+			}
+			if trigger.Status != "" && trigger.Status != t.Status {
+				continue
+			}
+			if trigger.TaskRegex != "" {
+				regex, err := regexp.Compile(trigger.TaskRegex)
+				if err != nil {
+					catcher.Add(err)
+					continue
+				}
+				if !regex.MatchString(t.DisplayName) {
+					continue
+				}
+			}
+			if trigger.BuildVariantRegex != "" {
+				regex, err := regexp.Compile(trigger.BuildVariantRegex)
+				if err != nil {
+					catcher.Add(err)
+					continue
+				}
+				if !regex.MatchString(t.BuildVariant) {
+					continue
+				}
+			}
+
+			args := ProcessorArgs{
+				SourceVersion:     sourceVersion,
+				DownstreamProject: ref,
+				File:              trigger.ConfigFile,
+				Command:           trigger.Command,
+				TriggerType:       model.ProjectTriggerLevelTask,
+				TriggerID:         t.Id,
+				EventID:           e.ID,
+				DefinitionID:      trigger.DefinitionID,
+			}
+			v, err := processor(args)
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			if v != nil {
+				versions = append(versions, *v)
+			}
+			continue projectLoop
+		}
+	}
+
+	return versions, catcher.Resolve()
+}
+
+func triggerDownstreamProjectsForBuild(b *build.Build, e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
+	if b.Requester != evergreen.RepotrackerVersionRequester {
+		return nil, nil
+	}
+	downstreamProjects, err := model.FindDownstreamProjects(b.Project)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project ref")
+	}
+	sourceVersion, err := version.FindOneId(b.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding version")
+	}
+
+	catcher := grip.NewBasicCatcher()
+	versions := []version.Version{}
+projectLoop:
+	for _, ref := range downstreamProjects {
+
+		for _, trigger := range ref.Triggers {
+
+			if trigger.Level != model.ProjectTriggerLevelBuild {
+				continue
+			}
+			if trigger.Project != b.Project {
+				continue
+			}
+			if trigger.Status != "" && trigger.Status != b.Status {
+				continue
+			}
+			if trigger.BuildVariantRegex != "" {
+				regex, err := regexp.Compile(trigger.BuildVariantRegex)
+				if err != nil {
+					catcher.Add(err)
+					continue
+				}
+				if !regex.MatchString(b.BuildVariant) {
+					continue
+				}
+			}
+
+			args := ProcessorArgs{
+				SourceVersion:     sourceVersion,
+				DownstreamProject: ref,
+				File:              trigger.ConfigFile,
+				Command:           trigger.Command,
+				TriggerType:       model.ProjectTriggerLevelBuild,
+				TriggerID:         b.Id,
+				EventID:           e.ID,
+				DefinitionID:      trigger.DefinitionID,
+			}
+			v, err := processor(args)
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			if v != nil {
+				versions = append(versions, *v)
+			}
+			continue projectLoop
+		}
+	}
+
+	return versions, catcher.Resolve()
 }

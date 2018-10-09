@@ -714,7 +714,7 @@ buildvariants:
 		}
 		So(v.Insert(), ShouldBeNil)
 
-		table := NewTaskIdTable(project, v)
+		table := NewTaskIdTable(project, v, "", "")
 		tt := table.ExecutionTasks
 		dt := table.DisplayTasks
 
@@ -741,7 +741,7 @@ buildvariants:
 
 		Convey("if a non-existent build variant is passed in, an error should be returned", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, "blecch", false, []string{}, nil, "")
+			buildId, err := CreateBuildFromVersion(project, v, table, "blecch", false, []string{}, nil, "", "", "")
 			So(err, ShouldNotBeNil)
 			So(buildId, ShouldEqual, "")
 
@@ -750,10 +750,10 @@ buildvariants:
 		Convey("if no task names are passed in to be used, all of the default"+
 			" tasks for the build variant should be created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "")
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
-			buildId2, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil, "")
+			buildId2, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId2, ShouldNotEqual, "")
 
@@ -769,7 +769,7 @@ buildvariants:
 			" specified tasks should be created", func() {
 
 			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false,
-				[]string{"taskA", "taskB"}, nil, "")
+				[]string{"taskA", "taskB"}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -783,7 +783,7 @@ buildvariants:
 		Convey("ensure distro is populated to tasks", func() {
 
 			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false,
-				[]string{"taskA", "taskB"}, nil, "")
+				[]string{"taskA", "taskB"}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -800,7 +800,7 @@ buildvariants:
 		Convey("the build should contain task caches that correspond exactly"+
 			" to the tasks created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil, "")
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -832,7 +832,7 @@ buildvariants:
 
 		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "")
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -868,13 +868,13 @@ buildvariants:
 		Convey("all of the tasks created should have the dependencies"+
 			"and priorities specified in the project", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "")
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
-			buildId2, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil, "")
+			buildId2, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId2, ShouldNotEqual, "")
-			buildId3, err := CreateBuildFromVersion(project, v, table, buildVar3.Name, false, []string{}, nil, "")
+			buildId3, err := CreateBuildFromVersion(project, v, table, buildVar3.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId3, ShouldNotEqual, "")
 
@@ -920,7 +920,7 @@ buildvariants:
 
 		Convey("all of the build's essential fields should be set correctly", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "")
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -945,7 +945,7 @@ buildvariants:
 
 		Convey("all of the tasks' essential fields should be set correctly", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "")
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil, "", "", "")
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -1026,7 +1026,7 @@ buildvariants:
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
 			func() {
 
-				buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, true, []string{}, nil, "")
+				buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, true, []string{}, nil, "", "", "")
 				So(err, ShouldBeNil)
 				So(buildId, ShouldNotEqual, "")
 
@@ -1167,9 +1167,9 @@ func TestCreateTaskGroup(t *testing.T) {
 		},
 		Config: projYml,
 	}
-	table := NewTaskIdTable(proj, v)
+	table := NewTaskIdTable(proj, v, "", "")
 
-	buildId, err := CreateBuildFromVersion(proj, v, table, "bv", true, nil, nil, "")
+	buildId, err := CreateBuildFromVersion(proj, v, table, "bv", true, nil, nil, "", "", "")
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(build.ById(buildId))
 	assert.NoError(err)

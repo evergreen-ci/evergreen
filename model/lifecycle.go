@@ -458,7 +458,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	}
 
 	// create the new tasks for the build
-	taskIds := NewTaskIdTable(project, v)
+	taskIds := NewTaskIdTable(project, v, "", "")
 	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
@@ -478,8 +478,9 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
+// TODO: clean up signature
 func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskIdConfig,
-	buildName string, activated bool, taskNames []string, displayNames []string, generatedBy string) (string, error) {
+	buildName string, activated bool, taskNames []string, displayNames []string, generatedBy, sourceRev, defID string) (string, error) {
 
 	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
 
@@ -492,6 +493,8 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	rev := v.Revision
 	if evergreen.IsPatchRequester(v.Requester) {
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+	} else if v.Requester == evergreen.TriggerRequester {
+		rev = fmt.Sprintf("%s_%s", sourceRev, defID)
 	}
 
 	// create a new build id
@@ -514,6 +517,9 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 		DisplayName:         buildVariant.DisplayName,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,
+		TriggerID:           v.TriggerID,
+		TriggerType:         v.TriggerType,
+		TriggerEvent:        v.TriggerEvent,
 	}
 
 	// get a new build number for the build
@@ -888,6 +894,9 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		Project:             project.Identifier,
 		Priority:            buildVarTask.Priority,
 		GenerateTask:        project.IsGenerateTask(buildVarTask.Name),
+		TriggerID:           v.TriggerID,
+		TriggerType:         v.TriggerType,
+		TriggerEvent:        v.TriggerEvent,
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName
@@ -933,6 +942,9 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		Activated:           b.Activated,
 		DispatchTime:        util.ZeroTime,
 		ScheduledTime:       util.ZeroTime,
+		TriggerID:           v.TriggerID,
+		TriggerType:         v.TriggerType,
+		TriggerEvent:        v.TriggerEvent,
 	}
 }
 
@@ -1105,7 +1117,7 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
-		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames, generatedBy)
+		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames, generatedBy, "", "")
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			v.Id, pair.Variant, activated)
 		if err != nil {
