@@ -13,7 +13,7 @@ mciModule.controller('PerfBBWarningsCtrl', function(
   vm.lookBackDays = vm.state.lookBackDays
 
   vm.applyFiltering = function() {
-    // ay the form the state is 'pristine'
+    // Say the form the state is 'pristine'
     $scope.form.$setPristine()
     // Update controller state
     vm.state.lookBackDays = +vm.lookBackDays 

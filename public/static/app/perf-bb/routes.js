@@ -1,7 +1,7 @@
 mciModule.config(function($routeProvider, $locationProvider) {
   function applyProject(_, url) {
     //FIXME (minor) $window might be a more idiomatic choice
-    //      $window could be used in $config
+    //      $window could not be used in $config
     return url + '/' + window.project
   }
 
