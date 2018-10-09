@@ -40,8 +40,8 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 		Panels: []UIPanel{
 			{
 				Includes: []template.HTML{
-					`<script type="text/javascript" src="/static/plugins/perf/js/trend_chart.js"></script>`,
-					`<script type="text/javascript" src="/static/plugins/perf/js/perf.js"></script>`,
+					`<script type="text/javascript" src="/static/app/perf/trend_chart.js"></script>`,
+					`<script type="text/javascript" src="/static/app/perf/perf.js"></script>`,
 				},
 				Page:      TaskPage,
 				Position:  PageCenter,
