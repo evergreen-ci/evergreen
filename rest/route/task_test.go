@@ -165,9 +165,8 @@ func TestFetchArtifacts(t *testing.T) {
 }
 
 type ProjectTaskWithinDatesSuite struct {
-	sc   *data.MockConnector
-	data data.MockTaskConnector
-	h    *projectTaskGetHandler
+	sc *data.MockConnector
+	h  *projectTaskGetHandler
 
 	suite.Suite
 }
