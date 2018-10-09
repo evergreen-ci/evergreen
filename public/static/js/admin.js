@@ -66,15 +66,15 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
       $scope.Settings.slack.options.fields = fieldsSet;
     }
 
+    $scope.Settings.credentials = {};
     _.map($scope.tempCredentials, function(elem, index) {
-      $scope.Settings.credentials = {};
       for (var key in elem) {
         $scope.Settings.credentials[key] = elem[key];
       }
     });
 
+    $scope.Settings.expansions = {};
     _.map($scope.tempExpansions, function(elem, index) {
-      $scope.Settings.expansions = {};
       for (var key in elem) {
         $scope.Settings.expansions[key] = elem[key];
       }
