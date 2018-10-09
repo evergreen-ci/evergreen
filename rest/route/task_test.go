@@ -171,33 +171,35 @@ type ProjectTaskWithinDatesSuite struct {
 	suite.Suite
 }
 
+func TestProjectTaskWithinDatesSuite(t *testing.T) {
+	suite.Run(t, new(ProjectTaskWithinDatesSuite))
+}
+
 func (s *ProjectTaskWithinDatesSuite) SetupTest() {
 	s.h = &projectTaskGetHandler{sc: s.sc}
 }
 
-func (s *ProjectTaskWithinDatesSuite) TestParseAllArguments(t *testing.T) {
-	url := "https://evergreen.mongodb.com/rest/v2/projects/projA/versions/tasks" +
+func (s *ProjectTaskWithinDatesSuite) TestParseAllArguments() {
+	url := "https://evergreen.mongodb.com/rest/v2/projects/none/versions/tasks" +
 		"?status=A" +
 		"&status=B" +
-		"&started-after=2018-01-01T00%3A00%3A00Z" +
-		"&finished-before=2019-02-02T00%3A00%3A00Z"
+		"&started_after=2018-01-01T00%3A00%3A00Z" +
+		"&finished_before=2018-02-02T00%3A00%3A00Z"
 	r, err := http.NewRequest("GET", url, &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
-	s.Equal(s.h.projectId, "projA")
 	s.Subset([]string{"A", "B"}, s.h.statuses)
 	s.Equal(s.h.startedAfter, time.Date(2018, time.January, 1, 0, 0, 0, 0, time.UTC))
 	s.Equal(s.h.finishedBefore, time.Date(2018, time.February, 2, 0, 0, 0, 0, time.UTC))
 }
 
-func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues(t *testing.T) {
-	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/projects/projA/versions/tasks", &bytes.Buffer{})
+func (s *ProjectTaskWithinDatesSuite) TestHasDefaultValues() {
+	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/projects/none/versions/tasks", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
-	s.Equal(s.h.projectId, "")
-	s.Equal(s.h.statuses, []string{})
+	s.Equal([]string(nil), s.h.statuses)
 	s.True(s.h.startedAfter.Unix()-time.Now().AddDate(0, 0, -7).Unix() <= 0)
-	s.Equal(s.h.finishedBefore, time.Time{})
+	s.Equal(time.Time{}, s.h.finishedBefore)
 }
