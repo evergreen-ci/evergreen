@@ -168,14 +168,16 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			}))
 			return errors.WithStack(err)
 		}
-		err = model.UpdateLastRevision(lastVersion.Identifier, lastVersion.Revision)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem updating last revision for repository",
-				"project": projectRef,
-				"runner":  RunnerName,
-			}))
-			return errors.WithStack(err)
+		if lastVersion != nil {
+			err = model.UpdateLastRevision(lastVersion.Identifier, lastVersion.Revision)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "problem updating last revision for repository",
+					"project": projectRef,
+					"runner":  RunnerName,
+				}))
+				return errors.WithStack(err)
+			}
 		}
 	}
 
