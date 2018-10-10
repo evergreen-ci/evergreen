@@ -24,6 +24,7 @@ module.exports = function(config) {
       'thirdparty/jquery.js',
       'thirdparty/ui-grid.min.js',
       'thirdparty/select.min.js',
+      'thirdparty/moment.min.js',
       'js/mci_module.js',
       'js/**/*.js',
       'plugins/*/js/*.js',
