@@ -92,14 +92,13 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			revisionOne := *createTestRevision("1d97b5e8127a684f341d9fea5b3a2848f075c3b0", createTime)
 			revisions := []model.Revision{revisionOne}
 
-			resultVersion, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
 			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s", revisionOne.Revision)
 
 			newestVersion, err := version.FindOne(version.ByMostRecentSystemRequester(evgProjectRef.String()))
 			testutil.HandleTestingErr(err, t, "Error retreiving newest version %s", newestVersion.Id)
 
-			So(resultVersion, ShouldResemble, newestVersion)
-			So(resultVersion.AuthorID, ShouldEqual, "")
+			So(newestVersion.AuthorID, ShouldEqual, "")
 		})
 
 		Convey("On storing several repo revisions, we expect a version to be created "+
@@ -112,7 +111,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			revisions := []model.Revision{revisionOne, revisionTwo}
 
-			_, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
 			testutil.HandleTestingErr(err, t, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
 			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
@@ -141,7 +140,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			}
 			So(u.Insert(), ShouldBeNil)
 
-			_, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
 			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(evgProjectRef.Identifier, revisionOne.Revision))
 			So(err, ShouldBeNil)
@@ -187,13 +186,13 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			func() {
 				So(poller.ConfigGets, ShouldBeZeroValue)
 				// Store revisions the first time
-				_, err := repoTracker.StoreRevisions(ctx, revisions)
+				err := repoTracker.StoreRevisions(ctx, revisions)
 				So(err, ShouldBeNil)
 				// We should have fetched the config once for each revision
 				So(poller.ConfigGets, ShouldEqual, len(revisions))
 
 				// Store them again
-				_, err = repoTracker.StoreRevisions(ctx, revisions)
+				err = repoTracker.StoreRevisions(ctx, revisions)
 				So(err, ShouldBeNil)
 				// We shouldn't have fetched the config any additional times
 				// since we have already stored these versions
@@ -204,9 +203,11 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		Convey("We should handle invalid configuration files gracefully by storing a stub version", func() {
 			errStrs := []string{"Someone dun' goof'd"}
 			poller.setNextError(projectConfigError{errStrs, []string{}})
-			stubVersion, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
 			// We want this error to get swallowed so a config error
 			// doesn't stop additional versions from getting created
+			So(err, ShouldBeNil)
+			stubVersion, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(stubVersion.Errors, ShouldResemble, errStrs)
 			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
@@ -214,7 +215,9 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 		Convey("Project configuration files with missing distros should still create versions", func() {
 			poller.addBadDistro("Cray-Y-MP")
-			v, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			v, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(v, ShouldNotBeNil)
 			So(len(v.BuildVariants), ShouldBeGreaterThan, 0)
@@ -229,9 +232,11 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			func() {
 				unexpectedError := errors.New("Something terrible has happened!!")
 				poller.setNextError(unexpectedError)
-				v, err := repoTracker.StoreRevisions(ctx, revisions)
-				So(v, ShouldBeNil)
+				err := repoTracker.StoreRevisions(ctx, revisions)
 				So(err.Error(), ShouldEqual, unexpectedError.Error())
+				v, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
+				So(v, ShouldBeNil)
+				So(err, ShouldBeNil)
 			},
 		)
 
@@ -291,7 +296,9 @@ func TestBatchTimes(t *testing.T) {
 				},
 				NewMockRepoPoller(project, revisions),
 			}
-			v, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			v, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
 			So(v, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(len(v.BuildVariants), ShouldEqual, 2)
@@ -314,7 +321,9 @@ func TestBatchTimes(t *testing.T) {
 				},
 				NewMockRepoPoller(project, revisions),
 			}
-			version, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			version, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
@@ -347,7 +356,9 @@ func TestBatchTimes(t *testing.T) {
 				},
 				NewMockRepoPoller(project, revisions),
 			}
-			version, err := repoTracker.StoreRevisions(ctx, revisions)
+			err := repoTracker.StoreRevisions(ctx, revisions)
+			So(err, ShouldBeNil)
+			version, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
 			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
@@ -378,9 +389,11 @@ func TestBatchTimes(t *testing.T) {
 				},
 				NewMockRepoPoller(project, revisions),
 			}
-			version, err := repoTracker.StoreRevisions(ctx, revisions)
-			So(version, ShouldNotBeNil)
+			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
+			version, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
+			So(err, ShouldBeNil)
+			So(version, ShouldNotBeNil)
 			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
 			bv1, found := findStatus(version, "bv1")
 			So(found, ShouldBeTrue)
@@ -430,9 +443,11 @@ func TestBatchTimes(t *testing.T) {
 			},
 			NewMockRepoPoller(project, revisions),
 		}
-		version, err := repoTracker.StoreRevisions(ctx, revisions)
-		So(version, ShouldNotBeNil)
+		err := repoTracker.StoreRevisions(ctx, revisions)
 		So(err, ShouldBeNil)
+		version, err := version.FindOne(version.ByMostRecentSystemRequester("testproject"))
+		So(err, ShouldBeNil)
+		So(version, ShouldNotBeNil)
 
 		Convey("the new variant should activate immediately", func() {
 			So(model.ActivateElapsedBuilds(version), ShouldBeNil)
