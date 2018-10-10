@@ -168,6 +168,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	location, err = projectRef.HTTPLocation()
 	s.Require().NoError(err)
 	opts.branch = ""
+	opts.location = location
 	cmds, err = buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)

@@ -119,7 +119,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 		if err != nil {
 			return nil, err
 		}
-		cloneOpts := cloneOpts{
+		opts := cloneOpts{
 			location: location,
 			owner:    conf.ProjectRef.Owner,
 			repo:     conf.ProjectRef.Repo,
@@ -127,7 +127,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 			dir:      c.Directory,
 			token:    c.Token,
 		}
-		cloneCmd, err = buildHTTPCloneCommand(cloneOpts)
+		cloneCmd, err = buildHTTPCloneCommand(opts)
 		if err != nil {
 			return nil, err
 		}
@@ -183,14 +183,14 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 		if err != nil {
 			return nil, errors.Wrap(err, "repository URL is invalid")
 		}
-		cloneOpts := cloneOpts{
+		opts := cloneOpts{
 			location: url,
 			owner:    owner,
 			repo:     repo,
 			dir:      moduleBase,
 			token:    c.Token,
 		}
-		cmds, err := buildHTTPCloneCommand(cloneOpts)
+		cmds, err := buildHTTPCloneCommand(opts)
 		if err != nil {
 			return nil, err
 		}
