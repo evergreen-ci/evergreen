@@ -147,7 +147,15 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// build clone command to clone by http, master branch with token into 'dir'
 	location, err := projectRef.HTTPLocation()
 	s.Require().NoError(err)
-	cmds, err := buildHTTPCloneCommand(location, projectRef.Owner, projectRef.Repo, projectRef.Branch, "dir", "GITHUBTOKEN")
+	opts := cloneOpts{
+		location: location,
+		owner:    projectRef.Owner,
+		repo:     projectRef.Repo,
+		branch:   projectRef.Branch,
+		dir:      "dir",
+		token:    "GITHUBTOKEN",
+	}
+	cmds, err := buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
@@ -159,7 +167,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	location, err = projectRef.HTTPLocation()
 	s.Require().NoError(err)
-	cmds, err = buildHTTPCloneCommand(location, projectRef.Owner, projectRef.Repo, "", "dir", "GITHUBTOKEN")
+	opts.branch = ""
+	cmds, err = buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
@@ -173,24 +182,24 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	location, err = url.Parse("http://github.com/deafgoat/mci_test.git")
 	s.Require().NoError(err)
 	s.Require().NotNil(location)
-	cmds, err = buildHTTPCloneCommand(location, projectRef.Owner, projectRef.Repo, projectRef.Branch, "dir", "GITHUBTOKEN")
+	opts.branch = projectRef.Branch
+	cmds, err = buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
 	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
-	s.Equal("https", location.Scheme)
 
 	// ensure that we aren't sending the github oauth token to other
 	// servers
 	location, err = url.Parse("http://someothergithost.com/something/else.git")
 	s.Require().NoError(err)
 	s.Require().NotNil(location)
-	cmds, err = buildHTTPCloneCommand(location, projectRef.Owner, projectRef.Repo, projectRef.Branch, "dir", "GITHUBTOKEN")
+	opts.location = location
+	cmds, err = buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("echo \"git clone https://[redacted oauth token]@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
 	s.Equal("git clone https://GITHUBTOKEN@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
-	s.Equal("https", location.Scheme)
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
