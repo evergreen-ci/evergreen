@@ -190,7 +190,6 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 // This function is idempotent with regard to storing the same version multiple times.
 func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) error {
 	var newestVersion *version.Version
-	var err error
 	ref := repoTracker.ProjectRef
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
@@ -303,7 +302,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		newestVersion = v
 	}
 	if newestVersion != nil {
-		err = model.UpdateLastRevision(newestVersion.Identifier, newestVersion.Revision)
+		err := model.UpdateLastRevision(newestVersion.Identifier, newestVersion.Revision)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem updating last revision for repository",
