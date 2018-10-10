@@ -14,6 +14,25 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestFindDistroById(t *testing.T) {
+	assert := assert.New(t)
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindDistroById")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
+
+	sc := &DBConnector{}
+	id := fmt.Sprintf("distro_%d", rand.Int())
+	d := &distro.Distro{
+		Id: id,
+	}
+	assert.Nil(d.Insert())
+	found, err := sc.FindDistroById(id)
+	assert.Nil(err)
+	assert.Equal(found.Id, id, "The _ids should match")
+	assert.NotEqual(found.Id, -1, "The _ids should not match")
+}
+
 func TestFindAllDistros(t *testing.T) {
 	assert := assert.New(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllDistros")
@@ -26,7 +45,7 @@ func TestFindAllDistros(t *testing.T) {
 	numDistros := 10
 	for i := 0; i < numDistros; i++ {
 		d := &distro.Distro{
-			Id: fmt.Sprintf("distro_%d", rand.Int()),
+			Id: fmt.Sprintf("distro_%d", rand.Int()+50),
 		}
 		assert.Nil(d.Insert())
 	}

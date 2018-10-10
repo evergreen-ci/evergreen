@@ -106,6 +106,8 @@ type Connector interface {
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)
 
+	// FindDistroById is a method to find the distro matching the given distroId.
+	FindDistroById(string) (*distro.Distro, error)
 	// FindAllDistros is a method to find a sorted list of all distros.
 	FindAllDistros() ([]distro.Distro, error)
 
