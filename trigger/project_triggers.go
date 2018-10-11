@@ -32,7 +32,7 @@ func TriggerDownstreamVersion(source *version.Version, downstreamProject, file, 
 		return nil, errors.Errorf("unable to find project ref %s", downstreamProject)
 	}
 
-	// propogate version metadata to the downstream version
+	// propagate version metadata to the downstream version
 	rev, err := revisionFromVersion(*source)
 	if err != nil {
 		return nil, err

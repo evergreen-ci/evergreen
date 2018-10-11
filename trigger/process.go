@@ -80,7 +80,7 @@ func NotificationsFromEvent(e *event.EventLogEntry) ([]notification.Notification
 	return notifications, catcher.Resolve()
 }
 
-type projectProcessor = func(*version.Version, string, string, string) (*version.Version, error)
+type projectProcessor func(*version.Version, string, string, string) (*version.Version, error)
 
 func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
 	switch e.EventType {
@@ -115,6 +115,9 @@ func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]
 }
 
 func triggerDownstreamProjectsForTask(t *task.Task, processor projectProcessor) ([]version.Version, error) {
+	if t.Requester != evergreen.RepotrackerVersionRequester {
+		return nil, nil
+	}
 	downstreamProjects, err := model.FindDownstreamProjects(t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project ref")
@@ -174,6 +177,9 @@ func triggerDownstreamProjectsForTask(t *task.Task, processor projectProcessor) 
 }
 
 func triggerDownstreamProjectsForBuild(b *build.Build, processor projectProcessor) ([]version.Version, error) {
+	if b.Requester != evergreen.RepotrackerVersionRequester {
+		return nil, nil
+	}
 	downstreamProjects, err := model.FindDownstreamProjects(b.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project ref")
