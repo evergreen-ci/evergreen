@@ -28,6 +28,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -384,4 +385,20 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	s.Require().NotNil(msg)
 	s.Equal(level.Info, msg.Priority)
 	s.Equal("Skipping empty patch file...", msg.Message.String())
+}
+
+func TestParseGitUrl(t *testing.T) {
+	assert := assert.New(t)
+	sender := send.MakeInternalLogger()
+	logger := client.NewSingleChannelLogHarness("", sender)
+
+	httpsUrl := "https://github.com/evergreen-ci/sample.git"
+	owner, repo := parseGitUrl(httpsUrl, logger)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
+
+	sshUrl := "git@github.com:evergreen-ci/sample.git"
+	owner, repo = parseGitUrl(sshUrl, logger)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
 }

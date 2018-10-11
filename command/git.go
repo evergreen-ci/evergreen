@@ -280,24 +280,10 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 				revision = module.Branch
 			}
 		}
-
-		splitModule := strings.Split(module.Repo, ":")
-		if len(splitModule) != 2 {
-			logger.Execution().Errorf("Invalid module format '%s'", module.Repo)
+		owner, repo := parseGitUrl(module.Repo, logger)
+		if owner == "" || repo == "" {
 			continue
 		}
-		splitOwner := strings.Split(splitModule[1], "/")
-		if len(splitOwner) != 2 {
-			logger.Execution().Errorf("Invalid module format '%s'", module.Repo)
-			continue
-		}
-		owner := splitOwner[0]
-		splitRepo := strings.Split(splitOwner[1], ".")
-		if len(splitRepo) != 2 {
-			logger.Execution().Errorf("Invalid module format '%s'", module.Repo)
-			continue
-		}
-		repo := splitRepo[0]
 
 		var moduleCmds []string
 		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision)
@@ -347,6 +333,47 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	}
 
 	return nil
+}
+
+func parseGitUrl(url string, logger client.LoggerProducer) (string, string) {
+	var owner string
+	var repo string
+	httpsPrefix := "https://"
+	if strings.HasPrefix(url, httpsPrefix) {
+		url = strings.TrimPrefix(url, httpsPrefix)
+		split := strings.Split(url, "/")
+		if len(split) != 3 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		owner = split[1]
+		splitRepo := strings.Split(split[2], ".")
+		if len(splitRepo) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		repo = splitRepo[0]
+	} else {
+		splitModule := strings.Split(url, ":")
+		if len(splitModule) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		splitOwner := strings.Split(splitModule[1], "/")
+		if len(splitOwner) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		owner = splitOwner[0]
+		splitRepo := strings.Split(splitOwner[1], ".")
+		if len(splitRepo) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		repo = splitRepo[0]
+	}
+
+	return owner, repo
 }
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
