@@ -158,22 +158,12 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	}
 
 	if len(revisions) > 0 {
-		var lastVersion *version.Version
-		lastVersion, err = repoTracker.StoreRevisions(ctx, revisions)
+		err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem sorting revisions for repository",
 				"runner":  RunnerName,
 				"project": projectRef,
-			}))
-			return errors.WithStack(err)
-		}
-		err = model.UpdateLastRevision(lastVersion.Identifier, lastVersion.Revision)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem updating last revision for repository",
-				"project": projectRef,
-				"runner":  RunnerName,
 			}))
 			return errors.WithStack(err)
 		}
@@ -198,13 +188,8 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 // We need to parse the remote config as it existed when each revision was created.
 // The return value is the most recent version created as a result of storing the revisions.
 // This function is idempotent with regard to storing the same version multiple times.
-func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) (newestVersion *version.Version, err error) {
-	defer func() {
-		if newestVersion != nil {
-			// Fetch the updated version doc, so that we include buildvariants in the result
-			newestVersion, err = version.FindOne(version.ById(newestVersion.Id))
-		}
-	}()
+func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) error {
+	var newestVersion *version.Version
 	ref := repoTracker.ProjectRef
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
@@ -271,7 +256,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					"project":  ref.Identifier,
 					"revision": revision,
 				}))
-				return nil, err
+				return err
 			}
 		}
 
@@ -316,7 +301,18 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 
 		newestVersion = v
 	}
-	return newestVersion, nil
+	if newestVersion != nil {
+		err := model.UpdateLastRevision(newestVersion.Identifier, newestVersion.Revision)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem updating last revision for repository",
+				"project": ref.Identifier,
+				"runner":  RunnerName,
+			}))
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }
 
 // GetProjectConfig fetches the project configuration for a given repository
