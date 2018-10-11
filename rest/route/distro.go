@@ -35,6 +35,10 @@ func (h *distroIDGetHandler) Factory() gimlet.RouteHandler {
 func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
 
+	if h.distroId == "" {
+		return errors.New("request data incomplete")
+	}
+
 	return nil
 }
 
