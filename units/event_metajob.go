@@ -121,6 +121,19 @@ func tryProcessOneEvent(e *event.EventLogEntry) (n []notification.Notification, 
 		"event_type": e.ResourceType,
 	}))
 
+	v, err := trigger.EvalProjectTriggers(e, trigger.TriggerDownstreamVersion)
+	versions := []string{}
+	for _, version := range v {
+		versions = append(versions, version.Id)
+	}
+	grip.Info(message.Fields{
+		"job":      eventMetaJobName,
+		"source":   "events-processing",
+		"message":  "triggering downstream builds",
+		"event_id": e.ID,
+		"versions": versions,
+	})
+
 	return n, err
 }
 
