@@ -39,6 +39,15 @@ type gitFetchProject struct {
 	base
 }
 
+type cloneOpts struct {
+	location *url.URL
+	owner    string
+	repo     string
+	branch   string
+	dir      string
+	token    string
+}
+
 func gitFetchProjectFactory() Command   { return &gitFetchProject{} }
 func (c *gitFetchProject) Name() string { return "git.get_project" }
 
@@ -55,43 +64,23 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 			"must not be blank", c.Name())
 	}
 
-	if strings.HasPrefix(c.Token, "token") {
-		splitToken := strings.Split(c.Token, " ")
-		if len(splitToken) != 2 {
-			return errors.New("token format is invalid")
-		}
-		c.Token = splitToken[1]
-	}
 	return nil
 }
 
-func buildHTTPCloneCommand(location *url.URL, branch, dir, token string) ([]string, error) {
-	location.Scheme = "https"
+func buildHTTPCloneCommand(opts cloneOpts) ([]string, error) {
+	clone := fmt.Sprintf("git clone https://%s@%s/%s/%s.git '%s'", opts.token, opts.location.Host, opts.owner, opts.repo, opts.dir)
 
-	tokenFlag := ""
-	if token != "" {
-		if location.Host != "github.com" {
-			return nil, errors.Errorf("Token support is only for Github, refusing to send token to '%s'", location.Host)
-		}
-		tokenFlag = fmt.Sprintf("-c 'credential.%s://%s.username=%s'", location.Scheme, location.Host, token)
+	if opts.branch != "" {
+		clone = fmt.Sprintf("%s --branch '%s'", clone, opts.branch)
 	}
 
-	clone := fmt.Sprintf("GIT_ASKPASS='true' git %s clone '%s' '%s'", tokenFlag, location.String(), dir)
-
-	if branch != "" {
-		clone = fmt.Sprintf("%s --branch '%s'", clone, branch)
-	}
-
-	redactedClone := clone
-	if tokenFlag != "" {
-		redactedClone = strings.Replace(clone, tokenFlag, "-c '[redacted oauth token]'", -1)
-	}
+	redactedClone := strings.Replace(clone, opts.token, "[redacted oauth token]", -1)
 	return []string{
 		"set +o xtrace",
 		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
 		clone,
 		"set -o xtrace",
-		fmt.Sprintf("cd %s", dir),
+		fmt.Sprintf("cd %s", opts.dir),
 	}, nil
 }
 
@@ -130,7 +119,15 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 		if err != nil {
 			return nil, err
 		}
-		cloneCmd, err = buildHTTPCloneCommand(location, conf.ProjectRef.Branch, c.Directory, c.Token)
+		opts := cloneOpts{
+			location: location,
+			owner:    conf.ProjectRef.Owner,
+			repo:     conf.ProjectRef.Repo,
+			branch:   conf.ProjectRef.Branch,
+			dir:      c.Directory,
+			token:    c.Token,
+		}
+		cloneCmd, err = buildHTTPCloneCommand(opts)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +154,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref string) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleBase, ref string) ([]string, error) {
 	if cloneURI == "" {
 		return nil, errors.New("empty repository URI")
 	}
@@ -186,7 +183,14 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref stri
 		if err != nil {
 			return nil, errors.Wrap(err, "repository URL is invalid")
 		}
-		cmds, err := buildHTTPCloneCommand(url, "", moduleBase, c.Token)
+		opts := cloneOpts{
+			location: url,
+			owner:    owner,
+			repo:     repo,
+			dir:      moduleBase,
+			token:    c.Token,
+		}
+		cmds, err := buildHTTPCloneCommand(opts)
 		if err != nil {
 			return nil, err
 		}
@@ -206,6 +210,14 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	// expand the github parameters before running the task
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return err
+	}
+
+	if strings.HasPrefix(c.Token, "token") {
+		splitToken := strings.Split(c.Token, " ")
+		if len(splitToken) != 2 {
+			return errors.New("token format is invalid")
+		}
+		c.Token = splitToken[1]
 	}
 
 	gitCommands, err := c.buildCloneCommand(conf)
@@ -268,9 +280,13 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 				revision = module.Branch
 			}
 		}
+		owner, repo := parseGitUrl(module.Repo, logger)
+		if owner == "" || repo == "" {
+			continue
+		}
 
 		var moduleCmds []string
-		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, moduleBase, revision)
+		moduleCmds, err = c.buildModuleCloneCommand(module.Repo, owner, repo, moduleBase, revision)
 		if err != nil {
 			return err
 		}
@@ -317,6 +333,47 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	}
 
 	return nil
+}
+
+func parseGitUrl(url string, logger client.LoggerProducer) (string, string) {
+	var owner string
+	var repo string
+	httpsPrefix := "https://"
+	if strings.HasPrefix(url, httpsPrefix) {
+		url = strings.TrimPrefix(url, httpsPrefix)
+		split := strings.Split(url, "/")
+		if len(split) != 3 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		owner = split[1]
+		splitRepo := strings.Split(split[2], ".")
+		if len(splitRepo) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		repo = splitRepo[0]
+	} else {
+		splitModule := strings.Split(url, ":")
+		if len(splitModule) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		splitOwner := strings.Split(splitModule[1], "/")
+		if len(splitOwner) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		owner = splitOwner[0]
+		splitRepo := strings.Split(splitOwner[1], ".")
+		if len(splitRepo) != 2 {
+			logger.Execution().Errorf("Invalid module format '%s'", url)
+			return "", ""
+		}
+		repo = splitRepo[0]
+	}
+
+	return owner, repo
 }
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from

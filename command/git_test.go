@@ -28,6 +28,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -147,24 +148,34 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// build clone command to clone by http, master branch with token into 'dir'
 	location, err := projectRef.HTTPLocation()
 	s.Require().NoError(err)
-	cmds, err := buildHTTPCloneCommand(location, projectRef.Branch, "dir", "GITHUBTOKEN")
+	opts := cloneOpts{
+		location: location,
+		owner:    projectRef.Owner,
+		repo:     projectRef.Repo,
+		branch:   projectRef.Branch,
+		dir:      "dir",
+		token:    "GITHUBTOKEN",
+	}
+	cmds, err := buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'\"", cmds[1])
-	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
+	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	location, err = projectRef.HTTPLocation()
 	s.Require().NoError(err)
-	cmds, err = buildHTTPCloneCommand(location, "", "dir", "GITHUBTOKEN")
+	opts.branch = ""
+	opts.location = location
+	cmds, err = buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set +o xtrace", cmds[0])
-	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'dir'\"", cmds[1])
-	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'dir'", cmds[2])
+	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir'\"", cmds[1])
+	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'dir'", cmds[2])
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
@@ -173,24 +184,24 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	location, err = url.Parse("http://github.com/deafgoat/mci_test.git")
 	s.Require().NoError(err)
 	s.Require().NotNil(location)
-	cmds, err = buildHTTPCloneCommand(location, projectRef.Branch, "dir", "GITHUBTOKEN")
+	opts.branch = projectRef.Branch
+	cmds, err = buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'\"", cmds[1])
-	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[2])
-	s.Equal("https", location.Scheme)
+	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
+	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
 
 	// ensure that we aren't sending the github oauth token to other
 	// servers
 	location, err = url.Parse("http://someothergithost.com/something/else.git")
 	s.Require().NoError(err)
 	s.Require().NotNil(location)
-	cmds, err = buildHTTPCloneCommand(location, projectRef.Branch, "dir", "")
+	opts.location = location
+	cmds, err = buildHTTPCloneCommand(opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
-	s.Equal("echo \"GIT_ASKPASS='true' git  clone 'https://someothergithost.com/something/else.git' 'dir' --branch 'master'\"", cmds[1])
-	s.Equal("GIT_ASKPASS='true' git  clone 'https://someothergithost.com/something/else.git' 'dir' --branch 'master'", cmds[2])
-	s.Equal("https", location.Scheme)
+	s.Equal("echo \"git clone https://[redacted oauth token]@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[1])
+	s.Equal("git clone https://GITHUBTOKEN@someothergithost.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[2])
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
@@ -247,8 +258,8 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
 	s.Equal("set +o xtrace", cmds[3])
-	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'\"", cmds[4])
-	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[5])
+	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'dir' --branch 'master'\"", cmds[4])
+	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
 	s.Equal("set -o xtrace", cmds[6])
 	s.Equal("cd dir", cmds[7])
 	s.Equal("git reset --hard ", cmds[8])
@@ -280,7 +291,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 
 	// ensure module clone command with ssh URL does not inject token
-	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "module", "master")
+	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set -o xtrace", cmds[0])
@@ -290,24 +301,24 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'master'", cmds[4])
 
 	// ensure module clone command with http URL injects token
-	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "module", "master")
+	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("set +o xtrace", cmds[2])
-	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'module'\"", cmds[3])
-	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'module'", cmds[4])
+	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
+	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
 	s.Equal("set -o xtrace", cmds[5])
 	s.Equal("cd module", cmds[6])
 	s.Equal("git checkout 'master'", cmds[7])
 
 	// ensure insecure github url is force to use https
-	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "module", "master")
+	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
-	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'module'\"", cmds[3])
-	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'module'", cmds[4])
+	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])
+	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'module'", cmds[4])
 }
 
 func (s *GitGetProjectSuite) TestIsMailboxPatch() {
@@ -374,4 +385,20 @@ func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
 	s.Require().NotNil(msg)
 	s.Equal(level.Info, msg.Priority)
 	s.Equal("Skipping empty patch file...", msg.Message.String())
+}
+
+func TestParseGitUrl(t *testing.T) {
+	assert := assert.New(t)
+	sender := send.MakeInternalLogger()
+	logger := client.NewSingleChannelLogHarness("", sender)
+
+	httpsUrl := "https://github.com/evergreen-ci/sample.git"
+	owner, repo := parseGitUrl(httpsUrl, logger)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
+
+	sshUrl := "git@github.com:evergreen-ci/sample.git"
+	owner, repo = parseGitUrl(sshUrl, logger)
+	assert.Equal("evergreen-ci", owner)
+	assert.Equal("sample", repo)
 }
