@@ -1628,6 +1628,7 @@ func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) 
 }
 
 func (t *Task) CircularDependencies(tasksWithDeps []Task) error {
+	return nil
 	var err error
 	if tasksWithDeps == nil {
 		tasksWithDeps, err = FindAllTasksFromVersionWithDependencies(t.Version)
