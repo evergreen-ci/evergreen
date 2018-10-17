@@ -1,6 +1,7 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $window, $scope, EvgUiGridUtil, EvgUtil, MDBQueryAdaptor, Stitch,
-  FORMAT, STITCH_CONFIG, uiGridConstants
+  $log, $window, $scope, EvgUiGridUtil, EvgUtil, MDBQueryAdaptor, Stitch,
+  FORMAT, STITCH_CONFIG, uiGridConstants, PROCESSED_TYPE,
+  ChangePointsService
 ) {
   var vm = this
   // Ui grid col accessor
@@ -20,6 +21,9 @@ mciModule.controller('SignalProcessingCtrl', function(
     value: 'unprocessed',
   }
 
+  // Holds currently selected items
+  vm.selection = []
+
   var state = {
     sorting: [{
       field: 'suspect_revision',
@@ -38,11 +42,49 @@ mciModule.controller('SignalProcessingCtrl', function(
     processed: STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS,
   }
 
+  var modeToItemVisibilityMap = {
+    unprocessed: function(item) { return item.processed_type == PROCESSED_TYPE.NONE },
+    processed: function(item) { return item.processed_type != PROCESSED_TYPE.NONE },
+  }
+
+  function refreshGridData(gridOptions) {
+    gridOptions.data = _.filter(gridOptions.data, modeToItemVisibilityMap[state.mode])
+    vm.gridApi.selection.clearSelectedRows()
+    handleRowSelectionChange(vm.gridApi)
+  }
+
+  var markFn = function(mark, items) {
+    ChangePointsService.markPoints(items, mark).then(function(ok) {
+      if (!ok) return
+      refreshGridData(vm.gridOptions)
+      // Update selection
+      handleRowSelectionChange(vm.gridApi)
+    })
+  }
+
+  vm.actions = [{
+    title:    'Hide',
+    action:   _.partial(markFn, PROCESSED_TYPE.HIDDEN),
+    visible:  _.constant(true),
+    disabled: _.isEmpty,
+  }, {
+    title:    'Acknowledge',
+    action:   _.partial(markFn, PROCESSED_TYPE.ACKNOWLEDGED),
+    visible:  _.constant(true),
+    disabled: _.isEmpty,
+  }, {
+    title:    'Unmark',
+    action:   _.partial(markFn, PROCESSED_TYPE.NONE),
+    visible:  function() { return state.mode == 'processed' },
+    disabled: _.isEmpty,
+  }]
+
   // Required by loadData.
   var theMostRecentPromise
 
   function loadData(state) {
     vm.isLoading = true
+    vm.gridOptions.data = []
     theMostRecentPromise = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
@@ -62,7 +104,7 @@ mciModule.controller('SignalProcessingCtrl', function(
           hydrateData(docs)
           vm.gridOptions.data = docs
         }, function(err) {
-          console.error(err)
+          $log.error(err)
         }).finally(function() {
           vm.isLoading = false
         })
@@ -132,6 +174,9 @@ mciModule.controller('SignalProcessingCtrl', function(
     // Propagate col visibility change event
     vm.gridApi.core.notifyDataChange(uiGridConstants.dataChange.COLUMN)
 
+    // Clear selection
+    vm.selection = []
+
     loadData(state)
   }
 
@@ -150,9 +195,16 @@ mciModule.controller('SignalProcessingCtrl', function(
     })
   }
 
+  function handleRowSelectionChange(gridApi) {
+    vm.selection = gridApi.selection.getSelectedRows()
+  }
+
   vm.gridOptions = {
     enableFiltering: true,
     enableGridMenu: true,
+    enableRowSelection: true,
+    enableSelectAll: true,
+    selectionRowHeaderWidth: 35,
     useExternalFiltering: true,
     useExternalSorting: true,
     onRegisterApi: function(api) {
@@ -184,6 +236,19 @@ mciModule.controller('SignalProcessingCtrl', function(
         setInitialGridState(api, state)
         loadData(state)
       }))
+
+      // Deounce is neat when selecting multiple items
+      api.selection.on.rowSelectionChanged(null, _.debounce(function() {
+        handleRowSelectionChange(api)
+        // This function executed asynchronously, so we should call $apply manually
+        $scope.$apply()
+      }))
+
+      // This is required when user selects all items
+      // (rowSelecionChanged doesn't work)
+      api.selection.on.rowSelectionChangedBatch(null, function() {
+        handleRowSelectionChange(api)
+      })
     },
     columnDefs: [
       {

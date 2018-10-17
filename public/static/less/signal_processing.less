@@ -1,4 +1,6 @@
 .signal-processing {
+  background: @section-bg;
+
   .input-2-char {
     width: 45px;
   }
@@ -6,5 +8,26 @@
   .warning-message {
     font-style: italic;
     color: @errorText;
+  }
+
+  .toolbar {
+    padding: 10px;
+  }
+
+  .legend {
+    margin-right: 5px;
+    font-weight: bold;
+  }
+
+  .control-group {
+    display: inline-block;
+    margin-right: 15px;
+  }
+
+  // Override tabs styles
+  .nav-tabs > li.active > a,
+  .nav-tabs > li.active > a:hover,
+  .nav-tabs > li.active > a:focus {
+    background: @gray6;
   }
 }
