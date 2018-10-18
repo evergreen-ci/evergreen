@@ -54,7 +54,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   }
 
   var markFn = function(mark, items) {
-    ChangePointsService.markPoints(items, mark).then(function(ok) {
+    ChangePointsService.markPoints(items, mark, state.mode).then(function(ok) {
       if (!ok) return
       refreshGridData(vm.gridOptions)
       // Update selection

@@ -25,12 +25,16 @@ mciModule.factory('ChangePointsService', function(
       return true
     })
     .finally(function() {
-      conn.query(function(db) {
-        return db
-          .db(STITCH_CONFIG.PERF.DB_PERF)
-          .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
-          .updateMany({task_id: {$in: _.pluck(points, 'task_id')}}, {$set: {processed_type: mark}})
-      })
+      dbChangeExistingMark(points, mark)
+    })
+  }
+
+  function dbChangeExistingMark(points, mark) {
+    conn.query(function(db) {
+      return db
+        .db(STITCH_CONFIG.PERF.DB_PERF)
+        .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
+        .updateMany({task_id: {$in: _.pluck(points, 'task_id')}}, {$set: {processed_type: mark}})
     })
   }
 
@@ -48,17 +52,21 @@ mciModule.factory('ChangePointsService', function(
       return db
         .db(STITCH_CONFIG.PERF.DB_PERF)
         .collection(STITCH_CONFIG.PERF.COLL_PROCESSED_POINTS)
-        .updateMany({task_id: {$in: _.pluck(points, 'task_id')}})
+        .deleteMany({task_id: {$in: _.pluck(points, 'task_id')}})
     })
   }
 
-  function dbDispatchMarkPoints(points, mark) {
+  function dbDispatchMarkPoints(points, mark, mode) {
     if (!points || !points.length) return
     // Dispatching
     if (mark == undefined) {
       dbUnmarkPoints(points)
     } else if (_.contains(PROCESSED_TYPE.ALL, mark)) {
-      dbMarkPoints(points, mark)
+      if (mode == 'processed') {
+        dbChangeExistingMark(points, mark)
+      } else {
+        dbMarkPoints(points, mark)
+      }
     }
   }
 
@@ -72,12 +80,16 @@ mciModule.factory('ChangePointsService', function(
     )
   }
 
-  function markPoints(points, mark) {
+  // Sets processed_type for the change points
+  // :param points: list of change point objects
+  // :param mark: PROCESSED_TYPE
+  // :param mode: processed|unprocessed
+  function markPoints(points, mark, mode) {
     return confirmMarkAction(points).then(function(r) {
       // Apply change locally
       _.patch(points, {processed_type: mark})
       // Propagate changes to the db
-      dbDispatchMarkPoints(points, mark)
+      dbDispatchMarkPoints(points, mark, mode)
       return true
     }, _.noop)
   }
