@@ -43,7 +43,7 @@ mciModule.controller('SignalProcessingCtrl', function(
   }
 
   var modeToItemVisibilityMap = {
-    unprocessed: function(item) { return item.processed_type == PROCESSED_TYPE.NONE },
+    unprocessed: function(item) { return item.processed_type != PROCESSED_TYPE.HIDDEN },
     processed: function(item) { return item.processed_type != PROCESSED_TYPE.NONE },
   }
 
@@ -183,13 +183,13 @@ mciModule.controller('SignalProcessingCtrl', function(
   // Sets `state` to grid filters
   function setInitialGridState(gridApi, state) {
     _.each(state.filtering, function(term, colName) {
-      var col = getCol(vm.gridApi, colName)
+      var col = getCol(colName)
       if (!col) return // Error! Associated col does not found
       col.filters = [{term: term}]
     })
 
     _.each(state.sorting, function(sortingItem) {
-      var col = getCol(vm.gridApi, sortingItem.field)
+      var col = getCol(sortingItem.field)
       if (!col) return // Error! Associated col does not found
       col.sort.direction = sortingItem.direction
     })
