@@ -1,7 +1,7 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $log, $window, $scope, EvgUiGridUtil, EvgUtil, MDBQueryAdaptor, Stitch,
-  FORMAT, STITCH_CONFIG, uiGridConstants, PROCESSED_TYPE,
-  ChangePointsService
+  $log, $scope, $window, ChangePointsService, EvgUiGridUtil, EvgUtil,
+  FORMAT, MDBQueryAdaptor, PROCESSED_TYPE, STITCH_CONFIG, Stitch,
+  uiGridConstants
 ) {
   var vm = this
   // Ui grid col accessor
