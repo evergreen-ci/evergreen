@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -89,11 +90,16 @@ func (dgh *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
+	isSuper := auth.IsSuperUser(dgh.sc.GetSuperUsers(), gimlet.GetUser(ctx))
+
 	for _, d := range distros {
 		distroModel := &model.APIDistro{}
+
 		if err = distroModel.BuildFromService(d); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
+
+		distroModel.Filter(isSuper)
 
 		err = resp.AddData(distroModel)
 		if err != nil {

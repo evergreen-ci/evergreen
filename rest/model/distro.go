@@ -9,12 +9,23 @@ import (
 )
 
 // APIDistro is the model to be returned by the API whenever distros are fetched.
-// EVG-1717 will implement the remainder of the distro model.
 type APIDistro struct {
-	Name             APIString `json:"name"`
-	UserSpawnAllowed bool      `json:"user_spawn_allowed"`
-	Provider         APIString `json:"provider"`
-	ImageID          APIString `json:"image_id,omitempty"`
+	Name             APIString         `json:"name"`
+	UserSpawnAllowed bool              `json:"user_spawn_allowed"`
+	Provider         APIString         `json:"provider"`
+	ImageID          APIString         `json:"image_id,omitempty"`
+	Arch             APIString         `json:"arch,omitempty"`
+	WorkDir          APIString         `json:"work_dir,omitempty"`
+	PoolSize         int               `json:"pool_size,omitempty"`
+	SetupAsSudo      bool              `json:"setup_as_sudo,omitempty"`
+	Setup            APIString         `json:"setup,omitempty"`
+	Teardown         APIString         `json:"teardown,omitempty"`
+	User             APIString         `json:"user,omitempty"`
+	SSHKey           APIString         `json:"ssh_key,omitempty"`
+	SSHOptions       []string          `json:"ssh_options,omitempty"`
+	Expansions       map[string]string `json:"expansions,omitempty"`
+	Disabled         bool              `json:"disabled,omitempty"`
+	ContainerPool    APIString         `json:"container_pool,omitempty"`
 }
 
 // BuildFromService converts from service level structs to an APIDistro.
@@ -34,6 +45,23 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 
 			apiDistro.ImageID = ToAPIString(ec2Settings.AMI)
 		}
+
+		apiDistro.Arch = ToAPIString(v.Arch)
+		apiDistro.WorkDir = ToAPIString(v.WorkDir)
+		apiDistro.PoolSize = v.PoolSize
+		apiDistro.SetupAsSudo = v.SetupAsSudo
+		apiDistro.Setup = ToAPIString(v.Setup)
+		apiDistro.Teardown = ToAPIString(v.Teardown)
+		apiDistro.User = ToAPIString(v.User)
+		apiDistro.Disabled = v.Disabled
+		apiDistro.ContainerPool = ToAPIString(v.ContainerPool)
+		apiDistro.SSHOptions = v.SSHOptions
+		expansions := make(map[string]string)
+		for _, e := range v.Expansions {
+			expansions[e.Key] = e.Value
+		}
+		apiDistro.Expansions = expansions
+
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro type")
 	}
@@ -43,4 +71,14 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro using the data from APIDistro.
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not impelemented for APIDistro")
+}
+
+func (apiDistro *APIDistro) Filter(isSuper bool) {
+	if !isSuper {
+		apiDistro.Expansions = nil
+		apiDistro.User = nil
+		apiDistro.Setup = nil
+		apiDistro.Teardown = nil
+		apiDistro.SSHKey = nil
+	}
 }
