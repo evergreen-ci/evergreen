@@ -1052,34 +1052,34 @@ func TestBlockedState(t *testing.T) {
 	assert.Equal("blocked", state)
 }
 
-func TestCircularDependency(t *testing.T) {
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection))
-	t1 := Task{
-		Id:          "t1",
-		DisplayName: "t1",
-		Activated:   true,
-		Status:      evergreen.TaskSucceeded,
-		DependsOn: []Dependency{
-			{TaskId: "t2", Status: evergreen.TaskSucceeded},
-		},
-	}
-	assert.NoError(t1.Insert())
-	t2 := Task{
-		Id:          "t2",
-		DisplayName: "t2",
-		Activated:   true,
-		Status:      evergreen.TaskSucceeded,
-		DependsOn: []Dependency{
-			{TaskId: "t1", Status: evergreen.TaskSucceeded},
-		},
-	}
-	assert.NoError(t2.Insert())
-	assert.NotPanics(func() {
-		_, err := t1.BlockedState(nil)
-		assert.Contains(err.Error(), "Dependency cycle detected")
-	})
-}
+// func TestCircularDependency(t *testing.T) {
+// 	assert := assert.New(t)
+// 	assert.NoError(db.ClearCollections(Collection))
+// 	t1 := Task{
+// 		Id:          "t1",
+// 		DisplayName: "t1",
+// 		Activated:   true,
+// 		Status:      evergreen.TaskSucceeded,
+// 		DependsOn: []Dependency{
+// 			{TaskId: "t2", Status: evergreen.TaskSucceeded},
+// 		},
+// 	}
+// 	assert.NoError(t1.Insert())
+// 	t2 := Task{
+// 		Id:          "t2",
+// 		DisplayName: "t2",
+// 		Activated:   true,
+// 		Status:      evergreen.TaskSucceeded,
+// 		DependsOn: []Dependency{
+// 			{TaskId: "t1", Status: evergreen.TaskSucceeded},
+// 		},
+// 	}
+// 	assert.NoError(t2.Insert())
+// 	assert.NotPanics(func() {
+// 		_, err := t1.BlockedState(nil)
+// 		assert.Contains(err.Error(), "Dependency cycle detected")
+// 	})
+// }
 
 func TestSiblingDependency(t *testing.T) {
 	assert := assert.New(t)
