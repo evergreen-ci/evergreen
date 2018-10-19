@@ -19,7 +19,8 @@ func TestFindDistroById(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindDistroById")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	assert.Nil(err)
+	defer session.Close()
+	assert.NoError(err)
 	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 
 	sc := &DBConnector{}
@@ -29,7 +30,7 @@ func TestFindDistroById(t *testing.T) {
 	}
 	assert.Nil(d.Insert())
 	found, err := sc.FindDistroById(id)
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(found.Id, id, "The _ids should match")
 	assert.NotEqual(found.Id, -1, "The _ids should not match")
 }
@@ -39,7 +40,8 @@ func TestFindAllDistros(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllDistros")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	assert.Nil(err)
+	defer session.Close()
+	assert.NoError(err)
 	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 
 	sc := &DBConnector{}
@@ -53,7 +55,7 @@ func TestFindAllDistros(t *testing.T) {
 	}
 
 	found, err := sc.FindAllDistros()
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Len(found, numDistros)
 }
 
