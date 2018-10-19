@@ -232,8 +232,15 @@ func connect(url, port string) (ldap.Client, error) {
 }
 
 func (u *userService) login(username, password string) error {
-	fullPath := fmt.Sprintf("uid=%s,%s", username, u.userPath)
-	return errors.Wrapf(u.bind(fullPath, password), "could not validate user '%s'", username)
+	var err error
+	for _, path := range []string{u.userPath, u.servicePath} {
+		fullPath := fmt.Sprintf("uid=%s,%s", username, path)
+		err = u.bind(fullPath, password)
+		if err == nil {
+			return nil
+		}
+	}
+	return errors.Wrapf(err, "could not validate user '%s'", username)
 }
 
 func (u *userService) validateGroup(username string) error {

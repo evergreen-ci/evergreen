@@ -97,6 +97,9 @@ func (m *mockConn) Bind(username, password string) error {
 	if username == "uid=foo,path" && password == "hunter2" {
 		return nil
 	}
+	if username == "uid=foo,bots" && password == "hunter3" {
+		return nil
+	}
 	return errors.Errorf("failed to Bind (%s, %s)", username, password)
 }
 func (m *mockConn) SimpleBind(simpleBindRequest *ldap.SimpleBindRequest) (*ldap.SimpleBindResult, error) {
@@ -422,4 +425,13 @@ func (s *LDAPSuite) TestGetOrCreateUser() {
 	user, err := s.um.GetOrCreateUser(basicUser)
 	s.NoError(err)
 	s.Equal("foo", user.Username())
+}
+
+func (s *LDAPSuite) TestLoginUsesBothPaths() {
+	userManager, ok := s.um.(*userService)
+	s.True(ok)
+	s.NotNil(userManager)
+	s.Error(userManager.login("foo", "hunter1"))
+	s.NoError(userManager.login("foo", "hunter2"))
+	s.NoError(userManager.login("foo", "hunter3"))
 }
