@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,6 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -227,4 +231,92 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 	s.Require().Len(versions, 1)
 	s.Equal("ref", versions[0].Branch)
 	s.Equal("configFile", versions[0].Config)
+}
+
+func TestProjectTriggerIntegration(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, evergreen.ConfigCollection, model.ProjectRefCollection, model.RepositoriesCollection))
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
+	assert.NoError(config.Set())
+	e := event.EventLogEntry{
+		ID:           "event1",
+		ResourceId:   "upstreamTask",
+		ResourceType: event.ResourceTypeTask,
+		EventType:    event.TaskFinished,
+	}
+	upstreamTask := task.Task{
+		Id:          "upstreamTask",
+		Status:      evergreen.TaskSucceeded,
+		Requester:   evergreen.RepotrackerVersionRequester,
+		DisplayName: "upstreamTask",
+		Version:     "upstreamVersion",
+		Project:     "upstream",
+	}
+	assert.NoError(upstreamTask.Insert())
+	upstreamVersion := version.Version{
+		Id:         "upstreamVersion",
+		Author:     "me",
+		CreateTime: time.Now(),
+		Revision:   "abc",
+		Identifier: "upstream",
+	}
+	assert.NoError(upstreamVersion.Insert())
+	downstreamProjectRef := model.ProjectRef{
+		Identifier: "downstream",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		RemotePath: "self-tests.yml",
+		RepoKind:   "github",
+		Triggers: []model.TriggerDefinition{
+			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, ConfigFile: "self-tests.yml"},
+		},
+	}
+	assert.NoError(downstreamProjectRef.Insert())
+	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Identifier)
+	assert.NoError(err)
+	downstreamRevision := "abc123"
+	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Identifier, downstreamRevision))
+
+	downstreamVersions, err := EvalProjectTriggers(&e, TriggerDownstreamVersion)
+	assert.NoError(err)
+	dbVersions, err := version.Find(version.ByProjectIdAndRevision(downstreamProjectRef.Identifier, downstreamRevision))
+	assert.NoError(err)
+	require.Len(downstreamVersions, 1)
+	require.Len(dbVersions, 1)
+	versions := []version.Version{downstreamVersions[0], dbVersions[0]}
+	for _, v := range versions {
+		assert.Equal("downstream_abc_def1", v.Id)
+		assert.Equal(downstreamRevision, v.Revision)
+		assert.Equal(evergreen.VersionCreated, v.Status)
+		assert.Equal(downstreamProjectRef.Identifier, v.Identifier)
+		assert.Equal(evergreen.TriggerRequester, v.Requester)
+		assert.Equal(upstreamTask.Id, v.TriggerID)
+		assert.Equal("task", v.TriggerType)
+		assert.Equal(e.ID, v.TriggerEvent)
+		assert.NotEmpty(v.Config)
+	}
+	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
+	assert.NoError(err)
+	assert.True(len(builds) > 0)
+	for _, b := range builds {
+		assert.Equal(downstreamProjectRef.Identifier, b.Project)
+		assert.Equal(evergreen.TriggerRequester, b.Requester)
+		assert.Equal(evergreen.BuildCreated, b.Status)
+		assert.Equal(upstreamTask.Id, b.TriggerID)
+		assert.Equal("task", b.TriggerType)
+		assert.Equal(e.ID, b.TriggerEvent)
+	}
+	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
+	assert.NoError(err)
+	assert.True(len(tasks) > 0)
+	for _, t := range tasks {
+		assert.Equal(downstreamProjectRef.Identifier, t.Project)
+		assert.Equal(evergreen.TriggerRequester, t.Requester)
+		assert.Equal(evergreen.TaskUndispatched, t.Status)
+		assert.Equal(upstreamTask.Id, t.TriggerID)
+		assert.Equal("task", t.TriggerType)
+		assert.Equal(e.ID, t.TriggerEvent)
+	}
 }
