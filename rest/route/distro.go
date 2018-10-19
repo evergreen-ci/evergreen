@@ -58,10 +58,6 @@ func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(distroModel)
 }
 
-///////////////////////////////////////////////////////////////////////
-//
-//
-
 type distroGetHandler struct {
 	sc data.Connector
 }
