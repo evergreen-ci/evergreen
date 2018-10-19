@@ -170,8 +170,21 @@ mciModule.controller('SignalProcessingCtrl', function(
     state.mode = vm.mode.value
     // Show/hide column depending on mode
     var col = getCol('processed_type')
-    state.mode == 'processed' ? col.showColumn() : col.hideColumn()
-    // Propagate col visibility change event
+
+    if (state.mode == 'processed') {
+      col.showColumn()
+      // Add filtering by processed_type
+      state.filtering.processed_type = '=' + PROCESSED_TYPE.ACKNOWLEDGED
+    } else {
+      col.hideColumn()
+      // Remove filter by processed type
+      delete state.filtering.processed_type
+    }
+
+    // Push state changes to the grid api
+    setInitialGridState(vm.gridApi, state)
+
+    // Raise col visibility change event
     vm.gridApi.core.notifyDataChange(uiGridConstants.dataChange.COLUMN)
 
     // Clear selection
