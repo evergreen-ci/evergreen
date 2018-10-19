@@ -43,6 +43,7 @@ type VersionErrors struct {
 	Warnings []string
 }
 
+// VersionMetadata is used to pass information about upstream versions to downstream version creation
 type VersionMetadata struct {
 	Revision      *model.Revision
 	TriggerID     string

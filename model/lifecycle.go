@@ -476,17 +476,18 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	return b, nil
 }
 
+// BuildCreateArgs is the set of parameters used in CreateBuildFromVersion
 type BuildCreateArgs struct {
-	Project      *Project
-	Version      *version.Version
-	TaskIDs      TaskIdConfig
-	BuildName    string
-	Activated    bool
-	TaskNames    []string
-	DisplayNames []string
-	GeneratedBy  string
-	SourceRev    string
-	DefinitionID string
+	Project      *Project         // project to create the build for
+	Version      *version.Version // the version the build belong to
+	TaskIDs      TaskIdConfig     // pre-generated IDs for the tasks to be created
+	BuildName    string           // name of the buildvariant
+	Activated    bool             // true if the build should be scheduled
+	TaskNames    []string         // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames []string         // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy  string           // ID of the task that generated this build
+	SourceRev    string           // githash of the revision that triggered this build
+	DefinitionID string           // definition ID of the trigger used to create this build
 }
 
 // CreateBuildFromVersion creates a build given all of the necessary information

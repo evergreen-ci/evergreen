@@ -14,6 +14,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TriggerDownstreamVersion assumes that you definitely want to create a downstream version
+// and will go through the process of version creation given a triggering version
 func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
 	if args.Command != "" {
 		return nil, errors.New("command-based triggers are not yet implemented")

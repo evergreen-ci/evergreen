@@ -93,6 +93,8 @@ type ProcessorArgs struct {
 	DefinitionID      string
 }
 
+// EvalProjectTriggers takes an event log entry and a processor (either the mock or TriggerDownstreamVersion)
+// and checks if any downstream builds should be triggered, creating them if they should
 func EvalProjectTriggers(e *event.EventLogEntry, processor projectProcessor) ([]version.Version, error) {
 	switch e.EventType {
 	case event.TaskFinished:
