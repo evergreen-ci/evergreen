@@ -607,7 +607,16 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, metadata Vers
 			continue
 		}
 
-		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil, "", sourceRev, metadata.DefinitionID)
+		args := model.BuildCreateArgs{
+			Project:      project,
+			Version:      v,
+			TaskIDs:      taskIds,
+			BuildName:    buildvariant.Name,
+			Activated:    false,
+			SourceRev:    sourceRev,
+			DefinitionID: metadata.DefinitionID,
+		}
+		buildId, err := model.CreateBuildFromVersion(args)
 		if err != nil {
 			return errors.WithStack(err)
 		}

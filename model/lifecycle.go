@@ -476,62 +476,73 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	return b, nil
 }
 
+type BuildCreateArgs struct {
+	Project      *Project
+	Version      *version.Version
+	TaskIDs      TaskIdConfig
+	BuildName    string
+	Activated    bool
+	TaskNames    []string
+	DisplayNames []string
+	GeneratedBy  string
+	SourceRev    string
+	DefinitionID string
+}
+
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
-// TODO: clean up signature
-func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskIdConfig,
-	buildName string, activated bool, taskNames []string, displayNames []string, generatedBy, sourceRev, defID string) (string, error) {
+func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 
-	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
+	grip.Debugf("Creating %s %s build, activated: %v", args.Version.Requester, args.BuildName, args.Activated)
 
 	// find the build variant for this project/build
-	buildVariant := project.FindBuildVariant(buildName)
+	buildVariant := args.Project.FindBuildVariant(args.BuildName)
 	if buildVariant == nil {
-		return "", errors.Errorf("could not find build %v in %v project file", buildName, project.Identifier)
+		return "", errors.Errorf("could not find build %v in %v project file", args.BuildName, args.Project.Identifier)
 	}
 
-	rev := v.Revision
-	if evergreen.IsPatchRequester(v.Requester) {
-		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
-	} else if v.Requester == evergreen.TriggerRequester {
-		rev = fmt.Sprintf("%s_%s", sourceRev, defID)
+	rev := args.Version.Revision
+	if evergreen.IsPatchRequester(args.Version.Requester) {
+		rev = fmt.Sprintf("patch_%s_%s", args.Version.Revision, args.Version.Id)
+	} else if args.Version.Requester == evergreen.TriggerRequester {
+		rev = fmt.Sprintf("%s_%s", args.SourceRev, args.DefinitionID)
 	}
 
 	// create a new build id
 	buildId := fmt.Sprintf("%s_%s_%s_%s",
-		project.Identifier,
-		buildName,
+		args.Project.Identifier,
+		args.BuildName,
 		rev,
-		v.CreateTime.Format(build.IdTimeLayout))
+		args.Version.CreateTime.Format(build.IdTimeLayout))
 
 	// create the build itself
 	b := &build.Build{
 		Id:                  util.CleanName(buildId),
-		CreateTime:          v.CreateTime,
-		Activated:           activated,
-		Project:             project.Identifier,
-		Revision:            v.Revision,
+		CreateTime:          args.Version.CreateTime,
+		Activated:           args.Activated,
+		Project:             args.Project.Identifier,
+		Revision:            args.Version.Revision,
 		Status:              evergreen.BuildCreated,
-		BuildVariant:        buildName,
-		Version:             v.Id,
+		BuildVariant:        args.BuildName,
+		Version:             args.Version.Id,
 		DisplayName:         buildVariant.DisplayName,
-		RevisionOrderNumber: v.RevisionOrderNumber,
-		Requester:           v.Requester,
-		TriggerID:           v.TriggerID,
-		TriggerType:         v.TriggerType,
-		TriggerEvent:        v.TriggerEvent,
+		RevisionOrderNumber: args.Version.RevisionOrderNumber,
+		Requester:           args.Version.Requester,
+		TriggerID:           args.Version.TriggerID,
+		TriggerType:         args.Version.TriggerType,
+		TriggerEvent:        args.Version.TriggerEvent,
 	}
 
 	// get a new build number for the build
-	buildNumber, err := db.GetNewBuildVariantBuildNumber(buildName)
+	buildNumber, err := db.GetNewBuildVariantBuildNumber(args.BuildName)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not get build number for build variant"+
-			" %v in %v project file", buildName, project.Identifier)
+			" %v in %v project file", args.BuildName, args.Project.Identifier)
 	}
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames, generatedBy)
+	tasksForBuild, err := createTasksForBuild(args.Project, buildVariant, b, args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -1117,7 +1128,17 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
-		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames, generatedBy, "", "")
+		buildArgs := BuildCreateArgs{
+			Project:      p,
+			Version:      v,
+			TaskIDs:      taskIds,
+			BuildName:    pair.Variant,
+			Activated:    activated,
+			TaskNames:    taskNames,
+			DisplayNames: displayNames,
+			GeneratedBy:  generatedBy,
+		}
+		buildId, err := CreateBuildFromVersion(buildArgs)
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			v.Id, pair.Variant, activated)
 		if err != nil {
