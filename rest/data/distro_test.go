@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -19,8 +20,10 @@ func TestFindDistroById(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindDistroById")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	defer session.Close()
 	assert.NoError(err)
+	require.NotNil(t, session)
+	defer session.Close()
+
 	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 
 	sc := &DBConnector{}
@@ -40,8 +43,9 @@ func TestFindAllDistros(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllDistros")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	defer session.Close()
 	assert.NoError(err)
+	require.NotNil(t, session)
+	defer session.Close()
 	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 
 	sc := &DBConnector{}
