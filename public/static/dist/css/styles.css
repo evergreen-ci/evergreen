@@ -1253,12 +1253,31 @@ ul.tooltip-tasks li.tooltip-task {
   height: 37em;
   overflow-y: scroll;
 }
+.signal-processing {
+  background: #f0f0f0;
+}
 .signal-processing .input-2-char {
   width: 45px;
 }
 .signal-processing .warning-message {
   font-style: italic;
   color: #ed271c;
+}
+.signal-processing .toolbar {
+  padding: 10px;
+}
+.signal-processing .legend {
+  margin-right: 5px;
+  font-weight: bold;
+}
+.signal-processing .control-group {
+  display: inline-block;
+  margin-right: 15px;
+}
+.signal-processing .nav-tabs > li.active > a,
+.signal-processing .nav-tabs > li.active > a:hover,
+.signal-processing .nav-tabs > li.active > a:focus {
+  background: #dee0e3;
 }
 textarea {
   background-position: bottom right;

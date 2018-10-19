@@ -9,6 +9,11 @@ _.mixin({
     return _.reduce(coll, function(m, d) {
       return m + d
     }, 0)
+  },
+  patch: function(coll, patch) {
+    _.each(coll, function(d) {
+      _.extend(d, patch)
+    })
   }
 })
 
@@ -40,6 +45,7 @@ var mciModule = angular.module('MCI', [
   'ui.grid.moveColumns',
   'ui.grid.pinning',
   'ui.grid.resizeColumns',
+  'ui.grid.selection',
   'ui.select',
 ], function($interpolateProvider, $locationProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go
@@ -417,4 +423,7 @@ var mciModule = angular.module('MCI', [
   //$compileProvider.debugInfoEnabled(false);
 }]).config(['$locationProvider', function($locationProvider) {
   $locationProvider.hashPrefix('');
-}]);
+}]).config(function($mdThemingProvider) {
+  $mdThemingProvider.theme('default')
+    .primaryPalette('green')
+})
