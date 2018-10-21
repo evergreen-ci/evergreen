@@ -16,10 +16,6 @@ const (
 	versionsCollection      = "versions"
 )
 
-type versionInfo struct {
-	CreateTime time.Time `bson:"create_time"`
-}
-
 // This migration updates the CreateTime field of patch tasks to be the push time of the base commit.
 func taskCreateTimeGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 	const migrationName = "task_create_time"
@@ -71,7 +67,10 @@ func makeTaskCreateTimeMigrationFunction(database string) db.MigrationOperation 
 		}
 
 		// Find the base version for the patch.
-		baseVersion := versionInfo{}
+		baseVersion := struct {
+			CreateTime time.Time `bson:"create_time"`
+		}{}
+
 		query := bson.M{
 			"identifier": project,
 			"gitspec":    revision,
