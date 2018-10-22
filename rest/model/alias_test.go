@@ -15,6 +15,7 @@ func TestAliasBuildFromService(t *testing.T) {
 		Alias:     "alias",
 		Variant:   "variant",
 		Task:      "task",
+		Tags:      []string{"tag1", "tag2"},
 	}
 	apiAlias := &APIAlias{}
 	err := apiAlias.BuildFromService(d)
@@ -22,4 +23,7 @@ func TestAliasBuildFromService(t *testing.T) {
 	assert.Equal(t, FromAPIString(apiAlias.Alias), d.Alias)
 	assert.Equal(t, FromAPIString(apiAlias.Variant), d.Variant)
 	assert.Equal(t, FromAPIString(apiAlias.Task), d.Task)
+	for i, tag := range apiAlias.Tags {
+		assert.Equal(t, FromAPIString(tag), d.Tags[i])
+	}
 }
