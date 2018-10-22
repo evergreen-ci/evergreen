@@ -10,6 +10,8 @@ window.isAdmin = {{.IsProjectAdmin}};
 </script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/app/perf-bb/constants.js?hash={{ BuildRevision }}"></script>
+<script type="text/javascript" src="/static/app/perf-bb/ChangePointsService.js?hash={{ BuildRevision }}"></script>
 
 {{if .User}}
 <script type="text/javascript" src="{{Static "js" "task_admin.js"}}?hash={{ BuildRevision }}"></script>

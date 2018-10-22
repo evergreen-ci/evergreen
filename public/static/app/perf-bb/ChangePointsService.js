@@ -70,7 +70,7 @@ mciModule.factory('ChangePointsService', function(
       // Propagate changes to the db
       dbDispatchMarkPoints(points, mark, mode)
       return true
-    }, _.noop)
+    })
   }
 
   return {
