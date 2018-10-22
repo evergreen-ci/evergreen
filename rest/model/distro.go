@@ -55,6 +55,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		apiDistro.Setup = ToAPIString(v.Setup)
 		apiDistro.Teardown = ToAPIString(v.Teardown)
 		apiDistro.User = ToAPIString(v.User)
+		apiDistro.SSHKey = ToAPIString(v.SSHKey)
 		apiDistro.Disabled = v.Disabled
 		apiDistro.ContainerPool = ToAPIString(v.ContainerPool)
 		apiDistro.SSHOptions = v.SSHOptions
