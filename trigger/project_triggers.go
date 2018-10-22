@@ -56,8 +56,12 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error adding build break subscriptions")
 	}
+	err = model.DoProjectActivation(args.DownstreamProject.Identifier)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error activating project %s", args.DownstreamProject.Identifier)
+	}
 
-	return v, model.DoProjectActivation(args.DownstreamProject.Identifier)
+	return v, nil
 }
 
 func metadataFromVersion(source version.Version, ref model.ProjectRef) (repotracker.VersionMetadata, error) {
