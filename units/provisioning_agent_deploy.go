@@ -63,7 +63,7 @@ func NewAgentDeployJob(env evergreen.Environment, h host.Host, id string) amboy.
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(1)
-	j.SetID(fmt.Sprintf("%s.%s.attempt-%d.%s", agentDeployJobName, j.HostID, h.AgentDeployAttempt, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", agentDeployJobName, j.HostID, id))
 
 	return j
 }
@@ -87,29 +87,6 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-
-	defer func() {
-		if err = j.host.IncAgentDeployAttempt(); err != nil {
-			j.AddError(err)
-			grip.Warning(message.WrapError(err, message.Fields{
-				"host_id":      j.HostID,
-				"job_id":       j.ID(),
-				"runner":       "taskrunner",
-				"distro":       j.host.Distro,
-				"message":      "failed to update agent iteration",
-				"current_iter": j.host.AgentDeployAttempt,
-			}))
-			return
-		}
-		grip.Debug(message.Fields{
-			"host_id":      j.HostID,
-			"job_id":       j.ID(),
-			"runner":       "taskrunner",
-			"distro":       j.host.Distro,
-			"operation":    "agent deploy complete",
-			"current_iter": j.host.AgentDeployAttempt,
-		})
-	}()
 
 	settings := j.env.Settings()
 	j.AddError(j.startAgentOnHost(ctx, settings, *j.host))

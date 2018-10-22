@@ -74,10 +74,9 @@ type Host struct {
 	Status    string `bson:"status" json:"status"`
 	StartedBy string `bson:"started_by" json:"started_by"`
 	// UserHost is alwayas false, and will be removed
-	UserHost           bool   `bson:"user_host" json:"user_host"`
-	AgentRevision      string `bson:"agent_revision" json:"agent_revision"`
-	NeedsNewAgent      bool   `bson:"needs_agent" json:"needs_agent"`
-	AgentDeployAttempt int    `bson:"agent_deploy_attempt" json:"agent_deploy_attempt"`
+	UserHost      bool   `bson:"user_host" json:"user_host"`
+	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
+	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
 
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
