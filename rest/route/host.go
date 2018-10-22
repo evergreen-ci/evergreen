@@ -7,12 +7,94 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
+
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/hosts/{host_id}
+
+type hostChangeStatusHandler struct {
+	Status *string `json:"status"`
+	hostId string
+	sc     data.Connector
+}
+
+func makeChangeHostStatus(sc data.Connector) gimlet.RouteHandler {
+	return &hostChangeStatusHandler{
+		sc: sc,
+	}
+}
+
+func (h *hostChangeStatusHandler) Factory() gimlet.RouteHandler {
+	return &hostChangeStatusHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.hostId = gimlet.GetVars(r)["host_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, h); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	if h.Status == nil {
+		return gimlet.ErrorResponse{
+			Message:    "Must set 'priority'",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	return nil
+}
+
+func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	foundHost, err := h.sc.FindHostById(h.hostId)
+	status := *h.Status
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	if h.Status == nil || !isValidHostStatus(status) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    fmt.Sprintf("Illegal host status value"),
+			StatusCode: http.StatusBadRequest,
+		})
+	}
+
+	if err := h.sc.SetHostStatus(foundHost, status, user.Username()); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	host := &model.APIHost{}
+	if err = host.BuildFromService(*foundHost); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	return gimlet.NewJSONResponse(host)
+}
+
+func isValidHostStatus(status string) bool {
+	return status == evergreen.HostRunning ||
+		status == evergreen.HostTerminated ||
+		status == evergreen.HostUninitialized ||
+		status == evergreen.HostBuilding ||
+		status == evergreen.HostStarting ||
+		status == evergreen.HostProvisioning ||
+		status == evergreen.HostProvisionFailed ||
+		status == evergreen.HostQuarantined ||
+		status == evergreen.HostDecommissioned
+}
 
 ////////////////////////////////////////////////////////////////////////
 //

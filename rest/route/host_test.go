@@ -19,6 +19,47 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+type HostChangeStatusSuite struct {
+	route *hostChangeStatusHandler
+	sc    *data.MockConnector
+	data  data.MockHostConnector
+
+	suite.Suite
+}
+
+func TestHostChangeStatusSuite(t *testing.T) {
+	suite.Run(t, new(HostChangeStatusSuite))
+}
+
+func (s *HostChangeStatusSuite) SetupTest() {
+	s.sc = getMockHostsConnector()
+	s.route = makeChangeHostStatus(s.sc).(*hostChangeStatusHandler)
+}
+
+func (s *HostChangeStatusSuite) TestValidStatusChange() {
+	s.route.hostId = "host1"
+	s.route.Status = model.ToAPIString(evergreen.HostStarting)
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	res := s.route.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusOK, res.Status())
+	s.Equal(evergreen.HostStarting, s.sc.CachedHosts[0].Status)
+}
+
+func (s *HostChangeStatusSuite) TestInValidStatusChange() {
+	s.route.hostId = "host1"
+	s.route.Status = model.ToAPIString("This is an invalid status!")
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+
+	res := s.route.Run(ctx)
+	s.NotNil(res)
+	s.Equal(http.StatusBadRequest, res.Status())
+	s.NotEqual("This is an invalid status!", s.sc.CachedHosts[0].Status)
+}
+
 type HostSuite struct {
 	route *hostIDGetHandler
 	sc    *data.MockConnector
@@ -168,7 +209,7 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
+
 }
 
 func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
