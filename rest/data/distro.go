@@ -16,6 +16,18 @@ import (
 // from the Connector through interactions with the backing database.
 type DBDistroConnector struct{}
 
+// FindDistroById queries the database to find a given distros.
+func (dc *DBDistroConnector) FindDistroById(distroId string) (*distro.Distro, error) {
+	d, err := distro.FindOne(distro.ById(distroId))
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro with id %s not found", distroId),
+		}
+	}
+	return &d, nil
+}
+
 // FindAllDistros queries the database to find all distros.
 func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 	distros, err := distro.Find(distro.All)
@@ -78,6 +90,16 @@ func (tc *DBDistroConnector) ClearTaskQueue(distroId string) error {
 type MockDistroConnector struct {
 	CachedDistros []distro.Distro
 	CachedTasks   []task.Task
+}
+
+func (mdc *MockDistroConnector) FindDistroById(distroId string) (*distro.Distro, error) {
+	// Find the distro.
+	for _, d := range mdc.CachedDistros {
+		if d.Id == distroId {
+			return &d, nil
+		}
+	}
+	return nil, fmt.Errorf("distro with id %s not found", distroId)
 }
 
 // FindAllDistros is a mock implementation for testing.

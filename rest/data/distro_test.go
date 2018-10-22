@@ -11,14 +11,41 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+func TestFindDistroById(t *testing.T) {
+	assert := assert.New(t)
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindDistroById")
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	assert.NoError(err)
+	require.NotNil(t, session)
+	defer session.Close()
+
+	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
+
+	sc := &DBConnector{}
+	id := fmt.Sprintf("distro_%d", rand.Int())
+	d := &distro.Distro{
+		Id: id,
+	}
+	assert.Nil(d.Insert())
+	found, err := sc.FindDistroById(id)
+	assert.NoError(err)
+	assert.Equal(found.Id, id, "The _ids should match")
+	assert.NotEqual(found.Id, -1, "The _ids should not match")
+}
 
 func TestFindAllDistros(t *testing.T) {
 	assert := assert.New(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllDistros")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	assert.NoError(err)
+	require.NotNil(t, session)
+	defer session.Close()
 	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 
 	sc := &DBConnector{}
@@ -32,7 +59,7 @@ func TestFindAllDistros(t *testing.T) {
 	}
 
 	found, err := sc.FindAllDistros()
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Len(found, numDistros)
 }
 
