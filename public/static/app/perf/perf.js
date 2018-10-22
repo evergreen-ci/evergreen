@@ -20,8 +20,8 @@ function average (arr){
 
 
 mciModule.controller('PerfController', function PerfController(
-  $scope, $window, $http, $location, $log, $q, DrawPerfTrendChart,
-  Stitch, STITCH_CONFIG
+  $scope, $window, $http, $location, $log, $q, ChangePointsService,
+  DrawPerfTrendChart, PROCESSED_TYPE, Stitch, STITCH_CONFIG
 ) {
     /* for debugging
     $sce, $compile){
@@ -399,6 +399,20 @@ mciModule.controller('PerfController', function PerfController(
     }
   }
 
+  function markChangePoints(points, mark) {
+    ChangePointsService.markPoints(points, mark).then(function() {
+      $scope.$emit('changePointsRemove', _.pluck(points, 'suspect_revision'))
+    }, _.noop)
+  }
+
+  $scope.ackChangePoints = function(points) {
+    markChangePoints(points, PROCESSED_TYPE.ACKNOWLEDGED)
+  }
+
+  $scope.hideChangePoints = function(points) {
+    markChangePoints(points, PROCESSED_TYPE.HIDDEN)
+  }
+
   $scope.getSampleAtCommit = function(series, commit) {
     return _.find(series, function(x){return x.revision == commit});
   }
@@ -507,7 +521,7 @@ mciModule.controller('PerfController', function PerfController(
         var changePointsQ = Stitch.use(STITCH_CONFIG.PERF).query(function(db) {
           return db
             .db(STITCH_CONFIG.PERF.DB_PERF)
-            .collection(STITCH_CONFIG.PERF.COLL_CHANGE_POINTS)
+            .collection(STITCH_CONFIG.PERF.COLL_UNPROCESSED_POINTS)
             .find({
               project: $scope.task.branch,
               task: $scope.task.display_name,

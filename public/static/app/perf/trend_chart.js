@@ -336,32 +336,36 @@ mciModule.factory('DrawPerfTrendChart', function (
     })
 
     // Array with combinations combinations of {level, changePoint}
-    var changePointForLevel = []
-    _.each(visibleChangePoints, function(point) {
-      point.bfs = _.where(
-        buildFailures, {first_failing_revision: point.suspect_revision}
-      ) || []
-      var level = _.findWhere(levelsMeta, {name: point.thread_level})
-      var levels = level ? [level] : levelsMeta
+    var changePointForLevel
 
-      _.each(levels, function(level) {
-        // Check if there is existing point for this revision/level
-        // Mostly for MAXONLY mode
-        var existing = _.find(changePointForLevel, function(d) {
-          return d.level == level && d.changePoint.suspect_revision == point.suspect_revision
-        })
-        // If the point already exists, increase count meta property
-        if (existing) {
-          existing.count++
-        } else {
-          changePointForLevel.push({
-            level: level,
-            changePoint: point,
-            count: 1,
+    function updateChangePointsForLevel() {
+      changePointForLevel = []
+      _.each(visibleChangePoints, function(point) {
+        point.bfs = _.where(
+          buildFailures, {first_failing_revision: point.suspect_revision}
+        ) || []
+        var level = _.findWhere(levelsMeta, {name: point.thread_level})
+        var levels = level ? [level] : levelsMeta
+
+        _.each(levels, function(level) {
+          // Check if there is existing point for this revision/level
+          // Mostly for MAXONLY mode
+          var existing = _.find(changePointForLevel, function(d) {
+            return d.level == level && d.changePoint.suspect_revision == point.suspect_revision
           })
-        }
+          // If the point already exists, increase count meta property
+          if (existing) {
+            existing.count++
+          } else {
+            changePointForLevel.push({
+              level: level,
+              changePoint: point,
+              count: 1,
+            })
+          }
+        })
       })
-    })
+    }
 
     // Calculate legend x pos based on levels
     cfg.legend.xPos = (cfg.container.width - levelsMeta.length * cfg.legend.step) / 2
@@ -780,6 +784,9 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     function redrawChangePoints() {
+      // Rebuild change points for level list before rendering
+      updateChangePointsForLevel()
+
       // Render change points
       var pointsAndSegments = _.chain(changePointForLevel)
         .filter(function(d) { return d.level.isActive })
@@ -1198,6 +1205,9 @@ mciModule.factory('DrawPerfTrendChart', function (
           _.where(visibleBFs, {first_failing_revision: hash}),
           'key'
         )
+        scope.$parent.cps = _.filter(visibleChangePoints, function(d) {
+          return d._meta.firstRevIdx == idx || d._meta.lastRevIdx == idx
+        })
         scope.$emit('hashChanged', hash)
         scope.$parent.$digest()
       }
@@ -1267,7 +1277,19 @@ mciModule.factory('DrawPerfTrendChart', function (
       })
     }
 
-    scope.$on('hashChanged', function(e, hash) {
+    // Fired when the user click Ack/Hide buttons for the change point
+    scope.$parent.$on('changePointsRemove', function(evt, cpRevisions) {
+      visibleChangePoints = _.filter(visibleChangePoints, function(d) {
+        return !_.contains(cpRevisions, d.suspect_revision)
+      })
+      redrawChangePoints()
+      // Hide a tooltip
+      toolTipG.style('opacity', 0)
+      // Unlock the pointer
+      scope.locked = false
+    })
+
+    scope.$on('hashChanged', function(evt, hash) {
       // Make tool tip visible
       enableFocusGroup();
       // Apply new position to tool tip
