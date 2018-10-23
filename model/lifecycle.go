@@ -683,7 +683,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		}
 		t, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
 		if err != nil {
-			return tasks, err
+			return tasks, errors.Wrapf(err, "Failed to create display task %s", id)
 		}
 		t.GeneratedBy = generatedBy
 		tasks = append(tasks, t)
@@ -693,9 +693,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	for _, t := range tasksToCreate {
-		newTask, err := createOneTask(execTable.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
+		id := execTable.GetId(b.BuildVariant, t.Name)
+		newTask, err := createOneTask(id, t, project, buildVariant, b, v)
 		if err != nil {
-			return tasks, err
+			return tasks, errors.Wrapf(err, "Failed to create task %s", id)
 		}
 
 		// set Tags based on the spec
@@ -851,20 +852,18 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	return nil
 }
 
-func getTaskCreateTime(project *Project, v *version.Version) (*time.Time, error) {
+func getTaskCreateTime(project *Project, v *version.Version) (time.Time, error) {
+	createTime := time.Time{}
 	if evergreen.IsPatchRequester(v.Requester) {
 		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(project.Identifier, v.Revision))
 		if err != nil {
-			grip.Error(errors.Wrap(err, "Error finding base version for patch version"))
-			return nil, err
+			return createTime, errors.Wrap(err, "Error finding base version for patch version")
 		} else if baseVersion == nil {
-			err = errors.Errorf("Could not find base version for patch version %s", v.Id)
-			grip.Warning(err)
-			return nil, err
+			return createTime, errors.Errorf("Could not find base version for patch version %s", v.Id)
 		}
-		return &baseVersion.CreateTime, nil
+		return baseVersion.CreateTime, nil
 	} else {
-		return &v.CreateTime, nil
+		return v.CreateTime, nil
 	}
 }
 
@@ -890,7 +889,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 
 	createTime, err := getTaskCreateTime(project, v)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
 
 	t := &task.Task{
@@ -900,7 +899,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
 		DistroId:            distroID,
-		CreateTime:          *createTime,
+		CreateTime:          createTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,
 		StartTime:           util.ZeroTime, // Certain time fields must be initialized
@@ -944,7 +943,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 
 	createTime, err := getTaskCreateTime(p, v)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
 
 	t := &task.Task{
@@ -952,7 +951,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		DisplayName:         displayName,
 		BuildVariant:        bv.Name,
 		BuildId:             b.Id,
-		CreateTime:          *createTime,
+		CreateTime:          createTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Version:             v.Id,
 		Revision:            v.Revision,
