@@ -100,6 +100,7 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		migrationDistroSecurityGroups:               distroSecurityGroupsGenerator,
 		migrationLegacyNotificationsToSubscriptions: legacyNotificationsToSubscriptionsGenerator,
 		migrationSubscriptionBSONObjectIDToString:   makeBSONObjectIDToStringGenerator("subscriptions"),
+		migrationTaskCreateTime:                     taskCreateTimeGenerator,
 	}
 	catcher := grip.NewBasicCatcher()
 
