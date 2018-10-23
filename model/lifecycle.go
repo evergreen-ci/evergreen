@@ -852,13 +852,14 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	return nil
 }
 
-func getTaskCreateTime(project *Project, v *version.Version) (time.Time, error) {
+func getTaskCreateTime(projectId string, v *version.Version) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(project.Identifier, v.Revision))
+		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(projectId, v.Revision))
 		if err != nil {
 			return createTime, errors.Wrap(err, "Error finding base version for patch version")
-		} else if baseVersion == nil {
+		}
+		if baseVersion == nil {
 			return createTime, errors.Errorf("Could not find base version for patch version %s", v.Id)
 		}
 		return baseVersion.CreateTime, nil
@@ -887,7 +888,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		})
 	}
 
-	createTime, err := getTaskCreateTime(project, v)
+	createTime, err := getTaskCreateTime(project.Identifier, v)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
@@ -941,7 +942,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 func createDisplayTask(id string, displayName string, execTasks []string,
 	bv *BuildVariant, b *build.Build, v *version.Version, p *Project) (*task.Task, error) {
 
-	createTime, err := getTaskCreateTime(p, v)
+	createTime, err := getTaskCreateTime(p.Identifier, v)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
 	}
