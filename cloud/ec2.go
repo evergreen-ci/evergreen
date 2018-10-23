@@ -542,23 +542,23 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 		spotOut, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: spotHostIDs,
 		})
-		grip.Debug(message.Fields{
-			"message": "EVG-5444 logging DescribeSpotInstanceRequests output",
-			"output":  spotOut,
-		})
 		if err != nil {
 			return nil, errors.Wrap(err, "error describing spot instances")
 		}
 		if len(spotOut.SpotInstanceRequests) != len(spotHostIDs) {
 			return nil, errors.New("programmer error: length of spot instance requests != length of spot host IDs")
 		}
+		spotInstanceRequestsMap := map[string]*ec2.SpotInstanceRequest{}
+		for i := range spotOut.SpotInstanceRequests {
+			spotInstanceRequestsMap[*spotOut.SpotInstanceRequests[i].SpotInstanceRequestId] = spotOut.SpotInstanceRequests[i]
+		}
 		for i := range spotHostIDs {
-			if spotOut.SpotInstanceRequests[i].InstanceId == nil || *spotOut.SpotInstanceRequests[i].InstanceId == "" {
-				hostToStatusMap[*spotHostIDs[i]] = cloudStatusFromSpotStatus(*spotOut.SpotInstanceRequests[i].State)
+			if spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId == nil || *spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId == "" {
+				hostToStatusMap[*spotHostIDs[i]] = cloudStatusFromSpotStatus(*spotInstanceRequestsMap[*spotHostIDs[i]].State)
 				continue
 			}
-			hostsToCheck = append(hostsToCheck, spotOut.SpotInstanceRequests[i].InstanceId)
-			instanceIdToHostMap[*spotOut.SpotInstanceRequests[i].InstanceId] = *spotHostIDs[i]
+			hostsToCheck = append(hostsToCheck, spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId)
+			instanceIdToHostMap[*spotInstanceRequestsMap[*spotHostIDs[i]].InstanceId] = *spotHostIDs[i]
 		}
 	}
 
@@ -567,15 +567,15 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: hostsToCheck,
 	})
-	grip.Debug(message.Fields{
-		"message": "EVG-5444 logging DescribeInstances output",
-		"output":  out,
-	})
 	if err != nil {
 		return nil, errors.Wrap(err, "error describing instances")
 	}
-	for i, res := range out.Reservations {
-		hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]]] = ec2StatusToEvergreenStatus(*res.Instances[0].State.Name)
+	reservationsMap := map[string]string{}
+	for i := range out.Reservations {
+		reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = *out.Reservations[i].Instances[0].State.Name
+	}
+	for i := range hostsToCheck {
+		hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]]] = ec2StatusToEvergreenStatus(reservationsMap[*hostsToCheck[i]])
 	}
 
 	// Populate cloud statuses

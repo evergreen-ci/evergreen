@@ -775,13 +775,13 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			// This host returns with no id
 			&ec2.SpotInstanceRequest{
-				SpotInstanceRequestId: aws.String("sir-1"),
-				State:                 aws.String(ec2.SpotInstanceStateFailed),
-			},
-			&ec2.SpotInstanceRequest{
 				InstanceId:            aws.String("i-3"),
 				State:                 aws.String(SpotStatusActive),
 				SpotInstanceRequestId: aws.String("sir-3"),
+			},
+			&ec2.SpotInstanceRequest{
+				SpotInstanceRequestId: aws.String("sir-1"),
+				State:                 aws.String(ec2.SpotInstanceStateFailed),
 			},
 		},
 	}
@@ -810,6 +810,16 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 			{
 				Instances: []*ec2.Instance{
 					{
+						InstanceId: aws.String("i-6"),
+						State: &ec2.InstanceState{
+							Name: aws.String(ec2.InstanceStateNameShuttingDown),
+						},
+					},
+				},
+			},
+			{
+				Instances: []*ec2.Instance{
+					{
 						InstanceId: aws.String("i-4"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameRunning),
@@ -823,16 +833,6 @@ func (s *EC2Suite) TestGetInstanceStatuses() {
 						InstanceId: aws.String("i-5"),
 						State: &ec2.InstanceState{
 							Name: aws.String(ec2.InstanceStateNameTerminated),
-						},
-					},
-				},
-			},
-			{
-				Instances: []*ec2.Instance{
-					{
-						InstanceId: aws.String("i-6"),
-						State: &ec2.InstanceState{
-							Name: aws.String(ec2.InstanceStateNameShuttingDown),
 						},
 					},
 				},
