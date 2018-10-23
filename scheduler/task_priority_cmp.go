@@ -70,9 +70,9 @@ func byAge(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
 		}
 	}
 
-	if t1.CreateTime.Before(t2.CreateTime) {
+	if t1.IngestTime.Before(t2.IngestTime) {
 		return 1, nil
-	} else if t2.CreateTime.Before(t1.CreateTime) {
+	} else if t2.IngestTime.Before(t1.IngestTime) {
 		return -1, nil
 	} else {
 		return 0, nil

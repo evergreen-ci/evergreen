@@ -681,7 +681,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			}
 			execTaskIds = append(execTaskIds, execTaskId)
 		}
-		t := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
+		t, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
+		if err != nil {
+			return tasks, err
+		}
 		t.GeneratedBy = generatedBy
 		tasks = append(tasks, t)
 		for _, et := range dt.ExecutionTasks {
@@ -690,7 +693,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	for _, t := range tasksToCreate {
-		newTask := createOneTask(execTable.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
+		newTask, err := createOneTask(execTable.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
+		if err != nil {
+			return tasks, err
+		}
 
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
@@ -845,9 +851,26 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	return nil
 }
 
+func getTaskCreateTime(project *Project, v *version.Version) (*time.Time, error) {
+	if evergreen.IsPatchRequester(v.Requester) {
+		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(project.Identifier, v.Revision))
+		if err != nil {
+			grip.Error(errors.Wrap(err, "Error finding base version for patch version"))
+			return nil, err
+		} else if baseVersion == nil {
+			err = errors.Errorf("Could not find base version for patch version %s", v.Id)
+			grip.Warning(err)
+			return nil, err
+		}
+		return &baseVersion.CreateTime, nil
+	} else {
+		return &v.CreateTime, nil
+	}
+}
+
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *version.Version) *task.Task {
+	buildVariant *BuildVariant, b *build.Build, v *version.Version) (*task.Task, error) {
 	var distroID string
 
 	if len(buildVarTask.Distros) > 0 {
@@ -865,6 +888,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		})
 	}
 
+	createTime, err := getTaskCreateTime(project, v)
+	if err != nil {
+		return nil, err
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
@@ -872,7 +900,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
 		DistroId:            distroID,
-		CreateTime:          b.CreateTime,
+		CreateTime:          *createTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,
 		StartTime:           util.ZeroTime, // Certain time fields must be initialized
@@ -904,21 +932,27 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 				"task_id":    id,
 				"task_group": t.TaskGroup,
 			}))
-			return nil
+			return nil, err
 		}
 		t.TaskGroupMaxHosts = tg.MaxHosts
 	}
-	return t
+	return t, nil
 }
 
 func createDisplayTask(id string, displayName string, execTasks []string,
-	bv *BuildVariant, b *build.Build, v *version.Version, p *Project) *task.Task {
-	return &task.Task{
+	bv *BuildVariant, b *build.Build, v *version.Version, p *Project) (*task.Task, error) {
+
+	createTime, err := getTaskCreateTime(p, v)
+	if err != nil {
+		return nil, err
+	}
+
+	t := &task.Task{
 		Id:                  id,
 		DisplayName:         displayName,
 		BuildVariant:        bv.Name,
 		BuildId:             b.Id,
-		CreateTime:          b.CreateTime,
+		CreateTime:          *createTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Version:             v.Id,
 		Revision:            v.Revision,
@@ -934,6 +968,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		DispatchTime:        util.ZeroTime,
 		ScheduledTime:       util.ZeroTime,
 	}
+	return t, nil
 }
 
 // DeleteBuild removes any record of the build by removing it and all of the tasks that

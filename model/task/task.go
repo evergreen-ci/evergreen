@@ -699,8 +699,8 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 	if util.IsZeroTime(t.StartTime) {
 		timedOutStart := finishTime.Add(-2 * time.Hour)
 		t.StartTime = timedOutStart
-		if timedOutStart.Before(t.CreateTime) {
-			t.StartTime = t.CreateTime
+		if timedOutStart.Before(t.IngestTime) {
+			t.StartTime = t.IngestTime
 		}
 		grip.Warning(message.Fields{
 			"message":      "Task is missing start time",
