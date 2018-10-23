@@ -21,7 +21,7 @@ import (
 // PATCH /rest/v2/hosts/{host_id}
 
 type hostChangeStatusHandler struct {
-	Status *string `json:"status"`
+	Status string `json:"status"`
 	hostId string
 	sc     data.Connector
 }
@@ -47,11 +47,8 @@ func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) er
 		return errors.Wrap(err, "Argument read error")
 	}
 
-	if h.Status == nil {
-		return gimlet.ErrorResponse{
-			Message:    "Must set 'priority'",
-			StatusCode: http.StatusBadRequest,
-		}
+	if !util.StringSliceContains(evergreen.ValidUserSetStatus, h.Status) {
+		return errors.New("Invalid host status")
 	}
 
 	return nil
@@ -60,19 +57,11 @@ func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) er
 func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	foundHost, err := h.sc.FindHostById(h.hostId)
-	status := *h.Status
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	if h.Status == nil || !isValidHostStatus(status) {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    fmt.Sprintf("Illegal host status value"),
-			StatusCode: http.StatusBadRequest,
-		})
-	}
-
-	if err := h.sc.SetHostStatus(foundHost, status, user.Username()); err != nil {
+	if err := h.sc.SetHostStatus(foundHost, h.Status, user.Username()); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
@@ -82,18 +71,6 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(host)
-}
-
-func isValidHostStatus(status string) bool {
-	return status == evergreen.HostRunning ||
-		status == evergreen.HostTerminated ||
-		status == evergreen.HostUninitialized ||
-		status == evergreen.HostBuilding ||
-		status == evergreen.HostStarting ||
-		status == evergreen.HostProvisioning ||
-		status == evergreen.HostProvisionFailed ||
-		status == evergreen.HostQuarantined ||
-		status == evergreen.HostDecommissioned
 }
 
 ////////////////////////////////////////////////////////////////////////

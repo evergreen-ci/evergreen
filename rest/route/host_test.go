@@ -36,9 +36,43 @@ func (s *HostChangeStatusSuite) SetupTest() {
 	s.route = makeChangeHostStatus(s.sc).(*hostChangeStatusHandler)
 }
 
-func (s *HostChangeStatusSuite) TestValidStatusChange() {
+func (s *HostChangeStatusSuite) TestParseInValidStatus() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+
+	json := []byte(`{"status": "This is an invalid state"}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
+	err := s.route.Parse(ctx, req)
+
+	s.Error(err)
+	s.EqualError(err, "Invalid host status")
+}
+
+func (s *HostChangeStatusSuite) TestParseMissingStatus() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+
+	json := []byte(``)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
+	err := s.route.Parse(ctx, req)
+	s.Error(err)
+	s.EqualError(err, "Argument read error: error attempting to unmarshal into *route.hostChangeStatusHandler: unexpected end of JSON input")
+}
+
+func (s *HostChangeStatusSuite) TestParseValidStatus() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+
+	json := []byte(`{"status": "terminated"}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
+	err := s.route.Parse(ctx, req)
+	s.NoError(err)
+	s.Equal("terminated", s.route.Status)
+}
+
+func (s *HostChangeStatusSuite) TestChangeStatus() {
 	s.route.hostId = "host1"
-	s.route.Status = model.ToAPIString(evergreen.HostStarting)
+	s.route.Status = evergreen.HostStarting
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 
@@ -46,18 +80,6 @@ func (s *HostChangeStatusSuite) TestValidStatusChange() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 	s.Equal(evergreen.HostStarting, s.sc.CachedHosts[0].Status)
-}
-
-func (s *HostChangeStatusSuite) TestInValidStatusChange() {
-	s.route.hostId = "host1"
-	s.route.Status = model.ToAPIString("This is an invalid status!")
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
-
-	res := s.route.Run(ctx)
-	s.NotNil(res)
-	s.Equal(http.StatusBadRequest, res.Status())
-	s.NotEqual("This is an invalid status!", s.sc.CachedHosts[0].Status)
 }
 
 type HostSuite struct {

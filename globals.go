@@ -298,6 +298,19 @@ var (
 		HostProvisionFailed,
 	}
 
+	// Set of host status values that can be user set via the API
+	ValidUserSetStatus = []string{
+		HostRunning,
+		HostTerminated,
+		HostUninitialized,
+		HostBuilding,
+		HostStarting,
+		HostProvisioning,
+		HostProvisionFailed,
+		HostQuarantined,
+		HostDecommissioned,
+	}
+
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
