@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -236,7 +238,9 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 	}
 
 	for _, alias := range aliases {
-		fmt.Printf("%s\t%s\t%s\n", alias.Alias, alias.Variant, alias.Task)
+		if alias.Alias != patch.GithubAlias {
+			fmt.Printf("%s\t%s\t%s\t%s\n", alias.Alias, alias.Variant, alias.Task, strings.Join(alias.Tags, ", "))
+		}
 	}
 
 	return nil

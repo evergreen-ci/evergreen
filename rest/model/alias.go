@@ -7,9 +7,10 @@ import (
 
 // APIAlias is the model to be returned by the API whenever aliass are fetched.
 type APIAlias struct {
-	Alias   APIString `json:"alias"`
-	Variant APIString `json:"variant"`
-	Task    APIString `json:"task"`
+	Alias   APIString   `json:"alias"`
+	Variant APIString   `json:"variant"`
+	Task    APIString   `json:"task"`
+	Tags    []APIString `json:"tags"`
 }
 
 // BuildFromService converts from service level structs to an APIAlias.
@@ -19,6 +20,12 @@ func (apiAlias *APIAlias) BuildFromService(h interface{}) error {
 		apiAlias.Alias = ToAPIString(v.Alias)
 		apiAlias.Variant = ToAPIString(v.Variant)
 		apiAlias.Task = ToAPIString(v.Task)
+
+		tags := make([]APIString, 0)
+		for _, tag := range v.Tags {
+			tags = append(tags, ToAPIString(tag))
+		}
+		apiAlias.Tags = tags
 	default:
 		return errors.Errorf("incorrect type when fetching converting alias type")
 	}
