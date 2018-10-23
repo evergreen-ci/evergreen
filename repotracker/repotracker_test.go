@@ -663,7 +663,7 @@ tasks:
 	p := &model.Project{}
 	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: s.rev, SourceVersion: s.sourceVersion}, false, nil)
+	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -697,7 +697,7 @@ tasks:
 	p := &model.Project{}
 	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: s.rev}, false, nil)
+	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -734,7 +734,7 @@ tasks:
 		Errors:   []string{"err1"},
 		Warnings: []string{"warn1", "warn2"},
 	}
-	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: s.rev}, false, &vErrs)
+	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev}, false, &vErrs)
 	s.NoError(err)
 	s.Require().NotNil(v)
 

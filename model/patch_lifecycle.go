@@ -298,8 +298,8 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:      project,
-			Version:      patchVersion,
+			Project:      *project,
+			Version:      *patchVersion,
 			TaskIDs:      taskIds,
 			BuildName:    vt.Variant,
 			Activated:    true,

@@ -742,8 +742,8 @@ buildvariants:
 		Convey("if a non-existent build variant is passed in, an error should be returned", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: "blecch",
 				Activated: false,
@@ -759,8 +759,8 @@ buildvariants:
 			" tasks for the build variant should be created", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar1.Name,
 				Activated: false,
@@ -786,8 +786,8 @@ buildvariants:
 			" specified tasks should be created", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar1.Name,
 				Activated: false,
@@ -807,8 +807,8 @@ buildvariants:
 		Convey("ensure distro is populated to tasks", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar1.Name,
 				Activated: false,
@@ -832,8 +832,8 @@ buildvariants:
 			" to the tasks created", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar2.Name,
 				Activated: false,
@@ -872,8 +872,8 @@ buildvariants:
 		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar1.Name,
 				Activated: false,
@@ -916,8 +916,8 @@ buildvariants:
 			"and priorities specified in the project", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar1.Name,
 				Activated: false,
@@ -978,8 +978,8 @@ buildvariants:
 		Convey("all of the build's essential fields should be set correctly", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar1.Name,
 				Activated: false,
@@ -1011,8 +1011,8 @@ buildvariants:
 		Convey("all of the tasks' essential fields should be set correctly", func() {
 
 			args := BuildCreateArgs{
-				Project:   project,
-				Version:   v,
+				Project:   *project,
+				Version:   *v,
 				TaskIDs:   table,
 				BuildName: buildVar1.Name,
 				Activated: false,
@@ -1100,8 +1100,8 @@ buildvariants:
 			func() {
 
 				args := BuildCreateArgs{
-					Project:   project,
-					Version:   v,
+					Project:   *project,
+					Version:   *v,
 					TaskIDs:   table,
 					BuildName: buildVar1.Name,
 					Activated: true,
@@ -1251,8 +1251,8 @@ func TestCreateTaskGroup(t *testing.T) {
 	table := NewTaskIdTable(proj, v, "", "")
 
 	args := BuildCreateArgs{
-		Project:   proj,
-		Version:   v,
+		Project:   *proj,
+		Version:   *v,
 		TaskIDs:   table,
 		BuildName: "bv",
 		Activated: true,

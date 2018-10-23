@@ -68,7 +68,7 @@ func metadataFromVersion(source version.Version, ref model.ProjectRef) (repotrac
 	metadata := repotracker.VersionMetadata{
 		SourceVersion: &source,
 	}
-	metadata.Revision = &model.Revision{
+	metadata.Revision = model.Revision{
 		Author:          source.Author,
 		AuthorEmail:     source.AuthorEmail,
 		CreateTime:      source.CreateTime,

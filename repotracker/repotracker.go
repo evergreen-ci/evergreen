@@ -45,7 +45,7 @@ type VersionErrors struct {
 
 // VersionMetadata is used to pass information about upstream versions to downstream version creation
 type VersionMetadata struct {
-	Revision      *model.Revision
+	Revision      model.Revision
 	TriggerID     string
 	TriggerType   string
 	EventID       string
@@ -238,7 +238,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := shellVersionFromRevision(ref, VersionMetadata{Revision: &revisions[i]})
+					stubVersion, dbErr := shellVersionFromRevision(ref, VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":  "error creating shell version",
@@ -290,7 +290,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		}
 
 		metadata := VersionMetadata{
-			Revision: &revisions[i],
+			Revision: revisions[i],
 		}
 		v, err := CreateVersionFromConfig(ref, project, metadata, ignore, versionErrs)
 		if err != nil {
@@ -609,8 +609,8 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, metadata Vers
 		}
 
 		args := model.BuildCreateArgs{
-			Project:      project,
-			Version:      v,
+			Project:      *project,
+			Version:      *v,
 			TaskIDs:      taskIds,
 			BuildName:    buildvariant.Name,
 			Activated:    false,

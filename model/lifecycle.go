@@ -478,16 +478,16 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 // BuildCreateArgs is the set of parameters used in CreateBuildFromVersion
 type BuildCreateArgs struct {
-	Project      *Project         // project to create the build for
-	Version      *version.Version // the version the build belong to
-	TaskIDs      TaskIdConfig     // pre-generated IDs for the tasks to be created
-	BuildName    string           // name of the buildvariant
-	Activated    bool             // true if the build should be scheduled
-	TaskNames    []string         // names of tasks to create (used in patches). Will create all if nil
-	DisplayNames []string         // names of display tasks to create (used in patches). Will create all if nil
-	GeneratedBy  string           // ID of the task that generated this build
-	SourceRev    string           // githash of the revision that triggered this build
-	DefinitionID string           // definition ID of the trigger used to create this build
+	Project      Project         // project to create the build for
+	Version      version.Version // the version the build belong to
+	TaskIDs      TaskIdConfig    // pre-generated IDs for the tasks to be created
+	BuildName    string          // name of the buildvariant
+	Activated    bool            // true if the build should be scheduled
+	TaskNames    []string        // names of tasks to create (used in patches). Will create all if nil
+	DisplayNames []string        // names of display tasks to create (used in patches). Will create all if nil
+	GeneratedBy  string          // ID of the task that generated this build
+	SourceRev    string          // githash of the revision that triggered this build
+	DefinitionID string          // definition ID of the trigger used to create this build
 }
 
 // CreateBuildFromVersion creates a build given all of the necessary information
@@ -543,7 +543,7 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(args.Project, buildVariant, b, args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy)
+	tasksForBuild, err := createTasksForBuild(&args.Project, buildVariant, b, &args.Version, args.TaskIDs, args.TaskNames, args.DisplayNames, args.GeneratedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -1130,8 +1130,8 @@ func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVari
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
 		buildArgs := BuildCreateArgs{
-			Project:      p,
-			Version:      v,
+			Project:      *p,
+			Version:      *v,
 			TaskIDs:      taskIds,
 			BuildName:    pair.Variant,
 			Activated:    activated,
