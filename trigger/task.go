@@ -613,7 +613,7 @@ func (t *taskTriggers) shouldIncludeTest(sub *event.Subscription, previousTask *
 	if test.Status != evergreen.TestFailedStatus {
 		return false, nil
 	}
-	record, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project, t.task.RevisionOrderNumber)
+	record, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.TestFile, t.task.DisplayName, t.task.BuildVariant, t.task.Project)
 	if err != nil {
 		return false, errors.Wrap(err, "Failed to fetch alert record")
 	}
