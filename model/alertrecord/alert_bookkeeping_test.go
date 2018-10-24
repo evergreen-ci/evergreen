@@ -40,7 +40,7 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 	beforeRevision = 5
 	s.NoError(InsertNewTaskRegressionByTestRecord(sub, taskID, testName, taskDisplayName, variant, projectID, beforeRevision))
 
-	record, err := FindByLastTaskRegressionByTest(sub, testName, taskDisplayName, variant, projectID, beforeRevision)
+	record, err := FindByLastTaskRegressionByTest(sub, testName, taskDisplayName, variant, projectID)
 	s.NoError(err)
 	s.Require().NotNil(record)
 	s.True(record.Id.Valid())
@@ -57,39 +57,7 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 	s.InDelta(time.Now().UnixNano(), record.AlertTime.UnixNano(), float64(10*time.Millisecond))
 }
 
-func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestWithNoTestsRecord() {
-	const (
-		sub             = "test-sub"
-		taskID          = "task0"
-		taskDisplayName = "task"
-		taskStatus      = "something"
-		variant         = "variant"
-		projectID       = "project"
-	)
-	beforeRevision := 2
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(sub, taskID, taskDisplayName, taskStatus, variant, projectID, beforeRevision))
-	beforeRevision = 5
-	s.NoError(InsertNewTaskRegressionByTestWithNoTestsRecord(sub, taskID, taskDisplayName, taskStatus, variant, projectID, beforeRevision))
-
-	record, err := FindByLastTaskRegressionByTestWithNoTests(sub, taskDisplayName, variant, projectID, beforeRevision)
-
-	s.NoError(err)
-	s.Require().NotNil(record)
-	s.True(record.Id.Valid())
-	s.Equal(taskRegressionByTestWithNoTests, record.Type)
-	s.Empty(record.HostId)
-	s.Equal("task0", record.TaskId)
-	s.Equal("something", record.TaskStatus)
-	s.Equal("project", record.ProjectId)
-	s.Empty(record.VersionId)
-	s.Equal("task", record.TaskName)
-	s.Equal("variant", record.Variant)
-	s.Empty(record.TestName)
-	s.Equal(5, record.RevisionOrderNumber)
-	s.InDelta(time.Now().UnixNano(), record.AlertTime.UnixNano(), float64(10*time.Millisecond))
-}
-
-func (s *alertRecordSuite) ByLastFailureTransition() {
+func (s *alertRecordSuite) TestByLastFailureTransition() {
 	alert1 := AlertRecord{
 		Id:                  bson.NewObjectId(),
 		Type:                TaskFailTransitionId,
@@ -213,4 +181,68 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	err = db.FindAllQ(Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
 	s.NoError(err)
 	s.Len(records, 3)
+}
+
+func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
+	alert1 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                taskRegressionByTest,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t1",
+		TestName:            "test",
+		RevisionOrderNumber: 1,
+	}
+	s.NoError(alert1.Insert())
+	alert2 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                taskRegressionByTest,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t2",
+		TestName:            "test",
+		RevisionOrderNumber: 2,
+	}
+	s.NoError(alert2.Insert())
+
+	//test that sorting by revision works
+	alert, err := FindByLastTaskRegressionByTest("", "test", "t", "v", "p")
+	s.NoError(err)
+	s.Equal("t2", alert.TaskId)
+
+	// test that sorting by time and revision with some times missing works
+	alert3 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                taskRegressionByTest,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t3",
+		TestName:            "test",
+		RevisionOrderNumber: 3,
+		AlertTime:           time.Now(),
+	}
+	s.NoError(alert3.Insert())
+	alert, err = FindByLastTaskRegressionByTest("", "test", "t", "v", "p")
+	s.NoError(err)
+	s.Equal("t3", alert.TaskId)
+
+	// test that an earlier alert for a later commit returns the latest alert
+	alert4 := AlertRecord{
+		Id:                  bson.NewObjectId(),
+		Type:                taskRegressionByTest,
+		TaskName:            "t",
+		Variant:             "v",
+		ProjectId:           "p",
+		TaskId:              "t4",
+		TestName:            "test",
+		RevisionOrderNumber: 4,
+		AlertTime:           time.Now().Add(-1 * time.Hour),
+	}
+	s.NoError(alert4.Insert())
+	alert, err = FindByLastTaskRegressionByTest("", "test", "t", "v", "p")
+	s.NoError(err)
+	s.Equal("t3", alert.TaskId)
 }
