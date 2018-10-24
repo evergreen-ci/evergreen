@@ -32,6 +32,7 @@ func NewConfigModel() *APIAdminSettings {
 		ServiceFlags:      &APIServiceFlags{},
 		Slack:             &APISlackConfig{},
 		Splunk:            &APISplunkConnectionInfo{},
+		Triggers:          &APITriggerConfig{},
 		Ui:                &APIUIConfig{},
 	}
 }
@@ -53,6 +54,7 @@ type APIAdminSettings struct {
 	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org,omitempty"`
 	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
 	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
+	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 	Keys               map[string]string                 `json:"keys,omitempty"`
 	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
 	LogPath            APIString                         `json:"log_path,omitempty"`
@@ -66,8 +68,8 @@ type APIAdminSettings struct {
 	Slack              *APISlackConfig                   `json:"slack,omitempty"`
 	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
 	SuperUsers         []string                          `json:"superusers,omitempty"`
+	Triggers           *APITriggerConfig                 `json:"triggers,omitempty"`
 	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
-	JIRANotifications  *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -1402,4 +1404,23 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	config.CustomFields.FromMap(j.CustomFields)
 
 	return config, nil
+}
+
+type APITriggerConfig struct {
+	GenerateTaskDistro APIString `json:"generate_distro"`
+}
+
+func (c *APITriggerConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.TriggerConfig:
+		c.GenerateTaskDistro = ToAPIString(v.GenerateTaskDistro)
+	default:
+		return errors.Errorf("%T is not a supported type", h)
+	}
+	return nil
+}
+func (c *APITriggerConfig) ToService() (interface{}, error) {
+	return evergreen.TriggerConfig{
+		GenerateTaskDistro: FromAPIString(c.GenerateTaskDistro),
+	}, nil
 }

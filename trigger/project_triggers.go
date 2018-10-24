@@ -3,6 +3,7 @@ package trigger
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,12 +15,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const TriggerCommandFileName = "evg-triggered-tasks.json"
+
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version
 func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
-	if args.Command != "" {
-		return nil, errors.New("command-based triggers are not yet implemented")
-	}
 	if args.File != "" && args.Command != "" {
 		return nil, errors.New("cannot specify both a file and command")
 	}
@@ -38,9 +38,19 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
 	metadata.DefinitionID = args.DefinitionID
 
 	// get the downstream config
-	config, err := makeDownstreamConfigFromFile(args.DownstreamProject, args.File)
-	if err != nil {
-		return nil, err
+	var config *model.Project
+	if args.File != "" {
+		config, err = makeDownstreamConfigFromFile(args.DownstreamProject, args.File)
+		if err != nil {
+			return nil, err
+		}
+	} else if args.Command != "" {
+		config, err = makeDownstreamConfigFromCommand(args.DownstreamProject, args.Command)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("must specify a file xor command to define downstream project config")
 	}
 
 	// create version
@@ -117,4 +127,51 @@ func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Pro
 		return nil, errors.Wrapf(err, "error parsing config file for '%s'", ref.Identifier)
 	}
 	return &config, nil
+}
+
+func makeDownstreamConfigFromCommand(ref model.ProjectRef, command string) (*model.Project, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "error retrieving config")
+	}
+	baseConfig := model.Project{
+		Identifier: ref.Identifier,
+		Tasks: []model.ProjectTask{
+			{
+				Name: "generate-config",
+				Commands: []model.PluginCommandConf{
+					{
+						Command: "git.get_project",
+						Type:    evergreen.CommandTypeSetup,
+						Params: map[string]interface{}{
+							"directory": "${workdir}/src",
+						},
+					},
+					{
+						Command: "subprocess.exec",
+						Params: map[string]interface{}{
+							"command": command,
+						},
+					},
+					{
+						Command: "generate.tasks",
+						Params: map[string]interface{}{
+							"files": []string{fmt.Sprintf("src/%s", TriggerCommandFileName)},
+						},
+					},
+				},
+			},
+		},
+		BuildVariants: model.BuildVariants{
+			{
+				Name:        "generate",
+				DisplayName: "generate",
+				RunOn:       []string{settings.Triggers.GenerateTaskDistro},
+				Tasks: []model.BuildVariantTaskUnit{
+					{Name: "generate-config"},
+				},
+			},
+		},
+	}
+	return &baseConfig, nil
 }

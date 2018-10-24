@@ -1,6 +1,7 @@
 package trigger
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -70,4 +71,38 @@ func TestMakeDownstreamConfigFromFile(t *testing.T) {
 	assert.Equal("task1", proj.Tasks[0].Name)
 	assert.Len(proj.BuildVariants, 1)
 	assert.Equal("something", proj.BuildVariants[0].DisplayName)
+}
+
+func TestMakeDownstreamConfigFromCommand(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(evergreen.ConfigCollection))
+	config := testutil.MockConfig()
+	assert.NoError(evergreen.UpdateConfig(config))
+	ref := model.ProjectRef{
+		Identifier: "project",
+	}
+	cmd := "echo hi"
+
+	project, err := makeDownstreamConfigFromCommand(ref, cmd)
+	assert.NoError(err)
+	assert.Equal(ref.Identifier, project.Identifier)
+	foundCommand := false
+	foundFile := false
+	for _, t := range project.Tasks {
+		for _, c := range t.Commands {
+			if c.Command == "subprocess.exec" {
+				for _, value := range c.Params {
+					assert.EqualValues(cmd, value)
+					foundCommand = true
+				}
+			} else if c.Command == "generate.tasks" {
+				for _, value := range c.Params {
+					assert.Contains(value, fmt.Sprintf("src/%s", TriggerCommandFileName))
+					foundFile = true
+				}
+			}
+		}
+	}
+	assert.True(foundCommand)
+	assert.True(foundFile)
 }

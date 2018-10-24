@@ -48,6 +48,7 @@ func resetRegistry() error {
 		&UIConfig{},
 		&Settings{},
 		&JIRANotificationsConfig{},
+		&TriggerConfig{},
 	}
 
 	ConfigRegistry = newConfigSectionRegistry()
