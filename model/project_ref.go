@@ -71,6 +71,9 @@ type AlertConfig struct {
 type TriggerDefinition struct {
 	// completion of specified task(s) in the project listed here will cause a build in the current project
 	Project string `bson:"project" json:"project"`
+	Level   string `bson:"level" json:"level"` //build or task
+	//used to enforce that only 1 version gets created from a given upstream commit + trigger combo
+	DefinitionID string `bson:"definition_id" json:"definition_id"`
 
 	// filters for this trigger
 	BuildVariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
@@ -116,10 +119,14 @@ var (
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
+
+	projectRefTriggerProjectKey = bsonutil.MustHaveTag(TriggerDefinition{}, "Project")
 )
 
 const (
-	ProjectRefCollection = "project_ref"
+	ProjectRefCollection     = "project_ref"
+	ProjectTriggerLevelTask  = "task"
+	ProjectTriggerLevelBuild = "build"
 )
 
 func (projectRef *ProjectRef) Insert() error {
@@ -214,6 +221,26 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 		return nil, err
 	}
 
+	return projectRefs, err
+}
+
+func FindDownstreamProjects(project string) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			bsonutil.GetDottedKeyName(projectRefTriggersKey, projectRefTriggerProjectKey): project,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
 	return projectRefs, err
 }
 

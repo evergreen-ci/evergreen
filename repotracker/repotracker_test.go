@@ -549,7 +549,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Branch:     "branch",
 	}
-	assert.NoError(addBuildBreakSubscriptions(&v1, &proj1))
+	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj1))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 0)
 
@@ -581,7 +581,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		},
 	}
 	assert.NoError(u3.Insert())
-	assert.NoError(addBuildBreakSubscriptions(&v1, &proj2))
+	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj2))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
 
@@ -603,15 +603,16 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Branch:     "branch",
 		AuthorID:   u4.Id,
 	}
-	assert.NoError(addBuildBreakSubscriptions(&v3, &proj2))
+	assert.NoError(AddBuildBreakSubscriptions(&v3, &proj2))
 	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
 }
 
 type CreateVersionFromConfigSuite struct {
-	ref *model.ProjectRef
-	rev *model.Revision
-	d   *distro.Distro
+	ref           *model.ProjectRef
+	rev           *model.Revision
+	d             *distro.Distro
+	sourceVersion *version.Version
 	suite.Suite
 }
 
@@ -640,6 +641,10 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 	s.d = &distro.Distro{
 		Id: "d",
 	}
+	s.sourceVersion = &version.Version{
+		Id:       "v",
+		Revision: "abc",
+	}
 	s.NoError(s.d.Insert())
 }
 
@@ -658,7 +663,7 @@ tasks:
 	p := &model.Project{}
 	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, nil)
+	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -692,7 +697,7 @@ tasks:
 	p := &model.Project{}
 	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
 	s.NoError(err)
-	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, nil)
+	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -729,7 +734,7 @@ tasks:
 		Errors:   []string{"err1"},
 		Warnings: []string{"warn1", "warn2"},
 	}
-	v, err := CreateVersionFromConfig(s.ref, p, s.rev, false, &vErrs)
+	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev}, false, &vErrs)
 	s.NoError(err)
 	s.Require().NotNil(v)
 

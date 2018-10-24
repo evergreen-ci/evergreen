@@ -58,6 +58,11 @@ type Build struct {
 	// repository) or it was triggered by a developer
 	// patch request
 	Requester string `bson:"r" json:"r,omitempty"`
+
+	// Fields set if triggered by an upstream build
+	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
+	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 }
 
 // Returns whether or not the build has finished, based on its status.

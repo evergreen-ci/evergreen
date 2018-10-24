@@ -297,7 +297,16 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 			displayNames = append(displayNames, dt.Name)
 		}
 		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
-		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, taskNames, displayNames, "")
+		buildArgs := BuildCreateArgs{
+			Project:      *project,
+			Version:      *patchVersion,
+			TaskIDs:      taskIds,
+			BuildName:    vt.Variant,
+			Activated:    true,
+			TaskNames:    taskNames,
+			DisplayNames: displayNames,
+		}
+		buildId, err = CreateBuildFromVersion(buildArgs)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

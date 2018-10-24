@@ -52,8 +52,10 @@ type Version struct {
 	// this comment, if they can be identified
 	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
 
-	// ID of the document that triggered this version to be created
-	TriggerID string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
+	// Fields set if triggered by an upstream build
+	TriggerID    string `bson:"trigger_id,omitempty" json:"trigger_id,omitempty"`
+	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
+	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 }
 
 func (v *Version) LastSuccessful() (*Version, error) {
