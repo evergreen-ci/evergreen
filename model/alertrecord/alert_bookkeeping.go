@@ -22,11 +22,9 @@ const (
 	FirstTaskTypeFailureId   = "first_tasktype_failure"
 	TaskFailTransitionId     = "task_transition_failure"
 	FirstRegressionInVersion = "first_regression_in_version"
-	// TODO: EVG-3408
-	TaskFailedId                    = "task_failed"
-	LastRevisionNotFound            = "last_revision_not_found"
-	taskRegressionByTest            = "task-regression-by-test"
-	taskRegressionByTestWithNoTests = "task-regression-by-test-with-no-tests"
+	TaskFailedId             = "task_failed"
+	LastRevisionNotFound     = "last_revision_not_found"
+	taskRegressionByTest     = "task-regression-by-test"
 )
 
 // Host triggers
@@ -153,29 +151,14 @@ func FindByFirstRegressionInVersion(subscriptionID, versionId string) (*AlertRec
 	return FindOne(db.Query(q).Limit(1))
 }
 
-func FindByLastTaskRegressionByTest(subscriptionID, testName, taskDisplayName, variant, projectID string, beforeRevision int) (*AlertRecord, error) {
+func FindByLastTaskRegressionByTest(subscriptionID, testName, taskDisplayName, variant, projectID string) (*AlertRecord, error) {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = taskRegressionByTest
 	q[testNameKey] = testName
 	q[TaskNameKey] = taskDisplayName
 	q[VariantKey] = variant
 	q[ProjectIdKey] = projectID
-	q[RevisionOrderNumberKey] = bson.M{
-		"$lte": beforeRevision,
-	}
-	return FindOne(db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
-}
-
-func FindByLastTaskRegressionByTestWithNoTests(subscriptionID, taskDisplayName, variant, projectID string, revision int) (*AlertRecord, error) {
-	q := subscriptionIDQuery(subscriptionID)
-	q[TypeKey] = taskRegressionByTestWithNoTests
-	q[TaskNameKey] = taskDisplayName
-	q[VariantKey] = variant
-	q[ProjectIdKey] = projectID
-	q[RevisionOrderNumberKey] = bson.M{
-		"$lte": revision,
-	}
-	return FindOne(db.Query(q).Sort([]string{"-" + RevisionOrderNumberKey}))
+	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey, "-" + RevisionOrderNumberKey}))
 }
 
 func FindBySpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
@@ -201,23 +184,6 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskD
 	}
 
 	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTest)
-}
-
-func InsertNewTaskRegressionByTestWithNoTestsRecord(subscriptionID, taskID, taskDisplayName, taskStatus, variant, projectID string, revision int) error {
-	record := AlertRecord{
-		Id:                  bson.NewObjectId(),
-		SubscriptionID:      subscriptionID,
-		Type:                taskRegressionByTestWithNoTests,
-		TaskId:              taskID,
-		ProjectId:           projectID,
-		TaskName:            taskDisplayName,
-		TaskStatus:          taskStatus,
-		Variant:             variant,
-		RevisionOrderNumber: revision,
-		AlertTime:           time.Now(),
-	}
-
-	return errors.Wrapf(record.Insert(), "failed to insert alert record %s", taskRegressionByTestWithNoTests)
 }
 
 func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
