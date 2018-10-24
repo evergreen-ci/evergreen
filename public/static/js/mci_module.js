@@ -4,6 +4,7 @@ _.templateSettings = {
   interpolate: /\{(.+?)\}/g
 }
 
+// TODO Unit tests
 _.mixin({
   sum: function(coll) {
     return _.reduce(coll, function(m, d) {
@@ -14,6 +15,18 @@ _.mixin({
     _.each(coll, function(d) {
       _.extend(d, patch)
     })
+  },
+  // For each argument of `arguments`
+  // if arguemnt is a function and return value is truthy
+  // or argument is truthy non-function return the value
+  // If none arguments are truthy returns undefined
+  cascade: function() {
+    var args = Array.prototype.slice.call(arguments)
+    for (var i = 0; i < args.length; i++) {
+      var ref = args[i]
+      var value = _.isFunction(ref) ? ref() : ref
+      if (value) return value
+    }
   }
 })
 

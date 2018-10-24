@@ -1,6 +1,6 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2,
-  EVG, EvgUiGridUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
+  $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2, EVG,
+  EvgUiGridUtil, EvgUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
   PerfDiscoveryStateService, uiGridConstants 
 ) {
   var vm = this;
@@ -36,26 +36,13 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   var projectId = $window.project
 
-  // For each argument of `arguments`
-  // if arguemnt is a function and return value is truthy
-  // or argument is truthy non-function return the value
-  // If none arguments are truthy returns undefined
-  function cascade() {
-    var args = Array.prototype.slice.call(arguments)
-    for (var i = 0; i < args.length; i++) {
-      var ref = args[i]
-      var value = _.isFunction(ref) ? ref() : ref
-      if (value) return value
-    }
-  }
-
   dataUtil.getComparisionOptions(projectId)
     .then(function(items) {
       vm.fromSelect.options = items
 
       // Sets 'compare from' version from the state if available
       // Sets the first revision from the list otherwise
-      vm.fromSelect.selected = cascade(
+      vm.fromSelect.selected = _.cascade(
         _.bind(dataUtil.findVersionItem, null, items, state.from),
         _.bind(dataUtil.getQueryBasedItem, null, state.from),
         _.bind(_.findWhere, null, items, {kind: PD.KIND_VERSION}),
@@ -65,7 +52,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       vm.toSelect.options = items
       // Sets 'compare to' version from the state if available
       // Sets the first tag from the list otherwise
-      vm.toSelect.selected = cascade(
+      vm.toSelect.selected = _.cascade(
         _.bind(dataUtil.findVersionItem, null, items, state.to),
         _.bind(dataUtil.getQueryBasedItem, null, state.to),
         _.bind(_.findWhere, null, items, {kind: PD.KIND_TAG}),
