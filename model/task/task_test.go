@@ -1076,7 +1076,7 @@ func TestCircularDependency(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 	assert.NotPanics(func() {
-		err := t1.CircularDependencies(nil)
+		err := t1.CircularDependencies()
 		assert.Contains(err.Error(), "Dependency cycle detected")
 	})
 }

@@ -1628,13 +1628,11 @@ func (t *Task) blockedStateForDisplayTask(tasksWithDeps []Task) (string, error) 
 	return state, nil
 }
 
-func (t *Task) CircularDependencies(tasksWithDeps []Task) error {
+func (t *Task) CircularDependencies() error {
 	var err error
-	if tasksWithDeps == nil {
-		tasksWithDeps, err = FindAllTasksFromVersionWithDependencies(t.Version)
-		if err != nil {
-			return errors.Wrap(err, "error finding tasks with dependencies")
-		}
+	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
+	if err != nil {
+		return errors.Wrap(err, "error finding tasks with dependencies")
 	}
 	if len(tasksWithDeps) == 0 {
 		return nil
