@@ -146,7 +146,7 @@ func TestTaskImportanceComparators(t *testing.T) {
 		})
 
 		Convey("the create time comparator should prioritize a task whose"+
-			" create time is higher, providing the tasks are from different"+
+			" ingest time is higher, providing the tasks are from different"+
 			" projects", func() {
 
 			tasks[0].Requester = evergreen.PatchVersionRequester
@@ -156,9 +156,9 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 
-			// change one create time - should still be zero since the
+			// change one ingest time - should still be zero since the
 			// projects are the same
-			tasks[0].CreateTime = time.Now()
+			tasks[0].IngestTime = time.Now()
 			cmpResult, err = byAge(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, -1)
@@ -172,7 +172,7 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 1)
 
-			tasks[1].CreateTime = tasks[0].CreateTime
+			tasks[1].IngestTime = tasks[0].IngestTime
 			cmpResult, err = byAge(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)

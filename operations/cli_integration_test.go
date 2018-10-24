@@ -78,21 +78,39 @@ func setupCLITestHarness() cliTestHarness {
 	So(db.Clear(patch.Collection), ShouldBeNil)
 	So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
 	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(), ShouldBeNil)
-	localConfBytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
+	configBytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
 	So(err, ShouldBeNil)
 
 	projectRef := &model.ProjectRef{
-		Identifier:  "sample",
-		Owner:       "evergreen-ci",
-		Repo:        "sample",
-		RepoKind:    "github",
-		Branch:      "master",
-		RemotePath:  "evergreen.yml",
-		LocalConfig: string(localConfBytes),
-		Enabled:     true,
-		BatchTime:   180,
+		Identifier: "sample",
+		Owner:      "evergreen-ci",
+		Repo:       "sample",
+		RepoKind:   "github",
+		Branch:     "master",
+		RemotePath: "evergreen.yml",
+		Enabled:    true,
+		BatchTime:  180,
 	}
 	So(projectRef.Insert(), ShouldBeNil)
+
+	// Create the base versions
+	err = (&version.Version{
+		Id:         "baseVersion1",
+		Identifier: "sample",
+		CreateTime: time.Now(),
+		Revision:   "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Config:     string(configBytes),
+	}).Insert()
+	So(err, ShouldBeNil)
+	err = (&version.Version{
+		Id:         "baseVersion2",
+		Identifier: "render-module",
+		CreateTime: time.Now(),
+		Revision:   "1e5232709595db427893826ce19289461cba3f75",
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}).Insert()
+	So(err, ShouldBeNil)
 
 	// create a settings file for the command line client
 	settings := ClientSettings{

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -77,6 +78,15 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 
 	err := projectRef.Insert()
 	testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: %v", err)
+
+	baseVersion := &version.Version{
+		Identifier: patchedProject,
+		CreateTime: time.Now(),
+		Revision:   patchedRevision,
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	err = baseVersion.Insert()
+	testutil.HandleTestingErr(err, t, "Couldn't insert test base version: %v", err)
 
 	fileBytes, err := ioutil.ReadFile(patchFile)
 	testutil.HandleTestingErr(err, t, "Couldn't read patch file: %v", err)

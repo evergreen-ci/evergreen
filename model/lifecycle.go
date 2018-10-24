@@ -699,7 +699,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			}
 			execTaskIds = append(execTaskIds, execTaskId)
 		}
-		t := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
+		t, err := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
+		if err != nil {
+			return tasks, errors.Wrapf(err, "Failed to create display task %s", id)
+		}
 		t.GeneratedBy = generatedBy
 		tasks = append(tasks, t)
 		for _, et := range dt.ExecutionTasks {
@@ -708,7 +711,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	for _, t := range tasksToCreate {
-		newTask := createOneTask(execTable.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
+		id := execTable.GetId(b.BuildVariant, t.Name)
+		newTask, err := createOneTask(id, t, project, buildVariant, b, v)
+		if err != nil {
+			return tasks, errors.Wrapf(err, "Failed to create task %s", id)
+		}
 
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
@@ -863,9 +870,25 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 	return nil
 }
 
+func getTaskCreateTime(projectId string, v *version.Version) (time.Time, error) {
+	createTime := time.Time{}
+	if evergreen.IsPatchRequester(v.Requester) {
+		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(projectId, v.Revision))
+		if err != nil {
+			return createTime, errors.Wrap(err, "Error finding base version for patch version")
+		}
+		if baseVersion == nil {
+			return createTime, errors.Errorf("Could not find base version for patch version %s", v.Id)
+		}
+		return baseVersion.CreateTime, nil
+	} else {
+		return v.CreateTime, nil
+	}
+}
+
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *version.Version) *task.Task {
+	buildVariant *BuildVariant, b *build.Build, v *version.Version) (*task.Task, error) {
 	var distroID string
 
 	if len(buildVarTask.Distros) > 0 {
@@ -883,6 +906,11 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		})
 	}
 
+	createTime, err := getTaskCreateTime(project.Identifier, v)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
@@ -890,7 +918,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
 		DistroId:            distroID,
-		CreateTime:          b.CreateTime,
+		CreateTime:          createTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,
 		StartTime:           util.ZeroTime, // Certain time fields must be initialized
@@ -925,21 +953,27 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 				"task_id":    id,
 				"task_group": t.TaskGroup,
 			}))
-			return nil
+			return nil, err
 		}
 		t.TaskGroupMaxHosts = tg.MaxHosts
 	}
-	return t
+	return t, nil
 }
 
 func createDisplayTask(id string, displayName string, execTasks []string,
-	bv *BuildVariant, b *build.Build, v *version.Version, p *Project) *task.Task {
-	return &task.Task{
+	bv *BuildVariant, b *build.Build, v *version.Version, p *Project) (*task.Task, error) {
+
+	createTime, err := getTaskCreateTime(p.Identifier, v)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to get create time for task %s", id)
+	}
+
+	t := &task.Task{
 		Id:                  id,
 		DisplayName:         displayName,
 		BuildVariant:        bv.Name,
 		BuildId:             b.Id,
-		CreateTime:          b.CreateTime,
+		CreateTime:          createTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Version:             v.Id,
 		Revision:            v.Revision,
@@ -958,6 +992,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		TriggerType:         v.TriggerType,
 		TriggerEvent:        v.TriggerEvent,
 	}
+	return t, nil
 }
 
 // DeleteBuild removes any record of the build by removing it and all of the tasks that

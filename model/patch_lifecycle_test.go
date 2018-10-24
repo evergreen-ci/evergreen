@@ -352,8 +352,17 @@ func TestAddNewPatch(t *testing.T) {
 		Requester:  evergreen.PatchVersionRequester,
 		CreateTime: time.Now(),
 	}
+	baseCommitTime := time.Date(2018, time.July, 15, 16, 45, 0, 0, time.UTC)
+	baseVersion := &version.Version{
+		Id:         "baseVersion",
+		Revision:   "1234",
+		Requester:  evergreen.RepotrackerVersionRequester,
+		Identifier: "project",
+		CreateTime: baseCommitTime,
+	}
 	assert.NoError(p.Insert())
 	assert.NoError(v.Insert())
+	assert.NoError(baseVersion.Insert())
 
 	proj := &Project{
 		Identifier: "project",
@@ -404,4 +413,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Equal(dbTasks[1].DisplayName, "task1")
 	assert.Equal(dbTasks[2].DisplayName, "task2")
 	assert.Equal(dbTasks[3].DisplayName, "task3")
+	for _, task := range dbTasks {
+		assert.Equal(task.CreateTime.UTC(), baseCommitTime)
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -126,6 +127,13 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.project = "mci"
 	s.variants = []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	s.tasks = []string{"dist", "dist-test"}
+
+	s.NoError((&version.Version{
+		Identifier: s.project,
+		CreateTime: time.Now(),
+		Revision:   s.hash,
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}).Insert())
 
 	factory, err := registry.GetJobFactory(patchIntentJobName)
 	s.NoError(err)
