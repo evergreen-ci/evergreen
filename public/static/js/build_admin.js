@@ -1,9 +1,11 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRestService', 'notificationService','$filter',  function($scope, $rootScope, buildRestService, notifier, $filter) {
+mciModule.controller('AdminOptionsCtrl', [
+  '$scope', '$rootScope', 'mciBuildsRestService', 'notificationService','$filter', 'RestartUtil',
+  function($scope, $rootScope, buildRestService, notifier, $filter, RestartUtil) {
     $scope.selection = "completed";
     $scope.setBuild = function(build) {
-        $scope.build = build;
-        $scope.setRestartSelection('all')
-        $scope.buildId = build._id;
+      $scope.build = build;
+      $scope.setRestartSelection(RestartUtil.STATUS.ALL)
+      $scope.buildId = build._id;
     };
 
     $scope.numToBeRestarted = function(){
@@ -13,28 +15,14 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
     $scope.adminOptionVals = {};
     $scope.modalOpen = false;
     $scope.modalTitle = 'Modify Build';
+    $scope.statuses = RestartUtil.STATUS
 
+    $scope.setRestartSelection = function(status){
+        $scope.selection = status;
 
-    $scope.setRestartSelection = function(s){
-        $scope.selection = s;
-        if($scope.selection == "") {
-            return;
-        }
-        for(var i=0;i<$scope.build.tasks.length;i++){
-            var t = $scope.build.tasks[i];
-            var setting = false;
-            if(s == "none"){
-            }else if(s == "all"){
-                setting = true;
-            }else if(t.status != "undispatched" && t.status == "failed"){
-                if(s == "failures"){
-                    setting = true;
-                }else if (s == "system-failures" && $filter("statusFilter")(t) =="system-failed"){
-                    setting = true;
-                }
-            }
-            $scope.build.tasks[i].checkedForRestart = setting;
-        }
+        _.each($scope.build.tasks, function(task) {
+          task.checkedForRestart = status.matches(task)
+        })
     }
 
     $scope.abort = function() {
