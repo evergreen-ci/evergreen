@@ -323,8 +323,13 @@ func (t *taskTriggers) generate(sub *event.Subscription, pastTenseOverride strin
 			return nil, errors.Wrap(err, "failed to build notification")
 		}
 	}
+	n, err := notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create a notification")
+	}
+	n.SetTaskMetadata(t.task.Id, t.task.Execution)
 
-	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
+	return n, nil
 }
 
 func (t *taskTriggers) generateWithAlertRecord(sub *event.Subscription, alertType, pastTenseOverride string) (*notification.Notification, error) {

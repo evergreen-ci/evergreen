@@ -30,23 +30,23 @@ type buildlogger struct {
 // (e.g. logkeeper.)
 type BuildloggerConfig struct {
 	// CreateTest controls
-	CreateTest bool
-	URL        string
+	CreateTest bool   `json:"create_test"`
+	URL        string `json:"url"`
 
 	// The following values are used by the buildlogger service to
 	// attach metadata to the logs. The GetBuildloggerConfig
 	// method populates Number, Phase, Builder, and Test from
 	// environment variables, though you can set them directly in
 	// your application. You must set the Command value directly.
-	Number  int
-	Phase   string
-	Builder string
-	Test    string
-	Command string
+	Number  int    `json:"number"`
+	Phase   string `json:"phase"`
+	Builder string `json:"builder"`
+	Test    string `json:"test"`
+	Command string `json:"command"`
 
 	// Configure a local sender for "fallback" operations and to
 	// collect the location (URLS) of the buildlogger output
-	Local Sender
+	Local Sender `json:"-"`
 
 	buildID  string
 	testID   string

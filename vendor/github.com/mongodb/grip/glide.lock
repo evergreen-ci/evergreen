@@ -11,6 +11,8 @@ imports:
   version: b4b4d354a079fbf4bd948faad01b32cecb2ffe03
 - name: github.com/mattn/go-xmpp
   version: f4550b5399387339df5ce4c3f88c1ef85333bdd5
+- name: github.com/montanaflynn/stats
+  version: db72e6cae808b936b0c01fd330ff1fcd2c86c95e
 - name: github.com/shirou/gopsutil
   version: 93564b314264efac01934715fad4c355ed6af1c5
 - name: github.com/shirou/w32

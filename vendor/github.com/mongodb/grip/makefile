@@ -76,7 +76,7 @@ test:$(testOutput)
 race:$(raceOutput)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
-phony := lint build build-race race test coverage coverage-html deps
+phony := lint build build-race race test benchmark-send coverage coverage-html deps
 .PRECIOUS:$(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/test.$(target))
 .PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
@@ -97,8 +97,6 @@ $(buildDir)/$(name):$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
 	go build -o $@ main/$(name).go
 $(buildDir)/$(name).race:$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
 	go build -race -o $@ main/$(name).go
-# end main build
-
 
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
@@ -107,6 +105,9 @@ race-%:$(buildDir)/output.%.race
 	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $<
+benchmark-send:
+	@mkdir -p build
+	go test -v -bench=$(if $(RUN_BENCH),$(RUN_BENCH),BenchmarkAllSenders) ./send/ ./send/benchmark/ -run=^^$$
 coverage-%:$(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $<
 html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html

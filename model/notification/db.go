@@ -33,8 +33,9 @@ type unmarshalNotification struct {
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    bson.Raw         `bson:"payload"`
 
-	SentAt time.Time `bson:"sent_at,omitempty"`
-	Error  string    `bson:"error,omitempty"`
+	SentAt   time.Time            `bson:"sent_at,omitempty"`
+	Error    string               `bson:"error,omitempty"`
+	Metadata NotificationMetadata `bson:"metadata,omitempty"`
 }
 
 func (n *Notification) SetBSON(raw bson.Raw) error {
@@ -75,6 +76,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 	n.Subscriber = temp.Subscriber
 	n.SentAt = temp.SentAt
 	n.Error = temp.Error
+	n.Metadata = temp.Metadata
 
 	return nil
 }

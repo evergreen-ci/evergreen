@@ -33,7 +33,7 @@ func StdErrAppender() send.Sender {
 // DevNullAppender returns a configured stream logger Sender instance
 // that writes messages to dev null.
 func DevNullAppender() (send.Sender, error) {
-	devNull, err := os.Open(os.DevNull)
+	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}

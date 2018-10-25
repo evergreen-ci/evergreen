@@ -183,17 +183,17 @@ func TestStackMessages(t *testing.T) {
 	assert := assert.New(t) // nolint
 	// map objects to output (prefix)
 	cases := map[Composer]string{
-		NewStack(1, testMsg):                                       testMsg,
-		NewStackLines(1, testMsg):                                  testMsg,
-		NewStackLines(1):                                           "",
-		NewStackFormatted(1, "%s", testMsg):                        testMsg,
+		NewStack(1, testMsg):                testMsg,
+		NewStackLines(1, testMsg):           testMsg,
+		NewStackLines(1):                    "",
+		NewStackFormatted(1, "%s", testMsg): testMsg,
 		NewStackFormatted(1, string(testMsg[0])+"%s", testMsg[1:]): testMsg,
 
 		// with 0 frame
-		NewStack(0, testMsg):                                       testMsg,
-		NewStackLines(0, testMsg):                                  testMsg,
-		NewStackLines(0):                                           "",
-		NewStackFormatted(0, "%s", testMsg):                        testMsg,
+		NewStack(0, testMsg):                testMsg,
+		NewStackLines(0, testMsg):           testMsg,
+		NewStackLines(0):                    "",
+		NewStackFormatted(0, "%s", testMsg): testMsg,
 		NewStackFormatted(0, string(testMsg[0])+"%s", testMsg[1:]): testMsg,
 	}
 
@@ -271,7 +271,7 @@ func TestJiraMessageComposerConstructor(t *testing.T) {
 	labelsField := JiraField{Key: "Labels", Value: []string{"Soul", "Pop"}}
 	unknownField := JiraField{Key: "Artist", Value: "Adele"}
 	msg := NewJiraMessage("project", testMsg, reporterField, assigneeField, typeField, labelsField, unknownField)
-	issue := msg.Raw().(JiraIssue)
+	issue := msg.Raw().(*JiraIssue)
 
 	assert.Equal(issue.Project, "project")
 	assert.Equal(issue.Summary, testMsg)
@@ -300,7 +300,9 @@ func TestProcessTreeDoesNotHaveDuplicates(t *testing.T) {
 func TestJiraIssueAnnotationOnlySupportsStrings(t *testing.T) {
 	assert := assert.New(t) // nolint
 
-	m := &jiraMessage{}
+	m := &jiraMessage{
+		issue: &JiraIssue{},
+	}
 
 	assert.Error(m.Annotate("k", 1))
 	assert.Error(m.Annotate("k", true))

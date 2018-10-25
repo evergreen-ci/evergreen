@@ -228,3 +228,27 @@ func (j *JiraSuite) TestCustomFields() {
 	j.Len(bytes, 79)
 	j.Equal(`{"customfield_12345":["hi","bye"],"issuetype":{"name":"type"},"summary":"test"}`, string(bytes))
 }
+
+func (j *JiraSuite) TestPopulateKey() {
+	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	j.NotNil(sender)
+	j.NoError(err)
+	mock, ok := j.opts.client.(*jiraClientMock)
+	j.True(ok)
+	j.Equal(mock.numSent, 0)
+
+	jiraIssue := message.JiraIssue{
+		Summary: "foo",
+	}
+	m := message.MakeJiraMessage(jiraIssue)
+	sender.Send(m)
+	issue := m.Raw().(*message.JiraIssue)
+	j.Equal(mock.issueKey, issue.IssueKey)
+
+	messageFields := message.NewFieldsMessage(level.Info, "something", message.Fields{
+		"message": "foo",
+	})
+	sender.Send(messageFields)
+	messageIssue := messageFields.Raw().(message.Fields)
+	j.Equal(mock.issueKey, messageIssue[jiraIssueKey])
+}

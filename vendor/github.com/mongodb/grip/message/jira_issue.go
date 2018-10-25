@@ -3,7 +3,7 @@ package message
 import "fmt"
 
 type jiraMessage struct {
-	issue JiraIssue
+	issue *JiraIssue
 	Base
 }
 
@@ -13,6 +13,7 @@ type jiraMessage struct {
 // To see whether you have the right permissions to create an issue with certain
 // fields, check your JIRA interface on the web.
 type JiraIssue struct {
+	IssueKey    string   `bson:"issue_key" json:"issue_key" yaml:"issue_key"`
 	Project     string   `bson:"project" json:"project" yaml:"project"`
 	Summary     string   `bson:"summary" json:"summary" yaml:"summary"`
 	Description string   `bson:"description" json:"description" yaml:"description"`
@@ -34,7 +35,7 @@ type JiraField struct {
 // MakeJiraMessage creates a jiraMessage instance with the given JiraIssue.
 func MakeJiraMessage(issue JiraIssue) Composer {
 	return &jiraMessage{
-		issue: issue,
+		issue: &issue,
 	}
 }
 
