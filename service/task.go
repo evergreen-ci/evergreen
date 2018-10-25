@@ -65,12 +65,12 @@ type uiTaskData struct {
 	BuildVariantDisplay string `json:"build_variant_display"`
 
 	// from version
-	VersionId   string `json:"version_id"`
-	Message     string `json:"message"`
-	Project     string `json:"branch"`
-	Author      string `json:"author"`
-	AuthorEmail string `json:"author_email"`
-	CreatedTime int64  `json:"created_time"`
+	VersionId   string    `json:"version_id"`
+	Message     string    `json:"message"`
+	Project     string    `json:"branch"`
+	Author      string    `json:"author"`
+	AuthorEmail string    `json:"author_email"`
+	CreateTime  time.Time `json:"create_time"`
 
 	// from project
 	RepoOwner string `json:"repo_owner"`
@@ -211,6 +211,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Restarts:             projCtx.Task.Restarts,
 		Execution:            projCtx.Task.Execution,
 		Requester:            projCtx.Task.Requester,
+		CreateTime:           projCtx.Task.CreateTime,
+		IngestTime:           projCtx.Task.IngestTime,
 		StartTime:            projCtx.Task.StartTime.UnixNano(),
 		DispatchTime:         projCtx.Task.DispatchTime.UnixNano(),
 		FinishTime:           projCtx.Task.FinishTime.UnixNano(),
@@ -219,7 +221,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Priority:             projCtx.Task.Priority,
 		Aborted:              projCtx.Task.Aborted,
 		DisplayOnly:          projCtx.Task.DisplayOnly,
-		IngestTime:           projCtx.Task.IngestTime,
 		OverrideDependencies: projCtx.Task.OverrideDependencies,
 		CurrentTime:          time.Now().UnixNano(),
 		BuildVariantDisplay:  projCtx.Build.DisplayName,

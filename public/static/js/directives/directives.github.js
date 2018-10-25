@@ -27,14 +27,13 @@ directives.github.directive('githubCommitPanel', function(EvgUtil) {
       scope.$parent.$watch(attrs.commit, function(v) {
         scope.commit = v;
 
-        // TODO Probably, instead of this hack, version/task models
-        //      should have consistent time (EVG-5475)
-        // Tries use create_time, if not available tries to parse time from id,
-        // at the last, tries to use ingest_time
+        // Use the first available (truthy) value
+        // Should always be create_time, though
         scope.authoredAt = _.cascade(
           v.create_time,
-          v.build_id && EvgUtil.parseId(v.build_id).createTime.zone(attrs.timezone).format(),
-          v.ingest_time
+          v.ingest_time,
+          // As the last resort, parse date from build_id
+          v.build_id && EvgUtil.parseId(v.build_id).createTime.zone(attrs.timezone).format()
         )
       });
       scope.timezone = attrs.timezone;
