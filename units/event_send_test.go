@@ -244,7 +244,7 @@ func (s *eventNotificationSuite) TestJIRAIssue() {
 	msg, recv := s.env.InternalSender.GetMessageSafe()
 	s.True(recv)
 	s.NotPanics(func() {
-		jira := msg.Message.Raw().(message.JiraIssue)
+		jira := msg.Message.Raw().(*message.JiraIssue)
 		s.Equal("SERVER", jira.Project)
 		s.Equal("Tell the evergreen team that they're awesome", jira.Summary)
 		s.Equal("The evergreen team is awesome. Inform them of it", jira.Description)
