@@ -91,7 +91,11 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			catcher.Add(err)
 			continue
 		}
-		for i := 0; i < createHost.NumHosts; i++ {
+		numHosts, err := createHost.NumHosts.Int()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		for i := 0; i < numHosts; i++ {
 			intent, err := dc.MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
 				return errors.Wrap(err, "error creating host document")
