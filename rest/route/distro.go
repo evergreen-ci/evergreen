@@ -12,6 +12,52 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
+// PATCH /rest/v2/distros/{distro_id}
+
+type distroIDPatchHandler struct {
+	distroId string
+	sc       data.Connector
+}
+
+func makePatchDistroByID(sc data.Connector) gimlet.RouteHandler {
+	return &distroIDPatchHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
+	return &distroIDPatchHandler{
+		sc: h.sc,
+	}
+}
+
+// ParseAndValidate fetches the distroId and json payload from the http request.
+func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroId = gimlet.GetVars(r)["distro_id"]
+
+	return nil
+}
+
+// Execute calls the data FindDistroById function and returns the distro
+// from the provider.
+func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
+	foundDistro, err := h.sc.FindDistroById(h.distroId)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+	}
+
+	// foundDistro is of type distro.Distro
+
+	distroModel := &model.APIDistro{}
+	if err = distroModel.BuildFromService(*foundDistro); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+	}
+
+	return gimlet.NewJSONResponse(distroModel)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // GET /rest/v2/distros/{distro_id}
 
 type distroIDGetHandler struct {
