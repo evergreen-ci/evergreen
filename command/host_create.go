@@ -24,14 +24,31 @@ func (c *createHost) Name() string { return "host.create" }
 
 func (c *createHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
-	return errors.Wrapf(mapstructure.Decode(params, c.CreateHost), "error parsing '%s' params", c.Name())
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Result:           c.CreateHost,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if err := decoder.Decode(params); err != nil {
+		return errors.Wrapf(err, "error decoding %s params", c.Name())
+	}
+	return nil
 }
 
 func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
-	if err := util.ExpandValues(c.CreateHost, conf.Expansions); err != nil {
+	var err error
+	if err = util.ExpandValues(c.CreateHost, conf.Expansions); err != nil {
 		return errors.Wrap(err, "error expanding params")
 	}
-
+	numHosts, err := c.CreateHost.NumHosts.Int()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if numHosts != 0 {
+		c.CreateHost.NumHostsInt = numHosts
+	}
 	if err := c.CreateHost.Validate(); err != nil {
 		return errors.Wrap(err, "command is invalid")
 	}
