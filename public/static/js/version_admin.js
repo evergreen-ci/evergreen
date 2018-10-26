@@ -1,5 +1,6 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRestService','notificationService', '$filter', function($scope, $rootScope, versionRestService, notifier, $filter) {
-
+mciModule.controller('AdminOptionsCtrl', [
+  '$scope', '$rootScope', 'mciVersionsRestService','notificationService', '$filter', 'RestartUtil',
+  function($scope, $rootScope, versionRestService, notifier, $filter, RestartUtil) {
     $scope.adminOptionVals = {};
     $scope.modalTitle = 'Modify Version';
     $scope.selection = "completed";
@@ -27,32 +28,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
         ).reduce(function(x,y){return x+y}, 0);
     }
 
-    $scope.statuses = {
-      ALL: {
-        name: 'All',
-        matches: function(task) { return true },
-      },
-      NONE: {
-        name: 'None',
-        matches: function(task) { return false },
-      },
-      FAILURES: {
-        name: 'Failures',
-        matches: function(task) { return task.status == 'failed' }
-      },
-      SYSTEM_FAILURES: {
-        name: 'System Failures',
-        matches: function(task) {
-          return $filter('statusFilter')(task) == 'system-failed'
-        }
-      },
-      SETUP_FAILURES: {
-        name: 'Setup Failures',
-        matches: function(task) {
-          return $filter('statusFilter')(task) == 'setup-failed'
-        }
-      },
-    }
+    $scope.statuses = RestartUtil.STATUS
 
     $scope.setRestartSelection = function(status){
         $scope.selection = status
@@ -183,7 +159,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
         });
     }
 
-    $scope.setRestartSelection($scope.statuses.ALL)
+    $scope.setRestartSelection(RestartUtil.STATUS.ALL)
 }]);
 
 mciModule.directive('adminRestartVersion', function() { return {

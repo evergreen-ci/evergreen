@@ -1,11 +1,13 @@
 <div class="row">
  <div class="col-lg-12">
    <div>
-     <ul class="nav nav-pills">
-       <li ng-class="{active: selection=='all'}" ng-click="setRestartSelection('all')"><a data-toggle="pill" style="padding:3px 8px">All</a></li>
-       <li ng-class="{active: selection=='failures'}" ng-click="setRestartSelection('failures')"><a data-toggle="pill" style="padding:3px 8px">Failures</a></li>
-       <li ng-class="{active: selection=='system-failures'}" ng-click="setRestartSelection('system-failures')"><a data-toggle="pill" style="padding:3px 8px">System Failures</a></li>
-       <li ng-class="{active: selection=='none'}" ng-click="setRestartSelection('none')"><a data-toggle="pill" style="padding:3px 8px">None</a></li>
+     <ul class="nav nav-pills" style="margin-bottom: 8px">
+       <li class="pill-small"
+           ng-repeat="status in statuses"
+           ng-class="{active: selection==status}"
+           ng-click="setRestartSelection(status)"
+       >
+         <a data-toggle="pill">{{status.name}}</a></li>
      </ul>
    </div>
    <ul style="max-height:150px; overflow-y:scroll">
