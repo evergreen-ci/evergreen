@@ -58,13 +58,12 @@ package stats
 // }
 
 import (
-	"github.com/evergreen-ci/evergreen/model/task"
-	"gopkg.in/mgo.v2"
-
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
