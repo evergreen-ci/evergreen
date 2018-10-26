@@ -74,17 +74,19 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			continue
 		}
 		createHost := apimodels.CreateHost{}
-		decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		var decoder *mapstructure.Decoder
+		decoder, err = mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 			WeaklyTypedInput: true,
 			Result:           &createHost,
 		})
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if err := decoder.Decode(commandConf.Params); err != nil {
+		if err = decoder.Decode(commandConf.Params); err != nil {
 			return errors.Wrap(err, "error decoding createHost parameters")
 		}
-		numHosts, err := createHost.NumHosts.Int()
+		var numHosts int
+		numHosts, err = createHost.NumHosts.Int()
 		if err != nil {
 			return errors.WithStack(err)
 		}
