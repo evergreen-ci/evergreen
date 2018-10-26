@@ -362,7 +362,7 @@ buildvariants:
       gobin: /opt/go1.8/go/bin/go
       disable_coverage: yes
       goroot: /opt/go1.8/go
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.0.3.tgz
     tasks:
       - name: "dist"
       - name: ".smoke"
@@ -377,7 +377,7 @@ buildvariants:
       goos: linux
       gobin: /opt/go1.8/go/bin/go
       goroot: /opt/go1.8/go
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:
       - name: "dist"
@@ -390,7 +390,7 @@ buildvariants:
     run_on:
       - archlinux-test
     expansions:
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       race_detector: true
       test_timeout: 15m
     tasks:
@@ -409,7 +409,7 @@ buildvariants:
     run_on:
       - archlinux-test
     expansions:
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
     tasks:
       - name: ".report"
@@ -424,7 +424,7 @@ buildvariants:
       disable_coverage: yes
       gobin: /usr/local/go1.8/go/bin/go
       goroot: /usr/local/go1.8/go
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.4.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-4.0.3.tgz
     tasks:
       - name: "dist"
       - name: ".test"
@@ -437,7 +437,7 @@ buildvariants:
       disable_coverage: yes
       gobin: /cygdrive/c/go1.8/go/bin/go
       goroot: c:/go1.8/go
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.4.zip
+      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-4.0.3.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
@@ -456,7 +456,7 @@ buildvariants:
       gobin: /opt/go1.8/go/bin/go
       goos: linux
       goroot: /opt/go1.8/go
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.6.4.tgz
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-4.0.3.tgz
     tasks:
       - name: ".agent .test"
 
@@ -472,7 +472,8 @@ buildvariants:
       gobin: /opt/go1.8/go/bin/go
       goos: linux
       goroot: /opt/go1.8/go
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.5.13.tgz
+      # No official release of 4.0 for rhel72 zseries
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.6.4.tgz
     tasks:
       - name: ".agent .test"
 
@@ -488,6 +489,6 @@ buildvariants:
       goos: linux
       gobin: /opt/go1.8/go/bin/go
       goroot: /opt/go1.8/go
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.5.13.tgz
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-4.0.3.tgz
     tasks:
       - name: ".agent .test"
