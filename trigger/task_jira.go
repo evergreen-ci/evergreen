@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -159,8 +158,6 @@ func (j *jiraBuilder) build() (*message.JiraIssue, error) {
 		"task":         j.data.Task.Id,
 		"project":      j.data.Project.Identifier,
 	})
-
-	event.LogJiraIssueCreated(j.data.Task.Id, j.data.Task.Execution, j.project)
 
 	return &issue, nil
 }

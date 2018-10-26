@@ -109,6 +109,10 @@ tasks:
     tags: ["race"]
     name: race
 
+  - <<: *run-build
+    tags: ["test"]
+    name: benchmark-send
+
 #######################################
 #           Buildvariants             #
 #######################################

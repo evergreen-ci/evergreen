@@ -15,6 +15,9 @@ import (
 	"github.com/trivago/tgo/tcontainer"
 )
 
+// jiraIssueKey is the key in a message.Fields that will hold the ID of the issue created
+const jiraIssueKey = "jira-key"
+
 type jiraJournal struct {
 	opts *JiraOptions
 	*Base
@@ -90,9 +93,12 @@ func (j *jiraJournal) Send(m message.Composer) {
 		if err := j.opts.client.Authenticate(j.opts.Username, j.opts.Password, j.opts.UseBasicAuth); err != nil {
 			j.errHandler(fmt.Errorf("jira authentication error: %v", err), message.NewFormattedMessage(m.Priority(), m.String()))
 		}
-		if err := j.opts.client.PostIssue(issueFields); err != nil {
+		issueKey, err := j.opts.client.PostIssue(issueFields)
+		if err != nil {
 			j.errHandler(err, message.NewFormattedMessage(m.Priority(), m.String()))
+			return
 		}
+		populateKey(m, issueKey)
 	}
 }
 
@@ -135,7 +141,7 @@ func getFields(m message.Composer) *jira.IssueFields {
 	var issueFields *jira.IssueFields
 
 	switch msg := m.Raw().(type) {
-	case message.JiraIssue:
+	case *message.JiraIssue:
 		issueFields = &jira.IssueFields{
 			Project:     jira.Project{Key: msg.Project},
 			Summary:     msg.Summary,
@@ -190,6 +196,15 @@ func getFields(m message.Composer) *jira.IssueFields {
 	return issueFields
 }
 
+func populateKey(m message.Composer, issueKey string) {
+	switch msg := m.Raw().(type) {
+	case *message.JiraIssue:
+		msg.IssueKey = issueKey
+	case message.Fields:
+		msg[jiraIssueKey] = issueKey
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // interface wrapper for the slack client so that we can mock things out
@@ -199,7 +214,7 @@ func getFields(m message.Composer) *jira.IssueFields {
 type jiraClient interface {
 	CreateClient(*http.Client, string) error
 	Authenticate(string, string, bool) error
-	PostIssue(*jira.IssueFields) error
+	PostIssue(*jira.IssueFields) (string, error)
 	PostComment(string, string) error
 }
 
@@ -230,22 +245,24 @@ func (c *jiraClientImpl) Authenticate(username string, password string, useBasic
 	return nil
 }
 
-func (c *jiraClientImpl) PostIssue(issueFields *jira.IssueFields) error {
+func (c *jiraClientImpl) PostIssue(issueFields *jira.IssueFields) (string, error) {
 	i := jira.Issue{Fields: issueFields}
-	_, resp, err := c.Client.Issue.Create(&i)
-
+	issue, resp, err := c.Client.Issue.Create(&i)
 	if err != nil {
 		if resp != nil {
 			defer resp.Body.Close()
 			data, _ := ioutil.ReadAll(resp.Body)
-			return fmt.Errorf("encountered error logging to jira: %s [%s]",
+			return "", fmt.Errorf("encountered error logging to jira: %s [%s]",
 				err.Error(), string(data))
 		}
 
-		return err
+		return "", err
+	}
+	if issue == nil {
+		return "", errors.New("no issue returned from Jira")
 	}
 
-	return nil
+	return issue.Key, nil
 }
 
 // todo: allow more parameters than just body?

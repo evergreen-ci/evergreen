@@ -48,8 +48,14 @@ type Notification struct {
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    interface{}      `bson:"payload"`
 
-	SentAt time.Time `bson:"sent_at"`
-	Error  string    `bson:"error,omitempty"`
+	SentAt   time.Time            `bson:"sent_at"`
+	Error    string               `bson:"error,omitempty"`
+	Metadata NotificationMetadata `bson:"metadata,omitempty"`
+}
+
+type NotificationMetadata struct {
+	TaskID        string `bson:"task_id,omitempty"`
+	TaskExecution int    `bson:"task_execution,omitempty"`
 }
 
 // SenderKey returns an evergreen.SenderKey to get a grip sender for this
@@ -220,6 +226,11 @@ func (n *Notification) MarkError(sendErr error) error {
 	}
 
 	return nil
+}
+
+func (n *Notification) SetTaskMetadata(ID string, execution int) {
+	n.Metadata.TaskID = ID
+	n.Metadata.TaskExecution = execution
 }
 
 type NotificationStats struct {

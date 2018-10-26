@@ -336,7 +336,6 @@ func (uis *UIServer) bbFileTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event.LogJiraIssueCreated(t.Id, t.Execution, uis.buildBaronProjects[t.Project].TicketCreateProject)
 	gimlet.WriteJSON(w, nil)
 }
 
@@ -359,6 +358,7 @@ func (uis *UIServer) makeNotification(project string, t *task.Task) (*notificati
 	if n == nil {
 		return nil, errors.New("unexpected error creating notification")
 	}
+	n.SetTaskMetadata(t.Id, t.Execution)
 
 	err = notification.InsertMany(*n)
 	if err != nil {
