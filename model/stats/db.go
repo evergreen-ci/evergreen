@@ -61,7 +61,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -141,14 +140,6 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 
 // Internal helper function to create a pipeline aggregating task documents into hourly test stats.
 func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
-	var matchExpr = bson.M{
-		task.CreateTimeKey: bson.M{"$gte": start, "$lt": end},
-		task.ProjectKey:    projectId,
-		task.RequesterKey:  requester,
-	}
-	if len(tasks) > 0 {
-		matchExpr[task.DisplayNameKey] = bson.M{"$in": tasks}
-	}
 	var taskIdExpr string
 	var displayTaskLookupCollection string
 	if oldTasks {
@@ -159,7 +150,12 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 		displayTaskLookupCollection = tasksCollection
 	}
 	var pipeline = []bson.M{
-		{"$match": matchExpr},
+		{"$match": bson.M{
+			"branch":       projectId,
+			"r":            requester,
+			"create_time":  bson.M{"$gte": start, "$lt": end},
+			"display_name": bson.M{"$in": tasks},
+		}},
 		{"$project": bson.M{
 			"_id":       0,
 			"task_id":   taskIdExpr,
@@ -223,16 +219,13 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 
 // Returns a pipeline aggregating hourly test stats into daily test stats.
 func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	var matchExpr = bson.M{
-		"_id.project":   projectId,
-		"_id.requester": requester,
-		"_id.date":      bson.M{"$gte": start, "$lt": end},
-	}
-	if len(tasks) > 0 {
-		matchExpr["_id.task_name"] = bson.M{"$in": tasks}
-	}
 	var pipeline = []bson.M{
-		{"$match": matchExpr},
+		{"$match": bson.M{
+			"_id.project":   projectId,
+			"_id.requester": requester,
+			"_id.date":      bson.M{"$gte": start, "$lt": end},
+			"_id.task_name": bson.M{"$in": tasks},
+		}},
 		{
 			"$group": bson.M{
 				"_id": bson.D{
@@ -325,14 +318,6 @@ func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start
 
 // Internal helper function to create a pipeline aggregating task documents into daily task stats.
 func getDailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
-	var matchExpr = bson.M{
-		task.CreateTimeKey: bson.M{"$gte": start, "$lt": end},
-		task.ProjectKey:    projectId,
-		task.RequesterKey:  requester,
-	}
-	if len(tasks) > 0 {
-		matchExpr[task.DisplayNameKey] = bson.M{"$in": tasks}
-	}
 	var taskIdExpr string
 	var displayTaskLookupCollection string
 	if oldTasks {
@@ -343,7 +328,12 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 		displayTaskLookupCollection = tasksCollection
 	}
 	var pipeline = []bson.M{
-		{"$match": matchExpr},
+		{"$match": bson.M{
+			"branch":       projectId,
+			"r":            requester,
+			"create_time":  bson.M{"$gte": start, "$lt": end},
+			"display_name": bson.M{"$in": tasks},
+		}},
 		{"$project": bson.M{
 			"_id":        1,
 			"task_id":    taskIdExpr,
