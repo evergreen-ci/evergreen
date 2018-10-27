@@ -61,6 +61,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -75,7 +77,22 @@ const (
 	oldTasksCollection         = "old_tasks"
 	dailyStatsStatusCollection = "daily_stats_status"
 	bulkSize                   = 1000
-	nsInASecond                = 1000 * 1000 * 1000
+	nsInASecond                = time.Second / time.Nanosecond
+)
+
+var (
+	taskExecutionRef       = "$" + task.ExecutionKey
+	taskProjectKeyRef      = "$" + task.ProjectKey
+	taskDisplayNameKeyRef  = "$" + task.DisplayNameKey
+	taskCreateTimeKeyRef   = "$" + task.CreateTimeKey
+	taskBuildVariantKeyRef = "$" + task.BuildVariantKey
+	taskRequesterKeyRef    = "$" + task.RequesterKey
+	taskDistroIdKeyRef     = "$" + task.DistroIdKey
+	taskStatusKeyRef       = "$" + task.StatusKey
+	taskDetailsKeyRef      = "$" + task.DetailsKey
+	taskTimeTakenKeyRef    = "$" + task.TimeTakenKey
+	testResultTaskIdKeyRef = "$" + testresult.TaskIDKey
+	testResultExecutionRef = "$" + testresult.ExecutionKey
 )
 
 // Convenient type to use for arrays in pipeline definitions.
@@ -102,9 +119,9 @@ func hourlyTestStatsPipeline(projectId string, requester string, start time.Time
 // Returns a pipeline aggregating old task documents into hourly test stats.
 func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	// Using the same pipeline as for the tasks collection as the base.
-	var basePipeline = getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
+	basePipeline := getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
 	// And the merge the documents with the existing ones.
-	var mergePipeline = []bson.M{
+	mergePipeline := []bson.M{
 		{"$lookup": bson.M{
 			"from":         hourlyTestStatsCollection,
 			"localField":   "_id",
@@ -149,26 +166,26 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 		taskIdExpr = "$_id"
 		displayTaskLookupCollection = tasksCollection
 	}
-	var pipeline = []bson.M{
+	pipeline := []bson.M{
 		{"$match": bson.M{
-			"branch":       projectId,
-			"r":            requester,
-			"create_time":  bson.M{"$gte": start, "$lt": end},
-			"display_name": bson.M{"$in": tasks},
+			task.ProjectKey:     projectId,
+			task.RequesterKey:   requester,
+			task.CreateTimeKey:  bson.M{"$gte": start, "$lt": end},
+			task.DisplayNameKey: bson.M{"$in": tasks},
 		}},
 		{"$project": bson.M{
-			"_id":       0,
+			task.IdKey:  0,
 			"task_id":   taskIdExpr,
-			"execution": 1,
-			"project":   "$branch",
-			"task_name": "$display_name",
-			"variant":   "$build_variant",
-			"distro":    1,
-			"requester": "$r"}},
+			"execution": taskExecutionRef,
+			"project":   taskProjectKeyRef,
+			"task_name": taskDisplayNameKeyRef,
+			"variant":   taskBuildVariantKeyRef,
+			"distro":    taskDistroIdKeyRef,
+			"requester": taskRequesterKeyRef}},
 		{"$lookup": bson.M{
 			"from":         displayTaskLookupCollection,
 			"localField":   "task_id",
-			"foreignField": "execution_tasks",
+			"foreignField": task.ExecutionTasksKey,
 			"as":           "display_task"}},
 		{"$unwind": bson.M{
 			"path":                       "$display_task",
@@ -178,20 +195,26 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"let":  bson.M{"task_id": "$task_id", "execution": "$execution"},
 			"pipeline": []bson.M{
 				{"$match": bson.M{"$expr": bson.M{"$and": []bson.M{
-					{"$eq": array{"$task_id", "$$task_id"}},
-					{"$eq": array{"$task_execution", "$$execution"}}}}}},
-				{"$project": bson.M{"_id": 0, "test_file": 1, "status": 1, "start": 1, "end": 1}}},
+					{"$eq": array{testResultTaskIdKeyRef, "$$task_id"}},
+					{"$eq": array{testResultExecutionRef, "$$execution"}}}}}},
+				{"$project": bson.M{
+					testresult.IDKey:        0,
+					testresult.TestFileKey:  1,
+					testresult.StatusKey:    1,
+					testresult.StartTimeKey: 1,
+					testresult.EndTimeKey:   1}}},
 			"as": "testresults"}},
 		{"$unwind": "$testresults"},
 		{"$project": bson.M{
-			"test_file": "$testresults.test_file",
-			"task_name": bson.M{"$ifNull": array{"$display_task.display_name", "$task_name"}},
+			"test_file": "$testresults." + testresult.TestFileKey,
+			// We use the name of the display task if there is one.
+			"task_name": bson.M{"$ifNull": array{"$display_task." + task.DisplayNameKey, "$task_name"}},
 			"variant":   1,
 			"distro":    1,
 			"project":   1,
 			"requester": 1,
-			"status":    "$testresults.status",
-			"duration":  bson.M{"$subtract": array{"$testresults.end", "$testresults.start"}}}},
+			"status":    "$testresults." + task.StatusKey,
+			"duration":  bson.M{"$subtract": array{"$testresults." + testresult.EndTimeKey, "$testresults." + testresult.StartTimeKey}}}},
 		{"$group": bson.M{
 			"_id": bson.D{
 				{Name: "test_file", Value: "$test_file"},
@@ -219,7 +242,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 
 // Returns a pipeline aggregating hourly test stats into daily test stats.
 func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
-	var pipeline = []bson.M{
+	pipeline := []bson.M{
 		{"$match": bson.M{
 			"_id.project":   projectId,
 			"_id.requester": requester,
@@ -271,9 +294,9 @@ func dailyTaskStatsPipeline(projectId string, requester string, start time.Time,
 // Returns a pipeline aggregating old task documents into daily task stats.
 func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	// Using the same pipeline as for the tasks collection as the base.
-	var basePipeline = getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
+	basePipeline := getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
 	// And the merge the documents with the existing ones.
-	var mergePipeline = []bson.M{
+	mergePipeline := []bson.M{
 		{"$lookup": bson.M{
 			"from":         dailyTaskStatsCollection,
 			"localField":   "_id",
@@ -327,30 +350,30 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 		taskIdExpr = "$_id"
 		displayTaskLookupCollection = tasksCollection
 	}
-	var pipeline = []bson.M{
+	pipeline := []bson.M{
 		{"$match": bson.M{
-			"branch":       projectId,
-			"r":            requester,
-			"create_time":  bson.M{"$gte": start, "$lt": end},
-			"display_name": bson.M{"$in": tasks},
+			task.ProjectKey:     projectId,
+			task.RequesterKey:   requester,
+			task.CreateTimeKey:  bson.M{"$gte": start, "$lt": end},
+			task.DisplayNameKey: bson.M{"$in": tasks},
 		}},
 		{"$project": bson.M{
-			"_id":        1,
+			task.IdKey:   0,
 			"task_id":    taskIdExpr,
-			"execution":  1,
-			"project":    "$branch",
-			"task_name":  "$display_name",
-			"variant":    "$build_variant",
-			"distro":     1,
-			"requester":  "$r",
-			"status":     1,
-			"details":    1,
-			"time_taken": bson.M{"$divide": array{"$time_taken", nsInASecond}},
+			"execution":  taskExecutionRef,
+			"project":    taskProjectKeyRef,
+			"task_name":  taskDisplayNameKeyRef,
+			"variant":    taskBuildVariantKeyRef,
+			"distro":     taskDistroIdKeyRef,
+			"requester":  taskRequesterKeyRef,
+			"status":     taskStatusKeyRef,
+			"details":    taskDetailsKeyRef,
+			"time_taken": bson.M{"$divide": array{taskTimeTakenKeyRef, nsInASecond}},
 		}},
 		{"$lookup": bson.M{
 			"from":         displayTaskLookupCollection,
 			"localField":   "task_id",
-			"foreignField": "execution_tasks",
+			"foreignField": task.ExecutionTasksKey,
 			"as":           "display_task",
 		}},
 		{"$match": bson.M{"display_task": array{}}}, // Excluding the execution tasks
@@ -391,18 +414,18 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 // Returns a pipeline aggregating task documents into documents describing tasks for which
 // the stats need to be updated.
 func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []bson.M {
-	var pipeline = []bson.M{
+	pipeline := []bson.M{
 		{"$match": bson.M{
-			"branch":      projectId,
-			"finish_time": bson.M{"$gte": start, "$lt": end},
+			task.ProjectKey:    projectId,
+			task.FinishTimeKey: bson.M{"$gte": start, "$lt": end},
 		}},
 		{"$project": bson.M{
-			"_id":       0,
-			"project":   "$branch",
-			"requester": "$r",
-			"date":      bson.M{"$dateToString": bson.M{"date": "$create_time", "format": "%Y-%m-%d %H"}},
-			"day":       bson.M{"$dateToString": bson.M{"date": "$create_time", "format": "%Y-%m-%d"}},
-			"task_name": "$display_name",
+			task.IdKey:  0,
+			"project":   taskProjectKeyRef,
+			"requester": taskRequesterKeyRef,
+			"date":      bson.M{"$dateToString": bson.M{"date": taskCreateTimeKeyRef, "format": "%Y-%m-%d %H"}},
+			"day":       bson.M{"$dateToString": bson.M{"date": taskCreateTimeKeyRef, "format": "%Y-%m-%d"}},
+			"task_name": taskDisplayNameKeyRef,
 		}},
 		{"$group": bson.M{
 			"_id": bson.M{
@@ -442,13 +465,7 @@ type documentWriter struct {
 }
 
 // Creates a new documentWriter that can write to the specified collection.
-func newDocumentWriter(collectionName string) (*documentWriter, error) {
-	_, database, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		err = errors.Wrap(err, "Error establishing db connection")
-		return nil, err
-	}
-	collection := database.C(collectionName)
+func newDocumentWriter(collection *mgo.Collection) (*documentWriter, error) {
 	bulk := collection.Bulk()
 	bulk.Unordered()
 	writer := documentWriter{
@@ -486,23 +503,11 @@ func (d *documentWriter) flush() error {
 	return nil
 }
 
-// Flushes all pending operations and closes the document writer.
-// The document writer should not be used after this method is called.
-func (d *documentWriter) close() error {
-	defer d.collection.Database.Session.Close()
-	err := d.flush()
-	if err != nil {
-		return errors.Wrap(err, "Failed to flush writes")
-	}
-	return nil
-}
-
 // Runs an aggregation pipeline on a collection and calls the provided callback for each output document.
 func aggregateWithCallback(collection string, pipeline []bson.M, callback func(bson.RawD) error) error {
 	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		err = errors.Wrap(err, "Error establishing db connection")
-		return err
+		return errors.Wrap(err, "Error establishing db connection")
 	}
 	defer session.Close()
 
@@ -519,8 +524,7 @@ func aggregateWithCallback(collection string, pipeline []bson.M, callback func(b
 		} else {
 			err = iter.Err()
 			if err != nil {
-				err = errors.Wrap(err, "Error during aggregation")
-				return err
+				return errors.Wrap(err, "Error during aggregation")
 			}
 			break
 		}
@@ -530,7 +534,14 @@ func aggregateWithCallback(collection string, pipeline []bson.M, callback func(b
 
 // Runs an aggregation pipeline on a collection and bulk upserts all the documents into the target collection.
 func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollection string) error {
-	writer, err := newDocumentWriter(outputCollection)
+	session, database, err := db.GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		err = errors.Wrap(err, "Error establishing db connection")
+		return err
+	}
+	defer session.Close()
+
+	writer, err := newDocumentWriter(database.C(outputCollection))
 	if err != nil {
 		return errors.Wrap(err, "Failed to initialize document writer")
 	}
@@ -538,9 +549,9 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate with document writer callback")
 	}
-	err = writer.close()
+	err = writer.flush()
 	if err != nil {
-		return errors.Wrap(err, "Failed to close document writer")
+		return errors.Wrap(err, "Failed to flush document writer")
 	}
 	return nil
 }

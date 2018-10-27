@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -55,7 +56,7 @@ func (s *statsSuite) TestStatsStatus() {
 	require.NotNil(status)
 	// The default value is rounded off to the day so use a delta of over one day to cover all cases.
 	oneDayOneMinute := 24*time.Hour + time.Minute
-	expected := time.Now().Add(-fourWeeks)
+	expected := time.Now().Add(-defaultBackFillPeriod)
 	require.WithinDuration(expected, status.LastJobRun, oneDayOneMinute)
 	require.WithinDuration(expected, status.ProcessedTasksUntil, oneDayOneMinute)
 
@@ -257,8 +258,8 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// The results are sorted so we know the order
 	require.Equal("p5", statsList[0].ProjectId)
 	require.Equal("r1", statsList[0].Requester)
-	require.WithinDuration(getUTCHour(commit1), statsList[0].Hour, 0)
-	require.WithinDuration(getUTCDay(commit1), statsList[0].Day, 0)
+	require.WithinDuration(util.GetUTCHour(commit1), statsList[0].Hour, 0)
+	require.WithinDuration(util.GetUTCDay(commit1), statsList[0].Day, 0)
 	require.Equal([]string{"task1"}, statsList[0].Tasks)
 
 	// Find stats for p5 for a period around finish1
@@ -270,13 +271,13 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// The results are sorted so we know the order
 	require.Equal("p5", statsList[0].ProjectId)
 	require.Equal("r1", statsList[0].Requester)
-	require.WithinDuration(getUTCHour(commit1), statsList[0].Hour, 0)
-	require.WithinDuration(getUTCDay(commit1), statsList[0].Day, 0)
+	require.WithinDuration(util.GetUTCHour(commit1), statsList[0].Hour, 0)
+	require.WithinDuration(util.GetUTCDay(commit1), statsList[0].Day, 0)
 	require.Equal([]string{"task1"}, statsList[0].Tasks)
 	require.Equal("p5", statsList[1].ProjectId)
 	require.Equal("r2", statsList[1].Requester)
-	require.WithinDuration(getUTCHour(commit2), statsList[1].Hour, 0)
-	require.WithinDuration(getUTCDay(commit2), statsList[1].Day, 0)
+	require.WithinDuration(util.GetUTCHour(commit2), statsList[1].Hour, 0)
+	require.WithinDuration(util.GetUTCDay(commit2), statsList[1].Day, 0)
 	require.Len(statsList[1].Tasks, 3)
 	require.Contains(statsList[1].Tasks, "task2")
 	require.Contains(statsList[1].Tasks, "task2bis")
@@ -293,18 +294,18 @@ func (s *statsSuite) TestStatsToUpdate() {
 	stats2 := StatsToUpdate{"p2", "r1", baseHour, baseDay, []string{"task1", "task2"}}
 
 	// canMerge
-	require.True(stats1.canMerge(stats1))
-	require.True(stats1.canMerge(stats1bis))
-	require.False(stats1.canMerge(stats1later))
-	require.False(stats1.canMerge(stats1r2))
+	require.True(stats1.canMerge(&stats1))
+	require.True(stats1.canMerge(&stats1bis))
+	require.False(stats1.canMerge(&stats1later))
+	require.False(stats1.canMerge(&stats1r2))
 	// comparison
-	require.True(stats1.lt(stats2))
-	require.True(stats1.lt(stats1later))
-	require.True(stats1.lt(stats1r2))
-	require.False(stats1.lt(stats1))
-	require.False(stats1.lt(stats1bis))
+	require.True(stats1.lt(&stats2))
+	require.True(stats1.lt(&stats1later))
+	require.True(stats1.lt(&stats1r2))
+	require.False(stats1.lt(&stats1))
+	require.False(stats1.lt(&stats1bis))
 	// merge
-	merged := stats1.merge(stats1bis)
+	merged := stats1.merge(&stats1bis)
 	require.Equal(merged.ProjectId, stats1.ProjectId)
 	require.Equal(merged.Requester, stats1.Requester)
 	require.Equal(merged.Hour, stats1.Hour)

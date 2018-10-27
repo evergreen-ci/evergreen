@@ -90,3 +90,22 @@ func findPartSec(now time.Time, num int) time.Time {
 	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), sec, 0, time.UTC)
 
 }
+
+// Creates and returns a time.Time corresponding to the start of the UTC day containing the given date.
+func GetUTCDay(date time.Time) time.Time {
+	// Convert to UTC.
+	date = date.In(time.UTC)
+	// Create a new time.Time for the beginning of the day.
+	year, month, day := date.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+}
+
+// Creates and returns a time.Time corresponding to the start of the UTC hour containing the given date.
+func GetUTCHour(date time.Time) time.Time {
+	// Convert to UTC.
+	date = date.In(time.UTC)
+	// Create a new time.Time for the beginning of the hour.
+	year, month, day := date.Date()
+	hour := date.Hour()
+	return time.Date(year, month, day, hour, 0, 0, 0, time.UTC)
+}

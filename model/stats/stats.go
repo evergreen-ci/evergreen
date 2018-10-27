@@ -8,14 +8,16 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 const (
-	fourWeeks = 4 * 7 * 24 * time.Hour
+	defaultBackFillPeriod = 4 * 7 * 24 * time.Hour
 )
 
 // Represents the status for stats pre-computations for a project.
@@ -29,7 +31,7 @@ type StatsStatus struct {
 }
 
 func createDefaultStatsStatus(projectId string) StatsStatus {
-	fourWeeksAgo := getUTCDay(time.Now().Add(-fourWeeks))
+	fourWeeksAgo := util.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
 	return StatsStatus{
 		ProjectId:           projectId,
 		LastJobRun:          fourWeeksAgo,
@@ -77,8 +79,14 @@ func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUnt
 // for the project, requester, hour, and tasks specified.
 // The hour covered is the UTC hour corresponding to the given `hour` parameter.
 func GenerateHourlyTestStats(projectId string, requester string, hour time.Time, tasks []string, jobRunTime time.Time) error {
-	grip.Infof("Generating hourly test stats for (%v, %v, %v, %v)", projectId, requester, hour, tasks)
-	start := getUTCHour(hour)
+	grip.Info(message.Fields{
+		"message":   "Generating hourly test stats",
+		"project":   projectId,
+		"requester": requester,
+		"hour":      hour,
+		"tasks":     tasks,
+	})
+	start := util.GetUTCHour(hour)
 	end := start.Add(time.Hour)
 	// Generate the stats based on tasks.
 	pipeline := hourlyTestStatsPipeline(projectId, requester, start, end, tasks, jobRunTime)
@@ -87,7 +95,13 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 		return errors.Wrap(err, "Failed to generate hourly stats")
 	}
 
-	grip.Infof("Generating hourly test stats from old tasks for (%v, %v, %v, %v)", projectId, requester, hour, tasks)
+	grip.Info(message.Fields{
+		"message":   "Generating hourly test stats from old tasks",
+		"project":   projectId,
+		"requester": requester,
+		"hour":      hour,
+		"tasks":     tasks,
+	})
 	// Generate/Update the stats for old tasks.
 	pipeline = hourlyTestStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
 	err = aggregateIntoCollection(oldTasksCollection, pipeline, hourlyTestStatsCollection)
@@ -101,8 +115,14 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 // for the project, requester, day, and tasks specified.
 // The day covered is the UTC day corresponding to the given `day` parameter.
 func GenerateDailyTestStatsFromHourly(projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
-	grip.Infof("Generating daily test stats for (%v, %v, %v, %v)", projectId, requester, day, tasks)
-	start := getUTCDay(day)
+	grip.Info(message.Fields{
+		"message":   "Generating daily test stats",
+		"project":   projectId,
+		"requester": requester,
+		"day":       day,
+		"tasks":     tasks,
+	})
+	start := util.GetUTCDay(day)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTestStatsFromHourlyPipeline(projectId, requester, start, end, tasks, jobRunTime)
 	err := aggregateIntoCollection(hourlyTestStatsCollection, pipeline, dailyTestStatsCollection)
@@ -120,8 +140,14 @@ func GenerateDailyTestStatsFromHourly(projectId string, requester string, day ti
 // for the project, requester, day, and tasks specified.
 // The day covered is the UTC day corresponding to the given `day` parameter.
 func GenerateDailyTaskStats(projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
-	grip.Infof("Generating daily task stats for (%v, %v, %v, %v)", projectId, requester, day, tasks)
-	start := getUTCDay(day)
+	grip.Info(message.Fields{
+		"message":   "Generating daily task stats",
+		"project":   projectId,
+		"requester": requester,
+		"day":       day,
+		"tasks":     tasks,
+	})
+	start := util.GetUTCDay(day)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTaskStatsPipeline(projectId, requester, start, end, tasks, jobRunTime)
 	err := aggregateIntoCollection(tasksCollection, pipeline, dailyTaskStatsCollection)
@@ -129,8 +155,14 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
 
-	grip.Infof("Generating daily task stats from old tasks for (%v, %v, %v, %v)", projectId, requester, day, tasks)
-	start = getUTCDay(day)
+	grip.Info(message.Fields{
+		"message":   "Generating daily task stats from old tasks",
+		"project":   projectId,
+		"requester": requester,
+		"day":       day,
+		"tasks":     tasks,
+	})
+	start = util.GetUTCDay(day)
 	end = start.Add(24 * time.Hour)
 	pipeline = dailyTaskStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
 	err = aggregateIntoCollection(oldTasksCollection, pipeline, dailyTaskStatsCollection)
@@ -152,12 +184,12 @@ type StatsToUpdate struct {
 	Tasks     []string  `bson:"task_names"`
 }
 
-func (s StatsToUpdate) canMerge(other StatsToUpdate) bool {
+func (s *StatsToUpdate) canMerge(other *StatsToUpdate) bool {
 	return s.ProjectId == other.ProjectId && s.Requester == other.Requester && s.Hour.UTC() == other.Hour.UTC()
 }
 
 // Returns true if this StatsToUpdate should be sorted before the other.
-func (s StatsToUpdate) lt(other StatsToUpdate) bool {
+func (s *StatsToUpdate) lt(other *StatsToUpdate) bool {
 	if s.ProjectId < other.ProjectId {
 		return true
 	} else if s.ProjectId == other.ProjectId {
@@ -174,7 +206,7 @@ func (s StatsToUpdate) lt(other StatsToUpdate) bool {
 
 // Merges two StatsToUpdate.
 // This method does not check that the objects can be merged.
-func (s StatsToUpdate) merge(other StatsToUpdate) StatsToUpdate {
+func (s *StatsToUpdate) merge(other *StatsToUpdate) StatsToUpdate {
 	tasks := s.Tasks
 	for _, t := range other.Tasks {
 		if !containsTask(tasks, t) {
@@ -197,7 +229,12 @@ func containsTask(tasks []string, task string) bool {
 // Find the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
 // The results are ordered by project id, then hour, then requester.
 func FindStatsToUpdate(projectId string, start time.Time, end time.Time) ([]StatsToUpdate, error) {
-	grip.Infof("Finding tasks that need their stats updated for (%v, %v, %v)", projectId, start, end)
+	grip.Info(message.Fields{
+		"message": "Finding tasks that need their stats updated",
+		"project": projectId,
+		"start":   start,
+		"end":     end,
+	})
 	pipeline := statsToUpdatePipeline(projectId, start, end)
 	statsList := []StatsToUpdate{}
 	err := db.Aggregate(tasksCollection, pipeline, &statsList)
@@ -222,7 +259,7 @@ func mergeStatsToUpdateLists(statsList []StatsToUpdate, statsListOld []StatsToUp
 	} else if lengthOld == 0 {
 		return statsList
 	}
-	var mergedList = []StatsToUpdate{}
+	mergedList := []StatsToUpdate{}
 	var element StatsToUpdate
 	var elementOld StatsToUpdate
 	index := 0
@@ -230,11 +267,11 @@ func mergeStatsToUpdateLists(statsList []StatsToUpdate, statsListOld []StatsToUp
 	for index < length && indexOld < lengthOld {
 		element = statsList[index]
 		elementOld = statsListOld[indexOld]
-		if element.canMerge(elementOld) {
-			mergedList = append(mergedList, element.merge(elementOld))
+		if element.canMerge(&elementOld) {
+			mergedList = append(mergedList, element.merge(&elementOld))
 			index += 1
 			indexOld += 1
-		} else if element.lt(elementOld) {
+		} else if element.lt(&elementOld) {
 			mergedList = append(mergedList, element)
 			index += 1
 		} else {
@@ -250,27 +287,4 @@ func mergeStatsToUpdateLists(statsList []StatsToUpdate, statsListOld []StatsToUp
 		}
 	}
 	return mergedList
-}
-
-////////////////////////////
-// Utility time functions //
-////////////////////////////
-
-// Creates and returns a time.Time corresponding to the start of the UTC day containing the given date.
-func getUTCDay(date time.Time) time.Time {
-	// Convert to UTC.
-	date = date.In(time.UTC)
-	// Create a new time.Time for the beginning of the day.
-	year, month, day := date.Date()
-	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
-}
-
-// Creates and returns a time.Time corresponding to the start of the UTC hour containing the given date.
-func getUTCHour(date time.Time) time.Time {
-	// Convert to UTC.
-	date = date.In(time.UTC)
-	// Create a new time.Time for the beginning of the hour.
-	year, month, day := date.Date()
-	hour := date.Hour()
-	return time.Date(year, month, day, hour, 0, 0, 0, time.UTC)
 }
