@@ -60,7 +60,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts := []host.Host{}
-	for i := 0; i < h.createHost.NumHosts; i++ {
+	for i := 0; i < h.createHost.NumHostsInt; i++ {
 		intentHost, err := h.sc.MakeIntentHost(h.taskID, "", "", h.createHost)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
