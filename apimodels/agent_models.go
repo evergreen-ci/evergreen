@@ -75,29 +75,30 @@ type EndTaskResponse struct {
 
 type CreateHost struct {
 	// EC2-related settings
-	AMI             string      `mapstructure:"ami" json:"ami" plugin:"expand"`
-	Distro          string      `mapstructure:"distro" json:"distro" plugin:"expand"`
-	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" plugin:"expand"`
-	InstanceType    string      `mapstructure:"instance_type" json:"instance_type" plugin:"expand"`
-	Region          string      `mapstructure:"region" json:"region" plugin:"expand"`
-	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids" plugin:"expand"`
-	Spot            bool        `mapstructure:"spot" json:"spot"`
-	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id" plugin:"expand"`
-	UserdataFile    string      `mapstructure:"userdata_file" json:"-" plugin:"expand"`
-	UserdataCommand string      `json:"userdata_command" plugin:"expand"`
+	AMI             string      `mapstructure:"ami" json:"ami,omitempty" plugin:"expand"`
+	Distro          string      `mapstructure:"distro" json:"distro,omitempty" plugin:"expand"`
+	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device,omitempty" plugin:"expand"`
+	InstanceType    string      `mapstructure:"instance_type" json:"instance_type,omitempty" plugin:"expand"`
+	Region          string      `mapstructure:"region" json:"region,omitempty" plugin:"expand"`
+	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" plugin:"expand"`
+	Spot            bool        `mapstructure:"spot" json:"spot,omitempty"`
+	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id,omitempty" plugin:"expand"`
+	UserdataFile    string      `mapstructure:"userdata_file" json:"-,omitempty" plugin:"expand"`
+	UserdataCommand string      `json:"userdata_command" plugin:"expand,omitempty"`
 
 	// authentication settings
-	AWSKeyID  string `mapstructure:"aws_access_key_id" json:"aws_access_key_id" plugin:"expand"`
-	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key" plugin:"expand"`
-	KeyName   string `mapstructure:"key_name" json:"key_name" plugin:"expand"`
+	AWSKeyID  string `mapstructure:"aws_access_key_id" json:"aws_access_key_id,omitempty" plugin:"expand"`
+	AWSSecret string `mapstructure:"aws_secret_access_key" json:"aws_secret_access_key,omitempty" plugin:"expand"`
+	KeyName   string `mapstructure:"key_name" json:"key_name,omitempty" plugin:"expand"`
 
 	// agent-controlled settings
-	CloudProvider       string `mapstructure:"provider" json:"provider" plugin:"expand"`
-	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts"`
-	Scope               string `mapstructure:"scope" json:"scope" plugin:"expand"`
-	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
-	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
-	Retries             int    `mapstructure:"retries" json:"retries"`
+	CloudProvider       string           `mapstructure:"provider" json:"provider,omitempty" plugin:"expand"`
+	NumHosts            util.StringOrInt `mapstructure:"num_hosts" json:"num_hosts,omitempty" plugin:"expand"`
+	NumHostsInt         int              // after expansion
+	Scope               string           `mapstructure:"scope" json:"scope,omitempty" plugin:"expand"`
+	SetupTimeoutSecs    int              `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs,omitempty"`
+	TeardownTimeoutSecs int              `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs,omitempty"`
+	Retries             int              `mapstructure:"retries" json:"retries,omitempty"`
 }
 
 type EbsDevice struct {
@@ -129,10 +130,10 @@ func (ch *CreateHost) Validate() error {
 		catcher.Add(errors.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset"))
 	}
 
-	if ch.NumHosts > 10 || ch.NumHosts < 0 {
+	if ch.NumHostsInt > 10 || ch.NumHostsInt < 0 {
 		catcher.Add(errors.New("num_hosts must be between 1 and 10"))
-	} else if ch.NumHosts == 0 {
-		ch.NumHosts = 1
+	} else if ch.NumHostsInt == 0 {
+		ch.NumHostsInt = 1
 	}
 	if ch.CloudProvider == "" {
 		ch.CloudProvider = ProviderEC2
