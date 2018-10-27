@@ -144,3 +144,12 @@ db.users.ensureIndex({ "login_cache.token": 1}, { unique: true, sparse: true })
 
 //======notifications======//
 db.notifications.ensureIndex({ "sent_at": 1 })
+
+//======hourly_test_stats======//
+db.hourly_test_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
+
+//======daily_test_stats======//
+db.daily_test_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
+
+//======daily_task_stats======//
+db.daily_task_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
