@@ -13,20 +13,20 @@ type APIDistro struct {
 	Name             APIString              `json:"name"`
 	UserSpawnAllowed bool                   `json:"user_spawn_allowed"`
 	Provider         APIString              `json:"provider"`
-	ProviderSettings map[string]interface{} `json:"settings,omitempty"`
-	ImageID          APIString              `json:"image_id,omitempty"`
-	Arch             APIString              `json:"arch,omitempty"`
-	WorkDir          APIString              `json:"work_dir,omitempty"`
-	PoolSize         int                    `json:"pool_size,omitempty"`
-	SetupAsSudo      bool                   `json:"setup_as_sudo,omitempty"`
-	Setup            APIString              `json:"setup,omitempty"`
-	Teardown         APIString              `json:"teardown,omitempty"`
-	User             APIString              `json:"user,omitempty"`
-	SSHKey           APIString              `json:"ssh_key,omitempty"`
-	SSHOptions       []string               `json:"ssh_options,omitempty"`
-	Expansions       map[string]string      `json:"expansions,omitempty"`
-	Disabled         bool                   `json:"disabled,omitempty"`
-	ContainerPool    APIString              `json:"container_pool,omitempty"`
+	ProviderSettings map[string]interface{} `json:"settings"`
+	ImageID          APIString              `json:"image_id"`
+	Arch             APIString              `json:"arch"`
+	WorkDir          APIString              `json:"work_dir"`
+	PoolSize         int                    `json:"pool_size"`
+	SetupAsSudo      bool                   `json:"setup_as_sudo"`
+	Setup            APIString              `json:"setup"`
+	Teardown         APIString              `json:"teardown"`
+	User             APIString              `json:"user"`
+	SSHKey           APIString              `json:"ssh_key"`
+	SSHOptions       []string               `json:"ssh_options"`
+	Expansions       map[string]string      `json:"expansions"`
+	Disabled         bool                   `json:"disabled"`
+	ContainerPool    APIString              `json:"container_pool"`
 }
 
 // BuildFromService converts from service level structs to an APIDistro.
