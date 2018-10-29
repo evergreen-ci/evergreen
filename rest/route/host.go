@@ -61,7 +61,7 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	if err := h.sc.SetHostStatus(foundHost, h.Status, user.Username()); err != nil {
+	if err = h.sc.SetHostStatus(foundHost, h.Status, user.Username()); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 

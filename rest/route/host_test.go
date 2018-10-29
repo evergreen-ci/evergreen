@@ -22,7 +22,6 @@ import (
 type HostChangeStatusSuite struct {
 	route *hostChangeStatusHandler
 	sc    *data.MockConnector
-	data  data.MockHostConnector
 
 	suite.Suite
 }
