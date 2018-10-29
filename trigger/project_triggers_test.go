@@ -83,7 +83,7 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 	}
 	cmd := "echo hi"
 
-	project, err := makeDownstreamConfigFromCommand(ref, cmd)
+	project, err := makeDownstreamConfigFromCommand(ref, cmd, "generate.json")
 	assert.NoError(err)
 	assert.Equal(ref.Identifier, project.Identifier)
 	foundCommand := false
@@ -97,7 +97,7 @@ func TestMakeDownstreamConfigFromCommand(t *testing.T) {
 				}
 			} else if c.Command == "generate.tasks" {
 				for _, value := range c.Params {
-					assert.Contains(value, fmt.Sprintf("src/%s", TriggerCommandFileName))
+					assert.Contains(value, fmt.Sprintf("src/%s", "generate.json"))
 					foundFile = true
 				}
 			}

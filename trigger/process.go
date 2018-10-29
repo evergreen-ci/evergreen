@@ -85,8 +85,9 @@ type projectProcessor func(ProcessorArgs) (*version.Version, error)
 type ProcessorArgs struct {
 	SourceVersion     *version.Version
 	DownstreamProject model.ProjectRef
-	File              string
+	ConfigFile        string
 	Command           string
+	GenerateFile      string
 	TriggerID         string
 	TriggerType       string
 	EventID           string
@@ -182,8 +183,9 @@ projectLoop:
 			args := ProcessorArgs{
 				SourceVersion:     sourceVersion,
 				DownstreamProject: ref,
-				File:              trigger.ConfigFile,
+				ConfigFile:        trigger.ConfigFile,
 				Command:           trigger.Command,
+				GenerateFile:      trigger.GenerateFile,
 				TriggerType:       model.ProjectTriggerLevelTask,
 				TriggerID:         t.Id,
 				EventID:           e.ID,
@@ -247,7 +249,7 @@ projectLoop:
 			args := ProcessorArgs{
 				SourceVersion:     sourceVersion,
 				DownstreamProject: ref,
-				File:              trigger.ConfigFile,
+				ConfigFile:        trigger.ConfigFile,
 				Command:           trigger.Command,
 				TriggerType:       model.ProjectTriggerLevelBuild,
 				TriggerID:         b.Id,

@@ -26,7 +26,7 @@ func mockTriggerVersion(args ProcessorArgs) (*version.Version, error) {
 	// we're putting the input params into arbitrary fields of the struct so that the tests can inspect them
 	v := version.Version{
 		Branch:      args.DownstreamProject.Identifier,
-		Config:      args.File,
+		Config:      args.ConfigFile,
 		Message:     args.Command,
 		TriggerID:   args.TriggerID,
 		TriggerType: args.TriggerType,

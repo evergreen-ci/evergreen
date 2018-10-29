@@ -15,12 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const TriggerCommandFileName = "evg-triggered-tasks.json"
-
 // TriggerDownstreamVersion assumes that you definitely want to create a downstream version
 // and will go through the process of version creation given a triggering version
 func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
-	if args.File != "" && args.Command != "" {
+	if args.ConfigFile != "" && args.Command != "" {
 		return nil, errors.New("cannot specify both a file and command")
 	}
 	if args.SourceVersion == nil {
@@ -39,18 +37,18 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
 
 	// get the downstream config
 	var config *model.Project
-	if args.File != "" {
-		config, err = makeDownstreamConfigFromFile(args.DownstreamProject, args.File)
+	if args.ConfigFile != "" {
+		config, err = makeDownstreamConfigFromFile(args.DownstreamProject, args.ConfigFile)
 		if err != nil {
 			return nil, err
 		}
 	} else if args.Command != "" {
-		config, err = makeDownstreamConfigFromCommand(args.DownstreamProject, args.Command)
+		config, err = makeDownstreamConfigFromCommand(args.DownstreamProject, args.Command, args.GenerateFile)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		return nil, errors.New("must specify a file xor command to define downstream project config")
+		return nil, errors.New("must specify a file or command to define downstream project config")
 	}
 
 	// create version
@@ -129,7 +127,7 @@ func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Pro
 	return &config, nil
 }
 
-func makeDownstreamConfigFromCommand(ref model.ProjectRef, command string) (*model.Project, error) {
+func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile string) (*model.Project, error) {
 	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving config")
@@ -156,7 +154,7 @@ func makeDownstreamConfigFromCommand(ref model.ProjectRef, command string) (*mod
 					{
 						Command: "generate.tasks",
 						Params: map[string]interface{}{
-							"files": []string{fmt.Sprintf("src/%s", TriggerCommandFileName)},
+							"files": []string{fmt.Sprintf("src/%s", generateFile)},
 						},
 					},
 				},
