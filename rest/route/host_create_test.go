@@ -38,7 +38,7 @@ func TestMakeIntentHost(t *testing.T) {
 	c := apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",
-		NumHosts:            "1",
+		NumHosts:            1,
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
@@ -69,7 +69,7 @@ func TestMakeIntentHost(t *testing.T) {
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",
-		NumHosts:            "1",
+		NumHosts:            1,
 		Scope:               "build",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
@@ -91,7 +91,7 @@ func TestMakeIntentHost(t *testing.T) {
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",
-		NumHosts:            "1",
+		NumHosts:            1,
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
@@ -116,7 +116,7 @@ func TestMakeIntentHost(t *testing.T) {
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",
-		NumHosts:            "1",
+		NumHosts:            1,
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,
@@ -145,7 +145,7 @@ func TestMakeIntentHost(t *testing.T) {
 	c = apimodels.CreateHost{
 		AMI:                 "ami-654321",
 		CloudProvider:       "ec2",
-		NumHosts:            "1",
+		NumHosts:            1,
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
 		TeardownTimeoutSecs: 21600,

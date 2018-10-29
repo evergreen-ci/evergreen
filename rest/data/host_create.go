@@ -74,24 +74,9 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			continue
 		}
 		createHost := apimodels.CreateHost{}
-		var decoder *mapstructure.Decoder
-		decoder, err = mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-			WeaklyTypedInput: true,
-			Result:           &createHost,
-		})
+		err = mapstructure.Decode(commandConf.Params, &createHost)
 		if err != nil {
-			return errors.WithStack(err)
-		}
-		if err = decoder.Decode(commandConf.Params); err != nil {
-			return errors.Wrap(err, "error decoding createHost parameters")
-		}
-		var numHosts int
-		numHosts, err = createHost.NumHosts.Int()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		if numHosts != 0 {
-			createHost.NumHostsInt = numHosts
+			return errors.New("error decoding createHost parameters")
 		}
 		createHostCmds = append(createHostCmds, createHost)
 	}
@@ -106,7 +91,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			catcher.Add(err)
 			continue
 		}
-		for i := 0; i < createHost.NumHostsInt; i++ {
+		for i := 0; i < createHost.NumHosts; i++ {
 			intent, err := dc.MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
 				return errors.Wrap(err, "error creating host document")

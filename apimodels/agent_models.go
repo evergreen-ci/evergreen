@@ -3,7 +3,6 @@ package apimodels
 import (
 	"errors"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
 
@@ -93,13 +92,12 @@ type CreateHost struct {
 	KeyName   string `mapstructure:"key_name" json:"key_name" plugin:"expand"`
 
 	// agent-controlled settings
-	CloudProvider       string           `mapstructure:"provider" json:"provider" plugin:"expand"`
-	NumHosts            util.StringOrInt `mapstructure:"num_hosts" json:"num_hosts" plugin:"expand"`
-	NumHostsInt         int              // after expansion
-	Scope               string           `mapstructure:"scope" json:"scope" plugin:"expand"`
-	SetupTimeoutSecs    int              `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
-	TeardownTimeoutSecs int              `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
-	Retries             int              `mapstructure:"retries" json:"retries"`
+	CloudProvider       string `mapstructure:"provider" json:"provider" plugin:"expand"`
+	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts"`
+	Scope               string `mapstructure:"scope" json:"scope" plugin:"expand"`
+	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
+	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
+	Retries             int    `mapstructure:"retries" json:"retries"`
 }
 
 type EbsDevice struct {
@@ -131,10 +129,10 @@ func (ch *CreateHost) Validate() error {
 		catcher.Add(errors.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset"))
 	}
 
-	if ch.NumHostsInt > 10 || ch.NumHostsInt < 0 {
+	if ch.NumHosts > 10 || ch.NumHosts < 0 {
 		catcher.Add(errors.New("num_hosts must be between 1 and 10"))
-	} else if ch.NumHostsInt == 0 {
-		ch.NumHostsInt = 1
+	} else if ch.NumHosts == 0 {
+		ch.NumHosts = 1
 	}
 	if ch.CloudProvider == "" {
 		ch.CloudProvider = ProviderEC2
