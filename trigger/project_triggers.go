@@ -40,12 +40,12 @@ func TriggerDownstreamVersion(args ProcessorArgs) (*version.Version, error) {
 	if args.ConfigFile != "" {
 		config, err = makeDownstreamConfigFromFile(args.DownstreamProject, args.ConfigFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	} else if args.Command != "" {
 		config, err = makeDownstreamConfigFromCommand(args.DownstreamProject, args.Command, args.GenerateFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	} else {
 		return nil, errors.New("must specify a file or command to define downstream project config")
