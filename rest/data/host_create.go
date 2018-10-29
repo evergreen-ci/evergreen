@@ -77,12 +77,18 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 				if err != nil {
 					return err
 				}
+				if createHost == nil {
+					continue
+				}
 				createHostCmds = append(createHostCmds, *createHost)
 			}
 		} else {
 			createHost, err := createHostFromCommand(commandConf)
 			if err != nil {
 				return err
+			}
+			if createHost == nil {
+				continue
 			}
 			createHostCmds = append(createHostCmds, *createHost)
 		}
