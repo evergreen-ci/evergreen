@@ -70,15 +70,22 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	createHostCmds := []apimodels.CreateHost{}
 	catcher := grip.NewBasicCatcher()
 	for _, commandConf := range projectTask.Commands {
-		if commandConf.Command != evergreen.CreateHostCommandName {
-			continue
+		if commandConf.Function != "" {
+			cmds := tc.Project.Functions[commandConf.Function]
+			for _, cmd := range cmds.List() {
+				createHost, err := createHostFromCommand(cmd)
+				if err != nil {
+					return err
+				}
+				createHostCmds = append(createHostCmds, *createHost)
+			}
+		} else {
+			createHost, err := createHostFromCommand(commandConf)
+			if err != nil {
+				return err
+			}
+			createHostCmds = append(createHostCmds, *createHost)
 		}
-		createHost := apimodels.CreateHost{}
-		err = mapstructure.Decode(commandConf.Params, &createHost)
-		if err != nil {
-			return errors.New("error decoding createHost parameters")
-		}
-		createHostCmds = append(createHostCmds, createHost)
 	}
 	if catcher.HasErrors() {
 		return catcher.Resolve()
@@ -104,6 +111,18 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	}
 
 	return errors.Wrap(host.InsertMany(hosts), "error inserting host documents")
+}
+
+func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, error) {
+	if cmd.Command != evergreen.CreateHostCommandName {
+		return nil, nil
+	}
+	createHost := &apimodels.CreateHost{}
+	err := mapstructure.Decode(cmd.Params, createHost)
+	if err != nil {
+		return nil, errors.New("error decoding createHost parameters")
+	}
+	return createHost, nil
 }
 
 func (dc *DBCreateHostConnector) MakeIntentHost(taskID, userID, publicKey string, createHost apimodels.CreateHost) (*host.Host, error) {
