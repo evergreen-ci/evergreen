@@ -231,7 +231,7 @@ func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 
 	resp := h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-
+	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
 }
 
 func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
