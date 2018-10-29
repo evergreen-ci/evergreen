@@ -302,11 +302,6 @@ var (
 	ValidUserSetStatus = []string{
 		HostRunning,
 		HostTerminated,
-		HostUninitialized,
-		HostBuilding,
-		HostStarting,
-		HostProvisioning,
-		HostProvisionFailed,
 		HostQuarantined,
 		HostDecommissioned,
 	}

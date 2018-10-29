@@ -21,7 +21,7 @@ import (
 // PATCH /rest/v2/hosts/{host_id}
 
 type hostChangeStatusHandler struct {
-	Status string `json:"status"`
+	Status string
 	hostId string
 	sc     data.Connector
 }
@@ -58,7 +58,7 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
 	foundHost, err := h.sc.FindHostById(h.hostId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
 	}
 
 	if err = h.sc.SetHostStatus(foundHost, h.Status, user.Username()); err != nil {
@@ -66,8 +66,8 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	host := &model.APIHost{}
-	if err = host.BuildFromService(*foundHost); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	if err = host.BuildFromService(foundHost); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
 	return gimlet.NewJSONResponse(host)
