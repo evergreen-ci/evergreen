@@ -83,7 +83,7 @@ type TriggerDefinition struct {
 	// definitions for tasks to run for this trigger
 	ConfigFile   string `bson:"config_file,omitempty" json:"config_file,omitempty"`
 	Command      string `bson:"command,omitempty" json:"command,omitempty"`
-	GenerateFile string `bson:"generate_file,omitempty" json:"config_file,omitempty"`
+	GenerateFile string `bson:"generate_file,omitempty" json:"generate_file,omitempty"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {
