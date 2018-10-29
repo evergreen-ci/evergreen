@@ -114,6 +114,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Slack.Level, FromAPIString(apiSettings.Slack.Level))
 	assert.EqualValues(testSettings.Slack.Options.Channel, FromAPIString(apiSettings.Slack.Options.Channel))
 	assert.EqualValues(testSettings.Splunk.Channel, FromAPIString(apiSettings.Splunk.Channel))
+	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, FromAPIString(apiSettings.Triggers.GenerateTaskDistro))
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, FromAPIString(apiSettings.Ui.HttpListenAddr))
 
 	// test converting from the API model back to a DB model
@@ -153,6 +154,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)
 	assert.EqualValues(testSettings.Splunk.Channel, dbSettings.Splunk.Channel)
+	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, dbSettings.Triggers.GenerateTaskDistro)
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, dbSettings.Ui.HttpListenAddr)
 }
 

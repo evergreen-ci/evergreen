@@ -197,6 +197,9 @@ func MockConfig() *evergreen.Settings {
 			Channel:   "channel",
 		},
 		SuperUsers: []string{"user"},
+		Triggers: evergreen.TriggerConfig{
+			GenerateTaskDistro: "distro",
+		},
 		Ui: evergreen.UIConfig{
 			Url:            "url",
 			HelpUrl:        "helpurl",
