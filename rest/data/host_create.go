@@ -70,10 +70,11 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 	createHostCmds := []apimodels.CreateHost{}
 	catcher := grip.NewBasicCatcher()
 	for _, commandConf := range projectTask.Commands {
+		var createHost *apimodels.CreateHost
 		if commandConf.Function != "" {
 			cmds := tc.Project.Functions[commandConf.Function]
 			for _, cmd := range cmds.List() {
-				createHost, err := createHostFromCommand(cmd)
+				createHost, err = createHostFromCommand(cmd)
 				if err != nil {
 					return err
 				}
@@ -83,7 +84,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 				createHostCmds = append(createHostCmds, *createHost)
 			}
 		} else {
-			createHost, err := createHostFromCommand(commandConf)
+			createHost, err = createHostFromCommand(commandConf)
 			if err != nil {
 				return err
 			}
