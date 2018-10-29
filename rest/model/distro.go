@@ -9,12 +9,24 @@ import (
 )
 
 // APIDistro is the model to be returned by the API whenever distros are fetched.
-// EVG-1717 will implement the remainder of the distro model.
 type APIDistro struct {
-	Name             APIString `json:"name"`
-	UserSpawnAllowed bool      `json:"user_spawn_allowed"`
-	Provider         APIString `json:"provider"`
-	ImageID          APIString `json:"image_id,omitempty"`
+	Name             APIString              `json:"name"`
+	UserSpawnAllowed bool                   `json:"user_spawn_allowed"`
+	Provider         APIString              `json:"provider"`
+	ProviderSettings map[string]interface{} `json:"settings"`
+	ImageID          APIString              `json:"image_id"`
+	Arch             APIString              `json:"arch"`
+	WorkDir          APIString              `json:"work_dir"`
+	PoolSize         int                    `json:"pool_size"`
+	SetupAsSudo      bool                   `json:"setup_as_sudo"`
+	Setup            APIString              `json:"setup"`
+	Teardown         APIString              `json:"teardown"`
+	User             APIString              `json:"user"`
+	SSHKey           APIString              `json:"ssh_key"`
+	SSHOptions       []string               `json:"ssh_options"`
+	Expansions       map[string]string      `json:"expansions"`
+	Disabled         bool                   `json:"disabled"`
+	ContainerPool    APIString              `json:"container_pool"`
 }
 
 // BuildFromService converts from service level structs to an APIDistro.
@@ -34,6 +46,27 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 
 			apiDistro.ImageID = ToAPIString(ec2Settings.AMI)
 		}
+
+		if v.ProviderSettings != nil {
+			apiDistro.ProviderSettings = *v.ProviderSettings
+		}
+		apiDistro.Arch = ToAPIString(v.Arch)
+		apiDistro.WorkDir = ToAPIString(v.WorkDir)
+		apiDistro.PoolSize = v.PoolSize
+		apiDistro.SetupAsSudo = v.SetupAsSudo
+		apiDistro.Setup = ToAPIString(v.Setup)
+		apiDistro.Teardown = ToAPIString(v.Teardown)
+		apiDistro.User = ToAPIString(v.User)
+		apiDistro.SSHKey = ToAPIString(v.SSHKey)
+		apiDistro.Disabled = v.Disabled
+		apiDistro.ContainerPool = ToAPIString(v.ContainerPool)
+		apiDistro.SSHOptions = v.SSHOptions
+		expansions := make(map[string]string)
+		for _, e := range v.Expansions {
+			expansions[e.Key] = e.Value
+		}
+		apiDistro.Expansions = expansions
+
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro type")
 	}

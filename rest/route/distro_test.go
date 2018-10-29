@@ -51,6 +51,7 @@ func (s *DistroByIdSuite) SetupTest() {
 func (s *DistroByIdSuite) TestFindByIdFound() {
 	s.rm.(*distroIDGetHandler).distroId = "distro1"
 	resp := s.rm.Run(context.TODO())
+	s.NotNil(resp)
 	s.Equal(resp.Status(), http.StatusOK)
 	s.NotNil(resp.Data())
 
@@ -62,5 +63,6 @@ func (s *DistroByIdSuite) TestFindByIdFound() {
 func (s *DistroByIdSuite) TestFindByIdFail() {
 	s.rm.(*distroIDGetHandler).distroId = "distro3"
 	resp := s.rm.Run(context.TODO())
+	s.NotNil(resp)
 	s.NotEqual(resp.Status(), http.StatusOK)
 }

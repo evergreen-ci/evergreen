@@ -91,6 +91,7 @@ func (dgh *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	for _, d := range distros {
 		distroModel := &model.APIDistro{}
+
 		if err = distroModel.BuildFromService(d); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
