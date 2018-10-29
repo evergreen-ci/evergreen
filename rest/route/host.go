@@ -21,7 +21,7 @@ import (
 // PATCH /rest/v2/hosts/{host_id}
 
 type hostChangeStatusHandler struct {
-	status string `json:"status"`
+	Status string `json:"status"`
 	hostId string
 	sc     data.Connector
 }
