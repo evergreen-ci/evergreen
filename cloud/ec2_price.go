@@ -12,6 +12,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/pricing"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -68,7 +69,7 @@ func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient
 		}
 		dur := t.end.Sub(t.start)
 		region := azToRegion(zone)
-		price, err := cpf.getEC2OnDemandCost(os, h.InstanceType, region)
+		price, err := cpf.getEC2OnDemandCost(ctx, client, os, h.InstanceType, region)
 		if err != nil {
 			return 0, err
 		}
@@ -93,85 +94,154 @@ func getZone(ctx context.Context, client AWSClient, h *host.Host) (string, error
 	return *instance.Placement.AvailabilityZone, nil
 }
 
-func (cpf *cachingPriceFetcher) getEC2OnDemandCost(os osType, instance, region string) (float64, error) {
-	cpf.Lock()
-	defer cpf.Unlock()
+func (cpf *cachingPriceFetcher) getEC2OnDemandCost(ctx context.Context, client AWSClient, osEC2Name osType, instance, region string) (float64, error) {
 	if cpf.ec2Prices == nil {
-		if err := cpf.cacheEc2Prices(); err != nil {
-			return 0, errors.Wrap(err, "loading On Demand price data")
-		}
+		cpf.Lock()
+		cpf.ec2Prices = map[odInfo]float64{}
+		cpf.Unlock()
 	}
+
+	// convert to pricing api strings
+	osPriceName := osBillingName(osEC2Name)
 	region, err := regionFullname(region)
 	if err != nil {
 		return 0, err
 	}
-	return cpf.ec2Prices[odInfo{
-		os: osBillingName(os), instance: instance, region: region,
-	}], nil
+
+	cpf.RLock()
+	if val, ok := cpf.ec2Prices[odInfo{
+		os: osPriceName, instance: instance, region: region,
+	}]; ok {
+		cpf.RUnlock()
+		return val, nil
+	}
+	cpf.RUnlock()
+
+	getProductsInput := cpf.makeGetProductsInput(odInfo{os: osPriceName, instance: instance, region: region})
+	out, err := client.GetProducts(ctx, getProductsInput)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem querying for pricing data")
+	}
+
+	p, err := cpf.parseAWSPricing(out)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem parsing aws pricing")
+	}
+	cpf.Lock()
+	defer cpf.Unlock()
+	cpf.ec2Prices[odInfo{os: osPriceName, instance: instance, region: region}] = p
+	return p, nil
 }
 
-func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
-	cpf.ec2Prices = map[odInfo]float64{}
-	// the On Demand pricing API is not part of the normal EC2 API
-	endpoint := "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
-	grip.Debugln("Loading On Demand pricing from", endpoint)
+func (cpf *cachingPriceFetcher) makeGetProductsInput(info odInfo) *pricing.GetProductsInput {
+	const match = "TERM_MATCH"
+	constructGetProductsInput := &pricing.GetProductsInput{
+		Filters: []*pricing.Filter{
+			{
+				Field: aws.String("ServiceCode"),
+				Type:  aws.String(match),
+				Value: aws.String("AmazonEC2"),
+			},
+			{
+				Field: aws.String("productFamily"),
+				Type:  aws.String(match),
+				Value: aws.String("Compute Instance"),
+			},
+			{
+				Field: aws.String("preInstalledSw"),
+				Type:  aws.String(match),
+				Value: aws.String("NA"),
+			},
+			{
+				Field: aws.String("tenancy"),
+				Type:  aws.String(match),
+				Value: aws.String("Shared"),
+			},
+			{
+				Field: aws.String("capacityStatus"),
+				Type:  aws.String(match),
+				Value: aws.String("UnusedCapacityReservation"),
+			},
+			{
+				Field: aws.String("instanceType"),
+				Type:  aws.String(match),
+				Value: aws.String(info.instance),
+			},
+			{
+				Field: aws.String("operatingSystem"),
+				Type:  aws.String(match),
+				Value: aws.String(info.os),
+			},
+			{
+				Field: aws.String("location"),
+				Type:  aws.String(match),
+				Value: aws.String(info.region),
+			},
+		},
+		ServiceCode: aws.String("AmazonEC2"),
+	}
+	return constructGetProductsInput
+}
 
-	client := util.GetHTTPClient()
-	defer util.PutHTTPClient(client)
-
-	details := struct {
-		Terms    Terms
-		Products map[string]struct {
-			SKU           string
-			ProductFamily string
-			Attributes    struct {
-				Location        string
-				InstanceType    string
-				PreInstalledSW  string
-				OperatingSystem string
-				Tenancy         string
-				LicenseModel    string
-			}
+// Parse a JSON document like this one
+// {
+// 	"version": "20181031070014",
+// 	"terms": {
+// 		"OnDemand": {
+// 			"XCH2WN4F4MYH63N8.JRTCKXETXF": {
+// 				"termAttributes": {
+// 				},
+// 				"sku": "XCH2WN4F4MYH63N8",
+// 				"priceDimensions": {
+// 					"XCH2WN4F4MYH63N8.JRTCKXETXF.6YS6EN2CT7": {
+// 						"unit": "Hrs",
+// 						"rateCode": "XCH2WN4F4MYH63N8.JRTCKXETXF.6YS6EN2CT7",
+// 						"pricePerUnit": {
+// 							"USD": "0.8400000000"
+// 						},
+// 						"endRange": "Inf",
+// 						"description": "$0.840 per Unused Reservation Linux c3.4xlarge Instance Hour",
+// 						"beginRange": "0",
+// 						"appliesTo": []
+// 					}
+// 				},
+// 				"offerTermCode": "JRTCKXETXF",
+// 				"effectiveDate": "2018-10-01T00:00:00Z"
+// 			}
+// 		}
+// 	},
+// [...]
+func (cpf *cachingPriceFetcher) parseAWSPricing(out *pricing.GetProductsOutput) (float64, error) {
+	if len(out.PriceList) != 1 {
+		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+	}
+	terms, ok := out.PriceList[0]["terms"].(map[string]interface{})
+	if !ok {
+		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+	}
+	onDemand, ok := terms["OnDemand"].(map[string]interface{})
+	if !ok {
+		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+	}
+	var priceDimensions map[string]interface{}
+	for _, v := range onDemand {
+		priceDimensions, ok = v.(map[string]interface{})["priceDimensions"].(map[string]interface{})
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
 		}
-	}{}
-
-	_, err := util.Retry(func() (bool, error) {
-		resp, err := client.Get(endpoint)
-		if resp != nil {
-			defer resp.Body.Close()
+	}
+	var price string
+	for _, v := range priceDimensions {
+		price, ok = v.(map[string]interface{})["pricePerUnit"].(map[string]interface{})["USD"].(string)
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
 		}
-		if err != nil {
-			return true, errors.Wrapf(err, "fetching %v", endpoint)
-		}
-		grip.Debug("Parsing on-demand pricing")
-
-		if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
-			return true, errors.Wrap(err, "parsing response body")
-		}
-		return false, nil
-	}, awsClientImplRetries, awsClientImplStartPeriod)
-
+	}
+	p, err := strconv.ParseFloat(price, 64)
 	if err != nil {
-		return errors.WithStack(err)
+		return 0, errors.Wrapf(err, "problem parsing %s as int", price)
 	}
-
-	for _, p := range details.Products {
-		if p.ProductFamily == "Compute Instance" &&
-			p.Attributes.PreInstalledSW == "NA" &&
-			p.Attributes.Tenancy == "Shared" &&
-			p.Attributes.LicenseModel != "Bring your own license" {
-			// the product description does not include pricing information,
-			// so we must look up the SKU in the "Terms" section.
-			price := details.Terms.skuPrice(p.SKU)
-			cpf.ec2Prices[odInfo{
-				os:       p.Attributes.OperatingSystem,
-				instance: p.Attributes.InstanceType,
-				region:   p.Attributes.Location,
-			}] = price
-		}
-	}
-	grip.Debug("Finished parsing on-demand pricing")
-	return nil
+	return p, nil
 }
 
 func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
@@ -238,7 +308,7 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 		if err != nil {
 			return 0, errors.Wrap(err, "problem getting region for host")
 		}
-		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, r)
+		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, r)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}

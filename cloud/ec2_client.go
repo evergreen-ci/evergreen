@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/pricing"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -76,12 +77,16 @@ type AWSClient interface {
 
 	// DeleteKeyPair is a wrapper for ec2.DeleteKeyPairWithContext.
 	DeleteKeyPair(context.Context, *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error)
+
+	// GetProducts is a wrapper for pricing.GetProducts.
+	GetProducts(context.Context, *pricing.GetProductsInput) (*pricing.GetProductsOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
 type awsClientImpl struct { //nolint
 	session    *session.Session
 	httpClient *http.Client
+	pricing    *pricing.Pricing
 	*ec2.EC2
 }
 
@@ -111,6 +116,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials, region string) er
 		c.session = s
 	}
 	c.EC2 = ec2.New(c.session)
+	c.pricing = pricing.New(c.session)
 	return nil
 }
 
@@ -513,6 +519,29 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 	return output, nil
 }
 
+// GetProducts is a wrapper for pricing.GetProducts.
+func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProductsInput) (*pricing.GetProductsOutput, error) {
+	var output *pricing.GetProductsOutput
+	var err error
+	msg := makeAWSLogMessage("GetProducts", fmt.Sprintf("%T", c), input)
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.pricing.GetProductsWithContext(ctx, input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*credentials.Credentials
@@ -529,6 +558,7 @@ type awsClientMock struct { //nolint
 	*ec2.DescribeVpcsInput
 	*ec2.CreateKeyPairInput
 	*ec2.DeleteKeyPairInput
+	*pricing.GetProductsInput
 
 	*ec2.DescribeSpotInstanceRequestsOutput
 	*ec2.DescribeInstancesOutput
@@ -737,6 +767,12 @@ func (c *awsClientMock) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 func (c *awsClientMock) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyPairInput) (*ec2.DeleteKeyPairOutput, error) {
 	c.DeleteKeyPairInput = input
 	return &ec2.DeleteKeyPairOutput{}, nil
+}
+
+// GetProducts is a mock for pricing.GetProducts.
+func (c *awsClientMock) GetProducts(ctx context.Context, input *pricing.GetProductsInput) (*pricing.GetProductsOutput, error) {
+	c.GetProductsInput = input
+	return &pricing.GetProductsOutput{}, nil
 }
 
 func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
