@@ -69,7 +69,7 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.Status == evergreen.HostTerminated {
-		if err := h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
+		if err = h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
@@ -77,7 +77,7 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 	} else {
-		if err := h.sc.SetHostStatus(foundHost, h.Status, user.Id); err != nil {
+		if err = h.sc.SetHostStatus(foundHost, h.Status, user.Id); err != nil {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
