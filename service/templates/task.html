@@ -7,6 +7,7 @@ window.plugins = {{.PluginContent.Data}};
 window.jiraHost = {{.JiraHost}};
 window.hasBanner = {{ne .Banner ""}};
 window.isAdmin = {{.IsProjectAdmin}};
+window.user = {{.User}};
 </script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ BuildRevision }}"></script>
