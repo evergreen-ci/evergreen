@@ -6,6 +6,7 @@
   window.build = {{ .Build }};
   window.plugins = null
   window.jiraHost= {{.JiraHost}}
+  window.user = {{.User}}
 </script>
 <script type="text/javascript" src="{{Static "js" "subscriptions.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "js" "build.js"}}?hash={{ BuildRevision }}"></script>

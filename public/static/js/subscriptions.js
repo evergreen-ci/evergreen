@@ -222,13 +222,14 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         $scope.trigger = lookupTrigger($scope.c.triggers, $scope.c.subscription.trigger, $scope.c.subscription.resource_type);
 
     }else {
-        mciUserSettingsService.getUserSettings({success: function(resp) {
-            if (!$scope.targets[SUBSCRIPTION_SLACK]) {
-                $scope.targets[SUBSCRIPTION_SLACK] = "@" + resp.data.slack_username || "";
+            var user_slack_username = window.user.Settings.slack_username;
+            if (!$scope.targets[SUBSCRIPTION_SLACK] && typeof user_slack_username != "undefined") {
+                $scope.targets[SUBSCRIPTION_SLACK] = "@" + user_slack_username;
             }
-        }, error: function(resp) {
-            console.log("failed to fetch user settings: ", resp);
-        }});
+            var user_email = window.user.EmailAddress;
+            if (!$scope.targets[SUBSCRIPTION_EMAIL] && typeof user_email != "undefined") {
+                $scope.targets[SUBSCRIPTION_EMAIL] = user_email;
+            };
     }
 
     $scope.addRegexSelector = function() {
