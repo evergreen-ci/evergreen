@@ -64,6 +64,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/util"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -442,13 +443,307 @@ func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []b
 			"day":        bson.M{"$dateFromString": bson.M{"dateString": "$_id.day", "format": "%Y-%m-%d"}},
 			"task_names": 1,
 		}},
-		{"$sort": bson.M{
-			"project":   1,
-			"date":      1,
-			"requester": 1,
+		{"$sort": bson.D{
+			{Name: "project", Value: 1},
+			{Name: "date", Value: 1},
+			{Name: "requester", Value: 1},
 		}},
 	}
 	return pipeline
+}
+
+///////////////////////////////////////////
+// Queries on the precomputed statistics //
+///////////////////////////////////////////
+
+// Creates an aggregation pipeline to query test statistics.
+func testStatsQueryPipeline(filter *StatsFilter) []bson.M {
+	matchExpr := buildMatchStageForTest(filter)
+
+	return []bson.M{
+		matchExpr,
+		buildAddFieldsDateStage("date", filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
+		{"$group": bson.M{
+			"_id":                 buildGroupId(filter.GroupBy),
+			"num_pass":            bson.M{"$sum": "$num_pass"},
+			"num_fail":            bson.M{"$sum": "$num_fail"},
+			"total_duration_pass": bson.M{"$sum": bson.M{"$multiply": array{"$num_pass", "$avg_duration_pass"}}},
+		}},
+		{"$project": bson.M{
+			"test_file": "$_id.test_file",
+			"task_name": "$_id.task_name",
+			"variant":   "$_id.variant",
+			"distro":    "$_id.distro",
+			"date":      "$_id.date",
+			"num_pass":  1,
+			"num_fail":  1,
+			"avg_duration_pass": bson.M{"$cond": bson.M{"if": bson.M{"$ne": array{"$num_pass", 0}},
+				"then": bson.M{"$divide": array{"$total_duration_pass", "$num_pass"}},
+				"else": nil}},
+		}},
+		{"$sort": bson.D{
+			{Name: "date", Value: sortDateOrder(filter.Sort)},
+			{Name: "variant", Value: 1},
+			{Name: "task_name", Value: 1},
+			{Name: "test_file", Value: 1},
+			{Name: "distro", Value: 1},
+		}},
+		{"$limit": filter.Limit},
+	}
+}
+
+// Builds the match stage of the test query pipeline based on the filter options.
+func buildMatchStageForTest(filter *StatsFilter) bson.M {
+	match := bson.M{
+		"_id.date": bson.M{
+			"$gte": filter.AfterDate,
+			"$lt":  filter.BeforeDate,
+		},
+		"_id.project":   filter.Project,
+		"_id.requester": bson.M{"$in": filter.Requesters},
+	}
+	addMatchIn(match, "_id.test_file", filter.Tests)
+	addMatchIn(match, "_id.task_name", filter.Tasks)
+	addMatchIn(match, "_id.variant", filter.BuildVariants)
+	addMatchIn(match, "_id.distro", filter.Distros)
+
+	if filter.StartAt != nil {
+		addMatchTestPagination(match, filter)
+	}
+
+	return bson.M{"$match": match}
+}
+
+// Builds the $addFields stage that sets the start date of the grouped period the stats document belongs in.
+func buildAddFieldsDateStage(fieldName string, start time.Time, end time.Time, numDays int) bson.M {
+	if numDays <= 1 {
+		return bson.M{"$addFields": bson.M{fieldName: "$_id.date"}}
+	}
+	boundaries := dateBoundaries(start, end, numDays)
+	branches := make([]bson.M, len(boundaries))
+	for i := 0; i < len(boundaries)-1; i++ {
+		branches[i] = bson.M{
+			"case": bson.M{"$and": array{
+				bson.M{"$gte": array{"$_id.date", boundaries[i]}},
+				bson.M{"$lt": array{"$_id.date", boundaries[i+1]}},
+			}},
+			"then": boundaries[i],
+		}
+	}
+	lastIndex := len(boundaries) - 1
+	branches[lastIndex] = bson.M{
+		"case": bson.M{"$gte": array{"$_id.date", boundaries[lastIndex]}},
+		"then": boundaries[lastIndex],
+	}
+	return bson.M{"$addFields": bson.M{fieldName: bson.M{"$switch": bson.M{"branches": branches}}}}
+}
+
+// Builds the _id field for the $group stage corresponding to the GroupBy value.
+func buildGroupId(groupBy GroupBy) bson.M {
+	id := bson.M{"date": "$date"}
+	switch groupBy {
+	case GroupByDistro:
+		id["distro"] = "$_id.distro"
+		fallthrough
+	case GroupByVariant:
+		id["variant"] = "$_id.variant"
+		fallthrough
+	case GroupByTask:
+		id["task_name"] = "$_id.task_name"
+		fallthrough
+	case GroupByTest:
+		id["test_file"] = "$_id.test_file"
+	}
+	return id
+}
+
+// Edits a match expression to include that the 'fieldName' field must have its value in 'values'.
+// Does nothing if 'values' is empty.
+func addMatchIn(matchExpr bson.M, fieldName string, values []string) {
+	if len(values) == 1 {
+		matchExpr[fieldName] = values[0]
+	} else if len(values) > 1 {
+		matchExpr[fieldName] = bson.M{"$in": values}
+	}
+}
+
+// Adds to an existing $match expression the conditions imposed by the filter StartAt field
+func addMatchTestPagination(matchExpr bson.M, filter *StatsFilter) {
+	var dateOperator string
+	if filter.Sort == SortEarliestFirst {
+		dateOperator = "$gt"
+	} else {
+		dateOperator = "$lt"
+	}
+
+	var fields []string
+	var operators []string
+	var values []interface{}
+
+	switch filter.GroupBy {
+	case GroupByTest:
+		fields = []string{"_id.date", "_id.test_file"}
+		operators = []string{dateOperator, "$gt"}
+		values = []interface{}{filter.StartAt.Date, filter.StartAt.Test}
+	case GroupByTask:
+		fields = []string{"_id.date", "_id.task_name", "_id.test_file"}
+		operators = []string{dateOperator, "$gt", "$gt"}
+		values = []interface{}{filter.StartAt.Date, filter.StartAt.Task, filter.StartAt.Test}
+	case GroupByVariant:
+		fields = []string{"_id.date", "_id.variant", "_id.task_name", "_id.test_file"}
+		operators = []string{dateOperator, "$gt", "$gt", "$gt"}
+		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Test}
+	case GroupByDistro:
+		fields = []string{"_id.date", "_id.variant", "_id.task_name", "_id.test_file", "_id.distro"}
+		operators = []string{dateOperator, "$gt", "$gt", "$gt", "$gt"}
+		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Test, filter.StartAt.Distro}
+	}
+
+	addPaginationOrBranches(matchExpr, fields, operators, values)
+}
+
+// Creates an aggregation pipeline to query task statistics.
+func taskStatsQueryPipeline(filter *StatsFilter) []bson.M {
+	matchExpr := buildMatchStageForTask(filter)
+
+	return []bson.M{
+		matchExpr,
+		buildAddFieldsDateStage("date", filter.AfterDate, filter.BeforeDate, filter.GroupNumDays),
+		{"$group": bson.M{
+			"_id":                    buildGroupId(filter.GroupBy),
+			"num_success":            bson.M{"$sum": "$num_success"},
+			"num_failed":             bson.M{"$sum": "$num_failed"},
+			"num_timeout":            bson.M{"$sum": "$num_timeout"},
+			"num_test_failed":        bson.M{"$sum": "$num_test_failed"},
+			"num_system_failed":      bson.M{"$sum": "$num_system_failed"},
+			"num_setup_failed":       bson.M{"$sum": "$num_setup_failed"},
+			"total_duration_success": bson.M{"$sum": bson.M{"$multiply": array{"$num_success", "$avg_duration_success"}}},
+		}},
+		{"$project": bson.M{
+			"task_name":         "$_id.task_name",
+			"variant":           "$_id.variant",
+			"distro":            "$_id.distro",
+			"date":              "$_id.date",
+			"num_success":       1,
+			"num_failed":        1,
+			"num_total":         bson.M{"$add": array{"$num_success", "$num_failed"}},
+			"num_timeout":       1,
+			"num_test_failed":   1,
+			"num_system_failed": 1,
+			"num_setup_failed":  1,
+			"avg_duration_success": bson.M{"$cond": bson.M{"if": bson.M{"$ne": array{"$num_success", 0}},
+				"then": bson.M{"$divide": array{"$total_duration_success", "$num_success"}},
+				"else": nil}},
+		}},
+		{"$sort": bson.D{
+			{Name: "date", Value: sortDateOrder(filter.Sort)},
+			{Name: "variant", Value: 1},
+			{Name: "task_name", Value: 1},
+			{Name: "distro", Value: 1},
+		}},
+		{"$limit": filter.Limit},
+	}
+}
+
+// Builds the match stage of the task query pipeline based on the filter options.
+func buildMatchStageForTask(filter *StatsFilter) bson.M {
+	match := bson.M{
+		"_id.date": bson.M{
+			"$gte": filter.AfterDate,
+			"$lt":  filter.BeforeDate,
+		},
+		"_id.project":   filter.Project,
+		"_id.requester": bson.M{"$in": filter.Requesters},
+	}
+	addMatchIn(match, "_id.task_name", filter.Tasks)
+	addMatchIn(match, "_id.variant", filter.BuildVariants)
+	addMatchIn(match, "_id.distro", filter.Distros)
+
+	if filter.StartAt != nil {
+		addMatchTaskPagination(match, filter)
+	}
+
+	return bson.M{"$match": match}
+}
+
+// Adds to an existing $match expression the conditions imposed by the filter StartAt field
+func addMatchTaskPagination(matchExpr bson.M, filter *StatsFilter) {
+	var dateOperator string
+	if filter.Sort == SortEarliestFirst {
+		dateOperator = "$gt"
+	} else {
+		dateOperator = "$lt"
+	}
+
+	var fields []string
+	var operators []string
+	var values []interface{}
+
+	switch filter.GroupBy {
+	case GroupByTask:
+		fields = []string{"_id.date", "_id.task_name"}
+		operators = []string{dateOperator, "$gt"}
+		values = []interface{}{filter.StartAt.Date, filter.StartAt.Task}
+	case GroupByVariant:
+		fields = []string{"_id.date", "_id.variant", "_id.task_name"}
+		operators = []string{dateOperator, "$gt", "$gt"}
+		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task}
+	case GroupByDistro:
+		fields = []string{"_id.date", "_id.variant", "_id.task_name", "_id.distro"}
+		operators = []string{dateOperator, "$gt", "$gt", "$gt"}
+		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Distro}
+	}
+
+	addPaginationOrBranches(matchExpr, fields, operators, values)
+}
+
+// Edits a match expression to include the or branches of the pagination constraints.
+// fields is an array of field names, they must be in the same order as the sort order.
+// operators is a list of MongoDB comparison operators ("$gte", "$gt", "$lte", "$lt") for the fields.
+// values is a list of values for the fields.
+func addPaginationOrBranches(matchExpr bson.M, fields []string, operators []string, values []interface{}) {
+	baseConstraints := bson.M{}
+	branches := []bson.M{}
+
+	for i := 0; i < len(fields); i++ {
+		branch := bson.M{}
+		for k, v := range baseConstraints {
+			branch[k] = v
+		}
+		branch[fields[i]] = bson.M{operators[i]: values[i]}
+		branches = append(branches, branch)
+		baseConstraints[fields[i]] = values[i]
+	}
+	matchExpr["$or"] = branches
+}
+
+// Returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.
+// The boundaries are the start dates of the periods of 'numDays' (or less for the last period), starting with 'start'.
+func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
+	if numDays <= 0 {
+		numDays = 1
+	}
+
+	start = util.GetUTCDay(start)
+	end = util.GetUTCDay(end)
+	duration := time.Duration(numDays * 24 * int(time.Hour))
+	boundary := start
+	boundaries := []time.Time{}
+
+	for boundary.Unix() < end.Unix() {
+		boundaries = append(boundaries, boundary)
+		boundary = boundary.Add(duration)
+	}
+	return boundaries
+}
+
+// Returns the sort order specification (1, -1) for the date field corresponding to the Sort value.
+func sortDateOrder(sort Sort) int {
+	if sort == SortEarliestFirst {
+		return 1
+	} else {
+		return -1
+	}
 }
 
 //////////////////////////////////////////////////////////////////
