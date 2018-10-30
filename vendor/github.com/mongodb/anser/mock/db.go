@@ -56,6 +56,10 @@ func (d *Database) C(n string) db.Collection {
 	return d.Collections[n]
 }
 
+func (d *Database) DropDatabase() error {
+	return nil
+}
+
 type Collection struct {
 	Name         string
 	InsertedDocs []interface{}
@@ -82,6 +86,9 @@ func (c *Collection) FindId(q interface{}) db.Query {
 	c.Queries = append(c.Queries, qm)
 	return qm
 }
+
+func (c *Collection) DropCollection() error                              { return nil }
+func (c *Collection) Bulk() db.Bulk                                      { return nil }
 func (c *Collection) Count() (int, error)                                { return c.NumDocs, nil }
 func (c *Collection) Update(q, u interface{}) error                      { return nil }
 func (c *Collection) UpdateAll(q, u interface{}) (*db.ChangeInfo, error) { return &db.ChangeInfo{}, nil }

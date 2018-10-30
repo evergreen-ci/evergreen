@@ -13,20 +13,20 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
-type BufferedInsertSuite struct {
+type BufferedUpsertSuite struct {
 	dbname  string
 	session *mgo.Session
 	uuid    uuid.UUID
 	db      Database
-	bi      *anserBufInsertsImpl
+	bi      *anserBufUpsertImpl
 	suite.Suite
 }
 
-func TestBufferedInsertSuite(t *testing.T) {
-	suite.Run(t, new(BufferedInsertSuite))
+func TestBufferedUpsertSuite(t *testing.T) {
+	suite.Run(t, new(BufferedUpsertSuite))
 }
 
-func (s *BufferedInsertSuite) SetupSuite() {
+func (s *BufferedUpsertSuite) SetupSuite() {
 	var err error
 	s.uuid, err = uuid.NewV4()
 	s.Require().NoError(err)
@@ -36,9 +36,9 @@ func (s *BufferedInsertSuite) SetupSuite() {
 	s.db = WrapSession(s.session).DB(s.dbname)
 }
 
-func (s *BufferedInsertSuite) SetupTest() {
-	s.bi = &anserBufInsertsImpl{
-		docs:    make(chan interface{}, 1),
+func (s *BufferedUpsertSuite) SetupTest() {
+	s.bi = &anserBufUpsertImpl{
+		upserts: make(chan upsertOp, 1),
 		err:     make(chan error),
 		flusher: make(chan chan error),
 		closer:  make(chan chan error),
@@ -46,11 +46,11 @@ func (s *BufferedInsertSuite) SetupTest() {
 	}
 }
 
-func (s *BufferedInsertSuite) takedown(collection string) {
+func (s *BufferedUpsertSuite) takedown(collection string) {
 	s.NoError(s.session.DB(s.dbname).C(collection).DropCollection())
 }
 
-func (s *BufferedInsertSuite) kickstart(ctx context.Context, collection string) {
+func (s *BufferedUpsertSuite) kickstart(ctx context.Context, collection string) {
 	ctx, s.bi.cancel = context.WithCancel(ctx)
 	s.bi.opts.Collection = collection
 	s.bi.opts.DB = s.dbname
@@ -66,11 +66,11 @@ func (s *BufferedInsertSuite) kickstart(ctx context.Context, collection string) 
 	go s.bi.start(ctx)
 }
 
-func (s *BufferedInsertSuite) TearDownSuite() {
+func (s *BufferedUpsertSuite) TearDownSuite() {
 	s.Require().NoError(s.session.DB(s.dbname).DropDatabase())
 }
 
-func (s *BufferedInsertSuite) TestAppendErrorsForNilDocuments() {
+func (s *BufferedUpsertSuite) TestAppendErrorsForNilDocuments() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -80,7 +80,7 @@ func (s *BufferedInsertSuite) TestAppendErrorsForNilDocuments() {
 
 	for i := 0; i < 100; i++ {
 		if i%2 == 0 {
-			s.NoError(s.bi.Append(Document{"a": i}))
+			s.NoError(s.bi.Append(Document{"_id": i + 1, "a": i}))
 			continue
 		}
 		s.Error(s.bi.Append(nil))
@@ -92,23 +92,23 @@ func (s *BufferedInsertSuite) TestAppendErrorsForNilDocuments() {
 	s.Equal(50, num)
 }
 
-func (s *BufferedInsertSuite) TestBasicInsertsBufferDoesNotFlushOnCancel() {
+func (s *BufferedUpsertSuite) TestBasicUpsertsBufferDoesNotFlushOnCancel() {
 	ctx, cancel := context.WithCancel(context.Background())
 	coll := s.uuid.String()
 	s.kickstart(ctx, coll)
 	defer s.takedown(coll)
 
-	for i := 0; i < 10000; i++ {
-		s.NoError(s.bi.Append(Document{"a": i}))
+	for i := 0; i < 1000; i++ {
+		s.NoError(s.bi.Append(Document{"_id": i + 1, "a": i}))
 	}
 	cancel()
 
 	num, err := s.db.C(coll).Count()
 	s.NoError(err)
-	s.NotEqual(10000, num)
+	s.NotEqual(1000, num)
 }
 
-func (s *BufferedInsertSuite) TestBufferFlushes() {
+func (s *BufferedUpsertSuite) TestBufferFlushes() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	coll := s.uuid.String()
@@ -116,7 +116,7 @@ func (s *BufferedInsertSuite) TestBufferFlushes() {
 	defer s.takedown(coll)
 
 	for i := 0; i < 100; i++ {
-		s.bi.Append(Document{"a": i})
+		s.bi.Append(Document{"_id": i + 1, "a": i})
 	}
 	s.NoError(s.bi.Flush())
 
@@ -125,7 +125,7 @@ func (s *BufferedInsertSuite) TestBufferFlushes() {
 	s.Equal(100, num)
 }
 
-func (s *BufferedInsertSuite) TestCloserFlushes() {
+func (s *BufferedUpsertSuite) TestCloserFlushes() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	coll := s.uuid.String()
@@ -136,17 +136,16 @@ func (s *BufferedInsertSuite) TestCloserFlushes() {
 
 	jobSize := 1000
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.bi.Append(Document{"_id": i + 1, "a": i})
 	}
 	s.NoError(s.bi.Close())
 
 	num, err := s.db.C(coll).Count()
 	s.NoError(err)
 	s.Equal(jobSize, num)
-
 }
 
-func (s *BufferedInsertSuite) TestShouldNoopUsusally() {
+func (s *BufferedUpsertSuite) TestShouldNoopUsusally() {
 	for i := 0; i < 100; i++ {
 		s.NoError(s.bi.Close())
 	}
@@ -166,7 +165,7 @@ func (s *BufferedInsertSuite) TestShouldNoopUsusally() {
 	s.Equal(0, num)
 }
 
-func (s *BufferedInsertSuite) closeWithPendingDocuments() {
+func (s *BufferedUpsertSuite) closeWithPendingDocuments() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	coll := s.uuid.String()
@@ -178,7 +177,7 @@ func (s *BufferedInsertSuite) closeWithPendingDocuments() {
 	catcher := grip.NewBasicCatcher()
 	jobSize := 10
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.bi.Append(Document{"_id": 1 + i, "a": i})
 	}
 
 	s.NoError(s.bi.Close())
@@ -189,7 +188,7 @@ func (s *BufferedInsertSuite) closeWithPendingDocuments() {
 	s.Equal(jobSize, num)
 }
 
-func (s *BufferedInsertSuite) flushWithPendingDocuments() {
+func (s *BufferedUpsertSuite) flushWithPendingDocuments() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	coll := s.uuid.String()
@@ -201,7 +200,7 @@ func (s *BufferedInsertSuite) flushWithPendingDocuments() {
 	catcher := grip.NewBasicCatcher()
 	jobSize := 10
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.bi.Append(Document{"_id": 1 + i, "a": i})
 	}
 
 	for i := 0; i < jobSize; i++ {
@@ -215,19 +214,19 @@ func (s *BufferedInsertSuite) flushWithPendingDocuments() {
 	s.Equal(jobSize, num)
 }
 
-func (s *BufferedInsertSuite) TestCloseWithPending00() { s.closeWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestCloseWithPending01() { s.closeWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestCloseWithPending02() { s.closeWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestCloseWithPending03() { s.closeWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestCloseWithPending04() { s.closeWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestCloseWithPending00() { s.closeWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestCloseWithPending01() { s.closeWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestCloseWithPending02() { s.closeWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestCloseWithPending03() { s.closeWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestCloseWithPending04() { s.closeWithPendingDocuments() }
 
-func (s *BufferedInsertSuite) TestFlushWithPending00() { s.flushWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestFlushWithPending01() { s.flushWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestFlushWithPending02() { s.flushWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestFlushWithPending03() { s.flushWithPendingDocuments() }
-func (s *BufferedInsertSuite) TestFlushWithPending04() { s.flushWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestFlushWithPending00() { s.flushWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestFlushWithPending01() { s.flushWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestFlushWithPending02() { s.flushWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestFlushWithPending03() { s.flushWithPendingDocuments() }
+func (s *BufferedUpsertSuite) TestFlushWithPending04() { s.flushWithPendingDocuments() }
 
-func (s *BufferedInsertSuite) TestFlushBeforeTimerExpires() {
+func (s *BufferedUpsertSuite) TestFlushBeforeTimerExpires() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	coll := s.uuid.String()
@@ -238,7 +237,7 @@ func (s *BufferedInsertSuite) TestFlushBeforeTimerExpires() {
 
 	jobSize := 100
 	for i := 0; i < jobSize; i++ {
-		s.bi.Append(Document{"a": i})
+		s.bi.Append(Document{"_id": 2 + i, "a": i})
 	}
 
 	s.NoError(s.bi.Flush())
@@ -248,79 +247,7 @@ func (s *BufferedInsertSuite) TestFlushBeforeTimerExpires() {
 	s.Equal(jobSize, num)
 }
 
-type BufWriteOptsSuite struct {
-	opts BufferedWriteOptions
-	suite.Suite
-}
-
-func TestBufWriteOptsSuite(t *testing.T) {
-	suite.Run(t, new(BufWriteOptsSuite))
-}
-
-func (s *BufWriteOptsSuite) SetupTest() {
-	s.opts = BufferedWriteOptions{}
-}
-
-func (s *BufWriteOptsSuite) TestZeroValueIsNotValid() {
-	s.Zero(s.opts)
-	s.Error(s.opts.Validate())
-}
-
-func (s *BufWriteOptsSuite) makeOptsValid() {
-	s.opts.Collection = "foo"
-	s.opts.Count = 100
-	s.opts.Duration = time.Minute
-
-	s.Require().NoError(s.opts.Validate())
-}
-
-func (s *BufWriteOptsSuite) TestMissingCollectionIsNotValid() {
-	s.makeOptsValid()
-	s.opts.Collection = ""
-	s.Error(s.opts.Validate())
-}
-
-func (s *BufWriteOptsSuite) TestCountMustBeAtLeast2() {
-	s.makeOptsValid()
-	s.opts.Count = 0
-	s.Error(s.opts.Validate())
-
-	s.opts.Count = 1
-	s.Error(s.opts.Validate())
-
-	s.opts.Count = -10
-	s.Error(s.opts.Validate())
-
-	s.opts.Count = 2
-	s.NoError(s.opts.Validate())
-
-}
-
-func (s *BufWriteOptsSuite) TestDurationMustBeReasonable() {
-	s.makeOptsValid()
-	s.opts.Duration = 0
-	s.Error(s.opts.Validate())
-	s.opts.Duration = time.Nanosecond
-	s.Error(s.opts.Validate())
-
-	s.opts.Duration = time.Millisecond
-	s.Error(s.opts.Validate())
-
-	s.opts.Duration = 5 * time.Millisecond
-	s.Error(s.opts.Validate())
-
-	s.opts.Duration = 10 * time.Millisecond
-	s.NoError(s.opts.Validate())
-
-}
-
-func (s *BufWriteOptsSuite) TestDatabaseIsNotRequired() {
-	s.makeOptsValid()
-	s.NoError(s.opts.Validate())
-	s.Equal("", s.opts.DB)
-}
-
-func TestBufferedInsertConstructors(t *testing.T) {
+func TestBufferedUpsertConstructors(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -335,7 +262,7 @@ func TestBufferedInsertConstructors(t *testing.T) {
 	assert.Zero(opts)
 
 	// invalid options propagate error
-	bi, err = NewBufferedInserter(ctx, nil, opts)
+	bi, err = NewBufferedUpsertByID(ctx, nil, opts)
 	assert.Error(err)
 	assert.Nil(bi)
 
@@ -345,21 +272,21 @@ func TestBufferedInsertConstructors(t *testing.T) {
 		Count:      10,
 		Duration:   time.Second,
 	}
-	bi, err = NewBufferedInserter(ctx, nil, opts)
-	assert.NoError(err)
-	assert.NotNil(bi)
+	bi, err = NewBufferedUpsertByID(ctx, nil, opts)
+	assert.Error(err)
+	assert.Nil(bi)
 
 	// from session should error without database names
-	bi, err = NewBufferedSessionInserter(ctx, &mgo.Session{}, opts)
+	bi, err = NewBufferedSessionUpsertByID(ctx, &mgo.Session{}, opts)
 	assert.Error(err)
 	assert.Nil(bi)
 
 	opts.DB = "bar"
-	bi, err = NewBufferedSessionInserter(ctx, nil, opts)
+	bi, err = NewBufferedSessionUpsertByID(ctx, nil, opts)
 	assert.Error(err)
 	assert.Nil(bi)
 
-	bi, err = NewBufferedSessionInserter(ctx, &mgo.Session{}, opts)
+	bi, err = NewBufferedSessionUpsertByID(ctx, &mgo.Session{}, opts)
 	assert.NoError(err)
 	assert.NotNil(bi)
 }

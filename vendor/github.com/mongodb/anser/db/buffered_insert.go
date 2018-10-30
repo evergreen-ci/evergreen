@@ -9,13 +9,14 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
-// BufferedInserter provides a way to do application-buffered inserts
-// to take advantage of the faster "vector" insert operations when
-// inserting groups of documents into a single collection.
+// BufferedInserter provides a way to do application-buffered write operations
+// to take advantage of the faster "vector" insert or bulk write api  when
+// writing groups of documents into a single collection.
 //
 // Implementations differ in how they manage connections to the
-// database, typically.
-type BufferedInserter interface {
+// database, typically as well as providing different write
+// operations. The interface
+type BufferedWriter interface {
 	// Adds a single document to the buffer, which will cause a
 	// single insert after the configured duration
 	// elapses. Implementations may do validation of the input,
@@ -34,7 +35,7 @@ type BufferedInserter interface {
 
 // BufferedInsertOptions captures options used by any BufferedInserter
 // implemenation.
-type BufferedInsertOptions struct {
+type BufferedWriteOptions struct {
 	DB         string
 	Collection string
 	Count      int
@@ -43,7 +44,7 @@ type BufferedInsertOptions struct {
 
 // Validate returns an error if any of the required values are not set
 // or have unreasonable values.
-func (o BufferedInsertOptions) Validate() error {
+func (o BufferedWriteOptions) Validate() error {
 	catcher := grip.NewBasicCatcher()
 
 	// NOTE: db name is not required in all cases, implementations
@@ -65,7 +66,7 @@ func (o BufferedInsertOptions) Validate() error {
 }
 
 type anserBufInsertsImpl struct {
-	opts    BufferedInsertOptions
+	opts    BufferedWriteOptions
 	db      Database
 	cancel  context.CancelFunc
 	docs    chan interface{}
@@ -79,7 +80,7 @@ type anserBufInsertsImpl struct {
 // interface. You must specify the collection that the
 // inserts target in the options. You can construct the same instance
 // using an actual mgo session with the NewBufferedSession
-func NewBufferedInserter(ctx context.Context, db Database, opts BufferedInsertOptions) (BufferedInserter, error) {
+func NewBufferedInserter(ctx context.Context, db Database, opts BufferedWriteOptions) (BufferedWriter, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, errors.Wrap(err, "cannot construct buffered insert handler")
 	}
@@ -99,7 +100,7 @@ func NewBufferedInserter(ctx context.Context, db Database, opts BufferedInsertOp
 	return bi, nil
 }
 
-func NewBufferedSessionInserter(ctx context.Context, s *mgo.Session, opts BufferedInsertOptions) (BufferedInserter, error) {
+func NewBufferedSessionInserter(ctx context.Context, s *mgo.Session, opts BufferedWriteOptions) (BufferedWriter, error) {
 	if opts.DB == "" {
 		return nil, errors.New("must specify a database name when constructing a buffered insert handler")
 	}
@@ -148,6 +149,11 @@ bufferLoop:
 				if err == nil {
 					buf = []interface{}{}
 				}
+
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(bi.opts.Duration)
 			}
 		case f := <-bi.flusher:
 			select {

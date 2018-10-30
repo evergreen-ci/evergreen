@@ -25,6 +25,10 @@ type pipelineWrapper struct {
 	*mgo.Pipe
 }
 
+type bulkWrapper struct {
+	*mgo.Bulk
+}
+
 // WrapSession takes an mgo.Session and returns an equivalent session object.
 func WrapSession(s *mgo.Session) Session                { return sessionWrapper{Session: s} }
 func (s sessionWrapper) Clone() Session                 { return sessionWrapper{s.Session.Clone()} }
@@ -35,6 +39,7 @@ func (d databaseWrapper) C(n string) Collection         { return collectionWrapp
 func (c collectionWrapper) Pipe(p interface{}) Results  { return pipelineWrapper{c.Collection.Pipe(p)} }
 func (c collectionWrapper) Find(q interface{}) Query    { return queryWrapper{c.Collection.Find(q)} }
 func (c collectionWrapper) FindId(id interface{}) Query { return queryWrapper{c.Collection.FindId(id)} }
+func (c collectionWrapper) Bulk() Bulk                  { return bulkWrapper{c.Collection.Bulk()} }
 func (p pipelineWrapper) Iter() Iterator                { return p.Pipe.Iter() }
 func (q queryWrapper) Iter() Iterator                   { return q.Query.Iter() }
 func (q queryWrapper) Limit(n int) Query                { return queryWrapper{q.Query.Limit(n)} }
@@ -62,9 +67,25 @@ func (c collectionWrapper) UpsertId(q, u interface{}) (*ChangeInfo, error) {
 	return buildChangeInfo(i), errors.WithStack(err)
 }
 
+func (b bulkWrapper) Run() (*BulkResult, error) {
+	r, err := b.Bulk.Run()
+	return buildBulkResult(r), errors.WithStack(err)
+}
+
 func buildChangeInfo(i *mgo.ChangeInfo) *ChangeInfo {
 	if i == nil {
 		return nil
 	}
 	return &ChangeInfo{i.Updated, i.Removed, i.UpsertedId}
+}
+
+func buildBulkResult(r *mgo.BulkResult) *BulkResult {
+	if r == nil {
+		return nil
+	}
+
+	return &BulkResult{
+		Matched:  r.Matched,
+		Modified: r.Modified,
+	}
 }

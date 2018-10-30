@@ -111,7 +111,7 @@ imports:
   - name: github.com/mongodb/grip
     verison: ce377de00786de1277ad2b89194f83c4ed49fa3b
   - name: github.com/mongodb/anser
-    version: 6a21a3cf64774e98ca28f7ca205cc27b342a3fdd
+    version: 26377b93cbfb24ff2be535c458f38eda10e07a03
   - name: github.com/mongodb/amboy
     version: f897c05396072269b4140b3179fc2d190ebc29dc
   - name: github.com/evergreen-ci/gimlet

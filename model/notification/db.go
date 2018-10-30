@@ -81,13 +81,13 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
-func BulkInserter(ctx context.Context) (adb.BufferedInserter, error) {
+func BulkInserter(ctx context.Context) (adb.BufferedWriter, error) {
 	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	opts := adb.BufferedInsertOptions{
+	opts := adb.BufferedWriteOptions{
 		DB:         mdb.Name,
 		Count:      50,
 		Duration:   5 * time.Second,
