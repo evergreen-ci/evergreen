@@ -146,4 +146,52 @@ buildvariants:
 		assert.NotEmpty(settings["key_name"])
 		assert.InDelta(time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 	}
+
+	// test that a host.create in a function works too
+	assert.NoError(db.ClearCollections(host.Collection))
+	versionYaml = `
+functions:
+  make-host:
+    command: host.create
+    params:
+      distro: distro
+      scope: task
+      num_hosts: 2
+tasks:
+- name: t2
+  commands:
+  - func: "make-host"
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: t2
+`
+	v2 := version.Version{
+		Id:         "v2",
+		Config:     versionYaml,
+		Identifier: "p",
+	}
+	assert.NoError(v2.Insert())
+	t2 := task.Task{
+		Id:           "t2",
+		DisplayName:  "t2",
+		Version:      "v2",
+		DistroId:     "distro",
+		Project:      "p",
+		BuildVariant: "bv",
+	}
+	assert.NoError(t2.Insert())
+	err = dc.CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
+	assert.NoError(err)
+	createdHosts, err = host.Find(host.IsUninitialized)
+	assert.NoError(err)
+	assert.Len(createdHosts, 2)
+	for _, h := range createdHosts {
+		assert.Equal("me", h.StartedBy)
+		assert.True(h.UserHost)
+		assert.Equal(t2.Id, h.ProvisionOptions.TaskId)
+		settings := *h.Distro.ProviderSettings
+		assert.NotEmpty(settings["key_name"])
+		assert.InDelta(time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
+	}
 }
