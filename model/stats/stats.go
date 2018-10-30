@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -90,7 +91,7 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 	end := start.Add(time.Hour)
 	// Generate the stats based on tasks.
 	pipeline := hourlyTestStatsPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err := aggregateIntoCollection(tasksCollection, pipeline, hourlyTestStatsCollection)
+	err := aggregateIntoCollection(task.Collection, pipeline, hourlyTestStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate hourly stats")
 	}
@@ -104,7 +105,7 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 	})
 	// Generate/Update the stats for old tasks.
 	pipeline = hourlyTestStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err = aggregateIntoCollection(oldTasksCollection, pipeline, hourlyTestStatsCollection)
+	err = aggregateIntoCollection(task.OldCollection, pipeline, hourlyTestStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate hourly stats for old tasks")
 	}
@@ -150,7 +151,7 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 	start := util.GetUTCDay(day)
 	end := start.Add(24 * time.Hour)
 	pipeline := dailyTaskStatsPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err := aggregateIntoCollection(tasksCollection, pipeline, dailyTaskStatsCollection)
+	err := aggregateIntoCollection(task.Collection, pipeline, dailyTaskStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
@@ -165,7 +166,7 @@ func GenerateDailyTaskStats(projectId string, requester string, day time.Time, t
 	start = util.GetUTCDay(day)
 	end = start.Add(24 * time.Hour)
 	pipeline = dailyTaskStatsForOldTasksPipeline(projectId, requester, start, end, tasks, jobRunTime)
-	err = aggregateIntoCollection(oldTasksCollection, pipeline, dailyTaskStatsCollection)
+	err = aggregateIntoCollection(task.OldCollection, pipeline, dailyTaskStatsCollection)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate daily task stats")
 	}
@@ -237,12 +238,12 @@ func FindStatsToUpdate(projectId string, start time.Time, end time.Time) ([]Stat
 	})
 	pipeline := statsToUpdatePipeline(projectId, start, end)
 	statsList := []StatsToUpdate{}
-	err := db.Aggregate(tasksCollection, pipeline, &statsList)
+	err := db.Aggregate(task.Collection, pipeline, &statsList)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate finished tasks")
 	}
 	statsListForOldTasks := []StatsToUpdate{}
-	err = db.Aggregate(oldTasksCollection, pipeline, &statsListForOldTasks)
+	err = db.Aggregate(task.OldCollection, pipeline, &statsListForOldTasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate finished old tasks")
 	}

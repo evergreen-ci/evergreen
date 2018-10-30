@@ -72,9 +72,6 @@ const (
 	hourlyTestStatsCollection  = "hourly_test_stats"
 	dailyTestStatsCollection   = "daily_test_stats"
 	dailyTaskStatsCollection   = "daily_task_stats"
-	tasksCollection            = "tasks"
-	testResultsCollection      = "testresults"
-	oldTasksCollection         = "old_tasks"
 	dailyStatsStatusCollection = "daily_stats_status"
 	bulkSize                   = 1000
 	nsInASecond                = time.Second / time.Nanosecond
@@ -161,10 +158,10 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 	var displayTaskLookupCollection string
 	if oldTasks {
 		taskIdExpr = "$old_task_id"
-		displayTaskLookupCollection = oldTasksCollection
+		displayTaskLookupCollection = task.OldCollection
 	} else {
 		taskIdExpr = "$_id"
-		displayTaskLookupCollection = tasksCollection
+		displayTaskLookupCollection = task.Collection
 	}
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -191,7 +188,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 			"path":                       "$display_task",
 			"preserveNullAndEmptyArrays": true}},
 		{"$lookup": bson.M{
-			"from": testResultsCollection,
+			"from": testresult.Collection,
 			"let":  bson.M{"task_id": "$task_id", "execution": "$execution"},
 			"pipeline": []bson.M{
 				{"$match": bson.M{"$expr": bson.M{"$and": []bson.M{
@@ -345,10 +342,10 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 	var displayTaskLookupCollection string
 	if oldTasks {
 		taskIdExpr = "$old_task_id"
-		displayTaskLookupCollection = oldTasksCollection
+		displayTaskLookupCollection = task.OldCollection
 	} else {
 		taskIdExpr = "$_id"
-		displayTaskLookupCollection = tasksCollection
+		displayTaskLookupCollection = task.Collection
 	}
 	pipeline := []bson.M{
 		{"$match": bson.M{

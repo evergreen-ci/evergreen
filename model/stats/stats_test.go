@@ -42,9 +42,9 @@ func (s *statsSuite) SetupTest() {
 	s.clearCollection(dailyTestStatsCollection)
 	s.clearCollection(dailyStatsStatusCollection)
 	s.clearCollection(dailyTaskStatsCollection)
-	s.clearCollection(tasksCollection)
-	s.clearCollection(oldTasksCollection)
-	s.clearCollection(testResultsCollection)
+	s.clearCollection(task.Collection)
+	s.clearCollection(task.OldCollection)
+	s.clearCollection(testresult.Collection)
 }
 
 func (s *statsSuite) TestStatsStatus() {
@@ -523,7 +523,7 @@ func (s *statsSuite) insertOldTask(project string, requester string, taskId stri
 		Details:      details,
 		TimeTaken:    status.TimeTaken,
 		OldTaskId:    oldTaskId}
-	err := db.Insert(oldTasksCollection, &newTask)
+	err := db.Insert(task.OldCollection, &newTask)
 	s.Require().NoError(err)
 }
 
@@ -588,7 +588,7 @@ func (s *statsSuite) insertFinishedOldTask(project string, requester string, tas
 		CreateTime:  createTime,
 		FinishTime:  finishTime,
 	}
-	err := db.Insert(oldTasksCollection, &newTask)
+	err := db.Insert(task.OldCollection, &newTask)
 	s.Require().NoError(err)
 }
 
