@@ -173,7 +173,12 @@ func (c *s3copy) s3Copy(ctx context.Context,
 			S3DisplayName:       s3CopyFile.DisplayName,
 		}
 
-		err := comm.S3Copy(ctx, td, &s3CopyReq)
+		responseString, err := comm.S3Copy(ctx, td, &s3CopyReq)
+
+		if responseString != "" {
+			logger.Task().Infof("s3 push copy response: %s", responseString)
+		}
+
 		if err != nil {
 			err = errors.Wrap(err, "s3 push copy failed")
 			logger.Execution().Error(err)

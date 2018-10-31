@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -457,7 +458,7 @@ func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (
 	return &mfest, nil
 }
 
-func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) error {
+func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *apimodels.S3CopyRequest) (string, error) {
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
@@ -466,11 +467,16 @@ func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *a
 	info.setTaskPathSuffix("s3Copy/s3Copy")
 	resp, err := c.retryRequest(ctx, info, req)
 	if err != nil {
-		return errors.Wrapf(err, "problem with s3copy for %s", taskData.ID)
+		return "", errors.Wrapf(err, "problem with s3copy for %s", taskData.ID)
 	}
 	defer resp.Body.Close()
 
-	return nil
+	response := gimlet.ErrorResponse{}
+	if err = util.ReadJSONInto(resp.Body, &response); err == nil {
+		return response.Message, nil
+	}
+
+	return "", nil
 }
 
 func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv *model.KeyVal) error {

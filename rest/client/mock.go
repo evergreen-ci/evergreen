@@ -403,8 +403,8 @@ func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest
 	return &manifest.Manifest{}, nil
 }
 
-func (c *Mock) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyRequest) error {
-	return nil
+func (c *Mock) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyRequest) (string, error) {
+	return "", nil
 }
 
 func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyVal) error {
