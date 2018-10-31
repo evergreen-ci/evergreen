@@ -267,6 +267,10 @@ retryLoop:
 					return errors.Wrapf(err, "error processing filter %s",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
+				if len(filesList) == 0 {
+					logger.Task().Info("s3 put include filter matched no files")
+					return nil
+				}
 			}
 
 			// reset to avoid duplicated uploaded references
@@ -302,6 +306,7 @@ retryLoop:
 							continue uploadLoop
 						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
+							logger.Task().Infof("file %s not found but skip missing true", fpath)
 							return nil
 						} else {
 							// single required uploads should return an error asap.
@@ -333,6 +338,7 @@ retryLoop:
 	}
 
 	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
+		logger.Task().Infof("%d requested, %d uploaded", len(filesList), len(uploadedFiles))
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
 	}
 

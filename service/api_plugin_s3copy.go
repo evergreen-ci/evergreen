@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -66,6 +67,10 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	if newestPushLog != nil {
 		grip.Warningln("conflict with existing pushed file:", copyToLocation)
+		gimlet.WriteJSON(w, gimlet.ErrorResponse{
+			StatusCode: http.StatusOK,
+			Message:    fmt.Sprintf("noop, file %s exists", copyToLocation),
+		})
 		return
 	}
 
