@@ -249,8 +249,6 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	notFound := 0
-
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
 		logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
@@ -268,6 +266,10 @@ retryLoop:
 				if err != nil {
 					return errors.Wrapf(err, "error processing filter %s",
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
+				}
+				if len(filesList) == 0 {
+					logger.Task().Info("s3 put include filter matched no files")
+					return nil
 				}
 			}
 
@@ -298,12 +300,7 @@ retryLoop:
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
 					if os.IsNotExist(errors.Cause(err)) {
-						if s3pc.isMulti() {
-							// try the remaining multi uploads in the group, effectively ignoring this
-							// error.
-							notFound++
-							continue uploadLoop
-						} else if s3pc.skipMissing {
+						if s3pc.skipMissing {
 							// single optional file uploads should return early.
 							logger.Task().Infof("file %s not found but skip missing true", fpath)
 							return nil
@@ -337,7 +334,7 @@ retryLoop:
 	}
 
 	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
-		logger.Task().Infof("%d requested, %d uploaded, %d not found", len(filesList), len(uploadedFiles), notFound)
+		logger.Task().Infof("%d requested, %d uploaded", len(filesList), len(uploadedFiles))
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
 	}
 

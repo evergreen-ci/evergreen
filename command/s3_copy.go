@@ -176,7 +176,7 @@ func (c *s3copy) s3Copy(ctx context.Context,
 		responseString, err := comm.S3Copy(ctx, td, &s3CopyReq)
 
 		if responseString != "" {
-			logger.Task().Infof("s3 push copy response: %s", responseString)
+			logger.Task().Infof("s3Copy response: %s", responseString)
 		}
 
 		if err != nil {
