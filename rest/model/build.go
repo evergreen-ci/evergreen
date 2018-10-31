@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -103,8 +102,38 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 }
 
 // ToService returns a service layer build using the data from the APIBuild.
-func (apiBuild *APIBuild) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
+func (a *APIBuild) ToService() (interface{}, error) {
+	b := build.Build{
+		Id:                  FromAPIString(a.Id),
+		CreateTime:          time.Time(a.CreateTime),
+		StartTime:           time.Time(a.StartTime),
+		FinishTime:          time.Time(a.FinishTime),
+		Version:             FromAPIString(a.Version),
+		Project:             FromAPIString(a.Branch),
+		Revision:            FromAPIString(a.Revision),
+		BuildVariant:        FromAPIString(a.BuildVariant),
+		Status:              FromAPIString(a.Status),
+		Activated:           a.Activated,
+		ActivatedBy:         FromAPIString(a.ActivatedBy),
+		ActivatedTime:       time.Time(a.ActivatedTime),
+		RevisionOrderNumber: a.RevisionOrderNumber,
+		TimeTaken:           a.TimeTaken.ToDuration(),
+		DisplayName:         FromAPIString(a.DisplayName),
+		PredictedMakespan:   a.PredictedMakespan.ToDuration(),
+		ActualMakespan:      a.ActualMakespan.ToDuration(),
+	}
+	for _, t := range a.TaskCache {
+		b.Tasks = append(b.Tasks, build.TaskCache{
+			Id:            t.Id,
+			DisplayName:   t.DisplayName,
+			Status:        t.Status,
+			StatusDetails: t.StatusDetails,
+			StartTime:     t.StartTime,
+			TimeTaken:     t.TimeTaken,
+			Activated:     t.Activated,
+		})
+	}
+	return b, nil
 }
 
 type APITaskCache struct {

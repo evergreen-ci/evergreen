@@ -192,6 +192,10 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, e
 	}, nil
 }
 
+func (c *Mock) GetUpstreamMetadata(context.Context, TaskData) (model.UpstreamMetadata, error) {
+	return model.UpstreamMetadata{}, nil
+}
+
 // Heartbeat returns false, which indicates the heartbeat has succeeded.
 func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (bool, error) {
 	if c.HeartbeatShouldAbort {

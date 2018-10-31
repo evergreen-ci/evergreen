@@ -110,3 +110,40 @@ func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
 	}
 	return true
 }
+
+func RequireHostContext() gimlet.Middleware {
+	return &requireHostContextHandler{}
+}
+
+type requireHostContextHandler struct{}
+
+func (c *requireHostContextHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	h, code, err := model.ValidateHost(gimlet.GetVars(r)["hostId"], r)
+	if err != nil {
+		rw.WriteHeader(code)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	if err := h.UpdateLastCommunicated(); err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	next(rw, r)
+}
+
+func RequireTaskContext() gimlet.Middleware {
+	return &requireTaskContextHandler{}
+}
+
+type requireTaskContextHandler struct{}
+
+func (c *requireTaskContextHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	_, code, err := model.ValidateTask(gimlet.GetVars(r)["task_id"], true, r)
+	if err != nil {
+		rw.WriteHeader(code)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	next(rw, r)
+}

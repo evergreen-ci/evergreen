@@ -1,7 +1,6 @@
 package model
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -52,6 +51,25 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	return nil
 }
 
-func (apiProject *APIProject) ToService() (interface{}, error) {
-	return nil, errors.New("not implemented for read-only route")
+func (a *APIProject) ToService() (interface{}, error) {
+	p := model.ProjectRef{
+		BatchTime:          a.BatchTime,
+		Branch:             FromAPIString(a.Branch),
+		DisplayName:        FromAPIString(a.DisplayName),
+		Enabled:            a.Enabled,
+		Identifier:         FromAPIString(a.Identifier),
+		Owner:              FromAPIString(a.Owner),
+		Private:            a.Private,
+		RemotePath:         FromAPIString(a.RemotePath),
+		Repo:               FromAPIString(a.Repo),
+		Tracked:            a.Tracked,
+		TracksPushEvents:   a.TracksPushEvents,
+		PRTestingEnabled:   a.PRTestingEnabled,
+		DeactivatePrevious: a.DeactivatePrevious,
+		Admins:             []string{},
+	}
+	for _, admin := range a.Admins {
+		p.Admins = append(p.Admins, FromAPIString(admin))
+	}
+	return p, nil
 }

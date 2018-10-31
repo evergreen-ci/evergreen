@@ -212,4 +212,6 @@ type Connector interface {
 	ListHostsForTask(string) ([]host.Host, error)
 	MakeIntentHost(string, string, string, apimodels.CreateHost) (*host.Host, error)
 	CreateHostsFromTask(*task.Task, user.DBUser, string) error
+
+	TriggerDataFromTask(string) (restModel.UpstreamMetadata, error)
 }

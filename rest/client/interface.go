@@ -65,6 +65,7 @@ type Communicator interface {
 	GetVersion(context.Context, TaskData) (*version.Version, error)
 	// Heartbeat sends a heartbeat to the API server. The server can respond with
 	// an "abort" response. This function returns true if the agent should abort.
+	GetUpstreamMetadata(context.Context, TaskData) (restmodel.UpstreamMetadata, error)
 	Heartbeat(context.Context, TaskData) (bool, error)
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)

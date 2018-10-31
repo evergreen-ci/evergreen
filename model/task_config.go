@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -26,8 +27,16 @@ type TaskConfig struct {
 	WorkDir         string
 	GithubPatchData patch.GithubPatch
 	Timeout         *Timeout
+	UpstreamData    *UpstreamMetadata
 
 	mu sync.RWMutex
+}
+
+type UpstreamMetadata struct {
+	Build   build.Build
+	Task    *task.Task
+	EventID string
+	Project ProjectRef
 }
 
 type Timeout struct {
@@ -59,7 +68,8 @@ func (t *TaskConfig) GetExecTimeout() int {
 	return t.Timeout.ExecTimeoutSecs
 }
 
-func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch) (*TaskConfig, error) {
+func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef,
+	patchDoc *patch.Patch, upstreamData *UpstreamMetadata) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project for task with project_id %v is empty", t.Project)
@@ -75,7 +85,7 @@ func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Tas
 		return nil, errors.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
 	}
 
-	e := populateExpansions(d, v, bv, t, patchDoc)
+	e := populateExpansions(d, v, bv, t, patchDoc, upstreamData)
 	taskConfig := &TaskConfig{
 		Distro:       d,
 		Version:      v,
@@ -85,6 +95,7 @@ func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Tas
 		BuildVariant: bv,
 		Expansions:   e,
 		WorkDir:      d.WorkDir,
+		UpstreamData: upstreamData,
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
@@ -140,7 +151,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 		}
 	}
 
-	tc, err := NewTaskConfig(&d, v, proj, t, projRef, p)
+	tc, err := NewTaskConfig(&d, v, proj, t, projRef, p, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making TaskConfig")
 	}

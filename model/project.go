@@ -564,7 +564,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task, p *patch.Patch) *util.Expansions {
+func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task, p *patch.Patch, upstreamData *UpstreamMetadata) *util.Expansions {
 	expansions := util.NewExpansions(map[string]string{})
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
@@ -579,6 +579,21 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 	expansions.Put("author", v.Author)
 	expansions.Put("distro_id", d.Id)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
+	if upstreamData != nil {
+		expansions.Put("trigger_event_identifier", t.TriggerID)
+		expansions.Put("trigger_event_type", t.TriggerType)
+		expansions.Put("trigger_event", upstreamData.EventID)
+		if upstreamData.Task != nil {
+			expansions.Put("trigger_status", upstreamData.Task.Status)
+		} else {
+			expansions.Put("trigger_status", upstreamData.Build.Status)
+		}
+		expansions.Put("trigger_revision", upstreamData.Build.Revision)
+		expansions.Put("trigger_id", upstreamData.EventID)
+		expansions.Put("trigger_repo_owner", upstreamData.Project.Owner)
+		expansions.Put("trigger_repo_name", upstreamData.Project.Repo)
+		expansions.Put("trigger_branch", upstreamData.Project.Branch)
+	}
 
 	if evergreen.IsPatchRequester(v.Requester) {
 		expansions.Put("is_patch", "true")

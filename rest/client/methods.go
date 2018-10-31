@@ -189,6 +189,31 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 	return v, nil
 }
 
+func (c *communicatorImpl) GetUpstreamMetadata(ctx context.Context, taskData TaskData) (restmodel.UpstreamMetadata, error) {
+	metadata := restmodel.UpstreamMetadata{}
+	info := requestInfo{
+		method:   get,
+		taskData: &taskData,
+		version:  apiVersion2,
+		path:     fmt.Sprintf("triggers/%s", taskData.ID),
+	}
+	resp, err := c.retryRequest(ctx, info, nil)
+	defer resp.Body.Close()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get upstream metadata for task %s", taskData.ID)
+		return metadata, err
+	}
+
+	if resp.StatusCode == http.StatusConflict {
+		return metadata, errors.New("conflict; wrong secret")
+	}
+	err = util.ReadJSONInto(resp.Body, &metadata)
+	if err != nil {
+		return metadata, errors.Wrapf(err, "unable to read upstream metadata response for task %s", taskData.ID)
+	}
+	return metadata, nil
+}
+
 // Heartbeat sends a heartbeat to the API server. The server can respond with
 // an "abort" response. This function returns true if the agent should abort.
 func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {

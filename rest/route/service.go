@@ -20,6 +20,8 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	// Middleware
 	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers())
 	checkUser := gimlet.NewRequireAuthHandler()
+	requireHostContext := RequireHostContext()
+	requireTaskContext := RequireTaskContext()
 	addProject := NewProjectContextMiddleware(sc)
 
 	// Routes
@@ -81,6 +83,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/tasks/{task_id}/metrics/system").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchTaskSystmMetrics(sc))
 	app.AddRoute("/tasks/{task_id}/restart").Version(2).Post().Wrap(addProject, checkUser).RouteHandler(makeTaskRestartHandler(sc))
 	app.AddRoute("/tasks/{task_id}/tests").Version(2).Get().Wrap(addProject).RouteHandler(makeFetchTestsForTask(sc))
+	app.AddRoute("/triggers/{task_id}").Version(2).Get().Wrap(requireTaskContext, requireHostContext).RouteHandler(makeTriggerMetadataHandler(sc))
 	app.AddRoute("/user/settings").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchUserConfig())
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetUserConfig(sc))
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHosts(sc))

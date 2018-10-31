@@ -271,8 +271,21 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 		}
 	}
 
+	var metadata *model.UpstreamMetadata
+	if confTask.TriggerID != "" {
+		apiMetadata, err := a.comm.GetUpstreamMetadata(ctx, tc.task)
+		if err != nil {
+			return nil, err
+		}
+		service, err := apiMetadata.ToService()
+		if err != nil {
+			return nil, err
+		}
+		metadata = service.(*model.UpstreamMetadata)
+	}
+
 	tc.logger.Execution().Info("Constructing TaskConfig.")
-	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef, confPatch)
+	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef, confPatch, metadata)
 }
 
 func (tc *taskContext) getExecTimeout() time.Duration {

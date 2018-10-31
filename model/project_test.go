@@ -367,6 +367,7 @@ func TestPopulateExpansions(t *testing.T) {
 		BuildVariant: "magic",
 		Revision:     "0ed7cbd33263043fa95aadb3f6068ef8d076854a",
 		Project:      "mci",
+		TriggerID:    "foo",
 	}
 
 	bv := &BuildVariant{
@@ -375,22 +376,34 @@ func TestPopulateExpansions(t *testing.T) {
 			"github_org": "wut?",
 		},
 	}
+	upstreamData := UpstreamMetadata{
+		EventID: "abc",
+		Build: build.Build{
+			Id:       "b",
+			Status:   evergreen.BuildFailed,
+			Revision: "123",
+		},
+		Project: ProjectRef{
+			Identifier: "proj",
+			Repo:       "evergreen",
+		},
+	}
 
 	assert.Panics(func() {
-		_ = populateExpansions(nil, v, bv, taskDoc, nil)
+		_ = populateExpansions(nil, v, bv, taskDoc, nil, nil)
 	})
 	assert.Panics(func() {
-		_ = populateExpansions(d, nil, bv, taskDoc, nil)
+		_ = populateExpansions(d, nil, bv, taskDoc, nil, nil)
 	})
 	assert.Panics(func() {
-		_ = populateExpansions(d, v, nil, taskDoc, nil)
+		_ = populateExpansions(d, v, nil, taskDoc, nil, nil)
 	})
 	assert.Panics(func() {
-		_ = populateExpansions(d, v, bv, nil, nil)
+		_ = populateExpansions(d, v, bv, nil, nil, nil)
 	})
 
-	expansions := populateExpansions(d, v, bv, taskDoc, nil)
-	assert.Len(map[string]string(*expansions), 17)
+	expansions := populateExpansions(d, v, bv, taskDoc, nil, &upstreamData)
+	assert.Len(map[string]string(*expansions), 26)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -410,9 +423,13 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
 	assert.Equal("lie", expansions.Get("cake"))
+	assert.Equal(upstreamData.EventID, expansions.Get("trigger_event"))
+	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
+	assert.Equal(upstreamData.Build.Status, expansions.Get("trigger_status"))
+	assert.Equal(upstreamData.Project.Repo, expansions.Get("trigger_repo_name"))
 
 	v.Requester = evergreen.PatchVersionRequester
-	expansions = populateExpansions(d, v, bv, taskDoc, nil)
+	expansions = populateExpansions(d, v, bv, taskDoc, nil, nil)
 	assert.Len(map[string]string(*expansions), 18)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
@@ -420,7 +437,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("github_pr_number"))
 
 	v.Requester = evergreen.GithubPRRequester
-	expansions = populateExpansions(d, v, bv, taskDoc, nil)
+	expansions = populateExpansions(d, v, bv, taskDoc, nil, nil)
 	assert.Len(map[string]string(*expansions), 18)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
@@ -436,7 +453,7 @@ func TestPopulateExpansions(t *testing.T) {
 		},
 	}
 
-	expansions = populateExpansions(d, v, bv, taskDoc, patchDoc)
+	expansions = populateExpansions(d, v, bv, taskDoc, patchDoc, nil)
 	assert.Len(map[string]string(*expansions), 21)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
