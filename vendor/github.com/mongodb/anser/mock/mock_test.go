@@ -24,5 +24,5 @@ func TestInterfaces(t *testing.T) {
 	assert.Implements((*model.DependencyNetworker)(nil), &DependencyNetwork{})
 	assert.Implements((*anser.Environment)(nil), &Environment{})
 	assert.Implements((*dependency.Manager)(nil), &DependencyManager{})
-	assert.Implements((*db.BufferedInserter)(nil), &BufferedInserter{})
+	assert.Implements((*db.BufferedWriter)(nil), &BufferedInserter{})
 }

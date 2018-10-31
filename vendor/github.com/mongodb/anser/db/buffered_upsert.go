@@ -60,7 +60,7 @@ func NewBufferedSessionUpsertByID(ctx context.Context, s *mgo.Session, opts Buff
 
 	session := WrapSession(s)
 
-	return NewBufferedInserter(ctx, session.DB(opts.DB), opts)
+	return NewBufferedUpsertByID(ctx, session.DB(opts.DB), opts)
 
 }
 

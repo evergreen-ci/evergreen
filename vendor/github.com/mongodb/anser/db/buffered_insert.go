@@ -9,7 +9,7 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
-// BufferedInserter provides a way to do application-buffered write operations
+// BufferedWriter provides a way to do application-buffered write operations
 // to take advantage of the faster "vector" insert or bulk write api  when
 // writing groups of documents into a single collection.
 //
