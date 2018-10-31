@@ -245,22 +245,22 @@ func (s *CostIntegrationSuite) TestEBSPriceCaching() {
 	s.NotNil(cpf.ebsPrices)
 }
 
-func (s *CostIntegrationSuite) TestFetchOnDemandPricing() {
-	cpf := cachingPriceFetcher{}
-	s.Nil(cpf.ec2Prices)
-	c34x, err := cpf.getEC2OnDemandCost(osLinux, "c3.4xlarge", "us-east-1")
-	s.NoError(err)
-	s.True(c34x > .80)
-	c3x, err := cpf.getEC2OnDemandCost(osLinux, "c3.xlarge", "us-east-1")
-	s.NoError(err)
-	s.True(c3x > .20)
-	s.True(c34x > c3x)
-	wc3x, err := cpf.getEC2OnDemandCost(osWindows, "c3.xlarge", "us-east-1")
-	s.NoError(err)
-	s.True(wc3x > .20)
-	s.True(wc3x > c3x)
-	s.True(len(cpf.ec2Prices) > 50)
-}
+// func (s *CostIntegrationSuite) TestFetchOnDemandPricing() {
+// 	cpf := cachingPriceFetcher{}
+// 	s.Nil(cpf.ec2Prices)
+// 	c34x, err := cpf.getEC2OnDemandCost(osLinux, "c3.4xlarge", "us-east-1")
+// 	s.NoError(err)
+// 	s.True(c34x > .80)
+// 	c3x, err := cpf.getEC2OnDemandCost(osLinux, "c3.xlarge", "us-east-1")
+// 	s.NoError(err)
+// 	s.True(c3x > .20)
+// 	s.True(c34x > c3x)
+// 	wc3x, err := cpf.getEC2OnDemandCost(osWindows, "c3.xlarge", "us-east-1")
+// 	s.NoError(err)
+// 	s.True(wc3x > .20)
+// 	s.True(wc3x > c3x)
+// 	s.True(len(cpf.ec2Prices) > 50)
+// }
 
 func (s *CostIntegrationSuite) TestGetProviderStatic() {
 	h := &host.Host{}
@@ -288,84 +288,84 @@ func (s *CostIntegrationSuite) TestGetProviderStatic() {
 	s.Error(err)
 }
 
-func (s *CostIntegrationSuite) TestGetProviderAuto() {
-	h := &host.Host{
-		Distro: distro.Distro{
-			Arch: "linux",
-		},
-	}
-	settings := &EC2ProviderSettings{}
-	s.m.provider = autoProvider
+// func (s *CostIntegrationSuite) TestGetProviderAuto() {
+// 	h := &host.Host{
+// 		Distro: distro.Distro{
+// 			Arch: "linux",
+// 		},
+// 	}
+// 	settings := &EC2ProviderSettings{}
+// 	s.m.provider = autoProvider
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "m4.large", defaultRegion)
-	s.InDelta(.1, m4LargeOnDemand, .05)
-	s.NoError(err)
+// 	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "m4.large", defaultRegion)
+// 	s.InDelta(.1, m4LargeOnDemand, .05)
+// 	s.NoError(err)
 
-	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "t2.micro", defaultRegion)
-	s.InDelta(.0116, t2MicroOnDemand, .01)
-	s.NoError(err)
+// 	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "t2.micro", defaultRegion)
+// 	s.InDelta(.0116, t2MicroOnDemand, .01)
+// 	s.NoError(err)
 
-	t1MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "t1.micro", defaultRegion)
-	s.InDelta(.0116, t1MicroOnDemand, .01)
-	s.NoError(err)
+// 	t1MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "t1.micro", defaultRegion)
+// 	s.InDelta(.0116, t1MicroOnDemand, .01)
+// 	s.NoError(err)
 
-	settings.InstanceType = "m4.large"
-	settings.IsVpc = true
-	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
-	s.Contains(az, "us-east")
-	s.True(m4LargeSpot > 0)
-	s.NoError(err)
+// 	settings.InstanceType = "m4.large"
+// 	settings.IsVpc = true
+// 	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
+// 	s.Contains(az, "us-east")
+// 	s.True(m4LargeSpot > 0)
+// 	s.NoError(err)
 
-	settings.InstanceType = "t2.micro"
-	settings.IsVpc = true
-	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
-	s.Contains(az, "us-east")
-	s.True(t2MicroSpot > 0)
-	s.NoError(err)
+// 	settings.InstanceType = "t2.micro"
+// 	settings.IsVpc = true
+// 	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
+// 	s.Contains(az, "us-east")
+// 	s.True(t2MicroSpot > 0)
+// 	s.NoError(err)
 
-	settings.InstanceType = "t1.micro"
-	settings.IsVpc = false
-	t1MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
-	s.Contains(az, "us-east")
-	s.True(t1MicroSpot > 0)
-	s.NoError(err)
+// 	settings.InstanceType = "t1.micro"
+// 	settings.IsVpc = false
+// 	t1MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
+// 	s.Contains(az, "us-east")
+// 	s.True(t1MicroSpot > 0)
+// 	s.NoError(err)
 
-	settings.InstanceType = "m4.large"
-	settings.IsVpc = true
-	provider, err := s.m.getProvider(ctx, h, settings)
-	s.NoError(err)
-	if m4LargeSpot < m4LargeOnDemand {
-		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
-	} else {
-		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
-	}
+// 	settings.InstanceType = "m4.large"
+// 	settings.IsVpc = true
+// 	provider, err := s.m.getProvider(ctx, h, settings)
+// 	s.NoError(err)
+// 	if m4LargeSpot < m4LargeOnDemand {
+// 		s.Equal(spotProvider, provider)
+// 		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+// 	} else {
+// 		s.Equal(onDemandProvider, provider)
+// 		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+// 	}
 
-	settings.InstanceType = "t2.micro"
-	settings.IsVpc = true
-	provider, err = s.m.getProvider(ctx, h, settings)
-	s.NoError(err)
-	if t2MicroSpot < t2MicroOnDemand {
-		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
-	} else {
-		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
-	}
+// 	settings.InstanceType = "t2.micro"
+// 	settings.IsVpc = true
+// 	provider, err = s.m.getProvider(ctx, h, settings)
+// 	s.NoError(err)
+// 	if t2MicroSpot < t2MicroOnDemand {
+// 		s.Equal(spotProvider, provider)
+// 		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+// 	} else {
+// 		s.Equal(onDemandProvider, provider)
+// 		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+// 	}
 
-	settings.InstanceType = "t1.micro"
-	settings.IsVpc = false
-	provider, err = s.m.getProvider(ctx, h, settings)
-	s.NoError(err)
-	if t1MicroSpot < t1MicroOnDemand {
-		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
-	} else {
-		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
-	}
-}
+// 	settings.InstanceType = "t1.micro"
+// 	settings.IsVpc = false
+// 	provider, err = s.m.getProvider(ctx, h, settings)
+// 	s.NoError(err)
+// 	if t1MicroSpot < t1MicroOnDemand {
+// 		s.Equal(spotProvider, provider)
+// 		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
+// 	} else {
+// 		s.Equal(onDemandProvider, provider)
+// 		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
+// 	}
+// }
