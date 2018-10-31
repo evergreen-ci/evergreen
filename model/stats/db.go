@@ -58,13 +58,14 @@ package stats
 // }
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -454,54 +455,8 @@ func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []b
 // Internal helpers for writing documents, running aggregations //
 //////////////////////////////////////////////////////////////////
 
-// A struct that can be used to write to a collection in bulk (unordered).
-type documentWriter struct {
-	collection    *mgo.Collection
-	bulk          *mgo.Bulk
-	numOperations int
-}
-
-// Creates a new documentWriter that can write to the specified collection.
-func newDocumentWriter(collection *mgo.Collection) (*documentWriter, error) {
-	bulk := collection.Bulk()
-	bulk.Unordered()
-	writer := documentWriter{
-		collection:    collection,
-		bulk:          bulk,
-		numOperations: 0,
-	}
-	return &writer, nil
-}
-
-// Adds a document to write to the queue and flush if necessary.
-func (d *documentWriter) write(doc bson.RawD) error {
-	d.bulk.Upsert(bson.M{"_id": getDocId(doc)}, doc)
-	d.numOperations += 1
-
-	if d.numOperations >= bulkSize {
-		err := d.flush()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Flushes all pending operations.
-func (d *documentWriter) flush() error {
-	if d.numOperations > 0 {
-		_, err := d.bulk.Run()
-		if err != nil {
-			return errors.Wrap(err, "Failed to run bulk write")
-		}
-		d.numOperations = 0
-		d.bulk = d.collection.Bulk()
-	}
-	return nil
-}
-
 // Runs an aggregation pipeline on a collection and calls the provided callback for each output document.
-func aggregateWithCallback(collection string, pipeline []bson.M, callback func(bson.RawD) error) error {
+func aggregateWithCallback(collection string, pipeline []bson.M, callback func(interface{}) error) error {
 	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return errors.Wrap(err, "Error establishing db connection")
@@ -538,27 +493,26 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 	}
 	defer session.Close()
 
-	writer, err := newDocumentWriter(database.C(outputCollection))
+	ctx := context.TODO()
+
+	opts := adb.BufferedWriteOptions{
+		DB:         database.Name,
+		Collection: outputCollection,
+		Count:      bulkSize,
+		Duration:   10 * time.Second,
+	}
+
+	writer, err := adb.NewBufferedSessionUpsertByID(ctx, session, opts)
 	if err != nil {
 		return errors.Wrap(err, "Failed to initialize document writer")
 	}
-	err = aggregateWithCallback(collection, pipeline, writer.write)
+	err = aggregateWithCallback(collection, pipeline, writer.Append)
 	if err != nil {
 		return errors.Wrap(err, "Failed to aggregate with document writer callback")
 	}
-	err = writer.flush()
+	err = writer.Close()
 	if err != nil {
 		return errors.Wrap(err, "Failed to flush document writer")
-	}
-	return nil
-}
-
-// Internal function that extracts the _id field from a raw bson document.
-func getDocId(rawDoc bson.RawD) interface{} {
-	for _, raw := range rawDoc {
-		if raw.Name == "_id" {
-			return raw.Value
-		}
 	}
 	return nil
 }
