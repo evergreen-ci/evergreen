@@ -249,6 +249,8 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	notFound := 0
+
 retryLoop:
 	for i := 1; i <= maxS3OpAttempts; i++ {
 		logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
@@ -299,9 +301,11 @@ retryLoop:
 						if s3pc.isMulti() {
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.
+							notFound++
 							continue uploadLoop
 						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
+							logger.Task().Infof("file %s not found but skip missing true", fpath)
 							return nil
 						} else {
 							// single required uploads should return an error asap.
@@ -333,6 +337,7 @@ retryLoop:
 	}
 
 	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
+		logger.Task().Infof("%d requested, %d uploaded, %d not found", len(filesList), len(uploadedFiles), notFound)
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
 	}
 
