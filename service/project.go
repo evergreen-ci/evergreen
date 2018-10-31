@@ -257,8 +257,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	catcher := grip.NewSimpleCatcher()
-	for _, trigger := range responseRef.Triggers {
+	for i, trigger := range responseRef.Triggers {
 		catcher.Add(trigger.Validate(id))
+		if trigger.DefinitionID == "" {
+			responseRef.Triggers[i].DefinitionID = util.RandomString()
+		}
 	}
 	if catcher.HasErrors() {
 		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
