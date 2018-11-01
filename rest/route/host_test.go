@@ -69,6 +69,17 @@ func (s *HostChangeStatusSuite) TestParseMissingStatus() {
 	s.EqualError(err, "Argument read error: error attempting to unmarshal into *route.hostChangeStatusHandler: unexpected end of JSON input")
 }
 
+func (s *HostChangeStatusSuite) TestRunHostValidStatusChange() {
+	h := s.route.Factory().(*hostChangeStatusHandler)
+	h.hostId = "host4"
+	h.Status = evergreen.HostTerminated
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
+}
+
 func (s *HostChangeStatusSuite) TestRunHostNotStartedByUser() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
 	h.hostId = "host4"
@@ -88,7 +99,7 @@ func (s *HostChangeStatusSuite) TestRunSuperUserSetStatusAnyHost() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
 	res := h.Run(ctx)
-	s.NotEqual(http.StatusOK, res.Status())
+	s.Equal(http.StatusOK, res.Status())
 }
 
 func (s *HostChangeStatusSuite) TestRunTerminatedOnTerminatedHost() {
