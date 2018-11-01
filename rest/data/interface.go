@@ -110,6 +110,8 @@ type Connector interface {
 	FindDistroById(string) (*distro.Distro, error)
 	// FindAllDistros is a method to find a sorted list of all distros.
 	FindAllDistros() ([]distro.Distro, error)
+	// UpdateDistro is a method that updates a given distro by its distro.Id
+	UpdateDistro(distro *distro.Distro) error
 
 	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
 	// access to the metrics data collected by agents during task execution

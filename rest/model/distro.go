@@ -24,9 +24,25 @@ type APIDistro struct {
 	User             APIString              `json:"user"`
 	SSHKey           APIString              `json:"ssh_key"`
 	SSHOptions       []string               `json:"ssh_options"`
-	Expansions       map[string]string      `json:"expansions"`
+	Expansions       []distro.Expansion     `json:"expansions"`
 	Disabled         bool                   `json:"disabled"`
 	ContainerPool    APIString              `json:"container_pool"`
+}
+
+type APIExpansion struct {
+	Key   APIString `json:"key"`
+	Value APIString `json:"value"`
+}
+
+func (e *APIExpansion) BuildFromService(in interface{}) error {
+	switch val := in.(type) {
+	case distro.Expansion:
+		e.Key = ToAPIString(val.Key)
+		e.Value = ToAPIString(val.Value)
+	default:
+		return errors.Errorf("%T is not supported expansion type", in)
+	}
+	return nil
 }
 
 // BuildFromService converts from service level structs to an APIDistro.
@@ -36,17 +52,14 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		apiDistro.Name = ToAPIString(v.Id)
 		apiDistro.UserSpawnAllowed = v.SpawnAllowed
 		apiDistro.Provider = ToAPIString(v.Provider)
-
 		if v.ProviderSettings != nil && (v.Provider == evergreen.ProviderNameEc2Auto || v.Provider == evergreen.ProviderNameEc2OnDemand || v.Provider == evergreen.ProviderNameEc2Spot) {
 			ec2Settings := &cloud.EC2ProviderSettings{}
 			err := mapstructure.Decode(v.ProviderSettings, ec2Settings)
 			if err != nil {
 				return err
 			}
-
 			apiDistro.ImageID = ToAPIString(ec2Settings.AMI)
 		}
-
 		if v.ProviderSettings != nil {
 			apiDistro.ProviderSettings = *v.ProviderSettings
 		}
@@ -61,11 +74,9 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		apiDistro.Disabled = v.Disabled
 		apiDistro.ContainerPool = ToAPIString(v.ContainerPool)
 		apiDistro.SSHOptions = v.SSHOptions
-		expansions := make(map[string]string)
 		for _, e := range v.Expansions {
-			expansions[e.Key] = e.Value
+
 		}
-		apiDistro.Expansions = expansions
 
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro type")
