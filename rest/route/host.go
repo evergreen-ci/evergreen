@@ -7,12 +7,91 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
+
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/hosts/{host_id}
+
+type hostChangeStatusHandler struct {
+	Status string
+	hostId string
+	sc     data.Connector
+}
+
+func makeChangeHostStatus(sc data.Connector) gimlet.RouteHandler {
+	return &hostChangeStatusHandler{
+		sc: sc,
+	}
+}
+
+func (h *hostChangeStatusHandler) Factory() gimlet.RouteHandler {
+	return &hostChangeStatusHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.hostId = gimlet.GetVars(r)["host_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, h); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	if !util.StringSliceContains(evergreen.ValidUserSetStatus, h.Status) {
+		return errors.New("Invalid host status")
+	}
+
+	return nil
+}
+
+func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	foundHost, err := h.sc.FindHostByIdWithOwner(h.hostId, user)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
+	}
+
+	if foundHost.Status == evergreen.HostTerminated {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Host %s is terminated; its status cannot be changed ", foundHost.Id),
+		})
+	}
+
+	if h.Status == evergreen.HostTerminated {
+		if err = h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			})
+		}
+
+	} else {
+		if err = h.sc.SetHostStatus(foundHost, h.Status, user.Id); err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			})
+		}
+	}
+
+	host := &model.APIHost{}
+	if err = host.BuildFromService(foundHost); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+	}
+
+	return gimlet.NewJSONResponse(host)
+}
 
 ////////////////////////////////////////////////////////////////////////
 //
