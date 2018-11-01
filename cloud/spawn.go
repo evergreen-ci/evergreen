@@ -33,7 +33,7 @@ var passwordRegexps = []*regexp.Regexp{
 const (
 	MaxSpawnHostsPerUser                = 3
 	DefaultSpawnHostExpiration          = 24 * time.Hour
-	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 7 // 7 days
+	MaxSpawnHostExpirationDurationHours = 24 * time.Hour * 14
 )
 
 // Options holds the required parameters for spawning a host.
