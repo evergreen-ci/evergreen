@@ -447,6 +447,105 @@ Evergreen Projects
           </div>
         </div>
 
+        <!-- Triggers -->
+        <div class="variables">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static">
+              <h3>Project Triggers</h3>
+              <div class="muted small">List upstream projects where completion of specific tasks should cause tests in this project to be run.</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="col-lg-2"> <label class="control-label"> Project </label> </div>
+            <div class="col-lg-1"> <label class="control-label"> Level </label> </div>
+            <div class="col-lg-1"> <label class="control-label"> Status </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-1"> <label class="control-label"> Command </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Definition File </label> </div>
+            <div class="col-lg-1"></div>
+          </div>
+
+          <div class="form-group" ng-repeat="trigger in project_triggers track by $index">
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="trigger.project" type="text" placeholder="project">
+            </div>
+            <div class="col-lg-1">
+              <select class="form-control" ng-model="trigger.level">
+                <option value="task">Task</option>
+                <option value="build">Build</option>
+              </select>
+            </div>
+            <div class="col-lg-1">
+              <select class="form-control" ng-model="trigger.status">
+                <option value="">All</option>
+                <option value="success">Success</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="trigger.variant_regex" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="trigger.task_regex" ng-disabled="trigger.level=='build'"  type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-1">
+              <input class="form-control" ng-model="trigger.command" type="text" placeholder="echo hi">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="trigger.file" type="text" ng-required="trigger.project"
+              placeholder="[[trigger.command ? 'generated.json' : '.evergreen.yml']]">
+            </div>
+            <div class="col-lg-1">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeProjectTrigger($index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+            <br/>
+            <div class="col-lg-12">
+              <label class="muted" ng-bind=triggerLabel(trigger)></label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="col-lg-2">
+              <input ng-model="new_trigger.project" class="form-control" type="text" placeholder="project">
+            </div>
+            <div class="col-lg-1">
+              <select class="form-control" ng-model="new_trigger.level">
+                <option value="task">Task</option>
+                <option value="build">Build</option>
+              </select>
+            </div>
+            <div class="col-lg-1">
+              <select class="form-control" ng-model="new_trigger.status">
+                <option value="">All</option>
+                <option value="success">Success</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="new_trigger.variant_regex" class="form-control" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="new_trigger.task_regex" class="form-control" ng-disabled="new_trigger.level=='build'" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-1">
+              <input ng-model="new_trigger.command" class="form-control" type="text" placeholder="echo hi">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="new_trigger.file" class="form-control" type="text" ng-required="new_trigger.project"
+              placeholder="[[new_trigger.command ? 'generated.json' : '.evergreen.yml']]" >
+            </div>
+            <div class="col-lg-1">
+              <button class="plus-button btn btn-primary " ng-disabled="!validProjectTrigger()" type="button" ng-click="addProjectTrigger()">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <br/>
 
         <div class="row">

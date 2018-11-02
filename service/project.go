@@ -200,6 +200,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		ForceRepotrackerRun  bool                        `json:"force_repotracker_run"`
 		Subscriptions        []restModel.APISubscription `json:"subscriptions"`
 		DeleteSubscriptions  []string                    `json:"delete_subscriptions"`
+		Triggers             []model.TriggerDefinition   `json:"triggers"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -255,6 +256,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	catcher := grip.NewSimpleCatcher()
+	for i, trigger := range responseRef.Triggers {
+		catcher.Add(trigger.Validate(id))
+		if trigger.DefinitionID == "" {
+			responseRef.Triggers[i].DefinitionID = util.RandomString()
+		}
+	}
+	if catcher.HasErrors() {
+		uis.LoggedError(w, r, http.StatusBadRequest, catcher.Resolve())
+		return
+	}
 
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
@@ -271,6 +283,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
+	projectRef.Triggers = responseRef.Triggers
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
@@ -341,7 +354,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	catcher := grip.NewSimpleCatcher()
 	for _, apiSubscription := range responseRef.Subscriptions {
 		var subscriptionIface interface{}
 		subscriptionIface, err = apiSubscription.ToService()

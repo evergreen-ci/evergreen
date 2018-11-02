@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"regexp"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -412,4 +413,35 @@ func (projectRef *ProjectRef) HTTPLocation() (*url.URL, error) {
 
 func (p *ProjectRef) IsAdmin(userID string, settings evergreen.Settings) bool {
 	return util.StringSliceContains(p.Admins, userID) || util.StringSliceContains(settings.SuperUsers, userID)
+}
+
+func (t TriggerDefinition) Validate(parentProject string) error {
+	upstreamProject, err := FindOneProjectRef(t.Project)
+	if err != nil {
+		return errors.Wrapf(err, "error finding upstream project %s", t.Project)
+	}
+	if upstreamProject == nil {
+		return errors.Errorf("project %s not found", t.Project)
+	}
+	if upstreamProject.Identifier == parentProject {
+		return errors.New("a project cannot trigger itself")
+	}
+	if t.Level != ProjectTriggerLevelBuild && t.Level != ProjectTriggerLevelTask {
+		return errors.Errorf("invalid level: %s", t.Level)
+	}
+	if t.Status != "" && t.Status != evergreen.TaskFailed && t.Status != evergreen.TaskSucceeded {
+		return errors.Errorf("invalid status: %s", t.Status)
+	}
+	_, regexErr := regexp.Compile(t.BuildVariantRegex)
+	if regexErr != nil {
+		return errors.Wrap(regexErr, "invalid variant regex")
+	}
+	_, regexErr = regexp.Compile(t.TaskRegex)
+	if regexErr != nil {
+		return errors.Wrap(regexErr, "invalid task regex")
+	}
+	if t.ConfigFile == "" && t.GenerateFile == "" {
+		return errors.New("must provide a config file or generated tasks file")
+	}
+	return nil
 }
