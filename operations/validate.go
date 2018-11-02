@@ -68,7 +68,10 @@ func validateFile(path string, ac *legacyClient) error {
 	if err != nil {
 		return nil
 	}
-	grip.Info(path)
-	grip.Info(projErrors)
+	if len(projErrors) == 0 {
+		grip.Infof("%s is valid", path)
+	} else {
+		grip.Info(projErrors)
+	}
 	return nil
 }
