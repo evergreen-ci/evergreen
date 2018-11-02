@@ -190,6 +190,32 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 	return v, nil
 }
 
+func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
+	e := util.Expansions{}
+	info := requestInfo{
+		method:   get,
+		taskData: &taskData,
+		version:  apiVersion1,
+	}
+	info.setTaskPathSuffix("expansions")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get expansions for task %s", taskData.ID)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusConflict {
+		return nil, errors.New("conflict; wrong secret")
+	}
+	err = util.ReadJSONInto(resp.Body, &e)
+	if err != nil {
+		err = errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
+		return nil, err
+	}
+	return e, nil
+}
+
 // Heartbeat sends a heartbeat to the API server. The server can respond with
 // an "abort" response. This function returns true if the agent should abort.
 func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {

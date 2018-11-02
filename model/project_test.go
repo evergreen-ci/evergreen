@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -15,6 +16,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -336,28 +338,40 @@ task_groups:
 
 func TestPopulateExpansions(t *testing.T) {
 	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(version.Collection, patch.Collection, ProjectRefCollection, task.Collection))
 
-	d := &distro.Distro{
-		Id:      "d1",
-		WorkDir: "/home/evg",
-		Expansions: []distro.Expansion{
-			distro.Expansion{
-				Key:   "note",
-				Value: "huge success",
-			},
-			distro.Expansion{
-				Key:   "cake",
-				Value: "truth",
+	h := host.Host{
+		Id: "h",
+		Distro: distro.Distro{
+			Id:      "d1",
+			WorkDir: "/home/evg",
+			Expansions: []distro.Expansion{
+				distro.Expansion{
+					Key:   "note",
+					Value: "huge success",
+				},
+				distro.Expansion{
+					Key:   "cake",
+					Value: "truth",
+				},
 			},
 		},
 	}
+	config := `
+buildvariants:
+- name: magic
+  expansions:
+    cake: lie
+    github_org: wut?
+`
 	v := &version.Version{
 		Id:                  "v1",
 		Branch:              "master",
 		Author:              "somebody",
 		RevisionOrderNumber: 42,
-		//Requester:           evergreen.PatchVersionRequester,
+		Config:              config,
 	}
+	assert.NoError(v.Insert())
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",
@@ -369,28 +383,9 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:      "mci",
 	}
 
-	bv := &BuildVariant{
-		Expansions: map[string]string{
-			"cake":       "lie",
-			"github_org": "wut?",
-		},
-	}
-
-	assert.Panics(func() {
-		_ = populateExpansions(nil, v, bv, taskDoc, nil)
-	})
-	assert.Panics(func() {
-		_ = populateExpansions(d, nil, bv, taskDoc, nil)
-	})
-	assert.Panics(func() {
-		_ = populateExpansions(d, v, nil, taskDoc, nil)
-	})
-	assert.Panics(func() {
-		_ = populateExpansions(d, v, bv, nil, nil)
-	})
-
-	expansions := populateExpansions(d, v, bv, taskDoc, nil)
-	assert.Len(map[string]string(*expansions), 17)
+	expansions, err := PopulateExpansions(taskDoc, &h)
+	assert.NoError(err)
+	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -411,23 +406,30 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("github_pr_number"))
 	assert.Equal("lie", expansions.Get("cake"))
 
-	v.Requester = evergreen.PatchVersionRequester
-	expansions = populateExpansions(d, v, bv, taskDoc, nil)
-	assert.Len(map[string]string(*expansions), 18)
+	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
+		"$set": bson.M{version.RequesterKey: evergreen.PatchVersionRequester},
+	}))
+	expansions, err = PopulateExpansions(taskDoc, &h)
+	assert.NoError(err)
+	assert.Len(map[string]string(expansions), 18)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
 
-	v.Requester = evergreen.GithubPRRequester
-	expansions = populateExpansions(d, v, bv, taskDoc, nil)
-	assert.Len(map[string]string(*expansions), 18)
+	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
+		"$set": bson.M{version.RequesterKey: evergreen.GithubPRRequester},
+	}))
+	expansions, err = PopulateExpansions(taskDoc, &h)
+	assert.NoError(err)
+	assert.Len(map[string]string(expansions), 18)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
 
 	patchDoc := &patch.Patch{
+		Version: v.Id,
 		GithubPatchData: patch.GithubPatch{
 			PRNumber:  42,
 			BaseOwner: "evergreen-ci",
@@ -435,14 +437,38 @@ func TestPopulateExpansions(t *testing.T) {
 			Author:    "octocat",
 		},
 	}
+	assert.NoError(patchDoc.Insert())
 
-	expansions = populateExpansions(d, v, bv, taskDoc, patchDoc)
-	assert.Len(map[string]string(*expansions), 21)
+	expansions, err = PopulateExpansions(taskDoc, &h)
+	assert.NoError(err)
+	assert.Len(map[string]string(expansions), 21)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
 	assert.Equal("wut?", expansions.Get("github_org"))
+
+	upstreamTask := task.Task{
+		Id:       "upstreamTask",
+		Status:   evergreen.TaskFailed,
+		Revision: "abc",
+		Project:  "upstreamProject",
+	}
+	assert.NoError(upstreamTask.Insert())
+	upstreamProject := ProjectRef{
+		Identifier: "upstreamProject",
+		Branch:     "idk",
+	}
+	assert.NoError(upstreamProject.Insert())
+	taskDoc.TriggerID = "upstreamTask"
+	taskDoc.TriggerType = ProjectTriggerLevelTask
+	expansions, err = PopulateExpansions(taskDoc, &h)
+	assert.Len(map[string]string(expansions), 29)
+	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
+	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
+	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
+	assert.Equal(upstreamTask.Status, expansions.Get("trigger_status"))
+	assert.Equal(upstreamProject.Branch, expansions.Get("trigger_branch"))
 }
 
 type projectSuite struct {

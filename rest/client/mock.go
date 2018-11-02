@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -190,6 +191,13 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, e
 		Id:     "mock_version_id",
 		Config: config,
 	}, nil
+}
+
+func (c *Mock) GetExpansions(ctx context.Context, taskData TaskData) (util.Expansions, error) {
+	e := util.Expansions{
+		"foo": "bar",
+	}
+	return e, nil
 }
 
 // Heartbeat returns false, which indicates the heartbeat has succeeded.

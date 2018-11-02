@@ -9,7 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -564,25 +564,41 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task, p *patch.Patch) *util.Expansions {
-	expansions := util.NewExpansions(map[string]string{})
+func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
+	if t == nil {
+		return nil, errors.New("task cannot be nil")
+	}
+	if h == nil {
+		return nil, errors.New("host cannot be nil")
+	}
+	expansions := util.Expansions{}
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)
 	expansions.Put("task_name", t.DisplayName)
 	expansions.Put("build_id", t.BuildId)
 	expansions.Put("build_variant", t.BuildVariant)
-	expansions.Put("workdir", d.WorkDir)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
+
+	expansions.Put("workdir", h.Distro.WorkDir)
+	expansions.Put("distro_id", h.Distro.Id)
+
+	v, err := version.FindOneId(t.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding version")
+	}
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
-	expansions.Put("distro_id", d.Id)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
 	if evergreen.IsPatchRequester(v.Requester) {
 		expansions.Put("is_patch", "true")
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
+		p, err := patch.FindOne(patch.ByVersion(t.Version))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding patch")
+		}
 
 		if v.Requester == evergreen.GithubPRRequester && p != nil {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
@@ -590,16 +606,56 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
 			expansions.Put("github_author", p.GithubPatchData.Author)
 		}
-
 	} else {
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
 	}
 
-	for _, e := range d.Expansions {
+	if t.TriggerID != "" {
+		expansions.Put("trigger_event_identifier", t.TriggerID)
+		expansions.Put("trigger_event_type", t.TriggerType)
+		expansions.Put("trigger_id", t.TriggerEvent)
+		var upstreamProjectID string
+		if t.TriggerType == ProjectTriggerLevelTask {
+			upstreamTask, err := task.FindOneId(t.TriggerID)
+			if err != nil {
+				return nil, errors.Wrap(err, "error finding task")
+			}
+			expansions.Put("trigger_status", upstreamTask.Status)
+			expansions.Put("trigger_revision", upstreamTask.Revision)
+			upstreamProjectID = upstreamTask.Project
+		} else if t.TriggerType == ProjectTriggerLevelBuild {
+			upstreamBuild, err := build.FindOneId(t.TriggerID)
+			if err != nil {
+				return nil, errors.Wrap(err, "error finding build")
+			}
+			expansions.Put("trigger_status", upstreamBuild.Status)
+			expansions.Put("trigger_revision", upstreamBuild.Revision)
+			upstreamProjectID = upstreamBuild.Project
+		}
+		upstreamProject, err := FindOneProjectRef(upstreamProjectID)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding project")
+		}
+		if upstreamProject == nil {
+			return nil, errors.Errorf("upstream project %s not found", t.Project)
+		}
+		expansions.Put("trigger_repo_owner", upstreamProject.Owner)
+		expansions.Put("trigger_repo_name", upstreamProject.Repo)
+		expansions.Put("trigger_branch", upstreamProject.Branch)
+	}
+
+	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
+	proj := &Project{}
+	err = LoadProjectInto([]byte(v.Config), t.Project, proj)
+	if err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling project")
+	}
+	bv := proj.FindBuildVariant(t.BuildVariant)
 	expansions.Update(bv.Expansions)
-	return expansions
+
+	return expansions, nil
 }
 
 // GetSpecForTask returns a ProjectTask spec for the given name.
