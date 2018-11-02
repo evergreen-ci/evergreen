@@ -17,6 +17,8 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -150,6 +152,10 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		}
 		err = hc.CreateHostsFromTask(task, *authedUser, putParams.PublicKey)
 		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error creating hosts from task",
+				"task":    task.Id,
+			}))
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error creating hosts from task"))
 			return
 		}
