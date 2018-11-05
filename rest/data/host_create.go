@@ -100,6 +100,11 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 
 	hosts := []host.Host{}
 	for _, createHost := range createHostCmds {
+		err = createHost.Expand(tc.Expansions)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
 		err = createHost.Validate()
 		if err != nil {
 			catcher.Add(err)

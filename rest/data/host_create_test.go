@@ -152,14 +152,14 @@ buildvariants:
 		assert.InDelta(time.Now().Add(cloud.DefaultSpawnHostExpiration).Unix(), h.ExpirationTime.Unix(), float64(1*time.Millisecond))
 	}
 
-	// test that a host.create in a function works too
+	// test that a host.create in a function, expansions work
 	assert.NoError(db.ClearCollections(host.Collection))
 	versionYaml = `
 functions:
   make-host:
     command: host.create
     params:
-      distro: distro
+      distro: ${distro}
       scope: task
       num_hosts: 2
 tasks:
@@ -168,6 +168,8 @@ tasks:
   - func: "make-host"
 buildvariants:
 - name: "bv"
+  expansions:
+    distro: distro
   tasks:
   - name: t2
 `

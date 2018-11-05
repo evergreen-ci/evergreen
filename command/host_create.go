@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 )
@@ -28,8 +27,8 @@ func (c *createHost) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
-	if err := util.ExpandValues(c.CreateHost, conf.Expansions); err != nil {
-		return errors.Wrap(err, "error expanding params")
+	if err := c.CreateHost.Expand(conf.Expansions); err != nil {
+		return err
 	}
 
 	if err := c.CreateHost.Validate(); err != nil {
