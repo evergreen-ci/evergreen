@@ -45,7 +45,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByVersionHandler(sc))
 	app.AddRoute("/distros").Version(2).Get().Wrap(superUser).RouteHandler(makeDistroRoute(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroByID(sc))
-	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser).RouteHandler(makePatchDistroByID(sc))
+	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(checkUser).RouteHandler(makePatchDistroByID(sc))
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, queue, githubSecret))
 	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc))
@@ -91,5 +91,4 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortVersion(sc))
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().RouteHandler(makeGetVersionBuilds(sc))
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(checkUser).RouteHandler(makeRestartVersion(sc))
-
 }

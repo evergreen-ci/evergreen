@@ -38,7 +38,7 @@ func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// ParseAndValidate fetches the distroId and json payload from the http request.
+// Parse() fetches the distroId and json payload from the http request.
 func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
 	body := util.NewRequestReader(r)
@@ -53,13 +53,15 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
-// Execute calls the data FindDistroById function and returns the distro
-// from the provider.
+// Run() finds a distro by id; validates its patched state, which is updated
+// and returned if valid
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	distro, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
+
+	distroModel = &model.APIDistro{}
 
 	if err = json.Unmarshal(h.body, distro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
@@ -87,7 +89,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	distroModel := &model.APIDistro{}
+	distroModel = &model.APIDistro{}
 	if err = distroModel.BuildFromService(*distro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
@@ -116,7 +118,7 @@ func (h *distroIDGetHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// ParseAndValidate fetches the distroId from the http request.
+// Parse() fetches the distroId from the http request.
 func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
 
@@ -127,7 +129,7 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-// Execute calls the data FindDistroById function and returns the distro
+// Run() calls the data FindDistroById function and returns the distro
 // from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	foundDistro, err := h.sc.FindDistroById(h.distroId)

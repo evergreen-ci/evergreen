@@ -24,25 +24,9 @@ type APIDistro struct {
 	User             APIString              `json:"user"`
 	SSHKey           APIString              `json:"ssh_key"`
 	SSHOptions       []string               `json:"ssh_options"`
-	Expansions       []distro.Expansion     `json:"expansions"`
+	Expansions       []APIExpansion         `json:"expansions"`
 	Disabled         bool                   `json:"disabled"`
 	ContainerPool    APIString              `json:"container_pool"`
-}
-
-type APIExpansion struct {
-	Key   APIString `json:"key"`
-	Value APIString `json:"value"`
-}
-
-func (e *APIExpansion) BuildFromService(in interface{}) error {
-	switch val := in.(type) {
-	case distro.Expansion:
-		e.Key = ToAPIString(val.Key)
-		e.Value = ToAPIString(val.Value)
-	default:
-		return errors.Errorf("%T is not supported expansion type", in)
-	}
-	return nil
 }
 
 // BuildFromService converts from service level structs to an APIDistro.
@@ -74,12 +58,15 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		apiDistro.Disabled = v.Disabled
 		apiDistro.ContainerPool = ToAPIString(v.ContainerPool)
 		apiDistro.SSHOptions = v.SSHOptions
+		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range v.Expansions {
-
+			apiExpansion := &APIExpansion{}
+			apiExpansion.BuildFromService(e)
+			apiDistro.Expansions = append(apiDistro.Expansions, *apiExpansion)
 		}
 
 	default:
-		return errors.Errorf("incorrect type when fetching converting distro type")
+		return errors.Errorf("%T is not an supported expansion type", h)
 	}
 	return nil
 }
@@ -87,4 +74,26 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 // ToService returns a service layer distro using the data from APIDistro.
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not impelemented for APIDistro")
+}
+
+// APIExpansion is the return model having parsed and transformed a distro.Expansion
+type APIExpansion struct {
+	Key   APIString `json:"key"`
+	Value APIString `json:"value"`
+}
+
+func (e *APIExpansion) BuildFromService(h interface{}) error {
+	switch val := h.(type) {
+	case distro.Expansion:
+		e.Key = ToAPIString(val.Key)
+		e.Value = ToAPIString(val.Value)
+	default:
+		return errors.Errorf("%T is not an supported expansion type", h)
+	}
+	return nil
+}
+
+// ToService returns a service layer distro using the data from AAPIExpansion.
+func (e *APIExpansion) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not impelemented for APIExpansion")
 }
