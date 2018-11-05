@@ -1,9 +1,9 @@
 package apimodels
 
 import (
-	"errors"
-
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -165,4 +165,8 @@ func (ch *CreateHost) Validate() error {
 		catcher.Add(errors.New("timeout_teardown_secs must be between 60 and 604800"))
 	}
 	return catcher.Resolve()
+}
+
+func (ch *CreateHost) Expand(exp *util.Expansions) error {
+	return errors.Wrap(util.ExpandValues(ch, exp), "error expanding host.create")
 }
