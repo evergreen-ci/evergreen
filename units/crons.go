@@ -661,3 +661,25 @@ func PopulatePeriodicNotificationJobs(parts int) amboy.QueueOperation {
 		return catcher.Resolve()
 	}
 }
+
+func CacheHistoricalTestDataJob(part int) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		projects, err := model.FindAllTrackedProjectRefs()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+
+		catcher := grip.NewBasicCatcher()
+		for _, project := range projects {
+			if !project.Enabled {
+				continue
+			}
+
+			catcher.Add(queue.Put(NewCacheHistoricalTestDataJob(project.Identifier, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}

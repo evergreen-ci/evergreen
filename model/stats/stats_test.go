@@ -1,24 +1,22 @@
 package stats
 
 import (
-	"strconv"
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
-var baseHour = time.Date(2018, 7, 15, 16, 0, 0, 0, time.UTC)
 var baseDay = time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC)
+var baseHour = baseDay.Add(time.Hour * 16)
+var baseTime = baseHour.Add(time.Minute * 45)
 var jobTime = time.Date(1998, 7, 12, 20, 45, 0, 0, time.UTC)
 var commit1 = baseTime
 var commit2 = baseTime.Add(26 * time.Hour)
@@ -38,13 +36,13 @@ func (s *statsSuite) SetupSuite() {
 }
 
 func (s *statsSuite) SetupTest() {
-	s.clearCollection(hourlyTestStatsCollection)
-	s.clearCollection(dailyTestStatsCollection)
-	s.clearCollection(dailyStatsStatusCollection)
-	s.clearCollection(dailyTaskStatsCollection)
-	s.clearCollection(task.Collection)
-	s.clearCollection(task.OldCollection)
-	s.clearCollection(testresult.Collection)
+	modelUtil.ClearCollection(s.Suite, hourlyTestStatsCollection)
+	modelUtil.ClearCollection(s.Suite, dailyTestStatsCollection)
+	modelUtil.ClearCollection(s.Suite, dailyStatsStatusCollection)
+	modelUtil.ClearCollection(s.Suite, dailyTaskStatsCollection)
+	modelUtil.ClearCollection(s.Suite, task.Collection)
+	modelUtil.ClearCollection(s.Suite, task.OldCollection)
+	modelUtil.ClearCollection(s.Suite, testresult.Collection)
 }
 
 func (s *statsSuite) TestStatsStatus() {
@@ -87,7 +85,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(5, s.countHourlyTestDocs())
 
-	doc := s.getHourlyTestDoc("p1", "r1", "test1.js", "task1", "v1", "d1", baseHour)
+	doc := modelUtil.GetHourlyTestDoc(s.Suite, "p1", "r1", "test1.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal("p1", doc.Id.Project)
 	require.Equal("r1", doc.Id.Requester)
@@ -101,13 +99,13 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(float32(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	doc = s.getHourlyTestDoc("p1", "r1", "test2.js", "task1", "v1", "d1", baseHour)
+	doc = modelUtil.GetHourlyTestDoc(s.Suite, "p1", "r1", "test2.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(1, doc.NumPass)
 	require.Equal(1, doc.NumFail)
 	require.Equal(float32(120), doc.AvgDurationPass)
 
-	doc = s.getHourlyTestDoc("p1", "r1", "test3.js", "task1", "v1", "d1", baseHour)
+	doc = modelUtil.GetHourlyTestDoc(s.Suite, "p1", "r1", "test3.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(2, doc.NumPass)
 	require.Equal(0, doc.NumFail)
@@ -119,14 +117,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(8, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
 
-	doc = s.getHourlyTestDoc("p2", "r1", "test1.js", "task1", "v1", "d1", baseHour)
+	doc = modelUtil.GetHourlyTestDoc(s.Suite, "p2", "r1", "test1.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(0, doc.NumPass)
 	require.Equal(3, doc.NumFail)
 	require.Equal(float32(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	doc = s.getHourlyTestDoc("p2", "r1", "test2.js", "task1", "v1", "d1", baseHour)
+	doc = modelUtil.GetHourlyTestDoc(s.Suite, "p2", "r1", "test2.js", "task1", "v1", "d1", baseHour)
 	require.Equal(1, doc.NumPass)
 	require.Equal(2, doc.NumFail)
 	require.Equal(float32(120), doc.AvgDurationPass)
@@ -138,15 +136,15 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(10, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
 
-	doc = s.getHourlyTestDoc("p3", "r1", "test1.js", "task_exec_1", "v1", "d1", baseHour)
+	doc = modelUtil.GetHourlyTestDoc(s.Suite, "p3", "r1", "test1.js", "task_exec_1", "v1", "d1", baseHour)
 	require.Nil(doc)
-	doc = s.getHourlyTestDoc("p3", "r1", "test1.js", "task_display_1", "v1", "d1", baseHour)
+	doc = modelUtil.GetHourlyTestDoc(s.Suite, "p3", "r1", "test1.js", "task_display_1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(0, doc.NumPass)
 	require.Equal(1, doc.NumFail)
 	require.Equal(float32(0), doc.AvgDurationPass)
 
-	doc = s.getHourlyTestDoc("p3", "r1", "test2.js", "task_display_1", "v1", "d1", baseHour)
+	doc = modelUtil.GetHourlyTestDoc(s.Suite, "p3", "r1", "test2.js", "task_display_1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(1, doc.NumPass)
 	require.Equal(0, doc.NumFail)
@@ -168,7 +166,7 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	require.NoError(err)
 	require.Equal(1, s.countDailyTestDocs())
 
-	doc := s.getDailyTestDoc("p1", "r1", "test1.js", "task1", "v1", "d1", baseDay)
+	doc := modelUtil.GetDailyTestDoc(s.Suite, "p1", "r1", "test1.js", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
 	require.Equal("p1", doc.Id.Project)
 	require.Equal("r1", doc.Id.Requester)
@@ -198,18 +196,18 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p1", "r1", baseHour, []string{"task1", "task2"}, jobTime)
 	require.NoError(err)
 	require.Equal(3, s.countDailyTaskDocs())
-	doc := s.getDailyTaskDoc("p1", "r1", "task1", "v1", "d1", baseDay)
+	doc := modelUtil.GetDailyTaskDoc(s.Suite, "p1", "r1", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
-	doc = s.getDailyTaskDoc("p1", "r1", "task1", "v2", "d1", baseDay)
+	doc = modelUtil.GetDailyTaskDoc(s.Suite, "p1", "r1", "task1", "v2", "d1", baseDay)
 	require.NotNil(doc)
-	doc = s.getDailyTaskDoc("p1", "r1", "task2", "v1", "d1", baseDay)
+	doc = modelUtil.GetDailyTaskDoc(s.Suite, "p1", "r1", "task2", "v1", "d1", baseDay)
 	require.NotNil(doc)
 
 	// Generate task stats for project p4 to check status aggregation
 	err = GenerateDailyTaskStats("p4", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
 	require.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
-	doc = s.getDailyTaskDoc("p4", "r1", "task1", "v1", "d1", baseDay)
+	doc = modelUtil.GetDailyTaskDoc(s.Suite,"p4", "r1", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
 	require.Equal(2, doc.NumSuccess)
 	require.Equal(8, doc.NumFailed)
@@ -224,7 +222,7 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p2", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
 	require.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
-	doc = s.getDailyTaskDoc("p2", "r1", "task1", "v1", "d1", baseDay)
+	doc = modelUtil.GetDailyTaskDoc(s.Suite, "p2", "r1", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
 	require.Equal(1, doc.NumSuccess) // 1 old task
 	require.Equal(3, doc.NumFailed)  // 2 tasks + 1 old tasks
@@ -365,11 +363,6 @@ type dbTaskStats struct {
 // Methods to initialize database data //
 /////////////////////////////////////////
 
-func (s *statsSuite) clearCollection(name string) {
-	err := db.Clear(name)
-	s.Require().NoError(err)
-}
-
 func (s *statsSuite) initHourly() {
 	hour1 := baseHour
 	hour2 := baseHour.Add(time.Hour)
@@ -390,206 +383,80 @@ func (s *statsSuite) insertHourlyTestStats(project string, requester string, tes
 	s.Require().NoError(err)
 }
 
-type taskStatus struct {
-	Status         string
-	DetailsType    string
-	DetailsTimeout bool
-	TimeTaken      time.Duration
-}
-
 func (s *statsSuite) initTasks() {
 	t0 := baseTime
 	t0plus10m := baseTime.Add(10 * time.Minute)
 	t0plus1h := baseTime.Add(time.Hour)
 	t0min10m := baseTime.Add(-10 * time.Minute)
 	t0min1h := baseTime.Add(-1 * time.Hour)
-	success100 := taskStatus{"success", "test", false, 100 * 1000 * 1000 * 1000}
-	success200 := taskStatus{"success", "test", false, 200 * 1000 * 1000 * 1000}
-	testFailed := taskStatus{"failed", "test", false, 20}
-	timeout := taskStatus{"failed", "test", true, 100}
-	setupFailed := taskStatus{"failed", "setup", false, 10}
-	systemFailed := taskStatus{"failed", "system", false, 10}
 
 	// Task
-	s.insertTask("p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_1", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_1", 0, "test2.js", "fail", 120)
-	s.insertTestResult("task_id_1", 0, "test3.js", "pass", 10)
+	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_1", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_1", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite,"task_id_1", 0, "test3.js", "pass", 10)
 	// Task on variant v2
-	s.insertTask("p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, testFailed)
-	s.insertTestResult("task_id_2", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_2", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_2", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_2", 0, "test2.js", "fail", 120)
 	// Task with different task name
-	s.insertTask("p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_3", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_3", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_3", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_3", 0, "test2.js", "fail", 120)
 	// Task 10 minutes later
-	s.insertTask("p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, testFailed)
-	s.insertTestResult("task_id_4", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_4", 0, "test2.js", "pass", 120)
-	s.insertTestResult("task_id_4", 0, "test3.js", "pass", 15)
+	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_4", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_4", 0, "test2.js", "pass", 120)
+	modelUtil.InsertTestResult(s.Suite,"task_id_4", 0, "test3.js", "pass", 15)
 	// Task 1 hour later
-	s.insertTask("p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, testFailed)
-	s.insertTestResult("task_id_5", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_5", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_5", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_5", 0, "test2.js", "fail", 120)
 	// Task different requester
-	s.insertTask("p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_6", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_6", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTask(s.Suite, "p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_6", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_6", 0, "test2.js", "fail", 120)
 	// Task different project
-	s.insertTask("p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_7", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_7", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTask(s.Suite, "p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_7", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_7", 0, "test2.js", "fail", 120)
 	// Task with old executions.
-	s.insertTask("p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, testFailed)
-	s.insertTestResult("task_id_8", 2, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_8", 2, "test2.js", "fail", 120)
-	s.insertOldTask("p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, testFailed)
-	s.insertTestResult("task_id_8", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_8", 0, "test2.js", "pass", 120)
-	s.insertTestResult("task_id_8", 0, "testOld.js", "fail", 120)
-	s.insertOldTask("p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, success100)
-	s.insertTestResult("task_id_8", 1, "test1.js", "pass", 60)
-	s.insertTestResult("task_id_8", 1, "test2.js", "pass", 120)
+	modelUtil.InsertTask(s.Suite, "p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_8", 2, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_8", 2, "test2.js", "fail", 120)
+	modelUtil.InsertOldTask(s.Suite, "p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_8", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_8", 0, "test2.js", "pass", 120)
+	modelUtil.InsertTestResult(s.Suite,"task_id_8", 0, "testOld.js", "fail", 120)
+	modelUtil.InsertOldTask(s.Suite, "p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, modelUtil.Success100)
+	modelUtil.InsertTestResult(s.Suite,"task_id_8", 1, "test1.js", "pass", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_8", 1, "test2.js", "pass", 120)
 	// Execution task
-	s.insertTask("p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, testFailed)
-	s.insertTestResult("task_id_9", 0, "test1.js", "fail", 60)
-	s.insertTestResult("task_id_9", 0, "test2.js", "pass", 120)
+	modelUtil.InsertTask(s.Suite, "p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, modelUtil.TestFailed)
+	modelUtil.InsertTestResult(s.Suite,"task_id_9", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite,"task_id_9", 0, "test2.js", "pass", 120)
 	// Display task
-	s.insertDisplayTask("p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, testFailed, []string{"task_id_9"})
+	modelUtil.InsertDisplayTask(s.Suite, "p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, modelUtil.TestFailed, []string{"task_id_9"})
 	// Project p4 used to test various task statuses
-	s.insertTask("p4", "r1", "task_id_11", 0, "task1", "v1", "d1", t0, success100)
-	s.insertTask("p4", "r1", "task_id_12", 0, "task1", "v1", "d1", t0, success200)
-	s.insertTask("p4", "r1", "task_id_13", 0, "task1", "v1", "d1", t0, testFailed)
-	s.insertTask("p4", "r1", "task_id_14", 0, "task1", "v1", "d1", t0, systemFailed)
-	s.insertTask("p4", "r1", "task_id_15", 0, "task1", "v1", "d1", t0, systemFailed)
-	s.insertTask("p4", "r1", "task_id_16", 0, "task1", "v1", "d1", t0, setupFailed)
-	s.insertTask("p4", "r1", "task_id_17", 0, "task1", "v1", "d1", t0, setupFailed)
-	s.insertTask("p4", "r1", "task_id_18", 0, "task1", "v1", "d1", t0, setupFailed)
-	s.insertTask("p4", "r1", "task_id_19", 0, "task1", "v1", "d1", t0, timeout)
-	s.insertTask("p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, timeout)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_11", 0, "task1", "v1", "d1", t0, modelUtil.Success100)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_12", 0, "task1", "v1", "d1", t0, modelUtil.Success200)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_13", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_14", 0, "task1", "v1", "d1", t0, modelUtil.SystemFailed)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_15", 0, "task1", "v1", "d1", t0, modelUtil.SystemFailed)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_16", 0, "task1", "v1", "d1", t0, modelUtil.SetupFailed)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_17", 0, "task1", "v1", "d1", t0, modelUtil.SetupFailed)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_18", 0, "task1", "v1", "d1", t0, modelUtil.SetupFailed)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_19", 0, "task1", "v1", "d1", t0, modelUtil.Timeout)
+	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, modelUtil.Timeout)
 }
 
 func (s *statsSuite) initTasksToUpdate() {
-	s.insertFinishedTask("p5", "r1", "task1", commit1, finish1)
-	s.insertFinishedTask("p5", "r2", "task2", commit2, finish1)
-	s.insertFinishedTask("p5", "r2", "task2bis", commit2, finish1)
-	s.insertFinishedOldTask("p5", "r2", "task2old", commit2, finish1)
-	s.insertFinishedTask("p5", "r1", "task3", commit1, finish2)
-	s.insertFinishedTask("p5", "r1", "task4", commit2, finish2)
-}
-
-func (s *statsSuite) insertTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus) {
-	details := apimodels.TaskEndDetail{
-		Status:   status.Status,
-		Type:     status.DetailsType,
-		TimedOut: status.DetailsTimeout,
-	}
-	newTask := task.Task{
-		Id:           taskId,
-		Execution:    execution,
-		Project:      project,
-		DisplayName:  taskName,
-		Requester:    requester,
-		BuildVariant: variant,
-		DistroId:     distro,
-		CreateTime:   createTime,
-		Status:       status.Status,
-		Details:      details,
-		TimeTaken:    status.TimeTaken,
-	}
-	err := newTask.Insert()
-	s.Require().NoError(err)
-}
-
-func (s *statsSuite) insertOldTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus) {
-	details := apimodels.TaskEndDetail{
-		Status:   status.Status,
-		Type:     status.DetailsType,
-		TimedOut: status.DetailsTimeout,
-	}
-	oldTaskId := taskId
-	taskId = taskId + "_" + strconv.Itoa(execution)
-	newTask := task.Task{
-		Id:           taskId,
-		Execution:    execution,
-		Project:      project,
-		DisplayName:  taskName,
-		Requester:    requester,
-		BuildVariant: variant,
-		DistroId:     distro,
-		CreateTime:   createTime,
-		Status:       status.Status,
-		Details:      details,
-		TimeTaken:    status.TimeTaken,
-		OldTaskId:    oldTaskId}
-	err := db.Insert(task.OldCollection, &newTask)
-	s.Require().NoError(err)
-}
-
-func (s *statsSuite) insertDisplayTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus, executionTasks []string) {
-	details := apimodels.TaskEndDetail{
-		Status:   status.Status,
-		Type:     status.DetailsType,
-		TimedOut: status.DetailsTimeout,
-	}
-	newTask := task.Task{
-		Id:             taskId,
-		Execution:      execution,
-		Project:        project,
-		DisplayName:    taskName,
-		Requester:      requester,
-		BuildVariant:   variant,
-		DistroId:       distro,
-		CreateTime:     createTime,
-		Status:         status.Status,
-		Details:        details,
-		TimeTaken:      status.TimeTaken,
-		ExecutionTasks: executionTasks}
-	err := newTask.Insert()
-	s.Require().NoError(err)
-}
-
-func (s *statsSuite) insertTestResult(taskId string, execution int, testFile string, status string, durationSeconds int) {
-	startTime := time.Now()
-	endTime := startTime.Add(time.Duration(durationSeconds) * time.Second)
-
-	newTestResult := testresult.TestResult{
-		TaskID:    taskId,
-		Execution: execution,
-		TestFile:  testFile,
-		Status:    status,
-		StartTime: float64(startTime.Unix()),
-		EndTime:   float64(endTime.Unix()),
-	}
-	err := newTestResult.Insert()
-	s.Require().NoError(err)
-}
-
-func (s *statsSuite) insertFinishedTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
-	newTask := task.Task{
-		Id:          bson.NewObjectId().Hex(),
-		DisplayName: taskName,
-		Project:     project,
-		Requester:   requester,
-		CreateTime:  createTime,
-		FinishTime:  finishTime,
-	}
-	err := newTask.Insert()
-	s.Require().NoError(err)
-}
-
-func (s *statsSuite) insertFinishedOldTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
-	newTask := task.Task{
-		Id:          bson.NewObjectId().String(),
-		DisplayName: taskName,
-		Project:     project,
-		Requester:   requester,
-		CreateTime:  createTime,
-		FinishTime:  finishTime,
-	}
-	err := db.Insert(task.OldCollection, &newTask)
-	s.Require().NoError(err)
+	modelUtil.InsertFinishedTask(s.Suite, "p5", "r1", "task1", commit1, finish1, 0)
+	modelUtil.InsertFinishedTask(s.Suite, "p5", "r2", "task2", commit2, finish1, 0)
+	modelUtil.InsertFinishedTask(s.Suite, "p5", "r2", "task2bis", commit2, finish1, 0)
+	modelUtil.InsertFinishedOldTask(s.Suite, "p5", "r2", "task2old", commit2, finish1)
+	modelUtil.InsertFinishedTask(s.Suite, "p5", "r1", "task3", commit1, finish2, 0)
+	modelUtil.InsertFinishedTask(s.Suite, "p5", "r1", "task4", commit2, finish2, 0)
 }
 
 func createTestStatsId(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) bson.D {
@@ -635,34 +502,4 @@ func (s *statsSuite) countHourlyTestDocs() int {
 
 func (s *statsSuite) countDailyTaskDocs() int {
 	return s.countDocs(dailyTaskStatsCollection)
-}
-
-func (s *statsSuite) getTestStatsDoc(collection string, project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) *dbTestStats {
-	doc := dbTestStats{}
-	docId := createTestStatsId(project, requester, testFile, taskName, variant, distro, date)
-	err := db.FindOne(collection, bson.M{"_id": docId}, db.NoProjection, db.NoSort, &doc)
-	if err == mgo.ErrNotFound {
-		return nil
-	}
-	s.Require().NoError(err)
-	return &doc
-}
-
-func (s *statsSuite) getDailyTestDoc(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) *dbTestStats {
-	return s.getTestStatsDoc(dailyTestStatsCollection, project, requester, testFile, taskName, variant, distro, date)
-}
-
-func (s *statsSuite) getHourlyTestDoc(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) *dbTestStats {
-	return s.getTestStatsDoc(hourlyTestStatsCollection, project, requester, testFile, taskName, variant, distro, date)
-}
-
-func (s *statsSuite) getDailyTaskDoc(project string, requester string, taskName string, variant string, distro string, date time.Time) *dbTaskStats {
-	doc := dbTaskStats{}
-	docId := createTaskStatsId(project, requester, taskName, variant, distro, date)
-	err := db.FindOne(dailyTaskStatsCollection, bson.M{"_id": docId}, db.NoProjection, db.NoSort, &doc)
-	if err == mgo.ErrNotFound {
-		return nil
-	}
-	s.Require().NoError(err)
-	return &doc
 }
