@@ -10,7 +10,7 @@ gopsutil: psutil for golang
 .. image:: https://godoc.org/github.com/shirou/gopsutil?status.svg
         :target: http://godoc.org/github.com/shirou/gopsutil
 
-This is a port of psutil (http://pythonhosted.org/psutil/). The challenge is porting all
+This is a port of psutil (https://github.com/giampaolo/psutil). The challenge is porting all
 psutil functions on some architectures.
 
 
@@ -43,7 +43,7 @@ Available Architectures
 - Linux i386/amd64/arm(raspberry pi)
 - Windows/amd64
 - Darwin i386/amd64
-- OpenBDS amd64 (Thank you @mpfz0r!)
+- OpenBSD amd64 (Thank you @mpfz0r!)
 - Solaris amd64 (developed and tested on SmartOS/Illumos, Thank you @jen20!)
 
 All works are implemented without cgo by porting c struct to golang struct.
@@ -117,6 +117,10 @@ Several methods have been added which are not present in psutil, but will provid
   - VirtualizationSystem  (ex: "LXC")
   - VirtualizationRole    (ex: "guest"/"host")
 
+- IOCounters
+
+  - Label (linux only)    The registered `device mapper name <https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-block-dm>`_
+
 - cpu/CPUInfo()  (linux, freebsd)
 
   - CPU          (ex: 0, 1, ...)
@@ -187,7 +191,7 @@ boot_time             x      x       x       x       x
 users                 x      x       x       x       x
 pids                  x      x       x       x       x
 pid_exists            x      x       x       x       x
-net_connections       x                      x
+net_connections       x              x       x
 net_protocols         x
 net_if_addrs
 net_if_stats
@@ -296,7 +300,7 @@ Related Works
 
 I have been influenced by the following great works:
 
-- psutil: http://pythonhosted.org/psutil/
+- psutil: https://github.com/giampaolo/psutil
 - dstat: https://github.com/dagwieers/dstat
 - gosigar: https://github.com/cloudfoundry/gosigar/
 - goprocinfo: https://github.com/c9s/goprocinfo
