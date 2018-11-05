@@ -55,7 +55,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 
 	// Unmarshall the project configuration into a struct
 	project := &model.Project{}
-	if err := model.LoadProjectInto(projectConfig, "test", project); err != nil {
+	if err = model.LoadProjectInto(projectConfig, "test", project); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
@@ -85,7 +85,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		BatchTime:   project.BatchTime,
 		LocalConfig: string(projectConfig),
 	}
-	if err := projectRef.Insert(); err != nil {
+	if err = projectRef.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert projectRef")
 	}
 
@@ -98,7 +98,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 			"fetch_key":  "fetch_expansion_value",
 		},
 	}
-	if _, err := projectVars.Upsert(); err != nil {
+	if _, err = projectVars.Upsert(); err != nil {
 		return nil, errors.Wrap(err, "problem inserting project variables")
 	}
 
@@ -119,7 +119,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if patchMode != NoPatch {
 		taskOne.Requester = evergreen.PatchVersionRequester
 	}
-	if err := taskOne.Insert(); err != nil {
+	if err = taskOne.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert taskOne")
 	}
 	modelData.Task = taskOne
@@ -138,7 +138,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Requester:    evergreen.RepotrackerVersionRequester,
 		Activated:    true,
 	}
-	if err := taskTwo.Insert(); err != nil {
+	if err = taskTwo.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert taskTwo")
 	}
 
@@ -152,7 +152,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 			},
 		},
 	}
-	if err := taskQueue.Save(); err != nil {
+	if err = taskQueue.Save(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert task queue")
 	}
 
@@ -162,7 +162,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		BuildIds: []string{taskOne.BuildId},
 		Config:   string(projectYamlBytes),
 	}
-	if err := v.Insert(); err != nil {
+	if err = v.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert version: ")
 	}
 
@@ -175,7 +175,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		},
 		Version: v.Id,
 	}
-	if err := build.Insert(); err != nil {
+	if err = build.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert build")
 	}
 	modelData.Build = build
@@ -192,7 +192,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Distro: distro.Distro{
 			Id:         "test-distro-one",
 			WorkDir:    workDir,
-			Expansions: []distro.Expansion{{"distro_exp", "DISTRO_EXP"}},
+			Expansions: []distro.Expansion{{Key: "distro_exp", Value: "DISTRO_EXP"}},
 		},
 		Provider:      evergreen.HostTypeStatic,
 		RunningTask:   taskOne.Id,
@@ -201,7 +201,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		AgentRevision: evergreen.BuildRevision,
 		Status:        evergreen.HostRunning,
 	}
-	if err := testHost.Insert(); err != nil {
+	if err = testHost.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert host")
 	}
 	modelData.Host = testHost
