@@ -30,6 +30,7 @@ type HostPostRequest struct {
 type DistroInfo struct {
 	Id       APIString `json:"distro_id"`
 	Provider APIString `json:"provider"`
+	ImageId  APIString `json:"image_id"`
 }
 
 type taskInfo struct {
@@ -90,6 +91,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	di := DistroInfo{
 		Id:       ToAPIString(v.Distro.Id),
 		Provider: ToAPIString(v.Distro.Provider),
+		ImageId:  ToAPIString(v.Distro.GetImageID()),
 	}
 	apiHost.Distro = di
 	return nil
