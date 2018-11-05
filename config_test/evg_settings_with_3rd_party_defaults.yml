@@ -23,10 +23,11 @@ providers:
         aws_secret: "aws secret"
         aws_id: "aws id"
 auth:
-    crowd:
-        username: "mci-nonprod"
+    naive:
+      users:
+      - username: "mci-nonprod"
         password: "change me"
-        urlroot: "https://crowdtest.10gen.com"
+        display_name: "MCI Nonprod"
 
 jira:
     host: jira.mongodb.org

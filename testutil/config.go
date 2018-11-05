@@ -63,11 +63,6 @@ func MockConfig() *evergreen.Settings {
 		},
 		ApiUrl: "api",
 		AuthConfig: evergreen.AuthConfig{
-			Crowd: &evergreen.CrowdConfig{
-				Username: "crowduser",
-				Password: "crowdpw",
-				Urlroot:  "crowdurl",
-			},
 			LDAP: &evergreen.LDAPConfig{
 				URL:                "url",
 				Port:               "port",

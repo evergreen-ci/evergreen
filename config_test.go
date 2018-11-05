@@ -242,11 +242,6 @@ func (s *AdminSuite) TestApiConfig() {
 
 func (s *AdminSuite) TestAuthConfig() {
 	config := AuthConfig{
-		Crowd: &CrowdConfig{
-			Username: "crowduser",
-			Password: "crowdpw",
-			Urlroot:  "crowdurl",
-		},
 		LDAP: &LDAPConfig{
 			URL:                "url",
 			Port:               "port",

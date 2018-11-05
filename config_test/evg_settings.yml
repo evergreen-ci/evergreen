@@ -26,10 +26,11 @@ providers:
         api_version: 1.32
         
 auth:
-    crowd:
-        username: "mci-nonprod"
+    naive:
+      users:
+      - username: "mci-nonprod"
         password: "change me"
-        urlroot: "https://crowdtest.10gen.com"
+        display_name: "MCI Nonprod"
 
 keys:
     mci: "/data/home/etc/mci.pem"
