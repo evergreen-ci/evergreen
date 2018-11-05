@@ -29,7 +29,6 @@ import:
     subpackages:
       - cmd/cover
   - package: github.com/urfave/cli
-  - package: github.com/evergreen-ci/crowd
   - package: github.com/kardianos/osext
   - package: github.com/sabhiram/go-git-ignore
   - package: github.com/dustin/go-humanize

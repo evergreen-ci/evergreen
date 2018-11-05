@@ -321,7 +321,6 @@ func (a *APIapiConfig) ToService() (interface{}, error) {
 }
 
 type APIAuthConfig struct {
-	Crowd  *APICrowdConfig      `json:"crowd"`
 	LDAP   *APILDAPConfig       `json:"ldap"`
 	Naive  *APINaiveAuthConfig  `json:"naive"`
 	Github *APIGithubAuthConfig `json:"github"`
@@ -330,12 +329,6 @@ type APIAuthConfig struct {
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AuthConfig:
-		if v.Crowd != nil {
-			a.Crowd = &APICrowdConfig{}
-			if err := a.Crowd.BuildFromService(v.Crowd); err != nil {
-				return err
-			}
-		}
 		if v.LDAP != nil {
 			a.LDAP = &APILDAPConfig{}
 			if err := a.LDAP.BuildFromService(v.LDAP); err != nil {
@@ -361,18 +354,10 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIAuthConfig) ToService() (interface{}, error) {
-	var crowd *evergreen.CrowdConfig
 	var ldap *evergreen.LDAPConfig
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
-	i, err := a.Crowd.ToService()
-	if err != nil {
-		return nil, err
-	}
-	if i != nil {
-		crowd = i.(*evergreen.CrowdConfig)
-	}
-	i, err = a.LDAP.ToService()
+	i, err := a.LDAP.ToService()
 	if err != nil {
 		return nil, err
 	}
@@ -394,42 +379,9 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 		github = i.(*evergreen.GithubAuthConfig)
 	}
 	return evergreen.AuthConfig{
-		Crowd:  crowd,
 		LDAP:   ldap,
 		Naive:  naive,
 		Github: github,
-	}, nil
-}
-
-type APICrowdConfig struct {
-	Username APIString `json:"username"`
-	Password APIString `json:"password"`
-	Urlroot  APIString `json:"url_root"`
-}
-
-func (a *APICrowdConfig) BuildFromService(h interface{}) error {
-	switch v := h.(type) {
-	case *evergreen.CrowdConfig:
-		if v == nil {
-			return nil
-		}
-		a.Username = ToAPIString(v.Username)
-		a.Password = ToAPIString(v.Password)
-		a.Urlroot = ToAPIString(v.Urlroot)
-	default:
-		return errors.Errorf("%T is not a supported type", h)
-	}
-	return nil
-}
-
-func (a *APICrowdConfig) ToService() (interface{}, error) {
-	if a == nil {
-		return nil, nil
-	}
-	return &evergreen.CrowdConfig{
-		Username: FromAPIString(a.Username),
-		Password: FromAPIString(a.Password),
-		Urlroot:  FromAPIString(a.Urlroot),
 	}, nil
 }
 

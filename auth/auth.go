@@ -10,7 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-//LoadUserManager is used to check the configuration for authentication and create a UserManager depending on what type of authentication (Crowd or Naive) is used.
+//LoadUserManager is used to check the configuration for authentication and create a UserManager
+// depending on what type of authentication is used.
 func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error) {
 	var manager gimlet.UserManager
 	var err error
@@ -18,13 +19,6 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error
 		manager, err = NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem setting up ldap authentication")
-		}
-		return manager, nil
-	}
-	if authConfig.Crowd != nil {
-		manager, err = NewCrowdUserManager(authConfig.Crowd)
-		if err != nil {
-			return nil, errors.Wrap(err, "problem setting up crowd authentication")
 		}
 		return manager, nil
 	}

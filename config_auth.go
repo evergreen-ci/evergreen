@@ -22,13 +22,6 @@ type NaiveAuthConfig struct {
 	Users []*AuthUser `bson:"users" json:"users" yaml:"users"`
 }
 
-// CrowdConfig holds settings for interacting with Atlassian Crowd.
-type CrowdConfig struct {
-	Username string `bson:"username" json:"username" yaml:"username"`
-	Password string `bson:"password" json:"password" yaml:"password"`
-	Urlroot  string `bson:"url_root" json:"url_root" yaml:"urlroot"`
-}
-
 // LDAPConfig contains settings for interacting with an LDAP server.
 type LDAPConfig struct {
 	URL                string `bson:"url" json:"url" yaml:"url"`
@@ -52,7 +45,6 @@ type GithubAuthConfig struct {
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
 	LDAP   *LDAPConfig       `bson:"ldap,omitempty" json:"ldap" yaml:"ldap"`
-	Crowd  *CrowdConfig      `bson:"crowd,omitempty" json:"crowd" yaml:"crowd"`
 	Naive  *NaiveAuthConfig  `bson:"naive,omitempty" json:"naive" yaml:"naive"`
 	Github *GithubAuthConfig `bson:"github,omitempty" json:"github" yaml:"github"`
 }
@@ -71,7 +63,6 @@ func (c *AuthConfig) Get() error {
 func (c *AuthConfig) Set() error {
 	_, err := db.Upsert(ConfigCollection, byId(c.SectionId()), bson.M{
 		"$set": bson.M{
-			"crowd":  c.Crowd,
 			"ldap":   c.LDAP,
 			"naive":  c.Naive,
 			"github": c.Github,
@@ -82,7 +73,7 @@ func (c *AuthConfig) Set() error {
 
 func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.Crowd == nil && c.LDAP == nil && c.Naive == nil && c.Github == nil {
+	if c.LDAP == nil && c.Naive == nil && c.Github == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 	if c.Naive != nil {
