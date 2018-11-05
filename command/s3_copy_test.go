@@ -31,7 +31,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 
 		pwd := testutil.GetDirectoryOfFile()
 		configFile := filepath.Join(pwd, "testdata", "plugin_s3_copy.yml")
-		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "linux-64", configFile, modelutil.NoPatch)
+		modelData, err := modelutil.SetupAPITestData(testConfig, "copyTask", "linux-64", configFile, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
 		conf := modelData.TaskConfig
 		conf.WorkDir = pwd

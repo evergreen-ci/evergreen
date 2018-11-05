@@ -31,7 +31,7 @@ func TestIncKey(t *testing.T) {
 
 		comm := client.NewMock("http://localhost.com")
 
-		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
+		modelData, err := modelutil.SetupAPITestData(testConfig, "testinc", "rhel55", configPath, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "couldn't create test task")
 
 		Convey("Inc command should increment a key successfully", func() {

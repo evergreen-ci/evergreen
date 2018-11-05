@@ -581,34 +581,7 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
 
-	expansions.Put("workdir", h.Distro.WorkDir)
 	expansions.Put("distro_id", h.Distro.Id)
-
-	v, err := version.FindOneId(t.Version)
-	if err != nil {
-		return nil, errors.Wrap(err, "error finding version")
-	}
-	expansions.Put("branch_name", v.Branch)
-	expansions.Put("author", v.Author)
-	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
-
-	if evergreen.IsPatchRequester(v.Requester) {
-		expansions.Put("is_patch", "true")
-		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
-		p, err := patch.FindOne(patch.ByVersion(t.Version))
-		if err != nil {
-			return nil, errors.Wrap(err, "error finding patch")
-		}
-
-		if v.Requester == evergreen.GithubPRRequester && p != nil {
-			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
-			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
-			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
-			expansions.Put("github_author", p.GithubPatchData.Author)
-		}
-	} else {
-		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
-	}
 
 	if t.TriggerID != "" {
 		expansions.Put("trigger_event_identifier", t.TriggerID)
@@ -620,6 +593,9 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "error finding task")
 			}
+			if upstreamTask == nil {
+				return nil, errors.New("upstream task not found")
+			}
 			expansions.Put("trigger_status", upstreamTask.Status)
 			expansions.Put("trigger_revision", upstreamTask.Revision)
 			upstreamProjectID = upstreamTask.Project
@@ -627,6 +603,9 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 			upstreamBuild, err := build.FindOneId(t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "error finding build")
+			}
+			if upstreamBuild == nil {
+				return nil, errors.New("upstream build not found")
 			}
 			expansions.Put("trigger_status", upstreamBuild.Status)
 			expansions.Put("trigger_revision", upstreamBuild.Revision)
@@ -642,6 +621,33 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 		expansions.Put("trigger_repo_owner", upstreamProject.Owner)
 		expansions.Put("trigger_repo_name", upstreamProject.Repo)
 		expansions.Put("trigger_branch", upstreamProject.Branch)
+	}
+
+	v, err := version.FindOneId(t.Version)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding version")
+	}
+	expansions.Put("branch_name", v.Branch)
+	expansions.Put("author", v.Author)
+	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
+
+	if evergreen.IsPatchRequester(v.Requester) {
+		var p *patch.Patch
+		expansions.Put("is_patch", "true")
+		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
+		p, err = patch.FindOne(patch.ByVersion(t.Version))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding patch")
+		}
+
+		if v.Requester == evergreen.GithubPRRequester && p != nil {
+			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
+			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
+			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
+			expansions.Put("github_author", p.GithubPatchData.Author)
+		}
+	} else {
+		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
 	}
 
 	for _, e := range h.Distro.Expansions {

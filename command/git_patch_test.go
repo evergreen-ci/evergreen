@@ -108,7 +108,7 @@ func TestPatchPlugin(t *testing.T) {
 
 		patchFile := filepath.Join(cwd, "testdata", "git", "testmodule.patch")
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")
-		modelData, err := modelutil.SetupAPITestData(settings, "testTask", "testvar", configPath, modelutil.InlinePatch)
+		modelData, err := modelutil.SetupAPITestData(settings, "testtask1", "testvar", configPath, modelutil.InlinePatch)
 		modelData.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 

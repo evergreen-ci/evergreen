@@ -200,8 +200,7 @@ func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData)
 	info.setTaskPathSuffix("expansions")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get expansions for task %s", taskData.ID)
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get expansions for task %s", taskData.ID)
 	}
 	defer resp.Body.Close()
 
@@ -210,8 +209,7 @@ func (c *communicatorImpl) GetExpansions(ctx context.Context, taskData TaskData)
 	}
 	err = util.ReadJSONInto(resp.Body, &e)
 	if err != nil {
-		err = errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
-		return nil, err
+		return nil, errors.Wrapf(err, "unable to read project version response for task %s", taskData.ID)
 	}
 	return e, nil
 }

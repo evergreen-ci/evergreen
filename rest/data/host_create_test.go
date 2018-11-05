@@ -112,6 +112,11 @@ buildvariants:
 		Identifier: "p",
 	}
 	assert.NoError(v1.Insert())
+	h1 := host.Host{
+		Id:          "h1",
+		RunningTask: t1.Id,
+	}
+	assert.NoError(h1.Insert())
 	providerSettings := map[string]interface{}{
 		"ami":      "ami-1234",
 		"vpc_name": "my_vpc",
@@ -181,6 +186,11 @@ buildvariants:
 		BuildVariant: "bv",
 	}
 	assert.NoError(t2.Insert())
+	h2 := host.Host{
+		Id:          "h2",
+		RunningTask: t2.Id,
+	}
+	assert.NoError(h2.Insert())
 	err = dc.CreateHostsFromTask(&t2, user.DBUser{Id: "me"}, "")
 	assert.NoError(err)
 	createdHosts, err = host.Find(host.IsUninitialized)
