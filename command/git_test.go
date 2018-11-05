@@ -63,11 +63,11 @@ func (s *GitGetProjectSuite) SetupTest() {
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
-	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "test", "rhel55", configPath1, modelutil.NoPatch)
+	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.NoError(err)
 	s.modelData1.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 
-	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "test", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
 	s.modelData2.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
@@ -75,7 +75,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	err = plugintest.SetupPatchData(s.modelData1, patchPath, s.T())
 	s.NoError(err)
 
-	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "test", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
 	s.modelData3.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.modelData3.TaskConfig.GithubPatchData = patch.GithubPatch{

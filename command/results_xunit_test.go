@@ -143,7 +143,7 @@ func TestParseAndUpload(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	comm := client.NewMock("/dev/null")
-	modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", WildcardConfig, modelutil.NoPatch)
+	modelData, err := modelutil.SetupAPITestData(testConfig, "aggregation", "rhel55", WildcardConfig, modelutil.NoPatch)
 	testutil.HandleTestingErr(err, t, "failed to setup test data")
 
 	conf := modelData.TaskConfig

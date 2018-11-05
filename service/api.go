@@ -203,6 +203,18 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, p)
 }
 
+func (as *APIServer) GetExpansions(w http.ResponseWriter, r *http.Request) {
+	t := MustHaveTask(r)
+	h := MustHaveHost(r)
+	e, err := model.PopulateExpansions(t, h)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	gimlet.WriteJSON(w, e)
+}
+
 // AttachTestLog is the API Server hook for getting
 // the test logs and storing them in the test_logs collection.
 func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
@@ -535,7 +547,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Agent routes
 	app.Route().Version(2).Route("/agent/next_task").Wrap(checkHost).Handler(as.NextTask).Get()
-
 	app.Route().Version(2).Route("/task/{taskId}/end").Wrap(checkTaskSecret, checkHost).Handler(as.EndTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/start").Wrap(checkTaskSecret, checkHost).Handler(as.StartTask).Post()
 	app.Route().Version(2).Route("/task/{taskId}/log").Wrap(checkTaskSecret, checkHost).Handler(as.AppendTaskLog).Post()
@@ -550,9 +561,9 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/distro").Wrap(checkTask).Handler(as.GetDistro).Get()
 	app.Route().Version(2).Route("/task/{taskId}/version").Wrap(checkTask).Handler(as.GetVersion).Get()
 	app.Route().Version(2).Route("/task/{taskId}/project_ref").Wrap(checkTask).Handler(as.GetProjectRef).Get()
+	app.Route().Version(2).Route("/task/{taskId}/expansions").Wrap(checkTask, checkHost).Handler(as.GetExpansions).Get()
 
 	// plugins
-
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patchfile/{patchfile_id}").Wrap(checkTask).Handler(as.gitServePatchFile).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/git/patch").Wrap(checkTask).Handler(as.gitServePatch).Get()
 	app.Route().Version(2).Prefix("/task/{taskId}").Route("/keyval/inc").Wrap(checkTask).Handler(as.keyValPluginInc).Post()

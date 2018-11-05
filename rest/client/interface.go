@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 )
 
@@ -63,6 +64,8 @@ type Communicator interface {
 	GetDistro(context.Context, TaskData) (*distro.Distro, error)
 	// GetVersion loads the task's version.
 	GetVersion(context.Context, TaskData) (*version.Version, error)
+	// GetExpansions returns all expansions for the task known by the app server
+	GetExpansions(context.Context, TaskData) (util.Expansions, error)
 	// Heartbeat sends a heartbeat to the API server. The server can respond with
 	// an "abort" response. This function returns true if the agent should abort.
 	Heartbeat(context.Context, TaskData) (bool, error)
