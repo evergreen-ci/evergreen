@@ -631,49 +631,6 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 	return tasks, nil
 }
 
-type TaskByProjectList struct {
-	Project string `bson:"project" json:"project"`
-	Date time.Time `bson:"date" json:"date"`
-	Requester string `bson:"requester" json:"requester"`
-	TaskNames []string `bson:"task_names" json:"task_names"`
-}
-
-func TasksByFinishedBetween(startTime, endTime time.Time) []bson.M {
-	pipeline := []bson.M{
-		{"$match": bson.M{
-			"finish_time": bson.M{
-				"$gte": startTime,
-				"$lt": endTime},
-		}},
-		{"$group": bson.M{
-			"_id": bson.M{
-				"project": "$branch",
-				"date": bson.M{"$dateToString": bson.M{"date": "$create_time", "format": "%Y-%m-%d"}},
-				"requester": "$r",
-			},
-			"task_names": bson.M{
-				"$addToSet": "$display_name",
-			},
-		}},
-		{"$project": bson.M{
-			"project": "$_id.project",
-			"date": bson.M{"$dateFromString": bson.M{"dateString": "$_id.date", "format": "%Y-%m-%d"}},
-			"requester": "$_id.requester",
-			"task_names": 1,
-		}},
-	}
-
-	return pipeline
-}
-
-func FindTasksByFinishedBetween(startTime, endTime time.Time) ([]TaskByProjectList, error){
-	pipeline := TasksByFinishedBetween(startTime, endTime)
-	res := []TaskByProjectList{}
-
-	err := Aggregate(pipeline, res)
-	return res, err
-}
-
 // DB Boilerplate
 
 // FindOneNoMerge is a FindOne without merging test results.
