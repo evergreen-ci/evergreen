@@ -3,21 +3,22 @@ package units
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type cacheHistoryTestDataSuite struct {
 	suite.Suite
 	projectId string
 	requester string
-	hours []time.Time
-	days []time.Time
+	hours     []time.Time
+	days      []time.Time
 	taskLists [][]string
 	statsList []stats.StatsToUpdate
 }
@@ -85,7 +86,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	callCountFn0 := 0
 
-	mockFn0 := func (p string, r string, h time.Time, ts []string, jobTime time.Time) error {
+	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		s.Equal(s.projectId, p)
 		s.Equal(s.requester, r)
 		s.Contains(s.hours, h)
@@ -98,7 +99,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	callCountFn1 := 0
 
-	mockFn1 := func (p string, r string, d time.Time, ts []string, jobTime time.Time) error {
+	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
 		s.Equal(s.projectId, p)
 		s.Equal(s.requester, r)
 		s.Contains(s.days, d)
@@ -123,19 +124,19 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 	s.Nil(err)
 
-	s.Equal(len(mockGenFns.HourlyFns) * 3, callCountFn0)
-	s.Equal(len(mockGenFns.DailyFns) * 2, callCountFn1)
+	s.Equal(len(mockGenFns.HourlyFns)*3, callCountFn0)
+	s.Equal(len(mockGenFns.DailyFns)*2, callCountFn1)
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyError() {
 	now := time.Now()
 	errorMessage := "error message"
 
-	mockFn0 := func (p string, r string, h time.Time, ts []string, jobTime time.Time) error {
+	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		return fmt.Errorf(errorMessage)
 	}
 
-	mockFn1 := func (p string, r string, d time.Time, ts []string, jobTime time.Time) error {
+	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
 		return nil
 	}
 
@@ -158,11 +159,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError
 	now := time.Now()
 	errorMessage := "error message"
 
-	mockFn0 := func (p string, r string, h time.Time, ts []string, jobTime time.Time) error {
+	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		return nil
 	}
 
-	mockFn1 := func (p string, r string, d time.Time, ts []string, jobTime time.Time) error {
+	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
 		return fmt.Errorf(errorMessage)
 	}
 
@@ -186,17 +187,17 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
 
 	mockHourlyGenerateFn := func(projId string, req string, h time.Time, tasks []string,
 		jobTime time.Time) error {
-			callCount++
-			s.Equal(s.projectId, projId)
-			s.Equal(s.requester, req)
-			s.Contains(s.hours, h)
+		callCount++
+		s.Equal(s.projectId, projId)
+		s.Equal(s.requester, req)
+		s.Contains(s.hours, h)
 
-			return nil
+		return nil
 	}
 
-	iteratorOverHourlyStats(s.statsList, time.Now(), mockHourlyGenerateFn, "hourly")
-
-	s.Equal(len(s.statsList),  callCount)
+	err := iteratorOverHourlyStats(s.statsList, time.Now(), mockHourlyGenerateFn, "hourly")
+	s.Nil(err)
+	s.Equal(len(s.statsList), callCount)
 }
 
 func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
@@ -220,9 +221,9 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
 		return nil
 	}
 
-	iteratorOverDailyStats(s.projectId, statsRollup, time.Now(), mockDailyGenerateFn, "daily")
-
-	s.Equal(len(statsRollup),  callCount)
+	err := iteratorOverDailyStats(s.projectId, statsRollup, time.Now(), mockDailyGenerateFn, "daily")
+	s.Nil(err)
+	s.Equal(len(statsRollup), callCount)
 }
 
 func (s *cacheHistoryTestDataSuite) TestDailyStatsRollupShouldGroupTasksByDay() {
@@ -243,7 +244,7 @@ func (s *cacheHistoryTestDataSuite) TestDailyStatsRollupShouldGroupTasksByDay() 
 		s.NotContains(dailyStatsRollup[s.days[0]][s.requester], t)
 	}
 	// Make sure there aren't any duplicate tasks.
-	s.Equal(len(s.taskLists[0]) + len(s.taskLists[2]), len(dailyStatsRollup[s.days[0]][s.requester]))
+	s.Equal(len(s.taskLists[0])+len(s.taskLists[2]), len(dailyStatsRollup[s.days[0]][s.requester]))
 	s.Equal(len(s.taskLists[1]), len(dailyStatsRollup[s.days[1]][s.requester]))
 }
 
@@ -351,7 +352,7 @@ func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
 func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	clearStatsData(s.Suite)
 
-	baseTime := time.Now().Add(-4 * 7 * 24 * time.Hour + 2 * time.Hour)
+	baseTime := time.Now().Add(-4*7*24*time.Hour + 2*time.Hour)
 
 	s.createTestData(baseTime)
 
@@ -359,34 +360,34 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	job.Run(context.Background())
 	s.NoError(job.Error())
 
-	doc := modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test1.js", "taskName", "", "", baseTime.Truncate(time.Hour * 24))
+	doc := modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test1.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
 	s.NotNil(doc)
 	s.Equal(2, doc.NumFail)
 	s.Equal(0, doc.NumPass)
 
-	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test2.js", "taskName", "", "", baseTime.Truncate(time.Hour * 24))
+	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test2.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
 	s.NotNil(doc)
 	s.Equal(1, doc.NumFail)
 	s.Equal(1, doc.NumPass)
 
-	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test3.js", "taskName", "", "", baseTime.Truncate(time.Hour * 24))
+	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test3.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
 	s.NotNil(doc)
 	s.Equal(0, doc.NumFail)
 	s.Equal(2, doc.NumPass)
 }
 
-func (s *cacheHistoryTestDataSuite)createTestData(baseTime time.Time) {
+func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 	t0 := baseTime
 	t1 := baseTime.Add(time.Minute * 30)
 
 	taskName := "taskName"
 
-	task0 := modelUtil.InsertFinishedTask(s.Suite, s.projectId, s.requester, taskName, t0, t0.Add(30 * time.Minute), 1)
+	task0 := modelUtil.InsertFinishedTask(s.Suite, s.projectId, s.requester, taskName, t0, t0.Add(30*time.Minute), 1)
 	modelUtil.InsertTestResult(s.Suite, task0.Id, 1, "test1.js", "fail", 60)
 	modelUtil.InsertTestResult(s.Suite, task0.Id, 1, "test2.js", "pass", 120)
 	modelUtil.InsertTestResult(s.Suite, task0.Id, 1, "test3.js", "pass", 10)
 
-	task1 := modelUtil.InsertFinishedTask(s.Suite, s.projectId, s.requester, taskName, t1, t1.Add(30 * time.Minute), 2)
+	task1 := modelUtil.InsertFinishedTask(s.Suite, s.projectId, s.requester, taskName, t1, t1.Add(30*time.Minute), 2)
 	modelUtil.InsertTestResult(s.Suite, task1.Id, 2, "test1.js", "fail", 60)
 	modelUtil.InsertTestResult(s.Suite, task1.Id, 2, "test2.js", "fail", 120)
 	modelUtil.InsertTestResult(s.Suite, task1.Id, 2, "test3.js", "pass", 10)

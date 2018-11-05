@@ -1,6 +1,9 @@
 package testutil
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -8,8 +11,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"strconv"
-	"time"
 )
 
 type TaskStatus struct {

@@ -207,7 +207,7 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p4", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
 	require.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
-	doc = modelUtil.GetDailyTaskDoc(s.Suite,"p4", "r1", "task1", "v1", "d1", baseDay)
+	doc = modelUtil.GetDailyTaskDoc(s.Suite, "p4", "r1", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
 	require.Equal(2, doc.NumSuccess)
 	require.Equal(8, doc.NumFailed)
@@ -316,49 +316,6 @@ func (s *statsSuite) TestStatsToUpdate() {
 	}
 }
 
-////////////////////////////////////////
-// Structs to represent database data //
-////////////////////////////////////////
-
-type dbTestStatsId struct {
-	TestFile  string    `bson:"test_file"`
-	TaskName  string    `bson:"task_name"`
-	Variant   string    `bson:"variant"`
-	Distro    string    `bson:"distro"`
-	Project   string    `bson:"project"`
-	Requester string    `bson:"requester"`
-	Date      time.Time `bson:"date"`
-}
-
-type dbTestStats struct {
-	Id              dbTestStatsId `bson:"_id"`
-	NumPass         int           `bson:"num_pass"`
-	NumFail         int           `bson:"num_fail"`
-	AvgDurationPass float32       `bson:"avg_duration_pass"`
-	LastUpdate      time.Time     `bson:"last_update"`
-}
-
-type dbTaskStatsId struct {
-	TaskName  string    `bson:"task_name"`
-	Variant   string    `bson:"variant"`
-	Distro    string    `bson:"distro"`
-	Project   string    `bson:"project"`
-	Requester string    `bson:"requester"`
-	Date      time.Time `bson:"date"`
-}
-
-type dbTaskStats struct {
-	Id                 dbTaskStatsId `bson:"_id"`
-	NumSuccess         int           `bson:"num_success"`
-	NumFailed          int           `bson:"num_failed"`
-	NumTimeout         int           `bson:"num_timeout"`
-	NumTestFailed      int           `bson:"num_test_failed"`
-	NumSystemFailed    int           `bson:"num_system_failed"`
-	NumSetupFailed     int           `bson:"num_setup_failed"`
-	AvgDurationSuccess float32       `bson:"avg_duration_success"`
-	LastUpdate         time.Time     `bson:"last_update"`
-}
-
 /////////////////////////////////////////
 // Methods to initialize database data //
 /////////////////////////////////////////
@@ -392,49 +349,49 @@ func (s *statsSuite) initTasks() {
 
 	// Task
 	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_1", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_1", 0, "test2.js", "fail", 120)
-	modelUtil.InsertTestResult(s.Suite,"task_id_1", 0, "test3.js", "pass", 10)
+	modelUtil.InsertTestResult(s.Suite, "task_id_1", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_1", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_1", 0, "test3.js", "pass", 10)
 	// Task on variant v2
 	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_2", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_2", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_2", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_2", 0, "test2.js", "fail", 120)
 	// Task with different task name
 	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_3", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_3", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_3", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_3", 0, "test2.js", "fail", 120)
 	// Task 10 minutes later
 	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_4", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_4", 0, "test2.js", "pass", 120)
-	modelUtil.InsertTestResult(s.Suite,"task_id_4", 0, "test3.js", "pass", 15)
+	modelUtil.InsertTestResult(s.Suite, "task_id_4", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_4", 0, "test2.js", "pass", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_4", 0, "test3.js", "pass", 15)
 	// Task 1 hour later
 	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_5", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_5", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_5", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_5", 0, "test2.js", "fail", 120)
 	// Task different requester
 	modelUtil.InsertTask(s.Suite, "p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_6", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_6", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_6", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_6", 0, "test2.js", "fail", 120)
 	// Task different project
 	modelUtil.InsertTask(s.Suite, "p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_7", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_7", 0, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_7", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_7", 0, "test2.js", "fail", 120)
 	// Task with old executions.
 	modelUtil.InsertTask(s.Suite, "p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_8", 2, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_8", 2, "test2.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_8", 2, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_8", 2, "test2.js", "fail", 120)
 	modelUtil.InsertOldTask(s.Suite, "p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_8", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_8", 0, "test2.js", "pass", 120)
-	modelUtil.InsertTestResult(s.Suite,"task_id_8", 0, "testOld.js", "fail", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_8", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_8", 0, "test2.js", "pass", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_8", 0, "testOld.js", "fail", 120)
 	modelUtil.InsertOldTask(s.Suite, "p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, modelUtil.Success100)
-	modelUtil.InsertTestResult(s.Suite,"task_id_8", 1, "test1.js", "pass", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_8", 1, "test2.js", "pass", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_8", 1, "test1.js", "pass", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_8", 1, "test2.js", "pass", 120)
 	// Execution task
 	modelUtil.InsertTask(s.Suite, "p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite,"task_id_9", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite,"task_id_9", 0, "test2.js", "pass", 120)
+	modelUtil.InsertTestResult(s.Suite, "task_id_9", 0, "test1.js", "fail", 60)
+	modelUtil.InsertTestResult(s.Suite, "task_id_9", 0, "test2.js", "pass", 120)
 	// Display task
 	modelUtil.InsertDisplayTask(s.Suite, "p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, modelUtil.TestFailed, []string{"task_id_9"})
 	// Project p4 used to test various task statuses
@@ -462,17 +419,6 @@ func (s *statsSuite) initTasksToUpdate() {
 func createTestStatsId(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) bson.D {
 	return bson.D{
 		{Name: "test_file", Value: testFile},
-		{Name: "task_name", Value: taskName},
-		{Name: "variant", Value: variant},
-		{Name: "distro", Value: distro},
-		{Name: "project", Value: project},
-		{Name: "requester", Value: requester},
-		{Name: "date", Value: date},
-	}
-}
-
-func createTaskStatsId(project string, requester string, taskName string, variant string, distro string, date time.Time) bson.D {
-	return bson.D{
 		{Name: "task_name", Value: taskName},
 		{Name: "variant", Value: variant},
 		{Name: "distro", Value: distro},

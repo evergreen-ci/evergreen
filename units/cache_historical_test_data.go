@@ -3,6 +3,9 @@ package units
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -11,13 +14,11 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"regexp"
-	"time"
 )
 
 const (
 	cacheHistoricalTestDataName = "cache-historical-test-data"
-	maxSyncDuration = time.Hour * 24 * 7 // one week
+	maxSyncDuration             = time.Hour * 24 * 7 // one week
 )
 
 var tasksToIgnore = [...]*regexp.Regexp{
@@ -33,7 +34,7 @@ func init() {
 
 type cacheHistoricalTestDataJob struct {
 	ProjectId string `bson:"project_id" json:"project_id" yaml:"project_id"`
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	job.Base  `bson:"job_base" json:"job_base" yaml:"job_base"`
 }
 
 type dailyStatsRollup map[time.Time]map[string][]string
@@ -55,7 +56,7 @@ func makeCacheHistoricalTestDataJob() *cacheHistoricalTestDataJob {
 	j := &cacheHistoricalTestDataJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name: cacheHistoricalTestDataName,
+				Name:    cacheHistoricalTestDataName,
 				Version: 0,
 			},
 		},
@@ -70,9 +71,9 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	projectId := j.ProjectId
 
 	grip.Info(message.Fields{
-		"job_id": j.ID(),
+		"job_id":     j.ID(),
 		"project_id": projectId,
-		"message": "starting job",
+		"message":    "starting job",
 	})
 
 	// Lookup last sync date for project
@@ -123,9 +124,9 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	}
 
 	grip.Info(message.Fields{
-		"job_id": j.ID(),
+		"job_id":     j.ID(),
 		"project_id": projectId,
-		"message": "job completed",
+		"message":    "job completed",
 	})
 }
 
