@@ -195,12 +195,15 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		NotifyOnBuildFailure bool                        `json:"notify_on_failure"`
-		SetupGithubHook      bool                        `json:"setup_github_hook"`
-		ForceRepotrackerRun  bool                        `json:"force_repotracker_run"`
-		Subscriptions        []restModel.APISubscription `json:"subscriptions"`
-		DeleteSubscriptions  []string                    `json:"delete_subscriptions"`
-		Triggers             []model.TriggerDefinition   `json:"triggers"`
+		NotifyOnBuildFailure  bool                        `json:"notify_on_failure"`
+		SetupGithubHook       bool                        `json:"setup_github_hook"`
+		ForceRepotrackerRun   bool                        `json:"force_repotracker_run"`
+		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
+		DeleteSubscriptions   []string                    `json:"delete_subscriptions"`
+		Triggers              []model.TriggerDefinition   `json:"triggers"`
+		FilesIgnoredFromCache struct {
+			FilePatterns string `json:"file_patterns"`
+		} `json:"files_ignored_from_cache"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -284,6 +287,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
+	projectRef.FilesIgnoredFromCache.FilePatterns = responseRef.FilesIgnoredFromCache.FilePatterns
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {

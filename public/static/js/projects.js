@@ -293,6 +293,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           force_repotracker_run: false,
           delete_aliases: [],
           delete_subscriptions: [],
+          files_ignored_from_cache: {
+              file_patterns: data.ProjectRef.files_ignored_from_cache.file_patterns,
+          },
         };
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {

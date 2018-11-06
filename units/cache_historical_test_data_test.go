@@ -3,8 +3,12 @@ package units
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/model"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
@@ -120,7 +124,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 		},
 	}
 
-	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns)
+	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
 
 	s.Nil(err)
 
@@ -150,7 +154,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyErr
 		},
 	}
 
-	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns)
+	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
 
 	s.EqualError(err, errorMessage)
 }
@@ -177,7 +181,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError
 		},
 	}
 
-	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns)
+	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
 
 	s.EqualError(err, errorMessage)
 }
@@ -195,7 +199,7 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
 		return nil
 	}
 
-	err := iteratorOverHourlyStats(s.statsList, time.Now(), mockHourlyGenerateFn, "hourly")
+	err := iteratorOverHourlyStats(s.statsList, time.Now(), mockHourlyGenerateFn, "hourly", nil)
 	s.Nil(err)
 	s.Equal(len(s.statsList), callCount)
 }
@@ -221,7 +225,7 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
 		return nil
 	}
 
-	err := iteratorOverDailyStats(s.projectId, statsRollup, time.Now(), mockDailyGenerateFn, "daily")
+	err := iteratorOverDailyStats(s.projectId, statsRollup, time.Now(), mockDailyGenerateFn, "daily", nil)
 	s.Nil(err)
 	s.Equal(len(statsRollup), callCount)
 }
@@ -317,6 +321,12 @@ func (s *cacheHistoryTestDataSuite) TestDailyStatsRollupShouldGroupTasksByReques
 }
 
 func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
+	tasksToIgnore := [...]*regexp.Regexp{
+		regexp.MustCompile("jstestfuzz.*"),
+		regexp.MustCompile(".*fuzzer.*"),
+		regexp.MustCompile("concurrency_simultaneous.*"),
+	}
+
 	legitTasks := []string{
 		"task0",
 		"task1",
@@ -338,7 +348,7 @@ func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
 	taskList = append(taskList, moreLegitTasks...)
 	taskList = append(taskList, concurrencyTasks...)
 
-	filteredList := filterIgnoredTasks(taskList)
+	filteredList := filterIgnoredTasks(taskList, tasksToIgnore[:])
 
 	for _, t := range append(legitTasks, moreLegitTasks...) {
 		s.Contains(filteredList, t)
@@ -349,10 +359,60 @@ func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
 	}
 }
 
+func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexList() {
+	patterns := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
+	patternList := strings.Join(patterns[:], ",")
+
+	regexpList, err := splitPatternStringToRegexList(patternList)
+	s.Nil(err)
+
+	s.Equal(3, len(regexpList))
+}
+
+func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexListWithEmptyList() {
+	patternList := ""
+
+	regexpList, err := splitPatternStringToRegexList(patternList)
+	s.Nil(err)
+
+	s.Equal(0, len(regexpList))
+}
+
+func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexListWithExtraComma() {
+	patterns := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
+	patternList := strings.Join(patterns[:], ",") + ","
+
+	regexpList, err := splitPatternStringToRegexList(patternList)
+	s.Nil(err)
+
+	s.Equal(3, len(regexpList))
+}
+
+func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexListWithExtraSpaces() {
+	patterns := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
+	patternList := strings.Join(patterns[:], " , ")
+
+	regexpList, err := splitPatternStringToRegexList(patternList)
+	s.Nil(err)
+
+	s.Equal(3, len(regexpList))
+}
+
 func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	clearStatsData(s.Suite)
 
 	baseTime := time.Now().Add(-4*7*24*time.Hour + 2*time.Hour)
+
+	ref := &model.ProjectRef{
+		Repo:       "evergreen",
+		Owner:      "evergreen-ci",
+		Identifier: s.projectId,
+		Branch:     "master",
+		RemotePath: "self-tests.yml",
+		RepoKind:   "github",
+		Enabled:    true,
+	}
+	ref.Insert()
 
 	s.createTestData(baseTime)
 

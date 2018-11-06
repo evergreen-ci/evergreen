@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/model"
 
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/mongodb/amboy"
@@ -20,12 +23,6 @@ const (
 	cacheHistoricalTestDataName = "cache-historical-test-data"
 	maxSyncDuration             = time.Hour * 24 * 7 // one week
 )
-
-var tasksToIgnore = [...]*regexp.Regexp{
-	regexp.MustCompile("jstestfuzz.*"),
-	regexp.MustCompile(".*fuzzer.*"),
-	regexp.MustCompile("concurrency_simultaneous.*"),
-}
 
 func init() {
 	registry.AddJobType(cacheHistoricalTestDataName,
@@ -85,6 +82,14 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		}
 	}
 
+	tasksToIgnore, err := getTasksToIgnore(j.ProjectId)
+	if err != nil {
+		if err != nil {
+			j.AddError(errors.Wrap(err, "error retrieving project settings"))
+			return
+		}
+	}
+
 	syncFromTime := statsStatus.ProcessedTasksUntil
 	syncToTime := findTargetTimeForSync(syncFromTime)
 	jobTime := time.Now()
@@ -110,7 +115,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		},
 	}
 
-	err = updateHourlyAndDailyStats(projectId, statsToUpdate, jobTime, generateMap)
+	err = updateHourlyAndDailyStats(projectId, statsToUpdate, jobTime, generateMap, tasksToIgnore)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error generating hourly test stats"))
 		return
@@ -130,10 +135,42 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	})
 }
 
+func getTasksToIgnore(projectId string) ([]*regexp.Regexp, error) {
+	ref, err := model.FindOneProjectRef(projectId)
+	if err != nil {
+		return nil, err
+	}
+
+	filePatternsStr := ref.FilesIgnoredFromCache.FilePatterns
+
+	return splitPatternStringToRegexList(filePatternsStr)
+}
+
+func splitPatternStringToRegexList(filePatternsStr string) ([]*regexp.Regexp, error) {
+	filePatterns := strings.Split(filePatternsStr, ",")
+
+	var tasksToIgnore []*regexp.Regexp
+	for _, patternStr := range filePatterns {
+		pattern := strings.Trim(patternStr, " ")
+		if pattern != "" {
+			regexp, err := regexp.Compile(pattern)
+			if err != nil {
+				grip.Warning(message.Fields{
+					"message": fmt.Sprintf("Could not compile regexp from '%s'", pattern),
+				})
+				return nil, err
+			}
+			tasksToIgnore = append(tasksToIgnore, regexp)
+		}
+	}
+
+	return tasksToIgnore, nil
+}
+
 func updateHourlyAndDailyStats(projectId string, statsToUpdate []stats.StatsToUpdate,
-	jobTime time.Time, generateFns generateFunctions) error {
+	jobTime time.Time, generateFns generateFunctions, tasksToIgnore []*regexp.Regexp) error {
 	for name, genFn := range generateFns.HourlyFns {
-		err := iteratorOverHourlyStats(statsToUpdate, jobTime, genFn, name)
+		err := iteratorOverHourlyStats(statsToUpdate, jobTime, genFn, name, tasksToIgnore)
 		if err != nil {
 			return err
 		}
@@ -142,7 +179,7 @@ func updateHourlyAndDailyStats(projectId string, statsToUpdate []stats.StatsToUp
 	dailyStats := buildDailyStatsRollup(statsToUpdate)
 
 	for name, genFn := range generateFns.DailyFns {
-		err := iteratorOverDailyStats(projectId, dailyStats, jobTime, genFn, name)
+		err := iteratorOverDailyStats(projectId, dailyStats, jobTime, genFn, name, tasksToIgnore)
 		if err != nil {
 			return err
 		}
@@ -152,10 +189,10 @@ func updateHourlyAndDailyStats(projectId string, statsToUpdate []stats.StatsToUp
 }
 
 func iteratorOverDailyStats(projectId string, dailyStats dailyStatsRollup, jobTime time.Time,
-	fn generateStatsFn, displayName string) error {
+	fn generateStatsFn, displayName string, tasksToIgnore []*regexp.Regexp) error {
 	for day, stats := range dailyStats {
 		for requester, tasks := range stats {
-			taskList := filterIgnoredTasks(tasks)
+			taskList := filterIgnoredTasks(tasks, tasksToIgnore)
 			if len(taskList) > 0 {
 				err := fn(projectId, requester, day, taskList, jobTime)
 				if err != nil {
@@ -175,9 +212,9 @@ func iteratorOverDailyStats(projectId string, dailyStats dailyStatsRollup, jobTi
 }
 
 func iteratorOverHourlyStats(stats []stats.StatsToUpdate, jobTime time.Time, fn generateStatsFn,
-	displayName string) error {
+	displayName string, tasksToIgnore []*regexp.Regexp) error {
 	for _, stat := range stats {
-		taskList := filterIgnoredTasks(stat.Tasks)
+		taskList := filterIgnoredTasks(stat.Tasks, tasksToIgnore)
 		if len(taskList) > 0 {
 			err := fn(stat.ProjectId, stat.Requester, stat.Hour, taskList, jobTime)
 			if err != nil {
@@ -197,10 +234,10 @@ func iteratorOverHourlyStats(stats []stats.StatsToUpdate, jobTime time.Time, fn 
 
 // Certain tasks always generate unique names, so they will never have any history. Filter out
 // those tasks, so we don't waste time/space tracking them.
-func filterIgnoredTasks(taskList []string) []string {
+func filterIgnoredTasks(taskList []string, tasksToIgnore []*regexp.Regexp) []string {
 	var filteredTaskList []string
 	for _, task := range taskList {
-		if !anyRegexMatch(task, tasksToIgnore[:]) {
+		if !anyRegexMatch(task, tasksToIgnore) {
 			filteredTaskList = append(filteredTaskList, task)
 		}
 	}

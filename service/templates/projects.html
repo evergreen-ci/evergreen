@@ -546,6 +546,19 @@ Evergreen Projects
           </div>
         </div>
 
+        <div id="caching-info">
+            <div class="h3">Historical Data Caching Info </div>
+            <div class="muted small">Comma-separated list of regular expression patterns that specify test filenames to ignore when caching test and task history.</div>
+            <div class="form-group">
+                <div class="col-lg-3 col-header">
+                    <label class="control-label">File patterns to ignore</label>
+                </div>
+                <div class="col-lg-5">
+                    <input class="form-control" type="text" ng-model="settingsFormData.files_ignored_from_cache.file_patterns" ng-change="repoChange()">
+                </div>
+            </div>
+        </div>
+
         <br/>
 
         <div class="row">
