@@ -412,7 +412,8 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		RepoKind:   "github",
 		Enabled:    true,
 	}
-	ref.Insert()
+	err := ref.Insert()
+	s.Nil(err)
 
 	s.createTestData(baseTime)
 
