@@ -74,6 +74,7 @@ func TestHostPaginator(t *testing.T) {
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
 							Provider: model.ToAPIString(""),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
@@ -111,6 +112,7 @@ func TestHostPaginator(t *testing.T) {
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
 							Provider: model.ToAPIString(""),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
@@ -149,6 +151,7 @@ func TestHostPaginator(t *testing.T) {
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
 							Provider: model.ToAPIString(""),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
@@ -186,6 +189,7 @@ func TestHostPaginator(t *testing.T) {
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
 							Provider: model.ToAPIString(""),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
