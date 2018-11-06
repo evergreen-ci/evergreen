@@ -64,8 +64,9 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound,
 			gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("project '%s' is not found", id),
+				Message:    fmt.Sprintf("project '%s' is not found", data.Project),
 			})
+		return
 	}
 
 	if pref.PatchingDisabled || !pref.Enabled {
