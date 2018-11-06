@@ -669,7 +669,7 @@ func CacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfMinute(part).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {

@@ -3,8 +3,11 @@ package units
 import (
 	"context"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -134,10 +137,8 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyError() {
 	now := time.Now()
-	errorMessage := "error message"
-
 	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
-		return fmt.Errorf(errorMessage)
+		return fmt.Errorf("error message")
 	}
 
 	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
@@ -156,19 +157,17 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyErr
 
 	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
 
-	s.EqualError(err, errorMessage)
+	s.Error(err)
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError() {
 	now := time.Now()
-	errorMessage := "error message"
-
 	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		return nil
 	}
 
 	mockFn1 := func(p string, r string, d time.Time, ts []string, jobTime time.Time) error {
-		return fmt.Errorf(errorMessage)
+		return fmt.Errorf("error message")
 	}
 
 	mockGenFns := generateFunctions{
@@ -183,7 +182,7 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError
 
 	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
 
-	s.EqualError(err, errorMessage)
+	s.Error(err)
 }
 
 func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
@@ -360,46 +359,26 @@ func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
 }
 
 func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexList() {
-	patterns := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
-	patternList := strings.Join(patterns[:], ",")
+	patternList := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
 
-	regexpList, err := splitPatternStringToRegexList(patternList)
+	regexpList, err := createRegexpFromStrings(patternList[:])
 	s.Nil(err)
 
 	s.Equal(3, len(regexpList))
 }
 
 func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexListWithEmptyList() {
-	patternList := ""
+	patternList := [...]string{}
 
-	regexpList, err := splitPatternStringToRegexList(patternList)
+	regexpList, err := createRegexpFromStrings(patternList[:])
 	s.Nil(err)
 
 	s.Equal(0, len(regexpList))
 }
 
-func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexListWithExtraComma() {
-	patterns := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
-	patternList := strings.Join(patterns[:], ",") + ","
-
-	regexpList, err := splitPatternStringToRegexList(patternList)
-	s.Nil(err)
-
-	s.Equal(3, len(regexpList))
-}
-
-func (s *cacheHistoryTestDataSuite) TestSplitPatternsStringToRegexListWithExtraSpaces() {
-	patterns := [...]string{".*.js", ".*fuzzer.*", "concurrency_tests"}
-	patternList := strings.Join(patterns[:], " , ")
-
-	regexpList, err := splitPatternStringToRegexList(patternList)
-	s.Nil(err)
-
-	s.Equal(3, len(regexpList))
-}
-
 func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
-	clearStatsData(s.Suite)
+	err := clearStatsData()
+	s.Nil(err)
 
 	baseTime := time.Now().Add(-4*7*24*time.Hour + 2*time.Hour)
 
@@ -412,7 +391,7 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 		RepoKind:   "github",
 		Enabled:    true,
 	}
-	err := ref.Insert()
+	err = ref.Insert()
 	s.Nil(err)
 
 	s.createTestData(baseTime)
@@ -421,17 +400,17 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	job.Run(context.Background())
 	s.NoError(job.Error())
 
-	doc := modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test1.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
+	doc := modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test0.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
 	s.NotNil(doc)
 	s.Equal(2, doc.NumFail)
 	s.Equal(0, doc.NumPass)
 
-	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test2.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
+	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test1.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
 	s.NotNil(doc)
 	s.Equal(1, doc.NumFail)
 	s.Equal(1, doc.NumPass)
 
-	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test3.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
+	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test2.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
 	s.NotNil(doc)
 	s.Equal(0, doc.NumFail)
 	s.Equal(2, doc.NumPass)
@@ -443,29 +422,76 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 
 	taskName := "taskName"
 
-	task0 := modelUtil.InsertFinishedTask(s.Suite, s.projectId, s.requester, taskName, t0, t0.Add(30*time.Minute), 1)
-	modelUtil.InsertTestResult(s.Suite, task0.Id, 1, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, task0.Id, 1, "test2.js", "pass", 120)
-	modelUtil.InsertTestResult(s.Suite, task0.Id, 1, "test3.js", "pass", 10)
+	testStatusList := [...][]string{
+		{
+			"fail",
+			"pass",
+			"pass",
+		},
+		{
+			"fail",
+			"fail",
+			"pass",
+		},
+	}
+	testStartTime := time.Now()
 
-	task1 := modelUtil.InsertFinishedTask(s.Suite, s.projectId, s.requester, taskName, t1, t1.Add(30*time.Minute), 2)
-	modelUtil.InsertTestResult(s.Suite, task1.Id, 2, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, task1.Id, 2, "test2.js", "fail", 120)
-	modelUtil.InsertTestResult(s.Suite, task1.Id, 2, "test3.js", "pass", 10)
+	taskList := [...]task.Task{
+		{
+			Id: 	   bson.NewObjectId().Hex(),
+			DisplayName: taskName,
+			Project: s.projectId,
+			Requester: s.requester,
+			CreateTime: t0,
+			FinishTime: t0.Add(30 * time.Minute),
+			Execution: 1,
+		},
+		{
+			Id: 	   bson.NewObjectId().Hex(),
+			DisplayName: taskName,
+			Project: s.projectId,
+			Requester: s.requester,
+			CreateTime: t1,
+			FinishTime: t1.Add(30 * time.Minute),
+			Execution: 2,
+		},
+	}
+	for i, task := range taskList {
+		err := task.Insert()
+		s.Nil(err)
+
+		for j, testStatus := range testStatusList[i] {
+			testResult := testresult.TestResult{
+				TaskID:    task.Id,
+				Execution: task.Execution,
+				TestFile:  fmt.Sprintf("test%d.js", j),
+				Status:    testStatus,
+				StartTime: float64(testStartTime.Unix()),
+				EndTime:   float64(testStartTime.Add(time.Duration(30) * time.Second).Unix()),
+			}
+			err := testResult.Insert()
+			s.Nil(err)
+		}
+	}
 }
 
-func clearStatsData(s suite.Suite) {
+func clearStatsData() error {
 	collectionsToClear := [...]string{
 		"hourly_test_stats",
 		"daily_test_stats",
 		"daily_task_stats",
 		"tasks",
 		"old_tasks",
-		"test_results",
+		"testresults",
 		"daily_stats_status",
 	}
 
 	for _, coll := range collectionsToClear {
-		modelUtil.ClearCollection(s, coll)
+		err := db.Clear(coll)
+		if err != nil {
+			return errors.Wrap(err, "Could not clear db")
+		}
 	}
+
+	return nil
 }

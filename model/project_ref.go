@@ -50,7 +50,8 @@ type ProjectRef struct {
 	// between what is in GitHub and what is in Evergreen
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
 
-	FilesIgnoredFromCache FilesIgnoredFromCache `bson:"files_ignored_from_cache" json:"files_ignored_from_cache"`
+	// List of regular expressions describing files to ignore when caching historical test results
+	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache" json:"files_ignored_from_cache"`
 
 	Triggers []TriggerDefinition `bson:"triggers,omitempty" json:"triggers,omitempty"`
 }
@@ -61,10 +62,6 @@ type RepositoryErrorDetails struct {
 	Exists            bool   `bson:"exists" json:"exists"`
 	InvalidRevision   string `bson:"invalid_revision" json:"invalid_revision"`
 	MergeBaseRevision string `bson:"merge_base_revision" json:"merge_base_revision"`
-}
-
-type FilesIgnoredFromCache struct {
-	FilePatterns string `bson:"file_patterns" json:"file_patterns"`
 }
 
 type AlertConfig struct {

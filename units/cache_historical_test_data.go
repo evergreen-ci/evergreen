@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -36,7 +35,7 @@ type cacheHistoricalTestDataJob struct {
 
 type dailyStatsRollup map[time.Time]map[string][]string
 
-type generateStatsFn func(string, string, time.Time, []string, time.Time) error
+type generateStatsFn func(projectId string, requester string, timePeriod time.Time, tasks []string, jobDate time.Time) error
 type generateFunctions struct {
 	HourlyFns map[string]generateStatsFn
 	DailyFns  map[string]generateStatsFn
@@ -45,7 +44,7 @@ type generateFunctions struct {
 func NewCacheHistoricalTestDataJob(projectId string, id string) amboy.Job {
 	j := makeCacheHistoricalTestDataJob()
 	j.ProjectId = projectId
-	j.SetID(fmt.Sprintf("%s-%s-%s", cacheHistoricalTestDataName, projectId, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", cacheHistoricalTestDataName, projectId, id))
 	return j
 }
 
@@ -65,16 +64,8 @@ func makeCacheHistoricalTestDataJob() *cacheHistoricalTestDataJob {
 func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	projectId := j.ProjectId
-
-	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"project_id": projectId,
-		"message":    "starting job",
-	})
-
 	// Lookup last sync date for project
-	statsStatus, err := stats.GetStatsStatus(projectId)
+	statsStatus, err := stats.GetStatsStatus(j.ProjectId)
 	if err != nil {
 		if err != nil {
 			j.AddError(errors.Wrap(err, "error retrieving last sync date"))
@@ -99,7 +90,7 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		"message": fmt.Sprintf("Syncing data between %v - %v", syncFromTime, syncToTime),
 	})
 
-	statsToUpdate, err := stats.FindStatsToUpdate(projectId, syncFromTime, syncToTime)
+	statsToUpdate, err := stats.FindStatsToUpdate(j.ProjectId, syncFromTime, syncToTime)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding tasks to update"))
 		return
@@ -115,50 +106,40 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		},
 	}
 
-	err = updateHourlyAndDailyStats(projectId, statsToUpdate, jobTime, generateMap, tasksToIgnore)
+	err = updateHourlyAndDailyStats(j.ProjectId, statsToUpdate, jobTime, generateMap, tasksToIgnore)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error generating hourly test stats"))
 		return
 	}
 
 	// update last sync
-	err = stats.UpdateStatsStatus(projectId, jobTime, syncToTime)
+	err = stats.UpdateStatsStatus(j.ProjectId, jobTime, syncToTime)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
 		return
 	}
-
-	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"project_id": projectId,
-		"message":    "job completed",
-	})
 }
 
 func getTasksToIgnore(projectId string) ([]*regexp.Regexp, error) {
 	ref, err := model.FindOneProjectRef(projectId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Could not get project ref")
 	}
 
-	filePatternsStr := ref.FilesIgnoredFromCache.FilePatterns
+	filePatternsStr := ref.FilesIgnoredFromCache
 
-	return splitPatternStringToRegexList(filePatternsStr)
+	return createRegexpFromStrings(filePatternsStr)
 }
 
-func splitPatternStringToRegexList(filePatternsStr string) ([]*regexp.Regexp, error) {
-	filePatterns := strings.Split(filePatternsStr, ",")
-
+func createRegexpFromStrings(filePatterns []string) ([]*regexp.Regexp, error) {
 	var tasksToIgnore []*regexp.Regexp
 	for _, patternStr := range filePatterns {
 		pattern := strings.Trim(patternStr, " ")
 		if pattern != "" {
 			regexp, err := regexp.Compile(pattern)
 			if err != nil {
-				grip.Warning(message.Fields{
-					"message": fmt.Sprintf("Could not compile regexp from '%s'", pattern),
-				})
-				return nil, err
+				grip.Warningf("Could not compile regexp from '%s'", pattern)
+				return nil, errors.Wrap(err, "Could not compile regexp")
 			}
 			tasksToIgnore = append(tasksToIgnore, regexp)
 		}
@@ -197,12 +178,13 @@ func iteratorOverDailyStats(projectId string, dailyStats dailyStatsRollup, jobTi
 				err := fn(projectId, requester, day, taskList, jobTime)
 				if err != nil {
 					grip.Info(message.Fields{
-						"project_id": projectId,
-						"sync_date":  day,
-						"job_time":   jobTime,
-						"message":    fmt.Sprintf("error syncing daily %v stats", displayName),
+						"project_id":   projectId,
+						"sync_date":    day,
+						"job_time":     jobTime,
+						"display_name": displayName,
+						"message":      "error syncing daily stats",
 					})
-					return err
+					return errors.Wrap(err, "Could not sync daily stats")
 				}
 			}
 		}
@@ -219,12 +201,13 @@ func iteratorOverHourlyStats(stats []stats.StatsToUpdate, jobTime time.Time, fn 
 			err := fn(stat.ProjectId, stat.Requester, stat.Hour, taskList, jobTime)
 			if err != nil {
 				grip.Info(message.Fields{
-					"project_id": stat.ProjectId,
-					"sync_date":  stat.Hour,
-					"job_time":   jobTime,
-					"message":    fmt.Sprintf("error syncing hourly %v stats", displayName),
+					"project_id":   stat.ProjectId,
+					"sync_date":    stat.Hour,
+					"job_time":     jobTime,
+					"display_name": displayName,
+					"message":      "error syncing hourly stats",
 				})
-				return err
+				return errors.Wrap(err, "Could not sync hourly stats")
 			}
 		}
 	}

@@ -201,9 +201,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Subscriptions         []restModel.APISubscription `json:"subscriptions"`
 		DeleteSubscriptions   []string                    `json:"delete_subscriptions"`
 		Triggers              []model.TriggerDefinition   `json:"triggers"`
-		FilesIgnoredFromCache struct {
-			FilePatterns string `json:"file_patterns"`
-		} `json:"files_ignored_from_cache"`
+		FilesIgnoredFromCache []string                    `json:"files_ignored_from_cache"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -287,7 +285,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
-	projectRef.FilesIgnoredFromCache.FilePatterns = responseRef.FilesIgnoredFromCache.FilePatterns
+	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {

@@ -1,9 +1,11 @@
 package stats
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -36,13 +38,20 @@ func (s *statsSuite) SetupSuite() {
 }
 
 func (s *statsSuite) SetupTest() {
-	modelUtil.ClearCollection(s.Suite, hourlyTestStatsCollection)
-	modelUtil.ClearCollection(s.Suite, dailyTestStatsCollection)
-	modelUtil.ClearCollection(s.Suite, dailyStatsStatusCollection)
-	modelUtil.ClearCollection(s.Suite, dailyTaskStatsCollection)
-	modelUtil.ClearCollection(s.Suite, task.Collection)
-	modelUtil.ClearCollection(s.Suite, task.OldCollection)
-	modelUtil.ClearCollection(s.Suite, testresult.Collection)
+	collectionsToClear := [...]string{
+		hourlyTestStatsCollection,
+		dailyTestStatsCollection,
+		dailyStatsStatusCollection,
+		dailyTaskStatsCollection,
+		task.Collection,
+		task.OldCollection,
+		testresult.Collection,
+	}
+
+	for _, coll := range collectionsToClear {
+		err := db.Clear(coll)
+		s.Nil(err)
+	}
 }
 
 func (s *statsSuite) TestStatsStatus() {
@@ -340,80 +349,205 @@ func (s *statsSuite) insertHourlyTestStats(project string, requester string, tes
 	s.Require().NoError(err)
 }
 
+type taskStatus struct {
+	Status         string
+	DetailsType    string
+	DetailsTimeout bool
+	TimeTaken      time.Duration
+}
+
 func (s *statsSuite) initTasks() {
 	t0 := baseTime
 	t0plus10m := baseTime.Add(10 * time.Minute)
 	t0plus1h := baseTime.Add(time.Hour)
 	t0min10m := baseTime.Add(-10 * time.Minute)
 	t0min1h := baseTime.Add(-1 * time.Hour)
+	success100 := taskStatus{"success", "test", false, 100 * 1000 * 1000 * 1000}
+	success200 := taskStatus{"success", "test", false, 200 * 1000 * 1000 * 1000}
+	testFailed := taskStatus{"failed", "test", false, 20}
+	timeout := taskStatus{"failed", "test", true, 100}
+	setupFailed := taskStatus{"failed", "setup", false, 10}
+	systemFailed := taskStatus{"failed", "system", false, 10}
 
 	// Task
-	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_1", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_1", 0, "test2.js", "fail", 120)
-	modelUtil.InsertTestResult(s.Suite, "task_id_1", 0, "test3.js", "pass", 10)
+	s.insertTask("p1", "r1", "task_id_1", 0, "task1", "v1", "d1", t0, testFailed)
+	s.insertTestResult("task_id_1", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_1", 0, "test2.js", "fail", 120)
+	s.insertTestResult("task_id_1", 0, "test3.js", "pass", 10)
 	// Task on variant v2
-	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_2", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_2", 0, "test2.js", "fail", 120)
+	s.insertTask("p1", "r1", "task_id_2", 0, "task1", "v2", "d1", t0, testFailed)
+	s.insertTestResult("task_id_2", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_2", 0, "test2.js", "fail", 120)
 	// Task with different task name
-	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_3", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_3", 0, "test2.js", "fail", 120)
+	s.insertTask("p1", "r1", "task_id_3", 0, "task2", "v1", "d1", t0, testFailed)
+	s.insertTestResult("task_id_3", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_3", 0, "test2.js", "fail", 120)
 	// Task 10 minutes later
-	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_4", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_4", 0, "test2.js", "pass", 120)
-	modelUtil.InsertTestResult(s.Suite, "task_id_4", 0, "test3.js", "pass", 15)
+	s.insertTask("p1", "r1", "task_id_4", 0, "task1", "v1", "d1", t0plus10m, testFailed)
+	s.insertTestResult("task_id_4", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_4", 0, "test2.js", "pass", 120)
+	s.insertTestResult("task_id_4", 0, "test3.js", "pass", 15)
 	// Task 1 hour later
-	modelUtil.InsertTask(s.Suite, "p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_5", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_5", 0, "test2.js", "fail", 120)
+	s.insertTask("p1", "r1", "task_id_5", 0, "task1", "v1", "d1", t0plus1h, testFailed)
+	s.insertTestResult("task_id_5", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_5", 0, "test2.js", "fail", 120)
 	// Task different requester
-	modelUtil.InsertTask(s.Suite, "p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_6", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_6", 0, "test2.js", "fail", 120)
+	s.insertTask("p1", "r2", "task_id_6", 0, "task1", "v1", "d1", t0, testFailed)
+	s.insertTestResult("task_id_6", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_6", 0, "test2.js", "fail", 120)
 	// Task different project
-	modelUtil.InsertTask(s.Suite, "p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_7", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_7", 0, "test2.js", "fail", 120)
+	s.insertTask("p2", "r1", "task_id_7", 0, "task1", "v1", "d1", t0, testFailed)
+	s.insertTestResult("task_id_7", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_7", 0, "test2.js", "fail", 120)
 	// Task with old executions.
-	modelUtil.InsertTask(s.Suite, "p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_8", 2, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_8", 2, "test2.js", "fail", 120)
-	modelUtil.InsertOldTask(s.Suite, "p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_8", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_8", 0, "test2.js", "pass", 120)
-	modelUtil.InsertTestResult(s.Suite, "task_id_8", 0, "testOld.js", "fail", 120)
-	modelUtil.InsertOldTask(s.Suite, "p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, modelUtil.Success100)
-	modelUtil.InsertTestResult(s.Suite, "task_id_8", 1, "test1.js", "pass", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_8", 1, "test2.js", "pass", 120)
+	s.insertTask("p2", "r1", "task_id_8", 2, "task1", "v1", "d1", t0plus10m, testFailed)
+	s.insertTestResult("task_id_8", 2, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_8", 2, "test2.js", "fail", 120)
+	s.insertOldTask("p2", "r1", "task_id_8", 0, "task1", "v1", "d1", t0min10m, testFailed)
+	s.insertTestResult("task_id_8", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_8", 0, "test2.js", "pass", 120)
+	s.insertTestResult("task_id_8", 0, "testOld.js", "fail", 120)
+	s.insertOldTask("p2", "r1", "task_id_8", 1, "task1", "v1", "d1", t0min1h, success100)
+	s.insertTestResult("task_id_8", 1, "test1.js", "pass", 60)
+	s.insertTestResult("task_id_8", 1, "test2.js", "pass", 120)
 	// Execution task
-	modelUtil.InsertTask(s.Suite, "p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTestResult(s.Suite, "task_id_9", 0, "test1.js", "fail", 60)
-	modelUtil.InsertTestResult(s.Suite, "task_id_9", 0, "test2.js", "pass", 120)
+	s.insertTask("p3", "r1", "task_id_9", 0, "task_exec_1", "v1", "d1", t0, testFailed)
+	s.insertTestResult("task_id_9", 0, "test1.js", "fail", 60)
+	s.insertTestResult("task_id_9", 0, "test2.js", "pass", 120)
 	// Display task
-	modelUtil.InsertDisplayTask(s.Suite, "p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, modelUtil.TestFailed, []string{"task_id_9"})
+	s.insertDisplayTask("p3", "r1", "task_id_10", 0, "task_display_1", "v1", "d1", t0, testFailed, []string{"task_id_9"})
 	// Project p4 used to test various task statuses
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_11", 0, "task1", "v1", "d1", t0, modelUtil.Success100)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_12", 0, "task1", "v1", "d1", t0, modelUtil.Success200)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_13", 0, "task1", "v1", "d1", t0, modelUtil.TestFailed)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_14", 0, "task1", "v1", "d1", t0, modelUtil.SystemFailed)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_15", 0, "task1", "v1", "d1", t0, modelUtil.SystemFailed)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_16", 0, "task1", "v1", "d1", t0, modelUtil.SetupFailed)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_17", 0, "task1", "v1", "d1", t0, modelUtil.SetupFailed)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_18", 0, "task1", "v1", "d1", t0, modelUtil.SetupFailed)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_19", 0, "task1", "v1", "d1", t0, modelUtil.Timeout)
-	modelUtil.InsertTask(s.Suite, "p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, modelUtil.Timeout)
+	s.insertTask("p4", "r1", "task_id_11", 0, "task1", "v1", "d1", t0, success100)
+	s.insertTask("p4", "r1", "task_id_12", 0, "task1", "v1", "d1", t0, success200)
+	s.insertTask("p4", "r1", "task_id_13", 0, "task1", "v1", "d1", t0, testFailed)
+	s.insertTask("p4", "r1", "task_id_14", 0, "task1", "v1", "d1", t0, systemFailed)
+	s.insertTask("p4", "r1", "task_id_15", 0, "task1", "v1", "d1", t0, systemFailed)
+	s.insertTask("p4", "r1", "task_id_16", 0, "task1", "v1", "d1", t0, setupFailed)
+	s.insertTask("p4", "r1", "task_id_17", 0, "task1", "v1", "d1", t0, setupFailed)
+	s.insertTask("p4", "r1", "task_id_18", 0, "task1", "v1", "d1", t0, setupFailed)
+	s.insertTask("p4", "r1", "task_id_19", 0, "task1", "v1", "d1", t0, timeout)
+	s.insertTask("p4", "r1", "task_id_20", 0, "task1", "v1", "d1", t0, timeout)
 }
 
 func (s *statsSuite) initTasksToUpdate() {
-	modelUtil.InsertFinishedTask(s.Suite, "p5", "r1", "task1", commit1, finish1, 0)
-	modelUtil.InsertFinishedTask(s.Suite, "p5", "r2", "task2", commit2, finish1, 0)
-	modelUtil.InsertFinishedTask(s.Suite, "p5", "r2", "task2bis", commit2, finish1, 0)
-	modelUtil.InsertFinishedOldTask(s.Suite, "p5", "r2", "task2old", commit2, finish1)
-	modelUtil.InsertFinishedTask(s.Suite, "p5", "r1", "task3", commit1, finish2, 0)
-	modelUtil.InsertFinishedTask(s.Suite, "p5", "r1", "task4", commit2, finish2, 0)
+	s.insertFinishedTask("p5", "r1", "task1", commit1, finish1)
+	s.insertFinishedTask("p5", "r2", "task2", commit2, finish1)
+	s.insertFinishedTask("p5", "r2", "task2bis", commit2, finish1)
+	s.insertFinishedOldTask("p5", "r2", "task2old", commit2, finish1)
+	s.insertFinishedTask("p5", "r1", "task3", commit1, finish2)
+	s.insertFinishedTask("p5", "r1", "task4", commit2, finish2)
+}
+
+func (s *statsSuite) insertTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus) {
+	details := apimodels.TaskEndDetail{
+		Status:   status.Status,
+		Type:     status.DetailsType,
+		TimedOut: status.DetailsTimeout,
+	}
+	newTask := task.Task{
+		Id:           taskId,
+		Execution:    execution,
+		Project:      project,
+		DisplayName:  taskName,
+		Requester:    requester,
+		BuildVariant: variant,
+		DistroId:     distro,
+		CreateTime:   createTime,
+		Status:       status.Status,
+		Details:      details,
+		TimeTaken:    status.TimeTaken,
+	}
+	err := newTask.Insert()
+	s.Require().NoError(err)
+}
+
+func (s *statsSuite) insertOldTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus) {
+	details := apimodels.TaskEndDetail{
+		Status:   status.Status,
+		Type:     status.DetailsType,
+		TimedOut: status.DetailsTimeout,
+	}
+	oldTaskId := taskId
+	taskId = taskId + "_" + strconv.Itoa(execution)
+	newTask := task.Task{
+		Id:           taskId,
+		Execution:    execution,
+		Project:      project,
+		DisplayName:  taskName,
+		Requester:    requester,
+		BuildVariant: variant,
+		DistroId:     distro,
+		CreateTime:   createTime,
+		Status:       status.Status,
+		Details:      details,
+		TimeTaken:    status.TimeTaken,
+		OldTaskId:    oldTaskId}
+	err := db.Insert(task.OldCollection, &newTask)
+	s.Require().NoError(err)
+}
+
+func (s *statsSuite) insertDisplayTask(project string, requester string, taskId string, execution int, taskName string, variant string, distro string, createTime time.Time, status taskStatus, executionTasks []string) {
+	details := apimodels.TaskEndDetail{
+		Status:   status.Status,
+		Type:     status.DetailsType,
+		TimedOut: status.DetailsTimeout,
+	}
+	newTask := task.Task{
+		Id:             taskId,
+		Execution:      execution,
+		Project:        project,
+		DisplayName:    taskName,
+		Requester:      requester,
+		BuildVariant:   variant,
+		DistroId:       distro,
+		CreateTime:     createTime,
+		Status:         status.Status,
+		Details:        details,
+		TimeTaken:      status.TimeTaken,
+		ExecutionTasks: executionTasks}
+	err := newTask.Insert()
+	s.Require().NoError(err)
+}
+
+func (s *statsSuite) insertTestResult(taskId string, execution int, testFile string, status string, durationSeconds int) {
+	startTime := time.Now()
+	endTime := startTime.Add(time.Duration(durationSeconds) * time.Second)
+	newTestResult := testresult.TestResult{
+		TaskID:    taskId,
+		Execution: execution,
+		TestFile:  testFile,
+		Status:    status,
+		StartTime: float64(startTime.Unix()),
+		EndTime:   float64(endTime.Unix()),
+	}
+	err := newTestResult.Insert()
+	s.Require().NoError(err)
+}
+
+func (s *statsSuite) insertFinishedTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
+	newTask := task.Task{
+		Id:          bson.NewObjectId().Hex(),
+		DisplayName: taskName,
+		Project:     project,
+		Requester:   requester,
+		CreateTime:  createTime,
+		FinishTime:  finishTime,
+	}
+	err := newTask.Insert()
+	s.Require().NoError(err)
+}
+
+func (s *statsSuite) insertFinishedOldTask(project string, requester string, taskName string, createTime time.Time, finishTime time.Time) {
+	newTask := task.Task{
+		Id:          bson.NewObjectId().String(),
+		DisplayName: taskName,
+		Project:     project,
+		Requester:   requester,
+		CreateTime:  createTime,
+		FinishTime:  finishTime,
+	}
+	err := db.Insert(task.OldCollection, &newTask)
+	s.Require().NoError(err)
 }
 
 func createTestStatsId(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) bson.D {
