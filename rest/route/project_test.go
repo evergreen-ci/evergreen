@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -111,4 +112,101 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
 	s.NoError(err)
 	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests project create route
+type ProjectCreateSuite struct {
+	sc *data.MockConnector
+	h  *projectCreateHandler
+
+	suite.Suite
+}
+
+func TestProjectCreateSuite(t *testing.T) {
+	suite.Run(t, new(ProjectCreateSuite))
+}
+
+func (s *ProjectCreateSuite) SetupTest() {
+	s.sc = &data.MockConnector{}
+	s.h = &projectCreateHandler{sc: s.sc}
+}
+
+func (s *ProjectCreateSuite) TestRoute() {
+	payloadBytes, _ := json.Marshal(map[string]interface{}{
+		"identifier":  "id",
+		"branch_name": "branch",
+	})
+
+	payload := bytes.NewBuffer(payloadBytes)
+
+	r, err := http.NewRequest(
+		"PUT",
+		"https://evergreen.mongodb.com/rest/v2/projects/",
+		payload,
+	)
+
+	s.Require().NoError(err)
+	ctx := context.Background()
+	err = s.h.Parse(ctx, r)
+	s.NoError(err)
+	s.Equal("id", model.FromAPIString(s.h.projectRef.Identifier))
+	s.Equal("branch", model.FromAPIString(s.h.projectRef.Branch))
+
+	resp := s.h.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusCreated, resp.Status())
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests project update route
+type ProjectUpdateSuite struct {
+	sc *data.MockConnector
+	h  *projectUpdateHandler
+
+	suite.Suite
+}
+
+func TestProjectUpdateSuite(t *testing.T) {
+	suite.Run(t, new(ProjectUpdateSuite))
+}
+
+func (s *ProjectUpdateSuite) SetupTest() {
+	s.sc = &data.MockConnector{}
+	s.h = &projectUpdateHandler{sc: s.sc}
+}
+
+func (s *ProjectUpdateSuite) TestRoute() {
+	payloadBytes, _ := json.Marshal(map[string]interface{}{
+		"identifier":  "id",
+		"branch_name": "branch",
+	})
+
+	payload := bytes.NewBuffer(payloadBytes)
+
+	ctx := context.Background()
+
+	r, err := http.NewRequest(
+		"PATCH",
+		"https://evergreen.mongodb.com/rest/v2/projects/actual_id",
+		payload,
+	)
+	r = r.WithContext(ctx)
+	// TODO this requires newer mux
+	//r = mux.SetURLVars(r, map[string]string{"project_id": "actual_id"})
+
+	s.Require().NoError(err)
+	err = s.h.Parse(ctx, r)
+	s.NoError(err)
+	// TODO blocked by mux update
+	//s.Equal("actual_id", model.FromAPIString(s.h.projectRef.Identifier))
+	s.Equal("branch", model.FromAPIString(s.h.projectRef.Branch))
+	s.Equal(2, len(*s.h.keys))
+	s.Subset([]string{"identifier", "branch_name"}, *s.h.keys)
+
+	resp := s.h.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 }

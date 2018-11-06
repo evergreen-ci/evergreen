@@ -1,7 +1,9 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -184,4 +187,139 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(versions)
+}
+
+/*
+ * Creates project (project_ref)
+ * PUT: /rest/v2/projects/
+ * Perm: checkUser
+ */
+type projectCreateHandler struct {
+	projectRef *model.APIProjectRef
+
+	sc data.Connector
+}
+
+func makeProjectCreateRoute(sc data.Connector) gimlet.RouteHandler {
+	return &projectCreateHandler{sc: sc}
+}
+
+func (h *projectCreateHandler) Factory() gimlet.RouteHandler {
+	return &projectCreateHandler{sc: h.sc}
+}
+
+func (h *projectCreateHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, &h.projectRef); err != nil {
+		return errors.Wrap(err, "Cannot parse the content as JSON!")
+	}
+
+	return nil
+}
+
+func (h *projectCreateHandler) Run(ctx context.Context) gimlet.Responder {
+	createdProject, err := h.sc.CreateProject(h.projectRef)
+
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Cannot create project!"))
+	}
+
+	apiProject := &model.APIProject{}
+	// The method doesn't accept pointers, we have to dereference it first
+	err = apiProject.BuildFromService(*createdProject)
+
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "problem converting project document",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+
+	resp := gimlet.NewJSONResponse(apiProject)
+	resp.SetStatus(http.StatusCreated)
+	return resp
+}
+
+/*
+ * Updates project (project_ref) with given identifier
+ * PATCH: /rest/v2/projects/{project_id}
+ * Perm: checkUser
+ */
+type projectUpdateHandler struct {
+	projectRef *model.APIProjectRef
+	keys       *[]string
+
+	sc data.Connector
+}
+
+func makeProjectUpdateRoute(sc data.Connector) gimlet.RouteHandler {
+	return &projectUpdateHandler{sc: sc}
+}
+
+func (h *projectUpdateHandler) Factory() gimlet.RouteHandler {
+	return &projectUpdateHandler{sc: h.sc}
+}
+
+func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error {
+	// Read raw bytes from request body
+	body := util.NewRequestReader(r)
+	bodyBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		return errors.Wrap(err, "Unable to read request body!")
+	}
+	body.Close()
+
+	// Construct body copy and read JSON into projectRef model
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	body = util.NewRequestReader(r)
+	if err := util.ReadJSONInto(body, &h.projectRef); err != nil {
+		return errors.Wrap(err, "JSON format or content is invalid!")
+	}
+	body.Close()
+
+	// Construct body copy and read JSON into payload map
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	body = util.NewRequestReader(r)
+	var payload map[string]interface{}
+	if err := util.ReadJSONInto(body, &payload); err != nil {
+		return errors.Wrap(err, "JSON format or content is invalid!")
+	}
+	body.Close()
+
+	// Read keys names from payload
+	keys := make([]string, len(payload))
+	i := 0
+	for k := range payload {
+		keys[i] = k
+		i++
+	}
+	h.keys = &keys
+
+	// Set proper ID (from URL param)
+	h.projectRef.Identifier = model.ToAPIString(gimlet.GetVars(r)["project_id"])
+	return nil
+}
+
+func (h *projectUpdateHandler) Run(ctx context.Context) gimlet.Responder {
+	updatedProject, err := h.sc.UpdateProject(h.projectRef, h.keys)
+
+	if err != nil {
+		// Don't expose error code in order to keep project names in secret
+		return gimlet.MakeJSONErrorResponder(errors.New("Cannot update project!"))
+	}
+
+	apiProject := &model.APIProject{}
+	// The method doesn't accept pointers, we have to dereference it first
+	err = apiProject.BuildFromService(*updatedProject)
+
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "problem converting project document",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+
+	return gimlet.NewJSONResponse(apiProject)
 }

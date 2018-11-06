@@ -2,6 +2,7 @@ package data
 
 import (
 	"github.com/evergreen-ci/evergreen/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 )
 
@@ -17,6 +18,28 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, i
 	}
 
 	return projects, nil
+}
+
+func (pc *DBProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
+	projectRef, _ := apiProjectRef.ToService()
+
+	if err := projectRef.Insert(); err != nil {
+		return nil, errors.Wrapf(err, "Cannot insert project_ref into DB!")
+	}
+
+	return model.FindOneProjectRef(projectRef.Identifier)
+}
+
+func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef, keys *[]string) (*model.ProjectRef, error) {
+	projectRef, _ := apiProjectRef.ToService()
+	// Store project ID
+	id := projectRef.Identifier
+
+	if err := projectRef.Update(keys); err != nil {
+		return nil, errors.Wrapf(err, "Cannot update project_ref into DB!")
+	}
+
+	return model.FindOneProjectRef(id)
 }
 
 // MockPatchConnector is a struct that implements the Patch related methods
@@ -54,4 +77,13 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int,
 		}
 	}
 	return projects, nil
+}
+
+func (pc *MockProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
+	return &model.ProjectRef{Identifier: "test"}, nil
+}
+
+func (pc *MockProjectConnector) UpdateProject(
+	apiProjectRef *restModel.APIProjectRef, keys *[]string) (*model.ProjectRef, error) {
+	return &model.ProjectRef{Identifier: "test"}, nil
 }
