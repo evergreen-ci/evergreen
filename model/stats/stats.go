@@ -32,11 +32,11 @@ type StatsStatus struct {
 }
 
 func createDefaultStatsStatus(projectId string) StatsStatus {
-	fourWeeksAgo := util.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
+	defaultBackFillStart := util.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
 	return StatsStatus{
 		ProjectId:           projectId,
-		LastJobRun:          fourWeeksAgo,
-		ProcessedTasksUntil: fourWeeksAgo,
+		LastJobRun:          defaultBackFillStart,
+		ProcessedTasksUntil: defaultBackFillStart,
 	}
 }
 
