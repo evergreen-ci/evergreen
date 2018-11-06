@@ -80,6 +80,14 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if projRef == nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound,
+			gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("project '%s' is not found", id),
+			})
+	}
+
 	projVars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
