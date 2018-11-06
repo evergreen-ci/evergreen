@@ -36,14 +36,13 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %v: %v", t.Id, err))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %s", t.Id))
 		return
 	}
 
 	updates := model.StatusChanges{}
 	if err = model.MarkStart(t, &updates); err != nil {
-		message := errors.Wrapf(err, "Error marking task '%s' started", t.Id)
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error marking task '%s' started", t.Id))
 		return
 	}
 
@@ -160,8 +159,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	updates := model.StatusChanges{}
 	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
-		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
+		err = errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -209,9 +208,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// clear the running task on the host now that the task has finished
 	if err = currentHost.ClearRunningAndSetLastTask(t); err != nil {
-		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
-		grip.Errorf(message.Error())
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
+		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
+		grip.Errorf(err.Error())
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -225,14 +224,14 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// update the bookkeeping entry for the task
 	err = task.UpdateExpectedDuration(t, t.TimeTaken)
 	if err != nil {
-		grip.Errorln("Error updating expected duration:", err)
+		grip.Warning(message.WrapError(err, "problem updating expected duration"))
 	}
 
 	if checkHostHealth(currentHost) {
 		// set the needs new agent flag on the host
 		if err := currentHost.SetNeedsNewAgent(true); err != nil {
-			grip.Errorf("error indicating host %s needs new agent: %+v", currentHost.Id, err)
-			gimlet.WriteJSONInternalError(w, err)
+			grip.Error(message.WrapErrorf(err, "error indicating host %s needs new agent", currentHost.Id))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
 		endTaskResp.ShouldExit = true
@@ -255,7 +254,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 				}))
 
 			if err != nil {
-				gimlet.WriteJSONInternalError(w, err)
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 				return
 			}
 		}
@@ -400,7 +399,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				"source":    "database error",
 				"revision":  evergreen.BuildRevision,
 			}))
-			gimlet.WriteJSONInternalError(w, err)
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
 		response.ShouldExit = true
@@ -418,7 +417,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 					"source":    "database error",
 					"revision":  evergreen.BuildRevision,
 				}))
-				gimlet.WriteJSONInternalError(w, innerErr)
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(innerErr))
 				return
 			}
 			grip.Info(message.WrapError(err, message.Fields{
@@ -441,7 +440,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 					"source":    "database error",
 					"revision":  evergreen.BuildRevision,
 				}))
-				gimlet.WriteJSONInternalError(w, err)
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 				return
 			}
 			if err := h.ClearRunningTask(); err != nil {
@@ -452,7 +451,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 					"source":    "database error",
 					"revision":  evergreen.BuildRevision,
 				}))
-				gimlet.WriteJSONInternalError(w, err)
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 				return
 			}
 			response.ShouldExit = true
@@ -466,7 +465,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.Wrap(err, "error retrieving admin settings")
 		grip.Error(err)
-		gimlet.WriteJSONInternalError(w, err)
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 	}
 	if flags.TaskDispatchDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
@@ -479,10 +478,9 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		var t *task.Task
 		t, err = task.FindOne(task.ById(h.RunningTask))
 		if err != nil {
-			err = errors.WithStack(err)
+			err = errors.Wrapf(err, "error getting running task %s", h.RunningTask)
 			grip.Error(err)
-			gimlet.WriteJSONInternalError(w,
-				errors.Wrapf(err, "error getting running task %s", h.RunningTask))
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
 
@@ -490,9 +488,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		if t.IsDispatchable() {
 			err = errors.WithStack(model.MarkTaskDispatched(t, h.Id, h.Distro.Id))
 			if err != nil {
-				grip.Error(err)
-				gimlet.WriteJSONInternalError(w,
-					errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))
+				grip.Error(errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))
+				gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 				return
 			}
 		}
@@ -507,12 +504,17 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		if err = h.ClearRunningTask(); err != nil {
 			err = errors.WithStack(err)
 			grip.Error(err)
-			gimlet.WriteJSONInternalError(w, err)
+			gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 			return
 		}
 
 		// return an empty
-		grip.Infof("Unset running task field for inactive task %s on host %s", t.Id, h.Id)
+		grip.Info(message.Fields{
+			"op":      "next_task",
+			"message": "unset running task field for inactive task on host",
+			"host_id": h.Id,
+			"task_id": t.Id,
+		})
 		gimlet.WriteJSON(w, response)
 		return
 	}
@@ -523,13 +525,16 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.Wrapf(err, "Error locating distro queue (%v) for host '%v'", h.Distro.Id, h.Id)
 		grip.Error(err)
-		gimlet.WriteJSONError(w, err)
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
 	if taskQueue == nil {
-		msg := fmt.Sprintf("Nil task queue found for task '%v's distro queue - '%v'",
-			h.Id, h.Distro.Id)
-		grip.Info(msg)
+		grip.Info(message.Fields{
+			"message":   "nil task queue found",
+			"op":        "next_task",
+			"host_id":   h.Id,
+			"distro_id": h.Distro.Id,
+		})
 		gimlet.WriteJSON(w, response)
 		return
 	}
@@ -538,12 +543,16 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
-		gimlet.WriteJSONError(w, err)
+		gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(err))
 		return
 	}
 	if nextTask == nil {
 		// if the task is empty, still send it with an status ok and check it on the other side
-		grip.Infof("no task to assign host %v", h.Id)
+		grip.Info(message.Fields{
+			"op":      "next_task",
+			"message": "no task to assign to host",
+			"host_id": h.Id,
+		})
 		gimlet.WriteJSON(w, response)
 		return
 	}
@@ -552,11 +561,16 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if err := model.MarkTaskDispatched(nextTask, h.Id, h.Distro.Id); err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)
-		gimlet.WriteJSONInternalError(w, err)
+		gimlet.WriteResponse(w, gimlet.MakeJSONInternalErrorResponder(err))
 		return
 	}
 	setNextTask(nextTask, &response)
-	grip.Infof("assigned task %s to host %s", nextTask.Id, h.Id)
+	grip.Info(message.Fields{
+		"op":      "next_task",
+		"message": "assigned task to host",
+		"task_id": nextTask.Id,
+		"host_id": h.Id,
+	})
 	gimlet.WriteJSON(w, response)
 }
 
