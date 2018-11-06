@@ -215,24 +215,56 @@ func (cpf *cachingPriceFetcher) parseAWSPricing(out *pricing.GetProductsOutput) 
 	if len(out.PriceList) != 1 {
 		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
 	}
-	terms, ok := out.PriceList[0]["terms"].(map[string]interface{})
+	terms, ok := out.PriceList[0]["terms"]
 	if !ok {
 		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
 	}
-	onDemand, ok := terms["OnDemand"].(map[string]interface{})
+	termsMap, ok := terms.(map[string]interface{})
 	if !ok {
 		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
 	}
-	var priceDimensions map[string]interface{}
-	for _, v := range onDemand {
-		priceDimensions, ok = v.(map[string]interface{})["priceDimensions"].(map[string]interface{})
+	onDemand, ok := termsMap["OnDemand"]
+	if !ok {
+		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+	}
+	onDemandMap, ok := onDemand.(map[string]interface{})
+	if !ok {
+		return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+	}
+	var priceDimensionMap map[string]interface{}
+	for _, v := range onDemandMap {
+		onDemandMapComponent, ok := v.(map[string]interface{})
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+		}
+		priceDimension, ok := onDemandMapComponent["priceDimensions"]
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+		}
+		priceDimensionMap, ok = priceDimension.(map[string]interface{})
 		if !ok {
 			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
 		}
 	}
 	var price string
-	for _, v := range priceDimensions {
-		price, ok = v.(map[string]interface{})["pricePerUnit"].(map[string]interface{})["USD"].(string)
+	for _, v := range priceDimensionMap {
+		priceDimensionComponent, ok := v.(map[string]interface{})
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+		}
+		pricePerUnit, ok := priceDimensionComponent["pricePerUnit"]
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+		}
+		pricePerUnitMap, ok := pricePerUnit.(map[string]interface{})
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+		}
+		USD, ok := pricePerUnitMap["USD"]
+		if !ok {
+			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
+		}
+		price, ok = USD.(string)
 		if !ok {
 			return 0, errors.Errorf("problem parsing price list %v", out.PriceList)
 		}
