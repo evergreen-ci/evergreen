@@ -5,13 +5,10 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -61,35 +58,40 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 
-	distroModel = &model.APIDistro{}
-
-	if err = json.Unmarshal(h.body, distro); err != nil {
+	initial := &model.APIDistro{}
+	if err = initial.BuildFromService(*distro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	vErrors, err := validator.CheckDistro(ctx, distro, &evergreen.Settings{}, false)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Database error",
-		})
-	}
-	if len(vErrors) != 0 {
-		var message strings.Builder
-		for _, v := range vErrors {
-			message.WriteString(v.Message + ", ")
-		}
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    message.String(),
-		})
+	if err = json.Unmarshal(h.body, initial); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}
 
-	if err = h.sc.UpdateDistro(distro); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
-	}
+	//initial.ToService()
 
-	distroModel = &model.APIDistro{}
+	// vErrors, err := validator.CheckDistro(ctx, distro, &evergreen.Settings{}, false)
+	// if err != nil {
+	// 	return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+	// 		StatusCode: http.StatusBadRequest,
+	// 		Message:    "Database error",
+	// 	})
+	// }
+	// if len(vErrors) != 0 {
+	// 	var message strings.Builder
+	// 	for _, v := range vErrors {
+	// 		message.WriteString(v.Message + ", ")
+	// 	}
+	// 	return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+	// 		StatusCode: http.StatusBadRequest,
+	// 		Message:    message.String(),
+	// 	})
+	// }
+	//
+	// if err = h.sc.UpdateDistro(distro); err != nil {
+	// 	return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	// }
+
+	distroModel := &model.APIDistro{}
 	if err = distroModel.BuildFromService(*distro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
 	}

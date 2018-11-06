@@ -73,6 +73,41 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 
 // ToService returns a service layer distro using the data from APIDistro.
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
+	d := distro.Distro{}
+	d.Id = FromAPIString(apiDistro.Name)
+	d.Arch = FromAPIString(apiDistro.Arch)
+	d.WorkDir = FromAPIString(apiDistro.WorkDir)
+	d.PoolSize = apiDistro.PoolSize
+	d.Provider = FromAPIString(apiDistro.Provider)
+	if apiDistro.ProviderSettings != nil {
+		*d.ProviderSettings = apiDistro.ProviderSettings
+	}
+	d.SetupAsSudo = apiDistro.SetupAsSudo
+	d.Setup = FromAPIString(apiDistro.Setup)
+	d.Teardown = FromAPIString(apiDistro.Teardown)
+	d.User = FromAPIString(apiDistro.User)
+	d.SSHKey = FromAPIString(apiDistro.SSHKey)
+	d.SSHOptions = apiDistro.SSHOptions
+	d.SpawnAllowed = apiDistro.UserSpawnAllowed
+	d.Expansions = []distro.Expansion{}
+	for _, e := range apiDistro.Expansions {
+
+		i, err := e.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "error converting to DB model")
+		}
+
+		expansion := i.(distro.Distro)
+
+		//newSettings := i.(evergreen.Settings)
+
+		//expansion := &distro.Expansion{}
+		//expansion, error := e.ToService()(*distro.Expansion)
+		//d.Expansions = append(d.Expansions, expansion)
+	}
+	d.Disabled = apiDistro.Disabled
+	d.ContainerPool = FromAPIString(apiDistro.ContainerPool)
+
 	return nil, errors.Errorf("ToService() is not impelemented for APIDistro")
 }
 
@@ -84,6 +119,7 @@ type APIExpansion struct {
 
 func (e *APIExpansion) BuildFromService(h interface{}) error {
 	switch val := h.(type) {
+
 	case distro.Expansion:
 		e.Key = ToAPIString(val.Key)
 		e.Value = ToAPIString(val.Value)
@@ -95,5 +131,10 @@ func (e *APIExpansion) BuildFromService(h interface{}) error {
 
 // ToService returns a service layer distro using the data from AAPIExpansion.
 func (e *APIExpansion) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not impelemented for APIExpansion")
+	distro := distro.Expansion{}
+	distro.Key = FromAPIString(e.Key)
+	distro.Value = FromAPIString(e.Value)
+
+	return distro, nil
+	// return nil, errors.Errorf("ToService() is not impelemented for APIExpansion")
 }
