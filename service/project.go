@@ -86,6 +86,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("project '%s' is not found", id),
 			})
+		return
 	}
 
 	projVars, err := model.FindOneProjectVars(id)
