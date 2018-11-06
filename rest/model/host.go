@@ -88,10 +88,14 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.Status = ToAPIString(v.Status)
 	apiHost.UserHost = v.UserHost
 
+	imageId, err := v.Distro.GetImageID()
+	if err != nil {
+		return fmt.Errorf("problem getting image ID")
+	}
 	di := DistroInfo{
 		Id:       ToAPIString(v.Distro.Id),
 		Provider: ToAPIString(v.Distro.Provider),
-		ImageId:  ToAPIString(v.Distro.GetImageID()),
+		ImageId:  ToAPIString(imageId),
 	}
 	apiHost.Distro = di
 	return nil

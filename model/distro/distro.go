@@ -119,31 +119,52 @@ func (d *Distro) IsParent(s *evergreen.Settings) bool {
 	return false
 }
 
-func (d *Distro) GetImageID() string {
+func (d *Distro) GetImageID() (string, error) {
 	switch d.Provider {
 	case evergreen.ProviderNameEc2Auto:
-		s, _ := (*d.ProviderSettings)["ami"].(string)
-		return s
+		s, ok := (*d.ProviderSettings)["ami"].(string)
+		if !ok {
+			return "", errors.New("invalid provider settings type")
+		}
+		return s, nil
 	case evergreen.ProviderNameEc2OnDemand:
-		s, _ := (*d.ProviderSettings)["ami"].(string)
-		return s
+		s, ok := (*d.ProviderSettings)["ami"].(string)
+		if !ok {
+			return "", errors.New("invalid provider settings type")
+		}
+		return s, nil
 	case evergreen.ProviderNameEc2Spot:
-		s, _ := (*d.ProviderSettings)["ami"].(string)
-		return s
+		s, ok := (*d.ProviderSettings)["ami"].(string)
+		if !ok {
+			return "", errors.New("invalid provider settings type")
+		}
+		return s, nil
 	case evergreen.ProviderNameDocker:
-		s, _ := (*d.ProviderSettings)["image_url"].(string)
-		return s
+		s, ok := (*d.ProviderSettings)["image_url"].(string)
+		if !ok {
+			return "", errors.New("invalid provider settings type")
+		}
+		return s, nil
 	case evergreen.ProviderNameDockerMock:
-		s, _ := (*d.ProviderSettings)["image_url"].(string)
-		return s
+		s, ok := (*d.ProviderSettings)["image_url"].(string)
+		if !ok {
+			return "", errors.New("invalid provider settings type")
+		}
+		return s, nil
 	case evergreen.ProviderNameGce:
-		s, _ := (*d.ProviderSettings)["image_name"].(string)
-		return s
+		s, ok := (*d.ProviderSettings)["image_name"].(string)
+		if !ok {
+			return "", errors.New("invalid provider settings type")
+		}
+		return s, nil
 	case evergreen.ProviderNameVsphere:
-		s, _ := (*d.ProviderSettings)["template"].(string)
-		return s
+		s, ok := (*d.ProviderSettings)["template"].(string)
+		if !ok {
+			return "", errors.New("invalid provider settings type")
+		}
+		return s, nil
 	default:
-		return ""
+		return "", nil
 	}
 }
 
