@@ -218,7 +218,7 @@ func (s *HostSuite) TestFindByIdFail() {
 func (s *HostSuite) TestBuildFromServiceHost() {
 	host := s.sc.MockHostConnector.CachedHosts[0]
 	apiHost := model.APIHost{}
-	apiHost.BuildFromService(host)
+	s.NoError(apiHost.BuildFromService(host))
 	s.Equal(apiHost.Id, model.ToAPIString(host.Id))
 	s.Equal(apiHost.HostURL, model.ToAPIString(host.Host))
 	s.Equal(apiHost.Provisioned, host.Provisioned)
