@@ -3,7 +3,6 @@
 package load
 
 import (
-	"context"
 	"io/ioutil"
 	"strconv"
 	"strings"
@@ -12,10 +11,6 @@ import (
 )
 
 func Avg() (*AvgStat, error) {
-	return AvgWithContext(context.Background())
-}
-
-func AvgWithContext(ctx context.Context) (*AvgStat, error) {
 	filename := common.HostProc("loadavg")
 	line, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -49,10 +44,6 @@ func AvgWithContext(ctx context.Context) (*AvgStat, error) {
 // Misc returnes miscellaneous host-wide statistics.
 // Note: the name should be changed near future.
 func Misc() (*MiscStat, error) {
-	return MiscWithContext(context.Background())
-}
-
-func MiscWithContext(ctx context.Context) (*MiscStat, error) {
 	filename := common.HostProc("stat")
 	out, err := ioutil.ReadFile(filename)
 	if err != nil {

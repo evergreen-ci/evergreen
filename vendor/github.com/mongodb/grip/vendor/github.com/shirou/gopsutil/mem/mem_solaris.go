@@ -1,7 +1,6 @@
 package mem
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -15,10 +14,6 @@ import (
 // VirtualMemory for Solaris is a minimal implementation which only returns
 // what Nomad needs. It does take into account global vs zone, however.
 func VirtualMemory() (*VirtualMemoryStat, error) {
-	return VirtualMemoryWithContext(context.Background())
-}
-
-func VirtualMemoryWithContext(ctx context.Context) (*VirtualMemoryStat, error) {
 	result := &VirtualMemoryStat{}
 
 	zoneName, err := zoneName()
@@ -44,10 +39,6 @@ func VirtualMemoryWithContext(ctx context.Context) (*VirtualMemoryStat, error) {
 }
 
 func SwapMemory() (*SwapMemoryStat, error) {
-	return SwapMemoryWithContext(context.Background())
-}
-
-func SwapMemoryWithContext(ctx context.Context) (*SwapMemoryStat, error) {
 	return nil, common.ErrNotImplementedError
 }
 
@@ -57,8 +48,7 @@ func zoneName() (string, error) {
 		return "", err
 	}
 
-	ctx := context.Background()
-	out, err := invoke.CommandWithContext(ctx, zonename)
+	out, err := invoke.Command(zonename)
 	if err != nil {
 		return "", err
 	}
@@ -74,8 +64,7 @@ func globalZoneMemoryCapacity() (uint64, error) {
 		return 0, err
 	}
 
-	ctx := context.Background()
-	out, err := invoke.CommandWithContext(ctx, prtconf)
+	out, err := invoke.Command(prtconf)
 	if err != nil {
 		return 0, err
 	}
@@ -101,8 +90,7 @@ func nonGlobalZoneMemoryCapacity() (uint64, error) {
 		return 0, err
 	}
 
-	ctx := context.Background()
-	out, err := invoke.CommandWithContext(ctx, kstat, "-p", "-c", "zone_memory_cap", "memory_cap:*:*:physcap")
+	out, err := invoke.Command(kstat, "-p", "-c", "zone_memory_cap", "memory_cap:*:*:physcap")
 	if err != nil {
 		return 0, err
 	}

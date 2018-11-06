@@ -3,7 +3,6 @@
 package mem
 
 import (
-	"context"
 	"unsafe"
 
 	"github.com/shirou/gopsutil/internal/common"
@@ -28,10 +27,6 @@ type memoryStatusEx struct {
 }
 
 func VirtualMemory() (*VirtualMemoryStat, error) {
-	return VirtualMemoryWithContext(context.Background())
-}
-
-func VirtualMemoryWithContext(ctx context.Context) (*VirtualMemoryStat, error) {
 	var memInfo memoryStatusEx
 	memInfo.cbSize = uint32(unsafe.Sizeof(memInfo))
 	mem, _, _ := procGlobalMemoryStatusEx.Call(uintptr(unsafe.Pointer(&memInfo)))
@@ -67,10 +62,6 @@ type performanceInformation struct {
 }
 
 func SwapMemory() (*SwapMemoryStat, error) {
-	return SwapMemoryWithContext(context.Background())
-}
-
-func SwapMemoryWithContext(ctx context.Context) (*SwapMemoryStat, error) {
 	var perfInfo performanceInformation
 	perfInfo.cb = uint32(unsafe.Sizeof(perfInfo))
 	mem, _, _ := procGetPerformanceInfo.Call(uintptr(unsafe.Pointer(&perfInfo)), uintptr(perfInfo.cb))
@@ -80,17 +71,11 @@ func SwapMemoryWithContext(ctx context.Context) (*SwapMemoryStat, error) {
 	tot := perfInfo.commitLimit * perfInfo.pageSize
 	used := perfInfo.commitTotal * perfInfo.pageSize
 	free := tot - used
-	var usedPercent float64
-	if tot == 0 {
-		usedPercent = 0
-	} else {
-		usedPercent = float64(used) / float64(tot)
-	}
 	ret := &SwapMemoryStat{
 		Total:       tot,
 		Used:        used,
 		Free:        free,
-		UsedPercent: usedPercent,
+		UsedPercent: float64(used / tot),
 	}
 
 	return ret, nil

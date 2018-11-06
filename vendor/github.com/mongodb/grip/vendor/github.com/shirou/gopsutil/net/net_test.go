@@ -61,9 +61,6 @@ func TestNetConnectionStatString(t *testing.T) {
 
 func TestNetIOCountersAll(t *testing.T) {
 	v, err := IOCounters(false)
-	if err != nil {
-		t.Errorf("Could not get NetIOCounters: %v", err)
-	}
 	per, err := IOCounters(true)
 	if err != nil {
 		t.Errorf("Could not get NetIOCounters: %v", err)

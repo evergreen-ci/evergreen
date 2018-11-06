@@ -3,7 +3,6 @@
 package cpu
 
 import (
-	"context"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -23,10 +22,6 @@ const (
 var ClocksPerSec = float64(128)
 
 func Times(percpu bool) ([]TimesStat, error) {
-	return TimesWithContext(context.Background(), percpu)
-}
-
-func TimesWithContext(ctx context.Context, percpu bool) ([]TimesStat, error) {
 	if percpu {
 		return perCPUTimes()
 	}
@@ -36,16 +31,12 @@ func TimesWithContext(ctx context.Context, percpu bool) ([]TimesStat, error) {
 
 // Returns only one CPUInfoStat on FreeBSD
 func Info() ([]InfoStat, error) {
-	return InfoWithContext(context.Background())
-}
-
-func InfoWithContext(ctx context.Context) ([]InfoStat, error) {
 	var ret []InfoStat
 	sysctl, err := exec.LookPath("/usr/sbin/sysctl")
 	if err != nil {
 		return ret, err
 	}
-	out, err := invoke.CommandWithContext(ctx, sysctl, "machdep.cpu")
+	out, err := invoke.Command(sysctl, "machdep.cpu")
 	if err != nil {
 		return ret, err
 	}
@@ -99,7 +90,7 @@ func InfoWithContext(ctx context.Context) ([]InfoStat, error) {
 
 	// Use the rated frequency of the CPU. This is a static value and does not
 	// account for low power or Turbo Boost modes.
-	out, err = invoke.CommandWithContext(ctx, sysctl, "hw.cpufrequency")
+	out, err = invoke.Command(sysctl, "hw.cpufrequency")
 	if err != nil {
 		return ret, err
 	}

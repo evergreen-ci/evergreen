@@ -108,7 +108,7 @@ imports:
     version: 23f6a9d8e774f597faabae8b58b8c6020b3f79ef
 
   - name: github.com/mongodb/grip
-    version: d6146c91d71cb4d53509d9d02b273aac156fc155
+    version: ce377de00786de1277ad2b89194f83c4ed49fa3b
   - name: github.com/mongodb/anser
     version: b6633c2213f5e1124185c6cd3d8b4d6aeb2d655a
   - name: github.com/mongodb/amboy

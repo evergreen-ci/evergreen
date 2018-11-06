@@ -4,7 +4,6 @@
 package mem
 
 import (
-	"context"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -69,10 +68,6 @@ func parseVMStat(out string, vms *VirtualMemoryStat) error {
 
 // VirtualMemory returns VirtualmemoryStat.
 func VirtualMemory() (*VirtualMemoryStat, error) {
-	return VirtualMemoryWithContext(context.Background())
-}
-
-func VirtualMemoryWithContext(ctx context.Context) (*VirtualMemoryStat, error) {
 	ret := &VirtualMemoryStat{}
 
 	total, err := getHwMemsize()

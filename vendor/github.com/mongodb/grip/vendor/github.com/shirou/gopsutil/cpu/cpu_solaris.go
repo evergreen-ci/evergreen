@@ -1,7 +1,6 @@
 package cpu
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -31,23 +30,15 @@ func init() {
 }
 
 func Times(percpu bool) ([]TimesStat, error) {
-	return TimesWithContext(context.Background(), percpu)
-}
-
-func TimesWithContext(ctx context.Context, percpu bool) ([]TimesStat, error) {
 	return []TimesStat{}, common.ErrNotImplementedError
 }
 
 func Info() ([]InfoStat, error) {
-	return InfoWithContext(context.Background())
-}
-
-func InfoWithContext(ctx context.Context) ([]InfoStat, error) {
 	psrInfo, err := exec.LookPath("/usr/sbin/psrinfo")
 	if err != nil {
 		return nil, fmt.Errorf("cannot find psrinfo: %s", err)
 	}
-	psrInfoOut, err := invoke.CommandWithContext(ctx, psrInfo, "-p", "-v")
+	psrInfoOut, err := invoke.Command(psrInfo, "-p", "-v")
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute psrinfo: %s", err)
 	}
@@ -56,7 +47,7 @@ func InfoWithContext(ctx context.Context) ([]InfoStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot find isainfo: %s", err)
 	}
-	isaInfoOut, err := invoke.CommandWithContext(ctx, isaInfo, "-b", "-v")
+	isaInfoOut, err := invoke.Command(isaInfo, "-b", "-v")
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute isainfo: %s", err)
 	}

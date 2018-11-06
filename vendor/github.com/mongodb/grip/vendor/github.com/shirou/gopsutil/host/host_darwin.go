@@ -4,7 +4,6 @@ package host
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"io/ioutil"
 	"os"
@@ -24,10 +23,6 @@ import (
 const USER_PROCESS = 7
 
 func Info() (*InfoStat, error) {
-	return InfoWithContext(context.Background())
-}
-
-func InfoWithContext(ctx context.Context) (*InfoStat, error) {
 	ret := &InfoStat{
 		OS:             runtime.GOOS,
 		PlatformFamily: "darwin",
@@ -38,9 +33,12 @@ func InfoWithContext(ctx context.Context) (*InfoStat, error) {
 		ret.Hostname = hostname
 	}
 
-	kernelVersion, err := KernelVersionWithContext(ctx)
+	uname, err := exec.LookPath("uname")
 	if err == nil {
-		ret.KernelVersion = kernelVersion
+		out, err := invoke.Command(uname, "-r")
+		if err == nil {
+			ret.KernelVersion = strings.ToLower(strings.TrimSpace(string(out)))
+		}
 	}
 
 	platform, family, pver, err := PlatformInformation()
@@ -67,7 +65,7 @@ func InfoWithContext(ctx context.Context) (*InfoStat, error) {
 		ret.Procs = uint64(len(procs))
 	}
 
-	values, err := common.DoSysctrlWithContext(ctx, "kern.uuid")
+	values, err := common.DoSysctrl("kern.uuid")
 	if err == nil && len(values) == 1 && values[0] != "" {
 		ret.HostID = strings.ToLower(values[0])
 	}
@@ -79,15 +77,11 @@ func InfoWithContext(ctx context.Context) (*InfoStat, error) {
 var cachedBootTime uint64
 
 func BootTime() (uint64, error) {
-	return BootTimeWithContext(context.Background())
-}
-
-func BootTimeWithContext(ctx context.Context) (uint64, error) {
 	t := atomic.LoadUint64(&cachedBootTime)
 	if t != 0 {
 		return t, nil
 	}
-	values, err := common.DoSysctrlWithContext(ctx, "kern.boottime")
+	values, err := common.DoSysctrl("kern.boottime")
 	if err != nil {
 		return 0, err
 	}
@@ -108,10 +102,6 @@ func uptime(boot uint64) uint64 {
 }
 
 func Uptime() (uint64, error) {
-	return UptimeWithContext(context.Background())
-}
-
-func UptimeWithContext(ctx context.Context) (uint64, error) {
 	boot, err := BootTime()
 	if err != nil {
 		return 0, err
@@ -120,10 +110,6 @@ func UptimeWithContext(ctx context.Context) (uint64, error) {
 }
 
 func Users() ([]UserStat, error) {
-	return UsersWithContext(context.Background())
-}
-
-func UsersWithContext(ctx context.Context) ([]UserStat, error) {
 	utmpfile := "/var/run/utmpx"
 	var ret []UserStat
 
@@ -168,10 +154,6 @@ func UsersWithContext(ctx context.Context) ([]UserStat, error) {
 }
 
 func PlatformInformation() (string, string, string, error) {
-	return PlatformInformationWithContext(context.Background())
-}
-
-func PlatformInformationWithContext(ctx context.Context) (string, string, string, error) {
 	platform := ""
 	family := ""
 	pver := ""
@@ -185,12 +167,12 @@ func PlatformInformationWithContext(ctx context.Context) (string, string, string
 		return "", "", "", err
 	}
 
-	out, err := invoke.CommandWithContext(ctx, uname, "-s")
+	out, err := invoke.Command(uname, "-s")
 	if err == nil {
 		platform = strings.ToLower(strings.TrimSpace(string(out)))
 	}
 
-	out, err = invoke.CommandWithContext(ctx, sw_vers, "-productVersion")
+	out, err = invoke.Command(sw_vers, "-productVersion")
 	if err == nil {
 		pver = strings.ToLower(strings.TrimSpace(string(out)))
 	}
@@ -199,34 +181,10 @@ func PlatformInformationWithContext(ctx context.Context) (string, string, string
 }
 
 func Virtualization() (string, string, error) {
-	return VirtualizationWithContext(context.Background())
-}
-
-func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 	return "", "", common.ErrNotImplementedError
 }
 
 func KernelVersion() (string, error) {
-	return KernelVersionWithContext(context.Background())
-}
-
-func KernelVersionWithContext(ctx context.Context) (string, error) {
-	uname, err := exec.LookPath("uname")
-	if err != nil {
-		return "", err
-	}
-	out, err := invoke.CommandWithContext(ctx, uname, "-r")
-	if err != nil {
-		return "", err
-	}
-	version := strings.ToLower(strings.TrimSpace(string(out)))
+	_, _, version, err := PlatformInformation()
 	return version, err
-}
-
-func SensorsTemperatures() ([]TemperatureStat, error) {
-	return SensorsTemperaturesWithContext(context.Background())
-}
-
-func SensorsTemperaturesWithContext(ctx context.Context) ([]TemperatureStat, error) {
-	return []TemperatureStat{}, common.ErrNotImplementedError
 }

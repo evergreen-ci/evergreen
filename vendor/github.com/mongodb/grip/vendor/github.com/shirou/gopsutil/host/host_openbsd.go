@@ -4,7 +4,6 @@ package host
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"io/ioutil"
 	"os"
@@ -26,10 +25,6 @@ const (
 )
 
 func Info() (*InfoStat, error) {
-	return InfoWithContext(context.Background())
-}
-
-func InfoWithContext(ctx context.Context) (*InfoStat, error) {
 	ret := &InfoStat{
 		OS:             runtime.GOOS,
 		PlatformFamily: "openbsd",
@@ -67,10 +62,6 @@ func InfoWithContext(ctx context.Context) (*InfoStat, error) {
 }
 
 func BootTime() (uint64, error) {
-	return BootTimeWithContext(context.Background())
-}
-
-func BootTimeWithContext(ctx context.Context) (uint64, error) {
 	val, err := common.DoSysctrl("kern.boottime")
 	if err != nil {
 		return 0, err
@@ -89,10 +80,6 @@ func uptime(boot uint64) uint64 {
 }
 
 func Uptime() (uint64, error) {
-	return UptimeWithContext(context.Background())
-}
-
-func UptimeWithContext(ctx context.Context) (uint64, error) {
 	boot, err := BootTime()
 	if err != nil {
 		return 0, err
@@ -101,10 +88,6 @@ func UptimeWithContext(ctx context.Context) (uint64, error) {
 }
 
 func PlatformInformation() (string, string, string, error) {
-	return PlatformInformationWithContext(context.Background())
-}
-
-func PlatformInformationWithContext(ctx context.Context) (string, string, string, error) {
 	platform := ""
 	family := ""
 	version := ""
@@ -113,12 +96,12 @@ func PlatformInformationWithContext(ctx context.Context) (string, string, string
 		return "", "", "", err
 	}
 
-	out, err := invoke.CommandWithContext(ctx, uname, "-s")
+	out, err := invoke.Command(uname, "-s")
 	if err == nil {
 		platform = strings.ToLower(strings.TrimSpace(string(out)))
 	}
 
-	out, err = invoke.CommandWithContext(ctx, uname, "-r")
+	out, err = invoke.Command(uname, "-r")
 	if err == nil {
 		version = strings.ToLower(strings.TrimSpace(string(out)))
 	}
@@ -127,18 +110,10 @@ func PlatformInformationWithContext(ctx context.Context) (string, string, string
 }
 
 func Virtualization() (string, string, error) {
-	return VirtualizationWithContext(context.Background())
-}
-
-func VirtualizationWithContext(ctx context.Context) (string, string, error) {
 	return "", "", common.ErrNotImplementedError
 }
 
 func Users() ([]UserStat, error) {
-	return UsersWithContext(context.Background())
-}
-
-func UsersWithContext(ctx context.Context) ([]UserStat, error) {
 	var ret []UserStat
 	utmpfile := "/var/run/utmp"
 	file, err := os.Open(utmpfile)
@@ -178,18 +153,10 @@ func UsersWithContext(ctx context.Context) ([]UserStat, error) {
 }
 
 func SensorsTemperatures() ([]TemperatureStat, error) {
-	return SensorsTemperaturesWithContext(context.Background())
-}
-
-func SensorsTemperaturesWithContext(ctx context.Context) ([]TemperatureStat, error) {
 	return []TemperatureStat{}, common.ErrNotImplementedError
 }
 
 func KernelVersion() (string, error) {
-	return KernelVersionWithContext(context.Background())
-}
-
-func KernelVersionWithContext(ctx context.Context) (string, error) {
 	_, _, version, err := PlatformInformation()
 	return version, err
 }
