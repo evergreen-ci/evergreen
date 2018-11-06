@@ -60,6 +60,14 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project %s is not specified", data.Project))
 		return
 	}
+	if pref == nil {
+		gimlet.WriteJSONResponse(w, http.StatusNotFound,
+			gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("project '%s' is not found", data.Project),
+			})
+		return
+	}
 
 	if pref.PatchingDisabled || !pref.Enabled {
 		as.LoggedError(w, r, http.StatusUnauthorized, errors.New("patching is disabled"))
