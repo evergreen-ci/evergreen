@@ -328,15 +328,15 @@ func TestAddTemp(t *testing.T) {
 		"CorrectKeys": func(t *testing.T, env map[string]string) {
 			addTempDirs(env, "bar")
 			assert.Len(t, env, 3)
-			asert.Equal(t, "bar", env["TMP"])
-			asert.Equal(t, "bar", env["TEMP"])
-			asert.Equal(t, "bar", env["TMPDIR"])
+			assert.Equal(t, "bar", env["TMP"])
+			assert.Equal(t, "bar", env["TEMP"])
+			assert.Equal(t, "bar", env["TMPDIR"])
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			env := make(map[string]string)
 			require.Len(t, env, 0)
-			test(env, t)
+			test(t, env)
 		})
 	}
 }
