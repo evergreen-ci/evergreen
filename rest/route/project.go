@@ -238,7 +238,15 @@ func (h *projectCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	resp := gimlet.NewJSONResponse(apiProject)
-	resp.SetStatus(http.StatusCreated)
+	err = resp.SetStatus(http.StatusCreated)
+
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			Message:    "Cannot set status code",
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
+
 	return resp
 }
 
@@ -269,7 +277,9 @@ func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error
 	if err != nil {
 		return errors.Wrap(err, "Unable to read request body!")
 	}
-	body.Close()
+	if err := body.Close(); err != nil {
+		return errors.Wrap(err, "Cannot close reader")
+	}
 
 	// Construct body copy and read JSON into projectRef model
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
@@ -277,7 +287,9 @@ func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error
 	if err := util.ReadJSONInto(body, &h.projectRef); err != nil {
 		return errors.Wrap(err, "JSON format or content is invalid!")
 	}
-	body.Close()
+	if err := body.Close(); err != nil {
+		return errors.Wrap(err, "Cannot close reader")
+	}
 
 	// Construct body copy and read JSON into payload map
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
@@ -286,7 +298,9 @@ func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error
 	if err := util.ReadJSONInto(body, &payload); err != nil {
 		return errors.Wrap(err, "JSON format or content is invalid!")
 	}
-	body.Close()
+	if err := body.Close(); err != nil {
+		return errors.Wrap(err, "Cannot close reader")
+	}
 
 	// Read keys names from payload
 	keys := make([]string, len(payload))

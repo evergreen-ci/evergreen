@@ -75,7 +75,7 @@ type APIProjectRef struct {
 	Enabled              bool        `json:"enabled"`
 	Private              bool        `json:"private"`
 	BatchTime            int         `json:"batch_time"`
-	RemotePath           APIString   `json:"remote_path"th"`
+	RemotePath           APIString   `json:"remote_path"`
 	Identifier           APIString   `json:"identifier"`
 	DisplayName          APIString   `json:"display_name"`
 	LocalConfig          APIString   `json:"local_config"`

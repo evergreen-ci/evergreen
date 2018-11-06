@@ -363,7 +363,7 @@ func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
 		},
 	}, &[]string{"owner_name", "admins"})
 
-	// Test assertation
+	// Test assertion
 	s.NoError(err)
 	s.NotNil(updatedProject)
 
