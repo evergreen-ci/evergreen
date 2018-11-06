@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -97,6 +98,7 @@ func (c *shellExec) Execute(ctx context.Context,
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
+	addTempDirs(c.Env, filepath.Join(c.WorkingDir, "tmp"))
 
 	var logWriterInfo io.WriteCloser
 	var logWriterErr io.WriteCloser
