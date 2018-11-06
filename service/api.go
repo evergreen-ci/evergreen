@@ -491,7 +491,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 
 	if err := resp.SetStatus(code); err != nil {
-		_ = resp.SetStatus(http.StatusInternalServerError)
+		grip.Warning(errors.WithStack(resp.SetStatus(http.StatusInternalServerError)))
 	}
 
 	gimlet.WriteResponse(w, resp)

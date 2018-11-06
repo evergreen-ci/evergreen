@@ -36,14 +36,13 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %v: %v", t.Id, err))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %s", t.Id))
 		return
 	}
 
 	updates := model.StatusChanges{}
 	if err = model.MarkStart(t, &updates); err != nil {
-		err = errors.Wrapf(err, "Error marking task '%s' started", t.Id)
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "Error marking task '%s' started", t.Id))
 		return
 	}
 
