@@ -481,15 +481,20 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		"request": gimlet.GetRequestID(r.Context()),
 	}))
 
+	var resp gimlet.Responder
+
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
-		gimlet.WriteJSONResponse(w, code, struct {
-			Error string `json:"error"`
-		}{err.Error()})
+		resp = gimlet.MakeJSONErrorResponder(err)
 	} else {
-		// Not a JSON request, so write plaintext.
-		http.Error(w, err.Error(), code)
+		resp = gimlet.MakeTextErrorResponder(err)
 	}
+
+	if err := resp.SetStatus(code); err != nil {
+		_ = resp.SetStatus(http.StatusInternalServerError)
+	}
+
+	gimlet.WriteResponse(w, resp)
 }
 
 // GetSettings returns the global evergreen settings.
