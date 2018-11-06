@@ -98,7 +98,6 @@ func (c *shellExec) Execute(ctx context.Context,
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
-	addTempDirs(c.Env, filepath.Join(c.WorkingDir, "tmp"))
 
 	var logWriterInfo io.WriteCloser
 	var logWriterErr io.WriteCloser
@@ -126,9 +125,13 @@ func (c *shellExec) Execute(ctx context.Context,
 		opts.Error = logWriterErr
 	}
 
+	taskTmpDir := filepath.Join(c.WorkingDir, "tmp")
 	env := append(os.Environ(),
 		fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
-		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
+		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()),
+		fmt.Sprintf("TMP=%s", taskTmpDir),
+		fmt.Sprintf("TEMP=%s", taskTmpDir),
+		fmt.Sprintf("TMPDir=%s", taskTmpDir))
 
 	localCmd := subprocess.NewLocalCommand(c.Script, c.WorkingDir, c.Shell, env, true)
 	if err = localCmd.SetOutput(opts); err != nil {
