@@ -599,7 +599,7 @@ func addMatchTestPagination(matchExpr bson.M, filter *StatsFilter) {
 		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Test, filter.StartAt.Distro}
 	}
 
-	addPaginationOrBranches(matchExpr, fields, operators, values)
+	matchExpr["$or"] = buildPaginationOrBranches(fields, operators, values)
 }
 
 // Creates an aggregation pipeline to query task statistics.
@@ -694,14 +694,14 @@ func addMatchTaskPagination(matchExpr bson.M, filter *StatsFilter) {
 		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Distro}
 	}
 
-	addPaginationOrBranches(matchExpr, fields, operators, values)
+	matchExpr["$or"] = buildPaginationOrBranches(fields, operators, values)
 }
 
-// Edits a match expression to include the or branches of the pagination constraints.
+// Builds and returns the $or branches of the pagination constraints.
 // fields is an array of field names, they must be in the same order as the sort order.
 // operators is a list of MongoDB comparison operators ("$gte", "$gt", "$lte", "$lt") for the fields.
 // values is a list of values for the fields.
-func addPaginationOrBranches(matchExpr bson.M, fields []string, operators []string, values []interface{}) {
+func buildPaginationOrBranches(fields []string, operators []string, values []interface{}) []bson.M {
 	baseConstraints := bson.M{}
 	branches := []bson.M{}
 
@@ -714,7 +714,7 @@ func addPaginationOrBranches(matchExpr bson.M, fields []string, operators []stri
 		branches = append(branches, branch)
 		baseConstraints[fields[i]] = values[i]
 	}
-	matchExpr["$or"] = branches
+	return branches
 }
 
 // Returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.
@@ -730,7 +730,7 @@ func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
 	boundary := start
 	boundaries := []time.Time{}
 
-	for boundary.Unix() < end.Unix() {
+	for boundary.Before(end) {
 		boundaries = append(boundaries, boundary)
 		boundary = boundary.Add(duration)
 	}

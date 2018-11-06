@@ -39,7 +39,7 @@ type StartAt struct {
 // Validates that the StartAt struct is valid for its intended use.
 func (s *StartAt) validate(isTestFilter bool, groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
-	if s.Date.Unix() != util.GetUTCDay(s.Date).Unix() {
+	if !s.Date.Equal(util.GetUTCDay(s.Date)) {
 		catcher.Add(errors.New("Invalid StartAt Date value"))
 	}
 	if isTestFilter && len(s.Test) == 0 {
@@ -116,15 +116,13 @@ func (f *StatsFilter) validate(isTestFilter bool) error {
 	if f.GroupNumDays <= 0 {
 		catcher.Add(errors.New("Invalid GroupNumDays value"))
 	}
-	afterUnix := f.AfterDate.Unix()
-	beforeUnix := f.BeforeDate.Unix()
-	if afterUnix != util.GetUTCDay(f.AfterDate).Unix() {
+	if !f.AfterDate.Equal(util.GetUTCDay(f.AfterDate)) {
 		catcher.Add(errors.New("Invalid AfterDate value"))
 	}
-	if beforeUnix != util.GetUTCDay(f.BeforeDate).Unix() {
+	if !f.BeforeDate.Equal(util.GetUTCDay(f.BeforeDate)) {
 		catcher.Add(errors.New("Invalid BeforeDate value"))
 	}
-	if afterUnix >= beforeUnix {
+	if !f.BeforeDate.After(f.AfterDate) {
 		catcher.Add(errors.New("Invalid AfterDate/BeforeDate values"))
 	}
 	if isTestFilter {
