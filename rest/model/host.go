@@ -1,7 +1,7 @@
 package model
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -53,7 +53,7 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	case task.Task:
 		apiHost.RunningTask = getTaskInfo(&v)
 	default:
-		return fmt.Errorf("incorrect type when fetching converting host type")
+		return errors.New("incorrect type when fetching converting host type")
 	}
 	return nil
 }
@@ -77,7 +77,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	case *host.Host:
 		v = h.(*host.Host)
 	default:
-		return fmt.Errorf("incorrect type when fetching converting host type")
+		return errors.New("incorrect type when fetching converting host type")
 	}
 	apiHost.Id = ToAPIString(v.Id)
 	apiHost.HostURL = ToAPIString(v.Host)
@@ -90,7 +90,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
-		return fmt.Errorf("problem getting image ID")
+		return errors.New("problem getting image ID")
 	}
 	di := DistroInfo{
 		Id:       ToAPIString(v.Distro.Id),
