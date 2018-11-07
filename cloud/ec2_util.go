@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/user"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -235,21 +234,6 @@ type Terms struct {
 			}
 		}
 	}
-}
-
-// skuPrice digs through the incredibly verbose Amazon price data format
-// for the USD dollar amount of an SKU. The for loops are for traversing
-// maps of size one with an unknown key, which is simple to do in a
-// language like python but really ugly here.
-func (t Terms) skuPrice(sku string) float64 {
-	for _, v := range t.OnDemand[sku] {
-		for _, p := range v.PriceDimensions {
-			// parse -- ignoring errors
-			val, _ := strconv.ParseFloat(p.PricePerUnit.USD, 64)
-			return val
-		}
-	}
-	return 0
 }
 
 func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
