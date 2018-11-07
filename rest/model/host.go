@@ -1,10 +1,9 @@
 package model
 
 import (
-	"errors"
-
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
