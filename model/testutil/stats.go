@@ -3,6 +3,8 @@ package testutil
 import (
 	"time"
 
+	"gopkg.in/mgo.v2"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -10,18 +12,27 @@ import (
 func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
 	err := db.FindOne("daily_test_stats", bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
 	return &doc, err
 }
 
 func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
 	err := db.FindOne("hourly_test_stats", bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
 	return &doc, err
 }
 
 func GetDailyTaskDoc(id DbTaskStatsId) (*dbTaskStats, error) {
 	doc := dbTaskStats{}
 	err := db.FindOne("daily_task_stats", bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
 	return &doc, err
 }
 
