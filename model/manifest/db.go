@@ -45,3 +45,10 @@ func (m *Manifest) TryInsert() (bool, error) {
 func ById(id string) db.Q {
 	return db.Query(bson.M{IdKey: id})
 }
+
+func ByProjectAndRevision(project, revision string) db.Q {
+	return db.Query(bson.M{
+		ProjectNameKey:      project,
+		ManifestRevisionKey: revision,
+	})
+}

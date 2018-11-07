@@ -9,11 +9,13 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -311,6 +313,16 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
+		_, err = CreateManifest(*v, project, ref.Branch, repoTracker.Settings)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":  "error creating manifest",
+				"runner":   RunnerName,
+				"project":  ref.Identifier,
+				"revision": revision,
+			}))
+			continue
+		}
 
 		newestVersion = v
 	}
@@ -452,6 +464,46 @@ func AddBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 		catcher.Add(newSubscription.Upsert())
 	}
 	return catcher.Resolve()
+}
+
+func CreateManifest(v version.Version, proj *model.Project, branch string, settings *evergreen.Settings) (*manifest.Manifest, error) {
+	if len(proj.Modules) == 0 {
+		return nil, nil
+	}
+	newManifest := &manifest.Manifest{
+		Id:          v.Id,
+		Revision:    v.Revision,
+		ProjectName: v.Identifier,
+		Branch:      branch,
+	}
+	token, err := settings.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting github oauth token")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var gitBranch *github.Branch
+	modules := map[string]*manifest.Module{}
+	for _, module := range proj.Modules {
+		owner, repo := module.GetRepoOwnerAndName()
+		gitBranch, err = thirdparty.GetBranchEvent(ctx, token, owner, repo, module.Branch)
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
+		}
+
+		modules[module.Name] = &manifest.Module{
+			Branch:   module.Branch,
+			Revision: *gitBranch.Commit.SHA,
+			Repo:     repo,
+			Owner:    owner,
+			URL:      *gitBranch.Commit.URL,
+		}
+	}
+	newManifest.Modules = modules
+	_, err = newManifest.TryInsert()
+
+	return newManifest, errors.Wrap(err, "error inserting manifest")
 }
 
 func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
