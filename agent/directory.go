@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -31,10 +32,14 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 	newDir := filepath.Join(tc.taskConfig.Distro.WorkDir, dirName)
 
 	tc.logger.Execution().Infof("Making new folder for task execution: %v", newDir)
-	err = os.MkdirAll(newDir, 0777)
-	if err != nil {
+
+	if err = os.MkdirAll(newDir, 0777); err != nil {
 		tc.logger.Execution().Errorf("Error creating task directory: %v", err)
 		return "", err
+	}
+
+	if err = os.MkdirAll(filepath.Join(newDir, "tmp"), 0777); err != nil {
+		tc.logger.Execution().Warning(message.WrapError(err, "problem creating task temporary, continuing"))
 	}
 
 	return newDir, nil
