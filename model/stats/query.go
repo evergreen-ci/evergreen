@@ -9,9 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type GroupBy string
-type Sort string
-
 const (
 	MaxQueryLimit             = 1000
 	GroupByTest       GroupBy = "test"
@@ -21,6 +18,32 @@ const (
 	SortEarliestFirst Sort    = "earliest"
 	SortLatestFirst   Sort    = "latest"
 )
+
+type GroupBy string
+
+func (gb *GroupBy) validate() error {
+	switch *gb {
+	case GroupByDistro:
+	case GroupByVariant:
+	case GroupByTask:
+	case GroupByTest:
+	default:
+		return errors.Errorf("Invalid GroupBy value: %v", *gb)
+	}
+	return nil
+}
+
+type Sort string
+
+func (s *Sort) validate() error {
+	switch *s {
+	case SortLatestFirst:
+	case SortEarliestFirst:
+	default:
+		return errors.Errorf("Invalid Sort value: %v", *s)
+	}
+	return nil
+}
 
 /////////////
 // Filters //
@@ -36,16 +59,11 @@ type StartAt struct {
 	Distro       string
 }
 
-// Validates that the StartAt struct is valid for its intended use.
-func (s *StartAt) validate(isTestFilter bool, groupBy GroupBy) error {
+// Validates that the StartAt struct is valid for use with test stats.
+func (s *StartAt) validateCommon(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	if !s.Date.Equal(util.GetUTCDay(s.Date)) {
 		catcher.Add(errors.New("Invalid StartAt Date value"))
-	}
-	if isTestFilter && len(s.Test) == 0 {
-		catcher.Add(errors.New("Missing Start Test value"))
-	} else if !isTestFilter && len(s.Test) != 0 {
-		catcher.Add(errors.New("StartAt for task stats should not have a Test value"))
 	}
 	switch groupBy {
 	case GroupByDistro:
@@ -62,6 +80,26 @@ func (s *StartAt) validate(isTestFilter bool, groupBy GroupBy) error {
 		if len(s.Task) == 0 {
 			catcher.Add(errors.New("Missing StartAt Task value"))
 		}
+	}
+	return catcher.Resolve()
+}
+
+// Validates that the StartAt struct is valid for use with test stats.
+func (s *StartAt) validateForTests(groupBy GroupBy) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(s.validateCommon(groupBy))
+	if len(s.Test) == 0 {
+		catcher.Add(errors.New("Missing Start Test value"))
+	}
+	return catcher.Resolve()
+}
+
+// Validates that the StartAt struct is valid for use with task stats.
+func (s *StartAt) validateForTasks(groupBy GroupBy) error {
+	catcher := grip.NewBasicCatcher()
+	catcher.Add(s.validateCommon(groupBy))
+	if len(s.Test) != 0 {
+		catcher.Add(errors.New("StartAt for task stats should not have a Test value"))
 	}
 	return catcher.Resolve()
 }
@@ -111,8 +149,9 @@ func NewDefaultStatsFilter(project string, requesters []string, after time.Time,
 }
 
 // Validates that the StatsFilter struct is valid for its intended use.
-func (f *StatsFilter) validate(isTestFilter bool) error {
+func (f *StatsFilter) validateCommon() error {
 	catcher := grip.NewBasicCatcher()
+
 	if f.GroupNumDays <= 0 {
 		catcher.Add(errors.New("Invalid GroupNumDays value"))
 	}
@@ -125,42 +164,53 @@ func (f *StatsFilter) validate(isTestFilter bool) error {
 	if !f.BeforeDate.After(f.AfterDate) {
 		catcher.Add(errors.New("Invalid AfterDate/BeforeDate values"))
 	}
-	if isTestFilter {
-		if len(f.Tests) == 0 && len(f.Tasks) == 0 {
-			catcher.Add(errors.New("Missing Tests or Tasks values"))
-		}
-	} else {
-		if len(f.Tests) > 0 {
-			catcher.Add(errors.New("Invalid Tests value, should be nil or empty"))
-		}
-		if len(f.Tasks) == 0 {
-			catcher.Add(errors.New("Missing Tasks values"))
-		}
-	}
 	if len(f.Requesters) == 0 {
 		catcher.Add(errors.New("Missing Requesters values"))
 	}
 	if f.Limit > MaxQueryLimit || f.Limit <= 0 {
 		catcher.Add(errors.New("Invalid Limit value"))
 	}
-	if f.Sort != SortLatestFirst && f.Sort != SortEarliestFirst {
-		catcher.Add(errors.New("Invalid Sort value"))
-	}
-	switch f.GroupBy {
-	case GroupByDistro:
-	case GroupByVariant:
-	case GroupByTask:
-	case GroupByTest:
-		if !isTestFilter {
-			catcher.Add(errors.New("Invalid GroupBy value for a task filter"))
-		}
-	default:
-		catcher.Add(errors.New("Invalid GroupBy value"))
-	}
-	if f.StartAt != nil {
-		catcher.Add(f.StartAt.validate(isTestFilter, f.GroupBy))
-	}
+	catcher.Add(f.Sort.validate())
+	catcher.Add(f.GroupBy.validate())
+
 	return catcher.Resolve()
+}
+
+// Validates that the StatsFilter struct is valid for its intended use.
+func (f *StatsFilter) validateForTests() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Add(f.validateCommon())
+	if f.StartAt != nil {
+		catcher.Add(f.StartAt.validateForTests(f.GroupBy))
+	}
+	if len(f.Tests) == 0 && len(f.Tasks) == 0 {
+		catcher.Add(errors.New("Missing Tests or Tasks values"))
+	}
+
+	return catcher.Resolve()
+}
+
+// Validates that the StatsFilter struct is valid for its intended use.
+func (f *StatsFilter) validateForTasks() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Add(f.validateCommon())
+	if f.StartAt != nil {
+		catcher.Add(f.StartAt.validateForTasks(f.GroupBy))
+	}
+	if len(f.Tests) > 0 {
+		catcher.Add(errors.New("Invalid Tests value, should be nil or empty"))
+	}
+	if len(f.Tasks) == 0 {
+		catcher.Add(errors.New("Missing Tasks values"))
+	}
+	if f.GroupBy == GroupByTest {
+		catcher.Add(errors.New("Invalid GroupBy value for a task filter"))
+	}
+
+	return catcher.Resolve()
+
 }
 
 //////////////////////////////
@@ -183,7 +233,7 @@ type TestStats struct {
 
 // Queries the precomputed test statistics using a filter.
 func GetTestStats(filter *StatsFilter) ([]TestStats, error) {
-	err := filter.validate(true)
+	err := filter.validateForTests()
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +270,7 @@ type TaskStats struct {
 
 // Queries the precomputed task statistics using a filter.
 func GetTaskStats(filter *StatsFilter) ([]TaskStats, error) {
-	err := filter.validate(false)
+	err := filter.validateForTasks()
 	if err != nil {
 		return nil, err
 	}

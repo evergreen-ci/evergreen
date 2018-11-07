@@ -502,13 +502,21 @@ func buildMatchStageForTest(filter *StatsFilter) bson.M {
 		"_id.project":   filter.Project,
 		"_id.requester": bson.M{"$in": filter.Requesters},
 	}
-	addMatchIn(match, "_id.test_file", filter.Tests)
-	addMatchIn(match, "_id.task_name", filter.Tasks)
-	addMatchIn(match, "_id.variant", filter.BuildVariants)
-	addMatchIn(match, "_id.distro", filter.Distros)
+	if len(filter.Tests) > 0 {
+		match["_id.test_file"] = buildMatchArrayExpression(filter.Tests)
+	}
+	if len(filter.Tasks) > 0 {
+		match["_id.task_name"] = buildMatchArrayExpression(filter.Tasks)
+	}
+	if len(filter.BuildVariants) > 0 {
+		match["_id.variant"] = buildMatchArrayExpression(filter.BuildVariants)
+	}
+	if len(filter.Distros) > 0 {
+		match["_id.distro"] = buildMatchArrayExpression(filter.Distros)
+	}
 
 	if filter.StartAt != nil {
-		addMatchTestPagination(match, filter)
+		match["$or"] = buildTestPaginationOrBranches(filter)
 	}
 
 	return bson.M{"$match": match}
@@ -559,16 +567,25 @@ func buildGroupId(groupBy GroupBy) bson.M {
 
 // Edits a match expression to include that the 'fieldName' field must have its value in 'values'.
 // Does nothing if 'values' is empty.
-func addMatchIn(matchExpr bson.M, fieldName string, values []string) {
+//func addMatchIn(matchExpr bson.M, fieldName string, values []string) {
+//	if len(values) == 1 {
+//		matchExpr[fieldName] = values[0]
+//	} else if len(values) > 1 {
+//		matchExpr[fieldName] = bson.M{"$in": values}
+//	}
+//}
+
+func buildMatchArrayExpression(values []string) interface{} {
 	if len(values) == 1 {
-		matchExpr[fieldName] = values[0]
+		return values[0]
 	} else if len(values) > 1 {
-		matchExpr[fieldName] = bson.M{"$in": values}
+		return bson.M{"$in": values}
 	}
+	return nil
 }
 
 // Adds to an existing $match expression the conditions imposed by the filter StartAt field
-func addMatchTestPagination(matchExpr bson.M, filter *StatsFilter) {
+func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
 	var dateOperator string
 	if filter.Sort == SortEarliestFirst {
 		dateOperator = "$gt"
@@ -576,30 +593,38 @@ func addMatchTestPagination(matchExpr bson.M, filter *StatsFilter) {
 		dateOperator = "$lt"
 	}
 
-	var fields []string
-	var operators []string
-	var values []interface{}
+	var fields []paginationField
 
 	switch filter.GroupBy {
 	case GroupByTest:
-		fields = []string{"_id.date", "_id.test_file"}
-		operators = []string{dateOperator, "$gt"}
-		values = []interface{}{filter.StartAt.Date, filter.StartAt.Test}
+		fields = []paginationField{
+			{Field: "_id.date", Operator: dateOperator, Value: filter.StartAt.Date},
+			{Field: "_id.test_file", Operator: "$gt", Value: filter.StartAt.Test},
+		}
 	case GroupByTask:
-		fields = []string{"_id.date", "_id.task_name", "_id.test_file"}
-		operators = []string{dateOperator, "$gt", "$gt"}
-		values = []interface{}{filter.StartAt.Date, filter.StartAt.Task, filter.StartAt.Test}
+		fields = []paginationField{
+			{Field: "_id.date", Operator: dateOperator, Value: filter.StartAt.Date},
+			{Field: "_id.task_name", Operator: "$gt", Value: filter.StartAt.Task},
+			{Field: "_id.test_file", Operator: "$gt", Value: filter.StartAt.Test},
+		}
 	case GroupByVariant:
-		fields = []string{"_id.date", "_id.variant", "_id.task_name", "_id.test_file"}
-		operators = []string{dateOperator, "$gt", "$gt", "$gt"}
-		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Test}
+		fields = []paginationField{
+			{Field: "_id.date", Operator: dateOperator, Value: filter.StartAt.Date},
+			{Field: "_id.variant", Operator: "$gt", Value: filter.StartAt.BuildVariant},
+			{Field: "_id.task_name", Operator: "$gt", Value: filter.StartAt.Task},
+			{Field: "_id.test_file", Operator: "$gt", Value: filter.StartAt.Test},
+		}
 	case GroupByDistro:
-		fields = []string{"_id.date", "_id.variant", "_id.task_name", "_id.test_file", "_id.distro"}
-		operators = []string{dateOperator, "$gt", "$gt", "$gt", "$gt"}
-		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Test, filter.StartAt.Distro}
+		fields = []paginationField{
+			{Field: "_id.date", Operator: dateOperator, Value: filter.StartAt.Date},
+			{Field: "_id.variant", Operator: "$gt", Value: filter.StartAt.BuildVariant},
+			{Field: "_id.task_name", Operator: "$gt", Value: filter.StartAt.Task},
+			{Field: "_id.test_file", Operator: "$gt", Value: filter.StartAt.Test},
+			{Field: "_id.distro", Operator: "$gt", Value: filter.StartAt.Distro},
+		}
 	}
 
-	matchExpr["$or"] = buildPaginationOrBranches(fields, operators, values)
+	return buildPaginationOrBranches(fields)
 }
 
 // Creates an aggregation pipeline to query task statistics.
@@ -655,19 +680,25 @@ func buildMatchStageForTask(filter *StatsFilter) bson.M {
 		"_id.project":   filter.Project,
 		"_id.requester": bson.M{"$in": filter.Requesters},
 	}
-	addMatchIn(match, "_id.task_name", filter.Tasks)
-	addMatchIn(match, "_id.variant", filter.BuildVariants)
-	addMatchIn(match, "_id.distro", filter.Distros)
+	if len(filter.Tasks) > 0 {
+		match["_id.task_name"] = buildMatchArrayExpression(filter.Tasks)
+	}
+	if len(filter.BuildVariants) > 0 {
+		match["_id.variant"] = buildMatchArrayExpression(filter.BuildVariants)
+	}
+	if len(filter.Distros) > 0 {
+		match["_id.distro"] = buildMatchArrayExpression(filter.Distros)
+	}
 
 	if filter.StartAt != nil {
-		addMatchTaskPagination(match, filter)
+		match["$or"] = buildTaskPaginationOrBranches(filter)
 	}
 
 	return bson.M{"$match": match}
 }
 
 // Adds to an existing $match expression the conditions imposed by the filter StartAt field
-func addMatchTaskPagination(matchExpr bson.M, filter *StatsFilter) {
+func buildTaskPaginationOrBranches(filter *StatsFilter) []bson.M {
 	var dateOperator string
 	if filter.Sort == SortEarliestFirst {
 		dateOperator = "$gt"
@@ -675,44 +706,48 @@ func addMatchTaskPagination(matchExpr bson.M, filter *StatsFilter) {
 		dateOperator = "$lt"
 	}
 
-	var fields []string
-	var operators []string
-	var values []interface{}
+	var fields []paginationField
 
 	switch filter.GroupBy {
 	case GroupByTask:
-		fields = []string{"_id.date", "_id.task_name"}
-		operators = []string{dateOperator, "$gt"}
-		values = []interface{}{filter.StartAt.Date, filter.StartAt.Task}
+		fields = []paginationField{
+			{Field: "_id.date", Operator: dateOperator, Value: filter.StartAt.Date},
+			{Field: "_id.task_name", Operator: "$gt", Value: filter.StartAt.Task},
+		}
 	case GroupByVariant:
-		fields = []string{"_id.date", "_id.variant", "_id.task_name"}
-		operators = []string{dateOperator, "$gt", "$gt"}
-		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task}
+		fields = []paginationField{
+			{Field: "_id.date", Operator: dateOperator, Value: filter.StartAt.Date},
+			{Field: "_id.variant", Operator: "$gt", Value: filter.StartAt.BuildVariant},
+			{Field: "_id.task_name", Operator: "$gt", Value: filter.StartAt.Task},
+		}
 	case GroupByDistro:
-		fields = []string{"_id.date", "_id.variant", "_id.task_name", "_id.distro"}
-		operators = []string{dateOperator, "$gt", "$gt", "$gt"}
-		values = []interface{}{filter.StartAt.Date, filter.StartAt.BuildVariant, filter.StartAt.Task, filter.StartAt.Distro}
+		fields = []paginationField{
+			{Field: "_id.date", Operator: dateOperator, Value: filter.StartAt.Date},
+			{Field: "_id.variant", Operator: "$gt", Value: filter.StartAt.BuildVariant},
+			{Field: "_id.task_name", Operator: "$gt", Value: filter.StartAt.Task},
+			{Field: "_id.distro", Operator: "$gt", Value: filter.StartAt.Distro},
+		}
 	}
 
-	matchExpr["$or"] = buildPaginationOrBranches(fields, operators, values)
+	return buildPaginationOrBranches(fields)
 }
 
 // Builds and returns the $or branches of the pagination constraints.
 // fields is an array of field names, they must be in the same order as the sort order.
 // operators is a list of MongoDB comparison operators ("$gte", "$gt", "$lte", "$lt") for the fields.
 // values is a list of values for the fields.
-func buildPaginationOrBranches(fields []string, operators []string, values []interface{}) []bson.M {
+func buildPaginationOrBranches(fields []paginationField) []bson.M {
 	baseConstraints := bson.M{}
 	branches := []bson.M{}
 
-	for i := 0; i < len(fields); i++ {
+	for _, field := range fields {
 		branch := bson.M{}
 		for k, v := range baseConstraints {
 			branch[k] = v
 		}
-		branch[fields[i]] = bson.M{operators[i]: values[i]}
+		branch[field.Field] = bson.M{field.Operator: field.Value}
 		branches = append(branches, branch)
-		baseConstraints[fields[i]] = values[i]
+		baseConstraints[field.Field] = field.Value
 	}
 	return branches
 }
@@ -744,6 +779,12 @@ func sortDateOrder(sort Sort) int {
 	} else {
 		return -1
 	}
+}
+
+type paginationField struct {
+	Field    string
+	Operator string
+	Value    interface{}
 }
 
 //////////////////////////////////////////////////////////////////

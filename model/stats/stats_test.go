@@ -16,9 +16,9 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
+var baseHour = time.Date(2018, 7, 15, 16, 0, 0, 0, time.UTC)
 var baseDay = time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC)
-var baseHour = baseDay.Add(time.Hour * 16)
-var baseTime = baseHour.Add(time.Minute * 45)
 var jobTime = time.Date(1998, 7, 12, 20, 45, 0, 0, time.UTC)
 var commit1 = baseTime
 var commit2 = baseTime.Add(26 * time.Hour)
@@ -461,7 +461,15 @@ func (s *statsSuite) initHourly() {
 func (s *statsSuite) insertHourlyTestStats(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time, numPass int, numFail int, avgDuration float32) {
 
 	err := db.Insert(hourlyTestStatsCollection, bson.M{
-		"_id":               createTestStatsId(project, requester, testFile, taskName, variant, distro, date),
+		"_id": modelUtil.DbTestStatsId{
+			Project:   project,
+			Requester: requester,
+			TestFile:  testFile,
+			TaskName:  taskName,
+			Variant:   variant,
+			Distro:    distro,
+			Date:      date,
+		},
 		"num_pass":          numPass,
 		"num_fail":          numFail,
 		"avg_duration_pass": avgDuration,
@@ -668,18 +676,6 @@ func (s *statsSuite) insertFinishedOldTask(project string, requester string, tas
 	}
 	err := db.Insert(task.OldCollection, &newTask)
 	s.Require().NoError(err)
-}
-
-func createTestStatsId(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) bson.D {
-	return bson.D{
-		{Name: "test_file", Value: testFile},
-		{Name: "task_name", Value: taskName},
-		{Name: "variant", Value: variant},
-		{Name: "distro", Value: distro},
-		{Name: "project", Value: project},
-		{Name: "requester", Value: requester},
-		{Name: "date", Value: date},
-	}
 }
 
 /////////////////////////////////////
