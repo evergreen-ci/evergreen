@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -125,7 +124,12 @@ func (c *shellExec) Execute(ctx context.Context,
 		opts.Error = logWriterErr
 	}
 
-	taskTmpDir := filepath.Join(c.WorkingDir, "tmp")
+	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
+	if err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
+	}
+
 	env := append(os.Environ(),
 		fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
 		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()),

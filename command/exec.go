@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -200,7 +199,14 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
-	addTempDirs(c.Env, filepath.Join(c.WorkingDir, "tmp"))
+
+	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
+	if err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
+	}
+
+	addTempDirs(c.Env, taskTmpDir)
 
 	if !c.KeepEmptyArgs {
 		for i, arg := range c.Args {
