@@ -3,13 +3,14 @@ package units
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"testing"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
-	"regexp"
-	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 
@@ -438,22 +439,22 @@ func (s *cacheHistoryTestDataSuite) createTestData(baseTime time.Time) {
 
 	taskList := [...]task.Task{
 		{
-			Id: 	   bson.NewObjectId().Hex(),
+			Id:          bson.NewObjectId().Hex(),
 			DisplayName: taskName,
-			Project: s.projectId,
-			Requester: s.requester,
-			CreateTime: t0,
-			FinishTime: t0.Add(30 * time.Minute),
-			Execution: 1,
+			Project:     s.projectId,
+			Requester:   s.requester,
+			CreateTime:  t0,
+			FinishTime:  t0.Add(30 * time.Minute),
+			Execution:   1,
 		},
 		{
-			Id: 	   bson.NewObjectId().Hex(),
+			Id:          bson.NewObjectId().Hex(),
 			DisplayName: taskName,
-			Project: s.projectId,
-			Requester: s.requester,
-			CreateTime: t1,
-			FinishTime: t1.Add(30 * time.Minute),
-			Execution: 2,
+			Project:     s.projectId,
+			Requester:   s.requester,
+			CreateTime:  t1,
+			FinishTime:  t1.Add(30 * time.Minute),
+			Execution:   2,
 		},
 	}
 	for i, task := range taskList {
