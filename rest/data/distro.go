@@ -43,6 +43,17 @@ func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 	return distros, nil
 }
 
+func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
+	err := distro.Update()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro with id '%s' could not be updated", distro.Id),
+		}
+	}
+	return nil
+}
+
 // FindCostByDistroId queries the backing database for cost data associated
 // with the given distroId. This is done by aggregating TimeTaken over all
 // tasks of the given distro that match the time range.
@@ -88,7 +99,7 @@ func (tc *DBDistroConnector) ClearTaskQueue(distroId string) error {
 // MockDistroConnector is a struct that implements mock versions of
 // Distro-related methods for testing.
 type MockDistroConnector struct {
-	CachedDistros []distro.Distro
+	CachedDistros []*distro.Distro
 	CachedTasks   []task.Task
 }
 
@@ -96,7 +107,7 @@ func (mdc *MockDistroConnector) FindDistroById(distroId string) (*distro.Distro,
 	// Find the distro.
 	for _, d := range mdc.CachedDistros {
 		if d.Id == distroId {
-			return &d, nil
+			return d, nil
 		}
 	}
 	return nil, fmt.Errorf("distro with id %s not found", distroId)
@@ -104,7 +115,20 @@ func (mdc *MockDistroConnector) FindDistroById(distroId string) (*distro.Distro,
 
 // FindAllDistros is a mock implementation for testing.
 func (mdc *MockDistroConnector) FindAllDistros() ([]distro.Distro, error) {
-	return mdc.CachedDistros, nil
+	out := []distro.Distro{}
+	for _, d := range mdc.CachedDistros {
+		out = append(out, *d)
+	}
+	return out, nil
+}
+
+func (mdc *MockDistroConnector) UpdateDistro(distro *distro.Distro) error {
+	for _, d := range mdc.CachedDistros {
+		if d.Id == distro.Id {
+			return nil
+		}
+	}
+	return fmt.Errorf("distro with id '%s' not found", distro.Id)
 }
 
 // FindCostByDistroId returns results based on the cached tasks and

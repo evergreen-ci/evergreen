@@ -118,7 +118,7 @@ func (s *DistroCostSuite) SetupSuite() {
 
 	s.data = data.MockDistroConnector{
 		CachedTasks:   []task.Task{testTask1, testTask2, testTask3},
-		CachedDistros: []distro.Distro{testDistro1, testDistro2},
+		CachedDistros: []*distro.Distro{&testDistro1, &testDistro2},
 	}
 	s.sc = &data.MockConnector{
 		MockDistroConnector: s.data,

@@ -7,7 +7,7 @@
 	Be sure to include struct tags to the define the names the fields will have when
 	serialized to JSON.
 
-	Guidlines for Creating Models
+	Guidelines for Creating Models
 
 	Include as much data as a user is likely to want when inspecting this resource.
 	This is likely to be more information than seems directly needed, but there is

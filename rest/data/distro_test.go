@@ -140,7 +140,7 @@ func TestMockDistroConnectorSuite(t *testing.T) {
 				{Id: "task3", DistroId: "distro2", TimeTaken: time.Duration(1),
 					StartTime: s.starttime, FinishTime: s.starttime.Add(time.Duration(1))},
 			},
-			CachedDistros: []distro.Distro{
+			CachedDistros: []*distro.Distro{
 				{Id: "distro1", Provider: "ec2", ProviderSettings: &settings},
 				{Id: "distro2", Provider: "gce", ProviderSettings: &settings},
 			},
