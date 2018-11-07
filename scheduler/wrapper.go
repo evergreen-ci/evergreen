@@ -39,6 +39,15 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 		return errors.Wrap(err, "problem unscheduling underwater tasks")
 	}
 
+	if distroSpec.Disabled {
+		grip.Info(message.Fields{
+			"message": "scheduling for distro is disabled",
+			"runner":  RunnerName,
+			"distro":  conf.DistroID,
+		})
+		return nil
+	}
+
 	startTaskFinder := time.Now()
 	finder := GetTaskFinder(conf.TaskFinder)
 	tasks, err := finder(conf.DistroID)

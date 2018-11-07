@@ -72,8 +72,3 @@ func ByProvider(p string) db.Q {
 func BySpawnAllowed() db.Q {
 	return db.Query(bson.M{SpawnAllowedKey: true})
 }
-
-// ByActive returns a query that selects only active distros
-func ByActive() db.Q {
-	return db.Query(bson.M{DisabledKey: bson.M{"$exists": false}})
-}
