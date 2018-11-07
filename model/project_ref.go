@@ -51,7 +51,7 @@ type ProjectRef struct {
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
 
 	// List of regular expressions describing files to ignore when caching historical test results
-	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache" json:"files_ignored_from_cache"`
+	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache,omitempty" json:"files_ignored_from_cache,omitempty"`
 
 	Triggers []TriggerDefinition `bson:"triggers,omitempty" json:"triggers,omitempty"`
 }
