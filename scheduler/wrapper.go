@@ -13,6 +13,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -40,7 +41,7 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 	}
 
 	if distroSpec.Disabled {
-		grip.Info(message.Fields{
+		grip.InfoWhen(sometimes.Quarter(), message.Fields{
 			"message": "scheduling for distro is disabled",
 			"runner":  RunnerName,
 			"distro":  conf.DistroID,
