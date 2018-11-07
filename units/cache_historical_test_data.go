@@ -186,7 +186,7 @@ func (c *cacheHistoricalJobContext) iteratorOverDailyStats(dailyStats dailyStats
 		for requester, tasks := range stats {
 			taskList := filterIgnoredTasks(tasks, c.TasksToIgnore)
 			if len(taskList) > 0 {
-				err := fn(c.ProjectId, requester, day, taskList, c.JobTime)
+				err := errors.Wrap(fn(c.ProjectId, requester, day, taskList, c.JobTime), "Could not sync daily stats")
 				grip.Warning(message.WrapError(err, message.Fields{
 					"project_id":   c.ProjectId,
 					"sync_date":    day,
@@ -194,8 +194,7 @@ func (c *cacheHistoricalJobContext) iteratorOverDailyStats(dailyStats dailyStats
 					"display_name": displayName,
 				}))
 				if err != nil {
-
-					return errors.Wrap(err, "Could not sync daily stats")
+					return err
 				}
 			}
 		}
@@ -208,16 +207,15 @@ func (c *cacheHistoricalJobContext) iteratorOverHourlyStats(stats []stats.StatsT
 	for _, stat := range stats {
 		taskList := filterIgnoredTasks(stat.Tasks, c.TasksToIgnore)
 		if len(taskList) > 0 {
-			err := fn(stat.ProjectId, stat.Requester, stat.Hour, taskList, c.JobTime)
+			err := errors.Wrap(fn(stat.ProjectId, stat.Requester, stat.Hour, taskList, c.JobTime), "Could not sync hourly stats")
+			grip.Warning(message.WrapError(err, message.Fields{
+				"project_id":   stat.ProjectId,
+				"sync_date":    stat.Hour,
+				"job_time":     c.JobTime,
+				"display_name": displayName,
+			}))
 			if err != nil {
-				grip.Info(message.Fields{
-					"project_id":   stat.ProjectId,
-					"sync_date":    stat.Hour,
-					"job_time":     c.JobTime,
-					"display_name": displayName,
-					"message":      "error syncing hourly stats",
-				})
-				return errors.Wrap(err, "Could not sync hourly stats")
+				return err
 			}
 		}
 	}
