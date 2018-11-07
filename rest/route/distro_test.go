@@ -158,7 +158,7 @@ func (s *DistroPatchByIdSuite) TestParse() {
 func (s *DistroPatchByIdSuite) TestRunValidName() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-	json := []byte(`{"_id": "Updated distro name"}`)
+	json := []byte(`{"name": "Updated distro name"}`)
 
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroId = "fedora8"
@@ -173,7 +173,7 @@ func (s *DistroPatchByIdSuite) TestRunValidName() {
 
 func (s *DistroPatchByIdSuite) TestRunValidSpawnAllowed() {
 	ctx := context.Background()
-	json := []byte(`{"spawn_allowed": true}`)
+	json := []byte(`{"user_spawn_allowed": true}`)
 
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroId = "fedora8"
@@ -392,16 +392,18 @@ func (s *DistroPatchByIdSuite) TestRunValidDisabled() {
 }
 
 func (s *DistroPatchByIdSuite) TestRunValidContainer() {
+
 }
 
 func (s *DistroPatchByIdSuite) TestRunInValidEmptyStringValues() {
 	ctx := context.Background()
-	json := []byte(`{"_id": "","arch": "","user": "","work_dir": "","ssh_key": "","provider": ""}`)
+	json := []byte(`{"name": "","arch": "","user": "","work_dir": "","ssh_key": "","provider": ""}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroId = "fedora8"
 	h.body = json
 
 	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	s.NotNil(resp.Data())
 
@@ -428,7 +430,7 @@ func (s *DistroPatchByIdSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
 	json := []byte(
 		`{
-				"_id" : "~fedora8",
+				"name" : "~fedora8",
 				"arch" : "~linux_amd64",
 				"work_dir" : "~/data/mci",
 				"pool_size" : 20,

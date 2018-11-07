@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// APIDistro is the model to be returned by the API whenever distros are fetched.
+// APIDistro is the model to be returned by the API whenever distros are fetched
 type APIDistro struct {
 	Name             APIString              `json:"name"`
 	UserSpawnAllowed bool                   `json:"user_spawn_allowed"`
@@ -29,7 +29,7 @@ type APIDistro struct {
 	ContainerPool    APIString              `json:"container_pool"`
 }
 
-// BuildFromService converts from service level structs to an APIDistro.
+// BuildFromService converts from service level distro.Distro to an APIDistro
 func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case distro.Distro:
@@ -60,9 +60,9 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		apiDistro.SSHOptions = v.SSHOptions
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range v.Expansions {
-			apiExpansion := &APIExpansion{}
-			apiExpansion.BuildFromService(e)
-			apiDistro.Expansions = append(apiDistro.Expansions, *apiExpansion)
+			expansion := &APIExpansion{}
+			expansion.BuildFromService(e)
+			apiDistro.Expansions = append(apiDistro.Expansions, *expansion)
 		}
 
 	default:
@@ -71,7 +71,7 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	return nil
 }
 
-// ToService returns a service layer distro using the data from APIDistro.
+// ToService returns a service layer distro using the data from APIDistro
 func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d := distro.Distro{}
 	d.Id = FromAPIString(apiDistro.Name)
@@ -80,7 +80,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.PoolSize = apiDistro.PoolSize
 	d.Provider = FromAPIString(apiDistro.Provider)
 	if apiDistro.ProviderSettings != nil {
-		*d.ProviderSettings = apiDistro.ProviderSettings
+		d.ProviderSettings = &apiDistro.ProviderSettings
 	}
 	d.SetupAsSudo = apiDistro.SetupAsSudo
 	d.Setup = FromAPIString(apiDistro.Setup)
@@ -91,35 +91,27 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	d.SpawnAllowed = apiDistro.UserSpawnAllowed
 	d.Expansions = []distro.Expansion{}
 	for _, e := range apiDistro.Expansions {
-
 		i, err := e.ToService()
 		if err != nil {
-			return nil, errors.Wrap(err, "error converting to DB model")
+			return nil, errors.Wrap(err, "error converting from model.APIExpansion to distro.Expansion")
 		}
-
-		expansion := i.(distro.Distro)
-
-		//newSettings := i.(evergreen.Settings)
-
-		//expansion := &distro.Expansion{}
-		//expansion, error := e.ToService()(*distro.Expansion)
-		//d.Expansions = append(d.Expansions, expansion)
+		d.Expansions = append(d.Expansions, i.(distro.Expansion))
 	}
 	d.Disabled = apiDistro.Disabled
 	d.ContainerPool = FromAPIString(apiDistro.ContainerPool)
 
-	return nil, errors.Errorf("ToService() is not impelemented for APIDistro")
+	return &d, nil
 }
 
-// APIExpansion is the return model having parsed and transformed a distro.Expansion
+// APIExpansion is derived from a service layer distro.Expansion
 type APIExpansion struct {
 	Key   APIString `json:"key"`
 	Value APIString `json:"value"`
 }
 
+// BuildFromService converts a service level distro.Expansion to an APIExpansion
 func (e *APIExpansion) BuildFromService(h interface{}) error {
 	switch val := h.(type) {
-
 	case distro.Expansion:
 		e.Key = ToAPIString(val.Key)
 		e.Value = ToAPIString(val.Value)
@@ -129,12 +121,11 @@ func (e *APIExpansion) BuildFromService(h interface{}) error {
 	return nil
 }
 
-// ToService returns a service layer distro using the data from AAPIExpansion.
+// ToService returns a service layer distro.Expansion using the data from an APIExpansion
 func (e *APIExpansion) ToService() (interface{}, error) {
-	distro := distro.Expansion{}
-	distro.Key = FromAPIString(e.Key)
-	distro.Value = FromAPIString(e.Value)
+	d := distro.Expansion{}
+	d.Key = FromAPIString(e.Key)
+	d.Value = FromAPIString(e.Value)
 
-	return distro, nil
-	// return nil, errors.Errorf("ToService() is not impelemented for APIExpansion")
+	return interface{}(d), nil
 }

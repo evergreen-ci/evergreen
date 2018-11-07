@@ -51,7 +51,17 @@ func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
 			Message:    fmt.Sprintf("distro with id %s could not be updated", distro.Id),
 		}
 	}
+	return nil
+}
 
+func (dc *DBDistroConnector) UpdateDistroById(distroId string, distro *distro.Distro) error {
+	err := distro.UpdateById(distroId)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro with id %s could not be updated", distro.Id),
+		}
+	}
 	return nil
 }
 
@@ -123,14 +133,19 @@ func (mdc *MockDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 	return out, nil
 }
 
-// distroModel := &model.APIDistro{}
-// if err = distroModel.BuildFromService(*distro); err != nil {
-// 	return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
-// }
-
 func (mdc *MockDistroConnector) UpdateDistro(distro *distro.Distro) error {
 	for _, d := range mdc.CachedDistros {
 		if d.Id == distro.Id {
+			return nil
+		}
+	}
+	return fmt.Errorf("distro with id %s not found", distro.Id)
+}
+
+func (mdc *MockDistroConnector) UpdateDistroById(distroId string, distro *distro.Distro) error {
+	for _, d := range mdc.CachedDistros {
+		if d.Id == distroId {
+			//*d.Id = distroId
 			return nil
 		}
 	}
