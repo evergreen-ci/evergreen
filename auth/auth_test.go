@@ -8,7 +8,6 @@ import (
 )
 
 func TestLoadUserManager(t *testing.T) {
-	c := evergreen.CrowdConfig{}
 	l := evergreen.LDAPConfig{
 		URL:                "url",
 		Port:               "port",
@@ -32,11 +31,6 @@ func TestLoadUserManager(t *testing.T) {
 	um, err = LoadUserManager(a)
 	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Github")
 	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Github")
-
-	a = evergreen.AuthConfig{Crowd: &c}
-	um, err = LoadUserManager(a)
-	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Crowd")
-	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Crowd")
 
 	a = evergreen.AuthConfig{LDAP: &l}
 	um, err = LoadUserManager(a)

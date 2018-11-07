@@ -279,9 +279,6 @@ endif
 ifneq (,$(RUN_TEST))
 testArgs += -run='$(RUN_TEST)'
 endif
-ifneq (,$(RUN_CASE))
-testArgs += -testify.m='$(RUN_CASE)'
-endif
 ifneq (,$(SKIP_LONG))
 testArgs += -short
 endif

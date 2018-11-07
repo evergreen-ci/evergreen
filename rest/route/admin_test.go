@@ -101,7 +101,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Amboy.Name, settings.Amboy.Name)
 	s.EqualValues(testSettings.Amboy.LocalStorage, settings.Amboy.LocalStorage)
 	s.EqualValues(testSettings.Api.HttpListenAddr, settings.Api.HttpListenAddr)
-	s.EqualValues(testSettings.AuthConfig.Crowd.Username, settings.AuthConfig.Crowd.Username)
 	s.EqualValues(testSettings.AuthConfig.LDAP.URL, settings.AuthConfig.LDAP.URL)
 	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settings.AuthConfig.Naive.Users[0].Username)
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settings.AuthConfig.Github.ClientId)

@@ -878,7 +878,10 @@ func getTaskCreateTime(projectId string, v *version.Version) (time.Time, error) 
 			return createTime, errors.Wrap(err, "Error finding base version for patch version")
 		}
 		if baseVersion == nil {
-			return createTime, errors.Errorf("Could not find base version for patch version %s", v.Id)
+			grip.Warningf("Could not find base version for patch version %s", v.Id)
+			// The database data may be incomplete and missing the base version.
+			// In that case we don't want to fail, we fallback to the patch version's CreateTime.
+			return v.CreateTime, nil
 		}
 		return baseVersion.CreateTime, nil
 	} else {

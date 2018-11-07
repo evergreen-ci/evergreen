@@ -938,8 +938,9 @@ func (t *Task) MarkStart(startTime time.Time) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:    evergreen.TaskStarted,
-				StartTimeKey: startTime,
+				StatusKey:        evergreen.TaskStarted,
+				LastHeartbeatKey: startTime,
+				StartTimeKey:     startTime,
 			},
 		},
 	)

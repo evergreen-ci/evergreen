@@ -45,10 +45,11 @@ providers:
     aws_secret: "$AWS_SECRET"
 
 auth:
-  crowd:
-    username: "$CROWD_USER"
-    password: "$CROWD_PW"
-    urlroot: "$CROWD_SERVER"
+    naive:
+      users:
+      - username: "mci-nonprod"
+        password: "change me"
+        display_name: "MCI Nonprod"
 
 plugins:
   manifest:
