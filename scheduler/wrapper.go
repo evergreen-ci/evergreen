@@ -13,6 +13,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -37,6 +38,15 @@ func PlanDistro(ctx context.Context, conf Configuration, s *evergreen.Settings) 
 
 	if err = underwaterUnschedule(conf.DistroID); err != nil {
 		return errors.Wrap(err, "problem unscheduling underwater tasks")
+	}
+
+	if distroSpec.Disabled {
+		grip.InfoWhen(sometimes.Quarter(), message.Fields{
+			"message": "scheduling for distro is disabled",
+			"runner":  RunnerName,
+			"distro":  conf.DistroID,
+		})
+		return nil
 	}
 
 	startTaskFinder := time.Now()
