@@ -121,9 +121,11 @@ func TestCleanupTask(t *testing.T) {
 					So(b.Insert(), ShouldBeNil)
 
 					So(cleanUpTimedOutTask(*et), ShouldBeNil)
-					dbTask, err := task.FindOne(task.ById(dt.Id))
+					oldTask, err := task.FindOneOld(task.ByOldTaskID(dt.Id))
 					So(err, ShouldBeNil)
-					So(dbTask.ResetWhenFinished, ShouldBeTrue)
+					So(oldTask.ResetWhenFinished, ShouldBeTrue)
+					dbTask, err := task.FindOne(task.ById(dt.Id))
+					So(dbTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				})
 			})
 

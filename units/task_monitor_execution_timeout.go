@@ -155,7 +155,11 @@ func cleanUpTimedOutTask(t task.Task) error {
 
 	// try to reset the task
 	if t.IsPartOfDisplay() {
-		return t.DisplayTask.SetResetWhenFinished(detail)
+		err = t.DisplayTask.SetResetWhenFinished(detail)
+		if err != nil {
+			return errors.Wrap(err, "error requesting task reset")
+		}
+		return errors.Wrap(model.MarkEnd(&t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
 	}
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
 }
