@@ -1,8 +1,13 @@
 package data
 
 import (
+	"time"
+
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -63,11 +68,35 @@ func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectR
 	return apiProject, nil
 }
 
+func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	query := model.ProjectEventsBefore(id, before, n)
+	events := []model.ProjectChangeEvent{}
+	err := db.FindAllQ(event.AllLogCollection, query, &events)
+	if err != nil {
+		return nil, err
+	}
+
+	out := []restModel.APIProjectEvent{}
+	catcher := grip.NewBasicCatcher()
+	for _, evt := range events {
+		apiEvent := restModel.APIProjectEvent{}
+		err = apiEvent.BuildFromService(evt)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		out = append(out, apiEvent)
+	}
+
+	return out, catcher.Resolve()
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockProjectConnector struct {
 	CachedProjects []model.ProjectRef
 	CachedVars     []*model.ProjectVars
+	CachedEvents   []restModel.APIProjectEvent
 }
 
 // FindProjects queries the cached projects slice for the matching projects.
@@ -106,4 +135,8 @@ func (pc *MockProjectConnector) CreateProject(apiProjectRef *restModel.APIProjec
 
 func (pc *MockProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
 	return &restModel.APIProject{Identifier: restModel.ToAPIString("test")}, nil
+}
+
+func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	return pc.CachedEvents, nil
 }

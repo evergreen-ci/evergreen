@@ -279,6 +279,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	origProjectRef := *projectRef
+
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
 	projectRef.BatchTime = responseRef.BatchTime
@@ -304,51 +306,50 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if responseRef.SetupGithubHook {
-		var hook *model.GithubHook
-		hook, err = model.FindGithubHook(responseRef.Owner, responseRef.Repo)
+	var hook *model.GithubHook
+	hook, err = model.FindGithubHook(responseRef.Owner, responseRef.Repo)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	origGithubWebhookEnabled := hook != nil
+	currentGithubWebhookEnabled := origGithubWebhookEnabled
+	if responseRef.SetupGithubHook && hook == nil {
+		var hookID int
+		hookID, err = uis.setupGithubHook(projectRef)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-
-		if hook == nil {
-			var hookID int
-			hookID, err = uis.setupGithubHook(projectRef)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "project edit",
+				"message": "can't setup webhook",
+				"project": id,
+				"owner":   responseRef.Owner,
+				"repo":    responseRef.Repo,
+			}))
+			// don't kill it here, sometimes people change
+			// Evergreen to track a personal branch,
+			// one that we have no access to
+			projectRef.TracksPushEvents = false
+		} else {
+			currentGithubWebhookEnabled = true
+			hook := model.GithubHook{
+				HookID: hookID,
+				Owner:  responseRef.Owner,
+				Repo:   responseRef.Repo,
+			}
+			if err = hook.Insert(); err != nil {
+				// A github hook as been created, but we couldn't
+				// save the hook ID in our database. This needs
+				// manual attention for clean up
+				grip.Alert(message.WrapError(err, message.Fields{
 					"source":  "project edit",
-					"message": "can't setup webhook",
+					"message": "can't save hook",
 					"project": id,
 					"owner":   responseRef.Owner,
 					"repo":    responseRef.Repo,
+					"hook_id": hookID,
 				}))
-				// don't kill it here, sometimes people change
-				// Evergreen to track a personal branch,
-				// one that we have no access to
-				projectRef.TracksPushEvents = false
-
-			} else {
-				hook := model.GithubHook{
-					HookID: hookID,
-					Owner:  responseRef.Owner,
-					Repo:   responseRef.Repo,
-				}
-				if err = hook.Insert(); err != nil {
-					// A github hook as been created, but we couldn't
-					// save the hook ID in our database. This needs
-					// manual attention for clean up
-					grip.Alert(message.WrapError(err, message.Fields{
-						"source":  "project edit",
-						"message": "can't save hook",
-						"project": id,
-						"owner":   responseRef.Owner,
-						"repo":    responseRef.Repo,
-						"hook_id": hookID,
-					}))
-					uis.LoggedError(w, r, http.StatusInternalServerError, err)
-					return
-				}
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
 			}
 		}
 	}
@@ -367,6 +368,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	catcher := grip.NewSimpleCatcher()
+	origSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
 	for _, apiSubscription := range responseRef.Subscriptions {
 		var subscriptionIface interface{}
 		subscriptionIface, err = apiSubscription.ToService()
@@ -404,6 +407,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	origProjectVars := *projectVars
 	// If the variable is private, and if the variable in the submission is
 	// empty, then do not modify it. This variable has been redacted and is
 	// therefore empty in the submission, since the client does not have
@@ -424,6 +428,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	origProjectAliases, _ := model.FindAliasesForProject(id)
 	for i := range responseRef.ProjectAliases {
 		responseRef.ProjectAliases[i].ProjectID = id
 		catcher.Add(responseRef.ProjectAliases[i].Upsert())
@@ -436,6 +441,27 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, catcher.Resolve())
 		return
 	}
+
+	username := dbUser.DisplayName()
+
+	before := model.ProjectSettings{
+		ProjectRef:         origProjectRef,
+		GitHubHooksEnabled: origGithubWebhookEnabled,
+		Vars:               origProjectVars,
+		Aliases:            origProjectAliases,
+		Subscriptions:      origSubscriptions,
+	}
+
+	currentAliases, _ := model.FindAliasesForProject(id)
+	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
+	after := model.ProjectSettings{
+		ProjectRef:         *projectRef,
+		GitHubHooksEnabled: currentGithubWebhookEnabled,
+		Vars:               *projectVars,
+		Aliases:            currentAliases,
+		Subscriptions:      currentSubscriptions,
+	}
+	model.LogProjectModified(id, username, before, after)
 
 	allProjects, err := uis.filterAuthorizedProjects(dbUser)
 	if err != nil {
@@ -488,6 +514,9 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+
+	username := dbUser.DisplayName()
+	model.LogProjectAdded(id, username)
 
 	allProjects, err := uis.filterAuthorizedProjects(dbUser)
 
@@ -598,4 +627,35 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 	}
 
 	return *hook.ID, nil
+}
+
+func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
+	_ = MustHaveUser(r)
+	_ = MustHaveProjectContext(r)
+
+	// Validate the project exists
+	id := gimlet.GetVars(r)["project_id"]
+	projectRef, err := model.FindOneProjectRef(id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if projectRef == nil {
+		http.Error(w, "Project not found", http.StatusNotFound)
+		return
+	}
+
+	// Only a superuser can see the events
+	ctx := r.Context()
+	DBUser := gimlet.GetUser(ctx)
+	template := "not_admin.html"
+	if DBUser != nil && uis.isSuperUser(DBUser) {
+		template = "project_events.html"
+	}
+
+	data := struct {
+		Project string
+		ViewData
+	}{id, uis.GetCommonViewData(w, r, true, true)}
+	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }

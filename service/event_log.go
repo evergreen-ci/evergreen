@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/gimlet"
 )
@@ -41,6 +42,12 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		eventQuery = event.RecentAdminEvents(100)
+	case model.ResourceTypeProject:
+		if u == nil {
+			uis.RedirectToLogin(w, r)
+			return
+		}
+		eventQuery = model.MostRecentProjectEvents(resourceID, 200)
 	default:
 		http.Error(w, fmt.Sprintf("Unknown resource: %v", resourceType), http.StatusBadRequest)
 		return

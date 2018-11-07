@@ -2,12 +2,15 @@ package data
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -19,6 +22,46 @@ type ProjectConnectorGetSuite struct {
 	setup    func() error
 	teardown func() error
 	suite.Suite
+}
+
+const (
+	projectId      = "mci2"
+	username       = "me"
+	projEventCount = 10
+)
+
+var sampleProjectSettings = model.ProjectSettings{
+	ProjectRef: model.ProjectRef{
+		Owner:      "admin",
+		Enabled:    true,
+		Private:    true,
+		Identifier: projectId,
+		Admins:     []string{},
+	},
+	GitHubHooksEnabled: true,
+	Vars: model.ProjectVars{
+		Id:          projectId,
+		Vars:        map[string]string{},
+		PrivateVars: map[string]bool{},
+	},
+	Aliases: []model.ProjectAlias{model.ProjectAlias{
+		ID:        bson.NewObjectId(),
+		ProjectID: projectId,
+		Alias:     "alias1",
+		Variant:   "ubuntu",
+		Task:      "subcommand",
+	},
+	},
+	Subscriptions: []event.Subscription{event.Subscription{
+		ID:           "subscription1",
+		ResourceType: "project",
+		Owner:        "admin",
+		Subscriber: event.Subscriber{
+			Type:   event.GithubPullRequestSubscriberType,
+			Target: event.GithubPullRequestSubscriber{},
+		},
+	},
+	},
 }
 
 func TestProjectConnectorGetSuite(t *testing.T) {
@@ -42,6 +85,30 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			if err := p.Insert(); err != nil {
 				return err
 			}
+		}
+
+		before := sampleProjectSettings
+		after := before
+		after.GitHubHooksEnabled = false
+
+		h :=
+			event.EventLogEntry{
+				Timestamp:    time.Now(),
+				ResourceType: model.ResourceTypeProject,
+				EventType:    model.EventTypeProjectModified,
+				ResourceId:   projectId,
+				Data: &model.ProjectChange{
+					User:   username,
+					Before: before,
+					After:  after,
+				},
+			}
+
+		s.Require().NoError(db.ClearCollections(event.AllLogCollection))
+		logger := event.NewDBEventLogger(event.AllLogCollection)
+		for i := 0; i < projEventCount; i++ {
+			eventShallowCpy := h
+			s.NoError(logger.LogEvent(&eventShallowCpy))
 		}
 
 		return nil
@@ -283,6 +350,12 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
 	projects, err := s.ctx.FindProjects("aaa", 1, -1, isAuthenticated)
 	s.NoError(err)
 	s.Len(projects, 0)
+}
+
+func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
+	events, err := s.ctx.GetProjectEventLog(projectId, time.Now(), 0)
+	s.NoError(err)
+	s.Equal(projEventCount, len(events))
 }
 
 ////////////////////////////////////////////////////////////////////////

@@ -375,6 +375,28 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
     return service;
 }]);
 
+mciServices.rest.factory('mciProjectRestService', ['mciBaseRestService', function(baseSvc) {
+    var resource = mciServices.rest.RestV2Resource("projects");
+
+    var service = {};
+
+    service.getEvents = function(project_id, timestamp, limit, callbacks) {
+      if (!limit || limit === 0) {
+        limit = 15;
+      }
+
+      var _project = encodeURIComponent(project_id)
+      var url = [resource, _project, "events"].join('/') + "?limit=" + limit;
+      if (timestamp && timestamp !== "") {
+        url += "&ts=" + timestamp;
+      }
+
+      baseSvc.getResource(url, [], {}, callbacks);
+    }
+
+    return service;
+}]);
+
 mciServices.rest.factory('mciUserSettingsService', ['mciBaseRestService', function(baseSvc) {
     var resource = mciServices.rest.RestV2Resource("user/settings");
 
