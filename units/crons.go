@@ -411,7 +411,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher.Add(err)
 
 		// find all active distros
-		distros, err := distro.Find(distro.All)
+		distros, err := distro.Find(distro.ByActive())
 		catcher.Add(err)
 
 		grip.InfoWhen(sometimes.Percent(10), message.Fields{

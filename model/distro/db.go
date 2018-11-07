@@ -1,6 +1,7 @@
 package distro
 
 import (
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2/bson"
@@ -71,4 +72,12 @@ func ByProvider(p string) db.Q {
 // BySpawnAllowed returns a query that contains the SpawnAllowed selector.
 func BySpawnAllowed() db.Q {
 	return db.Query(bson.M{SpawnAllowedKey: true})
+}
+
+// ByActive returns a query that selects only active distros
+func ByActive() db.Q {
+	return db.Query(bson.M{"$or": []bson.M{
+		bson.M{DisabledKey: bson.M{"$exists": false}},
+		bson.M{ProviderKey: evergreen.HostTypeStatic},
+	}})
 }
