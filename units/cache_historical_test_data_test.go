@@ -128,16 +128,18 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStats() {
 		},
 	}
 
-	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
+	c := cacheHistoricalJobContext{
+		ProjectId: s.projectId,
+		JobTime:   now,
+	}
 
+	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
 	s.Nil(err)
-
 	s.Equal(len(mockGenFns.HourlyFns)*3, callCountFn0)
 	s.Equal(len(mockGenFns.DailyFns)*2, callCountFn1)
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyError() {
-	now := time.Now()
 	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		return fmt.Errorf("error message")
 	}
@@ -156,13 +158,15 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithAnHourlyErr
 		},
 	}
 
-	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
-
+	c := cacheHistoricalJobContext{
+		ProjectId: s.projectId,
+		JobTime:   time.Now(),
+	}
+	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
 	s.Error(err)
 }
 
 func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError() {
-	now := time.Now()
 	mockFn0 := func(p string, r string, h time.Time, ts []string, jobTime time.Time) error {
 		return nil
 	}
@@ -181,8 +185,11 @@ func (s *cacheHistoryTestDataSuite) TestUpdateHourlyAndDailyStatsWithADailyError
 		},
 	}
 
-	err := updateHourlyAndDailyStats(s.projectId, s.statsList, now, mockGenFns, nil)
-
+	c := cacheHistoricalJobContext{
+		ProjectId: s.projectId,
+		JobTime:   time.Now(),
+	}
+	err := c.updateHourlyAndDailyStats(s.statsList, mockGenFns)
 	s.Error(err)
 }
 
@@ -199,7 +206,11 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverHourlyStats() {
 		return nil
 	}
 
-	err := iteratorOverHourlyStats(s.statsList, time.Now(), mockHourlyGenerateFn, "hourly", nil)
+	c := cacheHistoricalJobContext{
+		ProjectId: s.projectId,
+		JobTime:   time.Now(),
+	}
+	err := c.iteratorOverHourlyStats(s.statsList, mockHourlyGenerateFn, "hourly")
 	s.Nil(err)
 	s.Equal(len(s.statsList), callCount)
 }
@@ -225,7 +236,11 @@ func (s *cacheHistoryTestDataSuite) TestIteratorOverDailyStats() {
 		return nil
 	}
 
-	err := iteratorOverDailyStats(s.projectId, statsRollup, time.Now(), mockDailyGenerateFn, "daily", nil)
+	c := cacheHistoricalJobContext{
+		ProjectId: s.projectId,
+		JobTime:   time.Now(),
+	}
+	err := c.iteratorOverDailyStats(statsRollup, mockDailyGenerateFn, "daily")
 	s.Nil(err)
 	s.Equal(len(statsRollup), callCount)
 }
@@ -401,17 +416,44 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	job.Run(context.Background())
 	s.NoError(job.Error())
 
-	doc := modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test0.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
+	doc, err := modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
+		TestFile:  "test0.js",
+		TaskName:  "taskName",
+		Variant:   "",
+		Distro:    "",
+		Project:   s.projectId,
+		Requester: s.requester,
+		Date:      baseTime.Truncate(time.Hour * 24),
+	})
+	s.Nil(err)
 	s.NotNil(doc)
 	s.Equal(2, doc.NumFail)
 	s.Equal(0, doc.NumPass)
 
-	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test1.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
+	doc, err = modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
+		TestFile:  "test1.js",
+		TaskName:  "taskName",
+		Variant:   "",
+		Distro:    "",
+		Project:   s.projectId,
+		Requester: s.requester,
+		Date:      baseTime.Truncate(time.Hour * 24),
+	})
+	s.Nil(err)
 	s.NotNil(doc)
 	s.Equal(1, doc.NumFail)
 	s.Equal(1, doc.NumPass)
 
-	doc = modelUtil.GetDailyTestDoc(s.Suite, s.projectId, s.requester, "test2.js", "taskName", "", "", baseTime.Truncate(time.Hour*24))
+	doc, err = modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
+		TestFile:  "test2.js",
+		TaskName:  "taskName",
+		Variant:   "",
+		Distro:    "",
+		Project:   s.projectId,
+		Requester: s.requester,
+		Date:      baseTime.Truncate(time.Hour * 24),
+	})
+	s.Nil(err)
 	s.NotNil(doc)
 	s.Equal(0, doc.NumFail)
 	s.Equal(2, doc.NumPass)

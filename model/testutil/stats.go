@@ -4,75 +4,32 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-func createTestStatsId(project string, requester string, testFile string, taskName string,
-	variant string, distro string, date time.Time) bson.D {
-	return bson.D{
-		{Name: "test_file", Value: testFile},
-		{Name: "task_name", Value: taskName},
-		{Name: "variant", Value: variant},
-		{Name: "distro", Value: distro},
-		{Name: "project", Value: project},
-		{Name: "requester", Value: requester},
-		{Name: "date", Value: date},
-	}
-}
-
-func createTaskStatsId(project string, requester string, taskName string, variant string, distro string, date time.Time) bson.D {
-	return bson.D{
-		{Name: "task_name", Value: taskName},
-		{Name: "variant", Value: variant},
-		{Name: "distro", Value: distro},
-		{Name: "project", Value: project},
-		{Name: "requester", Value: requester},
-		{Name: "date", Value: date},
-	}
-}
-
-func getTestStatsDoc(s suite.Suite, collection string, project string, requester string,
-	testFile string, taskName string, variant string, distro string, date time.Time) *dbTestStats {
+func GetDailyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
 	doc := dbTestStats{}
-	docId := createTestStatsId(project, requester, testFile, taskName, variant, distro, date)
-	err := db.FindOne(collection, bson.M{"_id": docId}, db.NoProjection, db.NoSort, &doc)
-	if err == mgo.ErrNotFound {
-		return nil
-	}
-	s.Require().NoError(err)
-	return &doc
+	err := db.FindOne("daily_test_stats", bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	return &doc, err
 }
 
-func GetDailyTestDoc(s suite.Suite, project string, requester string, testFile string,
-	taskName string, variant string, distro string, date time.Time) *dbTestStats {
-	return getTestStatsDoc(s, "daily_test_stats", project, requester, testFile, taskName,
-		variant, distro, date)
+func GetHourlyTestDoc(id DbTestStatsId) (*dbTestStats, error) {
+	doc := dbTestStats{}
+	err := db.FindOne("hourly_test_stats", bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	return &doc, err
 }
 
-func GetHourlyTestDoc(s suite.Suite, project string, requester string, testFile string,
-	taskName string, variant string, distro string, date time.Time) *dbTestStats {
-	return getTestStatsDoc(s, "hourly_test_stats", project, requester, testFile, taskName,
-		variant, distro, date)
-}
-
-func GetDailyTaskDoc(s suite.Suite, project string, requester string, taskName string, variant string, distro string, date time.Time) *dbTaskStats {
+func GetDailyTaskDoc(id DbTaskStatsId) (*dbTaskStats, error) {
 	doc := dbTaskStats{}
-	docId := createTaskStatsId(project, requester, taskName, variant, distro, date)
-	err := db.FindOne("daily_task_stats", bson.M{"_id": docId}, db.NoProjection, db.NoSort, &doc)
-	if err == mgo.ErrNotFound {
-		return nil
-	}
-	s.Require().NoError(err)
-	return &doc
+	err := db.FindOne("daily_task_stats", bson.M{"_id": id}, db.NoProjection, db.NoSort, &doc)
+	return &doc, err
 }
 
 ////////////////////////////////////////
 // Structs to represent database data //
 ////////////////////////////////////////
 
-type dbTestStatsId struct {
+type DbTestStatsId struct {
 	TestFile  string    `bson:"test_file"`
 	TaskName  string    `bson:"task_name"`
 	Variant   string    `bson:"variant"`
@@ -83,14 +40,14 @@ type dbTestStatsId struct {
 }
 
 type dbTestStats struct {
-	Id              dbTestStatsId `bson:"_id"`
+	Id              DbTestStatsId `bson:"_id"`
 	NumPass         int           `bson:"num_pass"`
 	NumFail         int           `bson:"num_fail"`
 	AvgDurationPass float32       `bson:"avg_duration_pass"`
 	LastUpdate      time.Time     `bson:"last_update"`
 }
 
-type dbTaskStatsId struct {
+type DbTaskStatsId struct {
 	TaskName  string    `bson:"task_name"`
 	Variant   string    `bson:"variant"`
 	Distro    string    `bson:"distro"`
@@ -100,7 +57,7 @@ type dbTaskStatsId struct {
 }
 
 type dbTaskStats struct {
-	Id                 dbTaskStatsId `bson:"_id"`
+	Id                 DbTaskStatsId `bson:"_id"`
 	NumSuccess         int           `bson:"num_success"`
 	NumFailed          int           `bson:"num_failed"`
 	NumTimeout         int           `bson:"num_timeout"`

@@ -81,13 +81,20 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		}
 	}
 
+	jobContext := cacheHistoricalJobContext{
+		ProjectId:     j.ProjectId,
+		JobTime:       time.Now(),
+		TasksToIgnore: tasksToIgnore,
+	}
+
 	syncFromTime := statsStatus.ProcessedTasksUntil
 	syncToTime := findTargetTimeForSync(syncFromTime)
-	jobTime := time.Now()
 
 	grip.Info(message.Fields{
-		"job_id":  j.ID(),
-		"message": fmt.Sprintf("Syncing data between %v - %v", syncFromTime, syncToTime),
+		"job_id":    j.ID(),
+		"sync_from": syncFromTime,
+		"sync_to":   syncToTime,
+		"message":   "running sync",
 	})
 
 	statsToUpdate, err := stats.FindStatsToUpdate(j.ProjectId, syncFromTime, syncToTime)
@@ -106,18 +113,24 @@ func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 		},
 	}
 
-	err = updateHourlyAndDailyStats(j.ProjectId, statsToUpdate, jobTime, generateMap, tasksToIgnore)
+	err = jobContext.updateHourlyAndDailyStats(statsToUpdate, generateMap)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error generating hourly test stats"))
 		return
 	}
 
 	// update last sync
-	err = stats.UpdateStatsStatus(j.ProjectId, jobTime, syncToTime)
+	err = stats.UpdateStatsStatus(j.ProjectId, jobContext.JobTime, syncToTime)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error updating last synced date"))
 		return
 	}
+}
+
+type cacheHistoricalJobContext struct {
+	ProjectId     string
+	JobTime       time.Time
+	TasksToIgnore []*regexp.Regexp
 }
 
 func getTasksToIgnore(projectId string) ([]*regexp.Regexp, error) {
@@ -148,10 +161,9 @@ func createRegexpFromStrings(filePatterns []string) ([]*regexp.Regexp, error) {
 	return tasksToIgnore, nil
 }
 
-func updateHourlyAndDailyStats(projectId string, statsToUpdate []stats.StatsToUpdate,
-	jobTime time.Time, generateFns generateFunctions, tasksToIgnore []*regexp.Regexp) error {
+func (c *cacheHistoricalJobContext) updateHourlyAndDailyStats(statsToUpdate []stats.StatsToUpdate, generateFns generateFunctions) error {
 	for name, genFn := range generateFns.HourlyFns {
-		err := iteratorOverHourlyStats(statsToUpdate, jobTime, genFn, name, tasksToIgnore)
+		err := c.iteratorOverHourlyStats(statsToUpdate, genFn, name)
 		if err != nil {
 			return err
 		}
@@ -160,7 +172,7 @@ func updateHourlyAndDailyStats(projectId string, statsToUpdate []stats.StatsToUp
 	dailyStats := buildDailyStatsRollup(statsToUpdate)
 
 	for name, genFn := range generateFns.DailyFns {
-		err := iteratorOverDailyStats(projectId, dailyStats, jobTime, genFn, name, tasksToIgnore)
+		err := c.iteratorOverDailyStats(dailyStats, genFn, name)
 		if err != nil {
 			return err
 		}
@@ -169,21 +181,20 @@ func updateHourlyAndDailyStats(projectId string, statsToUpdate []stats.StatsToUp
 	return nil
 }
 
-func iteratorOverDailyStats(projectId string, dailyStats dailyStatsRollup, jobTime time.Time,
-	fn generateStatsFn, displayName string, tasksToIgnore []*regexp.Regexp) error {
+func (c *cacheHistoricalJobContext) iteratorOverDailyStats(dailyStats dailyStatsRollup, fn generateStatsFn, displayName string) error {
 	for day, stats := range dailyStats {
 		for requester, tasks := range stats {
-			taskList := filterIgnoredTasks(tasks, tasksToIgnore)
+			taskList := filterIgnoredTasks(tasks, c.TasksToIgnore)
 			if len(taskList) > 0 {
-				err := fn(projectId, requester, day, taskList, jobTime)
+				err := fn(c.ProjectId, requester, day, taskList, c.JobTime)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"project_id":   c.ProjectId,
+					"sync_date":    day,
+					"job_time":     c.JobTime,
+					"display_name": displayName,
+				}))
 				if err != nil {
-					grip.Info(message.Fields{
-						"project_id":   projectId,
-						"sync_date":    day,
-						"job_time":     jobTime,
-						"display_name": displayName,
-						"message":      "error syncing daily stats",
-					})
+
 					return errors.Wrap(err, "Could not sync daily stats")
 				}
 			}
@@ -193,17 +204,16 @@ func iteratorOverDailyStats(projectId string, dailyStats dailyStatsRollup, jobTi
 	return nil
 }
 
-func iteratorOverHourlyStats(stats []stats.StatsToUpdate, jobTime time.Time, fn generateStatsFn,
-	displayName string, tasksToIgnore []*regexp.Regexp) error {
+func (c *cacheHistoricalJobContext) iteratorOverHourlyStats(stats []stats.StatsToUpdate, fn generateStatsFn, displayName string) error {
 	for _, stat := range stats {
-		taskList := filterIgnoredTasks(stat.Tasks, tasksToIgnore)
+		taskList := filterIgnoredTasks(stat.Tasks, c.TasksToIgnore)
 		if len(taskList) > 0 {
-			err := fn(stat.ProjectId, stat.Requester, stat.Hour, taskList, jobTime)
+			err := fn(stat.ProjectId, stat.Requester, stat.Hour, taskList, c.JobTime)
 			if err != nil {
 				grip.Info(message.Fields{
 					"project_id":   stat.ProjectId,
 					"sync_date":    stat.Hour,
-					"job_time":     jobTime,
+					"job_time":     c.JobTime,
 					"display_name": displayName,
 					"message":      "error syncing hourly stats",
 				})
