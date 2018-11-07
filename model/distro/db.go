@@ -74,7 +74,7 @@ func BySpawnAllowed() db.Q {
 	return db.Query(bson.M{SpawnAllowedKey: true})
 }
 
-// ByActive returns a query that selects only active or static distros
+// ByActiveOrStatic returns a query that selects only active or static distros
 func ByActiveOrStatic() db.Q {
 	return db.Query(bson.M{"$or": []bson.M{
 		bson.M{DisabledKey: bson.M{"$exists": false}},
