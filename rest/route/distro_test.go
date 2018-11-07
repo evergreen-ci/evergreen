@@ -377,7 +377,18 @@ func (s *DistroPatchByIdSuite) TestRunValidDisabled() {
 }
 
 func (s *DistroPatchByIdSuite) TestRunValidContainer() {
+	ctx := context.Background()
+	json := []byte(`{"container_pool": ""}`)
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroId = "fedora8"
+	h.body = json
 
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+
+	apiDistro := (resp.Data()).(*model.APIDistro)
+	s.Equal(apiDistro.ContainerPool, model.ToAPIString(""))
 }
 
 func (s *DistroPatchByIdSuite) TestRunInValidEmptyStringValues() {
