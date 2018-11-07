@@ -392,7 +392,7 @@ func (s *DistroPatchByIdSuite) TestRunInValidEmptyStringValues() {
 	s.Equal(resp.Status(), http.StatusBadRequest)
 	s.NotNil(resp.Data())
 
-	messages := []string{
+	errors := []string{
 		"distro 'arch' cannot be blank",
 		"distro 'user' cannot be blank",
 		"distro 'work_dir' cannot be blank",
@@ -400,13 +400,8 @@ func (s *DistroPatchByIdSuite) TestRunInValidEmptyStringValues() {
 		"distro 'provider' cannot be blank",
 	}
 
-	var expected strings.Builder
-	for _, v := range messages {
-		expected.WriteString(v + ", ")
-	}
-
 	error := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal(expected.String(), error.Message)
+	s.Equal(strings.Join(errors, ", "), error.Message)
 }
 
 func (s *DistroPatchByIdSuite) TestValidFindAndReplaceFullDocument() {

@@ -48,7 +48,7 @@ func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id %s could not be updated", distro.Id),
+			Message:    fmt.Sprintf("distro with id '%s' could not be updated", distro.Id),
 		}
 	}
 	return nil
@@ -128,7 +128,7 @@ func (mdc *MockDistroConnector) UpdateDistro(distro *distro.Distro) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("distro with id %s not found", distro.Id)
+	return fmt.Errorf("distro with id '%s' not found", distro.Id)
 }
 
 // FindCostByDistroId returns results based on the cached tasks and

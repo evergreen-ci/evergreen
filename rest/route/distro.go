@@ -60,21 +60,21 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for find() by distro id"))
 	}
 
 	apiDistro := &model.APIDistro{}
 	if err = apiDistro.BuildFromService(*d); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from distro.Expansion to model.APIExpansion"))
 	}
 
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
 	i, err := apiDistro.ToService()
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from model.APIExpansion to distro.Expansion"))
 	}
 	d = i.(*distro.Distro)
 
@@ -89,22 +89,22 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    "Database error",
+			Message:    err.Error(),
 		})
 	}
 	if len(vErrors) != 0 {
-		var m strings.Builder
+		errors := []string{}
 		for _, v := range vErrors {
-			m.WriteString(v.Message + ", ")
+			errors = append(errors, v.Message)
 		}
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    m.String(),
+			Message:    strings.Join(errors, ", "),
 		})
 	}
 
 	if err = h.sc.UpdateDistro(d); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for update() by distro id"))
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)

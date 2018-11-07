@@ -61,7 +61,9 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		apiDistro.Expansions = []APIExpansion{}
 		for _, e := range v.Expansions {
 			expansion := &APIExpansion{}
-			expansion.BuildFromService(e)
+			if err := expansion.BuildFromService(e); err != nil {
+				return errors.Wrap(err, "Error converting from distro.Expansion to model.APIExpansion")
+			}
 			apiDistro.Expansions = append(apiDistro.Expansions, *expansion)
 		}
 
@@ -93,7 +95,7 @@ func (apiDistro *APIDistro) ToService() (interface{}, error) {
 	for _, e := range apiDistro.Expansions {
 		i, err := e.ToService()
 		if err != nil {
-			return nil, errors.Wrap(err, "error converting from model.APIExpansion to distro.Expansion")
+			return nil, errors.Wrap(err, "Error converting from model.APIExpansion to distro.Expansion")
 		}
 		d.Expansions = append(d.Expansions, i.(distro.Expansion))
 	}
