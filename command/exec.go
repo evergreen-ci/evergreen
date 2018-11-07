@@ -202,8 +202,7 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
 	if err != nil {
-		logger.Execution().Warning(err.Error())
-		return errors.WithStack(err)
+		logger.Execution().Notice(err.Error())
 	}
 
 	addTempDirs(c.Env, taskTmpDir)

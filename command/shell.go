@@ -126,8 +126,7 @@ func (c *shellExec) Execute(ctx context.Context,
 
 	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
 	if err != nil {
-		logger.Execution().Warning(err.Error())
-		return errors.WithStack(err)
+		logger.Execution().Notice(err.Error())
 	}
 
 	env := append(os.Environ(),
