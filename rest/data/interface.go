@@ -112,8 +112,6 @@ type Connector interface {
 	FindAllDistros() ([]distro.Distro, error)
 	// UpdateDistro is a method that updates a given distro by its distro.Id
 	UpdateDistro(distro *distro.Distro) error
-	// UpdateDistroById is a method for updating the name of a distro
-	UpdateDistroById(distroId string, distro *distro.Distro) error
 
 	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
 	// access to the metrics data collected by agents during task execution

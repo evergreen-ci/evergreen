@@ -53,11 +53,6 @@ func (d *Distro) Update() error {
 	return db.UpdateId(Collection, d.Id, d)
 }
 
-// Update updates one distro by id.
-func (d *Distro) UpdateById(distroId string) error {
-	return db.UpdateId(Collection, distroId, d)
-}
-
 // Remove removes one distro.
 func Remove(id string) error {
 	return db.Remove(Collection, bson.M{IdKey: id})

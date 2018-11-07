@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -77,8 +78,14 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	d = i.(*distro.Distro)
 
-	isNew := apiDistro.Name != model.ToAPIString(h.distroId)
-	vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, isNew)
+	if d.Id != h.distroId {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Distro name is immutable; cannot rename distro '%s'", h.distroId),
+		})
+	}
+
+	vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, false)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -96,7 +103,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = h.sc.UpdateDistroById(h.distroId, d); err != nil {
+	if err = h.sc.UpdateDistro(d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
 

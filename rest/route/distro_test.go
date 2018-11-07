@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -153,22 +154,6 @@ func (s *DistroPatchByIdSuite) TestParse() {
 	s.NoError(err)
 
 	s.Equal(json, s.rm.(*distroIDPatchHandler).body)
-}
-
-func (s *DistroPatchByIdSuite) TestRunValidName() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
-	json := []byte(`{"name": "Updated distro name"}`)
-
-	h := s.rm.(*distroIDPatchHandler)
-	h.distroId = "fedora8"
-	h.body = json
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(resp.Status(), http.StatusOK)
-
-	apiDistro := (resp.Data()).(*model.APIDistro)
-	s.Equal(apiDistro.Name, model.ToAPIString("Updated distro name"))
 }
 
 func (s *DistroPatchByIdSuite) TestRunValidSpawnAllowed() {
@@ -397,7 +382,7 @@ func (s *DistroPatchByIdSuite) TestRunValidContainer() {
 
 func (s *DistroPatchByIdSuite) TestRunInValidEmptyStringValues() {
 	ctx := context.Background()
-	json := []byte(`{"name": "","arch": "","user": "","work_dir": "","ssh_key": "","provider": ""}`)
+	json := []byte(`{"arch": "","user": "","work_dir": "","ssh_key": "","provider": ""}`)
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroId = "fedora8"
 	h.body = json
@@ -408,8 +393,6 @@ func (s *DistroPatchByIdSuite) TestRunInValidEmptyStringValues() {
 	s.NotNil(resp.Data())
 
 	messages := []string{
-		"distro must specify id",
-		"distro '_id' cannot be blank",
 		"distro 'arch' cannot be blank",
 		"distro 'user' cannot be blank",
 		"distro 'work_dir' cannot be blank",
@@ -430,7 +413,6 @@ func (s *DistroPatchByIdSuite) TestValidFindAndReplaceFullDocument() {
 	ctx := context.Background()
 	json := []byte(
 		`{
-				"name" : "~fedora8",
 				"arch" : "~linux_amd64",
 				"work_dir" : "~/data/mci",
 				"pool_size" : 20,
@@ -488,7 +470,7 @@ func (s *DistroPatchByIdSuite) TestValidFindAndReplaceFullDocument() {
 	s.NotNil(resp.Data())
 	apiDistro := (resp.Data()).(*model.APIDistro)
 	s.Equal(apiDistro.Disabled, false)
-	s.Equal(apiDistro.Name, model.ToAPIString("~fedora8"))
+	s.Equal(apiDistro.Name, model.ToAPIString("fedora8"))
 	s.Equal(apiDistro.WorkDir, model.ToAPIString("~/data/mci"))
 	s.Equal(apiDistro.PoolSize, 20)
 	s.Equal(apiDistro.Provider, model.ToAPIString("mock"))
@@ -516,4 +498,20 @@ func (s *DistroPatchByIdSuite) TestValidFindAndReplaceFullDocument() {
 		model.APIExpansion{Key: model.ToAPIString("~kill_pid"), Value: model.ToAPIString("~kill -- -$(ps opgid= %v)")},
 		model.APIExpansion{Key: model.ToAPIString("~scons_prune_ratio"), Value: model.ToAPIString("~0.8")},
 	})
+}
+
+func (s *DistroPatchByIdSuite) TestRunInValidNameChange() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
+	json := []byte(`{"name": "Updated distro name"}`)
+
+	h := s.rm.(*distroIDPatchHandler)
+	h.distroId = "fedora8"
+	h.body = json
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusBadRequest)
+
+	gimlet := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(gimlet.Message, fmt.Sprintf("Distro name is immutable; cannot rename distro '%s'", h.distroId))
 }

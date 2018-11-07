@@ -54,17 +54,6 @@ func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
 	return nil
 }
 
-func (dc *DBDistroConnector) UpdateDistroById(distroId string, distro *distro.Distro) error {
-	err := distro.UpdateById(distroId)
-	if err != nil {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id %s could not be updated", distro.Id),
-		}
-	}
-	return nil
-}
-
 // FindCostByDistroId queries the backing database for cost data associated
 // with the given distroId. This is done by aggregating TimeTaken over all
 // tasks of the given distro that match the time range.
@@ -136,16 +125,6 @@ func (mdc *MockDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 func (mdc *MockDistroConnector) UpdateDistro(distro *distro.Distro) error {
 	for _, d := range mdc.CachedDistros {
 		if d.Id == distro.Id {
-			return nil
-		}
-	}
-	return fmt.Errorf("distro with id %s not found", distro.Id)
-}
-
-func (mdc *MockDistroConnector) UpdateDistroById(distroId string, distro *distro.Distro) error {
-	for _, d := range mdc.CachedDistros {
-		if d.Id == distroId {
-			//*d.Id = distroId
 			return nil
 		}
 	}
