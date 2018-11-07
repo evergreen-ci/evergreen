@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/glide/action"
@@ -26,34 +27,30 @@ func main() {
 		return
 	}
 
+	updateGlide(pkg, revision)
+
+	installer := repo.NewInstaller()
+	action.EnsureGoVendor()
+	action.Install(installer, false, false)
+}
+
+func updateGlide(pkg, revision string) {
 	wd, err := os.Getwd()
 	if err != nil {
 		grip.Error(errors.Wrap(err, "error getting working dir"))
 		return
 	}
-	vendorPath := fmt.Sprintf("%s/vendor/%s", wd, pkg)
+	vendorPath := filepath.Join(wd, "vendor", pkg)
 	_, err = os.Stat(vendorPath)
-	if os.IsNotExist(err) {
-		grip.Errorf("vendor directory %s not found", vendorPath)
-		return
-	}
-	glidePath := fmt.Sprintf("%s/glide.lock", wd)
+	grip.EmergencyFatal(errors.Wrapf(err, "vendor directory %s not found", vendorPath))
+	glidePath := filepath.Join(wd, "glide.lock")
 	_, err = os.Stat(glidePath)
-	if os.IsNotExist(err) {
-		grip.Errorf("glide file %s not found", glidePath)
-		return
-	}
+	grip.EmergencyFatal(errors.Wrapf(err, "glide file %s not found", glidePath))
 
 	glideFile, err := os.Open(glidePath)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "error opening glide file"))
-		return
-	}
+	grip.EmergencyFatal(errors.Wrap(err, "error opening glide file"))
 	glide, err := ioutil.ReadAll(glideFile)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "error reading glide file"))
-		return
-	}
+	grip.EmergencyFatal(errors.Wrap(err, "error reading glide file"))
 	lines := strings.Split(string(glide), "\n")
 	found := false
 	for i, line := range lines {
@@ -64,22 +61,11 @@ func main() {
 		}
 	}
 	if !found {
-		grip.Errorf("package %s not found in glide file", pkg)
-		return
+		grip.EmergencyFatal("error reading glide file")
 	}
 	err = ioutil.WriteFile(glidePath, []byte(strings.Join(lines, "\n")), 0777)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "error writing glide file"))
-		return
-	}
+	grip.EmergencyFatal(errors.Wrap(err, "error writing glide file"))
 
 	err = os.RemoveAll(vendorPath)
-	if err != nil {
-		grip.Error(errors.Wrap(err, "error removing vendor dir"))
-		return
-	}
-
-	installer := repo.NewInstaller()
-	action.EnsureGoVendor()
-	action.Install(installer, false, false)
+	grip.EmergencyFatal(errors.Wrap(err, "error removing vendor dir"))
 }
