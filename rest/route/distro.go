@@ -42,41 +42,21 @@ func (h *distroIDDeleteHandler) Factory() gimlet.RouteHandler {
 // Parse() fetches the distroId from the http request.
 func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
-
-	if h.distroId == "" {
-		return errors.New("request data incomplete")
-	}
-
 	return nil
 }
 
-func (dgh *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+	_, err := h.sc.FindDistroById(h.distroId)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for find() by distro id '%s'", h.distroId)))
+	}
 
-	return nil
-	// distros, err := dgh.sc.FindAllDistros()
-	// if err != nil {
-	// 	return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
-	// }
-	//
-	// resp := gimlet.NewResponseBuilder()
-	// if err = resp.SetFormat(gimlet.JSON); err != nil {
-	// 	return gimlet.MakeJSONErrorResponder(err)
-	// }
-	//
-	// for _, d := range distros {
-	// 	distroModel := &model.APIDistro{}
-	//
-	// 	if err = distroModel.BuildFromService(d); err != nil {
-	// 		return gimlet.MakeJSONErrorResponder(err)
-	// 	}
-	//
-	// 	err = resp.AddData(distroModel)
-	// 	if err != nil {
-	// 		return gimlet.MakeJSONErrorResponder(err)
-	// 	}
-	// }
-	//
-	// return resp
+	err = h.sc.DeleteDistroById(h.distroId)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for remove() by distro id '%s'", h.distroId)))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -101,7 +81,7 @@ func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse() fetches the distroId and json payload from the http request.
+// // Parse() fetches the distroId from the http request.
 func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
 	body := util.NewRequestReader(r)
@@ -116,12 +96,11 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
-// Run() finds a distro by id; validates its patched state, which is updated
-// and returned if valid.
+// Run() deletes a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for find() by distro id"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for find() by distro id '%s'", h.distroId)))
 	}
 
 	apiDistro := &model.APIDistro{}
@@ -165,7 +144,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err = h.sc.UpdateDistro(d); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for update() by distro id"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for update() by distro id '%s'", h.distroId)))
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)
@@ -195,11 +174,6 @@ func (h *distroIDGetHandler) Factory() gimlet.RouteHandler {
 // Parse() fetches the distroId from the http request.
 func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
-
-	if h.distroId == "" {
-		return errors.New("request data incomplete")
-	}
-
 	return nil
 }
 
@@ -208,12 +182,12 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	foundDistro, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error for find() all distros"))
 	}
 
 	distroModel := &model.APIDistro{}
 	if err = distroModel.BuildFromService(*foundDistro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from distro.Expansion to model.APIExpansion"))
 	}
 
 	return gimlet.NewJSONResponse(distroModel)

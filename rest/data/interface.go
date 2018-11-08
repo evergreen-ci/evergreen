@@ -112,6 +112,8 @@ type Connector interface {
 	FindAllDistros() ([]distro.Distro, error)
 	// UpdateDistro is a method that updates a given distro
 	UpdateDistro(distro *distro.Distro) error
+	// FindDistroById is a method to delete the distro matching the given distroId.
+	DeleteDistroById(string) error
 
 	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
 	// access to the metrics data collected by agents during task execution

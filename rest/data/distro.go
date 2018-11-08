@@ -22,7 +22,7 @@ func (dc *DBDistroConnector) FindDistroById(distroId string) (*distro.Distro, er
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id %s not found", distroId),
+			Message:    fmt.Sprintf("distro with id '%s' not found", distroId),
 		}
 	}
 	return &d, nil
@@ -43,23 +43,25 @@ func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 	return distros, nil
 }
 
+// UpdateDistro updates the given distro.Distro.
 func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
 	err := distro.Update()
 	if err != nil {
 		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' could not be updated", distro.Id),
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("distro with id '%s' was not updated", distro.Id),
 		}
 	}
 	return nil
 }
 
-func (dc *DBDistroConnector) DeleteDistro(distroId string) error {
+// DeleteDistroById removes a given distro from the database based on its id.
+func (dc *DBDistroConnector) DeleteDistroById(distroId string) error {
 	err := distro.Remove(distroId)
 	if err != nil {
 		return gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id '%s' could not be deleted", distroId),
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
 		}
 	}
 	return nil
@@ -121,7 +123,7 @@ func (mdc *MockDistroConnector) FindDistroById(distroId string) (*distro.Distro,
 			return d, nil
 		}
 	}
-	return nil, fmt.Errorf("distro with id %s not found", distroId)
+	return nil, fmt.Errorf("distro with id '%s' not found", distroId)
 }
 
 // FindAllDistros is a mock implementation for testing.
@@ -140,6 +142,15 @@ func (mdc *MockDistroConnector) UpdateDistro(distro *distro.Distro) error {
 		}
 	}
 	return fmt.Errorf("distro with id '%s' not found", distro.Id)
+}
+
+func (mdc *MockDistroConnector) DeleteDistroById(distroId string) error {
+	for _, d := range mdc.CachedDistros {
+		if d.Id == distroId {
+			return nil
+		}
+	}
+	return fmt.Errorf("distro with id '%s' not deleted", distroId)
 }
 
 // FindCostByDistroId returns results based on the cached tasks and
