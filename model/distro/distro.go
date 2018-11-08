@@ -136,8 +136,14 @@ func (d *Distro) GetImageID() (string, error) {
 		i = (*d.ProviderSettings)["image_name"]
 	case evergreen.ProviderNameVsphere:
 		i = (*d.ProviderSettings)["template"]
-	default:
+	case evergreen.ProviderNameMock:
 		return "", nil
+	case evergreen.ProviderNameStatic:
+		return "", nil
+	case evergreen.ProviderNameOpenstack:
+		return "", nil
+	default:
+		return "", errors.New("unknown provider name")
 	}
 
 	s, ok := i.(string)
