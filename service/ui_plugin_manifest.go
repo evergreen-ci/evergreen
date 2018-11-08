@@ -26,7 +26,7 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundManifest, err := manifest.FindOne(manifest.ById(version.Id))
+	foundManifest, err := manifest.FindOne(manifest.ByProjectAndRevision(version.Identifier, version.Revision))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting manifest with version id %v: %v",
 			version.Id, err), http.StatusBadRequest)

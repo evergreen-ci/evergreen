@@ -153,3 +153,6 @@ db.daily_test_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 
 
 //======daily_task_stats======//
 db.daily_task_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
+
+//======manifest======//
+db.manifest.createIndex({ "project": 1, "revision": 1 }) 

@@ -744,3 +744,36 @@ tasks:
 	s.Len(dbVersion.Errors, 2)
 	s.Len(dbVersion.Warnings, 2)
 }
+
+func TestCreateManifest(t *testing.T) {
+	assert := assert.New(t)
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestFetchRevisions")
+	v := version.Version{
+		Id:         "v",
+		Revision:   "abc",
+		Identifier: "proj",
+	}
+	proj := model.Project{
+		Identifier: "proj",
+		Modules: []model.Module{
+			{
+				Name:   "module1",
+				Repo:   "git@github.com:evergreen-ci/sample.git",
+				Branch: "master",
+			},
+		},
+	}
+	manifest, err := CreateManifest(v, &proj, "branch", settings)
+	assert.NoError(err)
+	assert.Equal(v.Id, manifest.Id)
+	assert.Equal(v.Revision, manifest.Revision)
+	count := 0
+	for _, module := range manifest.Modules {
+		count++
+		assert.Equal("sample", module.Repo)
+		assert.Equal("master", module.Branch)
+		assert.NotEmpty(module.Revision)
+	}
+	assert.Equal(1, count)
+}
