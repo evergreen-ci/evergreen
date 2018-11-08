@@ -101,9 +101,6 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateCatchupJobs(30),
 		units.PopulateHostAlertJobs(20)))
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Hour, time.Now(), opts, amboy.GroupQueueOperationFactory(
-		units.CacheHistoricalTestDataJob(15)))
-
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Local Queue Jobs

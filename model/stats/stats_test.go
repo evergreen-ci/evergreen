@@ -9,16 +9,16 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
+var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
+var baseHour = time.Date(2018, 7, 15, 16, 0, 0, 0, time.UTC)
 var baseDay = time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC)
-var baseHour = baseDay.Add(time.Hour * 16)
-var baseTime = baseHour.Add(time.Minute * 45)
 var jobTime = time.Date(1998, 7, 12, 20, 45, 0, 0, time.UTC)
 var commit1 = baseTime
 var commit2 = baseTime.Add(26 * time.Hour)
@@ -38,19 +38,13 @@ func (s *statsSuite) SetupSuite() {
 }
 
 func (s *statsSuite) SetupTest() {
-	collectionsToClear := []string{
-		hourlyTestStatsCollection,
-		dailyTestStatsCollection,
-		dailyStatsStatusCollection,
-		dailyTaskStatsCollection,
-		task.Collection,
-		task.OldCollection,
-		testresult.Collection,
-	}
-
-	for _, coll := range collectionsToClear {
-		s.Nil(db.Clear(coll))
-	}
+	s.clearCollection(hourlyTestStatsCollection)
+	s.clearCollection(dailyTestStatsCollection)
+	s.clearCollection(dailyStatsStatusCollection)
+	s.clearCollection(dailyTaskStatsCollection)
+	s.clearCollection(task.Collection)
+	s.clearCollection(task.OldCollection)
+	s.clearCollection(testresult.Collection)
 }
 
 func (s *statsSuite) TestStatsStatus() {
@@ -93,16 +87,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(5, s.countHourlyTestDocs())
 
-	doc, err := modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc := s.getHourlyTestDoc("p1", "r1", "test1.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal("p1", doc.Id.Project)
 	require.Equal("r1", doc.Id.Requester)
@@ -116,31 +101,13 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(float32(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test2.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc = s.getHourlyTestDoc("p1", "r1", "test2.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(1, doc.NumPass)
 	require.Equal(1, doc.NumFail)
 	require.Equal(float32(120), doc.AvgDurationPass)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test3.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc = s.getHourlyTestDoc("p1", "r1", "test3.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(2, doc.NumPass)
 	require.Equal(0, doc.NumFail)
@@ -152,32 +119,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(8, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p2",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc = s.getHourlyTestDoc("p2", "r1", "test1.js", "task1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(0, doc.NumPass)
 	require.Equal(3, doc.NumFail)
 	require.Equal(float32(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p2",
-		Requester: "r1",
-		TestFile:  "test2.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc = s.getHourlyTestDoc("p2", "r1", "test2.js", "task1", "v1", "d1", baseHour)
 	require.Equal(1, doc.NumPass)
 	require.Equal(2, doc.NumFail)
 	require.Equal(float32(120), doc.AvgDurationPass)
@@ -189,42 +138,15 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(10, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p3",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task_exec_1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc = s.getHourlyTestDoc("p3", "r1", "test1.js", "task_exec_1", "v1", "d1", baseHour)
 	require.Nil(doc)
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p3",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task_display_1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc = s.getHourlyTestDoc("p3", "r1", "test1.js", "task_display_1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(0, doc.NumPass)
 	require.Equal(1, doc.NumFail)
 	require.Equal(float32(0), doc.AvgDurationPass)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p3",
-		Requester: "r1",
-		TestFile:  "test2.js",
-		TaskName:  "task_display_1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
-	})
-	require.NoError(err)
+	doc = s.getHourlyTestDoc("p3", "r1", "test2.js", "task_display_1", "v1", "d1", baseHour)
 	require.NotNil(doc)
 	require.Equal(1, doc.NumPass)
 	require.Equal(0, doc.NumFail)
@@ -246,16 +168,7 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	require.NoError(err)
 	require.Equal(1, s.countDailyTestDocs())
 
-	doc, err := modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
-	})
-	require.Nil(err)
+	doc := s.getDailyTestDoc("p1", "r1", "test1.js", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
 	require.Equal("p1", doc.Id.Project)
 	require.Equal("r1", doc.Id.Requester)
@@ -285,50 +198,18 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p1", "r1", baseHour, []string{"task1", "task2"}, jobTime)
 	require.NoError(err)
 	require.Equal(3, s.countDailyTaskDocs())
-	doc, err := modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
-	})
-	require.NoError(err)
+	doc := s.getDailyTaskDoc("p1", "r1", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v2",
-		Distro:    "d1",
-		Date:      baseDay,
-	})
-	require.NoError(err)
+	doc = s.getDailyTaskDoc("p1", "r1", "task1", "v2", "d1", baseDay)
 	require.NotNil(doc)
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TaskName:  "task2",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
-	})
-	require.NoError(err)
+	doc = s.getDailyTaskDoc("p1", "r1", "task2", "v1", "d1", baseDay)
 	require.NotNil(doc)
 
 	// Generate task stats for project p4 to check status aggregation
 	err = GenerateDailyTaskStats("p4", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
 	require.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p4",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
-	})
-	require.NoError(err)
+	doc = s.getDailyTaskDoc("p4", "r1", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
 	require.Equal(2, doc.NumSuccess)
 	require.Equal(8, doc.NumFailed)
@@ -343,15 +224,7 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p2", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
 	require.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p2",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
-	})
-	require.NoError(err)
+	doc = s.getDailyTaskDoc("p2", "r1", "task1", "v1", "d1", baseDay)
 	require.NotNil(doc)
 	require.Equal(1, doc.NumSuccess) // 1 old task
 	require.Equal(3, doc.NumFailed)  // 2 tasks + 1 old tasks
@@ -445,9 +318,57 @@ func (s *statsSuite) TestStatsToUpdate() {
 	}
 }
 
+////////////////////////////////////////
+// Structs to represent database data //
+////////////////////////////////////////
+
+type dbTestStatsId struct {
+	TestFile  string    `bson:"test_file"`
+	TaskName  string    `bson:"task_name"`
+	Variant   string    `bson:"variant"`
+	Distro    string    `bson:"distro"`
+	Project   string    `bson:"project"`
+	Requester string    `bson:"requester"`
+	Date      time.Time `bson:"date"`
+}
+
+type dbTestStats struct {
+	Id              dbTestStatsId `bson:"_id"`
+	NumPass         int           `bson:"num_pass"`
+	NumFail         int           `bson:"num_fail"`
+	AvgDurationPass float32       `bson:"avg_duration_pass"`
+	LastUpdate      time.Time     `bson:"last_update"`
+}
+
+type dbTaskStatsId struct {
+	TaskName  string    `bson:"task_name"`
+	Variant   string    `bson:"variant"`
+	Distro    string    `bson:"distro"`
+	Project   string    `bson:"project"`
+	Requester string    `bson:"requester"`
+	Date      time.Time `bson:"date"`
+}
+
+type dbTaskStats struct {
+	Id                 dbTaskStatsId `bson:"_id"`
+	NumSuccess         int           `bson:"num_success"`
+	NumFailed          int           `bson:"num_failed"`
+	NumTimeout         int           `bson:"num_timeout"`
+	NumTestFailed      int           `bson:"num_test_failed"`
+	NumSystemFailed    int           `bson:"num_system_failed"`
+	NumSetupFailed     int           `bson:"num_setup_failed"`
+	AvgDurationSuccess float32       `bson:"avg_duration_success"`
+	LastUpdate         time.Time     `bson:"last_update"`
+}
+
 /////////////////////////////////////////
 // Methods to initialize database data //
 /////////////////////////////////////////
+
+func (s *statsSuite) clearCollection(name string) {
+	err := db.Clear(name)
+	s.Require().NoError(err)
+}
 
 func (s *statsSuite) initHourly() {
 	hour1 := baseHour
@@ -632,6 +553,7 @@ func (s *statsSuite) insertDisplayTask(project string, requester string, taskId 
 func (s *statsSuite) insertTestResult(taskId string, execution int, testFile string, status string, durationSeconds int) {
 	startTime := time.Now()
 	endTime := startTime.Add(time.Duration(durationSeconds) * time.Second)
+
 	newTestResult := testresult.TestResult{
 		TaskID:    taskId,
 		Execution: execution,
@@ -682,6 +604,17 @@ func createTestStatsId(project string, requester string, testFile string, taskNa
 	}
 }
 
+func createTaskStatsId(project string, requester string, taskName string, variant string, distro string, date time.Time) bson.D {
+	return bson.D{
+		{Name: "task_name", Value: taskName},
+		{Name: "variant", Value: variant},
+		{Name: "distro", Value: distro},
+		{Name: "project", Value: project},
+		{Name: "requester", Value: requester},
+		{Name: "date", Value: date},
+	}
+}
+
 /////////////////////////////////////
 // Methods to access database data //
 /////////////////////////////////////
@@ -702,4 +635,34 @@ func (s *statsSuite) countHourlyTestDocs() int {
 
 func (s *statsSuite) countDailyTaskDocs() int {
 	return s.countDocs(dailyTaskStatsCollection)
+}
+
+func (s *statsSuite) getTestStatsDoc(collection string, project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) *dbTestStats {
+	doc := dbTestStats{}
+	docId := createTestStatsId(project, requester, testFile, taskName, variant, distro, date)
+	err := db.FindOne(collection, bson.M{"_id": docId}, db.NoProjection, db.NoSort, &doc)
+	if err == mgo.ErrNotFound {
+		return nil
+	}
+	s.Require().NoError(err)
+	return &doc
+}
+
+func (s *statsSuite) getDailyTestDoc(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) *dbTestStats {
+	return s.getTestStatsDoc(dailyTestStatsCollection, project, requester, testFile, taskName, variant, distro, date)
+}
+
+func (s *statsSuite) getHourlyTestDoc(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time) *dbTestStats {
+	return s.getTestStatsDoc(hourlyTestStatsCollection, project, requester, testFile, taskName, variant, distro, date)
+}
+
+func (s *statsSuite) getDailyTaskDoc(project string, requester string, taskName string, variant string, distro string, date time.Time) *dbTaskStats {
+	doc := dbTaskStats{}
+	docId := createTaskStatsId(project, requester, taskName, variant, distro, date)
+	err := db.FindOne(dailyTaskStatsCollection, bson.M{"_id": docId}, db.NoProjection, db.NoSort, &doc)
+	if err == mgo.ErrNotFound {
+		return nil
+	}
+	s.Require().NoError(err)
+	return &doc
 }

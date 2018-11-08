@@ -172,25 +172,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.addAdmin = function(){
     $scope.settingsFormData.admins.push($scope.admin_name);
     $scope.admin_name = "";
-  };
+  }
 
   // removeAdmin removes the username located at index
   $scope.removeAdmin = function(index){
     $scope.settingsFormData.admins.splice(index, 1);
     $scope.isDirty = true;
-  };
+  }
 
-  // addCacheIgnoreFile adds a file pattern to the settingsFormData's list of ignored cache files
-  $scope.addCacheIgnoreFile = function(){
-    $scope.settingsFormData.files_ignored_from_cache.push($scope.cache_ignore_file_pattern);
-    $scope.cache_ignore_file_pattern = "";
-  };
-
-  // removeCacheIgnoreFile removes the file pattern located at index
-  $scope.removeCacheIgnoreFile = function(index){
-    $scope.settingsFormData.files_ignored_from_cache.splice(index, 1);
-    $scope.isDirty = true;
-  };
 
   $scope.addProject = function() {
     $scope.modalOpen = false;
@@ -304,7 +293,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           force_repotracker_run: false,
           delete_aliases: [],
           delete_subscriptions: [],
-          files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
         };
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {
