@@ -18,6 +18,67 @@ import (
 	"github.com/pkg/errors"
 )
 
+///////////////////////////////////////////////////////////////////////
+//
+// DELETE /rest/v2/distros/{distro_id}
+
+type distroIDDeleteHandler struct {
+	distroId string
+	sc       data.Connector
+}
+
+func makeDeleteDistroByID(sc data.Connector) gimlet.RouteHandler {
+	return &distroIDDeleteHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroIDDeleteHandler) Factory() gimlet.RouteHandler {
+	return &distroIDDeleteHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse() fetches the distroId from the http request.
+func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroId = gimlet.GetVars(r)["distro_id"]
+
+	if h.distroId == "" {
+		return errors.New("request data incomplete")
+	}
+
+	return nil
+}
+
+func (dgh *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
+
+	return nil
+	// distros, err := dgh.sc.FindAllDistros()
+	// if err != nil {
+	// 	return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+	// }
+	//
+	// resp := gimlet.NewResponseBuilder()
+	// if err = resp.SetFormat(gimlet.JSON); err != nil {
+	// 	return gimlet.MakeJSONErrorResponder(err)
+	// }
+	//
+	// for _, d := range distros {
+	// 	distroModel := &model.APIDistro{}
+	//
+	// 	if err = distroModel.BuildFromService(d); err != nil {
+	// 		return gimlet.MakeJSONErrorResponder(err)
+	// 	}
+	//
+	// 	err = resp.AddData(distroModel)
+	// 	if err != nil {
+	// 		return gimlet.MakeJSONErrorResponder(err)
+	// 	}
+	// }
+	//
+	// return resp
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // PATCH /rest/v2/distros/{distro_id}
@@ -56,7 +117,7 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 // Run() finds a distro by id; validates its patched state, which is updated
-// and returned if valid
+// and returned if valid.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {

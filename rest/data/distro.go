@@ -54,6 +54,17 @@ func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
 	return nil
 }
 
+func (dc *DBDistroConnector) DeleteDistro(distroId string) error {
+	err := distro.Remove(distroId)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro with id '%s' could not be deleted", distroId),
+		}
+	}
+	return nil
+}
+
 // FindCostByDistroId queries the backing database for cost data associated
 // with the given distroId. This is done by aggregating TimeTaken over all
 // tasks of the given distro that match the time range.
