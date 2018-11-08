@@ -89,7 +89,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 
 	imageId, err := v.Distro.GetImageID()
 	if err != nil {
-		return errors.New("problem getting image ID")
+		return errors.Wrap(err, "problem getting image ID")
 	}
 	di := DistroInfo{
 		Id:       ToAPIString(v.Distro.Id),

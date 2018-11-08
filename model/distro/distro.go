@@ -148,7 +148,7 @@ func (d *Distro) GetImageID() (string, error) {
 
 	s, ok := i.(string)
 	if !ok {
-		return "", errors.New("problem getting image id")
+		return "", errors.New("cannot extract image ID from provider settings")
 	}
 	return s, nil
 }
