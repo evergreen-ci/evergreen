@@ -631,8 +631,9 @@ func getMockHostsConnector() *data.MockConnector {
 					Status:         evergreen.HostRunning,
 					ExpirationTime: time.Now().Add(time.Hour),
 					Distro: distro.Distro{
-						Id:   "linux",
-						Arch: "linux_amd64",
+						Id:       "linux",
+						Arch:     "linux_amd64",
+						Provider: evergreen.ProviderNameMock,
 					},
 				},
 			},
