@@ -13,9 +13,8 @@ import (
 )
 
 // MigrationHelper is an interface embedded in all jobs as an
-// "extended base" for migrations ontop for common functionality of
-// the existing amboy.Base type which implements most job
-// functionality.
+// "extended base" for migrations on top of the existing amboy.Base
+// type which implements most job functionality.
 //
 // MigrationHelper implementations should not require construction:
 // getter methods should initialize nil values at runtime.

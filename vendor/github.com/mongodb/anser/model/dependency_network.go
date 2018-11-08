@@ -40,7 +40,7 @@ type DependencyNetworker interface {
 	Validate() error
 
 	// AddGroup and GetGroup set and return the lists of tasks
-	// that beloing to a specific task group. Unlike the specific
+	// that belong to a specific task group. Unlike the specific
 	// task dependency setters.
 	AddGroup(string, []string)
 	GetGroup(string) []string

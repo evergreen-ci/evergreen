@@ -6,12 +6,12 @@ import (
 )
 
 type Processor struct {
-	NS                       model.Namespace
-	Query                    map[string]interface{}
-	Iter                     *Iterator
-	MigrateError             error
-	LastMigrateCallMissmatch bool
-	NumMigrateCalls          int
+	NS                      model.Namespace
+	Query                   map[string]interface{}
+	Iter                    *Iterator
+	MigrateError            error
+	LastMigrateCallMismatch bool
+	NumMigrateCalls         int
 }
 
 func (p *Processor) Load(ns model.Namespace, query map[string]interface{}) db.Iterator {
@@ -28,9 +28,9 @@ func (p *Processor) Load(ns model.Namespace, query map[string]interface{}) db.It
 func (p *Processor) Migrate(iter db.Iterator) error {
 	p.NumMigrateCalls++
 	if iter == p.Iter {
-		p.LastMigrateCallMissmatch = false
+		p.LastMigrateCallMismatch = false
 	} else {
-		p.LastMigrateCallMissmatch = true
+		p.LastMigrateCallMismatch = true
 	}
 
 	return p.MigrateError

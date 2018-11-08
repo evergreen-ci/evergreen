@@ -18,5 +18,5 @@ type Processor interface {
 // these functions using RegisterMigrationOperation.
 //
 // Implementors of MigrationOperations are responsible for
-// implementating idempotent operations.
+// implementing idempotent operations.
 type MigrationOperation func(Session, bson.RawD) error

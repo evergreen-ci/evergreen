@@ -1,7 +1,7 @@
 // Package model provides public data structures and interfaces to represent
 // migration operations.
 //
-// The model pacakge contains no non-trivial implementations and has no
+// The model package contains no non-trivial implementations and has no
 // dependencies outside of the standard library.
 package model
 

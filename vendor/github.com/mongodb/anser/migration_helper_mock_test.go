@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// this has to be implemeneted in the anser package because of the
+// this has to be implemented in the anser package because of the
 // interface dependency between MigrationHelper and Environment.
 
 type MigrationHelperMock struct {

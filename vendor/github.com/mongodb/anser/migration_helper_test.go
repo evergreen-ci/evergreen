@@ -145,7 +145,7 @@ func (s *MigrationHelperSuite) TestErrorCaseInMigrationFinishing() {
 	s.True(base.HasErrors())
 }
 
-func (s *MigrationHelperSuite) TestPendingMigrationsWithoutConfiguratione() {
+func (s *MigrationHelperSuite) TestPendingMigrationsWithoutConfiguration() {
 	s.Zero(s.mh.PendingMigrationOperations(model.Namespace{DB: "dbname", Collection: "collname"}, map[string]interface{}{}))
 }
 

@@ -1,9 +1,9 @@
 // Package db provides tools for using MongoDB databases. However, it
-// wraps mgo types in interafaces that the anser/mocks package
+// wraps mgo types in interfaces that the anser/mocks package
 // provides mocked implementations of for testing facility.
 //
 // In general, these types are fully functional for most application
-// uses, but do not expose some of the configurablity that the mgo
+// uses, but do not expose some of the configurability that the mgo
 // equivalents do.
 package db
 

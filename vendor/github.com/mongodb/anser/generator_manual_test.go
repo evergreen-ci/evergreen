@@ -51,7 +51,7 @@ func TestManualMigrationGenerator(t *testing.T) {
 	}
 	env.NetworkError = nil
 
-	// make sure that session acquisition errors propogate
+	// make sure that session acquisition errors propagate
 	job = factory().(*manualMigrationGenerator)
 	env.SessionError = errors.New("injected session error")
 	job.MigrationHelper = mh

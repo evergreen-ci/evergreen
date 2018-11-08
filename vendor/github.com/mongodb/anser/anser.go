@@ -1,21 +1,21 @@
 /*
-Package anser provides document transformation and processing tool to
+Package anser provides a document transformation and processing tool to
 support data migrations.
 
 Application
 
 The anser.Application is the primary interface in which migrations are
 defined and executed. Applications are constructed with a list of
-MigraionGenerators, and relevant operations. Then the Setup method
+MigrationGenerators, and relevant operations. Then the Setup method
 configures the application, with an anser.Environment, which sets up
-and collets dependency information. Finally, the Run method executes
-the migrations in two phases: first my generating migration jobs, and
+and collects dependency information. Finally, the Run method executes
+the migrations in two phases: first by generating migration jobs, and
 finally by running all migration jobs.
 
 The ordering of migrations is derived from the dependency information
 between generators and the jobs that they generate. When possible jobs
 are executed in parallel, but the execution of migration operations is
-a proparety of the queue object configured in the anser.Environment.
+a property of the queue object configured in the anser.Environment.
 
 */
 package anser

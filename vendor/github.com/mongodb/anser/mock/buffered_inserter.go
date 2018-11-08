@@ -3,7 +3,7 @@ package mock
 import "github.com/pkg/errors"
 
 type BufferedInserter struct {
-	CloseSholdError   bool
+	CloseShouldError  bool
 	FlushShouldError  bool
 	AppendShouldError bool
 	Documents         []interface{}
@@ -27,7 +27,7 @@ func (bi *BufferedInserter) Flush() error {
 }
 
 func (bi *BufferedInserter) Close() error {
-	if bi.CloseSholdError {
+	if bi.CloseShouldError {
 		return errors.New("close error")
 	}
 	return nil

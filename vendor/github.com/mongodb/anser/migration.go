@@ -1,7 +1,7 @@
 /*
 Anser Migrations
 
-The anser package defines supports three differnt migration definition
+The anser package defines supports three different migration definition
 forms: the SimpleMigration for single document updates, using
 MongoDB's update query form, the ManualMigration which takes as input
 a single document and provides an MongoDB session operation for manual

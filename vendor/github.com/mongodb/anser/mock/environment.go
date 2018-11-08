@@ -10,29 +10,29 @@ import (
 )
 
 type Environment struct {
-	Queue             amboy.Queue
-	Session           *Session
-	SetupSession      db.Session
-	Network           *DependencyNetwork
-	MetaNS            model.Namespace
-	MigrationRegistry map[string]db.MigrationOperation
-	ProcessorRegistry map[string]db.Processor
-	DependecyManagers map[string]*DependencyManager
-	Closers           []func() error
-	IsSetup           bool
-	SetupError        error
-	SessionError      error
-	QueueError        error
-	NetworkError      error
+	Queue              amboy.Queue
+	Session            *Session
+	SetupSession       db.Session
+	Network            *DependencyNetwork
+	MetaNS             model.Namespace
+	MigrationRegistry  map[string]db.MigrationOperation
+	ProcessorRegistry  map[string]db.Processor
+	DependencyManagers map[string]*DependencyManager
+	Closers            []func() error
+	IsSetup            bool
+	SetupError         error
+	SessionError       error
+	QueueError         error
+	NetworkError       error
 }
 
 func NewEnvironment() *Environment {
 	return &Environment{
-		Session:           NewSession(),
-		Network:           NewDependencyNetwork(),
-		DependecyManagers: make(map[string]*DependencyManager),
-		MigrationRegistry: make(map[string]db.MigrationOperation),
-		ProcessorRegistry: make(map[string]db.Processor),
+		Session:            NewSession(),
+		Network:            NewDependencyNetwork(),
+		DependencyManagers: make(map[string]*DependencyManager),
+		MigrationRegistry:  make(map[string]db.MigrationOperation),
+		ProcessorRegistry:  make(map[string]db.Processor),
 	}
 }
 
@@ -98,12 +98,12 @@ func (e *Environment) GetDocumentProcessor(name string) (db.Processor, bool) {
 func (e *Environment) MetadataNamespace() model.Namespace { return e.MetaNS }
 
 func (e *Environment) NewDependencyManager(n string) dependency.Manager {
-	e.DependecyManagers[n] = &DependencyManager{
+	e.DependencyManagers[n] = &DependencyManager{
 		Name:     n,
 		JobEdges: dependency.NewJobEdges(),
 	}
 
-	return e.DependecyManagers[n]
+	return e.DependencyManagers[n]
 }
 
 func (e *Environment) RegisterCloser(closer func() error) { e.Closers = append(e.Closers, closer) }

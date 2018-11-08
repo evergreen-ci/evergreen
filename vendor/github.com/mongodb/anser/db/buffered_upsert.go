@@ -85,6 +85,9 @@ bufferLoop:
 			if ops > 0 {
 				_, err := bulk.Run()
 				catcher.Add(err)
+				if err == nil {
+					bulk = bu.db.C(bu.opts.Collection).Bulk()
+				}
 				ops = 0
 			}
 			timer.Reset(bu.opts.Duration)
@@ -97,6 +100,9 @@ bufferLoop:
 				catcher.Add(err)
 				ops = 0
 
+				if err == nil {
+					bulk = bu.db.C(bu.opts.Collection).Bulk()
+				}
 				if !timer.Stop() {
 					<-timer.C
 				}
@@ -113,6 +119,9 @@ bufferLoop:
 			if ops > 0 {
 				_, err := bulk.Run()
 				catcher.Add(err)
+				if err == nil {
+					bulk = bu.db.C(bu.opts.Collection).Bulk()
+				}
 				ops = 0
 
 				f <- err
@@ -131,6 +140,9 @@ bufferLoop:
 
 			if ops > 0 {
 				_, err := bulk.Run()
+				if err == nil {
+					bulk = bu.db.C(bu.opts.Collection).Bulk()
+				}
 				catcher.Add(err)
 			}
 

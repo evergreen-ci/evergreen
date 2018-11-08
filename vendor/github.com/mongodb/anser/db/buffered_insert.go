@@ -25,7 +25,7 @@ type BufferedWriter interface {
 
 	// Flush forces the buffered insert to write its current
 	// buffer to the database regardless of the current time
-	// remining. Implementations may reset timer.
+	// remaining. Implementations may reset timer.
 	Flush() error
 
 	// Returns any cached errors and flushes any pending documents
@@ -34,7 +34,7 @@ type BufferedWriter interface {
 }
 
 // BufferedInsertOptions captures options used by any BufferedInserter
-// implemenation.
+// implementation.
 type BufferedWriteOptions struct {
 	DB         string
 	Collection string
@@ -76,7 +76,7 @@ type anserBufInsertsImpl struct {
 }
 
 // Constructs a buffered insert handler, wrapping an mgo-like
-// interface for a database dervied from anser's database
+// interface for a database derived from anser's database
 // interface. You must specify the collection that the
 // inserts target in the options. You can construct the same instance
 // using an actual mgo session with the NewBufferedSession

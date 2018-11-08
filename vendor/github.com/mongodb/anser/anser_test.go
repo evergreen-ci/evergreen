@@ -48,7 +48,7 @@ func (s *ApplicationSuite) TestApplicationSetupInternals() {
 	s.Error(s.app.Setup(nil))
 }
 
-func (s *ApplicationSuite) TestStupCanGetNetwork() {
+func (s *ApplicationSuite) TestSetupCanGetNetwork() {
 	s.env.NetworkError = errors.New("problem")
 
 	err := s.app.Setup(s.env)

@@ -146,7 +146,7 @@ func (s *BufferedInsertSuite) TestCloserFlushes() {
 
 }
 
-func (s *BufferedInsertSuite) TestShouldNoopUsusally() {
+func (s *BufferedInsertSuite) TestShouldNoopUsually() {
 	for i := 0; i < 100; i++ {
 		s.NoError(s.bi.Close())
 	}

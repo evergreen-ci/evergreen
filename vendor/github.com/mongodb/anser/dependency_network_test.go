@@ -183,7 +183,7 @@ func (s *DependencyNetworkSuite) TestValidationCyclesWithEmptyGraph() {
 	s.NoError(s.dep.Validate())
 }
 
-func (s *DependencyNetworkSuite) TestNoErrorForAcylcicGraph() {
+func (s *DependencyNetworkSuite) TestNoErrorForAcyclicGraph() {
 	s.dep.Add("foo", []string{"bar"})
 	s.dep.Add("bar", []string{})
 

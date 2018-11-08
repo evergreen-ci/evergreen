@@ -104,7 +104,7 @@ func (s *EnvImplSuite) TestSessionAccessor() {
 	s.NotNil(session)
 }
 
-func (s *EnvImplSuite) TestQuqueAccessor() {
+func (s *EnvImplSuite) TestQueueAccessor() {
 	queue, err := s.env.GetQueue()
 	s.NoError(err)
 	s.Equal(s.q, queue)

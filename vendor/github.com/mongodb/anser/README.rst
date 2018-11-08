@@ -18,7 +18,7 @@ Overview
 --------
 
 In general, anser migrations have a two-phase approach. First a
-generator runs with some configuration and an input querey to collect
+generator runs with some configuration and an input query to collect
 input documents and creation migration jobs. Then, the output of these
 generators, are executed in parallel 
 
@@ -45,7 +45,7 @@ There are three major types of migrations:
 - ``stream``: these migrations are similar to manual migrations;
   however, they pass a database session *and* an iterator to all
   documents impacted by the migration. These jobs offer ultimate
-  flexibility, 
+  flexibility.
   
 Internally these jobs execute using amboy infrastructure and make it
 possible to express dependencies between migrations. Additionally the
@@ -115,5 +115,5 @@ instance. This is also the place to file related amboy and grip
 requests.
 
 Future anser development will focus on supporting additional migration
-workflows, supporting additional MongoDB and BSON utilites, and
+workflows, supporting additional MongoDB and BSON utilities, and
 providing tools to support easier data-life-cycle management.

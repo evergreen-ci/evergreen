@@ -227,7 +227,7 @@ func (e *envState) Close() error {
 	}
 
 	if catcher.HasErrors() {
-		grip.Warningf("encountered %d errors closingoanser resources, out of %d", catcher.Len(), len(e.closers))
+		grip.Warningf("encountered %d errors closing anser resources, out of %d", catcher.Len(), len(e.closers))
 	}
 
 	return catcher.Resolve()
