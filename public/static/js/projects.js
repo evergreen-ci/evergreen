@@ -182,6 +182,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   // addCacheIgnoreFile adds a file pattern to the settingsFormData's list of ignored cache files
   $scope.addCacheIgnoreFile = function(){
+    if (!$scope.settingsFormData.files_ignored_from_cache) {
+      $scope.settingsFormData.files_ignored_from_cache = [];
+    }
     $scope.settingsFormData.files_ignored_from_cache.push($scope.cache_ignore_file_pattern);
     $scope.cache_ignore_file_pattern = "";
   };
