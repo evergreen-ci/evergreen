@@ -50,6 +50,9 @@ type ProjectRef struct {
 	// between what is in GitHub and what is in Evergreen
 	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
 
+	// List of regular expressions describing files to ignore when caching historical test results
+	FilesIgnoredFromCache []string `bson:"files_ignored_from_cache,omitempty" json:"files_ignored_from_cache,omitempty"`
+
 	Triggers []TriggerDefinition `bson:"triggers,omitempty" json:"triggers,omitempty"`
 }
 
@@ -115,6 +118,7 @@ var (
 	ProjectRefTrackedKey            = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
 	ProjectRefLocalConfig           = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefFilesIgnoredFromCache = bsonutil.MustHaveTag(ProjectRef{}, "FilesIgnoredFromCache")
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
@@ -350,6 +354,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefTrackedKey:            projectRef.Tracked,
 				ProjectRefLocalConfig:           projectRef.LocalConfig,
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
+				ProjectRefFilesIgnoredFromCache: projectRef.FilesIgnoredFromCache,
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
