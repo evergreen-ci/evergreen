@@ -139,7 +139,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 			return nil, errors.Wrap(err, "error finding patch")
 		}
 	}
-	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
+	h, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding host")
 	}
