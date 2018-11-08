@@ -90,6 +90,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 		DistroId:     "distro",
 		Project:      "p",
 		BuildVariant: "bv",
+		HostId:       "h1",
 	}
 	assert.NoError(t1.Insert())
 	versionYaml := `
@@ -186,6 +187,7 @@ buildvariants:
 		DistroId:     "distro",
 		Project:      "p",
 		BuildVariant: "bv",
+		HostId:       "h2",
 	}
 	assert.NoError(t2.Insert())
 	h2 := host.Host{
