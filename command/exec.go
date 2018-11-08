@@ -177,6 +177,15 @@ func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) (s
 	return proc, closer, proc.SetOutput(opts)
 }
 
+func addTempDirs(env map[string]string, dir string) {
+	for _, key := range []string{"TMP", "TMPDIR", "TEMP"} {
+		if _, ok := env[key]; ok {
+			continue
+		}
+		env[key] = dir
+	}
+}
+
 func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	var err error
 
@@ -190,6 +199,13 @@ func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, 
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
+
+	taskTmpDir, err := conf.GetWorkingDirectory("tmp")
+	if err != nil {
+		logger.Execution().Notice(err.Error())
+	}
+
+	addTempDirs(c.Env, taskTmpDir)
 
 	if !c.KeepEmptyArgs {
 		for i, arg := range c.Args {

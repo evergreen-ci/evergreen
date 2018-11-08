@@ -9,6 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -303,4 +305,38 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 2)
+}
+
+func TestAddTemp(t *testing.T) {
+	for name, test := range map[string]func(*testing.T, map[string]string){
+		"Empty": func(t *testing.T, env map[string]string) {
+			addTempDirs(env, "")
+			assert.Len(t, env, 3)
+		},
+		"WithAnExistingOther": func(t *testing.T, env map[string]string) {
+			env["foo"] = "one"
+			addTempDirs(env, "")
+			assert.Len(t, env, 4)
+		},
+		"WithExistingTmp": func(t *testing.T, env map[string]string) {
+			env["TMP"] = "foo"
+			addTempDirs(env, "bar")
+			assert.Len(t, env, 3)
+			assert.Equal(t, "foo", env["TMP"])
+			assert.Equal(t, "bar", env["TMPDIR"])
+		},
+		"CorrectKeys": func(t *testing.T, env map[string]string) {
+			addTempDirs(env, "bar")
+			assert.Len(t, env, 3)
+			assert.Equal(t, "bar", env["TMP"])
+			assert.Equal(t, "bar", env["TEMP"])
+			assert.Equal(t, "bar", env["TMPDIR"])
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			env := make(map[string]string)
+			require.Len(t, env, 0)
+			test(t, env)
+		})
+	}
 }
