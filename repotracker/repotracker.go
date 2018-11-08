@@ -486,19 +486,25 @@ func CreateManifest(v version.Version, proj *model.Project, branch string, setti
 	var gitBranch *github.Branch
 	modules := map[string]*manifest.Module{}
 	for _, module := range proj.Modules {
+		var sha, url string
 		owner, repo := module.GetRepoOwnerAndName()
 		gitBranch, err = thirdparty.GetBranchEvent(ctx, token, owner, repo, module.Branch)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
 		}
+		if gitBranch != nil && gitBranch.Commit != nil {
+			sha = *gitBranch.Commit.SHA
+			url = *gitBranch.Commit.URL
+		}
 
 		modules[module.Name] = &manifest.Module{
 			Branch:   module.Branch,
-			Revision: *gitBranch.Commit.SHA,
+			Revision: sha,
 			Repo:     repo,
 			Owner:    owner,
-			URL:      *gitBranch.Commit.URL,
+			URL:      url,
 		}
+
 	}
 	newManifest.Modules = modules
 	_, err = newManifest.TryInsert()
