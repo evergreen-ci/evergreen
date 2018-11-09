@@ -39,21 +39,23 @@ func (h *distroIDDeleteHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse() fetches the distroId from the http request.
+// Parse fetches the distroId from the http request.
 func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
+
 	return nil
 }
 
+// Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	_, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for find() by distro id '%s'", h.distroId)))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
 	}
 
 	err = h.sc.DeleteDistroById(h.distroId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for remove() by distro id '%s'", h.distroId)))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for remove() by distro id '%s'", h.distroId))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -81,12 +83,11 @@ func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// // Parse() fetches the distroId from the http request.
+// Parse fetches the distroId from the http request.
 func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
-
 	b, err := ioutil.ReadAll(body)
 	if err != nil {
 		return errors.Wrap(err, "Argument read error")
@@ -96,11 +97,11 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 	return nil
 }
 
-// Run() deletes a distro by id.
+// Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	d, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for find() by distro id '%s'", h.distroId)))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
 	}
 
 	apiDistro := &model.APIDistro{}
@@ -144,7 +145,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if err = h.sc.UpdateDistro(d); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for update() by distro id '%s'", h.distroId)))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroId))
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)
@@ -171,14 +172,14 @@ func (h *distroIDGetHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse() fetches the distroId from the http request.
+// Parse fetches the distroId from the http request.
 func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
+
 	return nil
 }
 
-// Run() calls the data FindDistroById function and returns the distro
-// from the provider.
+// Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	foundDistro, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {

@@ -117,7 +117,7 @@ func (s *DistroDeleteByIdSuite) TestParse() {
 	s.NoError(err)
 }
 
-func (s *DistroDeleteByIdSuite) TestDeleteValidDistroId() {
+func (s *DistroDeleteByIdSuite) TestRunValidDistroId() {
 	ctx := context.Background()
 
 	h := s.rm.(*distroIDDeleteHandler)
@@ -128,7 +128,7 @@ func (s *DistroDeleteByIdSuite) TestDeleteValidDistroId() {
 	s.Equal(resp.Status(), http.StatusOK)
 }
 
-func (s *DistroDeleteByIdSuite) TestDeleteInValidDistroId() {
+func (s *DistroDeleteByIdSuite) TestRunInValidDistroId() {
 	ctx := context.Background()
 
 	h := s.rm.(*distroIDDeleteHandler)
