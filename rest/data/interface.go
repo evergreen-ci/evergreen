@@ -76,7 +76,7 @@ type Connector interface {
 
 	// Create/Update project methods
 	CreateProject(*restModel.APIProjectRef) (*model.ProjectRef, error)
-	UpdateProject(*restModel.APIProjectRef, *[]string) (*model.ProjectRef, error)
+	UpdateProject(*restModel.APIProjectRef) (*model.ProjectRef, error)
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)

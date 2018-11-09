@@ -90,10 +90,6 @@ type APIProjectRef struct {
 	Triggers []APITriggerDefinition `json:"triggers,omitempty"`
 }
 
-func (apiProject *APIProjectRef) BuildFromService(p interface{}) error {
-	return errors.New("Not implemented")
-}
-
 func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
 	projectRef := model.ProjectRef{
 		Owner:                FromAPIString(p.Owner),
@@ -139,4 +135,49 @@ func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
 	projectRef.Triggers = triggers
 
 	return projectRef, nil
+}
+
+func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
+	p.Owner = ToAPIString(projectRef.Owner)
+	p.Repo = ToAPIString(projectRef.Repo)
+	p.Branch = ToAPIString(projectRef.Branch)
+	p.RepoKind = ToAPIString(projectRef.RepoKind)
+	p.Enabled = projectRef.Enabled
+	p.Private = projectRef.Private
+	p.BatchTime = projectRef.BatchTime
+	p.RemotePath = ToAPIString(projectRef.RemotePath)
+	p.Identifier = ToAPIString(projectRef.Identifier)
+	p.DisplayName = ToAPIString(projectRef.DisplayName)
+	p.LocalConfig = ToAPIString(projectRef.LocalConfig)
+	p.DeactivatePrevious = projectRef.DeactivatePrevious
+	p.TracksPushEvents = projectRef.TracksPushEvents
+	p.PRTestingEnabled = projectRef.PRTestingEnabled
+	p.Tracked = projectRef.Tracked
+	p.PatchingDisabled = projectRef.PatchingDisabled
+	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure
+
+	// Copy admins
+	admins := []APIString{}
+	for _, admin := range projectRef.Admins {
+		admins = append(admins, ToAPIString(admin))
+	}
+	p.Admins = admins
+
+	// Copy triggers
+	triggers := []APITriggerDefinition{}
+	for _, t := range projectRef.Triggers {
+		triggers = append(triggers, APITriggerDefinition{
+			Project:           ToAPIString(t.Project),
+			Level:             ToAPIString(t.Level),
+			DefinitionID:      ToAPIString(t.DefinitionID),
+			BuildVariantRegex: ToAPIString(t.BuildVariantRegex),
+			TaskRegex:         ToAPIString(t.TaskRegex),
+			Status:            ToAPIString(t.Status),
+			ConfigFile:        ToAPIString(t.ConfigFile),
+			Command:           ToAPIString(t.Command),
+		})
+	}
+	p.Triggers = triggers
+
+	return nil
 }

@@ -163,8 +163,9 @@ func (s *ProjectCreateSuite) TestRoute() {
 //
 // Tests project update route
 type ProjectUpdateSuite struct {
-	sc *data.MockConnector
-	h  *projectUpdateHandler
+	sc   *data.MockConnector
+	h    *projectUpdateHandler
+	data data.MockProjectConnector
 
 	suite.Suite
 }
@@ -173,8 +174,18 @@ func TestProjectUpdateSuite(t *testing.T) {
 	suite.Run(t, new(ProjectUpdateSuite))
 }
 
-func (s *ProjectUpdateSuite) SetupTest() {
+func (s *ProjectUpdateSuite) SetupSuite() {
+	s.data = data.MockProjectConnector{
+		CachedProjects: []serviceModel.ProjectRef{
+			{Identifier: "A"},
+		},
+	}
+
 	s.sc = &data.MockConnector{}
+	s.sc = &data.MockConnector{
+		URL:                  "https://evergreen.example.net",
+		MockProjectConnector: s.data,
+	}
 	s.h = &projectUpdateHandler{sc: s.sc}
 }
 
@@ -186,25 +197,25 @@ func (s *ProjectUpdateSuite) TestRoute() {
 
 	payload := bytes.NewBuffer(payloadBytes)
 
-	ctx := context.Background()
+	projCtx := serviceModel.Context{
+		ProjectRef: &serviceModel.ProjectRef{
+			Identifier: "A",
+		},
+	}
+	ctx := context.WithValue(context.Background(), RequestContext, &projCtx)
 
 	r, err := http.NewRequest(
 		"PATCH",
-		"https://evergreen.mongodb.com/rest/v2/projects/actual_id",
+		"https://evergreen.mongodb.com/rest/v2/projects/A",
 		payload,
 	)
 	r = r.WithContext(ctx)
-	// TODO this requires newer mux
-	//r = mux.SetURLVars(r, map[string]string{"project_id": "actual_id"})
 
 	s.Require().NoError(err)
 	err = s.h.Parse(ctx, r)
 	s.NoError(err)
-	// TODO blocked by mux update
-	//s.Equal("actual_id", model.FromAPIString(s.h.projectRef.Identifier))
+	s.Equal("A", model.FromAPIString(s.h.projectRef.Identifier))
 	s.Equal("branch", model.FromAPIString(s.h.projectRef.Branch))
-	s.Equal(2, len(*s.h.keys))
-	s.Subset([]string{"identifier", "branch_name"}, *s.h.keys)
 
 	resp := s.h.Run(ctx)
 	s.NotNil(resp)

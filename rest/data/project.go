@@ -30,16 +30,15 @@ func (pc *DBProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectR
 	return model.FindOneProjectRef(projectRef.Identifier)
 }
 
-func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef, keys *[]string) (*model.ProjectRef, error) {
+func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
 	projectRef, _ := apiProjectRef.ToService()
-	// Store project ID
-	id := projectRef.Identifier
 
-	if err := projectRef.Update(keys); err != nil {
+	// The projectRef guaranteed to be existing
+	if err := projectRef.Upsert(); err != nil {
 		return nil, errors.Wrapf(err, "Cannot update project_ref into DB!")
 	}
 
-	return model.FindOneProjectRef(id)
+	return model.FindOneProjectRef(projectRef.Identifier)
 }
 
 // MockPatchConnector is a struct that implements the Patch related methods
@@ -83,7 +82,6 @@ func (pc *MockProjectConnector) CreateProject(apiProjectRef *restModel.APIProjec
 	return &model.ProjectRef{Identifier: "test"}, nil
 }
 
-func (pc *MockProjectConnector) UpdateProject(
-	apiProjectRef *restModel.APIProjectRef, keys *[]string) (*model.ProjectRef, error) {
+func (pc *MockProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
 	return &model.ProjectRef{Identifier: "test"}, nil
 }

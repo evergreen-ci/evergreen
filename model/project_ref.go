@@ -326,31 +326,6 @@ func UntrackStaleProjectRefs(activeProjects []string) error {
 	return err
 }
 
-func (projectRef *ProjectRef) AsBsonM() bson.M {
-	return bson.M{
-		ProjectRefRepoKindKey:           projectRef.RepoKind,
-		ProjectRefEnabledKey:            projectRef.Enabled,
-		ProjectRefPrivateKey:            projectRef.Private,
-		ProjectRefBatchTimeKey:          projectRef.BatchTime,
-		ProjectRefOwnerKey:              projectRef.Owner,
-		ProjectRefRepoKey:               projectRef.Repo,
-		ProjectRefBranchKey:             projectRef.Branch,
-		ProjectRefDisplayNameKey:        projectRef.DisplayName,
-		ProjectRefDeactivatePreviousKey: projectRef.DeactivatePrevious,
-		ProjectRefTrackedKey:            projectRef.Tracked,
-		ProjectRefRemotePathKey:         projectRef.RemotePath,
-		ProjectRefTrackedKey:            projectRef.Tracked,
-		ProjectRefLocalConfig:           projectRef.LocalConfig,
-		ProjectRefRepotrackerError:      projectRef.RepotrackerError,
-		ProjectRefAdminsKey:             projectRef.Admins,
-		projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
-		projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
-		projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
-		projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
-		projectRefTriggersKey:           projectRef.Triggers,
-	}
-}
-
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, one is created
 func (projectRef *ProjectRef) Upsert() error {
@@ -360,37 +335,28 @@ func (projectRef *ProjectRef) Upsert() error {
 			ProjectRefIdentifierKey: projectRef.Identifier,
 		},
 		bson.M{
-			"$set": projectRef.AsBsonM(),
-		},
-	)
-	return err
-}
-
-// Similar to ProjectRef.Upsert but uses Update method
-// Also it only updates field specified in keys array,
-// regardless of projectRef instance
-func (projectRef *ProjectRef) Update(keys *[]string) error {
-	allFieldsBson := projectRef.AsBsonM()
-	content := bson.M{}
-
-	if keys != nil {
-		for _, key := range *keys {
-			content[key] = allFieldsBson[key]
-		}
-	} else {
-		content = allFieldsBson
-	}
-
-	// Identifier should never be changed
-	delete(content, ProjectIdentifierKey)
-
-	err := db.Update(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefIdentifierKey: projectRef.Identifier,
-		},
-		bson.M{
-			"$set": content,
+			"$set": bson.M{
+				ProjectRefRepoKindKey:           projectRef.RepoKind,
+				ProjectRefEnabledKey:            projectRef.Enabled,
+				ProjectRefPrivateKey:            projectRef.Private,
+				ProjectRefBatchTimeKey:          projectRef.BatchTime,
+				ProjectRefOwnerKey:              projectRef.Owner,
+				ProjectRefRepoKey:               projectRef.Repo,
+				ProjectRefBranchKey:             projectRef.Branch,
+				ProjectRefDisplayNameKey:        projectRef.DisplayName,
+				ProjectRefDeactivatePreviousKey: projectRef.DeactivatePrevious,
+				ProjectRefTrackedKey:            projectRef.Tracked,
+				ProjectRefRemotePathKey:         projectRef.RemotePath,
+				ProjectRefTrackedKey:            projectRef.Tracked,
+				ProjectRefLocalConfig:           projectRef.LocalConfig,
+				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
+				ProjectRefAdminsKey:             projectRef.Admins,
+				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
+				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
+				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
+				projectRefNotifyOnFailureKey:    projectRef.NotifyOnBuildFailure,
+				projectRefTriggersKey:           projectRef.Triggers,
+			},
 		},
 	)
 	return err

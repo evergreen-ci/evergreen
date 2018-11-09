@@ -343,7 +343,6 @@ func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
 	// Create sample project ref
 	createdProject, err := s.ctx.CreateProject(&restModel.APIProjectRef{
 		Identifier: restModel.ToAPIString("id"),
-		Branch:     restModel.ToAPIString("branch"),
 		Admins: []restModel.APIString{
 			restModel.ToAPIString("a"),
 			restModel.ToAPIString("b"),
@@ -361,14 +360,14 @@ func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
 			restModel.ToAPIString("a"),
 			restModel.ToAPIString("c"),
 		},
-	}, &[]string{"owner_name", "admins"})
+	})
 
 	// Test assertion
 	s.NoError(err)
 	s.NotNil(updatedProject)
 
 	s.Equal("id", updatedProject.Identifier)
-	s.Equal("branch", updatedProject.Branch)
+	s.Equal("owner", updatedProject.Owner)
 	s.Len(updatedProject.Admins, 2)
 	s.Equal("a", updatedProject.Admins[0])
 	s.Equal("c", updatedProject.Admins[1])

@@ -1,9 +1,7 @@
 package route
 
 import (
-	"bytes"
 	"context"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -257,7 +255,6 @@ func (h *projectCreateHandler) Run(ctx context.Context) gimlet.Responder {
  */
 type projectUpdateHandler struct {
 	projectRef *model.APIProjectRef
-	keys       *[]string
 
 	sc data.Connector
 }
@@ -273,51 +270,33 @@ func (h *projectUpdateHandler) Factory() gimlet.RouteHandler {
 func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error {
 	// Read raw bytes from request body
 	body := util.NewRequestReader(r)
-	bodyBytes, err := ioutil.ReadAll(body)
-	if err != nil {
-		return errors.Wrap(err, "Unable to read request body!")
-	}
-	if err := body.Close(); err != nil {
-		return errors.Wrap(err, "Cannot close reader")
+	defer body.Close()
+
+	projectRef := MustHaveProjectContext(ctx).ProjectRef
+	if projectRef == nil {
+		return errors.New("Cannot process request")
 	}
 
-	// Construct body copy and read JSON into projectRef model
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	body = util.NewRequestReader(r)
+	projectId := projectRef.Identifier
+
+	// Initialize the API model with an empty entity
+	h.projectRef = &model.APIProjectRef{}
+
+	if err := h.projectRef.BuildFromService(*projectRef); err != nil {
+		return errors.Wrap(err, "Cannot process request")
+	}
+
 	if err := util.ReadJSONInto(body, &h.projectRef); err != nil {
 		return errors.Wrap(err, "JSON format or content is invalid!")
 	}
-	if err := body.Close(); err != nil {
-		return errors.Wrap(err, "Cannot close reader")
-	}
 
-	// Construct body copy and read JSON into payload map
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	body = util.NewRequestReader(r)
-	var payload map[string]interface{}
-	if err := util.ReadJSONInto(body, &payload); err != nil {
-		return errors.Wrap(err, "JSON format or content is invalid!")
-	}
-	if err := body.Close(); err != nil {
-		return errors.Wrap(err, "Cannot close reader")
-	}
+	*h.projectRef.Identifier = projectId
 
-	// Read keys names from payload
-	keys := make([]string, len(payload))
-	i := 0
-	for k := range payload {
-		keys[i] = k
-		i++
-	}
-	h.keys = &keys
-
-	// Set proper ID (from URL param)
-	h.projectRef.Identifier = model.ToAPIString(gimlet.GetVars(r)["project_id"])
 	return nil
 }
 
 func (h *projectUpdateHandler) Run(ctx context.Context) gimlet.Responder {
-	updatedProject, err := h.sc.UpdateProject(h.projectRef, h.keys)
+	updatedProject, err := h.sc.UpdateProject(h.projectRef)
 
 	if err != nil {
 		// Don't expose error code in order to keep project names in secret
