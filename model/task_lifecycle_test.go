@@ -1102,6 +1102,9 @@ func TestAbortTask(t *testing.T) {
 			{
 				Id: finishedTask.Id,
 			},
+			{
+				Id: "dt",
+			},
 		}
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
@@ -1116,6 +1119,39 @@ func TestAbortTask(t *testing.T) {
 		})
 		Convey("a task that is finished should error when aborting", func() {
 			So(AbortTask(finishedTask.Id, userName), ShouldNotBeNil)
+		})
+		Convey("a display task should abort its execution tasks", func() {
+			dt := task.Task{
+				Id:             "dt",
+				DisplayOnly:    true,
+				ExecutionTasks: []string{"et1", "et2"},
+				Status:         evergreen.TaskStarted,
+				BuildId:        b.Id,
+			}
+			So(dt.Insert(), ShouldBeNil)
+			et1 := task.Task{
+				Id:      "et1",
+				Status:  evergreen.TaskStarted,
+				BuildId: b.Id,
+			}
+			So(et1.Insert(), ShouldBeNil)
+			et2 := task.Task{
+				Id:      "et2",
+				Status:  evergreen.TaskFailed,
+				BuildId: b.Id,
+			}
+			So(et2.Insert(), ShouldBeNil)
+
+			So(AbortTask(dt.Id, userName), ShouldBeNil)
+			dbTask, err := task.FindOneId(dt.Id)
+			So(err, ShouldBeNil)
+			So(dbTask.Aborted, ShouldBeTrue)
+			dbTask, err = task.FindOneId(et1.Id)
+			So(err, ShouldBeNil)
+			So(dbTask.Aborted, ShouldBeTrue)
+			dbTask, err = task.FindOneId(et2.Id)
+			So(err, ShouldBeNil)
+			So(dbTask.Aborted, ShouldBeFalse)
 		})
 	})
 
