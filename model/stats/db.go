@@ -587,10 +587,10 @@ func buildMatchArrayExpression(values []string) interface{} {
 // Adds to an existing $match expression the conditions imposed by the filter StartAt field
 func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
 	var dateOperator string
-	if filter.Sort == SortEarliestFirst {
-		dateOperator = "$gt"
-	} else {
+	if filter.Sort == SortLatestFirst {
 		dateOperator = "$lt"
+	} else {
+		dateOperator = "$gt"
 	}
 
 	var fields []paginationField
@@ -700,10 +700,10 @@ func buildMatchStageForTask(filter *StatsFilter) bson.M {
 // Adds to an existing $match expression the conditions imposed by the filter StartAt field
 func buildTaskPaginationOrBranches(filter *StatsFilter) []bson.M {
 	var dateOperator string
-	if filter.Sort == SortEarliestFirst {
-		dateOperator = "$gt"
-	} else {
+	if filter.Sort == SortLatestFirst {
 		dateOperator = "$lt"
+	} else {
+		dateOperator = "$gt"
 	}
 
 	var fields []paginationField
@@ -774,10 +774,10 @@ func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
 
 // Returns the sort order specification (1, -1) for the date field corresponding to the Sort value.
 func sortDateOrder(sort Sort) int {
-	if sort == SortEarliestFirst {
-		return 1
-	} else {
+	if sort == SortLatestFirst {
 		return -1
+	} else {
+		return 1
 	}
 }
 

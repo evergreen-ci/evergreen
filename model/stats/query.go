@@ -144,7 +144,7 @@ func NewDefaultStatsFilter(project string, requesters []string, after time.Time,
 		GroupBy:       GroupByDistro,
 		StartAt:       nil,
 		Limit:         MaxQueryLimit,
-		Sort:          SortLatestFirst,
+		Sort:          SortEarliestFirst,
 	}
 }
 

@@ -90,7 +90,7 @@ func (s *statsQuerySuite) TestStatsFilterConstructor() {
 	require.Equal(GroupByDistro, filter.GroupBy)
 	require.Nil(filter.StartAt)
 	require.Equal(MaxQueryLimit, filter.Limit)
-	require.Equal(SortLatestFirst, filter.Sort)
+	require.Equal(SortEarliestFirst, filter.Sort)
 
 	// Check that validate does not find any errors
 	// For tests
