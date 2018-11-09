@@ -178,23 +178,17 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
-		newStatus := opts.Status
-		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
-			http.Error(w, fmt.Sprintf("Invalid status: %v", opts.Status), http.StatusBadRequest)
-			return
-		}
-		numHostsUpdated := 0
-
-		for _, host := range hosts {
-			err := host.SetStatus(newStatus, user.Id, opts.Notes)
+		for _, h := range hosts {
+			_, err := modifyHostStatus(evergreen.GetEnvironment().RemoteQueue(), &h, opts, user)
 			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
+				gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
 				return
 			}
-			numHostsUpdated += 1
 		}
-		msg := NewSuccessFlash(fmt.Sprintf("%v host(s) status successfully updated to '%v'",
-			numHostsUpdated, newStatus))
+		msg := NewSuccessFlash(fmt.Sprintf("%d hosts successfully updated to '%s'", len(hosts), opts.Status))
+		if opts.Status == evergreen.HostTerminated {
+			msg = NewSuccessFlash(fmt.Sprintf("%d hosts successfully queued for termination", len(hosts)))
+		}
 		PushFlash(uis.CookieStore, r, w, msg)
 		return
 	default:
