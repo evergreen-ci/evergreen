@@ -190,7 +190,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 /*
  * Creates project (project_ref)
  * PUT: /rest/v2/projects/
- * Perm: checkUser
+ * Perm: superUser
  */
 type projectCreateHandler struct {
 	projectRef *model.APIProjectRef
@@ -251,7 +251,7 @@ func (h *projectCreateHandler) Run(ctx context.Context) gimlet.Responder {
 /*
  * Updates project (project_ref) with given identifier
  * PATCH: /rest/v2/projects/{project_id}
- * Perm: checkUser
+ * Perm: superUser
  */
 type projectUpdateHandler struct {
 	projectRef *model.APIProjectRef
