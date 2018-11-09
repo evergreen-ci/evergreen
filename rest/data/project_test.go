@@ -289,7 +289,7 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
 //
 // Tests project create action
 type ProjectConnectorCreateUpdateSuite struct {
-	ctx      Connector
+	sc       Connector
 	setup    func() error
 	teardown func() error
 	suite.Suite
@@ -298,7 +298,7 @@ type ProjectConnectorCreateUpdateSuite struct {
 func TestProjectConnectorCreateUpdateSuite(t *testing.T) {
 	s := new(ProjectConnectorCreateUpdateSuite)
 	s.setup = func() error {
-		s.ctx = &DBConnector{}
+		s.sc = &DBConnector{}
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorCreateUpdateSuite")
 		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 		return nil
@@ -320,7 +320,7 @@ func (s *ProjectConnectorCreateUpdateSuite) TearDownSuite() {
 }
 
 func (s *ProjectConnectorCreateUpdateSuite) TestCreateProject() {
-	projectRef, err := s.ctx.CreateProject(&restModel.APIProjectRef{
+	projectRef, err := s.sc.CreateProject(&restModel.APIProjectRef{
 		Identifier: restModel.ToAPIString("id"),
 		Branch:     restModel.ToAPIString("branch"),
 		Admins: []restModel.APIString{
@@ -341,7 +341,7 @@ func (s *ProjectConnectorCreateUpdateSuite) TestCreateProject() {
 
 func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
 	// Create sample project ref
-	createdProject, err := s.ctx.CreateProject(&restModel.APIProjectRef{
+	createdProject, err := s.sc.CreateProject(&restModel.APIProjectRef{
 		Identifier: restModel.ToAPIString("id"),
 		Admins: []restModel.APIString{
 			restModel.ToAPIString("a"),
@@ -353,7 +353,7 @@ func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
 	s.NotNil(createdProject)
 
 	// Test set up
-	updatedProject, err := s.ctx.UpdateProject(&restModel.APIProjectRef{
+	updatedProject, err := s.sc.UpdateProject(&restModel.APIProjectRef{
 		Identifier: restModel.ToAPIString(createdProject.Identifier),
 		Owner:      restModel.ToAPIString("owner"),
 		Admins: []restModel.APIString{
