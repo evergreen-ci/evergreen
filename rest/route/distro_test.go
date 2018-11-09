@@ -21,7 +21,7 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for fetch distro by id
+// Tests for GET distro by id
 
 type DistroByIdSuite struct {
 	sc   *data.MockConnector
@@ -72,6 +72,74 @@ func (s *DistroByIdSuite) TestFindByIdFail() {
 	resp := s.rm.Run(context.TODO())
 	s.NotNil(resp)
 	s.NotEqual(resp.Status(), http.StatusOK)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for DELETE distro by id
+
+type DistroDeleteByIdSuite struct {
+	sc   *data.MockConnector
+	data data.MockDistroConnector
+	rm   gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroDeleteSuite(t *testing.T) {
+	suite.Run(t, new(DistroDeleteByIdSuite))
+}
+
+func (s *DistroDeleteByIdSuite) SetupTest() {
+	s.data = data.MockDistroConnector{
+		CachedDistros: []*distro.Distro{
+			{
+				Id: "distro1",
+			},
+			{
+				Id: "distro2",
+			},
+			{
+				Id: "distro3",
+			},
+		},
+	}
+	s.sc = &data.MockConnector{
+		MockDistroConnector: s.data,
+	}
+	s.rm = makeDeleteDistroByID(s.sc)
+}
+
+func (s *DistroDeleteByIdSuite) TestParse() {
+	ctx := context.Background()
+	req, _ := http.NewRequest("DELETE", "http://example.com/api/rest/v2/distros/distro1", nil)
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+}
+
+func (s *DistroDeleteByIdSuite) TestRunValidDistroId() {
+	ctx := context.Background()
+
+	h := s.rm.(*distroIDDeleteHandler)
+	h.distroId = "distro1"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+}
+
+func (s *DistroDeleteByIdSuite) TestRunInValidDistroId() {
+	ctx := context.Background()
+
+	h := s.rm.(*distroIDDeleteHandler)
+	h.distroId = "distro4"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusBadRequest)
+
+	error := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal(error.Message, "Database error for find() by distro id 'distro4': distro with id 'distro4' not found")
 }
 
 ////////////////////////////////////////////////////////////////////////
