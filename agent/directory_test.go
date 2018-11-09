@@ -44,13 +44,22 @@ func TestDirectoryCleanup(t *testing.T) {
 	_, err = os.Stat(fn)
 	assert.True(osExists(err))
 
-	// create a sub-directory that will need to be deleted
-	subdir, err := ioutil.TempDir(dir, "wrapped-dir-cleanup")
-	assert.NoError(err)
-
+	// verify a subdirectory gets deleted
+	toDelete := filepath.Join(dir, "wrapped-dir-cleanup")
+	assert.NoError(os.Mkdir(toDelete, 0644))
 	tryCleanupDirectory(dir)
-	_, err = os.Stat(subdir)
+	_, err = os.Stat(toDelete)
 	assert.True(os.IsNotExist(err))
+
+	// should delete nothing if we hit .git first
+	gitDir := filepath.Join(dir, ".git")
+	assert.NoError(os.Mkdir(gitDir, 0644))
+	assert.NoError(os.Mkdir(toDelete, 0644))
+	tryCleanupDirectory(dir)
+	_, err = os.Stat(toDelete)
+	assert.False(os.IsNotExist(err))
+	_, err = os.Stat(gitDir)
+	assert.False(os.IsNotExist(err))
 
 	assert.NoError(os.RemoveAll(dir))
 }
