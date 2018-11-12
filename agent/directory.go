@@ -3,7 +3,6 @@ package agent
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -94,6 +93,12 @@ func tryCleanupDirectory(dir string) {
 		return
 	}
 
+	// Don't run in a development environment
+	if _, err = os.Stat(filepath.Join(dir, ".git")); !os.IsNotExist(err) {
+		grip.Notice("refusing to clean a directory that contains '.git'")
+		return
+	}
+
 	usr, err := user.Current()
 	if err != nil {
 		grip.Warning(err)
@@ -115,13 +120,9 @@ func tryCleanupDirectory(dir string) {
 		if path == dir {
 			return nil
 		}
+
 		if strings.HasPrefix(info.Name(), ".") {
 			return nil
-		}
-
-		if strings.HasSuffix(path, ".git") {
-			grip.Warning("don't run the agent in the development environment")
-			return errors.New("skip cleanup in development environments")
 		}
 
 		if info.IsDir() {
@@ -135,6 +136,7 @@ func tryCleanupDirectory(dir string) {
 		return
 	}
 
+	grip.Infof("attempting to clean up directory '%s'", dir)
 	for _, p := range paths {
 		if err = os.RemoveAll(p); err != nil {
 			grip.Notice(err)
