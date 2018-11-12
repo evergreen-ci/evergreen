@@ -49,7 +49,7 @@ func (s *Sort) validate() error {
 // Filters //
 /////////////
 
-// Represents parameters that allow a search query to resume at a specific point.
+// StartAt represents parameters that allow a search query to resume at a specific point.
 // Used for pagination.
 type StartAt struct {
 	Date         time.Time
@@ -59,9 +59,12 @@ type StartAt struct {
 	Distro       string
 }
 
-// Validates that the StartAt struct is valid for use with test stats.
+// validateCommon validates that the StartAt struct is valid for use with test stats.
 func (s *StartAt) validateCommon(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
+	if s == nil {
+		catcher.Add(errors.New("StartAt should not be nil"))
+	}
 	if !s.Date.Equal(util.GetUTCDay(s.Date)) {
 		catcher.Add(errors.New("Invalid StartAt Date value"))
 	}
@@ -84,7 +87,7 @@ func (s *StartAt) validateCommon(groupBy GroupBy) error {
 	return catcher.Resolve()
 }
 
-// Validates that the StartAt struct is valid for use with test stats.
+// validateForTests validates that the StartAt struct is valid for use with test stats.
 func (s *StartAt) validateForTests(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
@@ -94,7 +97,7 @@ func (s *StartAt) validateForTests(groupBy GroupBy) error {
 	return catcher.Resolve()
 }
 
-// Validates that the StartAt struct is valid for use with task stats.
+// validateForTasks validates that the StartAt struct is valid for use with task stats.
 func (s *StartAt) validateForTasks(groupBy GroupBy) error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Add(s.validateCommon(groupBy))
@@ -104,7 +107,7 @@ func (s *StartAt) validateForTasks(groupBy GroupBy) error {
 	return catcher.Resolve()
 }
 
-// Represents search and aggregation parameters when querying the test or task statistics.
+// StatsFilter represents search and aggregation parameters when querying the test or task statistics.
 type StatsFilter struct {
 	Project    string
 	Requesters []string
@@ -123,34 +126,12 @@ type StatsFilter struct {
 	Sort         Sort
 }
 
-// Creates a StatsFilter with usual default values.
-// BuildVariants and Distros default to nil.
-// GroupNumDays defaults to 1.
-// GroupBy defaults to GroupByDistro.
-// Start defaults to nil.
-// Limit defaults to MaxQueryLimit
-// Sort defaults to SortLatestFirst.
-func NewDefaultStatsFilter(project string, requesters []string, after time.Time, before time.Time, tests []string, tasks []string) StatsFilter {
-	return StatsFilter{
-		Project:       project,
-		Requesters:    requesters,
-		AfterDate:     after,
-		BeforeDate:    before,
-		Tests:         tests,
-		Tasks:         tasks,
-		BuildVariants: nil,
-		Distros:       nil,
-		GroupNumDays:  1,
-		GroupBy:       GroupByDistro,
-		StartAt:       nil,
-		Limit:         MaxQueryLimit,
-		Sort:          SortEarliestFirst,
-	}
-}
-
-// Validates that the StatsFilter struct is valid for its intended use.
+// validateCommon performs common validations regardless of the filter's intended use.
 func (f *StatsFilter) validateCommon() error {
 	catcher := grip.NewBasicCatcher()
+	if f == nil {
+		catcher.Add(errors.New("StatsFilter should not be nil"))
+	}
 
 	if f.GroupNumDays <= 0 {
 		catcher.Add(errors.New("Invalid GroupNumDays value"))
@@ -176,7 +157,7 @@ func (f *StatsFilter) validateCommon() error {
 	return catcher.Resolve()
 }
 
-// Validates that the StatsFilter struct is valid for its intended use.
+// validateForTests validates that the StatsFilter struct is valid for use with test stats.
 func (f *StatsFilter) validateForTests() error {
 	catcher := grip.NewBasicCatcher()
 
@@ -191,7 +172,7 @@ func (f *StatsFilter) validateForTests() error {
 	return catcher.Resolve()
 }
 
-// Validates that the StatsFilter struct is valid for its intended use.
+//use with test stats validates that the StatsFilter struct is valid for use with task stats.
 func (f *StatsFilter) validateForTasks() error {
 	catcher := grip.NewBasicCatcher()
 
@@ -217,21 +198,21 @@ func (f *StatsFilter) validateForTasks() error {
 // Test Statistics Querying //
 //////////////////////////////
 
-// Test execution statistics.
+// TestStats represents test execution statistics.
 type TestStats struct {
-	TestFile     string    `bson:"test_file" json:"test_file"`
-	TaskName     string    `bson:"task_name" json:"task_name"`
-	BuildVariant string    `bson:"variant" json:"variant"`
-	Distro       string    `bson:"distro" json:"distro"`
-	Date         time.Time `bson:"date" json:"date"`
+	TestFile     string    `bson:"test_file"`
+	TaskName     string    `bson:"task_name"`
+	BuildVariant string    `bson:"variant"`
+	Distro       string    `bson:"distro"`
+	Date         time.Time `bson:"date"`
 
-	NumPass         int       `bson:"num_pass" json:"num_pass"`
-	NumFail         int       `bson:"num_fail" json:"num_fail"`
-	AvgDurationPass float32   `bson:"avg_duration_pass" json:"avg_duration_pass"`
+	NumPass         int       `bson:"num_pass"`
+	NumFail         int       `bson:"num_fail"`
+	AvgDurationPass float64   `bson:"avg_duration_pass"`
 	LastUpdate      time.Time `bson:"last_update"`
 }
 
-// Queries the precomputed test statistics using a filter.
+// GetTestStats queries the precomputed test statistics using a filter.
 func GetTestStats(filter *StatsFilter) ([]TestStats, error) {
 	err := filter.validateForTests()
 	if err != nil {
@@ -250,25 +231,25 @@ func GetTestStats(filter *StatsFilter) ([]TestStats, error) {
 // Task Statistics Querying //
 //////////////////////////////
 
-// Task execution statistics.
+// TaskStats represents task execution statistics.
 type TaskStats struct {
-	TaskName     string    `bson:"task_name" json:"task_name"`
-	BuildVariant string    `bson:"variant" json:"variant"`
-	Distro       string    `bson:"distro" json:"distro"`
-	Date         time.Time `bson:"date" json:"date"`
+	TaskName     string    `bson:"task_name"`
+	BuildVariant string    `bson:"variant"`
+	Distro       string    `bson:"distro"`
+	Date         time.Time `bson:"date"`
 
-	NumTotal           int       `bson:"num_total" json:"num_total"`
-	NumSuccess         int       `bson:"num_success" json:"num_success"`
-	NumFailed          int       `bson:"num_failed" json:"num_failed"`
-	NumTimeout         int       `bson:"num_timeout" json:"num_timeout"`
-	NumTestFailed      int       `bson:"num_test_failed" json:"num_test_failed"`
-	NumSystemFailed    int       `bson:"num_system_failed" json:"num_system_failed"`
-	NumSetupFailed     int       `bson:"num_setup_failed" json:"num_setup_failed"`
-	AvgDurationSuccess float32   `bson:"avg_duration_success" json:"avg_duration_success"`
+	NumTotal           int       `bson:"num_total"`
+	NumSuccess         int       `bson:"num_success"`
+	NumFailed          int       `bson:"num_failed"`
+	NumTimeout         int       `bson:"num_timeout"`
+	NumTestFailed      int       `bson:"num_test_failed"`
+	NumSystemFailed    int       `bson:"num_system_failed"`
+	NumSetupFailed     int       `bson:"num_setup_failed"`
+	AvgDurationSuccess float64   `bson:"avg_duration_success"`
 	LastUpdate         time.Time `bson:"last_update"`
 }
 
-// Queries the precomputed task statistics using a filter.
+// GetTaskStats queries the precomputed task statistics using a filter.
 func GetTaskStats(filter *StatsFilter) ([]TaskStats, error) {
 	err := filter.validateForTasks()
 	if err != nil {

@@ -113,7 +113,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(baseHour.UTC(), doc.Id.Date.UTC())
 	require.Equal(0, doc.NumPass)
 	require.Equal(2, doc.NumFail)
-	require.Equal(float32(0), doc.AvgDurationPass)
+	require.Equal(float64(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
 	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
@@ -129,7 +129,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NotNil(doc)
 	require.Equal(1, doc.NumPass)
 	require.Equal(1, doc.NumFail)
-	require.Equal(float32(120), doc.AvgDurationPass)
+	require.Equal(float64(120), doc.AvgDurationPass)
 
 	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
 		Project:   "p1",
@@ -144,7 +144,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NotNil(doc)
 	require.Equal(2, doc.NumPass)
 	require.Equal(0, doc.NumFail)
-	require.Equal(float32(12.5), doc.AvgDurationPass)
+	require.Equal(float64(12.5), doc.AvgDurationPass)
 
 	// Generate hourly stats for project p2
 	// Testing old tasks.
@@ -165,7 +165,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NotNil(doc)
 	require.Equal(0, doc.NumPass)
 	require.Equal(3, doc.NumFail)
-	require.Equal(float32(0), doc.AvgDurationPass)
+	require.Equal(float64(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
 	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
@@ -180,7 +180,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(1, doc.NumPass)
 	require.Equal(2, doc.NumFail)
-	require.Equal(float32(120), doc.AvgDurationPass)
+	require.Equal(float64(120), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
 	// Generate hourly stats for project p3.
@@ -213,7 +213,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NotNil(doc)
 	require.Equal(0, doc.NumPass)
 	require.Equal(1, doc.NumFail)
-	require.Equal(float32(0), doc.AvgDurationPass)
+	require.Equal(float64(0), doc.AvgDurationPass)
 
 	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
 		Project:   "p3",
@@ -228,7 +228,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NotNil(doc)
 	require.Equal(1, doc.NumPass)
 	require.Equal(0, doc.NumFail)
-	require.Equal(float32(120), doc.AvgDurationPass)
+	require.Equal(float64(120), doc.AvgDurationPass)
 }
 
 func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
@@ -266,7 +266,7 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	require.Equal(baseDay.UTC(), doc.Id.Date.UTC())
 	require.Equal(30, doc.NumPass)
 	require.Equal(5, doc.NumFail)
-	require.Equal(float32(4), doc.AvgDurationPass)
+	require.Equal(float64(4), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 }
 
@@ -336,7 +336,7 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	require.Equal(2, doc.NumSystemFailed)
 	require.Equal(3, doc.NumSetupFailed)
 	require.Equal(2, doc.NumTimeout)
-	require.Equal(float32(150), doc.AvgDurationSuccess)
+	require.Equal(float64(150), doc.AvgDurationSuccess)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
 	// Generate task for project p2 to check we get data for old tasks
@@ -359,7 +359,7 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	require.Equal(0, doc.NumSystemFailed)
 	require.Equal(0, doc.NumSetupFailed)
 	require.Equal(0, doc.NumTimeout)
-	require.Equal(float32(100), doc.AvgDurationSuccess)
+	require.Equal(float64(100), doc.AvgDurationSuccess)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 }
 
@@ -458,7 +458,7 @@ func (s *statsSuite) initHourly() {
 	s.insertHourlyTestStats("p1", "r1", "test1.js", "task1", "v1", "d1", hour3, 20, 0, 5)
 }
 
-func (s *statsSuite) insertHourlyTestStats(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time, numPass int, numFail int, avgDuration float32) {
+func (s *statsSuite) insertHourlyTestStats(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time, numPass int, numFail int, avgDuration float64) {
 
 	err := db.Insert(hourlyTestStatsCollection, bson.M{
 		"_id": modelUtil.DbTestStatsId{

@@ -101,7 +101,7 @@ type array []interface{}
 // Stats Status //
 //////////////////
 
-// Returns a query to find a stats status document by project id.
+// statsStatusQuery returns a query to find a stats status document by project id.
 func statsStatusQuery(projectId string) bson.M {
 	return bson.M{"_id": projectId}
 }
@@ -110,12 +110,12 @@ func statsStatusQuery(projectId string) bson.M {
 // Hourly Test Stats //
 ///////////////////////
 
-// Returns a pipeline aggregating task documents into hourly test stats.
+// hourlyTestStatsPipeline returns a pipeline aggregating task documents into hourly test stats.
 func hourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	return getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, false)
 }
 
-// Returns a pipeline aggregating old task documents into hourly test stats.
+// hourlyTestStatsForOldTasksPipeline returns a pipeline aggregating old task documents into hourly test stats.
 func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	// Using the same pipeline as for the tasks collection as the base.
 	basePipeline := getHourlyTestStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
@@ -154,7 +154,8 @@ func hourlyTestStatsForOldTasksPipeline(projectId string, requester string, star
 	return append(basePipeline, mergePipeline...)
 }
 
-// Internal helper function to create a pipeline aggregating task documents into hourly test stats.
+// getHourlyTestStatsPipeline is an internal helper function to create a pipeline aggregating task
+// documents into hourly test stats.
 func getHourlyTestStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
 	var taskIdExpr string
 	var displayTaskLookupCollection string
@@ -239,7 +240,7 @@ func getHourlyTestStatsPipeline(projectId string, requester string, start time.T
 // Daily Test Stats //
 //////////////////////
 
-// Returns a pipeline aggregating hourly test stats into daily test stats.
+// dailyTestStatsFromHourlyPipeline returns a pipeline aggregating hourly test stats into daily test stats.
 func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -285,12 +286,12 @@ func dailyTestStatsFromHourlyPipeline(projectId string, requester string, start 
 // Daily Task Stats //
 //////////////////////
 
-// Returns a pipeline aggregating task documents into daily task stats.
+// dailyTaskStatsPipeline returns a pipeline aggregating task documents into daily task stats.
 func dailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	return getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, false)
 }
 
-// Returns a pipeline aggregating old task documents into daily task stats.
+// dailyTaskStatsForOldTasksPipeline returns a pipeline aggregating old task documents into daily task stats.
 func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time) []bson.M {
 	// Using the same pipeline as for the tasks collection as the base.
 	basePipeline := getDailyTaskStatsPipeline(projectId, requester, start, end, tasks, lastUpdate, true)
@@ -338,7 +339,8 @@ func dailyTaskStatsForOldTasksPipeline(projectId string, requester string, start
 
 }
 
-// Internal helper function to create a pipeline aggregating task documents into daily task stats.
+// getDailyTaskStatsPipeline is an internal helper function to create a pipeline aggregating task
+// documents into daily task stats.
 func getDailyTaskStatsPipeline(projectId string, requester string, start time.Time, end time.Time, tasks []string, lastUpdate time.Time, oldTasks bool) []bson.M {
 	var taskIdExpr string
 	var displayTaskLookupCollection string
@@ -410,7 +412,7 @@ func getDailyTaskStatsPipeline(projectId string, requester string, start time.Ti
 	return pipeline
 }
 
-// Returns a pipeline aggregating task documents into documents describing tasks for which
+// statsToUpdatePipeline returns a pipeline aggregating task documents into documents describing tasks for which
 // the stats need to be updated.
 func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []bson.M {
 	pipeline := []bson.M{
@@ -456,7 +458,7 @@ func statsToUpdatePipeline(projectId string, start time.Time, end time.Time) []b
 // Queries on the precomputed statistics //
 ///////////////////////////////////////////
 
-// Creates an aggregation pipeline to query test statistics.
+// testStatsQueryPipeline creates an aggregation pipeline to query test statistics.
 func testStatsQueryPipeline(filter *StatsFilter) []bson.M {
 	matchExpr := buildMatchStageForTest(filter)
 
@@ -492,7 +494,7 @@ func testStatsQueryPipeline(filter *StatsFilter) []bson.M {
 	}
 }
 
-// Builds the match stage of the test query pipeline based on the filter options.
+// buildMatchStageForTest builds the match stage of the test query pipeline based on the filter options.
 func buildMatchStageForTest(filter *StatsFilter) bson.M {
 	match := bson.M{
 		"_id.date": bson.M{
@@ -522,7 +524,8 @@ func buildMatchStageForTest(filter *StatsFilter) bson.M {
 	return bson.M{"$match": match}
 }
 
-// Builds the $addFields stage that sets the start date of the grouped period the stats document belongs in.
+// buildAddFieldsDateStage builds the $addFields stage that sets the start date of the grouped
+// period the stats document belongs in.
 func buildAddFieldsDateStage(fieldName string, start time.Time, end time.Time, numDays int) bson.M {
 	if numDays <= 1 {
 		return bson.M{"$addFields": bson.M{fieldName: "$_id.date"}}
@@ -546,7 +549,7 @@ func buildAddFieldsDateStage(fieldName string, start time.Time, end time.Time, n
 	return bson.M{"$addFields": bson.M{fieldName: bson.M{"$switch": bson.M{"branches": branches}}}}
 }
 
-// Builds the _id field for the $group stage corresponding to the GroupBy value.
+// buildGroupId builds the _id field for the $group stage corresponding to the GroupBy value.
 func buildGroupId(groupBy GroupBy) bson.M {
 	id := bson.M{"date": "$date"}
 	switch groupBy {
@@ -565,16 +568,7 @@ func buildGroupId(groupBy GroupBy) bson.M {
 	return id
 }
 
-// Edits a match expression to include that the 'fieldName' field must have its value in 'values'.
-// Does nothing if 'values' is empty.
-//func addMatchIn(matchExpr bson.M, fieldName string, values []string) {
-//	if len(values) == 1 {
-//		matchExpr[fieldName] = values[0]
-//	} else if len(values) > 1 {
-//		matchExpr[fieldName] = bson.M{"$in": values}
-//	}
-//}
-
+// buildMatchArrayExpression builds an expression to match any of the values in the array argument.
 func buildMatchArrayExpression(values []string) interface{} {
 	if len(values) == 1 {
 		return values[0]
@@ -584,7 +578,7 @@ func buildMatchArrayExpression(values []string) interface{} {
 	return nil
 }
 
-// Adds to an existing $match expression the conditions imposed by the filter StartAt field
+// buildTestPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
 	var dateOperator string
 	if filter.Sort == SortLatestFirst {
@@ -627,7 +621,7 @@ func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
 	return buildPaginationOrBranches(fields)
 }
 
-// Creates an aggregation pipeline to query task statistics.
+// taskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
 func taskStatsQueryPipeline(filter *StatsFilter) []bson.M {
 	matchExpr := buildMatchStageForTask(filter)
 
@@ -670,7 +664,7 @@ func taskStatsQueryPipeline(filter *StatsFilter) []bson.M {
 	}
 }
 
-// Builds the match stage of the task query pipeline based on the filter options.
+// buildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
 func buildMatchStageForTask(filter *StatsFilter) bson.M {
 	match := bson.M{
 		"_id.date": bson.M{
@@ -697,7 +691,7 @@ func buildMatchStageForTask(filter *StatsFilter) bson.M {
 	return bson.M{"$match": match}
 }
 
-// Adds to an existing $match expression the conditions imposed by the filter StartAt field
+// buildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func buildTaskPaginationOrBranches(filter *StatsFilter) []bson.M {
 	var dateOperator string
 	if filter.Sort == SortLatestFirst {
@@ -732,7 +726,7 @@ func buildTaskPaginationOrBranches(filter *StatsFilter) []bson.M {
 	return buildPaginationOrBranches(fields)
 }
 
-// Builds and returns the $or branches of the pagination constraints.
+// buildPaginationOrBranches builds and returns the $or branches of the pagination constraints.
 // fields is an array of field names, they must be in the same order as the sort order.
 // operators is a list of MongoDB comparison operators ("$gte", "$gt", "$lte", "$lt") for the fields.
 // values is a list of values for the fields.
@@ -752,7 +746,7 @@ func buildPaginationOrBranches(fields []paginationField) []bson.M {
 	return branches
 }
 
-// Returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.
+// dateBoundaries returns the date boundaries when splitting the period between 'start' and 'end' in groups of 'numDays' days.
 // The boundaries are the start dates of the periods of 'numDays' (or less for the last period), starting with 'start'.
 func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
 	if numDays <= 0 {
@@ -772,7 +766,7 @@ func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
 	return boundaries
 }
 
-// Returns the sort order specification (1, -1) for the date field corresponding to the Sort value.
+// sortDateOrder returns the sort order specification (1, -1) for the date field corresponding to the Sort value.
 func sortDateOrder(sort Sort) int {
 	if sort == SortLatestFirst {
 		return -1
@@ -791,7 +785,7 @@ type paginationField struct {
 // Internal helpers for writing documents, running aggregations //
 //////////////////////////////////////////////////////////////////
 
-// Runs an aggregation pipeline on a collection and calls the provided callback for each output document.
+// aggregateWithCallback runs an aggregation pipeline on a collection and calls the provided callback for each output document.
 func aggregateWithCallback(collection string, pipeline []bson.M, callback func(interface{}) error) error {
 	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -820,7 +814,8 @@ func aggregateWithCallback(collection string, pipeline []bson.M, callback func(i
 	return nil
 }
 
-// Runs an aggregation pipeline on a collection and bulk upserts all the documents into the target collection.
+// aggregateIntoCollection runs an aggregation pipeline on a collection and bulk upserts all the documents
+// into the target collection.
 func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollection string) error {
 	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -853,7 +848,7 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 	return nil
 }
 
-// Internal function that creates a conditional $sum expression.
+// makeSume is an internal function that creates a conditional $sum expression.
 func makeSum(condition bson.M) bson.M {
 	return bson.M{"$sum": bson.M{"$cond": bson.M{"if": condition, "then": 1, "else": 0}}}
 }

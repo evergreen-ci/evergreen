@@ -54,7 +54,7 @@ type dbTestStats struct {
 	Id              DbTestStatsId `bson:"_id"`
 	NumPass         int           `bson:"num_pass"`
 	NumFail         int           `bson:"num_fail"`
-	AvgDurationPass float32       `bson:"avg_duration_pass"`
+	AvgDurationPass float64       `bson:"avg_duration_pass"`
 	LastUpdate      time.Time     `bson:"last_update"`
 }
 
@@ -75,6 +75,6 @@ type dbTaskStats struct {
 	NumTestFailed      int           `bson:"num_test_failed"`
 	NumSystemFailed    int           `bson:"num_system_failed"`
 	NumSetupFailed     int           `bson:"num_setup_failed"`
-	AvgDurationSuccess float32       `bson:"avg_duration_success"`
+	AvgDurationSuccess float64       `bson:"avg_duration_success"`
 	LastUpdate         time.Time     `bson:"last_update"`
 }
