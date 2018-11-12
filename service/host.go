@@ -185,11 +185,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		msg := NewSuccessFlash(fmt.Sprintf("%d hosts successfully updated to '%s'", len(hosts), opts.Status))
-		if opts.Status == evergreen.HostTerminated {
-			msg = NewSuccessFlash(fmt.Sprintf("%d hosts successfully queued for termination", len(hosts)))
-		}
-		PushFlash(uis.CookieStore, r, w, msg)
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d hosts will be updated to '%s'", len(hosts), opts.Status)))
 		return
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
