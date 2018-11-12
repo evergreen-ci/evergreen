@@ -178,24 +178,14 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
-		newStatus := opts.Status
-		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
-			http.Error(w, fmt.Sprintf("Invalid status: %v", opts.Status), http.StatusBadRequest)
-			return
-		}
-		numHostsUpdated := 0
-
-		for _, host := range hosts {
-			err := host.SetStatus(newStatus, user.Id, opts.Notes)
+		for _, h := range hosts {
+			_, err := modifyHostStatus(evergreen.GetEnvironment().RemoteQueue(), &h, opts, user)
 			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
+				gimlet.WriteResponse(w, gimlet.MakeTextErrorResponder(err))
 				return
 			}
-			numHostsUpdated += 1
 		}
-		msg := NewSuccessFlash(fmt.Sprintf("%v host(s) status successfully updated to '%v'",
-			numHostsUpdated, newStatus))
-		PushFlash(uis.CookieStore, r, w, msg)
+		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("%d hosts will be updated to '%s'", len(hosts), opts.Status)))
 		return
 	default:
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
