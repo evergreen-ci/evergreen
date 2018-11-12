@@ -1137,7 +1137,7 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 	}
 	s.NoError(b3.Insert())
 
-	versions, builds, err := FetchVersionsAndAssociatedBuilds(s.project, 0, 10)
+	versions, builds, err := FetchVersionsAndAssociatedBuilds(s.project, 0, 10, false)
 	s.NoError(err)
 	s.Equal(v3.Id, versions[0].Id)
 	s.Equal(v2.Id, versions[1].Id)
