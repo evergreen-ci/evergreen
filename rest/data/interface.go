@@ -114,6 +114,8 @@ type Connector interface {
 	UpdateDistro(distro *distro.Distro) error
 	// FindDistroById is a method to delete the distro matching the given distroId.
 	DeleteDistroById(string) error
+	// CreateDistro is a method to insert a given distro.
+	CreateDistro(distro *distro.Distro) error
 
 	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
 	// access to the metrics data collected by agents during task execution

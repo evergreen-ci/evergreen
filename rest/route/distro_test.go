@@ -32,6 +32,7 @@ type DistroByIdSuite struct {
 }
 
 func TestDistroSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroByIdSuite))
 }
 
@@ -57,6 +58,7 @@ func (s *DistroByIdSuite) SetupTest() {
 
 func (s *DistroByIdSuite) TestFindByIdFound() {
 	s.rm.(*distroIDGetHandler).distroId = "distro1"
+
 	resp := s.rm.Run(context.TODO())
 	s.NotNil(resp)
 	s.Equal(resp.Status(), http.StatusOK)
@@ -69,10 +71,83 @@ func (s *DistroByIdSuite) TestFindByIdFound() {
 
 func (s *DistroByIdSuite) TestFindByIdFail() {
 	s.rm.(*distroIDGetHandler).distroId = "distro3"
+
 	resp := s.rm.Run(context.TODO())
 	s.NotNil(resp)
 	s.NotEqual(resp.Status(), http.StatusOK)
 }
+
+///////////////////////////////////////////////////////////////////////
+//
+// Tests for PUT distro
+
+type DistroPutSuite struct {
+	sc   *data.MockConnector
+	data data.MockDistroConnector
+	rm   gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroPutSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	suite.Run(t, new(DistroPutSuite))
+}
+
+func (s *DistroPutSuite) SetupTest() {
+	s.data = data.MockDistroConnector{
+		CachedDistros: []*distro.Distro{
+			{
+				Id: "distro1",
+			},
+			{
+				Id: "distro2",
+			},
+			{
+				Id: "distro3",
+			},
+		},
+	}
+	s.sc = &data.MockConnector{
+		MockDistroConnector: s.data,
+	}
+	s.rm = makePutDistro(s.sc)
+}
+
+func (s *DistroPutSuite) TestParse() {
+	ctx := context.Background()
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH string", "provider": "mock", "user": "tibor"}`)
+
+	req, _ := http.NewRequest("PUT", "http://example.com/api/rest/v2/distros/distro4", bytes.NewBuffer(json))
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+	//s.Equal()
+}
+
+func (s *DistroPutSuite) TestRunValidDistroId() {
+	ctx := context.Background()
+	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH string", "provider": "mock", "user": "tibor"}`)
+	h := s.rm.(*distroPutHandler)
+	h.distroId = "distro4"
+	h.body = json
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(resp.Status(), http.StatusOK)
+}
+
+//
+// func (s *DistroPutSuite) TestRunInValidExistingDistroId() {
+// 	ctx := context.Background()
+// 	json := []byte(`{"arch": "linux_amd64", "work_dir": "/data/mci", "ssh_key": "SSH string", "provider": "mock", "user": "tibor"}`)
+// 	h := s.rm.(*distroPutHandler)
+// 	h.distroId = "distro3"
+// 	h.body = json
+//
+// 	resp := s.rm.Run(ctx)
+// 	s.NotNil(resp.Data())
+// 	s.Equal(resp.Status(), http.StatusBadRequest)
+// }
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -87,6 +162,7 @@ type DistroDeleteByIdSuite struct {
 }
 
 func TestDistroDeleteSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(DistroDeleteByIdSuite))
 }
 
@@ -112,6 +188,7 @@ func (s *DistroDeleteByIdSuite) SetupTest() {
 
 func (s *DistroDeleteByIdSuite) TestParse() {
 	ctx := context.Background()
+
 	req, _ := http.NewRequest("DELETE", "http://example.com/api/rest/v2/distros/distro1", nil)
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
@@ -119,7 +196,6 @@ func (s *DistroDeleteByIdSuite) TestParse() {
 
 func (s *DistroDeleteByIdSuite) TestRunValidDistroId() {
 	ctx := context.Background()
-
 	h := s.rm.(*distroIDDeleteHandler)
 	h.distroId = "distro1"
 
@@ -130,7 +206,6 @@ func (s *DistroDeleteByIdSuite) TestRunValidDistroId() {
 
 func (s *DistroDeleteByIdSuite) TestRunInValidDistroId() {
 	ctx := context.Background()
-
 	h := s.rm.(*distroIDDeleteHandler)
 	h.distroId = "distro4"
 
@@ -215,22 +290,21 @@ func (s *DistroPatchByIdSuite) SetupTest() {
 
 func (s *DistroPatchByIdSuite) TestParse() {
 	ctx := context.Background()
-
 	json := []byte(`{"ssh_options":["StrictHostKeyChecking=no","BatchMode=yes","ConnectTimeout=10"]}`)
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/distros/fedora8", bytes.NewBuffer(json))
+
 	err := s.rm.Parse(ctx, req)
 	s.NoError(err)
-
 	s.Equal(json, s.rm.(*distroIDPatchHandler).body)
 }
 
 func (s *DistroPatchByIdSuite) TestRunValidSpawnAllowed() {
 	ctx := context.Background()
 	json := []byte(`{"user_spawn_allowed": true}`)
-
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroId = "fedora8"
 	h.body = json
+
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
@@ -242,10 +316,10 @@ func (s *DistroPatchByIdSuite) TestRunValidSpawnAllowed() {
 func (s *DistroPatchByIdSuite) TestRunValidProvider() {
 	ctx := context.Background()
 	json := []byte(`{"provider": "mock"}`)
-
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroId = "fedora8"
 	h.body = json
+
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusOK)
@@ -578,10 +652,10 @@ func (s *DistroPatchByIdSuite) TestRunInValidNameChange() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	json := []byte(`{"name": "Updated distro name"}`)
-
 	h := s.rm.(*distroIDPatchHandler)
 	h.distroId = "fedora8"
 	h.body = json
+
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(resp.Status(), http.StatusBadRequest)

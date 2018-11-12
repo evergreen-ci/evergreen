@@ -58,13 +58,15 @@ func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 		apiDistro.Disabled = v.Disabled
 		apiDistro.ContainerPool = ToAPIString(v.ContainerPool)
 		apiDistro.SSHOptions = v.SSHOptions
-		apiDistro.Expansions = []APIExpansion{}
-		for _, e := range v.Expansions {
-			expansion := &APIExpansion{}
-			if err := expansion.BuildFromService(e); err != nil {
-				return errors.Wrap(err, "Error converting from distro.Expansion to model.APIExpansion")
+		if v.Expansions != nil {
+			apiDistro.Expansions = []APIExpansion{}
+			for _, e := range v.Expansions {
+				expansion := &APIExpansion{}
+				if err := expansion.BuildFromService(e); err != nil {
+					return errors.Wrap(err, "Error converting from distro.Expansion to model.APIExpansion")
+				}
+				apiDistro.Expansions = append(apiDistro.Expansions, *expansion)
 			}
-			apiDistro.Expansions = append(apiDistro.Expansions, *expansion)
 		}
 
 	default:

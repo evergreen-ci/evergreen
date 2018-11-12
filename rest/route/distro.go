@@ -20,6 +20,137 @@ import (
 
 ///////////////////////////////////////////////////////////////////////
 //
+// PUT /rest/v2/distros/{distro_id}
+
+type distroPutHandler struct {
+	distroId string
+	body     []byte
+	sc       data.Connector
+}
+
+func makePutDistro(sc data.Connector) gimlet.RouteHandler {
+	return &distroPutHandler{
+		sc: sc,
+	}
+}
+
+func (h *distroPutHandler) Factory() gimlet.RouteHandler {
+	return &distroPutHandler{
+		sc: h.sc,
+	}
+}
+
+// Parse fetches the distroId and json payload from the http request.
+func (h *distroPutHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroId = gimlet.GetVars(r)["distro_id"]
+
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	b, err := ioutil.ReadAll(body)
+	if err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	h.body = b
+
+	return nil
+}
+
+// Run either:
+// (1) Replaces an existing resource with the entity defined in the JSON payload
+// (2) Creates a new resource based on the Request-URI and JSON payload
+func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
+	d, err := h.sc.FindDistroById(h.distroId)
+	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
+	}
+
+	// Existing resource
+	if d != nil {
+		modified := &distro.Distro{Id: h.distroId}
+		if err := json.Unmarshal(h.body, modified); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
+		}
+
+		if h.distroId != modified.Id {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("The distro_id value,'%s', does not match the JSON payload value of '%s'", h.distroId, modified.Id),
+			})
+		}
+
+		vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, true)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    err.Error(),
+			})
+		}
+		if len(vErrors) != 0 {
+			errors := []string{}
+			for _, v := range vErrors {
+				errors = append(errors, v.Message)
+			}
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    strings.Join(errors, ", "),
+			})
+		}
+
+		if err = h.sc.UpdateDistro(modified); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroId)))
+		}
+
+		apiDistro := &model.APIDistro{}
+		apiDistro.BuildFromService(modified)
+
+		return gimlet.NewJSONResponse(apiDistro)
+	}
+
+	// New resource
+	apiDistro := &model.APIDistro{Name: model.ToAPIString(h.distroId)}
+	if err := json.Unmarshal(h.body, apiDistro); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
+	}
+	if h.distroId != model.FromAPIString(apiDistro.Name) {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("The distro_id value,'%s', does not match the JSON payload value of '%s'", h.distroId, model.FromAPIString(apiDistro.Name)),
+		})
+	}
+
+	i, err := apiDistro.ToService()
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from model.APIExpansion to distro.Expansion"))
+	}
+	d = i.(*distro.Distro)
+
+	vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, true)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+	}
+	if len(vErrors) != 0 {
+		errors := []string{}
+		for _, v := range vErrors {
+			errors = append(errors, v.Message)
+		}
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    strings.Join(errors, ", "),
+		})
+	}
+
+	if err = h.sc.CreateDistro(d); err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroId)))
+	}
+
+	return gimlet.NewJSONResponse(apiDistro)
+}
+
+///////////////////////////////////////////////////////////////////////
+//
 // DELETE /rest/v2/distros/{distro_id}
 
 type distroIDDeleteHandler struct {
@@ -86,6 +217,7 @@ func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 // Parse fetches the distroId from the http request.
 func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
+
 	body := util.NewRequestReader(r)
 	defer body.Close()
 	b, err := ioutil.ReadAll(body)
