@@ -153,3 +153,115 @@ func TestGetDistroIds(t *testing.T) {
 	ids := hosts.GetDistroIds()
 	assert.Equal([]string{"d1", "d2", "d3"}, ids)
 }
+
+func TestGetImageID(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		provider       string
+		key            string
+		value          interface{}
+		expectedOutput string
+		err            bool
+		noKey          bool
+	}{
+		{
+			name:           "Ec2Auto",
+			provider:       evergreen.ProviderNameEc2Auto,
+			key:            "ami",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
+			name:           "Ec2OnDemand",
+			provider:       evergreen.ProviderNameEc2OnDemand,
+			key:            "ami",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
+			name:           "Ec2Spot",
+			provider:       evergreen.ProviderNameEc2Spot,
+			key:            "ami",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
+			name:           "Docker",
+			provider:       evergreen.ProviderNameDocker,
+			key:            "image_url",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
+			name:           "DockerMock",
+			provider:       evergreen.ProviderNameDockerMock,
+			key:            "image_url",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
+			name:           "Gce",
+			provider:       evergreen.ProviderNameGce,
+			key:            "image_name",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
+			name:     "Static",
+			provider: evergreen.ProviderNameStatic,
+			noKey:    true,
+		},
+		{
+			name:     "Openstack",
+			provider: evergreen.ProviderNameOpenstack,
+			noKey:    true,
+		},
+		{
+			name:           "Vsphere",
+			provider:       evergreen.ProviderNameVsphere,
+			key:            "template",
+			value:          "imageID",
+			expectedOutput: "imageID",
+		},
+		{
+			name:     "Mock",
+			provider: evergreen.ProviderNameMock,
+			noKey:    true,
+		},
+		{
+			name:     "UnknownProvider",
+			provider: "unknown",
+			noKey:    true,
+			err:      true,
+		},
+		{
+			name:     "InvalidType",
+			provider: evergreen.ProviderNameEc2Auto,
+			key:      "ami",
+			value:    5,
+			err:      true,
+		},
+		{
+			name:     "InvalidKey",
+			provider: evergreen.ProviderNameEc2Auto,
+			key:      "abi",
+			value:    "imageID",
+			err:      true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			providerSettings := make(map[string]interface{})
+			if !test.noKey {
+				providerSettings[test.key] = test.value
+			}
+			distro := Distro{Provider: test.provider, ProviderSettings: &providerSettings}
+			output, err := distro.GetImageID()
+			assert.Equal(t, output, test.expectedOutput)
+			if test.err {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

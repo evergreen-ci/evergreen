@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -46,7 +47,7 @@ func TestHostBuildFromService(t *testing.T) {
 					Id: "testId",
 					Distro: distro.Distro{
 						Id:       "testDistroId",
-						Provider: "testDistroProvider",
+						Provider: evergreen.ProviderNameMock,
 					},
 					Provisioned:  true,
 					StartedBy:    "testStarter",
@@ -69,7 +70,11 @@ func TestHostBuildFromService(t *testing.T) {
 						DispatchTime: NewTime(time.Time{}),
 					},
 				},
-				sh: host.Host{},
+				sh: host.Host{
+					Distro: distro.Distro{
+						Provider: evergreen.ProviderNameMock,
+					},
+				},
 				st: task.Task{},
 			},
 		}

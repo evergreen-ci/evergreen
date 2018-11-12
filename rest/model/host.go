@@ -1,10 +1,9 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 // APIHost is the model to be returned by the API whenever hosts are fetched.
@@ -30,6 +29,7 @@ type HostPostRequest struct {
 type DistroInfo struct {
 	Id       APIString `json:"distro_id"`
 	Provider APIString `json:"provider"`
+	ImageId  APIString `json:"image_id"`
 }
 
 type taskInfo struct {
@@ -52,7 +52,7 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	case task.Task:
 		apiHost.RunningTask = getTaskInfo(&v)
 	default:
-		return fmt.Errorf("incorrect type when fetching converting host type")
+		return errors.New("incorrect type when fetching converting host type")
 	}
 	return nil
 }
@@ -76,7 +76,7 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	case *host.Host:
 		v = h.(*host.Host)
 	default:
-		return fmt.Errorf("incorrect type when fetching converting host type")
+		return errors.New("incorrect type when fetching converting host type")
 	}
 	apiHost.Id = ToAPIString(v.Id)
 	apiHost.HostURL = ToAPIString(v.Host)
@@ -87,9 +87,14 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	apiHost.Status = ToAPIString(v.Status)
 	apiHost.UserHost = v.UserHost
 
+	imageId, err := v.Distro.GetImageID()
+	if err != nil {
+		return errors.Wrap(err, "problem getting image ID")
+	}
 	di := DistroInfo{
 		Id:       ToAPIString(v.Distro.Id),
 		Provider: ToAPIString(v.Distro.Provider),
+		ImageId:  ToAPIString(imageId),
 	}
 	apiHost.Distro = di
 	return nil

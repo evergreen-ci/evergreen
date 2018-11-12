@@ -116,6 +116,40 @@ func (d *Distro) IsParent(s *evergreen.Settings) bool {
 	return false
 }
 
+func (d *Distro) GetImageID() (string, error) {
+	var i interface{}
+	switch d.Provider {
+	case evergreen.ProviderNameEc2Auto:
+		i = (*d.ProviderSettings)["ami"]
+	case evergreen.ProviderNameEc2OnDemand:
+		i = (*d.ProviderSettings)["ami"]
+	case evergreen.ProviderNameEc2Spot:
+		i = (*d.ProviderSettings)["ami"]
+	case evergreen.ProviderNameDocker:
+		i = (*d.ProviderSettings)["image_url"]
+	case evergreen.ProviderNameDockerMock:
+		i = (*d.ProviderSettings)["image_url"]
+	case evergreen.ProviderNameGce:
+		i = (*d.ProviderSettings)["image_name"]
+	case evergreen.ProviderNameVsphere:
+		i = (*d.ProviderSettings)["template"]
+	case evergreen.ProviderNameMock:
+		return "", nil
+	case evergreen.ProviderNameStatic:
+		return "", nil
+	case evergreen.ProviderNameOpenstack:
+		return "", nil
+	default:
+		return "", errors.New("unknown provider name")
+	}
+
+	s, ok := i.(string)
+	if !ok {
+		return "", errors.New("cannot extract image ID from provider settings")
+	}
+	return s, nil
+}
+
 // ValidateContainerPoolDistros ensures that container pools have valid distros
 func ValidateContainerPoolDistros(s *evergreen.Settings) error {
 	catcher := grip.NewSimpleCatcher()

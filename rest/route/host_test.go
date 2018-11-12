@@ -160,7 +160,6 @@ func (s *HostChangeStatusSuite) TestRunWithInvalidHost() {
 type HostSuite struct {
 	route *hostIDGetHandler
 	sc    *data.MockConnector
-	data  data.MockHostConnector
 
 	suite.Suite
 }
@@ -170,13 +169,7 @@ func TestHostSuite(t *testing.T) {
 }
 
 func (s *HostSuite) SetupSuite() {
-	s.data = data.MockHostConnector{
-		CachedHosts: []host.Host{host.Host{Id: "host1"}, host.Host{Id: "host2"}},
-	}
-
-	s.sc = &data.MockConnector{
-		MockHostConnector: s.data,
-	}
+	s.sc = getMockHostsConnector()
 }
 
 func (s *HostSuite) SetupTest() {
@@ -215,11 +208,28 @@ func (s *HostSuite) TestFindByIdLast() {
 }
 
 func (s *HostSuite) TestFindByIdFail() {
-	s.route.hostId = "host3"
+	s.route.hostId = "host5"
 	res := s.route.Run(context.TODO())
 	s.NotNil(res)
 	s.Equal(http.StatusNotFound, res.Status(), "%+v", res)
 
+}
+
+func (s *HostSuite) TestBuildFromServiceHost() {
+	host := s.sc.MockHostConnector.CachedHosts[0]
+	apiHost := model.APIHost{}
+	s.NoError(apiHost.BuildFromService(host))
+	s.Equal(apiHost.Id, model.ToAPIString(host.Id))
+	s.Equal(apiHost.HostURL, model.ToAPIString(host.Host))
+	s.Equal(apiHost.Provisioned, host.Provisioned)
+	s.Equal(apiHost.StartedBy, model.ToAPIString(host.StartedBy))
+	s.Equal(apiHost.Type, model.ToAPIString(host.InstanceType))
+	s.Equal(apiHost.User, model.ToAPIString(host.User))
+	s.Equal(apiHost.Status, model.ToAPIString(host.Status))
+	s.Equal(apiHost.UserHost, host.UserHost)
+	s.Equal(apiHost.Distro.Id, model.ToAPIString(host.Distro.Id))
+	s.Equal(apiHost.Distro.Provider, model.ToAPIString(host.Distro.Provider))
+	s.Equal(apiHost.Distro.ImageId, model.ToAPIString(""))
 }
 
 type hostTerminateHostHandlerSuite struct {
@@ -583,8 +593,9 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 
 func getMockHostsConnector() *data.MockConnector {
 	windowsDistro := distro.Distro{
-		Id:   "windows",
-		Arch: "windows_amd64",
+		Id:       "windows",
+		Arch:     "windows_amd64",
+		Provider: evergreen.ProviderNameMock,
 	}
 	connector := &data.MockConnector{
 		MockHostConnector: data.MockHostConnector{
@@ -620,8 +631,9 @@ func getMockHostsConnector() *data.MockConnector {
 					Status:         evergreen.HostRunning,
 					ExpirationTime: time.Now().Add(time.Hour),
 					Distro: distro.Distro{
-						Id:   "linux",
-						Arch: "linux_amd64",
+						Id:       "linux",
+						Arch:     "linux_amd64",
+						Provider: evergreen.ProviderNameMock,
 					},
 				},
 			},

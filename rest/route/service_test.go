@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
@@ -58,6 +60,9 @@ func TestHostPaginator(t *testing.T) {
 			for i := 0; i < numHostsInDB; i++ {
 				nextHost := host.Host{
 					Id: fmt.Sprintf("host%d", i),
+					Distro: distro.Distro{
+						Provider: evergreen.ProviderNameMock,
+					},
 				}
 				cachedHosts = append(cachedHosts, nextHost)
 			}
@@ -73,7 +78,8 @@ func TestHostPaginator(t *testing.T) {
 						HostURL: model.ToAPIString(""),
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(""),
+							Provider: model.ToAPIString(evergreen.ProviderNameMock),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
@@ -110,7 +116,8 @@ func TestHostPaginator(t *testing.T) {
 						HostURL: model.ToAPIString(""),
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(""),
+							Provider: model.ToAPIString(evergreen.ProviderNameMock),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
@@ -148,7 +155,8 @@ func TestHostPaginator(t *testing.T) {
 						HostURL: model.ToAPIString(""),
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(""),
+							Provider: model.ToAPIString(evergreen.ProviderNameMock),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
@@ -185,7 +193,8 @@ func TestHostPaginator(t *testing.T) {
 						HostURL: model.ToAPIString(""),
 						Distro: model.DistroInfo{
 							Id:       model.ToAPIString(""),
-							Provider: model.ToAPIString(""),
+							Provider: model.ToAPIString(evergreen.ProviderNameMock),
+							ImageId:  model.ToAPIString(""),
 						},
 						StartedBy: model.ToAPIString(""),
 						Type:      model.ToAPIString(""),
