@@ -15,7 +15,7 @@ tasks:
 
 modules:
 - name: sample
-  repo: git@github.com:evergreen-ci/sample.git
+  repo: https://github.com/evergreen-ci/sample.git
   ref: cf46076567e4949f9fc68e0634139d4ac495c89b
   prefix: module
 
