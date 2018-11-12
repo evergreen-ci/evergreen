@@ -234,13 +234,17 @@ func AbortTask(taskId, caller string) error {
 	if err != nil {
 		return err
 	}
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			_ = AbortTask(et, caller) // discard errors because some execution tasks may not be abortable
+		}
+	}
 
 	if !task.IsAbortable(*t) {
 		return errors.Errorf("Task '%v' is currently '%v' - cannot abort task"+
 			" in this status", t.Id, t.Status)
 	}
 
-	grip.Debugln("Aborting task", t.Id)
 	// set the active state and then set the abort
 	if err = SetActiveState(t.Id, caller, false); err != nil {
 		return err
