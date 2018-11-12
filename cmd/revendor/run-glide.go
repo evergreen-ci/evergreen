@@ -37,9 +37,14 @@ func main() {
 func updateGlide(pkg, revision string) {
 	wd, err := os.Getwd()
 	grip.EmergencyFatal(errors.Wrap(err, "error getting working dir"))
+
 	vendorPath := filepath.Join(wd, "vendor", pkg)
-	_, err = os.Stat(vendorPath)
+	stat, err := os.Stat(vendorPath)
 	grip.EmergencyFatal(errors.Wrapf(err, "vendor directory %s not found", vendorPath))
+	if !stat.IsDir() {
+		grip.EmergencyFatalf("'%s' is not a directory", vendorPath)
+	}
+
 	glidePath := filepath.Join(wd, "glide.lock")
 	_, err = os.Stat(glidePath)
 	grip.EmergencyFatal(errors.Wrapf(err, "glide file %s not found", glidePath))
@@ -48,6 +53,7 @@ func updateGlide(pkg, revision string) {
 	grip.EmergencyFatal(errors.Wrap(err, "error opening glide file"))
 	glide, err := ioutil.ReadAll(glideFile)
 	grip.EmergencyFatal(errors.Wrap(err, "error reading glide file"))
+
 	lines := strings.Split(string(glide), "\n")
 	found := false
 	for i, line := range lines {
@@ -60,6 +66,8 @@ func updateGlide(pkg, revision string) {
 	if !found {
 		grip.EmergencyFatalf("package %s not found in glide file", pkg)
 	}
+
 	grip.EmergencyFatal(errors.Wrap(ioutil.WriteFile(glidePath, []byte(strings.Join(lines, "\n")), 0777), "error writing glide file"))
+
 	grip.EmergencyFatal(errors.Wrap(os.RemoveAll(vendorPath), "error removing vendor dir"))
 }
