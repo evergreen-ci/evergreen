@@ -247,6 +247,16 @@ vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/txn/
 	find vendor/ -name "*.gif" -o -name "*.jpg" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" | xargs rm -rf
 phony += vendor-clean
+$(buildDir)/run-glide:cmd/revendor/run-glide.go
+	$(gobin) build -o $@ $<
+run-glide:$(buildDir)/run-glide
+	$(buildDir)/run-glide $(if $(VENDOR_REVISION),--revision $(VENDOR_REVISION),) $(if $(VENDOR_PKG),--package $(VENDOR_PKG) ,)
+revendor:
+ifneq ($(VENDOR_REVISION),)
+revendor:run-glide vendor-clean
+else
+revendor:
+endif
 # end vendoring tooling configuration
 
 

@@ -64,6 +64,9 @@ variables:
       - func: get-project
       - func: set-up-credentials
       - func: run-make
+        vars:
+          target: revendor
+      - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb
     # runs a make target above, but only on systems that have a
@@ -73,6 +76,9 @@ variables:
       - func: get-project
       - func: set-up-credentials
       - func: set-up-mongodb
+      - func: run-make
+        vars:
+          target: revendor
       - func: run-make
         vars: { target: "${task_name}" }
   - &run-smoke-test
@@ -156,6 +162,8 @@ functions:
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
+        VENDOR_PKG: "github.com/${trigger_repo_owner}/${trigger_repo_name}"
+        VENDOR_REVISION: ${trigger_revision}
         XC_BUILD: ${xc_build}
   set-up-credentials:
     command: subprocess.exec
