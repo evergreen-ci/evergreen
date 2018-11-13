@@ -290,7 +290,7 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	provisionedImage := fmt.Sprintf(provisionedImageTag, strings.TrimSuffix(baseName, filepath.Ext(baseName)))
 
 	// Build path to Evergreen executable.
-	pathToExecutable := filepath.Join("root", "evergreen")
+	pathToExecutable := filepath.Join("/", "evergreen")
 	if parentHost.Distro.IsWindows() {
 		pathToExecutable += ".exe"
 	}
