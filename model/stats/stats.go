@@ -1,4 +1,4 @@
-// Provides functions to generate and query pre-computed test and task statistics.
+// Package stats provides functions to generate and query pre-computed test and task statistics.
 // The statistics are aggregated per day and a combination of (test, task, variant, distro, project, requester) for
 // tests and a combination of (task, variant, distro,  project, requester) for tasks.
 // For tests intermediate hourly statistics are also stored to avoid some re-computation.
@@ -21,7 +21,7 @@ const (
 	defaultBackFillPeriod = 4 * 7 * 24 * time.Hour
 )
 
-// Represents the status for stats pre-computations for a project.
+// StatsStatus represents the status for stats pre-computations for a project.
 // LastJobRun is the start date of the last successful pre-computation job that ran for the project.
 // ProcessedTasksUntil is the date before which all finished tasks have been processed. It is usually
 // the same as LastJobRun unless a previous job has failed and the stats computation has not caught up yet.
@@ -31,12 +31,13 @@ type StatsStatus struct {
 	ProcessedTasksUntil time.Time `bson:"processed_tasks_until"`
 }
 
+// createDefaultStatsStatus creates a StatsStatus for projects that don't have a status in the DB yet.
 func createDefaultStatsStatus(projectId string) StatsStatus {
-	fourWeeksAgo := util.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
+	defaultBackFillStart := util.GetUTCDay(time.Now().Add(-defaultBackFillPeriod))
 	return StatsStatus{
 		ProjectId:           projectId,
-		LastJobRun:          fourWeeksAgo,
-		ProcessedTasksUntil: fourWeeksAgo,
+		LastJobRun:          defaultBackFillStart,
+		ProcessedTasksUntil: defaultBackFillStart,
 	}
 }
 
@@ -44,7 +45,7 @@ func createDefaultStatsStatus(projectId string) StatsStatus {
 // Stats status functions //
 ////////////////////////////
 
-// Retrieves the status of the stats pre-computations for a project.
+// GetStatsStatus retrieves the status of the stats pre-computations for a project.
 func GetStatsStatus(projectId string) (StatsStatus, error) {
 	status := StatsStatus{}
 	query := statsStatusQuery(projectId)
@@ -58,7 +59,7 @@ func GetStatsStatus(projectId string) (StatsStatus, error) {
 	return status, nil
 }
 
-// Updates the status of the stats pre-computations for a project.
+// UpdateStatsStatus updates the status of the stats pre-computations for a project.
 func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUntil time.Time) error {
 	status := StatsStatus{
 		ProjectId:           projectId,
@@ -76,8 +77,8 @@ func UpdateStatsStatus(projectId string, lastJobRun time.Time, processedTasksUnt
 // Hourly and daily test stats generation functions //
 //////////////////////////////////////////////////////
 
-// Aggregates task and testresults prsent in the database and saves the resulting hourly test stats documents
-// for the project, requester, hour, and tasks specified.
+// GenerateHourlyTestStats aggregates task and testresults prsent in the database and saves the
+// resulting hourly test stats documents for the project, requester, hour, and tasks specified.
 // The hour covered is the UTC hour corresponding to the given `hour` parameter.
 func GenerateHourlyTestStats(projectId string, requester string, hour time.Time, tasks []string, jobRunTime time.Time) error {
 	grip.Info(message.Fields{
@@ -112,8 +113,8 @@ func GenerateHourlyTestStats(projectId string, requester string, hour time.Time,
 	return nil
 }
 
-// Aggregates the hourly test stats present in the database and saves the resulting daily test stats documents
-// for the project, requester, day, and tasks specified.
+// GenerateDailyTestStatsFromHourly aggregates the hourly test stats present in the database and
+// saves the resulting daily test stats documents for the project, requester, day, and tasks specified.
 // The day covered is the UTC day corresponding to the given `day` parameter.
 func GenerateDailyTestStatsFromHourly(projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
 	grip.Info(message.Fields{
@@ -137,8 +138,8 @@ func GenerateDailyTestStatsFromHourly(projectId string, requester string, day ti
 // Daily task stats generation functions //
 ///////////////////////////////////////////
 
-// Aggregates the hourly task stats present in the database and saves the resulting daily task stats documents
-// for the project, requester, day, and tasks specified.
+// GenerateDailyTaskStats aggregates the hourly task stats present in the database and saves
+// the resulting daily task stats documents for the project, requester, day, and tasks specified.
 // The day covered is the UTC day corresponding to the given `day` parameter.
 func GenerateDailyTaskStats(projectId string, requester string, day time.Time, tasks []string, jobRunTime time.Time) error {
 	grip.Info(message.Fields{
@@ -189,7 +190,7 @@ func (s *StatsToUpdate) canMerge(other *StatsToUpdate) bool {
 	return s.ProjectId == other.ProjectId && s.Requester == other.Requester && s.Hour.UTC() == other.Hour.UTC()
 }
 
-// Returns true if this StatsToUpdate should be sorted before the other.
+// lt returns true if this StatsToUpdate should be sorted before the other.
 func (s *StatsToUpdate) lt(other *StatsToUpdate) bool {
 	if s.ProjectId < other.ProjectId {
 		return true
@@ -205,7 +206,7 @@ func (s *StatsToUpdate) lt(other *StatsToUpdate) bool {
 	return false
 }
 
-// Merges two StatsToUpdate.
+// merge merges two StatsToUpdate.
 // This method does not check that the objects can be merged.
 func (s *StatsToUpdate) merge(other *StatsToUpdate) StatsToUpdate {
 	tasks := s.Tasks
@@ -217,7 +218,7 @@ func (s *StatsToUpdate) merge(other *StatsToUpdate) StatsToUpdate {
 	return StatsToUpdate{s.ProjectId, s.Requester, s.Hour, s.Day, tasks}
 }
 
-// Indicates if a list of strings contains a specific string.
+// containsTask indicates if a list of strings contains a specific string.
 func containsTask(tasks []string, task string) bool {
 	for _, t := range tasks {
 		if t == task {
@@ -227,7 +228,7 @@ func containsTask(tasks []string, task string) bool {
 	return false
 }
 
-// Find the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
+// FidnStatsToUpdate finds the stats that need to be updated as a result of tasks finishing between 'start' and 'end'.
 // The results are ordered by project id, then hour, then requester.
 func FindStatsToUpdate(projectId string, start time.Time, end time.Time) ([]StatsToUpdate, error) {
 	grip.Info(message.Fields{
@@ -250,7 +251,7 @@ func FindStatsToUpdate(projectId string, start time.Time, end time.Time) ([]Stat
 	return mergeStatsToUpdateLists(statsList, statsListForOldTasks), nil
 }
 
-// Takes 2 sorted lists of StatsToUpdate and merge their results.
+// mergeStatsToUpdateLists takes 2 sorted lists of StatsToUpdate and merge their results.
 // The original list elements may be modified.
 func mergeStatsToUpdateLists(statsList []StatsToUpdate, statsListOld []StatsToUpdate) []StatsToUpdate {
 	length := len(statsList)

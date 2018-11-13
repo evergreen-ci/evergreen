@@ -16,7 +16,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/stats"
-	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -416,42 +415,42 @@ func (s *cacheHistoryTestDataSuite) TestCacheHistoricalTestDataJob() {
 	job.Run(context.Background())
 	s.NoError(job.Error())
 
-	doc, err := modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
-		TestFile:  "test0.js",
-		TaskName:  "taskName",
-		Variant:   "",
-		Distro:    "",
-		Project:   s.projectId,
-		Requester: s.requester,
-		Date:      baseTime.Truncate(time.Hour * 24),
+	doc, err := stats.GetDailyTestDoc(stats.DbTestStatsId{
+		TestFile:     "test0.js",
+		TaskName:     "taskName",
+		BuildVariant: "",
+		Distro:       "",
+		Project:      s.projectId,
+		Requester:    s.requester,
+		Date:         baseTime.Truncate(time.Hour * 24),
 	})
 	s.Nil(err)
 	s.NotNil(doc)
 	s.Equal(2, doc.NumFail)
 	s.Equal(0, doc.NumPass)
 
-	doc, err = modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
-		TestFile:  "test1.js",
-		TaskName:  "taskName",
-		Variant:   "",
-		Distro:    "",
-		Project:   s.projectId,
-		Requester: s.requester,
-		Date:      baseTime.Truncate(time.Hour * 24),
+	doc, err = stats.GetDailyTestDoc(stats.DbTestStatsId{
+		TestFile:     "test1.js",
+		TaskName:     "taskName",
+		BuildVariant: "",
+		Distro:       "",
+		Project:      s.projectId,
+		Requester:    s.requester,
+		Date:         baseTime.Truncate(time.Hour * 24),
 	})
 	s.Nil(err)
 	s.NotNil(doc)
 	s.Equal(1, doc.NumFail)
 	s.Equal(1, doc.NumPass)
 
-	doc, err = modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
-		TestFile:  "test2.js",
-		TaskName:  "taskName",
-		Variant:   "",
-		Distro:    "",
-		Project:   s.projectId,
-		Requester: s.requester,
-		Date:      baseTime.Truncate(time.Hour * 24),
+	doc, err = stats.GetDailyTestDoc(stats.DbTestStatsId{
+		TestFile:     "test2.js",
+		TaskName:     "taskName",
+		BuildVariant: "",
+		Distro:       "",
+		Project:      s.projectId,
+		Requester:    s.requester,
+		Date:         baseTime.Truncate(time.Hour * 24),
 	})
 	s.Nil(err)
 	s.NotNil(doc)
