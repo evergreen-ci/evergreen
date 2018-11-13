@@ -28,8 +28,8 @@ func TestGetDockerfile(t *testing.T) {
 		"ARG URL",
 		"ARG EXECUTABLE_SUB_PATH",
 		"ARG BINARY_NAME",
-		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
-		"RUN chmod +x /root/${BINARY_NAME}",
+		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /",
+		"RUN chmod 0777 /${BINARY_NAME}",
 	}
 
 	assert.Equal(strings.Join(parts, "\n"), string(body))

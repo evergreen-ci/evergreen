@@ -391,7 +391,6 @@ buildvariants:
       - name: "dist"
       - name: ".smoke"
       - name: ".test"
-      - name: "js-test"
 
   - name: race-detector
     display_name: Race Detector
