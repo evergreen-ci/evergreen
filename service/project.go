@@ -460,7 +460,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Aliases:            currentAliases,
 		Subscriptions:      currentSubscriptions,
 	}
-	model.LogProjectModified(id, username, before, after)
+	if err = model.LogProjectModified(id, username, before, after); err != nil {
+		grip.Infof("Could not log changes to project %s", id)
+	}
 
 	allProjects, err := uis.filterAuthorizedProjects(dbUser)
 	if err != nil {
@@ -515,7 +517,9 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := dbUser.DisplayName()
-	model.LogProjectAdded(id, username)
+	if err = model.LogProjectAdded(id, username); err != nil {
+		grip.Infof("Could not log new project %s", id)
+	}
 
 	allProjects, err := uis.filterAuthorizedProjects(dbUser)
 
