@@ -56,94 +56,34 @@ func (h *distroPutHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 // Run either:
-// (1) Replaces an existing resource with the entity defined in the JSON payload
-// (2) Creates a new resource based on the Request-URI and JSON payload
+// (a) replaces an existing resource with the entity defined in the JSON payload, or
+// (b) creates a new resource based on the Request-URI and JSON payload
 func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroId)
+	original, err := h.sc.FindDistroById(h.distroId)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
 	}
 
-	// Existing resource
-	if d != nil {
-		modified := &distro.Distro{Id: h.distroId}
-		if err := json.Unmarshal(h.body, modified); err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
-		}
-
-		if h.distroId != modified.Id {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("The distro_id value,'%s', does not match the JSON payload value of '%s'", h.distroId, modified.Id),
-			})
-		}
-
-		vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, true)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    err.Error(),
-			})
-		}
-		if len(vErrors) != 0 {
-			errors := []string{}
-			for _, v := range vErrors {
-				errors = append(errors, v.Message)
-			}
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusBadRequest,
-				Message:    strings.Join(errors, ", "),
-			})
-		}
-
-		if err = h.sc.UpdateDistro(modified); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroId)))
-		}
-
-		apiDistro := &model.APIDistro{}
-		apiDistro.BuildFromService(modified)
-
-		return gimlet.NewJSONResponse(apiDistro)
-	}
-
-	// New resource
 	apiDistro := &model.APIDistro{Name: model.ToAPIString(h.distroId)}
 	if err := json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
-	if h.distroId != model.FromAPIString(apiDistro.Name) {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("The distro_id value,'%s', does not match the JSON payload value of '%s'", h.distroId, model.FromAPIString(apiDistro.Name)),
-		})
+
+	distro, error := validateToService(ctx, apiDistro, h.distroId, false)
+	if error != nil {
+		return error
 	}
 
-	i, err := apiDistro.ToService()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from model.APIExpansion to distro.Expansion"))
-	}
-	d = i.(*distro.Distro)
-
-	vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, true)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		})
-	}
-	if len(vErrors) != 0 {
-		errors := []string{}
-		for _, v := range vErrors {
-			errors = append(errors, v.Message)
+	if original != nil {
+		// Existing resource
+		if err := h.sc.UpdateDistro(distro); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for update() distro with distro id '%s'", h.distroId)))
 		}
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    strings.Join(errors, ", "),
-		})
-	}
-
-	if err = h.sc.CreateDistro(d); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroId)))
+	} else {
+		// New resource
+		if err = h.sc.CreateDistro(distro); err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroId)))
+		}
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)
@@ -245,35 +185,9 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	i, err := apiDistro.ToService()
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from model.APIExpansion to distro.Expansion"))
-	}
-	d = i.(*distro.Distro)
-
-	if d.Id != h.distroId {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Distro name is immutable; cannot rename distro '%s'", h.distroId),
-		})
-	}
-
-	vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, false)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		})
-	}
-	if len(vErrors) != 0 {
-		errors := []string{}
-		for _, v := range vErrors {
-			errors = append(errors, v.Message)
-		}
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    strings.Join(errors, ", "),
-		})
+	d, error := validateToService(ctx, apiDistro, h.distroId, false)
+	if error != nil {
+		return error
 	}
 
 	if err = h.sc.UpdateDistro(d); err != nil {
@@ -315,16 +229,20 @@ func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	foundDistro, err := h.sc.FindDistroById(h.distroId)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error for find() all distros"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
 	}
 
 	distroModel := &model.APIDistro{}
 	if err = distroModel.BuildFromService(*foundDistro); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from distro.Expansion to model.APIExpansion"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from distro.Distro to model.APIDistro"))
 	}
 
 	return gimlet.NewJSONResponse(distroModel)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// GET /rest/v2/distros
 
 type distroGetHandler struct {
 	sc data.Connector
@@ -336,20 +254,20 @@ func makeDistroRoute(sc data.Connector) gimlet.RouteHandler {
 	}
 }
 
-func (dgh *distroGetHandler) Factory() gimlet.RouteHandler {
+func (h *distroGetHandler) Factory() gimlet.RouteHandler {
 	return &distroGetHandler{
-		sc: dgh.sc,
+		sc: h.sc,
 	}
 }
 
-func (dgh *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *distroGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (dgh *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
-	distros, err := dgh.sc.FindAllDistros()
+func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
+	distros, err := h.sc.FindAllDistros()
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error for find() all distros"))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -359,7 +277,6 @@ func (dgh *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	for _, d := range distros {
 		distroModel := &model.APIDistro{}
-
 		if err = distroModel.BuildFromService(d); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -371,4 +288,42 @@ func (dgh *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
+}
+
+////////////////////////////////////////////////////////////////////////
+
+func validateToService(ctx context.Context, apiDistro *model.APIDistro, resourceId string, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
+	i, err := apiDistro.ToService()
+	if err != nil {
+		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from model.APIDistro to distro.Distro"))
+	}
+	d := i.(*distro.Distro)
+
+	id := model.FromAPIString(apiDistro.Name)
+	if resourceId != id {
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", resourceId),
+		})
+	}
+
+	vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, isNewDistro)
+	if err != nil {
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		})
+	}
+	if len(vErrors) != 0 {
+		errors := []string{}
+		for _, v := range vErrors {
+			errors = append(errors, v.Message)
+		}
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    strings.Join(errors, ", "),
+		})
+	}
+
+	return d, nil
 }

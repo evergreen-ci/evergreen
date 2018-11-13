@@ -135,7 +135,10 @@ func (mdc *MockDistroConnector) FindDistroById(distroId string) (*distro.Distro,
 			return d, nil
 		}
 	}
-	return nil, fmt.Errorf("distro with id '%s' not found", distroId)
+	return nil, gimlet.ErrorResponse{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("distro with id '%s' not found", distroId),
+	}
 }
 
 // FindAllDistros is a mock implementation for testing.
@@ -153,7 +156,10 @@ func (mdc *MockDistroConnector) UpdateDistro(distro *distro.Distro) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("distro with id '%s' not found", distro.Id)
+	return gimlet.ErrorResponse{
+		StatusCode: http.StatusInternalServerError,
+		Message:    fmt.Sprintf("distro with id '%s' was not updated", distro.Id),
+	}
 }
 
 func (mdc *MockDistroConnector) DeleteDistroById(distroId string) error {
@@ -162,13 +168,19 @@ func (mdc *MockDistroConnector) DeleteDistroById(distroId string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("distro with id '%s' not deleted", distroId)
+	return gimlet.ErrorResponse{
+		StatusCode: http.StatusInternalServerError,
+		Message:    fmt.Sprintf("distro with id '%s' was not deleted", distroId),
+	}
 }
 
 func (mdc *MockDistroConnector) CreateDistro(distro *distro.Distro) error {
 	for _, d := range mdc.CachedDistros {
 		if d.Id == distro.Id {
-			return fmt.Errorf("A distro with id '%s' already exists", distro.Id)
+			return gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("distro with id '%s' was not inserted", distro.Id),
+			}
 		}
 	}
 	return nil
