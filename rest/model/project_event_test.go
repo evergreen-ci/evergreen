@@ -67,7 +67,7 @@ func (s *ProjectEventSuite) SetupTest() {
 	after.GitHubHooksEnabled = false
 
 	h := model.ProjectChangeEvent{
-		event.EventLogEntry{
+		EventLogEntry: event.EventLogEntry{
 			Timestamp:    time.Now(),
 			ResourceType: model.ResourceTypeProject,
 			EventType:    model.EventTypeProjectModified,
