@@ -57,7 +57,7 @@ var sampleProjectSettings = ProjectSettings{
 		Owner:        "admin",
 		Subscriber: event.Subscriber{
 			Type:   event.GithubPullRequestSubscriberType,
-			Target: event.GithubPullRequestSubscriber{},
+			Target: &event.GithubPullRequestSubscriber{},
 		},
 	},
 	},

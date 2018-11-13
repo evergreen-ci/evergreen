@@ -124,6 +124,50 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 func TestMockProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
+		projectId := "mci2"
+		beforeSettings := restModel.APIProjectSettings{
+			ProjectRef: restModel.APIProjectRef{
+				Owner:              restModel.ToAPIString("admin"),
+				Enabled:            true,
+				Private:            true,
+				Identifier:         restModel.ToAPIString(projectId),
+				Admins:             []restModel.APIString{},
+				GitHubHooksEnabled: true,
+			},
+			Vars: restModel.APIProjectVars{
+				Vars:        map[string]string{},
+				PrivateVars: map[string]bool{},
+			},
+			Aliases: []restModel.APIProjectAlias{restModel.APIProjectAlias{
+				Alias:   restModel.ToAPIString("alias1"),
+				Variant: restModel.ToAPIString("ubuntu"),
+				Task:    restModel.ToAPIString("subcommand"),
+			},
+			},
+			Subscriptions: []restModel.APISubscription{restModel.APISubscription{
+				ID:           restModel.ToAPIString("subscription1"),
+				ResourceType: restModel.ToAPIString("project"),
+				Owner:        restModel.ToAPIString("admin"),
+				Subscriber: restModel.APISubscriber{
+					Type:   restModel.ToAPIString(event.GithubPullRequestSubscriberType),
+					Target: restModel.APIGithubPRSubscriber{},
+				},
+			},
+			},
+		}
+
+		afterSettings := beforeSettings
+		afterSettings.ProjectRef.Enabled = false
+
+		projectEvents := []restModel.APIProjectEvent{}
+		for i := 0; i < projEventCount; i++ {
+			projectEvents = append(projectEvents, restModel.APIProjectEvent{
+				Timestamp: time.Now().Add(time.Second * time.Duration(-i)),
+				User:      restModel.ToAPIString("me"),
+				Before:    beforeSettings,
+				After:     afterSettings,
+			})
+		}
 
 		s.ctx = &MockConnector{MockProjectConnector: MockProjectConnector{
 			CachedProjects: []model.ProjectRef{
@@ -134,6 +178,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				{Identifier: "projectE", Private: false},
 				{Identifier: "projectF", Private: true},
 			},
+			CachedEvents: projectEvents,
 		}}
 
 		return nil

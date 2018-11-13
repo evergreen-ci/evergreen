@@ -368,7 +368,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	catcher := grip.NewSimpleCatcher()
 	origSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
 	for _, apiSubscription := range responseRef.Subscriptions {
 		var subscriptionIface interface{}
