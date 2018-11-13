@@ -173,7 +173,7 @@ $(buildDir)/generate-lint:cmd/generate-lint/generate-lint.go
 # npm setup
 $(buildDir)/.npmSetup:
 	@mkdir -p $(buildDir)
-	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH)	 && ,)npm install
+	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)npm install
 	touch $@
 # end npm setup
 
@@ -200,7 +200,7 @@ build-all:build-alltests build
 lint:$(foreach target,$(packages) $(lintOnlyPackages),$(buildDir)/output.$(target).lint)
 test:$(foreach target,$(packages),test-$(target))
 js-test:$(buildDir)/.npmSetup
-	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH)	 && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
+	cd $(nodeDir) && $(if $(NODE_BIN_PATH),export PATH=${PATH}:$(NODE_BIN_PATH) && ,)./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
