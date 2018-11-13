@@ -21,26 +21,26 @@ const (
 
 type GroupBy string
 
-func (gb *GroupBy) validate() error {
-	switch *gb {
+func (gb GroupBy) validate() error {
+	switch gb {
 	case GroupByDistro:
 	case GroupByVariant:
 	case GroupByTask:
 	case GroupByTest:
 	default:
-		return errors.Errorf("Invalid GroupBy value: %v", *gb)
+		return errors.Errorf("Invalid GroupBy value: %s", gb)
 	}
 	return nil
 }
 
 type Sort string
 
-func (s *Sort) validate() error {
-	switch *s {
+func (s Sort) validate() error {
+	switch s {
 	case SortLatestFirst:
 	case SortEarliestFirst:
 	default:
-		return errors.Errorf("Invalid Sort value: %v", *s)
+		return errors.Errorf("Invalid Sort value: %s", s)
 	}
 	return nil
 }
@@ -216,7 +216,7 @@ type TestStats struct {
 func GetTestStats(filter *StatsFilter) ([]TestStats, error) {
 	err := filter.validateForTests()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
 	var stats []TestStats
 	pipeline := testStatsQueryPipeline(filter)
@@ -253,7 +253,7 @@ type TaskStats struct {
 func GetTaskStats(filter *StatsFilter) ([]TaskStats, error) {
 	err := filter.validateForTasks()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
 	var stats []TaskStats
 	pipeline := taskStatsQueryPipeline(filter)
