@@ -23,6 +23,7 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
+	unauthorizedCharacters = "|"
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -79,6 +80,7 @@ var projectSyntaxValidators = []projectValidator{
 	ensureHasNecessaryProjectFields,
 	verifyTaskDependencies,
 	verifyTaskRequirements,
+	validateTaskNames,
 	validateBVNames,
 	validateDisplayTaskNames,
 	validateBVTaskNames,
@@ -475,8 +477,23 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string) Vali
 	return errs
 }
 
+// validateTaskNames ensures the task names do not contain unauthorized characters.
+func validateTaskNames(project *model.Project) ValidationErrors {
+	errs := ValidationErrors{}
+	for _, task := range project.Tasks {
+		if strings.ContainsAny(task.Name, unauthorizedCharacters) {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("task name %v contains unauthorized characters (%v)",
+						task.Name, unauthorizedCharacters),
+				})
+		}
+	}
+	return errs
+}
+
 // Ensures there aren't any duplicate buildvariant names specified in the given
-// project
+// project and that the names do not contain unauthorized characters.
 func validateBVNames(project *model.Project) ValidationErrors {
 	errs := ValidationErrors{}
 	buildVariantNames := map[string]bool{}
@@ -497,6 +514,14 @@ func validateBVNames(project *model.Project) ValidationErrors {
 			dispName = buildVariant.Name
 		}
 		displayNames[dispName] = displayNames[dispName] + 1
+
+		if strings.ContainsAny(buildVariant.Name, unauthorizedCharacters) {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("buildvariant name %v contains unauthorized characters (%v)",
+						buildVariant.Name, unauthorizedCharacters),
+				})
+		}
 	}
 	// don't bother checking for the warnings if we already found errors
 	if len(errs) > 0 {
