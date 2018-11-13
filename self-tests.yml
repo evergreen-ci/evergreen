@@ -159,6 +159,7 @@ functions:
         GOPATH: ${workdir}/gopath
         GOROOT: ${goroot}
         KARMA_REPORTER: junit
+        NODE_BIN_PATH: ${nodebin}
         RACE_DETECTOR: ${race_detector}
         SETTINGS_OVERRIDE: creds.yml
         TEST_TIMEOUT: ${test_timeout}
@@ -387,10 +388,12 @@ buildvariants:
       goroot: /opt/go1.8/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-4.0.3.tgz
       test_timeout: 15m
+      nodebin: /opt/node/bin
     tasks:
       - name: "dist"
       - name: ".smoke"
       - name: ".test"
+      - name: "js-test"
 
   - name: race-detector
     display_name: Race Detector

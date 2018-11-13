@@ -98,7 +98,14 @@ func (lc *localCmd) Start(ctx context.Context) error {
 		}
 		cmd.Stdin = strings.NewReader(lc.CmdString)
 	} else {
-		cmd = exec.CommandContext(ctx, lc.Shell, "-c", lc.CmdString)
+		// If the shell is a shell (e.g., "bash" or "dash", not "python") pass "-i" to force
+		// it to be interactive. This makes agents not started over SSH, like in a Docker
+		// container, backwards-compatible with the behavior of agents started over SSH.
+		if strings.HasSuffix(lc.Shell, "sh") {
+			cmd = exec.CommandContext(ctx, lc.Shell, "-i", "-c", lc.CmdString)
+		} else {
+			cmd = exec.CommandContext(ctx, lc.Shell, "-c", lc.CmdString)
+		}
 	}
 
 	// create the command, set the options
