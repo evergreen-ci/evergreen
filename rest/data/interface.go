@@ -222,4 +222,5 @@ type Connector interface {
 
 	// Get test execution statistics
 	GetTestStats(*stats.StatsFilter) ([]restModel.APITestStats, error)
+	GetTaskStats(*stats.StatsFilter) ([]restModel.APITaskStats, error)
 }

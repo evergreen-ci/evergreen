@@ -31,7 +31,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 	}
 	handler := testStatsHandler{}
 
-	err := handler.parseTestStatsFilter(values)
+	err := handler.parseStatsFilter(values)
 	s.Require().NoError(err)
 
 	s.Equal([]string{
@@ -51,7 +51,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 	s.Equal(defaultLimit+1, handler.filter.Limit)         // default value
 }
 
-func (s *StatsSuite) TestRun() {
+func (s *StatsSuite) TestRunTestHandler() {
 	sc := &data.MockConnector{
 		MockStatsConnector: data.MockStatsConnector{},
 		URL:                "https://evergreen.mongodb.com/test",
@@ -81,7 +81,7 @@ func (s *StatsSuite) TestRun() {
 	s.Equal(handler.makeStartAtKey(lastDoc), resp.Pages().Next.Key)
 }
 
-func (s *StatsSuite) TestReadStartAt() {
+func (s *StatsSuite) TestReadTestStartAt() {
 	handler := testStatsHandler{}
 	startAt, err := handler.readStartAt("1998-07-12|variant1|task1|test1|distro1")
 	s.Require().NoError(err)
@@ -95,4 +95,34 @@ func (s *StatsSuite) TestReadStartAt() {
 	// Invalid format
 	_, err = handler.readStartAt("1998-07-12|variant1|task1|test1")
 	s.Require().Error(err)
+}
+
+func (s *StatsSuite) TestRunTaskHandler() {
+	sc := &data.MockConnector{
+		MockStatsConnector: data.MockStatsConnector{},
+		URL:                "https://evergreen.mongodb.com/task",
+	}
+	handler := makeGetProjectTaskStats(sc).(*taskStatsHandler)
+
+	// 100 documents will be returned
+	sc.MockStatsConnector.SetTaskStats("task", 100)
+	handler.filter = stats.StatsFilter{Limit: 101}
+
+	resp := handler.Run(context.Background())
+
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	s.Nil(resp.Pages())
+
+	// 101 documents will be returned
+	sc.MockStatsConnector.SetTaskStats("task", 101)
+	handler.filter = stats.StatsFilter{Limit: 101}
+
+	resp = handler.Run(context.Background())
+
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
+	s.NotNil(resp.Pages())
+	lastDoc := sc.MockStatsConnector.CachedTaskStats[100]
+	s.Equal(handler.makeStartAtKey(lastDoc), resp.Pages().Next.Key)
 }
