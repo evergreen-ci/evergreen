@@ -55,7 +55,7 @@ func (dc *DBDistroConnector) UpdateDistro(distro *distro.Distro) error {
 	return nil
 }
 
-// UpdateDistro updates the given distro.Distro.
+// CreateDistro inserts the given distro.Distro.
 func (dc *DBDistroConnector) CreateDistro(distro *distro.Distro) error {
 	err := distro.Insert()
 	if err != nil {

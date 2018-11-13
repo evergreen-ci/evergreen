@@ -40,7 +40,7 @@ func (h *distroPutHandler) Factory() gimlet.RouteHandler {
 	}
 }
 
-// Parse fetches the distroId and json payload from the http request.
+// Parse fetches the distroId and JSON payload from the http request.
 func (h *distroPutHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroId = gimlet.GetVars(r)["distro_id"]
 
@@ -65,7 +65,7 @@ func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	apiDistro := &model.APIDistro{Name: model.ToAPIString(h.distroId)}
-	if err := json.Unmarshal(h.body, apiDistro); err != nil {
+	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
@@ -76,7 +76,7 @@ func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if original != nil {
 		// Existing resource
-		if err := h.sc.UpdateDistro(distro); err != nil {
+		if err = h.sc.UpdateDistro(distro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for update() distro with distro id '%s'", h.distroId)))
 		}
 	} else {
