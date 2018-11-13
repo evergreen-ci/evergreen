@@ -348,7 +348,8 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				RevisionOrderNumber: versionFromDB.RevisionOrderNumber,
 			}
 			if versionFromDB.TriggerID != "" {
-				projectName, err := model.GetUpstreamProjectName(versionFromDB.TriggerID, versionFromDB.TriggerType)
+				var projectName string
+				projectName, err = model.GetUpstreamProjectName(versionFromDB.TriggerID, versionFromDB.TriggerType)
 				if err != nil {
 					return versionVariantData{}, err
 				}
