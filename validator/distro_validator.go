@@ -3,12 +3,17 @@ package validator
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+)
+
+const (
+	unauthorizedDistroCharacters = "|"
 )
 
 type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) ValidationErrors
@@ -21,6 +26,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
+	ensureHasNoUnauthorizedCharacters,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -170,6 +176,15 @@ func ensureHasNonZeroID(ctx context.Context, d *distro.Distro, s *evergreen.Sett
 		return ValidationErrors{{Error, "distro must specify id"}}
 	}
 
+	return nil
+}
+
+// ensureHasNoUnauthorizedCharacters checks that the distro name does not contain any unauthorized character.
+func ensureHasNoUnauthorizedCharacters(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
+	if strings.ContainsAny(d.Id, unauthorizedDistroCharacters) {
+		message := fmt.Sprintf("distro '%v' contains unauthorized characters (%v)", d.Id, unauthorizedDistroCharacters)
+		return ValidationErrors{{Error, message}}
+	}
 	return nil
 }
 

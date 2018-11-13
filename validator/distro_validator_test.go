@@ -264,6 +264,19 @@ func TestEnsureNonZeroID(t *testing.T) {
 	assert.Nil(ensureHasNonZeroID(ctx, &distro.Distro{Id: " "}, conf))
 }
 
+func TestEnsureNoUnauthorizedCharacters(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "|distro"}, conf))
+	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "distro|"}, conf))
+	assert.NotNil(ensureHasNoUnauthorizedCharacters(ctx, &distro.Distro{Id: "dist|ro"}, conf))
+
+	assert.Nil(ensureHasNonZeroID(ctx, &distro.Distro{Id: "distro"}, conf))
+}
+
 func TestEnsureValidContainerPool(t *testing.T) {
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())

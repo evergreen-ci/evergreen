@@ -571,6 +571,21 @@ func TestVerifyTaskRequirements(t *testing.T) {
 	})
 }
 
+func TestValidateTaskNames(t *testing.T) {
+	Convey("When a task name contains unauthorized characters, an error should be returned", t, func() {
+		project := &model.Project{
+			Tasks: []model.ProjectTask{
+				{Name: "task|"},
+				{Name: "|task"},
+				{Name: "ta|sk"},
+				{Name: "task"},
+			},
+		}
+		validationResults := validateTaskNames(project)
+		So(len(validationResults), ShouldEqual, 3)
+	})
+}
+
 func TestValidateBVNames(t *testing.T) {
 	Convey("When validating a project's build variants' names", t, func() {
 		Convey("if any variant has a duplicate entry, an error should be returned", func() {
@@ -632,6 +647,19 @@ func TestValidateBVNames(t *testing.T) {
 				},
 			}
 			So(validateBVNames(project), ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("if a buildvariant name contains unauthorized characters, an error should be returned", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{Name: "|linux"},
+					{Name: "linux|"},
+					{Name: "wind|ows"},
+					{Name: "windows"},
+				},
+			}
+			So(validateBVNames(project), ShouldNotResemble, ValidationErrors{})
+			So(len(validateBVNames(project)), ShouldEqual, 3)
 		})
 	})
 }
