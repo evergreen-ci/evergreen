@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
@@ -93,14 +92,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(5, s.countHourlyTestDocs())
 
-	doc, err := modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err := GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p1",
+		Requester:    "r1",
+		TestFile:     "test1.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -108,7 +107,7 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal("r1", doc.Id.Requester)
 	require.Equal("test1.js", doc.Id.TestFile)
 	require.Equal("task1", doc.Id.TaskName)
-	require.Equal("v1", doc.Id.Variant)
+	require.Equal("v1", doc.Id.BuildVariant)
 	require.Equal("d1", doc.Id.Distro)
 	require.Equal(baseHour.UTC(), doc.Id.Date.UTC())
 	require.Equal(0, doc.NumPass)
@@ -116,14 +115,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(float64(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test2.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p1",
+		Requester:    "r1",
+		TestFile:     "test2.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -131,14 +130,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(1, doc.NumFail)
 	require.Equal(float64(120), doc.AvgDurationPass)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test3.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p1",
+		Requester:    "r1",
+		TestFile:     "test3.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -152,14 +151,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(8, s.countHourlyTestDocs()) // 3 more tests combination were added to the collection
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p2",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p2",
+		Requester:    "r1",
+		TestFile:     "test1.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -168,14 +167,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(float64(0), doc.AvgDurationPass)
 	require.WithinDuration(jobTime, doc.LastUpdate, 0)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p2",
-		Requester: "r1",
-		TestFile:  "test2.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p2",
+		Requester:    "r1",
+		TestFile:     "test2.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.Equal(1, doc.NumPass)
@@ -189,25 +188,25 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.NoError(err)
 	require.Equal(10, s.countHourlyTestDocs()) // 2 more tests combination were added to the collection
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p3",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task_exec_1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p3",
+		Requester:    "r1",
+		TestFile:     "test1.js",
+		TaskName:     "task_exec_1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.Nil(doc)
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p3",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task_display_1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p3",
+		Requester:    "r1",
+		TestFile:     "test1.js",
+		TaskName:     "task_display_1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -215,14 +214,14 @@ func (s *statsSuite) TestGenerateHourlyTestStats() {
 	require.Equal(1, doc.NumFail)
 	require.Equal(float64(0), doc.AvgDurationPass)
 
-	doc, err = modelUtil.GetHourlyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p3",
-		Requester: "r1",
-		TestFile:  "test2.js",
-		TaskName:  "task_display_1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseHour,
+	doc, err = GetHourlyTestDoc(DbTestStatsId{
+		Project:      "p3",
+		Requester:    "r1",
+		TestFile:     "test2.js",
+		TaskName:     "task_display_1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseHour,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -246,14 +245,14 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	require.NoError(err)
 	require.Equal(1, s.countDailyTestDocs())
 
-	doc, err := modelUtil.GetDailyTestDoc(modelUtil.DbTestStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TestFile:  "test1.js",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
+	doc, err := GetDailyTestDoc(DbTestStatsId{
+		Project:      "p1",
+		Requester:    "r1",
+		TestFile:     "test1.js",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseDay,
 	})
 	require.Nil(err)
 	require.NotNil(doc)
@@ -261,7 +260,7 @@ func (s *statsSuite) TestGenerateDailyTestStatsFromHourly() {
 	require.Equal("r1", doc.Id.Requester)
 	require.Equal("test1.js", doc.Id.TestFile)
 	require.Equal("task1", doc.Id.TaskName)
-	require.Equal("v1", doc.Id.Variant)
+	require.Equal("v1", doc.Id.BuildVariant)
 	require.Equal("d1", doc.Id.Distro)
 	require.Equal(baseDay.UTC(), doc.Id.Date.UTC())
 	require.Equal(30, doc.NumPass)
@@ -285,33 +284,33 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p1", "r1", baseHour, []string{"task1", "task2"}, jobTime)
 	require.NoError(err)
 	require.Equal(3, s.countDailyTaskDocs())
-	doc, err := modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
+	doc, err := GetDailyTaskDoc(DbTaskStatsId{
+		Project:      "p1",
+		Requester:    "r1",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseDay,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v2",
-		Distro:    "d1",
-		Date:      baseDay,
+	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+		Project:      "p1",
+		Requester:    "r1",
+		TaskName:     "task1",
+		BuildVariant: "v2",
+		Distro:       "d1",
+		Date:         baseDay,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p1",
-		Requester: "r1",
-		TaskName:  "task2",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
+	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+		Project:      "p1",
+		Requester:    "r1",
+		TaskName:     "task2",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseDay,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -320,13 +319,13 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p4", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
 	require.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p4",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
+	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+		Project:      "p4",
+		Requester:    "r1",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseDay,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -343,13 +342,13 @@ func (s *statsSuite) TestGenerateDailyTaskStats() {
 	err = GenerateDailyTaskStats("p2", "r1", baseHour, []string{"task1"}, jobTime)
 	require.NoError(err)
 	require.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection
-	doc, err = modelUtil.GetDailyTaskDoc(modelUtil.DbTaskStatsId{
-		Project:   "p2",
-		Requester: "r1",
-		TaskName:  "task1",
-		Variant:   "v1",
-		Distro:    "d1",
-		Date:      baseDay,
+	doc, err = GetDailyTaskDoc(DbTaskStatsId{
+		Project:      "p2",
+		Requester:    "r1",
+		TaskName:     "task1",
+		BuildVariant: "v1",
+		Distro:       "d1",
+		Date:         baseDay,
 	})
 	require.NoError(err)
 	require.NotNil(doc)
@@ -461,14 +460,14 @@ func (s *statsSuite) initHourly() {
 func (s *statsSuite) insertHourlyTestStats(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time, numPass int, numFail int, avgDuration float64) {
 
 	err := db.Insert(hourlyTestStatsCollection, bson.M{
-		"_id": modelUtil.DbTestStatsId{
-			Project:   project,
-			Requester: requester,
-			TestFile:  testFile,
-			TaskName:  taskName,
-			Variant:   variant,
-			Distro:    distro,
-			Date:      date,
+		"_id": DbTestStatsId{
+			Project:      project,
+			Requester:    requester,
+			TestFile:     testFile,
+			TaskName:     taskName,
+			BuildVariant: variant,
+			Distro:       distro,
+			Date:         date,
 		},
 		"num_pass":          numPass,
 		"num_fail":          numFail,

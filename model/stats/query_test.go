@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -862,14 +861,14 @@ func (s *statsQuerySuite) clearCollection(name string) {
 func (s *statsQuerySuite) insertDailyTestStats(project string, requester string, testFile string, taskName string, variant string, distro string, date time.Time, numPass int, numFail int, avgDuration float64) {
 
 	err := db.Insert(dailyTestStatsCollection, bson.M{
-		"_id": modelUtil.DbTestStatsId{
-			Project:   project,
-			Requester: requester,
-			TestFile:  testFile,
-			TaskName:  taskName,
-			Variant:   variant,
-			Distro:    distro,
-			Date:      date,
+		"_id": DbTestStatsId{
+			Project:      project,
+			Requester:    requester,
+			TestFile:     testFile,
+			TaskName:     taskName,
+			BuildVariant: variant,
+			Distro:       distro,
+			Date:         date,
 		},
 		"num_pass":          numPass,
 		"num_fail":          numFail,
@@ -881,13 +880,13 @@ func (s *statsQuerySuite) insertDailyTestStats(project string, requester string,
 func (s *statsQuerySuite) insertDailyTaskStats(project string, requester string, taskName string, variant string, distro string, date time.Time, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed int, avgDuration float64) {
 
 	err := db.Insert(dailyTaskStatsCollection, bson.M{
-		"_id": modelUtil.DbTaskStatsId{
-			Project:   project,
-			Requester: requester,
-			TaskName:  taskName,
-			Variant:   variant,
-			Distro:    distro,
-			Date:      date,
+		"_id": DbTaskStatsId{
+			Project:      project,
+			Requester:    requester,
+			TaskName:     taskName,
+			BuildVariant: variant,
+			Distro:       distro,
+			Date:         date,
 		},
 		"num_success":          numSuccess,
 		"num_failed":           numFailed,
