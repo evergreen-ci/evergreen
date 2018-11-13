@@ -388,8 +388,6 @@ var (
 	dbTaskStatsIdTaskNameKeyFull     = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdTaskNameKey)
 	dbTaskStatsIdBuildVariantKeyFull = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdBuildVariantKey)
 	dbTaskStatsIdDistroKeyFull       = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdDistroKey)
-	dbTaskStatsIdProjectKeyFull      = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdProjectKey)
-	dbTaskStatsIdRequesterKeyFull    = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdRequesterKey)
 	dbTaskStatsIdDateKeyFull         = bsonutil.GetDottedKeyName(dbTaskStatsIdKey, dbTaskStatsIdDateKey)
 )
 
