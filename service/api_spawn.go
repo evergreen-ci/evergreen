@@ -160,8 +160,8 @@ func getDockerfile(w http.ResponseWriter, r *http.Request) {
 		"ARG URL",
 		"ARG EXECUTABLE_SUB_PATH",
 		"ARG BINARY_NAME",
-		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /root/",
-		"RUN chmod +x /root/${BINARY_NAME}",
+		"ADD ${URL}/clients/${EXECUTABLE_SUB_PATH} /",
+		"RUN chmod 0777 /${BINARY_NAME}",
 	}
 
 	gimlet.WriteText(w, strings.Join(parts, "\n"))
