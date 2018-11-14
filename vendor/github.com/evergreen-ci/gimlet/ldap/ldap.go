@@ -16,23 +16,25 @@ import (
 // userService provides authentication and authorization of users against an LDAP service. It
 // implements the gimlet.Authenticator interface.
 type userService struct {
-	url         string
-	port        string
-	userPath    string
-	servicePath string
-	group       string
-	cache       UserCache
-	connect     connectFunc
-	conn        ldap.Client
+	url          string
+	port         string
+	userPath     string
+	servicePath  string
+	userGroup    string
+	serviceGroup string
+	cache        UserCache
+	connect      connectFunc
+	conn         ldap.Client
 }
 
 // CreationOpts are options to pass to the service constructor.
 type CreationOpts struct {
-	URL         string // URL of the LDAP server
-	Port        string // Port of the LDAP server
-	UserPath    string // Path to users LDAP OU
-	ServicePath string // Path to service users LDAP OU
-	Group       string // LDAP group to authorize users
+	URL          string // URL of the LDAP server
+	Port         string // Port of the LDAP server
+	UserPath     string // Path to users LDAP OU
+	ServicePath  string // Path to service users LDAP OU
+	UserGroup    string // LDAP userGroup to authorize users
+	ServiceGroup string // LDAP serviceGroup to authorize services
 
 	UserCache UserCache
 	// Functions to produce a UserCache
@@ -71,13 +73,14 @@ func NewUserService(opts CreationOpts) (gimlet.UserManager, error) {
 		return nil, err
 	}
 	u := &userService{
-		cache:       opts.MakeUserCache(),
-		connect:     connect,
-		url:         opts.URL,
-		port:        opts.Port,
-		userPath:    opts.UserPath,
-		servicePath: opts.ServicePath,
-		group:       opts.Group,
+		cache:        opts.MakeUserCache(),
+		connect:      connect,
+		url:          opts.URL,
+		port:         opts.Port,
+		userPath:     opts.UserPath,
+		servicePath:  opts.ServicePath,
+		userGroup:    opts.UserGroup,
+		serviceGroup: opts.ServiceGroup,
 	}
 
 	// override, typically, for testing
@@ -96,8 +99,8 @@ func (opts CreationOpts) validate() error {
 			opts.URL, opts.Port, opts.UserPath, opts.ServicePath))
 	}
 
-	if opts.Group == "" {
-		catcher.Add(errors.New("LDAP group cannot be empty"))
+	if opts.UserGroup == "" {
+		catcher.Add(errors.New("LDAP user group cannot be empty"))
 	}
 
 	if opts.UserCache == nil {
@@ -280,7 +283,10 @@ func (u *userService) validateGroup(username string) error {
 		}
 
 		for i := range result.Entries[0].Attributes[0].Values {
-			if result.Entries[0].Attributes[0].Values[i] == u.group {
+			if result.Entries[0].Attributes[0].Values[i] == u.userGroup {
+				return nil
+			}
+			if u.serviceGroup != "" && result.Entries[0].Attributes[0].Values[i] == u.serviceGroup {
 				return nil
 			}
 		}
@@ -292,7 +298,7 @@ func (u *userService) validateGroup(username string) error {
 		}
 	}
 
-	return errors.Errorf("user '%s' is not a member of group '%s'", username, u.group)
+	return errors.Errorf("user '%s' is not a member of user group '%s' or service group '%s'", username, u.userGroup, u.serviceGroup)
 }
 
 func (u *userService) getUserFromLDAP(username string) (gimlet.User, error) {
