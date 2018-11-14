@@ -2,7 +2,6 @@ package model
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
 )
@@ -25,9 +24,15 @@ type APIProject struct {
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
-	v, ok := p.(model.ProjectRef)
-	if !ok {
-		return fmt.Errorf(fmt.Sprintf("incorrect type when fetching converting project type %T", p))
+	var v model.ProjectRef
+
+	switch p.(type) {
+	case model.ProjectRef:
+		v = p.(model.ProjectRef)
+	case *model.ProjectRef:
+		v = *p.(*model.ProjectRef)
+	default:
+		return errors.New("incorrect type when fetching converting project type")
 	}
 	apiProject.BatchTime = v.BatchTime
 	apiProject.Branch = ToAPIString(v.Branch)
@@ -137,7 +142,18 @@ func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
 	return projectRef, nil
 }
 
-func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
+func (p *APIProjectRef) BuildFromService(v interface{}) error {
+	var projectRef model.ProjectRef
+
+	switch v.(type) {
+	case model.ProjectRef:
+		projectRef = v.(model.ProjectRef)
+	case *model.ProjectRef:
+		projectRef = *v.(*model.ProjectRef)
+	default:
+		return errors.New("Invalid type of the argument")
+	}
+
 	p.Owner = ToAPIString(projectRef.Owner)
 	p.Repo = ToAPIString(projectRef.Repo)
 	p.Branch = ToAPIString(projectRef.Branch)

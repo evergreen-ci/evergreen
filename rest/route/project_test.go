@@ -143,7 +143,7 @@ func (s *ProjectCreateSuite) TestRoute() {
 
 	r, err := http.NewRequest(
 		"PUT",
-		"https://evergreen.mongodb.com/rest/v2/projects/",
+		"https://evergreen.example.com/rest/v2/projects/",
 		payload,
 	)
 
@@ -206,7 +206,7 @@ func (s *ProjectUpdateSuite) TestRoute() {
 
 	r, err := http.NewRequest(
 		"PATCH",
-		"https://evergreen.mongodb.com/rest/v2/projects/A",
+		"https://evergreen.example.net/rest/v2/projects/A",
 		payload,
 	)
 	r = r.WithContext(ctx)

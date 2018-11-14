@@ -321,11 +321,11 @@ func (s *ProjectConnectorCreateUpdateSuite) TestCreateProject() {
 	s.NoError(err)
 	s.NotNil(projectRef)
 
-	s.Equal("id", projectRef.Identifier)
-	s.Equal("branch", projectRef.Branch)
+	s.Equal("id", restModel.FromAPIString(projectRef.Identifier))
+	s.Equal("branch", restModel.FromAPIString(projectRef.Branch))
 	s.Len(projectRef.Admins, 2)
-	s.Equal("a", projectRef.Admins[0])
-	s.Equal("b", projectRef.Admins[1])
+	s.Equal("a", restModel.FromAPIString(projectRef.Admins[0]))
+	s.Equal("b", restModel.FromAPIString(projectRef.Admins[1]))
 }
 
 func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
@@ -343,7 +343,7 @@ func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
 
 	// Test set up
 	updatedProject, err := s.sc.UpdateProject(&restModel.APIProjectRef{
-		Identifier: restModel.ToAPIString(createdProject.Identifier),
+		Identifier: createdProject.Identifier,
 		Owner:      restModel.ToAPIString("owner"),
 		Admins: []restModel.APIString{
 			restModel.ToAPIString("a"),
@@ -355,9 +355,9 @@ func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
 	s.NoError(err)
 	s.NotNil(updatedProject)
 
-	s.Equal("id", updatedProject.Identifier)
-	s.Equal("owner", updatedProject.Owner)
+	s.Equal("id", restModel.FromAPIString(updatedProject.Identifier))
+	s.Equal("owner", restModel.FromAPIString(updatedProject.Owner))
 	s.Len(updatedProject.Admins, 2)
-	s.Equal("a", updatedProject.Admins[0])
-	s.Equal("c", updatedProject.Admins[1])
+	s.Equal("a", restModel.FromAPIString(updatedProject.Admins[0]))
+	s.Equal("c", restModel.FromAPIString(updatedProject.Admins[1]))
 }

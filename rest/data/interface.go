@@ -75,8 +75,8 @@ type Connector interface {
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 
 	// Create/Update project methods
-	CreateProject(*restModel.APIProjectRef) (*model.ProjectRef, error)
-	UpdateProject(*restModel.APIProjectRef) (*model.ProjectRef, error)
+	CreateProject(*restModel.APIProjectRef) (*restModel.APIProject, error)
+	UpdateProject(*restModel.APIProjectRef) (*restModel.APIProject, error)
 
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)

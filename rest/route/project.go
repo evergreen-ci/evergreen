@@ -193,7 +193,7 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
  * Perm: superUser
  */
 type projectCreateHandler struct {
-	projectRef *model.APIProjectRef
+	projectRef model.APIProjectRef
 
 	sc data.Connector
 }
@@ -211,38 +211,23 @@ func (h *projectCreateHandler) Parse(ctx context.Context, r *http.Request) error
 	defer body.Close()
 
 	if err := util.ReadJSONInto(body, &h.projectRef); err != nil {
-		return errors.Wrap(err, "Cannot parse the content as JSON!")
+		return errors.Wrap(err, "problem parsing JSON from request body")
 	}
 
 	return nil
 }
 
 func (h *projectCreateHandler) Run(ctx context.Context) gimlet.Responder {
-	createdProject, err := h.sc.CreateProject(h.projectRef)
+	createdApiProject, err := h.sc.CreateProject(&h.projectRef)
 
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Cannot create project!"))
 	}
 
-	apiProject := &model.APIProject{}
-	// The method doesn't accept pointers, we have to dereference it first
-	err = apiProject.BuildFromService(*createdProject)
-
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "problem converting project document",
-			StatusCode: http.StatusInternalServerError,
-		})
-	}
-
-	resp := gimlet.NewJSONResponse(apiProject)
+	resp := gimlet.NewJSONResponse(createdApiProject)
 	err = resp.SetStatus(http.StatusCreated)
-
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "Cannot set status code",
-			StatusCode: http.StatusInternalServerError,
-		})
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Cannot set status code"))
 	}
 
 	return resp
@@ -254,7 +239,7 @@ func (h *projectCreateHandler) Run(ctx context.Context) gimlet.Responder {
  * Perm: superUser
  */
 type projectUpdateHandler struct {
-	projectRef *model.APIProjectRef
+	projectRef model.APIProjectRef
 
 	sc data.Connector
 }
@@ -280,9 +265,9 @@ func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error
 	projectId := projectRef.Identifier
 
 	// Initialize the API model with an empty entity
-	h.projectRef = &model.APIProjectRef{}
+	//h.projectRef = model.APIProjectRef{}
 
-	if err := h.projectRef.BuildFromService(*projectRef); err != nil {
+	if err := h.projectRef.BuildFromService(projectRef); err != nil {
 		return errors.Wrap(err, "Cannot process request")
 	}
 
@@ -290,29 +275,18 @@ func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error
 		return errors.Wrap(err, "JSON format or content is invalid!")
 	}
 
-	*h.projectRef.Identifier = projectId
+	h.projectRef.Identifier = model.ToAPIString(projectId)
 
 	return nil
 }
 
 func (h *projectUpdateHandler) Run(ctx context.Context) gimlet.Responder {
-	updatedProject, err := h.sc.UpdateProject(h.projectRef)
+	updatedApiProject, err := h.sc.UpdateProject(&h.projectRef)
 
 	if err != nil {
 		// Don't expose error code in order to keep project names in secret
 		return gimlet.MakeJSONErrorResponder(errors.New("Cannot update project!"))
 	}
 
-	apiProject := &model.APIProject{}
-	// The method doesn't accept pointers, we have to dereference it first
-	err = apiProject.BuildFromService(*updatedProject)
-
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			Message:    "problem converting project document",
-			StatusCode: http.StatusInternalServerError,
-		})
-	}
-
-	return gimlet.NewJSONResponse(apiProject)
+	return gimlet.NewJSONResponse(updatedApiProject)
 }

@@ -20,17 +20,28 @@ func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, i
 	return projects, nil
 }
 
-func (pc *DBProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
+func (pc *DBProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
 	projectRef, _ := apiProjectRef.ToService()
 
 	if err := projectRef.Insert(); err != nil {
 		return nil, errors.Wrapf(err, "Cannot insert project_ref into DB!")
 	}
 
-	return model.FindOneProjectRef(projectRef.Identifier)
+	createdProjectRef, err := model.FindOneProjectRef(projectRef.Identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "Created project couldn't be found")
+	}
+
+	apiProject := &restModel.APIProject{}
+	err = apiProject.BuildFromService(createdProjectRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting project document")
+	}
+
+	return apiProject, nil
 }
 
-func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
+func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
 	projectRef, _ := apiProjectRef.ToService()
 
 	// The projectRef guaranteed to be existing
@@ -38,7 +49,18 @@ func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectR
 		return nil, errors.Wrapf(err, "Cannot update project_ref into DB!")
 	}
 
-	return model.FindOneProjectRef(projectRef.Identifier)
+	updateProjectRef, err := model.FindOneProjectRef(projectRef.Identifier)
+	if err != nil {
+		return nil, errors.Wrap(err, "Updated project couldn't be found")
+	}
+
+	apiProject := &restModel.APIProject{}
+	err = apiProject.BuildFromService(updateProjectRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem converting project document")
+	}
+
+	return apiProject, nil
 }
 
 // MockPatchConnector is a struct that implements the Patch related methods
@@ -78,10 +100,10 @@ func (pc *MockProjectConnector) FindProjects(key string, limit int, sortDir int,
 	return projects, nil
 }
 
-func (pc *MockProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
-	return &model.ProjectRef{Identifier: "test"}, nil
+func (pc *MockProjectConnector) CreateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
+	return &restModel.APIProject{Identifier: restModel.ToAPIString("test")}, nil
 }
 
-func (pc *MockProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*model.ProjectRef, error) {
-	return &model.ProjectRef{Identifier: "test"}, nil
+func (pc *MockProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectRef) (*restModel.APIProject, error) {
+	return &restModel.APIProject{Identifier: restModel.ToAPIString("test")}, nil
 }
