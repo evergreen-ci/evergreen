@@ -35,7 +35,7 @@ func TestCreateHostSuite(t *testing.T) {
 func (s *createHostSuite) SetupSuite() {
 	s.comm = client.NewMock("http://localhost.com")
 	s.conf = &model.TaskConfig{
-		Expansions: &util.Expansions{"subnet_id": "subnet-123456"},
+		Expansions: &util.Expansions{"subnet_id": "subnet-123456", "num_hosts": "8"},
 		Task:       &task.Task{Id: "mock_id", Secret: "mock_secret"},
 		Project:    &model.Project{}}
 	s.logger = s.comm.GetLoggerProducer(context.Background(), client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
@@ -46,6 +46,7 @@ func (s *createHostSuite) SetupTest() {
 		"distro":    "myDistro",
 		"scope":     "task",
 		"subnet_id": "${subnet_id}",
+		"num_hosts": "${num_hosts}",
 	}
 	s.cmd = createHost{}
 }
@@ -89,7 +90,7 @@ func (s *createHostSuite) TestParamValidation() {
 	s.NoError(s.cmd.expandAndValidate(s.conf))
 
 	// verify errors for things controlled by the agent
-	s.params["num_hosts"] = 11
+	s.params["num_hosts"] = "11"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num_hosts must be between 1 and 10")
 	s.params["scope"] = "idk"
@@ -113,4 +114,5 @@ func (s *createHostSuite) TestExecuteCommand() {
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.Execute(context.Background(), s.comm, s.logger, s.conf))
 	s.Equal("subnet-123456", s.comm.(*client.Mock).CreatedHost.Subnet)
+	s.Equal(util.StringOrInt("8"), s.comm.(*client.Mock).CreatedHost.NumHosts)
 }
