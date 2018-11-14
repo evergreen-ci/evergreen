@@ -71,7 +71,7 @@ func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	distro, error := validateDistro(ctx, apiDistro, h.distroID, evergreen.GetEnvironment().Settings(), false)
+	distro, error := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
 	if error != nil {
 		return error
 	}
@@ -317,7 +317,7 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 			Message:    fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", resourceID),
 		})
 	}
-	// evergreen.GetEnvironment().Settings()
+
 	vErrors, err := validator.CheckDistro(ctx, d, settings, isNewDistro)
 	if err != nil {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
