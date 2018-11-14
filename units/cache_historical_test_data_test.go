@@ -334,7 +334,7 @@ func (s *cacheHistoryTestDataSuite) TestDailyStatsRollupShouldGroupTasksByReques
 	s.Equal(len(tasks2), len(dailyStatsRollup[day][requester1]))
 }
 
-func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
+func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTests() {
 	tasksToIgnore := [...]*regexp.Regexp{
 		regexp.MustCompile("jstestfuzz.*"),
 		regexp.MustCompile(".*fuzzer.*"),
@@ -362,7 +362,14 @@ func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
 	taskList = append(taskList, moreLegitTasks...)
 	taskList = append(taskList, concurrencyTasks...)
 
-	filteredList := filterIgnoredTasks(taskList, tasksToIgnore[:])
+	c := cacheHistoricalJobContext{
+		TasksToIgnore: tasksToIgnore[:],
+		ShouldFilterTasks: map[string]bool{
+			"test": true,
+		},
+	}
+
+	filteredList := c.filterIgnoredTasks(taskList, "test")
 
 	for _, t := range append(legitTasks, moreLegitTasks...) {
 		s.Contains(filteredList, t)
@@ -370,6 +377,48 @@ func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksFiltersTasks() {
 
 	for _, t := range append(fuzzerTasks, concurrencyTasks...) {
 		s.NotContains(filteredList, t)
+	}
+}
+
+func (s *cacheHistoryTestDataSuite) TestFilterIgnoredTasksDoesNotFiltersTasks() {
+	tasksToIgnore := [...]*regexp.Regexp{
+		regexp.MustCompile("jstestfuzz.*"),
+		regexp.MustCompile(".*fuzzer.*"),
+		regexp.MustCompile("concurrency_simultaneous.*"),
+	}
+
+	legitTasks := []string{
+		"task0",
+		"task1",
+	}
+	moreLegitTasks := []string{
+		"task2",
+	}
+	fuzzerTasks := []string{
+		"jstestfuzz-test-0",
+		"agg-fuzzer-test-0",
+		"agg-fuzzer-test-1",
+	}
+	concurrencyTasks := []string{
+		"concurrency_simultaneous-0",
+	}
+	taskList := []string{}
+	taskList = append(taskList, legitTasks...)
+	taskList = append(taskList, fuzzerTasks...)
+	taskList = append(taskList, moreLegitTasks...)
+	taskList = append(taskList, concurrencyTasks...)
+
+	c := cacheHistoricalJobContext{
+		TasksToIgnore: tasksToIgnore[:],
+		ShouldFilterTasks: map[string]bool{
+			"task": false,
+		},
+	}
+
+	filteredList := c.filterIgnoredTasks(taskList, "task")
+
+	for _, t := range taskList {
+		s.Contains(filteredList, t)
 	}
 }
 
