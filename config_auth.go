@@ -29,6 +29,7 @@ type LDAPConfig struct {
 	UserPath           string `bson:"path" json:"path" yaml:"path"`
 	ServicePath        string `bson:"service_path" json:"service_path" yaml:"service_path"`
 	Group              string `bson:"group" json:"group" yaml:"group"`
+	ServiceGroup       string `bson:"service_group" json:"service_group" yaml:"service_group"`
 	ExpireAfterMinutes string `bson:"expire_after_minutes" json:"expire_after_minutes" yaml:"expire_after_minutes"`
 }
 
