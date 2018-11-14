@@ -897,7 +897,7 @@ func dateBoundaries(start time.Time, end time.Time, numDays int) []time.Time {
 
 	start = util.GetUTCDay(start)
 	end = util.GetUTCDay(end)
-	duration := time.Duration(numDays * 24 * int(time.Hour))
+	duration := 24 * time.Hour * time.Duration(numDays)
 	boundary := start
 	boundaries := []time.Time{}
 
