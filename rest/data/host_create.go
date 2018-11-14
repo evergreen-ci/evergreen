@@ -129,7 +129,7 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 	if cmd.Command != evergreen.CreateHostCommandName {
 		return nil, nil
 	}
-	var createHost *apimodels.CreateHost
+	createHost := &apimodels.CreateHost{}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           createHost,
