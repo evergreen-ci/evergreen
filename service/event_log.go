@@ -47,6 +47,23 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			uis.RedirectToLogin(w, r)
 			return
 		}
+
+		project, err := model.FindOneProjectRef(resourceID)
+		if err != nil {
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		if project == nil {
+			http.Error(w, fmt.Sprintf("Unknown project: %v", resourceType), http.StatusBadRequest)
+			return
+		}
+
+		authorized := isAdmin(u, project) || uis.isSuperUser(u)
+		if !authorized {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		eventQuery = model.MostRecentProjectEvents(resourceID, 200)
 	default:
 		http.Error(w, fmt.Sprintf("Unknown resource: %v", resourceType), http.StatusBadRequest)

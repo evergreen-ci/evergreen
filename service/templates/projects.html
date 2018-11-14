@@ -88,7 +88,7 @@ Evergreen Projects
         </div>
       </div>
     </div>
-    <div ng-show="isSuperUser"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
+    <div ng-show="isAdmin"><a class="link" href="/project/[[projectRef.identifier]]/events">Event Log</a></div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
       <div class ="form-group">
         <div class="col-lg-8">

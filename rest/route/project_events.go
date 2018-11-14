@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/rest/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -57,9 +60,22 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 
+	user := gimlet.GetUser(ctx)
+	projectRef, err := model.FindOneProjectRef(h.Id)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+	}
+	if projectRef == nil {
+		return gimlet.NewTextErrorResponse("project does not exist")
+	}
+
+	authorized := auth.IsSuperUser(h.sc.GetSuperUsers(), user) || util.StringSliceContains(projectRef.Admins, user.Username())
+	if !authorized {
+		return gimlet.NewTextErrorResponse("User not authorized")
+	}
 	events, err := h.sc.GetProjectEventLog(h.Id, h.Timestamp, h.Limit+1)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
 
 	lastIndex := len(events)
@@ -84,7 +100,7 @@ func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 	events = events[:lastIndex]
 	catcher := grip.NewBasicCatcher()
 	for i := range events {
-		catcher.Add(resp.AddData(model.Model(&events[i])))
+		catcher.Add(resp.AddData(restModel.Model(&events[i])))
 	}
 
 	if catcher.HasErrors() {

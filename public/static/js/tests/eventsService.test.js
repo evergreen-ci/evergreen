@@ -1,23 +1,16 @@
-describe('AdminEventsController', function() {
+describe('eventsService', function() {
   beforeEach(module('MCI'));
 
-  var controller;
-  var scope;
+  var eventsServiceObj
 
-  beforeEach(inject(function($rootScope, $controller, $injector) {
-    scope = $rootScope;
-    controller = $controller('AdminEventsController', {
-      $scope: scope,
-      $window: {},
-      mciAdminRestService: $injector.get('mciAdminRestService'),
-      notificationService: {}
-    });
+  beforeEach(inject(function(eventsService) {
+    eventsServiceObj = eventsService;
   }));
 
   describe('getNextTs', function () {
     it('should correctly parse a paginated link', function() {
       var link = '<http://localhost:9090/rest/v2/admin/events?limit=10&ts=2018-03-01T14%3A52%3A43-05%3A00>; rel="next"';
-      expect(scope.getNextTs(link)).toEqual(
+      expect(eventsServiceObj.getNextTs(link)).toEqual(
         '2018-03-01T14:52:43-05:00'
       );
     });
@@ -30,7 +23,7 @@ describe('AdminEventsController', function() {
         path: ["foo"],
         rhs: "newVal"
       };
-      expect(scope.getDiffText(diff)).toEqual(
+      expect(eventsServiceObj.getDiffText(diff)).toEqual(
         {property: "foo", before: "", after: "newVal"}
       );
     });
@@ -42,7 +35,7 @@ describe('AdminEventsController', function() {
         lhs: "oldVal",
         rhs: null
       };
-      expect(scope.getDiffText(diff)).toEqual(
+      expect(eventsServiceObj.getDiffText(diff)).toEqual(
         {property: "foo.bar", before: "oldVal", after: null}
       );
     });
@@ -57,7 +50,7 @@ describe('AdminEventsController', function() {
           rhs: "newVal"
         }
       };
-      expect(scope.getDiffText(diff)).toEqual(
+      expect(eventsServiceObj.getDiffText(diff)).toEqual(
         {property: "foo[1]", before: "", after: "newVal" }
       );
     });

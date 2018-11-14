@@ -380,7 +380,7 @@ mciServices.rest.factory('mciProjectRestService', ['mciBaseRestService', functio
 
     var service = {};
 
-    service.getEvents = function(project_id, timestamp, limit, callbacks) {
+    service.getEvents = function(timestamp, limit, callbacks, project_id) {
       if (!limit || limit === 0) {
         limit = 15;
       }

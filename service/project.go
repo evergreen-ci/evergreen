@@ -633,9 +633,7 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 }
 
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
-	_ = MustHaveUser(r)
 	_ = MustHaveProjectContext(r)
-
 	// Validate the project exists
 	id := gimlet.GetVars(r)["project_id"]
 	projectRef, err := model.FindOneProjectRef(id)
@@ -648,11 +646,10 @@ func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only a superuser can see the events
-	ctx := r.Context()
-	DBUser := gimlet.GetUser(ctx)
+	DBUser := MustHaveUser(r)
+	authorized := isAdmin(DBUser, projectRef) || uis.isSuperUser(DBUser)
 	template := "not_admin.html"
-	if DBUser != nil && uis.isSuperUser(DBUser) {
+	if authorized {
 		template = "project_events.html"
 	}
 

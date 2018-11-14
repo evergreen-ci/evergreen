@@ -78,10 +78,6 @@ func MostRecentProjectEvents(id string, n int) db.Q {
 	return ProjectEventsForId(id).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 }
 
-func ProjectEventsInOrder(id string) db.Q {
-	return ProjectEventsForId(id).Sort([]string{event.TimestampKey})
-}
-
 func ProjectEventsBefore(id string, before time.Time, n int) db.Q {
 	filter := event.ResourceTypeKeyIs(ResourceTypeProject)
 	filter[event.ResourceIdKey] = id
