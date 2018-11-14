@@ -1,6 +1,7 @@
 package route
 
 import (
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/amboy"
@@ -21,6 +22,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers())
 	checkUser := gimlet.NewRequireAuthHandler()
 	addProject := NewProjectContextMiddleware(sc)
+	settings := evergreen.GetEnvironment().Settings()
 
 	// Routes
 	app.AddRoute("/").Version(2).Get().RouteHandler(makePlaceHolderManger(sc))
@@ -45,8 +47,9 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/cost/version/{version_id}").Version(2).Get().Wrap(checkUser).RouteHandler(makeCostByVersionHandler(sc))
 	app.AddRoute("/distros").Version(2).Get().Wrap(superUser).RouteHandler(makeDistroRoute(sc))
 	app.AddRoute("/distros/{distro_id}").Version(2).Get().Wrap(superUser).RouteHandler(makeGetDistroByID(sc))
-	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser).RouteHandler(makePatchDistroByID(sc))
+	app.AddRoute("/distros/{distro_id}").Version(2).Patch().Wrap(superUser).RouteHandler(makePatchDistroByID(sc, settings))
 	app.AddRoute("/distros/{distro_id}").Version(2).Delete().Wrap(superUser).RouteHandler(makeDeleteDistroByID(sc))
+	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(superUser).RouteHandler(makePutDistro(sc, settings))
 	app.AddRoute("/hooks/github").Version(2).Post().RouteHandler(makeGithubHooksRoute(sc, queue, githubSecret))
 	app.AddRoute("/hosts").Version(2).Get().RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(checkUser).RouteHandler(makeSpawnHostCreateRoute(sc))
