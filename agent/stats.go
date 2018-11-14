@@ -63,6 +63,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 		defer cancel()
 		defer recovery.LogStackTraceAndContinue("encountered issue in stats collector")
 
+		sc.logger.System().Info("Starting stats collector")
 		output := subprocess.OutputOptions{
 			Output: sc.logger.SystemWriter(level.Info),
 			Error:  sc.logger.SystemWriter(level.Error),
@@ -71,7 +72,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 		for {
 			select {
 			case <-ctx.Done():
-				grip.Info("StatsCollector ticker stopping.")
+				sc.logger.System().Info("StatsCollector ticker stopping.")
 				return
 			case <-timer.C:
 				for _, cmd := range sc.Cmds {
