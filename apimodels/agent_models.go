@@ -77,14 +77,14 @@ type CreateHost struct {
 	// EC2-related settings
 	AMI             string      `mapstructure:"ami" json:"ami,omitempty" plugin:"expand"`
 	Distro          string      `mapstructure:"distro" json:"distro,omitempty" plugin:"expand"`
-	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device,omitempty" plugin:"expand"`
+	EBSDevices      []EbsDevice `mapstructure:"ebs_block_device" json:"ebs_block_device" plugin:"expand"`
 	InstanceType    string      `mapstructure:"instance_type" json:"instance_type,omitempty" plugin:"expand"`
 	Region          string      `mapstructure:"region" json:"region,omitempty" plugin:"expand"`
 	SecurityGroups  []string    `mapstructure:"security_group_ids" json:"security_group_ids,omitempty" plugin:"expand"`
-	Spot            bool        `mapstructure:"spot" json:"spot,omitempty"`
+	Spot            bool        `mapstructure:"spot" json:"spot"`
 	Subnet          string      `mapstructure:"subnet_id" json:"subnet_id,omitempty" plugin:"expand"`
-	UserdataFile    string      `mapstructure:"userdata_file" json:"-,omitempty" plugin:"expand"`
-	UserdataCommand string      `json:"userdata_command" plugin:"expand,omitempty"`
+	UserdataFile    string      `mapstructure:"userdata_file" json:"-" plugin:"expand"`
+	UserdataCommand string      `json:"userdata_command,omitempty" plugin:"expand"`
 
 	// authentication settings
 	AWSKeyID  string `mapstructure:"aws_access_key_id" json:"aws_access_key_id,omitempty" plugin:"expand"`
