@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -23,26 +22,29 @@ import (
 // PUT /rest/v2/distros/{distro_id}
 
 type distroPutHandler struct {
-	distroId string
+	distroID string
 	body     []byte
 	sc       data.Connector
+	settings *evergreen.Settings
 }
 
-func makePutDistro(sc data.Connector) gimlet.RouteHandler {
+func makePutDistro(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &distroPutHandler{
-		sc: sc,
+		sc:       sc,
+		settings: settings,
 	}
 }
 
 func (h *distroPutHandler) Factory() gimlet.RouteHandler {
 	return &distroPutHandler{
-		sc: h.sc,
+		sc:       h.sc,
+		settings: h.settings,
 	}
 }
 
 // Parse fetches the distroId and JSON payload from the http request.
 func (h *distroPutHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.distroId = gimlet.GetVars(r)["distro_id"]
+	h.distroID = gimlet.GetVars(r)["distro_id"]
 
 	body := util.NewRequestReader(r)
 	defer body.Close()
@@ -59,17 +61,17 @@ func (h *distroPutHandler) Parse(ctx context.Context, r *http.Request) error {
 // (a) replaces an existing resource with the entity defined in the JSON payload, or
 // (b) creates a new resource based on the Request-URI and JSON payload
 func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
-	original, err := h.sc.FindDistroById(h.distroId)
+	original, err := h.sc.FindDistroById(h.distroID)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	apiDistro := &model.APIDistro{Name: model.ToAPIString(h.distroId)}
+	apiDistro := &model.APIDistro{Name: model.ToAPIString(h.distroID)}
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	distro, error := validateToService(ctx, apiDistro, h.distroId, false)
+	distro, error := validateDistro(ctx, apiDistro, h.distroID, evergreen.GetEnvironment().Settings(), false)
 	if error != nil {
 		return error
 	}
@@ -77,12 +79,12 @@ func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
 	if original != nil {
 		// Existing resource
 		if err = h.sc.UpdateDistro(distro); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for update() distro with distro id '%s'", h.distroId)))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for update() distro with distro id '%s'", h.distroID)))
 		}
 	} else {
 		// New resource
 		if err = h.sc.CreateDistro(distro); err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroId)))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, fmt.Sprintf("Database error for insert() distro with distro id '%s'", h.distroID)))
 		}
 	}
 
@@ -94,7 +96,7 @@ func (h *distroPutHandler) Run(ctx context.Context) gimlet.Responder {
 // DELETE /rest/v2/distros/{distro_id}
 
 type distroIDDeleteHandler struct {
-	distroId string
+	distroID string
 	sc       data.Connector
 }
 
@@ -112,21 +114,21 @@ func (h *distroIDDeleteHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the distroId from the http request.
 func (h *distroIDDeleteHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.distroId = gimlet.GetVars(r)["distro_id"]
+	h.distroID = gimlet.GetVars(r)["distro_id"]
 
 	return nil
 }
 
 // Run deletes a distro by id.
 func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	_, err := h.sc.FindDistroById(h.distroId)
+	_, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
-	err = h.sc.DeleteDistroById(h.distroId)
+	err = h.sc.DeleteDistroById(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for remove() by distro id '%s'", h.distroId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for remove() by distro id '%s'", h.distroID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -137,26 +139,29 @@ func (h *distroIDDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 // PATCH /rest/v2/distros/{distro_id}
 
 type distroIDPatchHandler struct {
-	distroId string
+	distroID string
 	body     []byte
 	sc       data.Connector
+	settings *evergreen.Settings
 }
 
-func makePatchDistroByID(sc data.Connector) gimlet.RouteHandler {
+func makePatchDistroByID(sc data.Connector, settings *evergreen.Settings) gimlet.RouteHandler {
 	return &distroIDPatchHandler{
-		sc: sc,
+		sc:       sc,
+		settings: settings,
 	}
 }
 
 func (h *distroIDPatchHandler) Factory() gimlet.RouteHandler {
 	return &distroIDPatchHandler{
-		sc: h.sc,
+		sc:       h.sc,
+		settings: h.settings,
 	}
 }
 
 // Parse fetches the distroId from the http request.
 func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.distroId = gimlet.GetVars(r)["distro_id"]
+	h.distroID = gimlet.GetVars(r)["distro_id"]
 
 	body := util.NewRequestReader(r)
 	defer body.Close()
@@ -171,9 +176,9 @@ func (h *distroIDPatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 // Run updates a distro by id.
 func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
-	d, err := h.sc.FindDistroById(h.distroId)
+	d, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
 	apiDistro := &model.APIDistro{}
@@ -185,13 +190,13 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API error while unmarshalling JSON"))
 	}
 
-	d, error := validateToService(ctx, apiDistro, h.distroId, false)
+	d, error := validateDistro(ctx, apiDistro, h.distroID, h.settings, false)
 	if error != nil {
 		return error
 	}
 
 	if err = h.sc.UpdateDistro(d); err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for update() by distro id '%s'", h.distroID))
 	}
 
 	return gimlet.NewJSONResponse(apiDistro)
@@ -202,7 +207,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 // GET /rest/v2/distros/{distro_id}
 
 type distroIDGetHandler struct {
-	distroId string
+	distroID string
 	sc       data.Connector
 }
 
@@ -220,16 +225,16 @@ func (h *distroIDGetHandler) Factory() gimlet.RouteHandler {
 
 // Parse fetches the distroId from the http request.
 func (h *distroIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.distroId = gimlet.GetVars(r)["distro_id"]
+	h.distroID = gimlet.GetVars(r)["distro_id"]
 
 	return nil
 }
 
 // Run calls the data FindDistroById function and returns the distro from the provider.
 func (h *distroIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundDistro, err := h.sc.FindDistroById(h.distroId)
+	foundDistro, err := h.sc.FindDistroById(h.distroID)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroId))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.distroID))
 	}
 
 	distroModel := &model.APIDistro{}
@@ -292,22 +297,28 @@ func (h *distroGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 
-func validateToService(ctx context.Context, apiDistro *model.APIDistro, resourceId string, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
+func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID string, settings *evergreen.Settings, isNewDistro bool) (*distro.Distro, gimlet.Responder) {
 	i, err := apiDistro.ToService()
 	if err != nil {
 		return nil, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from model.APIDistro to distro.Distro"))
 	}
-	d := i.(*distro.Distro)
-
-	id := model.FromAPIString(apiDistro.Name)
-	if resourceId != id {
+	d, ok := i.(*distro.Distro)
+	if !ok {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", resourceId),
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("Unexpected type %T for distro.Distro", i),
 		})
 	}
 
-	vErrors, err := validator.CheckDistro(ctx, d, &evergreen.Settings{}, isNewDistro)
+	id := model.FromAPIString(apiDistro.Name)
+	if resourceID != id {
+		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Distro name is immutable; cannot rename distro resource '%s'", resourceID),
+		})
+	}
+	// evergreen.GetEnvironment().Settings()
+	vErrors, err := validator.CheckDistro(ctx, d, settings, isNewDistro)
 	if err != nil {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -315,13 +326,9 @@ func validateToService(ctx context.Context, apiDistro *model.APIDistro, resource
 		})
 	}
 	if len(vErrors) != 0 {
-		errors := []string{}
-		for _, v := range vErrors {
-			errors = append(errors, v.Message)
-		}
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    strings.Join(errors, ", "),
+			Message:    vErrors.String(),
 		})
 	}
 
