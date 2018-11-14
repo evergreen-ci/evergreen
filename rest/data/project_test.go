@@ -296,27 +296,16 @@ type ProjectConnectorCreateUpdateSuite struct {
 }
 
 func TestProjectConnectorCreateUpdateSuite(t *testing.T) {
-	s := new(ProjectConnectorCreateUpdateSuite)
-	s.setup = func() error {
-		s.sc = &DBConnector{}
-		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorCreateUpdateSuite")
-		db.SetGlobalSessionProvider(testConfig.SessionFactory())
-		return nil
-	}
-
-	s.teardown = func() error {
-		return db.Clear(model.ProjectRefCollection)
-	}
-
-	suite.Run(t, s)
+	suite.Run(t, new(ProjectConnectorCreateUpdateSuite))
 }
 
 func (s *ProjectConnectorCreateUpdateSuite) SetupSuite() {
-	s.Require().NoError(s.setup())
+	s.sc = &DBConnector{}
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func (s *ProjectConnectorCreateUpdateSuite) TearDownSuite() {
-	s.Require().NoError(s.teardown())
+	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 }
 
 func (s *ProjectConnectorCreateUpdateSuite) TestCreateProject() {
