@@ -69,7 +69,7 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	var err error
-	var testStatsResult []stats.TestStats
+	var testStatsResult []model.APITestStats
 
 	testStatsResult, err = tsh.sc.GetTestStats(&tsh.filter)
 	if err != nil {
@@ -104,13 +104,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	testStatsResult = testStatsResult[:lastIndex]
 
 	for _, apiTestStats := range testStatsResult {
-		ats := &model.APITestStats{}
-		err = ats.BuildFromService(&apiTestStats)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Model error"))
-		}
-
-		if err = resp.AddData(ats); err != nil {
+		if err = resp.AddData(apiTestStats); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 	}
@@ -137,34 +131,32 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 
 	// before_date
 	beforeDate := vals.Get("before_date")
-	if beforeDate != "" {
-		filter.BeforeDate, err = readDate(beforeDate)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "Invalid before_date value",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-	} else {
+	if beforeDate == "" {
 		return gimlet.ErrorResponse{
 			Message:    "Missing before_date parameter",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	filter.BeforeDate, err = time.ParseInLocation(dateFormat, beforeDate, time.UTC)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "Invalid before_date value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
 	// after_date
 	afterDate := vals.Get("after_date")
-	if afterDate != "" {
-		filter.AfterDate, err = readDate(afterDate)
-		if err != nil {
-			return gimlet.ErrorResponse{
-				Message:    "Invalid after_date value",
-				StatusCode: http.StatusBadRequest,
-			}
-		}
-	} else {
+	if afterDate == "" {
 		return gimlet.ErrorResponse{
 			Message:    "Missing after_date parameter",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	filter.AfterDate, err = time.ParseInLocation(dateFormat, afterDate, time.UTC)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    "Invalid after_date value",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
@@ -258,11 +250,6 @@ func readRequesters(requesters []string) ([]string, error) {
 	return requesterValues, nil
 }
 
-// readDate parses a date parameter in the expected YYYY-MM-DD format.
-func readDate(dateString string) (time.Time, error) {
-	return time.ParseInLocation(dateFormat, dateString, time.UTC)
-}
-
 // readInt parses an integer parameter value, given minimum, maximum, and default values.
 func readInt(intString string, min, max, defaultValue int) (int, error) {
 	if intString == "" {
@@ -329,7 +316,7 @@ func readStartAt(startAtValue string) (*stats.StartAt, error) {
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	date, err := readDate(elements[0])
+	date, err := time.ParseInLocation(dateFormat, elements[0], time.UTC)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			Message:    "Invalid start_by value",
@@ -347,14 +334,13 @@ func readStartAt(startAtValue string) (*stats.StartAt, error) {
 
 // makeStartAtKey creates a key string that can be used as a start_at value to fetch
 // the next results with pagination.
-func makeStartAtKey(testStats stats.TestStats) string {
-	startAt := stats.StartAtFromTestStats(&testStats)
+func makeStartAtKey(testStats model.APITestStats) string {
 	elements := []string{
-		startAt.Date.Format(dateFormat),
-		startAt.BuildVariant,
-		startAt.Task,
-		startAt.Test,
-		startAt.Distro,
+		testStats.Date,
+		testStats.BuildVariant,
+		testStats.TaskName,
+		testStats.TestFile,
+		testStats.Distro,
 	}
 	return strings.Join(elements, "|")
 }

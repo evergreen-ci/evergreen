@@ -219,5 +219,5 @@ type Connector interface {
 	CreateHostsFromTask(*task.Task, user.DBUser, string) error
 
 	// Get test execution statistics
-	GetTestStats(*stats.StatsFilter) ([]stats.TestStats, error)
+	GetTestStats(*stats.StatsFilter) ([]restModel.APITestStats, error)
 }

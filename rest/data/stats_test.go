@@ -3,7 +3,6 @@ package data
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +25,7 @@ func TestMockGetTestStats(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(stats, 100)
 
-	var date time.Time
+	var date string
 	for i, doc := range stats {
 		assert.Equal(fmt.Sprintf("test_%v", i), doc.TestFile)
 		assert.Equal("task", doc.TaskName)
