@@ -185,7 +185,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	}
 
 	// only allow re-execution for failed or successful tasks
-	if !t.IsFinished() {
+	if !t.IsFinished() && !t.IsBlockedDisplayTask() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",

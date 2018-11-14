@@ -1653,3 +1653,21 @@ func (t *Task) CircularDependencies() error {
 	}
 	return catcher.Resolve()
 }
+
+func (t *Task) IsBlockedDisplayTask() bool {
+	if !t.DisplayOnly {
+		return false
+	}
+
+	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
+	if err != nil {
+		grip.Error(message.WrapError(err, "error finding tasks with dependencies"))
+		return false
+	}
+	blockedState, err := t.BlockedState(tasksWithDeps)
+	if err != nil {
+		grip.Error(message.WrapError(err, "error determining blocked state"))
+		return false
+	}
+	return blockedState == taskBlocked
+}
