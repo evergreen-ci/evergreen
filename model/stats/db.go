@@ -735,20 +735,20 @@ func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
 	case GroupByTest:
 		fields = []paginationField{
 			{Field: dbTestStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gt", Value: filter.StartAt.Test},
+			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gte", Value: filter.StartAt.Test},
 		}
 	case GroupByTask:
 		fields = []paginationField{
 			{Field: dbTestStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
 			{Field: dbTestStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gt", Value: filter.StartAt.Test},
+			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gte", Value: filter.StartAt.Test},
 		}
 	case GroupByVariant:
 		fields = []paginationField{
 			{Field: dbTestStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
 			{Field: dbTestStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
 			{Field: dbTestStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gt", Value: filter.StartAt.Test},
+			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gte", Value: filter.StartAt.Test},
 		}
 	case GroupByDistro:
 		fields = []paginationField{
@@ -756,7 +756,7 @@ func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
 			{Field: dbTestStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
 			{Field: dbTestStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
 			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gt", Value: filter.StartAt.Test},
-			{Field: dbTestStatsIdDistroKeyFull, Operator: "$gt", Value: filter.StartAt.Distro},
+			{Field: dbTestStatsIdDistroKeyFull, Operator: "$gte", Value: filter.StartAt.Distro},
 		}
 	}
 
@@ -848,20 +848,20 @@ func buildTaskPaginationOrBranches(filter *StatsFilter) []bson.M {
 	case GroupByTask:
 		fields = []paginationField{
 			{Field: dbTaskStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
+			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gte", Value: filter.StartAt.Task},
 		}
 	case GroupByVariant:
 		fields = []paginationField{
 			{Field: dbTaskStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
 			{Field: dbTaskStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
+			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gte", Value: filter.StartAt.Task},
 		}
 	case GroupByDistro:
 		fields = []paginationField{
 			{Field: dbTaskStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
 			{Field: dbTaskStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
 			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
-			{Field: dbTaskStatsIdDistroKeyFull, Operator: "$gt", Value: filter.StartAt.Distro},
+			{Field: dbTaskStatsIdDistroKeyFull, Operator: "$gte", Value: filter.StartAt.Distro},
 		}
 	}
 
