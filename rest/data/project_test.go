@@ -30,38 +30,40 @@ const (
 	projEventCount = 10
 )
 
-var sampleProjectSettings = model.ProjectSettings{
-	ProjectRef: model.ProjectRef{
-		Owner:      "admin",
-		Enabled:    true,
-		Private:    true,
-		Identifier: projectId,
-		Admins:     []string{},
-	},
-	GitHubHooksEnabled: true,
-	Vars: model.ProjectVars{
-		Id:          projectId,
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
-	},
-	Aliases: []model.ProjectAlias{model.ProjectAlias{
-		ID:        bson.NewObjectId(),
-		ProjectID: projectId,
-		Alias:     "alias1",
-		Variant:   "ubuntu",
-		Task:      "subcommand",
-	},
-	},
-	Subscriptions: []event.Subscription{event.Subscription{
-		ID:           "subscription1",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type:   event.GithubPullRequestSubscriberType,
-			Target: event.GithubPullRequestSubscriber{},
+func getMockProjectSettings() model.ProjectSettingsEvent {
+	return model.ProjectSettingsEvent{
+		ProjectRef: model.ProjectRef{
+			Owner:      "admin",
+			Enabled:    true,
+			Private:    true,
+			Identifier: projectId,
+			Admins:     []string{},
 		},
-	},
-	},
+		GitHubHooksEnabled: true,
+		Vars: model.ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{},
+			PrivateVars: map[string]bool{},
+		},
+		Aliases: []model.ProjectAlias{model.ProjectAlias{
+			ID:        bson.NewObjectId(),
+			ProjectID: projectId,
+			Alias:     "alias1",
+			Variant:   "ubuntu",
+			Task:      "subcommand",
+		},
+		},
+		Subscriptions: []event.Subscription{event.Subscription{
+			ID:           "subscription1",
+			ResourceType: "project",
+			Owner:        "admin",
+			Subscriber: event.Subscriber{
+				Type:   event.GithubPullRequestSubscriberType,
+				Target: event.GithubPullRequestSubscriber{},
+			},
+		},
+		},
+	}
 }
 
 func TestProjectConnectorGetSuite(t *testing.T) {
@@ -87,17 +89,17 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			}
 		}
 
-		before := sampleProjectSettings
-		after := before
+		before := getMockProjectSettings()
+		after := getMockProjectSettings()
 		after.GitHubHooksEnabled = false
 
 		h :=
 			event.EventLogEntry{
 				Timestamp:    time.Now(),
-				ResourceType: model.ResourceTypeProject,
+				ResourceType: model.EventResourceTypeProject,
 				EventType:    model.EventTypeProjectModified,
 				ResourceId:   projectId,
-				Data: &model.ProjectChange{
+				Data: &model.ProjectChangeEvent{
 					User:   username,
 					Before: before,
 					After:  after,

@@ -15,45 +15,47 @@ const (
 	username  = "me"
 )
 
-var sampleProjectSettings = model.ProjectSettings{
-	ProjectRef: model.ProjectRef{
-		Owner:      "admin",
-		Enabled:    true,
-		Private:    true,
-		Identifier: projectId,
-		Admins:     []string{},
-	},
-	GitHubHooksEnabled: true,
-	Vars: model.ProjectVars{
-		Id:          projectId,
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
-	},
-	Aliases: []model.ProjectAlias{model.ProjectAlias{
-		ID:        bson.NewObjectId(),
-		ProjectID: projectId,
-		Alias:     "alias1",
-		Variant:   "ubuntu",
-		Task:      "subcommand",
-	},
-	},
-	Subscriptions: []event.Subscription{event.Subscription{
-		ID:           "subscription1",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type:   event.GithubPullRequestSubscriberType,
-			Target: event.GithubPullRequestSubscriber{},
+func getMockProjectSettings() model.ProjectSettingsEvent {
+	return model.ProjectSettingsEvent{
+		ProjectRef: model.ProjectRef{
+			Owner:      "admin",
+			Enabled:    true,
+			Private:    true,
+			Identifier: projectId,
+			Admins:     []string{},
 		},
-	},
-	},
+		GitHubHooksEnabled: true,
+		Vars: model.ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{},
+			PrivateVars: map[string]bool{},
+		},
+		Aliases: []model.ProjectAlias{model.ProjectAlias{
+			ID:        bson.NewObjectId(),
+			ProjectID: projectId,
+			Alias:     "alias1",
+			Variant:   "ubuntu",
+			Task:      "subcommand",
+		},
+		},
+		Subscriptions: []event.Subscription{event.Subscription{
+			ID:           "subscription1",
+			ResourceType: "project",
+			Owner:        "admin",
+			Subscriber: event.Subscriber{
+				Type:   event.GithubPullRequestSubscriberType,
+				Target: event.GithubPullRequestSubscriber{},
+			},
+		},
+		},
+	}
 }
 
 type ProjectEventSuite struct {
 	suite.Suite
-	modelEvent  model.ProjectChangeEvent
+	modelEvent  model.ProjectChangeEventEntry
 	APIEvent    APIProjectEvent
-	projChanges *model.ProjectChange
+	projChanges *model.ProjectChangeEvent
 }
 
 func TestProjectEventSuite(t *testing.T) {
@@ -62,17 +64,17 @@ func TestProjectEventSuite(t *testing.T) {
 }
 
 func (s *ProjectEventSuite) SetupTest() {
-	before := sampleProjectSettings
-	after := before
+	before := getMockProjectSettings()
+	after := getMockProjectSettings()
 	after.GitHubHooksEnabled = false
 
-	h := model.ProjectChangeEvent{
+	h := model.ProjectChangeEventEntry{
 		EventLogEntry: event.EventLogEntry{
 			Timestamp:    time.Now(),
-			ResourceType: model.ResourceTypeProject,
+			ResourceType: model.EventResourceTypeProject,
 			EventType:    model.EventTypeProjectModified,
 			ResourceId:   projectId,
-			Data: &model.ProjectChange{
+			Data: &model.ProjectChangeEvent{
 				User:   username,
 				Before: before,
 				After:  after,
@@ -84,7 +86,7 @@ func (s *ProjectEventSuite) SetupTest() {
 	err := c.BuildFromService(h)
 	s.Require().NoError(err)
 
-	projChanges := h.Data.(*model.ProjectChange)
+	projChanges := h.Data.(*model.ProjectChangeEvent)
 
 	s.projChanges = projChanges
 	s.modelEvent = h

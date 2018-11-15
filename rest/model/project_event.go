@@ -57,9 +57,9 @@ type APIProjectAlias struct {
 
 func (e *APIProjectEvent) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case model.ProjectChangeEvent:
+	case model.ProjectChangeEventEntry:
 		e.Timestamp = v.Timestamp
-		data, ok := v.Data.(*model.ProjectChange)
+		data, ok := v.Data.(*model.ProjectChangeEvent)
 		if !ok {
 			return errors.New("unable to convert event data to project change")
 		}
@@ -88,7 +88,7 @@ func (e *APIProjectEvent) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for APIProjectEvent")
 }
 
-func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSettings, error) {
+func DbProjectSettingsToRestModel(settings model.ProjectSettingsEvent) (APIProjectSettings, error) {
 	apiSubscriptions, err := DbProjectSubscriptionsToRestModel(settings.Subscriptions)
 	return APIProjectSettings{
 		ProjectRef:    DbProjectRefToRestModel(settings.ProjectRef, settings.GitHubHooksEnabled),

@@ -443,7 +443,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	username := dbUser.DisplayName()
 
-	before := model.ProjectSettings{
+	before := model.ProjectSettingsEvent{
 		ProjectRef:         origProjectRef,
 		GitHubHooksEnabled: origGithubWebhookEnabled,
 		Vars:               origProjectVars,
@@ -453,7 +453,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	currentAliases, _ := model.FindAliasesForProject(id)
 	currentSubscriptions, _ := event.FindSubscriptionsByOwner(projectRef.Identifier, event.OwnerTypeProject)
-	after := model.ProjectSettings{
+	after := model.ProjectSettingsEvent{
 		ProjectRef:         *projectRef,
 		GitHubHooksEnabled: currentGithubWebhookEnabled,
 		Vars:               *projectVars,

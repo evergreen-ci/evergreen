@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	ResourceTypeProject      = "PROJECT"
+	EventResourceTypeProject = "PROJECT"
 	EventTypeProjectModified = "PROJECT_MODIFIED"
 	EventTypeProjectAdded    = "PROJECT_ADDED"
 )
 
-type ProjectSettings struct {
+type ProjectSettingsEvent struct {
 	ProjectRef         ProjectRef           `bson:"proj_ref" json:"proj_ref"`
 	GitHubHooksEnabled bool                 `bson:"github_hooks_enabled" json:"github_hooks_enabled"`
 	Vars               ProjectVars          `bson:"vars" json:"vars"`
@@ -25,24 +25,23 @@ type ProjectSettings struct {
 	Subscriptions      []event.Subscription `bson:"subscriptions" json:"subscriptions"`
 }
 
-type ProjectChange struct {
-	User   string          `bson:"user" json:"user"`
-	Before ProjectSettings `bson:"before" json:"before"`
-	After  ProjectSettings `bson:"after" json:"after"`
+type ProjectChangeEvent struct {
+	User   string               `bson:"user" json:"user"`
+	Before ProjectSettingsEvent `bson:"before" json:"before"`
+	After  ProjectSettingsEvent `bson:"after" json:"after"`
 }
 
-// Embed the EventLogEntry so we can reimplement the SetBSON method for Projects
-type ProjectChangeEvent struct {
+type ProjectChangeEventEntry struct {
 	event.EventLogEntry
 }
 
-func (e *ProjectChangeEvent) SetBSON(raw bson.Raw) error {
+func (e *ProjectChangeEventEntry) SetBSON(raw bson.Raw) error {
 	temp := event.UnmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}
 
-	e.Data = &ProjectChange{}
+	e.Data = &ProjectChangeEvent{}
 
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal data")
@@ -68,7 +67,7 @@ func (e *ProjectChangeEvent) SetBSON(raw bson.Raw) error {
 
 // Project Events queries
 func ProjectEventsForId(id string) db.Q {
-	filter := event.ResourceTypeKeyIs(ResourceTypeProject)
+	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 
 	return db.Query(filter)
@@ -79,7 +78,7 @@ func MostRecentProjectEvents(id string, n int) db.Q {
 }
 
 func ProjectEventsBefore(id string, before time.Time, n int) db.Q {
-	filter := event.ResourceTypeKeyIs(ResourceTypeProject)
+	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 	filter[event.TimestampKey] = bson.M{
 		"$lt": before,
@@ -88,10 +87,10 @@ func ProjectEventsBefore(id string, before time.Time, n int) db.Q {
 	return db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 }
 
-func LogProjectEvent(eventType string, projectId string, eventData ProjectChange) error {
+func LogProjectEvent(eventType string, projectId string, eventData ProjectChangeEvent) error {
 	projectEvent := event.EventLogEntry{
 		Timestamp:    time.Now(),
-		ResourceType: ResourceTypeProject,
+		ResourceType: EventResourceTypeProject,
 		EventType:    eventType,
 		ResourceId:   projectId,
 		Data:         eventData,
@@ -100,7 +99,7 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 	if err := logger.LogEvent(&projectEvent); err != nil {
 		message.WrapError(err, message.Fields{
-			"resource_type": ResourceTypeProject,
+			"resource_type": EventResourceTypeProject,
 			"message":       "error logging event",
 			"source":        "event-log-fail",
 		})
@@ -111,15 +110,15 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 }
 
 func LogProjectAdded(projectId, username string) error {
-	return LogProjectEvent(EventTypeProjectAdded, projectId, ProjectChange{User: username})
+	return LogProjectEvent(EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
-func LogProjectModified(projectId, username string, before, after ProjectSettings) error {
+func LogProjectModified(projectId, username string, before, after ProjectSettingsEvent) error {
 	// Stop if there are no changes
 	if reflect.DeepEqual(before, after) {
 		return nil
 	}
-	eventData := ProjectChange{
+	eventData := ProjectChangeEvent{
 		User:   username,
 		Before: before,
 		After:  after,

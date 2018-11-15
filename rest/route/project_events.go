@@ -58,8 +58,6 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
-	resp := gimlet.NewResponseBuilder()
-
 	user := gimlet.GetUser(ctx)
 	projectRef, err := model.FindOneProjectRef(h.Id)
 	if err != nil {
@@ -77,6 +75,8 @@ func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
 	}
+
+	resp := gimlet.NewResponseBuilder()
 
 	lastIndex := len(events)
 	if len(events) > h.Limit {

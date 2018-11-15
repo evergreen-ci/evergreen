@@ -70,7 +70,7 @@ func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectR
 
 func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	query := model.ProjectEventsBefore(id, before, n)
-	events := []model.ProjectChangeEvent{}
+	events := []model.ProjectChangeEventEntry{}
 	err := db.FindAllQ(event.AllLogCollection, query, &events)
 	if err != nil {
 		return nil, err

@@ -29,53 +29,55 @@ const (
 	username  = "me"
 )
 
-var sampleProjectSettings = ProjectSettings{
-	ProjectRef: ProjectRef{
-		Owner:      "admin",
-		Enabled:    true,
-		Private:    true,
-		Identifier: projectId,
-		Admins:     []string{},
-	},
-	GitHubHooksEnabled: true,
-	Vars: ProjectVars{
-		Id:          projectId,
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
-	},
-	Aliases: []ProjectAlias{ProjectAlias{
-		ID:        bson.NewObjectId(),
-		ProjectID: projectId,
-		Alias:     "alias1",
-		Variant:   "ubuntu",
-		Task:      "subcommand",
-	},
-	},
-	Subscriptions: []event.Subscription{event.Subscription{
-		ID:           "subscription1",
-		ResourceType: "project",
-		Owner:        "admin",
-		Subscriber: event.Subscriber{
-			Type:   event.GithubPullRequestSubscriberType,
-			Target: &event.GithubPullRequestSubscriber{},
+func getMockProjectSettings() ProjectSettingsEvent {
+	return ProjectSettingsEvent{
+		ProjectRef: ProjectRef{
+			Owner:      "admin",
+			Enabled:    true,
+			Private:    true,
+			Identifier: projectId,
+			Admins:     []string{},
 		},
-	},
-	},
+		GitHubHooksEnabled: true,
+		Vars: ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{},
+			PrivateVars: map[string]bool{},
+		},
+		Aliases: []ProjectAlias{ProjectAlias{
+			ID:        bson.NewObjectId(),
+			ProjectID: projectId,
+			Alias:     "alias1",
+			Variant:   "ubuntu",
+			Task:      "subcommand",
+		},
+		},
+		Subscriptions: []event.Subscription{event.Subscription{
+			ID:           "subscription1",
+			ResourceType: "project",
+			Owner:        "admin",
+			Subscriber: event.Subscriber{
+				Type:   event.GithubPullRequestSubscriberType,
+				Target: &event.GithubPullRequestSubscriber{},
+			},
+		},
+		},
+	}
 }
 
 func (s *ProjectEventSuite) TestModifyProjectEvent() {
-	before := sampleProjectSettings
-	after := before
+	before := getMockProjectSettings()
+	after := getMockProjectSettings()
 	after.ProjectRef.Enabled = false
 
 	s.NoError(LogProjectModified(projectId, username, before, after))
 
-	projectEvents := []ProjectChangeEvent{}
+	projectEvents := []ProjectChangeEventEntry{}
 	query := ProjectEventsForId(projectId)
 	s.NoError(db.FindAllQ(event.AllLogCollection, query, &projectEvents))
 	s.Require().Len(projectEvents, 1)
 
-	eventData := projectEvents[0].Data.(*ProjectChange)
+	eventData := projectEvents[0].Data.(*ProjectChangeEvent)
 
 	s.Equal(username, eventData.User)
 	s.Equal(before, eventData.Before)
@@ -83,12 +85,12 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 }
 
 func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
-	before := sampleProjectSettings
-	after := before
+	before := getMockProjectSettings()
+	after := getMockProjectSettings()
 
 	s.NoError(LogProjectModified(projectId, username, before, after))
 
-	projectEvents := []ProjectChangeEvent{}
+	projectEvents := []ProjectChangeEventEntry{}
 	query := ProjectEventsForId(projectId)
 	s.NoError(db.FindAllQ(event.AllLogCollection, query, &projectEvents))
 	s.Require().Len(projectEvents, 0)
@@ -97,14 +99,14 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 func (s *ProjectEventSuite) TestAddProject() {
 	s.NoError(LogProjectAdded(projectId, username))
 
-	projectEvents := []ProjectChangeEvent{}
+	projectEvents := []ProjectChangeEventEntry{}
 	query := ProjectEventsForId(projectId)
 	s.NoError(db.FindAllQ(event.AllLogCollection, query, &projectEvents))
 
 	s.Require().Len(projectEvents, 1)
 	s.Equal(projectId, projectEvents[0].ResourceId)
 
-	eventData := projectEvents[0].Data.(*ProjectChange)
+	eventData := projectEvents[0].Data.(*ProjectChangeEvent)
 	s.Equal(username, eventData.User)
 
 }

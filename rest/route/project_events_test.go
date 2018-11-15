@@ -78,8 +78,6 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 	}
 }
 
-func (s *ProjectEventsTestSuite) SetupTest() {}
-
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 	s.route.Id = s.projectId
 	s.route.Limit = 100

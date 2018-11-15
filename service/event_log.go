@@ -42,7 +42,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		eventQuery = event.RecentAdminEvents(100)
-	case model.ResourceTypeProject:
+	case model.EventResourceTypeProject:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
