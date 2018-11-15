@@ -58,7 +58,18 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	project := gimlet.GetVars(r)["project_id"]
 	tsh.filter = stats.StatsFilter{Project: project}
 
-	return tsh.parseTestStatsFilter(vals)
+	err := tsh.parseTestStatsFilter(vals)
+	if err != nil {
+		return err
+	}
+	err = tsh.filter.ValidateForTests()
+	if err != nil {
+		return gimlet.ErrorResponse{
+			Message:    err.Error(),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	return nil
 }
 
 func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
@@ -153,12 +164,7 @@ func (tsh *testStatsHandler) parseTestStatsFilter(vals url.Values) error {
 
 	// tests
 	tsh.filter.Tests = vals["tests"]
-	if len(tsh.filter.Tests) == 0 {
-		return gimlet.ErrorResponse{
-			Message:    "Missing required tests parameter",
-			StatusCode: http.StatusBadRequest,
-		}
-	} else if len(tsh.filter.Tests) > statsAPIMaxNumTests {
+	if len(tsh.filter.Tests) > statsAPIMaxNumTests {
 		return gimlet.ErrorResponse{
 			Message:    "Too many tests values",
 			StatusCode: http.StatusBadRequest,

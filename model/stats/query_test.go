@@ -88,11 +88,11 @@ func (s *statsQuerySuite) TestValidFilter() {
 
 	// Check that validate does not find any errors
 	// For tests
-	err := filter.validateForTests()
+	err := filter.ValidateForTests()
 	require.NoError(err)
 	// For tasks
 	filter.Tests = nil
-	err = filter.validateForTasks()
+	err = filter.ValidateForTasks()
 	require.NoError(err)
 }
 
@@ -119,33 +119,33 @@ func (s *statsQuerySuite) TestFilterInvalidDate() {
 	// With AfterDate after BeforeDate.
 	filter.AfterDate = day2
 	filter.BeforeDate = day1
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
-	err = filter.validateForTasks()
+	err = filter.ValidateForTasks()
 	require.Error(err)
 
 	// With AfterDate equal to BeforeDate.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
-	err = filter.validateForTasks()
+	err = filter.ValidateForTasks()
 	require.Error(err)
 
 	// With AfterDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
-	err = filter.validateForTasks()
+	err = filter.ValidateForTasks()
 	require.Error(err)
 
 	// With BeforeDate not a UTC day.
 	filter.AfterDate = day1
 	filter.BeforeDate = day1.Add(time.Hour)
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
-	err = filter.validateForTasks()
+	err = filter.ValidateForTasks()
 	require.Error(err)
 }
 
@@ -173,7 +173,7 @@ func (s *statsQuerySuite) TestFilterInvalidForTasks() {
 		Sort:         SortEarliestFirst,
 		Limit:        MaxQueryLimit,
 	}
-	err = filter.validateForTasks()
+	err = filter.ValidateForTasks()
 	require.Error(err)
 
 	// Filter for tasks should have Tasks set.
@@ -187,7 +187,7 @@ func (s *statsQuerySuite) TestFilterInvalidForTasks() {
 		Sort:         SortEarliestFirst,
 		Limit:        MaxQueryLimit,
 	}
-	err = filter.validateForTasks()
+	err = filter.ValidateForTasks()
 	require.Error(err)
 }
 
@@ -211,7 +211,7 @@ func (s *statsQuerySuite) TestFilterInvalidForTests() {
 		Sort:         SortEarliestFirst,
 		Limit:        MaxQueryLimit,
 	}
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
 }
 
@@ -239,7 +239,7 @@ func (s *statsQuerySuite) TestFilterInvalidGroupNumDays() {
 		Sort:         SortEarliestFirst,
 		Limit:        MaxQueryLimit,
 	}
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
 }
 
@@ -265,7 +265,7 @@ func (s *statsQuerySuite) TestFilterMissingRequesters() {
 		Sort:         SortEarliestFirst,
 		Limit:        MaxQueryLimit,
 	}
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
 }
 
@@ -293,11 +293,11 @@ func (s *statsQuerySuite) TestFilterInvalidLimit() {
 		Sort:         SortEarliestFirst,
 		Limit:        -3,
 	}
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
 
 	filter.Limit = MaxQueryLimit + 1
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
 }
 
@@ -325,7 +325,7 @@ func (s *statsQuerySuite) TestFilterInvalidSort() {
 		Sort:         Sort("invalid"),
 		Limit:        MaxQueryLimit,
 	}
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
 }
 
@@ -353,7 +353,7 @@ func (s *statsQuerySuite) TestFilterInvalidGroupBy() {
 		Sort:         SortEarliestFirst,
 		Limit:        MaxQueryLimit,
 	}
-	err = filter.validateForTests()
+	err = filter.ValidateForTests()
 	require.Error(err)
 }
 
