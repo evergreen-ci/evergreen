@@ -59,15 +59,20 @@ func (h *projectEventsGet) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *projectEventsGet) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
-	projectRef, err := model.FindOneProjectRef(h.Id)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
-	}
-	if projectRef == nil {
-		return gimlet.NewTextErrorResponse("project does not exist")
+	// Superusers can make this request
+	authorized := auth.IsSuperUser(h.sc.GetSuperUsers(), user)
+	if !authorized {
+		// Allow a project admin as well
+		projectRef, err := model.FindOneProjectRef(h.Id)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "database error"))
+		}
+		if projectRef == nil {
+			return gimlet.NewTextErrorResponse("project does not exist")
+		}
+		authorized = util.StringSliceContains(projectRef.Admins, user.Username())
 	}
 
-	authorized := auth.IsSuperUser(h.sc.GetSuperUsers(), user) || util.StringSliceContains(projectRef.Admins, user.Username())
 	if !authorized {
 		return gimlet.NewTextErrorResponse("User not authorized")
 	}

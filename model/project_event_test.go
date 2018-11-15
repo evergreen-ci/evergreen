@@ -45,7 +45,7 @@ func getMockProjectSettings() ProjectSettingsEvent {
 			PrivateVars: map[string]bool{},
 		},
 		Aliases: []ProjectAlias{ProjectAlias{
-			ID:        bson.NewObjectId(),
+			ID:        bson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
 			ProjectID: projectId,
 			Alias:     "alias1",
 			Variant:   "ubuntu",

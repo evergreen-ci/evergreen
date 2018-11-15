@@ -118,6 +118,7 @@ func LogProjectModified(projectId, username string, before, after ProjectSetting
 	if reflect.DeepEqual(before, after) {
 		return nil
 	}
+
 	eventData := ProjectChangeEvent{
 		User:   username,
 		Before: before,

@@ -6,9 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -19,20 +23,21 @@ type ProjectEventsTestSuite struct {
 	route     projectEventsGet
 	projectId string
 	event     restModel.APIProjectEvent
+	ctx       context.Context
 }
 
 func TestProjectEventsTestSuite(t *testing.T) {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	suite.Run(t, new(ProjectEventsTestSuite))
 }
 
-func (s *ProjectEventsTestSuite) SetupSuite() {
-	s.projectId = "mci2"
-	beforeSettings := restModel.APIProjectSettings{
+func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
+	return restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{
 			Owner:              restModel.ToAPIString("admin"),
 			Enabled:            true,
 			Private:            true,
-			Identifier:         restModel.ToAPIString(s.projectId),
+			Identifier:         restModel.ToAPIString(projectId),
 			Admins:             []restModel.APIString{},
 			GitHubHooksEnabled: true,
 		},
@@ -57,8 +62,13 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 		},
 		},
 	}
+}
 
-	afterSettings := beforeSettings
+func (s *ProjectEventsTestSuite) SetupSuite() {
+	s.projectId = "mci2"
+	beforeSettings := getMockProjectSettings(s.projectId)
+
+	afterSettings := getMockProjectSettings(s.projectId)
 	afterSettings.ProjectRef.Enabled = false
 
 	s.event = restModel.APIProjectEvent{
@@ -76,6 +86,10 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 		URL:                  "https://evergreen.example.net",
 		MockProjectConnector: s.data,
 	}
+
+	ctx := context.Background()
+	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	s.sc.SetSuperUsers([]string{"user"})
 }
 
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
@@ -84,7 +98,7 @@ func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 	s.route.Timestamp = time.Now().Add(time.Second * 10)
 	s.route.sc = s.sc
 
-	resp := s.route.Run(context.Background())
+	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
