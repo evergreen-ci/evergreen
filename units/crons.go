@@ -669,6 +669,19 @@ func CacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if flags.CacheStatsJobDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "cache stats job is disabled",
+				"impact":  "pre-computed test and task stats are not updated",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
 		ts := util.RoundPartOfHour(part).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()

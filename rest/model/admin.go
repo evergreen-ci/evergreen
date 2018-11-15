@@ -1026,6 +1026,7 @@ type APIServiceFlags struct {
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
 	BackgroundStatsDisabled      bool `json:"background_stats_disabled"`
 	TaskLoggingDisabled          bool `json:"task_logging_disabled"`
+	CacheStatsJobDisabled        bool `json:"cache_stats_job_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1234,6 +1235,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 		as.TaskLoggingDisabled = v.TaskLoggingDisabled
+		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1261,6 +1263,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
 		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 		TaskLoggingDisabled:          as.TaskLoggingDisabled,
+		CacheStatsJobDisabled:        as.CacheStatsJobDisabled,
 	}, nil
 }
 
