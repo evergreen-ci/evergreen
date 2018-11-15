@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -124,6 +123,10 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 		return nil, nil, nil, nil, "",
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
 	}
+	if v.Config == "" {
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Errorf("unable to find config string for version %s", t.Version).Error()}
+	}
 	prevConfig := v.Config
 	p := &Project{}
 	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
@@ -154,23 +157,20 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 }
 
 func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm *projectMaps, prevConfig string) error {
-	query := bson.M{version.IdKey: v.Id}
-	if prevConfig != "" {
-		query[version.ConfigKey] = prevConfig
+	query := bson.M{
+		version.IdKey:     v.Id,
+		version.ConfigKey: prevConfig,
 	}
 	update := bson.M{"$set": bson.M{version.ConfigKey: v.Config}}
 
 	err := version.UpdateOne(query, update)
-	if err == mgo.ErrNotFound {
-		return err
-	} else if err != nil {
+	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
 
 	if err := g.saveNewBuildsAndTasks(pm, v, p); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
-
 	return nil
 }
 

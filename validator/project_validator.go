@@ -167,7 +167,10 @@ func CheckProjectSyntax(project *model.Project) (ValidationErrors, error) {
 func CheckProjectConfigurationIsValid(project *model.Project) error {
 	syntaxErrs, err := CheckProjectSyntax(project)
 	if err != nil {
-		return err
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "error checking project syntax").Error(),
+		}
 	}
 	if len(syntaxErrs) > 0 {
 		return gimlet.ErrorResponse{

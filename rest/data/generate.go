@@ -28,20 +28,21 @@ func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMe
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = taskID
 
-	for i := 0; i < retryLimit; i++ {
-		p, v, t, pm, prevConfig, err := g.NewVersion()
-		if err != nil {
-			return err
-		}
-		if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-			return err
-		}
-		// if config outdated, we try to retry
-		if err = g.Save(p, v, t, pm, prevConfig); err != mgo.ErrNotFound {
-			return err
+	p, v, t, pm, prevConfig, err := g.NewVersion()
+	if err != nil {
+		return err
+	}
+	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
+		return err
+	}
+	err = g.Save(p, v, t, pm, prevConfig)
+	if err != nil && errors.Cause(err) == mgo.ErrNotFound {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),
 		}
 	}
-	return errors.New("error updating outdated version")
+	return err
 }
 
 func ParseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
