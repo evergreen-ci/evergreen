@@ -21,6 +21,7 @@ const (
 	waterfallPerPageLimit  = 5
 	waterfallBVFilterParam = "bv_filter"
 	waterfallSkipParam     = "skip"
+	showUpstreamParam      = "upstream"
 )
 
 // uiStatus determines task status label.
@@ -108,17 +109,24 @@ type waterfallVersion struct {
 
 	// metadata about the enclosed versions.  if this version does not consist
 	// of multiple rolled-up versions, these will each only have length 1
-	Ids                 []string    `json:"ids"`
-	Messages            []string    `json:"messages"`
-	Authors             []string    `json:"authors"`
-	CreateTimes         []time.Time `json:"create_times"`
-	Revisions           []string    `json:"revisions"`
-	RevisionOrderNumber int         `json:"revision_order"`
+	Ids                 []string                `json:"ids"`
+	Messages            []string                `json:"messages"`
+	Authors             []string                `json:"authors"`
+	CreateTimes         []time.Time             `json:"create_times"`
+	Revisions           []string                `json:"revisions"`
+	RevisionOrderNumber int                     `json:"revision_order"`
+	UpstreamData        []waterfallUpstreamData `json:"upstream_data"`
 
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
 	Warnings []waterfallVersionError `json:"warnings"`
 	Ignoreds []bool                  `json:"ignoreds"`
+}
+
+type waterfallUpstreamData struct {
+	ProjectName string `json:"project_name"`
+	TriggerID   string `json:"trigger_id"`
+	TriggerType string `json:"trigger_type"`
 }
 
 type waterfallVersionError struct {
@@ -194,7 +202,7 @@ func variantHasActiveTasks(b build.Build, bvDisplayName string, variantQuery str
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func getVersionsAndVariants(skip, numVersionElements int, project *model.Project, variantQuery string) (versionVariantData, error) {
+func getVersionsAndVariants(skip, numVersionElements int, project *model.Project, variantQuery string, showTriggered bool) (versionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []waterfallVersion{}
 
@@ -216,7 +224,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 		// fetch the versions and associated builds
 		versionsFromDB, buildsByVersion, err :=
-			model.FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements)
+			model.FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements, showTriggered)
 
 		if err != nil {
 			return versionVariantData{}, errors.Wrap(err,
@@ -339,6 +347,16 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				Ignoreds:            []bool{versionFromDB.Ignored},
 				RevisionOrderNumber: versionFromDB.RevisionOrderNumber,
 			}
+			if versionFromDB.TriggerID != "" {
+				var projectName string
+				projectName, err = model.GetUpstreamProjectName(versionFromDB.TriggerID, versionFromDB.TriggerType)
+				if err != nil {
+					return versionVariantData{}, err
+				}
+				activeVersion.UpstreamData = []waterfallUpstreamData{
+					{ProjectName: projectName, TriggerID: versionFromDB.TriggerID, TriggerType: versionFromDB.TriggerType},
+				}
+			}
 
 			// add the builds to the waterfall row
 			for _, b := range buildsInVersion {
@@ -452,7 +470,7 @@ func anyActiveTasks(builds []build.Build) bool {
 // Calculates how many actual versions would appear on the previous page, given
 // the starting skip for the current page as well as the number of version
 // elements per page (including elements containing rolled-up versions).
-func countOnPreviousPage(skip int, numVersionElements int, project *model.Project, variantQuery string) (int, error) {
+func countOnPreviousPage(skip int, numVersionElements int, project *model.Project, variantQuery string, showTriggered bool) (int, error) {
 	buildVariantMappings := project.GetVariantMappings()
 
 	// if there is no previous page
@@ -482,7 +500,7 @@ func countOnPreviousPage(skip int, numVersionElements int, project *model.Projec
 
 		// fetch the versions and builds
 		versionsFromDB, buildsByVersion, err :=
-			model.FetchVersionsAndAssociatedBuilds(project, stepBack, toFetch)
+			model.FetchVersionsAndAssociatedBuilds(project, stepBack, toFetch, showTriggered)
 
 		if err != nil {
 			return 0, errors.Wrap(err, "error fetching versions and builds")
@@ -568,7 +586,7 @@ func countOnPreviousPage(skip int, numVersionElements int, project *model.Projec
 	}
 }
 
-func waterfallDataAdaptor(vvData versionVariantData, project *model.Project, skip int, variantQuery string) (waterfallData, error) {
+func waterfallDataAdaptor(vvData versionVariantData, project *model.Project, skip int, variantQuery string, showUpstream bool) (waterfallData, error) {
 	var err error
 	finalData := waterfallData{}
 	var wfv waterfallVersions = vvData.Versions
@@ -590,7 +608,7 @@ func waterfallDataAdaptor(vvData versionVariantData, project *model.Project, ski
 	}
 
 	// compute the number of versions on the previous page
-	finalData.PreviousPageCount, err = countOnPreviousPage(skip, waterfallPerPageLimit, project, variantQuery)
+	finalData.PreviousPageCount, err = countOnPreviousPage(skip, waterfallPerPageLimit, project, variantQuery, showUpstream)
 	if err != nil {
 		return waterfallData{}, err
 	}
@@ -651,7 +669,9 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 
 	variantQuery := strings.TrimSpace(query.Get(waterfallBVFilterParam))
 
-	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery)
+	showUpstream := (query.Get(showUpstreamParam) == "true")
+
+	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery, showUpstream)
 	if err != nil {
 		gimlet.WriteJSONResponse(
 			w, http.StatusNotFound, responseError{Message: errors.Wrap(
@@ -660,7 +680,7 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	finalData, err := waterfallDataAdaptor(vvData, project, skip, variantQuery)
+	finalData, err := waterfallDataAdaptor(vvData, project, skip, variantQuery, showUpstream)
 	if err != nil {
 		gimlet.WriteJSONResponse(
 			w, http.StatusNotFound, responseError{Message: errors.Wrap(

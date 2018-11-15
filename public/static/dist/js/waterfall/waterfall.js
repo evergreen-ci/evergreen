@@ -47,12 +47,15 @@ function getParameterByName(name, url) {
   return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
+function updateURLParams(bvFilter, taskFilter, skip, baseURL, showUpstream) {
   var params = {};
   if (bvFilter && bvFilter != '') params["bv_filter"] = bvFilter;
   if (taskFilter && taskFilter != '') params["task_filter"] = taskFilter;
   if (skip !== 0) {
     params["skip"] = skip;
+  }
+  if (showUpstream !== undefined) {
+    params["upstream"] = showUpstream;
   }
 
   if (Object.keys(params).length > 0) {
@@ -128,12 +131,14 @@ var Root = function (_React$PureComponent2) {
     var taskFilter = getParameterByName('task_filter', href) || '';
 
     var collapsed = localStorage.getItem("collapsed") == "true";
+    var showUpstream = localStorage.getItem("show_upstream") == "true";
 
     _this2.state = {
       collapsed: collapsed,
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
+      showUpstream: showUpstream,
       data: null
     };
     _this2.nextSkip = getParameterByName('skip', href) || 0;
@@ -141,6 +146,7 @@ var Root = function (_React$PureComponent2) {
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     _this2.handleCollapseChange = _this2.handleCollapseChange.bind(_this2);
+    _this2.onToggleShowUpstream = _this2.onToggleShowUpstream.bind(_this2);
     _this2.handleHeaderLinkClick = _this2.handleHeaderLinkClick.bind(_this2);
     _this2.handleBuildVariantFilter = _this2.handleBuildVariantFilter.bind(_this2);
     _this2.handleTaskFilter = _this2.handleTaskFilter.bind(_this2);
@@ -192,6 +198,9 @@ var Root = function (_React$PureComponent2) {
         params.bv_filter = filter;
         params.skip = 0;
       }
+      if (this.state.showUpstream) {
+        params.upstream = true;
+      }
       if (params.skip === -1) {
         delete params.skip;
       }
@@ -229,6 +238,15 @@ var Root = function (_React$PureComponent2) {
       this.setState({ shortenCommitMessage: !shortenMessage });
     }
   }, {
+    key: "onToggleShowUpstream",
+    value: function onToggleShowUpstream() {
+      var showUpstream = !this.state.showUpstream;
+      this.loadDataPortion(this.state.buildVariantFilter, this.currentSkip);
+      localStorage.setItem("show_upstream", showUpstream);
+      updateURLParams(this.state.buildVariantFilter, this.state.taskFilter, this.currentSkip, this.baseURL, showUpstream);
+      this.setState({ showUpstream: showUpstream });
+    }
+  }, {
     key: "render",
     value: function render() {
       if (this.state.data && this.state.data.rows.length == 0) {
@@ -247,7 +265,7 @@ var Root = function (_React$PureComponent2) {
         null,
         React.createElement(Toolbar, {
           collapsed: this.state.collapsed,
-          onCheck: this.handleCollapseChange,
+          onCheckCollapsed: this.handleCollapseChange,
           baseURL: this.baseURL,
           nextSkip: this.nextSkip,
           prevSkip: this.prevSkip,
@@ -258,7 +276,9 @@ var Root = function (_React$PureComponent2) {
           isLoggedIn: this.props.user !== null,
           project: this.props.project,
           disabled: false,
-          loadData: this.loadData
+          loadData: this.loadData,
+          onToggleShowUpstream: this.onToggleShowUpstream,
+          showUpstream: this.state.showUpstream
         }),
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage,
@@ -286,7 +306,7 @@ var Root = function (_React$PureComponent2) {
 
 function Toolbar(_ref2) {
   var collapsed = _ref2.collapsed,
-      onCheck = _ref2.onCheck,
+      onCheckCollapsed = _ref2.onCheckCollapsed,
       baseURL = _ref2.baseURL,
       nextSkip = _ref2.nextSkip,
       prevSkip = _ref2.prevSkip,
@@ -297,7 +317,9 @@ function Toolbar(_ref2) {
       isLoggedIn = _ref2.isLoggedIn,
       project = _ref2.project,
       disabled = _ref2.disabled,
-      loadData = _ref2.loadData;
+      loadData = _ref2.loadData,
+      showUpstream = _ref2.showUpstream,
+      onToggleShowUpstream = _ref2.onToggleShowUpstream;
 
 
   var Form = ReactBootstrap.Form;
@@ -310,7 +332,7 @@ function Toolbar(_ref2) {
       React.createElement(
         Form,
         { inline: true, className: "waterfall-toolbar pull-right" },
-        React.createElement(CollapseButton, { collapsed: collapsed, onCheck: onCheck, disabled: disabled }),
+        React.createElement(CollapseButton, { collapsed: collapsed, onCheckCollapsed: onCheckCollapsed, disabled: disabled }),
         React.createElement(FilterBox, {
           filterFunction: buildVariantFilterFunc,
           placeholder: "Filter variant",
@@ -334,7 +356,9 @@ function Toolbar(_ref2) {
         }),
         React.createElement(GearMenu, {
           project: project,
-          isLoggedIn: isLoggedIn
+          isLoggedIn: isLoggedIn,
+          showUpstream: showUpstream,
+          onToggleShowUpstream: onToggleShowUpstream
         })
       )
     )
@@ -438,7 +462,7 @@ var CollapseButton = function (_React$PureComponent5) {
   _createClass(CollapseButton, [{
     key: "handleChange",
     value: function handleChange(event) {
-      this.props.onCheck(this.refs.collapsedBuilds.checked);
+      this.props.onCheckCollapsed(this.refs.collapsedBuilds.checked);
     }
   }, {
     key: "render",
@@ -590,15 +614,16 @@ var GearMenu = function (_React$PureComponent6) {
         null,
         React.createElement(
           DropdownButton,
-          {
-            className: "fa fa-gear",
-            pullRight: true,
-            id: "waterfall-gear-menu"
-          },
+          { className: "fa fa-gear", pullRight: true, id: "waterfall-gear-menu" },
           React.createElement(
             MenuItem,
             { onClick: this.addNotification },
             "Add Notification"
+          ),
+          React.createElement(
+            MenuItem,
+            { onClick: this.props.onToggleShowUpstream },
+            this.props.showUpstream ? "Hide Upstream Commits" : "Show Upstream Commits"
           )
         )
       );
@@ -723,6 +748,22 @@ function ActiveVersionHeader(_ref5) {
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0, 5);
   var message = version.messages[0];
+  if (version.upstream_data) {
+    var upstreamData = version.upstream_data[0];
+    var upstreamLink = "/" + upstreamData.trigger_type + "/" + upstreamData.trigger_id;
+    var upstreamAnchor = React.createElement(
+      "a",
+      { href: upstreamLink },
+      upstreamData.project_name
+    );
+    var upstreamElem = React.createElement(
+      "div",
+      { className: "row" },
+      " From ",
+      upstreamAnchor,
+      " "
+    );
+  }
   var formatted_time = getFormattedTime(version.create_times[0], userTz, 'M/D/YY h:mm A');
   var maxChars = 44;
   var button;
@@ -752,7 +793,8 @@ function ActiveVersionHeader(_ref5) {
             commit
           ),
           formatted_time
-        )
+        ),
+        upstreamElem
       ),
       React.createElement(
         "div",

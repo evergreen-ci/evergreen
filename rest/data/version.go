@@ -115,7 +115,7 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 
 		// fetch the versions and associated builds
 		versionsFromDB, buildsByVersion, err :=
-			model.FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements)
+			model.FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements, true)
 
 		if err != nil {
 			return nil, errors.Wrap(err,

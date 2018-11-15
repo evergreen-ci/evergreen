@@ -35,7 +35,7 @@ function getParameterByName(name, url) {
   return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
+function updateURLParams(bvFilter, taskFilter, skip, baseURL, showUpstream) {
   var params = {};
   if (bvFilter && bvFilter != '')
     params["bv_filter"]= bvFilter;
@@ -43,6 +43,9 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
     params["task_filter"]= taskFilter;
   if (skip !== 0) {
     params["skip"] = skip;
+  }
+  if (showUpstream !== undefined) {
+    params["upstream"] = showUpstream
   }
 
   if (Object.keys(params).length > 0) {
@@ -98,12 +101,14 @@ class Root extends React.PureComponent {
     var taskFilter = getParameterByName('task_filter', href) || ''
 
     var collapsed = localStorage.getItem("collapsed") == "true";
+    var showUpstream = localStorage.getItem("show_upstream") == "true";
 
     this.state = {
       collapsed: collapsed,
       shortenCommitMessage: true,
       buildVariantFilter: buildVariantFilter,
       taskFilter: taskFilter,
+      showUpstream: showUpstream,
       data: null
     }
     this.nextSkip = getParameterByName('skip', href) || 0;
@@ -111,6 +116,7 @@ class Root extends React.PureComponent {
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
+    this.onToggleShowUpstream = this.onToggleShowUpstream.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
     this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
@@ -155,6 +161,9 @@ class Root extends React.PureComponent {
       params.bv_filter = filter;
       params.skip = 0;
     }
+    if (this.state.showUpstream) {
+      params.upstream = true;
+    }
     if (params.skip === -1) {
       delete params.skip;
     }
@@ -173,7 +182,7 @@ class Root extends React.PureComponent {
   }
 
   handleBuildVariantFilter(filter) {
-    this.loadDataPortion(filter, this.currentSkip)
+    this.loadDataPortion(filter, this.currentSkip);
     updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
     this.setState({buildVariantFilter: filter});
   }
@@ -185,6 +194,14 @@ class Root extends React.PureComponent {
 
   handleHeaderLinkClick(shortenMessage) {
     this.setState({shortenCommitMessage: !shortenMessage});
+  }
+
+  onToggleShowUpstream() {
+    var showUpstream = !this.state.showUpstream;
+    this.loadDataPortion(this.state.buildVariantFilter, this.currentSkip);
+    localStorage.setItem("show_upstream", showUpstream);
+    updateURLParams(this.state.buildVariantFilter, this.state.taskFilter, this.currentSkip, this.baseURL, showUpstream);
+    this.setState({showUpstream: showUpstream});
   }
 
   render() {
@@ -203,7 +220,7 @@ class Root extends React.PureComponent {
       <div>
         <Toolbar
           collapsed={this.state.collapsed}
-          onCheck={this.handleCollapseChange}
+          onCheckCollapsed={this.handleCollapseChange}
           baseURL={this.baseURL}
           nextSkip={this.nextSkip}
           prevSkip={this.prevSkip}
@@ -215,6 +232,8 @@ class Root extends React.PureComponent {
           project={this.props.project}
           disabled={false}
           loadData={this.loadData}
+          onToggleShowUpstream={this.onToggleShowUpstream}
+          showUpstream={this.state.showUpstream}
         />
         <Headers
           shortenCommitMessage={this.state.shortenCommitMessage}
@@ -238,7 +257,7 @@ class Root extends React.PureComponent {
 
 // Toolbar
 function Toolbar ({collapsed,
-  onCheck,
+  onCheckCollapsed,
   baseURL,
   nextSkip,
   prevSkip,
@@ -249,7 +268,9 @@ function Toolbar ({collapsed,
   isLoggedIn,
   project,
   disabled,
-  loadData
+  loadData,
+  showUpstream,
+  onToggleShowUpstream
 }) {
 
   var Form = ReactBootstrap.Form;
@@ -257,7 +278,7 @@ function Toolbar ({collapsed,
     <div className="row">
       <div className="col-xs-12">
         <Form inline className="waterfall-toolbar pull-right">
-          <CollapseButton collapsed={collapsed} onCheck={onCheck} disabled={disabled} />
+          <CollapseButton collapsed={collapsed} onCheckCollapsed={onCheckCollapsed} disabled={disabled} />
           <FilterBox
             filterFunction={buildVariantFilterFunc}
             placeholder={"Filter variant"}
@@ -282,6 +303,8 @@ function Toolbar ({collapsed,
           <GearMenu
             project={project}
             isLoggedIn={isLoggedIn}
+            showUpstream={showUpstream}
+            onToggleShowUpstream={onToggleShowUpstream}
           />
         </Form>
       </div>
@@ -340,7 +363,7 @@ class CollapseButton extends React.PureComponent {
     this.handleChange = this.handleChange.bind(this);
   }
   handleChange(event){
-    this.props.onCheck(this.refs.collapsedBuilds.checked);
+    this.props.onCheckCollapsed(this.refs.collapsedBuilds.checked);
   }
   render() {
     return (
@@ -487,12 +510,11 @@ class GearMenu extends React.PureComponent {
 
     return (
       <span>
-        <DropdownButton
-          className={"fa fa-gear"}
-          pullRight={true}
-          id={"waterfall-gear-menu"}
-        >
+        <DropdownButton className={"fa fa-gear"} pullRight={true} id={"waterfall-gear-menu"}>
           <MenuItem onClick={this.addNotification}>Add Notification</MenuItem>
+          <MenuItem onClick={this.props.onToggleShowUpstream}>
+            {this.props.showUpstream ? "Hide Upstream Commits" : "Show Upstream Commits"}
+          </MenuItem>
         </DropdownButton>
       </span>
     );
@@ -576,6 +598,12 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
   var message = version.messages[0];
+  if (version.upstream_data) {
+    var upstreamData = version.upstream_data[0];
+    var upstreamLink = "/" + upstreamData.trigger_type + "/" + upstreamData.trigger_id;
+    var upstreamAnchor = <a href={upstreamLink}>{upstreamData.project_name}</a>;
+    var upstreamElem = <div className="row"> From {upstreamAnchor} </div>
+  }
   var formatted_time = getFormattedTime(version.create_times[0], userTz, 'M/D/YY h:mm A' );
   const maxChars = 44
   var button;
@@ -597,6 +625,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
               <a className="githash" href={id_link}>{commit}</a>
               {formatted_time}
             </div>
+            {upstreamElem}
           </div>
           <div className="col-xs-12">
             <div className="row">

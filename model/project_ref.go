@@ -8,6 +8,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -449,4 +451,38 @@ func (t TriggerDefinition) Validate(parentProject string) error {
 		return errors.New("must provide a config file or generated tasks file")
 	}
 	return nil
+}
+
+func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
+	if triggerID == "" || triggerType == "" {
+		return "", nil
+	}
+	var projectID string
+	if triggerType == ProjectTriggerLevelTask {
+		upstreamTask, err := task.FindOneId(triggerID)
+		if err != nil {
+			return "", errors.Wrap(err, "error finding upstream task")
+		}
+		if upstreamTask == nil {
+			return "", errors.New("upstream task not found")
+		}
+		projectID = upstreamTask.Project
+	} else if triggerType == ProjectTriggerLevelBuild {
+		upstreamBuild, err := build.FindOneId(triggerID)
+		if err != nil {
+			return "", errors.Wrap(err, "error finding upstream build")
+		}
+		if upstreamBuild == nil {
+			return "", errors.New("upstream build not found")
+		}
+		projectID = upstreamBuild.Project
+	}
+	upstreamProject, err := FindOneProjectRef(projectID)
+	if err != nil {
+		return "", errors.Wrap(err, "error finding upstream project")
+	}
+	if upstreamProject == nil {
+		return "", errors.New("upstream project not found")
+	}
+	return upstreamProject.DisplayName, nil
 }

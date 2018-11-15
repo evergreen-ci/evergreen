@@ -41,6 +41,7 @@ var (
 	RemoteKey              = bsonutil.MustHaveTag(Version{}, "Remote")
 	RemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")
 	TriggerIDKey           = bsonutil.MustHaveTag(Version{}, "TriggerID")
+	TriggerTypeKey         = bsonutil.MustHaveTag(Version{}, "TriggerType")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -138,6 +139,21 @@ func ByProjectId(projectId string) db.Q {
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 		})
+}
+
+func ByProjectAndTrigger(projectID string, includeTriggered bool) db.Q {
+	q := bson.M{
+		IdentifierKey: projectID,
+		RequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+	}
+	if !includeTriggered {
+		q[TriggerIDKey] = bson.M{
+			"$exists": false,
+		}
+	}
+	return db.Query(q)
 }
 
 // ByProjectId finds all versions within a project, ordered by most recently created to oldest.

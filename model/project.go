@@ -1242,10 +1242,10 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 // FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.
 // Returns the versions themselves, as well as a map of version id -> the
 // builds that are a part of the version (unsorted).
-func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int) ([]version.Version, map[string][]build.Build, error) {
+func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int, showTriggered bool) ([]version.Version, map[string][]build.Build, error) {
 
 	// fetch the versions from the db
-	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
+	versionsFromDB, err := version.Find(version.ByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
 			version.RevisionKey,
 			version.ErrorsKey,
@@ -1255,6 +1255,8 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 			version.AuthorKey,
 			version.RevisionOrderNumberKey,
 			version.CreateTimeKey,
+			version.TriggerIDKey,
+			version.TriggerTypeKey,
 		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
