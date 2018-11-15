@@ -20,28 +20,28 @@ import (
 
 const (
 	// Requester API values
-	requesterMainline = "mainline"
-	requesterPatch    = "patch"
-	requesterTrigger  = "trigger"
-	requesterAdhoc    = "adhoc"
+	statsAPIRequesterMainline = "mainline"
+	statsAPIRequesterPatch    = "patch"
+	statsAPIRequesterTrigger  = "trigger"
+	statsAPIRequesterAdhoc    = "adhoc"
 
 	// Sort API values
-	sortEarliest = "earliest"
-	sortLatest   = "latest"
+	statsAPISortEarliest = "earliest"
+	statsAPISortLatest   = "latest"
 
 	// GroupBy API values
-	testGroupByDistro  = "test_task_variant_distro"
-	testGroupByVariant = "test_task_variant"
-	testGroupByTask    = "test_task"
-	testGroupByTest    = "test"
+	statsAPITestGroupByDistro  = "test_task_variant_distro"
+	statsAPITestGroupByVariant = "test_task_variant"
+	statsAPITestGroupByTask    = "test_task"
+	statsAPITestGroupByTest    = "test"
 
 	// API Limits
-	maxGroupNumDays = 26 * 7 // 26 weeks which is the maximum amount of data available
-	maxNumTests     = 50
-	maxNumTasks     = 50
+	statsAPIMaxGroupNumDays = 26 * 7 // 26 weeks which is the maximum amount of data available
+	statsAPIMaxNumTests     = 50
+	statsAPIMaxNumTasks     = 50
 
 	// Format used to encode dates in the API
-	dateFormat = "2006-01-02"
+	statsAPIDateFormat = "2006-01-02"
 )
 
 type testStatsHandler struct {
@@ -56,15 +56,9 @@ func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
 func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
 	project := gimlet.GetVars(r)["project_id"]
-	if project == "" {
-		return gimlet.ErrorResponse{
-			Message:    "projectId cannot be empty",
-			StatusCode: http.StatusBadRequest,
-		}
-	}
 	tsh.filter = stats.StatsFilter{Project: project}
 
-	return parseTestStatsFilter(vals, &tsh.filter)
+	return tsh.parseTestStatsFilter(vals)
 }
 
 func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
@@ -73,7 +67,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	testStatsResult, err = tsh.sc.GetTestStats(&tsh.filter)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Failed to retrieve the test stats"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the test stats"))
 	}
 
 	resp := gimlet.NewResponseBuilder()
@@ -92,36 +86,32 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         tsh.sc.GetURL(),
-				Key:             makeStartAtKey(testStatsResult[requestLimit]),
+				Key:             tsh.makeStartAtKey(testStatsResult[requestLimit]),
 				Limit:           requestLimit,
 			},
 		})
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err,
-				"problem paginating response"))
+				"Problem paginating response"))
 		}
 	}
 	testStatsResult = testStatsResult[:lastIndex]
 
 	for _, apiTestStats := range testStatsResult {
 		if err = resp.AddData(apiTestStats); err != nil {
-			return gimlet.MakeJSONErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
 
 	return resp
 }
 
-func makeGetProjectTestStats(sc data.Connector) gimlet.RouteHandler {
-	return &testStatsHandler{sc: sc}
-}
-
-// parseTestStatsFilter parses the query parameter values and fills the corresponding StatsFilter fields.
-func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
+// parseTestStatsFilter parses the query parameter values and fills the struct's filter field.
+func (tsh *testStatsHandler) parseTestStatsFilter(vals url.Values) error {
 	var err error
 
 	// requesters
-	filter.Requesters, err = readRequesters(vals["requesters"])
+	tsh.filter.Requesters, err = tsh.readRequesters(vals["requesters"])
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid requesters value",
@@ -137,7 +127,7 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	filter.BeforeDate, err = time.ParseInLocation(dateFormat, beforeDate, time.UTC)
+	tsh.filter.BeforeDate, err = time.ParseInLocation(statsAPIDateFormat, beforeDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid before_date value",
@@ -153,7 +143,7 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	filter.AfterDate, err = time.ParseInLocation(dateFormat, afterDate, time.UTC)
+	tsh.filter.AfterDate, err = time.ParseInLocation(statsAPIDateFormat, afterDate, time.UTC)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid after_date value",
@@ -162,13 +152,13 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 	}
 
 	// tests
-	filter.Tests = vals["tests"]
-	if len(filter.Tests) == 0 {
+	tsh.filter.Tests = vals["tests"]
+	if len(tsh.filter.Tests) == 0 {
 		return gimlet.ErrorResponse{
 			Message:    "Missing required tests parameter",
 			StatusCode: http.StatusBadRequest,
 		}
-	} else if len(filter.Tests) > maxNumTests {
+	} else if len(tsh.filter.Tests) > statsAPIMaxNumTests {
 		return gimlet.ErrorResponse{
 			Message:    "Too many tests values",
 			StatusCode: http.StatusBadRequest,
@@ -176,8 +166,8 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 	}
 
 	// tasks
-	filter.Tasks = vals["tasks"]
-	if len(filter.Tasks) > maxNumTasks {
+	tsh.filter.Tasks = vals["tasks"]
+	if len(tsh.filter.Tasks) > statsAPIMaxNumTasks {
 		return gimlet.ErrorResponse{
 			Message:    "Too many tasks values",
 			StatusCode: http.StatusBadRequest,
@@ -185,13 +175,13 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 	}
 
 	// variants
-	filter.BuildVariants = vals["variants"]
+	tsh.filter.BuildVariants = vals["variants"]
 
 	// distros
-	filter.Distros = vals["distros"]
+	tsh.filter.Distros = vals["distros"]
 
 	// group_num_days
-	filter.GroupNumDays, err = readInt(vals.Get("group_num_days"), 1, maxGroupNumDays, 1)
+	tsh.filter.GroupNumDays, err = tsh.readInt(vals.Get("group_num_days"), 1, statsAPIMaxGroupNumDays, 1)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid group_num_days value",
@@ -200,7 +190,7 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 	}
 
 	// limit
-	filter.Limit, err = getLimit(vals)
+	tsh.filter.Limit, err = getLimit(vals)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid limit value",
@@ -208,40 +198,40 @@ func parseTestStatsFilter(vals url.Values, filter *stats.StatsFilter) error {
 		}
 	}
 	// Add 1 for pagination
-	filter.Limit += 1
+	tsh.filter.Limit += 1
 
 	// sort
-	filter.Sort, err = readSort(vals.Get("sort"))
+	tsh.filter.Sort, err = tsh.readSort(vals.Get("sort"))
 	if err != nil {
 		return err
 	}
 
 	// group_by
-	filter.GroupBy, err = readTestGroupBy(vals.Get("group_by"))
+	tsh.filter.GroupBy, err = tsh.readTestGroupBy(vals.Get("group_by"))
 	if err != nil {
 		return err
 	}
 
 	// start_at
-	filter.StartAt, err = readStartAt(vals.Get("start_at"))
+	tsh.filter.StartAt, err = tsh.readStartAt(vals.Get("start_at"))
 	return err
 }
 
 // readRequesters parses requesters parameter values and translates them into a list of internal Evergreen requester names.
-func readRequesters(requesters []string) ([]string, error) {
+func (tsh *testStatsHandler) readRequesters(requesters []string) ([]string, error) {
 	if len(requesters) == 0 {
-		requesters = []string{requesterMainline}
+		requesters = []string{statsAPIRequesterMainline}
 	}
 	requesterValues := []string{}
 	for _, requester := range requesters {
 		switch requester {
-		case requesterMainline:
+		case statsAPIRequesterMainline:
 			requesterValues = append(requesterValues, evergreen.RepotrackerVersionRequester)
-		case requesterPatch:
+		case statsAPIRequesterPatch:
 			requesterValues = append(requesterValues, evergreen.PatchRequesters...)
-		case requesterTrigger:
+		case statsAPIRequesterTrigger:
 			requesterValues = append(requesterValues, evergreen.TriggerRequester)
-		case requesterAdhoc:
+		case statsAPIRequesterAdhoc:
 			requesterValues = append(requesterValues, evergreen.AdHocRequester)
 		default:
 			return nil, errors.Errorf("Invalid requester value %v", requester)
@@ -251,7 +241,7 @@ func readRequesters(requesters []string) ([]string, error) {
 }
 
 // readInt parses an integer parameter value, given minimum, maximum, and default values.
-func readInt(intString string, min, max, defaultValue int) (int, error) {
+func (tsh *testStatsHandler) readInt(intString string, min, max, defaultValue int) (int, error) {
 	if intString == "" {
 		return defaultValue, nil
 	}
@@ -267,11 +257,11 @@ func readInt(intString string, min, max, defaultValue int) (int, error) {
 }
 
 // readTestGroupBy parses a sort parameter value and returns the corresponding Sort struct.
-func readSort(sortValue string) (stats.Sort, error) {
+func (tsh *testStatsHandler) readSort(sortValue string) (stats.Sort, error) {
 	switch sortValue {
-	case sortEarliest:
+	case statsAPISortEarliest:
 		return stats.SortEarliestFirst, nil
-	case sortLatest:
+	case statsAPISortLatest:
 		return stats.SortLatestFirst, nil
 	case "":
 		return stats.SortEarliestFirst, nil
@@ -284,15 +274,15 @@ func readSort(sortValue string) (stats.Sort, error) {
 }
 
 // readTestGroupBy parses a group_by parameter value and returns the corresponding GroupBy struct.
-func readTestGroupBy(groupByValue string) (stats.GroupBy, error) {
+func (tsh *testStatsHandler) readTestGroupBy(groupByValue string) (stats.GroupBy, error) {
 	switch groupByValue {
-	case testGroupByDistro:
+	case statsAPITestGroupByDistro:
 		return stats.GroupByDistro, nil
-	case testGroupByVariant:
+	case statsAPITestGroupByVariant:
 		return stats.GroupByVariant, nil
-	case testGroupByTask:
+	case statsAPITestGroupByTask:
 		return stats.GroupByTask, nil
-	case testGroupByTest:
+	case statsAPITestGroupByTest:
 		return stats.GroupByTest, nil
 	case "":
 		return stats.GroupByDistro, nil
@@ -305,7 +295,7 @@ func readTestGroupBy(groupByValue string) (stats.GroupBy, error) {
 }
 
 // readStartAt parses a start_at key value and returns the corresponding StartAt struct.
-func readStartAt(startAtValue string) (*stats.StartAt, error) {
+func (tsh *testStatsHandler) readStartAt(startAtValue string) (*stats.StartAt, error) {
 	if startAtValue == "" {
 		return nil, nil
 	}
@@ -316,7 +306,7 @@ func readStartAt(startAtValue string) (*stats.StartAt, error) {
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	date, err := time.ParseInLocation(dateFormat, elements[0], time.UTC)
+	date, err := time.ParseInLocation(statsAPIDateFormat, elements[0], time.UTC)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			Message:    "Invalid start_by value",
@@ -334,7 +324,7 @@ func readStartAt(startAtValue string) (*stats.StartAt, error) {
 
 // makeStartAtKey creates a key string that can be used as a start_at value to fetch
 // the next results with pagination.
-func makeStartAtKey(testStats model.APITestStats) string {
+func (tsh *testStatsHandler) makeStartAtKey(testStats model.APITestStats) string {
 	elements := []string{
 		testStats.Date,
 		testStats.BuildVariant,
@@ -343,4 +333,8 @@ func makeStartAtKey(testStats model.APITestStats) string {
 		testStats.Distro,
 	}
 	return strings.Join(elements, "|")
+}
+
+func makeGetProjectTestStats(sc data.Connector) gimlet.RouteHandler {
+	return &testStatsHandler{sc: sc}
 }

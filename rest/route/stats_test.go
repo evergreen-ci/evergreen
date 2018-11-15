@@ -23,32 +23,32 @@ func TestStatsSuite(t *testing.T) {
 
 func (s *StatsSuite) TestParseStatsFilter() {
 	values := url.Values{
-		"requesters":  []string{requesterMainline, requesterPatch},
+		"requesters":  []string{statsAPIRequesterMainline, statsAPIRequesterPatch},
 		"after_date":  []string{"1998-07-12"},
 		"before_date": []string{"2018-07-15"},
 		"tests":       []string{"test1", "test2"},
 		"tasks":       []string{"task1", "task2"},
 	}
-	filter := stats.StatsFilter{}
+	handler := testStatsHandler{}
 
-	err := parseTestStatsFilter(values, &filter)
+	err := handler.parseTestStatsFilter(values)
 	s.Require().NoError(err)
 
 	s.Equal([]string{
 		evergreen.RepotrackerVersionRequester,
 		evergreen.PatchVersionRequester,
 		evergreen.GithubPRRequester,
-	}, filter.Requesters)
-	s.Equal(time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), filter.AfterDate)
-	s.Equal(time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC), filter.BeforeDate)
-	s.Equal(values["tests"], filter.Tests)
-	s.Equal(values["tasks"], filter.Tasks)
-	s.Nil(filter.BuildVariants)
-	s.Nil(filter.Distros)
-	s.Nil(filter.StartAt)
-	s.Equal(stats.GroupByDistro, filter.GroupBy)  // default value
-	s.Equal(stats.SortEarliestFirst, filter.Sort) // default value
-	s.Equal(defaultLimit+1, filter.Limit)         // default value
+	}, handler.filter.Requesters)
+	s.Equal(time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), handler.filter.AfterDate)
+	s.Equal(time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC), handler.filter.BeforeDate)
+	s.Equal(values["tests"], handler.filter.Tests)
+	s.Equal(values["tasks"], handler.filter.Tasks)
+	s.Nil(handler.filter.BuildVariants)
+	s.Nil(handler.filter.Distros)
+	s.Nil(handler.filter.StartAt)
+	s.Equal(stats.GroupByDistro, handler.filter.GroupBy)  // default value
+	s.Equal(stats.SortEarliestFirst, handler.filter.Sort) // default value
+	s.Equal(defaultLimit+1, handler.filter.Limit)         // default value
 }
 
 func (s *StatsSuite) TestRun() {
@@ -78,11 +78,12 @@ func (s *StatsSuite) TestRun() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
 	lastDoc := sc.MockStatsConnector.CachedTestStats[100]
-	s.Equal(makeStartAtKey(lastDoc), resp.Pages().Next.Key)
+	s.Equal(handler.makeStartAtKey(lastDoc), resp.Pages().Next.Key)
 }
 
 func (s *StatsSuite) TestReadStartAt() {
-	startAt, err := readStartAt("1998-07-12|variant1|task1|test1|distro1")
+	handler := testStatsHandler{}
+	startAt, err := handler.readStartAt("1998-07-12|variant1|task1|test1|distro1")
 	s.Require().NoError(err)
 
 	s.Equal(time.Date(1998, 7, 12, 0, 0, 0, 0, time.UTC), startAt.Date)
@@ -92,6 +93,6 @@ func (s *StatsSuite) TestReadStartAt() {
 	s.Equal("distro1", startAt.Distro)
 
 	// Invalid format
-	_, err = readStartAt("1998-07-12|variant1|task1|test1")
+	_, err = handler.readStartAt("1998-07-12|variant1|task1|test1")
 	s.Require().Error(err)
 }
