@@ -91,6 +91,23 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 	}
 	conf.LoadedFrom = path
 
+	// check for a local settings file
+	localPath, err := findConfigFilePath(".evergreen.yml")
+	if err != nil {
+		return conf, nil
+	}
+
+	localData, err := ioutil.ReadFile(localPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem reading configuration from file")
+	}
+
+	// Unmarshalling into the same struct will only override fields which are set
+	// in the new YAML
+	if err = yaml.Unmarshal(localData, conf); err != nil {
+		return nil, errors.Wrap(err, "problem reading yaml data from configuration file")
+	}
+
 	return conf, nil
 }
 
