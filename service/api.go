@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -362,37 +361,6 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, heartbeatResponse)
 }
 
-// TaskSystemInfo is the handler for the system info collector, which
-// reads grip/message.SystemInfo objects from the request body.
-func (as *APIServer) TaskSystemInfo(w http.ResponseWriter, r *http.Request) {
-	t := MustHaveTask(r)
-	info := &message.SystemInfo{}
-
-	if err := util.ReadJSONInto(util.NewRequestReader(r), info); err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, err)
-		return
-	}
-
-	event.LogTaskSystemData(t.Id, info)
-
-	gimlet.WriteJSON(w, struct{}{})
-}
-
-// TaskProcessInfo is the handler for the process info collector, which
-// reads slices of grip/message.ProcessInfo objects from the request body.
-func (as *APIServer) TaskProcessInfo(w http.ResponseWriter, r *http.Request) {
-	t := MustHaveTask(r)
-	procs := []*message.ProcessInfo{}
-
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &procs); err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, err)
-		return
-	}
-
-	event.LogTaskProcessData(t.Id, procs)
-	gimlet.WriteJSON(w, struct{}{})
-}
-
 // fetchProjectRef returns a project ref given the project identifier
 func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["identifier"]
@@ -560,8 +528,6 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 	app.Route().Version(2).Route("/task/{taskId}/heartbeat").Wrap(checkTaskSecret, checkHost).Handler(as.Heartbeat).Post()
 	app.Route().Version(2).Route("/task/{taskId}/results").Wrap(checkTaskSecret, checkHost).Handler(as.AttachResults).Post()
 	app.Route().Version(2).Route("/task/{taskId}/test_logs").Wrap(checkTaskSecret, checkHost).Handler(as.AttachTestLog).Post()
-	app.Route().Version(2).Route("/task/{taskId}/system_info").Wrap(checkTaskSecret, checkHost).Handler(as.TaskSystemInfo).Post()
-	app.Route().Version(2).Route("/task/{taskId}/process_info").Wrap(checkTaskSecret, checkHost).Handler(as.TaskProcessInfo).Post()
 	app.Route().Version(2).Route("/task/{taskId}/files").Wrap(checkTask, checkHost).Handler(as.AttachFiles).Post()
 	app.Route().Version(2).Route("/task/{taskId}/distro").Wrap(checkTask).Handler(as.GetDistro).Get()
 	app.Route().Version(2).Route("/task/{taskId}/version").Wrap(checkTask).Handler(as.GetVersion).Get()
