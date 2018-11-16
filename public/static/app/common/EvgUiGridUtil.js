@@ -43,20 +43,24 @@ mciModule.factory('EvgUiGridUtil', function() {
   // :param terms: [String, ...], any term could be prefixed with ! for negation
   // :returns: [{predicate: String -> Boolean, op: 'AND'|'OR'}, ...]
   function compilePredicates(terms) {
-    return _.map(terms, function(termExpr) {
-      if (termExpr[0] == '!') {
-        var term = termExpr.substr(1)
-        return {
-          predicate: function(value) { return term != value },
-          op: 'AND',
+    return _.chain(terms)
+       .map(function(termExpr) {
+        if (termExpr[0] == '!') {
+          var term = termExpr.substr(1)
+          return {
+            predicate: function(value) { return term != value },
+            op: 'AND',
+          }
+        } else {
+          return {
+            predicate: function(value) { return termExpr == value },
+            op: 'OR',
+          }
         }
-      } else {
-        return {
-          predicate: function(value) { return termExpr == value },
-          op: 'OR',
-        }
-      }
-    })
+      })
+      .sortBy('op') // OR predicates should go first
+      .reverse()
+      .value()
   }
 
   // Store compiled predicates in cache, to prevent recompilation for each row

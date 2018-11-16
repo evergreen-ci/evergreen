@@ -55,6 +55,30 @@ describe('PerfDiscoveryServiceTest', function() {
     expect(gridUtil.multiselectConditionFn(['b', 'c'], 'a')).toBe(false)
   }) 
 
+  it('filter items with exclusionary filtering', function() {
+    expect(gridUtil.multiselectConditionFn(['!a', '!b'], 'X')).toBe(true)
+    expect(gridUtil.multiselectConditionFn(['!a', '!b'], 'a')).toBe(false)
+    expect(gridUtil.multiselectConditionFn(['!a', '!b'], 'b')).toBe(false)
+  })
+
+  it('filts items with mixed [ex|in]clusionary filtering', function() {
+    expect(gridUtil.multiselectConditionFn(['a', '!b'], 'X')).toBe(false)
+    expect(gridUtil.multiselectConditionFn(['a', '!b'], 'a')).toBe(true)
+    expect(gridUtil.multiselectConditionFn(['a', '!b'], 'b')).toBe(false)
+
+    expect(gridUtil.multiselectConditionFn(['b', '!b'], 'b')).toBe(false)
+    expect(gridUtil.multiselectConditionFn(['b', '!b'], 'X')).toBe(false)
+  })
+
+  it('filts items with mixed [ex|in]clusionary filtering (reversed order)', function() {
+    expect(gridUtil.multiselectConditionFn(['!b', 'a'], 'X')).toBe(false)
+    expect(gridUtil.multiselectConditionFn(['!b', 'a'], 'a')).toBe(true)
+    expect(gridUtil.multiselectConditionFn(['!b', 'a'], 'b')).toBe(false)
+
+    expect(gridUtil.multiselectConditionFn(['!b', 'b'], 'b')).toBe(false)
+    expect(gridUtil.multiselectConditionFn(['!b', 'b'], 'X')).toBe(false)
+  })
+
   it('extends col def with multiselect filter boilerplate', function() {
     var col = gridUtil.multiselectColDefMixin({
       field: 'a',
