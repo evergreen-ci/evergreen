@@ -1,6 +1,8 @@
 package route
 
 import (
+	"bytes"
+	"io/ioutil"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -169,4 +172,13 @@ func TestMakeIntentHost(t *testing.T) {
 	assert.Equal("my_secret_key", ec2Settings.AWSSecret)
 	assert.Equal("subnet-123456", ec2Settings.SubnetId)
 	assert.Equal(true, ec2Settings.IsVpc)
+}
+
+func TestHostCreateHandler(t *testing.T) {
+	assert := assert.New(t)
+	n := ioutil.NopCloser(bytes.NewBufferString("{\"distro\":\"myDistro\",\"ebs_block_device\":null,\"spot\":false,\"subnet_id\":\"subnet-123456\",\"provider\":\"ec2\",\"num_hosts\":\"8\",\"num_hosts_int\":8,\"scope\":\"task\",\"timeout_setup_secs\":600,\"timeout_teardown_secs\":21600,\"retries\":1}"))
+	c := apimodels.CreateHost{}
+	err := util.ReadJSONInto(n, &c)
+	assert.Equal(8, c.NumHostsInt)
+	assert.NoError(err)
 }

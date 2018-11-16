@@ -22,8 +22,8 @@ func (v *StringOrBool) MarshalYAML() (interface{}, error) {
 }
 
 func (v *StringOrBool) UnmarshalYAML(um func(interface{}) error) error {
-	var val interface{}
-	err := um(val)
+	var val string
+	err := um(&val)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -45,9 +45,9 @@ func (v *StringOrBool) setVal(val interface{}) error {
 }
 
 func (v *StringOrBool) UnmarshalJSON(in []byte) error {
-	var val interface{}
+	var val string
 
-	err := json.Unmarshal(in, val)
+	err := json.Unmarshal(in, &val)
 	if err != nil {
 		return errors.WithStack(err)
 	}

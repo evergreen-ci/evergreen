@@ -94,7 +94,7 @@ type CreateHost struct {
 	// agent-controlled settings
 	CloudProvider       string           `mapstructure:"provider" json:"provider,omitempty" plugin:"expand"`
 	NumHosts            util.StringOrInt `mapstructure:"num_hosts" json:"num_hosts,omitempty" plugin:"expand"`
-	NumHostsInt         int              // after expansion
+	NumHostsInt         int              `mapstructure:"num_hosts_int" json:"num_hosts_int,omitempty"`
 	Scope               string           `mapstructure:"scope" json:"scope,omitempty" plugin:"expand"`
 	SetupTimeoutSecs    int              `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs,omitempty"`
 	TeardownTimeoutSecs int              `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs,omitempty"`
