@@ -5,6 +5,31 @@ mciModule
     PATCH_ID_LEN: 24,
   })
 
+  // !! IMPORTANT !! Add your setting name to a Setting.test.js
+  .constant('SETTING_DEFS', {
+    GLOBAL_PREFIX: 'mciSetting',
+    perf: {
+      trendchart: {
+        linearMode: {
+          enabled: {
+            type: 'Boolean',
+            default: true,
+          },
+        },
+        originMode: {
+          enabled: {
+            type: 'Boolean',
+            default: true,
+          },
+        },
+        threadLevelMode: {
+          type: 'String',
+          default: 'maxonly',
+        }
+      },
+    },
+  })
+
   .constant('FORMAT', {
     ISO_DATE: 'YYYY-MM-DD',
   })
