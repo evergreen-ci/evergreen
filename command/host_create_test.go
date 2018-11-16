@@ -89,7 +89,7 @@ func (s *createHostSuite) TestParamValidation() {
 	s.NoError(s.cmd.expandAndValidate(s.conf))
 
 	// verify errors for things controlled by the agent
-	s.params["num_hosts"] = 11
+	s.params["num_hosts"] = "11"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "num_hosts must be between 1 and 10")
 	s.params["scope"] = "idk"
