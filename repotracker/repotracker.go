@@ -409,9 +409,11 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 	return project, nil
 }
 
+// AddBuildBreakSubscriptions will subscribe admins of a project to a version if no one
+// else would receive a build break notification
 func AddBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef) error {
 	subscriptionBase := event.Subscription{
-		ResourceType: event.ResourceTypeVersion,
+		ResourceType: event.ResourceTypeTask,
 		Trigger:      "build-break",
 		Selectors: []event.Selector{
 			{
@@ -426,14 +428,18 @@ func AddBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 				Type: "requester",
 				Data: evergreen.RepotrackerVersionRequester,
 			},
+			{
+				Type: "in-version",
+				Data: v.Id,
+			},
 		},
 	}
 	subscribers := []event.Subscriber{}
 
 	// if the commit author has subscribed to build break notifications,
-	// send it to the comitter, but not the admins
+	// don't send it to admins
 	catcher := grip.NewSimpleCatcher()
-	if v.AuthorID != "" {
+	if v.AuthorID != "" && v.TriggerID == "" {
 		author, err := user.FindOne(user.ById(v.AuthorID))
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "unable to retrieve user"))
@@ -464,6 +470,32 @@ func AddBuildBreakSubscriptions(v *version.Version, projectRef *model.ProjectRef
 		catcher.Add(newSubscription.Upsert())
 	}
 	return catcher.Resolve()
+}
+
+func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
+	u, err := user.FindOne(user.ById(userID))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find user")
+	}
+	if u == nil {
+		return nil, errors.Errorf("user %s does not exist", userID)
+	}
+	var subscriber *event.Subscriber
+	preference := u.Settings.Notifications.BuildBreak
+	if preference != "" {
+		subscriber = &event.Subscriber{
+			Type: string(preference),
+		}
+		if preference == user.PreferenceEmail {
+			subscriber.Target = u.Email()
+		} else if preference == user.PreferenceSlack {
+			subscriber.Target = u.Settings.SlackUsername
+		} else {
+			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
+		}
+	}
+
+	return subscriber, nil
 }
 
 func CreateManifest(v version.Version, proj *model.Project, branch string, settings *evergreen.Settings) (*manifest.Manifest, error) {
@@ -510,32 +542,6 @@ func CreateManifest(v version.Version, proj *model.Project, branch string, setti
 	_, err = newManifest.TryInsert()
 
 	return newManifest, errors.Wrap(err, "error inserting manifest")
-}
-
-func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
-	u, err := user.FindOne(user.ById(userID))
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to find user")
-	}
-	if u == nil {
-		return nil, errors.Errorf("user %s does not exist", userID)
-	}
-	var subscriber *event.Subscriber
-	preference := u.Settings.Notifications.BuildBreak
-	if preference != "" {
-		subscriber = &event.Subscriber{
-			Type: string(preference),
-		}
-		if preference == user.PreferenceEmail {
-			subscriber.Target = u.Email()
-		} else if preference == user.PreferenceSlack {
-			subscriber.Target = u.Settings.SlackUsername
-		} else {
-			return nil, errors.Errorf("invalid subscription preference for build break: %s", preference)
-		}
-	}
-
-	return subscriber, nil
 }
 
 func CreateVersionFromConfig(ref *model.ProjectRef, config *model.Project, metadata VersionMetadata, ignore bool, versionErrs *VersionErrors) (*version.Version, error) {
