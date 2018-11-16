@@ -24,6 +24,7 @@ const (
 	Error ValidationErrorLevel = iota
 	Warning
 	unauthorizedCharacters = "|"
+	maxTimes               = 50
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -988,7 +989,7 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 
 func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
-	return validateTimesCalledPerBuildVariant(p, ts, evergreen.GenerateTasksCommandName, 1)
+	return validateTimesCalledPerBuildVariant(p, ts, evergreen.GenerateTasksCommandName, maxTimes)
 }
 
 func validateCreateHosts(p *model.Project) ValidationErrors {

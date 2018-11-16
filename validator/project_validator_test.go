@@ -1695,7 +1695,7 @@ func TestValidateGenerateTasks(t *testing.T) {
 	err = model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
 	errs = validateGenerateTasks(&p)
-	assert.Len(errs, 1)
+	assert.Len(errs, 0)
 
 	// buildvariants that call a task with a function and a task with a command with `generate.tasks`
 	yml = `
