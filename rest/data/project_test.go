@@ -289,9 +289,7 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
 //
 // Tests project create action
 type ProjectConnectorCreateUpdateSuite struct {
-	sc       Connector
-	setup    func() error
-	teardown func() error
+	sc Connector
 	suite.Suite
 }
 

@@ -259,13 +259,10 @@ func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error
 
 	projectRef := MustHaveProjectContext(ctx).ProjectRef
 	if projectRef == nil {
-		return errors.New("Cannot process request")
+		return errors.New("Project not found")
 	}
 
 	projectId := projectRef.Identifier
-
-	// Initialize the API model with an empty entity
-	//h.projectRef = model.APIProjectRef{}
 
 	if err := h.projectRef.BuildFromService(projectRef); err != nil {
 		return errors.Wrap(err, "Cannot process request")
@@ -282,10 +279,8 @@ func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (h *projectUpdateHandler) Run(ctx context.Context) gimlet.Responder {
 	updatedApiProject, err := h.sc.UpdateProject(&h.projectRef)
-
 	if err != nil {
-		// Don't expose error code in order to keep project names in secret
-		return gimlet.MakeJSONErrorResponder(errors.New("Cannot update project!"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "An error occurred during project update process!"))
 	}
 
 	return gimlet.NewJSONResponse(updatedApiProject)

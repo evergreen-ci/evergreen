@@ -65,11 +65,11 @@ type APITriggerDefinition struct {
 	Project           APIString `json:"project"`
 	Level             APIString `json:"level"` //build or task
 	DefinitionID      APIString `json:"definition_id"`
-	BuildVariantRegex APIString `json:"variant_regex,omitempty"`
-	TaskRegex         APIString `json:"task_regex,omitempty"`
-	Status            APIString `json:"status,omitempty"`
-	ConfigFile        APIString `json:"config_file,omitempty"`
-	Command           APIString `json:"command,omitempty"`
+	BuildVariantRegex APIString `json:"variant_regex"`
+	TaskRegex         APIString `json:"task_regex"`
+	Status            APIString `json:"status"`
+	ConfigFile        APIString `json:"config_file"`
+	Command           APIString `json:"command"`
 }
 
 type APIProjectRef struct {
@@ -92,7 +92,7 @@ type APIProjectRef struct {
 	Admins               []APIString `json:"admins"`
 	NotifyOnBuildFailure bool        `json:"notify_on_failure"`
 
-	Triggers []APITriggerDefinition `json:"triggers,omitempty"`
+	Triggers []APITriggerDefinition `json:"triggers"`
 }
 
 func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
