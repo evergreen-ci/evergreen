@@ -100,6 +100,7 @@ db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.old_tasks.ensureIndex({ "old_task_id": 1})
 db.old_tasks.ensureIndex({"branch": 1, "finish_time": 1})
+db.old_tasks.createIndex({ "execution_tasks": 1})
 
 //======versions======//
 db.versions.ensureIndex({ "order" : 1 })
