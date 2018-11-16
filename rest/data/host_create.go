@@ -140,9 +140,12 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 		WeaklyTypedInput: true,
 		Result:           createHost,
 	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 	err = decoder.Decode(cmd.Params)
 	if err != nil {
-		return nil, errors.New("error decoding createHost parameters")
+		return nil, errors.WithStack(err)
 	}
 	return createHost, nil
 }
