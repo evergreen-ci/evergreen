@@ -48,8 +48,9 @@ func main() {
 	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
 	flag.Parse()
 
-	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", 2*time.Second)
+	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", 5*time.Second)
 	grip.CatchEmergencyFatal(err)
+	session.SetSocketTimeout(10 * time.Second)
 	db := session.DB(dbName)
 	grip.CatchEmergencyFatal(db.DropDatabase())
 
