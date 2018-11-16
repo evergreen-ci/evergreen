@@ -18,6 +18,53 @@ func TestTimeJitter(t *testing.T) {
 	}
 }
 
+func TestTimeRoundPartHour(t *testing.T) {
+	assert := assert.New(t)
+
+	// make sure the fixtures work:
+	for i := 0; i < 24; i++ {
+		assert.Equal(i, getTimeWithHour(i).Hour())
+	}
+
+	type timeParts struct {
+		expectedValue int
+		actualHours   int
+		interval      int
+	}
+
+	cases := []timeParts{
+		{0, 3, 6},
+		{0, 5, 6},
+		{0, 6, 10},
+		{0, 15, 13},
+		{2, 3, 2},
+		{4, 4, 2},
+		{4, 5, 2},
+		{5, 8, 5},
+		{5, 9, 5},
+		{6, 6, 6},
+		{6, 8, 6},
+		{10, 10, 5},
+		{10, 12, 10},
+		{10, 15, 10},
+		{10, 18, 10},
+		{12, 14, 6},
+		{15, 16, 5},
+		{18, 23, 6},
+		{0, 0, -1},
+	}
+
+	for _, c := range cases {
+		assert.Equal(c.expectedValue, findPartHour(getTimeWithHour(c.actualHours), c.interval).Hour(),
+			fmt.Sprintf("%+v", c))
+	}
+
+	assert.NotPanics(func() {
+		findPartHour(getTimeWithHour(0), 0)
+	})
+
+}
+
 func TestTimeRoundPartMinute(t *testing.T) {
 	assert := assert.New(t)
 
@@ -111,6 +158,12 @@ func TestTimeRoundPartSecond(t *testing.T) {
 	assert.NotPanics(func() {
 		findPartSec(getTimeWithSec(0), 0)
 	})
+}
+
+func getTimeWithHour(hour int) time.Time {
+	now := time.Now()
+
+	return time.Date(now.Year(), now.Month(), now.Day(), hour, 0, 0, 0, time.UTC)
 }
 
 func getTimeWithMin(min int) time.Time {
