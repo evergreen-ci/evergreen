@@ -86,7 +86,7 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	models := make([]model.Model, 1)
-	statsModel := &model.APITaskStats{}
+	statsModel := &model.APIRecentTaskStats{}
 	if err := statsModel.BuildFromService(stats); err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
