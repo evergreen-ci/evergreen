@@ -268,21 +268,22 @@ func TestExpandS3PutParams(t *testing.T) {
 		Convey("the expandParams function should error for invalid optional values", func() {
 			cmd = &s3put{}
 
-			for _, v := range []string{"", "false", "False", "0", "F", "f", "${foo|false}", "${foo|}", "${foo}"} {
+			for _, v := range []util.StringOrBool{"", "false", "False", "0", "F", "f", "no", "n", "${foo|false}", "${foo|}", "${foo}"} {
 				cmd.skipMissing = true
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldBeNil)
 				So(cmd.skipMissing, ShouldBeFalse)
 			}
 
-			for _, v := range []string{"true", "True", "1", "T", "t", "${foo|true}"} {
+			for _, v := range []util.StringOrBool{"true", "True", "1", "T", "t", "yes", "y", "${foo|true}"} {
 				cmd.skipMissing = false
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldBeNil)
 				So(cmd.skipMissing, ShouldBeTrue)
 			}
 
-			for _, v := range []string{"NOPE", "NONE", "EMPTY", "01", "100", "${foo|wat}"} {
+			cmd.skipMissing = false
+			for _, v := range []util.StringOrBool{"NOPE", "NONE", "EMPTY", "01", "100", "${foo|wat}"} {
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldNotBeNil)
 				So(cmd.skipMissing, ShouldBeFalse)
