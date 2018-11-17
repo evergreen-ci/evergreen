@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// APITaskStats is the model to be returned by the API whenever recent tasks are fetched.
-type APITaskStats struct {
+// APIRecentTaskStats is the model to be returned by the API whenever recent tasks are fetched.
+type APIRecentTaskStats struct {
 	Total              int `json:"total"`
 	Inactive           int `json:"inactive"`
 	Unstarted          int `json:"unstarted"`
@@ -21,8 +21,8 @@ type APITaskStats struct {
 	TestTimedOut       int `json:"test-timed-out"`
 }
 
-// BuildFromService converts from service level structs to an APITaskStats.
-func (apiStatus *APITaskStats) BuildFromService(h interface{}) error {
+// BuildFromService converts from service level structs to an APIRecentTaskStats.
+func (apiStatus *APIRecentTaskStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.ResultCounts:
 		apiStatus.Total = v.Total
@@ -42,9 +42,9 @@ func (apiStatus *APITaskStats) BuildFromService(h interface{}) error {
 	return nil
 }
 
-// ToService returns a service layer distro using the data from APITaskStats.
-func (apiStatus *APITaskStats) ToService() (interface{}, error) {
-	return nil, errors.Errorf("ToService() is not implemented for APITaskStats")
+// ToService returns a service layer distro using the data from APIRecentTaskStats.
+func (apiStatus *APIRecentTaskStats) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for APIRecentTaskStats")
 }
 
 // APIHostStatsByDistro is a slice of host stats for a distro

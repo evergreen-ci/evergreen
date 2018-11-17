@@ -183,7 +183,7 @@ func (f *StatsFilter) validateCommon() error {
 }
 
 // validateForTests validates that the StatsFilter struct is valid for use with test stats.
-func (f *StatsFilter) validateForTests() error {
+func (f *StatsFilter) ValidateForTests() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(f.validateCommon())
@@ -198,7 +198,7 @@ func (f *StatsFilter) validateForTests() error {
 }
 
 //use with test stats validates that the StatsFilter struct is valid for use with task stats.
-func (f *StatsFilter) validateForTasks() error {
+func (f *StatsFilter) ValidateForTasks() error {
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Add(f.validateCommon())
@@ -239,7 +239,7 @@ type TestStats struct {
 
 // GetTestStats queries the precomputed test statistics using a filter.
 func GetTestStats(filter *StatsFilter) ([]TestStats, error) {
-	err := filter.validateForTests()
+	err := filter.ValidateForTests()
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
@@ -276,7 +276,7 @@ type TaskStats struct {
 
 // GetTaskStats queries the precomputed task statistics using a filter.
 func GetTaskStats(filter *StatsFilter) ([]TaskStats, error) {
-	err := filter.validateForTasks()
+	err := filter.ValidateForTasks()
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}

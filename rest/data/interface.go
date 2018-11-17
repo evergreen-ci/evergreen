@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -218,4 +219,7 @@ type Connector interface {
 	ListHostsForTask(string) ([]host.Host, error)
 	MakeIntentHost(string, string, string, apimodels.CreateHost) (*host.Host, error)
 	CreateHostsFromTask(*task.Task, user.DBUser, string) error
+
+	// Get test execution statistics
+	GetTestStats(*stats.StatsFilter) ([]restModel.APITestStats, error)
 }
