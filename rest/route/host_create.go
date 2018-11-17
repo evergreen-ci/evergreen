@@ -3,7 +3,6 @@ package route
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	dbModel "github.com/evergreen-ci/evergreen/model"
@@ -61,11 +60,7 @@ func (h *hostCreateHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *hostCreateHandler) Run(ctx context.Context) gimlet.Responder {
 	hosts := []host.Host{}
-	numHosts, err := strconv.Atoi(h.createHost.NumHosts)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-	for i := 0; i < numHosts; i++ {
+	for i := 0; i < h.createHost.NumHosts; i++ {
 		intentHost, err := h.sc.MakeIntentHost(h.taskID, "", "", h.createHost)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)

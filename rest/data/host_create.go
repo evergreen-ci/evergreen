@@ -3,7 +3,6 @@ package data
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -111,12 +110,7 @@ func (dc *DBCreateHostConnector) CreateHostsFromTask(t *task.Task, user user.DBU
 			catcher.Add(err)
 			continue
 		}
-		numHosts, err := strconv.Atoi(createHost.NumHosts)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "problem parsing '%s' as int", createHost.NumHosts))
-			continue
-		}
-		for i := 0; i < numHosts; i++ {
+		for i := 0; i < createHost.NumHosts; i++ {
 			intent, err := dc.MakeIntentHost(t.Id, user.Username(), keyVal, createHost)
 			if err != nil {
 				return errors.Wrap(err, "error creating host document")
@@ -136,16 +130,9 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 		return nil, nil
 	}
 	createHost := &apimodels.CreateHost{}
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		WeaklyTypedInput: true,
-		Result:           createHost,
-	})
+	err := mapstructure.Decode(cmd.Params, createHost)
 	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	err = decoder.Decode(cmd.Params)
-	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.New("error decoding createHost parameters")
 	}
 	return createHost, nil
 }
