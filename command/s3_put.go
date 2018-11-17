@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -72,7 +71,7 @@ type s3put struct {
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// the path specified in local_file does not exist. Defaults to false, which triggers errors
 	// for missing files.
-	Optional string `mapstructure:"optional" plugin:"expand"`
+	Optional util.StringOrBool `mapstructure:"optional" plugin:"expand"`
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
@@ -163,14 +162,11 @@ func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
 		return errors.WithStack(err)
 	}
 
-	if s3pc.Optional != "" {
-		s3pc.skipMissing, err = strconv.ParseBool(s3pc.Optional)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	} else {
-		s3pc.skipMissing = false
+	s3pc.skipMissing, err = s3pc.Optional.Bool()
+	if err != nil {
+		return errors.WithStack(err)
 	}
+
 	return nil
 }
 
