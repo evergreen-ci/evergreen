@@ -17,6 +17,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+const localConfigPath = ".evergreen.local.yml"
+
 type ClientProjectConf struct {
 	Name     string   `json:"name" yaml:"name,omitempty"`
 	Default  bool     `json:"default" yaml:"default,omitempty"`
@@ -90,6 +92,19 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 		return nil, errors.Wrap(err, "problem reading yaml data from configuration file")
 	}
 	conf.LoadedFrom = path
+
+	localData, err := ioutil.ReadFile(localConfigPath)
+	if os.IsNotExist(err) {
+		return conf, nil
+	} else if err != nil {
+		return nil, errors.Wrap(err, "problem reading local configuration from file")
+	}
+
+	// Unmarshalling into the same struct will only override fields which are set
+	// in the new YAML
+	if err = yaml.Unmarshal(localData, conf); err != nil {
+		return nil, errors.Wrap(err, "problem reading yaml data from local configuration file")
+	}
 
 	return conf, nil
 }
