@@ -94,7 +94,7 @@ func NewClientSettings(fn string) (*ClientSettings, error) {
 	conf.LoadedFrom = path
 
 	localData, err := ioutil.ReadFile(localConfigPath)
-	if err != nil && os.IsNotExist(err) {
+	if os.IsNotExist(err) {
 		return conf, nil
 	} else if err != nil {
 		return nil, errors.Wrap(err, "problem reading local configuration from file")

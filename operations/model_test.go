@@ -3,6 +3,7 @@ package operations
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -116,8 +117,12 @@ func TestSetDefaultAlias(t *testing.T) {
 }
 
 func TestNewClientSettings(t *testing.T) {
-	globalTestConfigPath := ".evergreen.newclientsettings.test.yml"
-	err := ioutil.WriteFile(globalTestConfigPath,
+	tmpdir, err := ioutil.TempDir("", "newclientsettings")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	globalTestConfigPath := filepath.Join(tmpdir, ".evergreen.test.yml")
+	err = ioutil.WriteFile(globalTestConfigPath,
 		[]byte(`api_server_host: https://some.evergreen.api
 ui_server_host: https://some.evergreen.ui
 api_key: not-a-valid-token
@@ -129,7 +134,6 @@ projects:
     - all
   alias: some-variants`), 0600)
 	assert.NoError(t, err)
-	defer os.Remove(globalTestConfigPath)
 
 	clientSettings, err := NewClientSettings(globalTestConfigPath)
 	assert.NoError(t, err)
