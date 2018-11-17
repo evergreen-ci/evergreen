@@ -1,8 +1,6 @@
 package apimodels
 
 import (
-	"strconv"
-
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -95,7 +93,7 @@ type CreateHost struct {
 
 	// agent-controlled settings
 	CloudProvider       string `mapstructure:"provider" json:"provider" plugin:"expand"`
-	NumHosts            string `mapstructure:"num_hosts" json:"num_hosts" plugin:"expand"`
+	NumHosts            int    `mapstructure:"num_hosts" json:"num_hosts"`
 	Scope               string `mapstructure:"scope" json:"scope" plugin:"expand"`
 	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs"`
 	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs"`
@@ -131,18 +129,10 @@ func (ch *CreateHost) Validate() error {
 		catcher.Add(errors.New("aws_access_key_id, aws_secret_access_key, key_name must all be set or unset"))
 	}
 
-	if ch.NumHosts == "" {
-		ch.NumHosts = "1"
-	} else {
-		numHosts, err := strconv.Atoi(ch.NumHosts)
-		if err != nil {
-			catcher.Add(errors.Errorf("problem parsing '%s' as an int", ch.NumHosts))
-		}
-		if numHosts > 10 || numHosts < 0 {
-			catcher.Add(errors.New("num_hosts must be between 1 and 10"))
-		} else if numHosts == 0 {
-			ch.NumHosts = "1"
-		}
+	if ch.NumHosts > 10 || ch.NumHosts < 0 {
+		catcher.Add(errors.New("num_hosts must be between 1 and 10"))
+	} else if ch.NumHosts == 0 {
+		ch.NumHosts = 1
 	}
 	if ch.CloudProvider == "" {
 		ch.CloudProvider = ProviderEC2
