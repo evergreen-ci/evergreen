@@ -1722,8 +1722,7 @@ func TestValidateGenerateTasks(t *testing.T) {
 	err = model.LoadProjectInto([]byte(yml), "id", &p)
 	require.NoError(err)
 	errs = validateGenerateTasks(&p)
-	assert.Len(errs, 2)
-
+	assert.Len(errs, 0)
 }
 
 func TestTaskNotInTaskGroupDependsOnTaskInTaskGroup(t *testing.T) {
