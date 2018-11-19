@@ -167,16 +167,8 @@ func (s *eventSuite) TestGlobalEventRegistryItemsAreSane() {
 		found, rTypeTag := findResourceTypeIn(event)
 
 		t := reflect.TypeOf(event)
-		if k == EventTaskSystemInfo || k == EventTaskProcessInfo {
-			// these two event types have not been migrated (TTL index
-			// will phase them out over time)
-			s.True(found, `'%s' doesn't have a bson:"r_type,omitempty" tag, but should`, t.String())
-			s.Empty(rTypeTag)
-
-		} else {
-			s.False(found, `'%s' has a bson:"r_type,omitempty" tag, but should not`, t.String())
-			s.Empty(rTypeTag)
-		}
+		s.False(found, `'%s' has a bson:"r_type,omitempty" tag, but should not`, t.String())
+		s.Empty(rTypeTag)
 
 		// ensure all fields have bson and json tags
 		elem := t.Elem()
@@ -189,15 +181,8 @@ func (s *eventSuite) TestGlobalEventRegistryItemsAreSane() {
 			if _, ok := event.(*rawAdminEventData); !ok {
 				s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
 
-				if strings.HasPrefix(jsonTag, "resource_type") &&
-					(k == EventTaskSystemInfo || k == EventTaskProcessInfo) {
-					s.Equal("resource_type,omitempty", jsonTag, `'%s' doesn't have a json:"resource_type,omitempty" tag, but should`, t.String())
-					s.NotEqual("resource_type", jsonTag, `'%s' doesn't have a json:"resource_type" tag, but should not`, t.String())
-
-				} else {
-					s.NotEqual("resource_type", jsonTag, `'%s' has a json:"resource_type" tag, but should not`, t.String())
-					s.NotEqual("resource_type,omitempty", jsonTag, `'%s' has a json:"resource_type,omitempty" tag, but should not`, t.String())
-				}
+				s.NotEqual("resource_type", jsonTag, `'%s' has a json:"resource_type" tag, but should not`, t.String())
+				s.NotEqual("resource_type,omitempty", jsonTag, `'%s' has a json:"resource_type,omitempty" tag, but should not`, t.String())
 			}
 		}
 	}
@@ -350,71 +335,6 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		s.Zero(ptime)
 		s.False(processed)
 	})
-}
-
-//TODO: EVG-3061 remove this test
-func (s *eventSuite) TestTaskEventLogLegacyEvents() {
-	events := []bson.M{
-		// new style
-		{
-			"r_type": EventTaskSystemInfo,
-			"r_id":   "new",
-			"data":   bson.M{},
-		},
-		// hybrid style
-		{
-			"r_type": EventTaskSystemInfo,
-			"r_id":   "hybrid",
-			"data":   bson.M{},
-		},
-		// old style
-		{
-			"r_id": "old",
-			"data": bson.M{
-				"r_type": EventTaskSystemInfo,
-			},
-		},
-
-		// new style
-		{
-			"r_type": EventTaskProcessInfo,
-			"r_id":   "new",
-			"data":   bson.M{},
-		},
-		// hybrid style
-		{
-			"r_type": EventTaskProcessInfo,
-			"r_id":   "hybrid",
-			"data":   bson.M{},
-		},
-		// old style
-		{
-			"r_id": "old",
-			"data": bson.M{
-				"r_type": EventTaskProcessInfo,
-			},
-		},
-
-		// old style, but not a task event
-		{
-			"r_id": "old",
-			"data": bson.M{
-				"r_type": ResourceTypeHost,
-			},
-		},
-	}
-
-	for i := range events {
-		s.NoError(db.Insert(TaskLogCollection, events[i]))
-	}
-
-	out := []EventLogEntry{}
-	s.NoError(db.FindAllQ(TaskLogCollection, db.Q{}, &out))
-	s.Len(out, 7)
-
-	for i := range out {
-		s.NotEmpty(out[i].ResourceType)
-	}
 }
 
 func (s *eventSuite) TestFindLastProcessedEvent() {

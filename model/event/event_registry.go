@@ -99,14 +99,6 @@ func schedulerEventDataFactory() interface{} {
 	return &SchedulerEventData{}
 }
 
-func taskSystemResourceEventDataFactory() interface{} {
-	return &TaskSystemResourceData{}
-}
-
-func taskProcessResourceEventDataFactory() interface{} {
-	return &TaskProcessResourceData{}
-}
-
 func adminEventDataFactory() interface{} {
 	return &rawAdminEventData{}
 }
