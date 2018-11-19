@@ -11,17 +11,9 @@ var findIndex = function(list, predicate) {
   }
 }
 
-function average (arr){
-  if(!arr || arr.length == 0) return // undefined for 0-length array
-  return _.reduce(arr, function(memo, num){
-    return memo + num;
-  }, 0) / arr.length;
-}
-
-
 mciModule.controller('PerfController', function PerfController(
   $scope, $window, $http, $location, $log, $q, ChangePointsService,
-  DrawPerfTrendChart, PROCESSED_TYPE, Stitch, STITCH_CONFIG
+  DrawPerfTrendChart, PROCESSED_TYPE, Settings, Stitch, STITCH_CONFIG
 ) {
     /* for debugging
     $sce, $compile){
@@ -115,7 +107,7 @@ mciModule.controller('PerfController', function PerfController(
       {key: 'maxonly', val: 'Max Only'},
       {key: 'all', val: 'All'}
     ],
-    value: 'maxonly'
+    value: Settings.perf.trendchart.threadLevelMode,
   }
 
   // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend, 3=trend-table
@@ -127,32 +119,35 @@ mciModule.controller('PerfController', function PerfController(
   // Linear or Log Scale
   $scope.scaleModel = {
     name: 'Linear',
-    linearMode: true
+    linearMode: Settings.perf.trendchart.linearMode.enabled,
   }
   $scope.rangeModel = {
     name: 'Origin',
-    originMode: false
+    originMode: Settings.perf.trendchart.originMode.enabled,
   }
 
   $scope.toolBar = {
     isOpen: false
   }
 
-  $scope.$watch('scaleModel.linearMode', function(oldVal, newVal) {
+  $scope.$watch('scaleModel.linearMode', function(newVal, oldVal) {
     // Force comparison by value
     if (oldVal === newVal) return;
+    Settings.perf.trendchart.linearMode.enabled = newVal
     $scope.redrawGraphs()
   })
 
-  $scope.$watch('rangeModel.originMode', function(oldVal, newVal) {
+  $scope.$watch('rangeModel.originMode', function(newVal, oldVal) {
     // Force comparison by value
     if (oldVal === newVal) return;
+    Settings.perf.trendchart.originMode.enabled = newVal
     $scope.redrawGraphs()
   })
 
-  $scope.$watch('threadLevelsRadio.value', function(oldVal, newVal) {
+  $scope.$watch('threadLevelsRadio.value', function(newVal, oldVal) {
     // Force comparison by value
     if (oldVal === newVal) return;
+    Settings.perf.trendchart.threadLevelMode = newVal
     $scope.redrawGraphs()
   })
 
@@ -702,7 +697,7 @@ function TrendSamples(samples){
   this.noiseAtCommit = function(testName, revision){
     var sample = this._sampleByCommitIndexes[testName][revision];
     if(sample && sample.ops_per_sec_values && sample.ops_per_sec_values.length > 1){
-      var r = (_.max(sample.ops_per_sec_values) - _.min(sample.ops_per_sec_values)) / average(sample.ops_per_sec_values);
+      var r = (_.max(sample.ops_per_sec_values) - _.min(sample.ops_per_sec_values)) / d3.mean(sample.ops_per_sec_values);
       return r;
     }
   }
