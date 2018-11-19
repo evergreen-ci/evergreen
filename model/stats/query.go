@@ -238,7 +238,7 @@ type TestStats struct {
 }
 
 // GetTestStats queries the precomputed test statistics using a filter.
-func GetTestStats(filter *StatsFilter) ([]TestStats, error) {
+func GetTestStats(filter StatsFilter) ([]TestStats, error) {
 	err := filter.ValidateForTests()
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
@@ -275,7 +275,7 @@ type TaskStats struct {
 }
 
 // GetTaskStats queries the precomputed task statistics using a filter.
-func GetTaskStats(filter *StatsFilter) ([]TaskStats, error) {
+func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {
 	err := filter.ValidateForTasks()
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")

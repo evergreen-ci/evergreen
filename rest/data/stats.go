@@ -13,7 +13,7 @@ import (
 type StatsConnector struct{}
 
 // GetTestStats queries the service backend to retrieve the test stats that match the given filter.
-func (sc *StatsConnector) GetTestStats(filter *stats.StatsFilter) ([]model.APITestStats, error) {
+func (sc *StatsConnector) GetTestStats(filter stats.StatsFilter) ([]model.APITestStats, error) {
 	serviceStatsResult, err := stats.GetTestStats(filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to get test stats from service API")
@@ -32,7 +32,7 @@ func (sc *StatsConnector) GetTestStats(filter *stats.StatsFilter) ([]model.APITe
 }
 
 // GetTaskStats queries the service backend to retrieve the task stats that match the given filter.
-func (sc *StatsConnector) GetTaskStats(filter *stats.StatsFilter) ([]model.APITaskStats, error) {
+func (sc *StatsConnector) GetTaskStats(filter stats.StatsFilter) ([]model.APITaskStats, error) {
 	serviceStatsResult, err := stats.GetTaskStats(filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to get task stats from service API")
@@ -56,7 +56,7 @@ type MockStatsConnector struct {
 }
 
 // GetTestStats returns the cached test stats, only enforcing the Limit field of the filter.
-func (msc *MockStatsConnector) GetTestStats(filter *stats.StatsFilter) ([]model.APITestStats, error) {
+func (msc *MockStatsConnector) GetTestStats(filter stats.StatsFilter) ([]model.APITestStats, error) {
 	if filter.Limit > len(msc.CachedTestStats) {
 		return msc.CachedTestStats, nil
 	} else {
@@ -65,7 +65,7 @@ func (msc *MockStatsConnector) GetTestStats(filter *stats.StatsFilter) ([]model.
 }
 
 // GetTaskStats returns the cached task stats, only enforcing the Limit field of the filter.
-func (msc *MockStatsConnector) GetTaskStats(filter *stats.StatsFilter) ([]model.APITaskStats, error) {
+func (msc *MockStatsConnector) GetTaskStats(filter stats.StatsFilter) ([]model.APITaskStats, error) {
 	if filter.Limit > len(msc.CachedTaskStats) {
 		return msc.CachedTaskStats, nil
 	} else {
@@ -79,11 +79,11 @@ func (msc *MockStatsConnector) SetTestStats(baseTestName string, numStats int) {
 	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTestStats[i] = model.APITestStats{
-			TestFile:     fmt.Sprintf("%v%v", baseTestName, i),
-			TaskName:     "task",
-			BuildVariant: "variant",
-			Distro:       "distro",
-			Date:         day,
+			TestFile:     model.ToAPIString(fmt.Sprintf("%v%v", baseTestName, i)),
+			TaskName:     model.ToAPIString("task"),
+			BuildVariant: model.ToAPIString("variant"),
+			Distro:       model.ToAPIString("distro"),
+			Date:         model.ToAPIString(day),
 		}
 	}
 }
@@ -94,10 +94,10 @@ func (msc *MockStatsConnector) SetTaskStats(baseTaskName string, numStats int) {
 	day := util.GetUTCDay(time.Now()).Format("2006-01-02")
 	for i := 0; i < numStats; i++ {
 		msc.CachedTaskStats[i] = model.APITaskStats{
-			TaskName:     fmt.Sprintf("%v%v", baseTaskName, i),
-			BuildVariant: "variant",
-			Distro:       "distro",
-			Date:         day,
+			TaskName:     model.ToAPIString(fmt.Sprintf("%v%v", baseTaskName, i)),
+			BuildVariant: model.ToAPIString("variant"),
+			Distro:       model.ToAPIString("distro"),
+			Date:         model.ToAPIString(day),
 		}
 	}
 }

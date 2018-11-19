@@ -600,7 +600,7 @@ var (
 )
 
 // testStatsQueryPipeline creates an aggregation pipeline to query test statistics.
-func testStatsQueryPipeline(filter *StatsFilter) []bson.M {
+func testStatsQueryPipeline(filter StatsFilter) []bson.M {
 	matchExpr := buildMatchStageForTest(filter)
 
 	return []bson.M{
@@ -636,7 +636,7 @@ func testStatsQueryPipeline(filter *StatsFilter) []bson.M {
 }
 
 // buildMatchStageForTest builds the match stage of the test query pipeline based on the filter options.
-func buildMatchStageForTest(filter *StatsFilter) bson.M {
+func buildMatchStageForTest(filter StatsFilter) bson.M {
 	match := bson.M{
 		dbTestStatsIdDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
@@ -721,7 +721,7 @@ func buildMatchArrayExpression(values []string) interface{} {
 }
 
 // buildTestPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
-func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
+func buildTestPaginationOrBranches(filter StatsFilter) []bson.M {
 	var dateOperator string
 	if filter.Sort == SortLatestFirst {
 		dateOperator = "$lt"
@@ -764,7 +764,7 @@ func buildTestPaginationOrBranches(filter *StatsFilter) []bson.M {
 }
 
 // taskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
-func taskStatsQueryPipeline(filter *StatsFilter) []bson.M {
+func taskStatsQueryPipeline(filter StatsFilter) []bson.M {
 	matchExpr := buildMatchStageForTask(filter)
 
 	return []bson.M{
@@ -807,7 +807,7 @@ func taskStatsQueryPipeline(filter *StatsFilter) []bson.M {
 }
 
 // buildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
-func buildMatchStageForTask(filter *StatsFilter) bson.M {
+func buildMatchStageForTask(filter StatsFilter) bson.M {
 	match := bson.M{
 		dbTaskStatsIdDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
@@ -834,7 +834,7 @@ func buildMatchStageForTask(filter *StatsFilter) bson.M {
 }
 
 // buildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
-func buildTaskPaginationOrBranches(filter *StatsFilter) []bson.M {
+func buildTaskPaginationOrBranches(filter StatsFilter) []bson.M {
 	var dateOperator string
 	if filter.Sort == SortLatestFirst {
 		dateOperator = "$lt"
@@ -990,7 +990,7 @@ func aggregateIntoCollection(collection string, pipeline []bson.M, outputCollect
 	return nil
 }
 
-// makeSume is an internal function that creates a conditional $sum expression.
+// makeSum is an internal function that creates a conditional $sum expression.
 func makeSum(condition bson.M) bson.M {
 	return bson.M{"$sum": bson.M{"$cond": bson.M{"if": condition, "then": 1, "else": 0}}}
 }

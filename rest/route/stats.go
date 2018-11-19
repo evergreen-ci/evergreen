@@ -295,11 +295,9 @@ func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
 }
 
 func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
-	vals := r.URL.Query()
-	project := gimlet.GetVars(r)["project_id"]
-	tsh.filter = stats.StatsFilter{Project: project}
+	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
 
-	err := tsh.statsHandler.parseStatsFilter(vals)
+	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
 		return err
 	}
@@ -317,7 +315,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	var err error
 	var testStatsResult []model.APITestStats
 
-	testStatsResult, err = tsh.sc.GetTestStats(&tsh.filter)
+	testStatsResult, err = tsh.sc.GetTestStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the test stats"))
 	}
@@ -362,11 +360,11 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 // the next results with pagination.
 func (tsh *testStatsHandler) makeStartAtKey(testStats model.APITestStats) string {
 	elements := []string{
-		testStats.Date,
-		testStats.BuildVariant,
-		testStats.TaskName,
-		testStats.TestFile,
-		testStats.Distro,
+		*testStats.Date,
+		*testStats.BuildVariant,
+		*testStats.TaskName,
+		*testStats.TestFile,
+		*testStats.Distro,
 	}
 	return strings.Join(elements, "|")
 }
@@ -389,11 +387,9 @@ func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
 }
 
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
-	vals := r.URL.Query()
-	project := gimlet.GetVars(r)["project_id"]
-	tsh.filter = stats.StatsFilter{Project: project}
+	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
 
-	err := tsh.statsHandler.parseStatsFilter(vals)
+	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
 		return err
 	}
@@ -411,7 +407,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	var err error
 	var taskStatsResult []model.APITaskStats
 
-	taskStatsResult, err = tsh.sc.GetTaskStats(&tsh.filter)
+	taskStatsResult, err = tsh.sc.GetTaskStats(tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Failed to retrieve the task stats"))
 	}
@@ -456,11 +452,11 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 // the next results with pagination.
 func (tsh *taskStatsHandler) makeStartAtKey(taskStats model.APITaskStats) string {
 	elements := []string{
-		taskStats.Date,
-		taskStats.BuildVariant,
-		taskStats.TaskName,
-		"",
-		taskStats.Distro,
+		*taskStats.Date,
+		*taskStats.BuildVariant,
+		*taskStats.TaskName,
+		"", // Task stats do not have a TestFile field but we are using the same format as for the test stats.
+		*taskStats.Distro,
 	}
 	return strings.Join(elements, "|")
 }

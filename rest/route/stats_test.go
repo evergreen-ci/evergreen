@@ -54,7 +54,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 func (s *StatsSuite) TestRunTestHandler() {
 	sc := &data.MockConnector{
 		MockStatsConnector: data.MockStatsConnector{},
-		URL:                "https://evergreen.mongodb.com/test",
+		URL:                "https://example.net/test",
 	}
 	handler := makeGetProjectTestStats(sc).(*testStatsHandler)
 
@@ -100,7 +100,7 @@ func (s *StatsSuite) TestReadTestStartAt() {
 func (s *StatsSuite) TestRunTaskHandler() {
 	sc := &data.MockConnector{
 		MockStatsConnector: data.MockStatsConnector{},
-		URL:                "https://evergreen.mongodb.com/task",
+		URL:                "https://example.net/task",
 	}
 	handler := makeGetProjectTaskStats(sc).(*taskStatsHandler)
 

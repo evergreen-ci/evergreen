@@ -7,11 +7,11 @@ import (
 
 // APITestStats is the model to be returned by the API when querying test execution statistics.
 type APITestStats struct {
-	TestFile     string `json:"test_file"`
-	TaskName     string `json:"task_name,omitempty"`
-	BuildVariant string `json:"variant,omitempty"`
-	Distro       string `json:"distro,omitempty"`
-	Date         string `json:"date"`
+	TestFile     APIString `json:"test_file"`
+	TaskName     APIString `json:"task_name,omitempty"`
+	BuildVariant APIString `json:"variant,omitempty"`
+	Distro       APIString `json:"distro,omitempty"`
+	Date         APIString `json:"date"`
 
 	NumPass         int     `json:"num_pass"`
 	NumFail         int     `json:"num_fail"`
@@ -22,11 +22,11 @@ type APITestStats struct {
 func (apiTestStats *APITestStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *stats.TestStats:
-		apiTestStats.TestFile = v.TestFile
-		apiTestStats.TaskName = v.TaskName
-		apiTestStats.BuildVariant = v.BuildVariant
-		apiTestStats.Distro = v.Distro
-		apiTestStats.Date = v.Date.Format("2006-01-02")
+		apiTestStats.TestFile = ToAPIString(v.TestFile)
+		apiTestStats.TaskName = ToAPIString(v.TaskName)
+		apiTestStats.BuildVariant = ToAPIString(v.BuildVariant)
+		apiTestStats.Distro = ToAPIString(v.Distro)
+		apiTestStats.Date = ToAPIString(v.Date.Format("2006-01-02"))
 
 		apiTestStats.NumPass = v.NumPass
 		apiTestStats.NumFail = v.NumFail
@@ -44,10 +44,10 @@ func (apiTestStats *APITestStats) ToService() (interface{}, error) {
 
 // APITaskStats is the model to be returned by the API when querying task execution statistics
 type APITaskStats struct {
-	TaskName     string `json:"task_name,omitempty"`
-	BuildVariant string `json:"variant,omitempty"`
-	Distro       string `json:"distro,omitempty"`
-	Date         string `json:"date"`
+	TaskName     APIString `json:"task_name"`
+	BuildVariant APIString `json:"variant,omitempty"`
+	Distro       APIString `json:"distro,omitempty"`
+	Date         APIString `json:"date"`
 
 	NumSuccess         int     `json:"num_success"`
 	NumFailed          int     `json:"num_failed"`
@@ -63,10 +63,10 @@ type APITaskStats struct {
 func (apiTaskStats *APITaskStats) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *stats.TaskStats:
-		apiTaskStats.TaskName = v.TaskName
-		apiTaskStats.BuildVariant = v.BuildVariant
-		apiTaskStats.Distro = v.Distro
-		apiTaskStats.Date = v.Date.Format("2006-01-02")
+		apiTaskStats.TaskName = ToAPIString(v.TaskName)
+		apiTaskStats.BuildVariant = ToAPIString(v.BuildVariant)
+		apiTaskStats.Distro = ToAPIString(v.Distro)
+		apiTaskStats.Date = ToAPIString(v.Date.Format("2006-01-02"))
 
 		apiTaskStats.NumSuccess = v.NumSuccess
 		apiTaskStats.NumFailed = v.NumFailed
