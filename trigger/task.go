@@ -806,6 +806,9 @@ func (t *taskTriggers) buildBreak(sub *event.Subscription) (*notification.Notifi
 	if t.task.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) {
 		return nil, nil
 	}
+	if t.task.TriggerID != "" && sub.Owner != "" { // don't notify committer for a triggered build
+		return nil, nil
+	}
 	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.task.RevisionOrderNumber,
 		task.CompletedStatuses, t.task.BuildVariant, t.task.DisplayName, t.task.Project, evergreen.SystemVersionRequesterTypes))
 	if err != nil {
