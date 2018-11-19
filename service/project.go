@@ -633,7 +633,6 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 }
 
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
-	_ = MustHaveProjectContext(r)
 	// Validate the project exists
 	id := gimlet.GetVars(r)["project_id"]
 	projectRef, err := model.FindOneProjectRef(id)

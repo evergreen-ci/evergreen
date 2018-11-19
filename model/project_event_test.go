@@ -72,9 +72,8 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 
 	s.NoError(LogProjectModified(projectId, username, before, after))
 
-	projectEvents := []ProjectChangeEventEntry{}
-	query := ProjectEventsForId(projectId)
-	s.NoError(db.FindAllQ(event.AllLogCollection, query, &projectEvents))
+	projectEvents, err := MostRecentProjectEvents(projectId, 5)
+	s.NoError(err)
 	s.Require().Len(projectEvents, 1)
 
 	eventData := projectEvents[0].Data.(*ProjectChangeEvent)
@@ -90,18 +89,16 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 
 	s.NoError(LogProjectModified(projectId, username, before, after))
 
-	projectEvents := []ProjectChangeEventEntry{}
-	query := ProjectEventsForId(projectId)
-	s.NoError(db.FindAllQ(event.AllLogCollection, query, &projectEvents))
+	projectEvents, err := MostRecentProjectEvents(projectId, 5)
+	s.NoError(err)
 	s.Require().Len(projectEvents, 0)
 }
 
 func (s *ProjectEventSuite) TestAddProject() {
 	s.NoError(LogProjectAdded(projectId, username))
 
-	projectEvents := []ProjectChangeEventEntry{}
-	query := ProjectEventsForId(projectId)
-	s.NoError(db.FindAllQ(event.AllLogCollection, query, &projectEvents))
+	projectEvents, err := MostRecentProjectEvents(projectId, 5)
+	s.NoError(err)
 
 	s.Require().Len(projectEvents, 1)
 	s.Equal(projectId, projectEvents[0].ResourceId)

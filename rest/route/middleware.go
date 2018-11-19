@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 )
 
@@ -109,4 +110,45 @@ func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
 		return auth.IsSuperUser(sc.GetSuperUsers(), user)
 	}
 	return true
+}
+
+func NewProjectAdminMiddleware(sc data.Connector) gimlet.Middleware {
+	return &projectAdminMiddleware{
+		sc: sc,
+	}
+}
+
+type projectAdminMiddleware struct {
+	sc data.Connector
+}
+
+func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	vars := gimlet.GetVars(r)
+	taskId := vars["task_id"]
+	buildId := vars["build_id"]
+	versionId := vars["version_id"]
+	patchId := vars["patch_id"]
+	projectId := vars["project_id"]
+
+	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
+	if err != nil {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
+		return
+	}
+
+	user := gimlet.GetUser(ctx)
+	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
+	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
+	if !(isSuperuser || isAdmin) {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    "Not authorized",
+		}))
+		return
+	}
+
+	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
+
+	next(rw, r)
 }

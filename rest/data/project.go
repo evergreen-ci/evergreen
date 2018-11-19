@@ -3,9 +3,7 @@ package data
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -69,9 +67,7 @@ func (pc *DBProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjectR
 }
 
 func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
-	query := model.ProjectEventsBefore(id, before, n)
-	events := []model.ProjectChangeEventEntry{}
-	err := db.FindAllQ(event.AllLogCollection, query, &events)
+	events, err := model.ProjectEventsBefore(id, before, n)
 	if err != nil {
 		return nil, err
 	}

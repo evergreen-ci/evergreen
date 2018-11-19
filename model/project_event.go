@@ -66,25 +66,29 @@ func (e *ProjectChangeEventEntry) SetBSON(raw bson.Raw) error {
 }
 
 // Project Events queries
-func ProjectEventsForId(id string) db.Q {
+func MostRecentProjectEvents(id string, n int) ([]ProjectChangeEventEntry, error) {
 	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 
-	return db.Query(filter)
+	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
+	events := []ProjectChangeEventEntry{}
+	err := db.FindAllQ(event.AllLogCollection, query, &events)
+
+	return events, err
 }
 
-func MostRecentProjectEvents(id string, n int) db.Q {
-	return ProjectEventsForId(id).Sort([]string{"-" + event.TimestampKey}).Limit(n)
-}
-
-func ProjectEventsBefore(id string, before time.Time, n int) db.Q {
+func ProjectEventsBefore(id string, before time.Time, n int) ([]ProjectChangeEventEntry, error) {
 	filter := event.ResourceTypeKeyIs(EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 	filter[event.TimestampKey] = bson.M{
 		"$lt": before,
 	}
 
-	return db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
+	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
+	events := []ProjectChangeEventEntry{}
+	err := db.FindAllQ(event.AllLogCollection, query, &events)
+
+	return events, err
 }
 
 func LogProjectEvent(eventType string, projectId string, eventData ProjectChangeEvent) error {

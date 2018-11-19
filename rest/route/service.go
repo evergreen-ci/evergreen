@@ -22,6 +22,8 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	superUser := gimlet.NewRestrictAccessToUsers(sc.GetSuperUsers())
 	checkUser := gimlet.NewRequireAuthHandler()
 	addProject := NewProjectContextMiddleware(sc)
+	checkProjectAdmin := NewProjectAdminMiddleware(sc)
+
 	settings := evergreen.GetEnvironment().Settings()
 
 	// Routes
@@ -70,7 +72,6 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/projects").Version(2).Get().RouteHandler(makeFetchProjectsRoute(sc))
 	app.AddRoute("/projects").Version(2).Put().Wrap(superUser).RouteHandler(makeProjectCreateRoute(sc))
 	app.AddRoute("/projects/{project_id}").Version(2).Patch().Wrap(superUser, addProject).RouteHandler(makeProjectUpdateRoute(sc))
-	app.AddRoute("/projects/{project_id}/events").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchProjectEvents(sc))
 	app.AddRoute("/projects/{project_id}/patches").Version(2).Get().Wrap(checkUser).RouteHandler(makePatchesByProjectRoute(sc))
 	app.AddRoute("/projects/{project_id}/versions/tasks").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchProjectTasks(sc))
 	app.AddRoute("/projects/{project_id}/recent_versions").Version(2).Get().RouteHandler(makeFetchProjectVersions(sc))

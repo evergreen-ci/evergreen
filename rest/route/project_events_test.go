@@ -8,11 +8,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,7 +21,6 @@ type ProjectEventsTestSuite struct {
 	route     projectEventsGet
 	projectId string
 	event     restModel.APIProjectEvent
-	ctx       context.Context
 }
 
 func TestProjectEventsTestSuite(t *testing.T) {
@@ -86,10 +83,6 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 		URL:                  "https://evergreen.example.net",
 		MockProjectConnector: s.data,
 	}
-
-	ctx := context.Background()
-	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	s.sc.SetSuperUsers([]string{"user"})
 }
 
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
@@ -98,7 +91,7 @@ func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 	s.route.Timestamp = time.Now().Add(time.Second * 10)
 	s.route.sc = s.sc
 
-	resp := s.route.Run(s.ctx)
+	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 

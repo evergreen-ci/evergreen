@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/gimlet"
@@ -18,30 +17,36 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := gimlet.GetUser(ctx)
 
-	var eventQuery db.Q
+	var loggedEvents []event.EventLogEntry
+	var err error
 	switch resourceType {
 	case event.ResourceTypeTask:
-		eventQuery = event.MostRecentTaskEvents(resourceID, 100)
+		eventQuery := event.MostRecentTaskEvents(resourceID, 100)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeScheduler:
-		eventQuery = event.RecentSchedulerEvents(resourceID, 500)
+		eventQuery := event.RecentSchedulerEvents(resourceID, 500)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery = event.MostRecentHostEvents(resourceID, 5000)
+		eventQuery := event.MostRecentHostEvents(resourceID, 5000)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeDistro:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery = event.MostRecentDistroEvents(resourceID, 200)
+		eventQuery := event.MostRecentDistroEvents(resourceID, 200)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		eventQuery = event.RecentAdminEvents(100)
+		eventQuery := event.RecentAdminEvents(100)
+		loggedEvents, err = event.Find(event.AllLogCollection, eventQuery)
 	case model.EventResourceTypeProject:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -57,20 +62,21 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Unknown project: %v", resourceType), http.StatusBadRequest)
 			return
 		}
-
 		authorized := isAdmin(u, project) || uis.isSuperUser(u)
 		if !authorized {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-
-		eventQuery = model.MostRecentProjectEvents(resourceID, 200)
+		var loggedProjectEvents []model.ProjectChangeEventEntry
+		loggedProjectEvents, err = model.MostRecentProjectEvents(resourceID, 200)
+		for _, event := range loggedProjectEvents {
+			loggedEvents = append(loggedEvents, event.EventLogEntry)
+		}
 	default:
 		http.Error(w, fmt.Sprintf("Unknown resource: %v", resourceType), http.StatusBadRequest)
 		return
 	}
 
-	loggedEvents, err := event.Find(event.AllLogCollection, eventQuery)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
