@@ -200,6 +200,9 @@ func populateKey(m message.Composer, issueKey string) {
 	switch msg := m.Raw().(type) {
 	case *message.JiraIssue:
 		msg.IssueKey = issueKey
+		if msg.Callback != nil {
+			msg.Callback(issueKey)
+		}
 	case message.Fields:
 		msg[jiraIssueKey] = issueKey
 	}
