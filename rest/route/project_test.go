@@ -3,6 +3,7 @@ package route
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -111,4 +112,112 @@ func (s *ProjectGetSuite) TestGetRecentVersions() {
 	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
 	s.NoError(err)
 	s.EqualError(getVersions.Parse(ctx, request), "400 (Bad Request): Invalid offset")
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests project create route
+type ProjectCreateSuite struct {
+	sc *data.MockConnector
+	h  *projectCreateHandler
+
+	suite.Suite
+}
+
+func TestProjectCreateSuite(t *testing.T) {
+	suite.Run(t, new(ProjectCreateSuite))
+}
+
+func (s *ProjectCreateSuite) SetupTest() {
+	s.sc = &data.MockConnector{}
+	s.h = &projectCreateHandler{sc: s.sc}
+}
+
+func (s *ProjectCreateSuite) TestRoute() {
+	payloadBytes, _ := json.Marshal(map[string]interface{}{
+		"identifier":  "id",
+		"branch_name": "branch",
+	})
+
+	payload := bytes.NewBuffer(payloadBytes)
+
+	r, err := http.NewRequest(
+		"PUT",
+		"https://evergreen.example.com/rest/v2/projects/",
+		payload,
+	)
+
+	s.Require().NoError(err)
+	ctx := context.Background()
+	err = s.h.Parse(ctx, r)
+	s.NoError(err)
+	s.Equal("id", model.FromAPIString(s.h.projectRef.Identifier))
+	s.Equal("branch", model.FromAPIString(s.h.projectRef.Branch))
+
+	resp := s.h.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusCreated, resp.Status())
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests project update route
+type ProjectUpdateSuite struct {
+	sc   *data.MockConnector
+	h    *projectUpdateHandler
+	data data.MockProjectConnector
+
+	suite.Suite
+}
+
+func TestProjectUpdateSuite(t *testing.T) {
+	suite.Run(t, new(ProjectUpdateSuite))
+}
+
+func (s *ProjectUpdateSuite) SetupSuite() {
+	s.data = data.MockProjectConnector{
+		CachedProjects: []serviceModel.ProjectRef{
+			{Identifier: "A"},
+		},
+	}
+
+	s.sc = &data.MockConnector{}
+	s.sc = &data.MockConnector{
+		URL:                  "https://evergreen.example.net",
+		MockProjectConnector: s.data,
+	}
+	s.h = &projectUpdateHandler{sc: s.sc}
+}
+
+func (s *ProjectUpdateSuite) TestRoute() {
+	payloadBytes, _ := json.Marshal(map[string]interface{}{
+		"identifier":  "id",
+		"branch_name": "branch",
+	})
+
+	payload := bytes.NewBuffer(payloadBytes)
+
+	projCtx := serviceModel.Context{
+		ProjectRef: &serviceModel.ProjectRef{
+			Identifier: "A",
+		},
+	}
+	ctx := context.WithValue(context.Background(), RequestContext, &projCtx)
+
+	r, err := http.NewRequest(
+		"PATCH",
+		"https://evergreen.example.net/rest/v2/projects/A",
+		payload,
+	)
+	r = r.WithContext(ctx)
+
+	s.Require().NoError(err)
+	err = s.h.Parse(ctx, r)
+	s.NoError(err)
+	s.Equal("A", model.FromAPIString(s.h.projectRef.Identifier))
+	s.Equal("branch", model.FromAPIString(s.h.projectRef.Branch))
+
+	resp := s.h.Run(ctx)
+	s.NotNil(resp)
+	s.Equal(http.StatusOK, resp.Status())
 }

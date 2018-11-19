@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -282,4 +283,79 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
 	projects, err := s.ctx.FindProjects("aaa", 1, -1, isAuthenticated)
 	s.NoError(err)
 	s.Len(projects, 0)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests project create action
+type ProjectConnectorCreateUpdateSuite struct {
+	sc Connector
+	suite.Suite
+}
+
+func TestProjectConnectorCreateUpdateSuite(t *testing.T) {
+	suite.Run(t, new(ProjectConnectorCreateUpdateSuite))
+}
+
+func (s *ProjectConnectorCreateUpdateSuite) SetupSuite() {
+	s.sc = &DBConnector{}
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+}
+
+func (s *ProjectConnectorCreateUpdateSuite) TearDownSuite() {
+	s.Require().NoError(db.Clear(model.ProjectRefCollection))
+}
+
+func (s *ProjectConnectorCreateUpdateSuite) TestCreateProject() {
+	projectRef, err := s.sc.CreateProject(&restModel.APIProjectRef{
+		Identifier: restModel.ToAPIString("id"),
+		Branch:     restModel.ToAPIString("branch"),
+		Admins: []restModel.APIString{
+			restModel.ToAPIString("a"),
+			restModel.ToAPIString("b"),
+		},
+	})
+
+	s.NoError(err)
+	s.NotNil(projectRef)
+
+	s.Equal("id", restModel.FromAPIString(projectRef.Identifier))
+	s.Equal("branch", restModel.FromAPIString(projectRef.Branch))
+	s.Len(projectRef.Admins, 2)
+	s.Equal("a", restModel.FromAPIString(projectRef.Admins[0]))
+	s.Equal("b", restModel.FromAPIString(projectRef.Admins[1]))
+}
+
+func (s *ProjectConnectorCreateUpdateSuite) TestUpdateProject() {
+	// Create sample project ref
+	createdProject, err := s.sc.CreateProject(&restModel.APIProjectRef{
+		Identifier: restModel.ToAPIString("id"),
+		Admins: []restModel.APIString{
+			restModel.ToAPIString("a"),
+			restModel.ToAPIString("b"),
+		},
+	})
+
+	s.NoError(err)
+	s.NotNil(createdProject)
+
+	// Test set up
+	updatedProject, err := s.sc.UpdateProject(&restModel.APIProjectRef{
+		Identifier: createdProject.Identifier,
+		Owner:      restModel.ToAPIString("owner"),
+		Admins: []restModel.APIString{
+			restModel.ToAPIString("a"),
+			restModel.ToAPIString("c"),
+		},
+	})
+
+	// Test assertion
+	s.NoError(err)
+	s.NotNil(updatedProject)
+
+	s.Equal("id", restModel.FromAPIString(updatedProject.Identifier))
+	s.Equal("owner", restModel.FromAPIString(updatedProject.Owner))
+	s.Len(updatedProject.Admins, 2)
+	s.Equal("a", restModel.FromAPIString(updatedProject.Admins[0]))
+	s.Equal("c", restModel.FromAPIString(updatedProject.Admins[1]))
 }
