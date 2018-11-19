@@ -98,5 +98,7 @@ mciModule.factory('eventsService', ['notificationService', function(notification
 
   return {
     getMoreEvents: getMoreEvents,
+    getDiffText: getDiffText,
+    getNextTs: getNextTs,
   }
 }]);
