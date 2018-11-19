@@ -15,7 +15,6 @@ type DBConnector struct {
 	DBDistroConnector
 	DBHostConnector
 	DBTestConnector
-	DBMetricsConnector
 	DBBuildConnector
 	DBVersionConnector
 	DBPatchConnector
@@ -51,7 +50,6 @@ type MockConnector struct {
 	MockDistroConnector
 	MockHostConnector
 	MockTestConnector
-	MockMetricsConnector
 	MockBuildConnector
 	MockVersionConnector
 	MockPatchConnector

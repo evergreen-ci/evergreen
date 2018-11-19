@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -64,37 +62,6 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	temp := unmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
-	}
-
-	if len(temp.ResourceType) == 0 {
-		//TODO: EVG-3061 delete this line through until return errors.New("expected ...
-		// Try and fetch r_type in the data subdoc
-		rawD := bson.RawD{}
-		if err := temp.Data.Unmarshal(&rawD); err != nil {
-			return errors.Wrap(err, "can't unmarshal raw event data")
-		}
-
-		for i := range rawD {
-			if rawD[i].Name == resourceTypeKey {
-				if err := rawD[i].Value.Unmarshal(&temp.ResourceType); err != nil {
-					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
-				}
-				break
-			}
-		}
-
-		if temp.ResourceType != EventTaskSystemInfo &&
-			temp.ResourceType != EventTaskProcessInfo {
-			grip.Alert(message.Fields{
-				"message":  "unmigrated event was found",
-				"event_id": temp.ID,
-				"r_type":   temp.ResourceType,
-			})
-		}
-	}
-
-	if len(temp.ResourceType) == 0 {
-		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
 
 	e.Data = NewEventFromType(temp.ResourceType)

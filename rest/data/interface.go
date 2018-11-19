@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/grip/message"
 )
 
 // Connector is an interface that contains all of the methods which
@@ -117,11 +116,6 @@ type Connector interface {
 	DeleteDistroById(string) error
 	// CreateDistro is a method to insert a given distro.
 	CreateDistro(distro *distro.Distro) error
-
-	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
-	// access to the metrics data collected by agents during task execution
-	FindTaskSystemMetrics(string, time.Time, int) ([]*message.SystemInfo, error)
-	FindTaskProcessMetrics(string, time.Time, int) ([][]*message.ProcessInfo, error)
 
 	// FindCostByVersionId returns cost data of a version given its ID.
 	FindCostByVersionId(string) (*task.VersionCost, error)

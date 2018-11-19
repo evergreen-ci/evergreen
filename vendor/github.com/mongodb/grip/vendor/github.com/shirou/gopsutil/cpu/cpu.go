@@ -1,6 +1,7 @@
 package cpu
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"runtime"
@@ -12,35 +13,38 @@ import (
 	"github.com/shirou/gopsutil/internal/common"
 )
 
+// TimesStat contains the amounts of time the CPU has spent performing different
+// kinds of work. Time units are in USER_HZ or Jiffies (typically hundredths of
+// a second). It is based on linux /proc/stat file.
 type TimesStat struct {
-	CPU       string  `json:"cpu" bson:"cpu,omitempty"`
-	User      float64 `json:"user" bson:"user,omitempty"`
-	System    float64 `json:"system" bson:"system,omitempty"`
-	Idle      float64 `json:"idle" bson:"idle,omitempty"`
-	Nice      float64 `json:"nice" bson:"nice,omitempty"`
-	Iowait    float64 `json:"iowait" bson:"iowait,omitempty"`
-	Irq       float64 `json:"irq" bson:"irq,omitempty"`
-	Softirq   float64 `json:"softirq" bson:"softirq,omitempty"`
-	Steal     float64 `json:"steal" bson:"steal,omitempty"`
-	Guest     float64 `json:"guest" bson:"guest,omitempty"`
-	GuestNice float64 `json:"guestNice" bson:"guestNice,omitempty"`
-	Stolen    float64 `json:"stolen" bson:"stolen,omitempty"`
+	CPU       string  `json:"cpu"`
+	User      float64 `json:"user"`
+	System    float64 `json:"system"`
+	Idle      float64 `json:"idle"`
+	Nice      float64 `json:"nice"`
+	Iowait    float64 `json:"iowait"`
+	Irq       float64 `json:"irq"`
+	Softirq   float64 `json:"softirq"`
+	Steal     float64 `json:"steal"`
+	Guest     float64 `json:"guest"`
+	GuestNice float64 `json:"guestNice"`
+	Stolen    float64 `json:"stolen"`
 }
 
 type InfoStat struct {
-	CPU        int32    `json:"cpu" bson:"cpu,omitempty"`
-	VendorID   string   `json:"vendorId" bson:"vendorId,omitempty"`
-	Family     string   `json:"family" bson:"family,omitempty"`
-	Model      string   `json:"model" bson:"model,omitempty"`
-	Stepping   int32    `json:"stepping" bson:"stepping,omitempty"`
-	PhysicalID string   `json:"physicalId" bson:"physicalId,omitempty"`
-	CoreID     string   `json:"coreId" bson:"coreId,omitempty"`
-	Cores      int32    `json:"cores" bson:"cores,omitempty"`
-	ModelName  string   `json:"modelName" bson:"modelName,omitempty"`
-	Mhz        float64  `json:"mhz" bson:"mhz,omitempty"`
-	CacheSize  int32    `json:"cacheSize" bson:"cacheSize,omitempty"`
-	Flags      []string `json:"flags" bson:"flags,omitempty"`
-	Microcode  string   `json:"microcode" bson:"microcode,omitempty"`
+	CPU        int32    `json:"cpu"`
+	VendorID   string   `json:"vendorId"`
+	Family     string   `json:"family"`
+	Model      string   `json:"model"`
+	Stepping   int32    `json:"stepping"`
+	PhysicalID string   `json:"physicalId"`
+	CoreID     string   `json:"coreId"`
+	Cores      int32    `json:"cores"`
+	ModelName  string   `json:"modelName"`
+	Mhz        float64  `json:"mhz"`
+	CacheSize  int32    `json:"cacheSize"`
+	Flags      []string `json:"flags"`
+	Microcode  string   `json:"microcode"`
 }
 
 type lastPercent struct {
@@ -50,10 +54,9 @@ type lastPercent struct {
 }
 
 var lastCPUPercent lastPercent
-var invoke common.Invoker
+var invoke common.Invoker = common.Invoke{}
 
 func init() {
-	invoke = common.Invoke{}
 	lastCPUPercent.Lock()
 	lastCPUPercent.lastCPUTimes, _ = Times(false)
 	lastCPUPercent.lastPerCPUTimes, _ = Times(true)
@@ -61,6 +64,10 @@ func init() {
 }
 
 func Counts(logical bool) (int, error) {
+	return CountsWithContext(context.Background(), logical)
+}
+
+func CountsWithContext(ctx context.Context, logical bool) (int, error) {
 	return runtime.NumCPU(), nil
 }
 
@@ -134,6 +141,10 @@ func calculateAllBusy(t1, t2 []TimesStat) ([]float64, error) {
 // If an interval of 0 is given it will compare the current cpu times against the last call.
 // Returns one value per cpu, or a single value if percpu is set to false.
 func Percent(interval time.Duration, percpu bool) ([]float64, error) {
+	return PercentWithContext(context.Background(), interval, percpu)
+}
+
+func PercentWithContext(ctx context.Context, interval time.Duration, percpu bool) ([]float64, error) {
 	if interval <= 0 {
 		return percentUsedFromLastCall(percpu)
 	}

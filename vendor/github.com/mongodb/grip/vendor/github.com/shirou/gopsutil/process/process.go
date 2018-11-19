@@ -1,7 +1,9 @@
 package process
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"runtime"
 	"time"
 
@@ -10,14 +12,13 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
-var invoke common.Invoker
-
-func init() {
-	invoke = common.Invoke{}
-}
+var (
+	invoke          common.Invoker = common.Invoke{}
+	ErrorNoChildren                = errors.New("process does not have children")
+)
 
 type Process struct {
-	Pid            int32 `json:"pid" bson:"pid,omitempty"`
+	Pid            int32 `json:"pid"`
 	name           string
 	status         string
 	parent         int32
@@ -30,47 +31,49 @@ type Process struct {
 
 	lastCPUTimes *cpu.TimesStat
 	lastCPUTime  time.Time
+
+	tgid int32
 }
 
 type OpenFilesStat struct {
-	Path string `json:"path" bson:"path,omitempty"`
-	Fd   uint64 `json:"fd" bson:"fd,omitempty"`
+	Path string `json:"path"`
+	Fd   uint64 `json:"fd"`
 }
 
 type MemoryInfoStat struct {
-	RSS    uint64 `json:"rss" bson:"rss,omitempty"`       // bytes
-	VMS    uint64 `json:"vms" bson:"vms,omitempty"`       // bytes
-	Data   uint64 `json:"data" bson:"data,omitempty"`     // bytes
-	Stack  uint64 `json:"stack" bson:"stack,omitempty"`   // bytes
-	Locked uint64 `json:"locked" bson:"locked,omitempty"` // bytes
-	Swap   uint64 `json:"swap" bson:"swap,omitempty"`     // bytes
+	RSS    uint64 `json:"rss"`    // bytes
+	VMS    uint64 `json:"vms"`    // bytes
+	Data   uint64 `json:"data"`   // bytes
+	Stack  uint64 `json:"stack"`  // bytes
+	Locked uint64 `json:"locked"` // bytes
+	Swap   uint64 `json:"swap"`   // bytes
 }
 
 type SignalInfoStat struct {
-	PendingProcess uint64 `json:"pending_process" bson:"pending_process,omitempty"`
-	PendingThread  uint64 `json:"pending_thread" bson:"pending_thread,omitempty"`
-	Blocked        uint64 `json:"blocked" bson:"blocked,omitempty"`
-	Ignored        uint64 `json:"ignored" bson:"ignored,omitempty"`
-	Caught         uint64 `json:"caught" bson:"caught,omitempty"`
+	PendingProcess uint64 `json:"pending_process"`
+	PendingThread  uint64 `json:"pending_thread"`
+	Blocked        uint64 `json:"blocked"`
+	Ignored        uint64 `json:"ignored"`
+	Caught         uint64 `json:"caught"`
 }
 
 type RlimitStat struct {
-	Resource int32  `json:"resource" bson:"resource,omitempty"`
-	Soft     int32  `json:"soft" bson:"soft,omitempty"` //TODO too small. needs to be uint64
-	Hard     int32  `json:"hard" bson:"hard,omitempty"` //TODO too small. needs to be uint64
-	Used     uint64 `json:"used" bson:"used,omitempty"`
+	Resource int32  `json:"resource"`
+	Soft     int32  `json:"soft"` //TODO too small. needs to be uint64
+	Hard     int32  `json:"hard"` //TODO too small. needs to be uint64
+	Used     uint64 `json:"used"`
 }
 
 type IOCountersStat struct {
-	ReadCount  uint64 `json:"readCount" bson:"readCount,omitempty"`
-	WriteCount uint64 `json:"writeCount" bson:"writeCount,omitempty"`
-	ReadBytes  uint64 `json:"readBytes" bson:"readBytes,omitempty"`
-	WriteBytes uint64 `json:"writeBytes" bson:"writeBytes,omitempty"`
+	ReadCount  uint64 `json:"readCount"`
+	WriteCount uint64 `json:"writeCount"`
+	ReadBytes  uint64 `json:"readBytes"`
+	WriteBytes uint64 `json:"writeBytes"`
 }
 
 type NumCtxSwitchesStat struct {
-	Voluntary   int64 `json:"voluntary" bson:"voluntary,omitempty"`
-	Involuntary int64 `json:"involuntary" bson:"involuntary,omitempty"`
+	Voluntary   int64 `json:"voluntary"`
+	Involuntary int64 `json:"involuntary"`
 }
 
 // Resource limit constants are from /usr/include/x86_64-linux-gnu/bits/resource.h
@@ -125,6 +128,10 @@ func (p NumCtxSwitchesStat) String() string {
 }
 
 func PidExists(pid int32) (bool, error) {
+	return PidExistsWithContext(context.Background(), pid)
+}
+
+func PidExistsWithContext(ctx context.Context, pid int32) (bool, error) {
 	pids, err := Pids()
 	if err != nil {
 		return false, err
@@ -142,6 +149,10 @@ func PidExists(pid int32) (bool, error) {
 // If interval is 0, return difference from last call(non-blocking).
 // If interval > 0, wait interval sec and return diffrence between start and end.
 func (p *Process) Percent(interval time.Duration) (float64, error) {
+	return p.PercentWithContext(context.Background(), interval)
+}
+
+func (p *Process) PercentWithContext(ctx context.Context, interval time.Duration) (float64, error) {
 	cpuTimes, err := p.Times()
 	if err != nil {
 		return 0, err
@@ -185,6 +196,10 @@ func calculatePercent(t1, t2 *cpu.TimesStat, delta float64, numcpu int) float64 
 
 // MemoryPercent returns how many percent of the total RAM this process uses
 func (p *Process) MemoryPercent() (float32, error) {
+	return p.MemoryPercentWithContext(context.Background())
+}
+
+func (p *Process) MemoryPercentWithContext(ctx context.Context) (float32, error) {
 	machineMemory, err := mem.VirtualMemory()
 	if err != nil {
 		return 0, err
@@ -202,6 +217,10 @@ func (p *Process) MemoryPercent() (float32, error) {
 
 // CPU_Percent returns how many percent of the CPU time this process uses
 func (p *Process) CPUPercent() (float64, error) {
+	return p.CPUPercentWithContext(context.Background())
+}
+
+func (p *Process) CPUPercentWithContext(ctx context.Context) (float64, error) {
 	crt_time, err := p.CreateTime()
 	if err != nil {
 		return 0, err
