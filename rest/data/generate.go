@@ -2,7 +2,6 @@ package data
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
 
 type GenerateConnector struct{}
@@ -25,28 +25,22 @@ func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMe
 	}
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = taskID
-	p, v, t, pm, err := g.NewVersion()
+
+	p, v, t, pm, prevConfig, err := g.NewVersion()
 	if err != nil {
 		return err
 	}
-	syntaxErrs, err := validator.CheckProjectSyntax(p)
-	if err != nil {
+	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
 		return err
 	}
-	if len(syntaxErrs) > 0 {
+	err = g.Save(p, v, t, pm, prevConfig)
+	if err != nil && errors.Cause(err) == mgo.ErrNotFound {
 		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("project syntax is invalid: %s", validator.ValidationErrorsToString(syntaxErrs)),
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),
 		}
 	}
-	semanticErrs := validator.CheckProjectSemantics(p)
-	if len(semanticErrs) > 0 {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("project semantics is invalid: %s", validator.ValidationErrorsToString(semanticErrs)),
-		}
-	}
-	return g.Save(p, v, t, pm)
+	return err
 }
 
 func ParseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {

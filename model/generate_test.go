@@ -480,9 +480,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	p, v, t, pm, err := g.NewVersion()
+	p, v, t, pm, prevConfig, err := g.NewVersion()
 	s.NoError(err)
-	s.NoError(g.Save(p, v, t, pm))
+	s.NoError(g.Save(p, v, t, pm, prevConfig))
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
 	tasks := []task.Task{}

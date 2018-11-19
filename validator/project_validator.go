@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
@@ -159,6 +161,31 @@ func CheckProjectSyntax(project *model.Project) (ValidationErrors, error) {
 	}
 	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIds)...)
 	return validationErrs, nil
+}
+
+// verify that the project configuration semantics and configuration syntax is valid
+func CheckProjectConfigurationIsValid(project *model.Project) error {
+	syntaxErrs, err := CheckProjectSyntax(project)
+	if err != nil {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    errors.Wrap(err, "error checking project syntax").Error(),
+		}
+	}
+	if len(syntaxErrs) > 0 {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project syntax is invalid: %s", ValidationErrorsToString(syntaxErrs)),
+		}
+	}
+	semanticErrs := CheckProjectSemantics(project)
+	if len(semanticErrs) > 0 {
+		return gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("project semantics is invalid: %s", ValidationErrorsToString(semanticErrs)),
+		}
+	}
+	return nil
 }
 
 // ensure that if any task spec references 'model.AllDependencies', it
