@@ -53,11 +53,14 @@ func (s *StatsSuite) TestParseStatsFilter() {
 }
 
 func (s *StatsSuite) TestRunTestHandler() {
+	var err error
 	sc := &data.MockConnector{
 		MockStatsConnector: data.MockStatsConnector{},
 		URL:                "https://example.net/test",
 	}
 	handler := makeGetProjectTestStats(sc).(*testStatsHandler)
+	handler.url, err = url.Parse("https://example.net/test")
+	s.Require().NoError(err)
 
 	// 100 documents will be returned
 	sc.MockStatsConnector.SetTestStats("test", 100)
@@ -99,11 +102,14 @@ func (s *StatsSuite) TestReadTestStartAt() {
 }
 
 func (s *StatsSuite) TestRunTaskHandler() {
+	var err error
 	sc := &data.MockConnector{
 		MockStatsConnector: data.MockStatsConnector{},
 		URL:                "https://example.net/task",
 	}
 	handler := makeGetProjectTaskStats(sc).(*taskStatsHandler)
+	handler.url, err = url.Parse("https://example.net/test")
+	s.Require().NoError(err)
 
 	// 100 documents will be returned
 	sc.MockStatsConnector.SetTaskStats("task", 100)

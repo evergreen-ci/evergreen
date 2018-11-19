@@ -296,7 +296,8 @@ func (tsh *statsHandler) readStartAt(startAtValue string) (*stats.StartAt, error
 ///////////////////////////////////////////////
 
 type testStatsHandler struct {
-	sc data.Connector
+	sc  data.Connector
+	url *url.URL
 	statsHandler
 }
 
@@ -306,6 +307,7 @@ func (tsh *testStatsHandler) Factory() gimlet.RouteHandler {
 
 func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
+	tsh.url = r.URL
 
 	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
@@ -345,7 +347,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tsh.sc.GetURL(),
+				BaseURL:         tsh.url.String(),
 				Key:             tsh.makeStartAtKey(testStatsResult[requestLimit]),
 				Limit:           requestLimit,
 			},
@@ -388,7 +390,8 @@ func makeGetProjectTestStats(sc data.Connector) gimlet.RouteHandler {
 ///////////////////////////////////////////////
 
 type taskStatsHandler struct {
-	sc data.Connector
+	sc  data.Connector
+	url *url.URL
 	statsHandler
 }
 
@@ -398,6 +401,7 @@ func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
 
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	tsh.filter = stats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]}
+	tsh.url = r.URL
 
 	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
@@ -437,7 +441,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
-				BaseURL:         tsh.sc.GetURL(),
+				BaseURL:         tsh.url.String(),
 				Key:             tsh.makeStartAtKey(taskStatsResult[requestLimit]),
 				Limit:           requestLimit,
 			},
