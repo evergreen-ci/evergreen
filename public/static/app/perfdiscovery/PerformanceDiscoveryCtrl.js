@@ -106,7 +106,8 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         gridUtil.applyMultiselectOptions(
           res,
           ['build', 'storageEngine', 'task', 'threads'],
-          vm.gridApi
+          vm.gridApi,
+          true
         )
         return res
       })

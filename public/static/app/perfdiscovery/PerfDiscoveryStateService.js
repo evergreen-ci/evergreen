@@ -127,7 +127,7 @@ mciModule.factory('PerfDiscoveryStateService', function(
         }
 
         if (col.colDef.type == 'number') {
-          filter.term = _.map(term, function(d) { return +d })
+          filter.term = _.map(term, function(d) { return +d || d })
         } else {
           filter.term = term
         }
