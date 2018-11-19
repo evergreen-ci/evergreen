@@ -1,7 +1,5 @@
-mciModule.factory('eventsService', ['$window', 'notificationService', function($window, notificationService) {
-  var nextTs = "";
-
-  var getMoreEvents = function(scope, mciRestService, timestamp, resourceId) {
+mciModule.factory('eventsService', ['notificationService', function(notificationService) {
+  var getMoreEvents = function(scope, mciRestService, resourceId) {
       var successHandler = function(resp) {
         for (var i = 0; i < resp.data.length; i ++) {
           event = resp.data[i];
@@ -13,24 +11,14 @@ mciModule.factory('eventsService', ['$window', 'notificationService', function($
           }
         }
         scope.Events = scope.Events.concat(resp.data);
-        nextTs = getNextTs(resp.headers().link);
+        scope.nextTs = getNextTs(resp.headers().link);
       }
       var errorHandler = function(resp) {
          notificationService.pushNotification("Error loading events: " + resp.data.error, "errorHeader");
       }
 
-      mciRestService.getEvents(timestamp, 0, { success: successHandler, error: errorHandler }, resourceId);
+      mciRestService.getEvents(scope.nextTs, 0, { success: successHandler, error: errorHandler }, resourceId);
     }
-
-  var setupWindow = function(scope, mciRestService) {
-    $(window).scroll(function() {
-        if ($(window).scrollTop() + $(window).height() == $(document).height()) {
-          if (nextTs !== "") {
-            getMoreEvents(scope, mciRestService, nextTs, scope.projectId);
-          }
-        }
-      });
-  }
 
   var getNextTs = function(pageLink) {
     if (!pageLink) {
@@ -110,9 +98,5 @@ mciModule.factory('eventsService', ['$window', 'notificationService', function($
 
   return {
     getMoreEvents: getMoreEvents,
-    setupWindow: setupWindow,
-    getNextTs: getNextTs,
-    getDiffText: getDiffText,
-    getQueryParam:getQueryParam
   }
 }]);

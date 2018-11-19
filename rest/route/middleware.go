@@ -142,7 +142,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
 	if !(isSuperuser || isAdmin) {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
+			StatusCode: http.StatusUnauthorized,
 			Message:    "Not authorized",
 		}))
 		return

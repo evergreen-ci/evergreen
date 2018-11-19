@@ -53,7 +53,8 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		project, err := model.FindOneProjectRef(resourceID)
+		var project *model.ProjectRef
+		project, err = model.FindOneProjectRef(resourceID)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
