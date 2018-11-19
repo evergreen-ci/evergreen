@@ -1,7 +1,7 @@
 /*
   Wrapper over window.localStorage
   - Allows to work with localStorage as with simple JS object
-  - Auto type casting: String (default), Number, Boolean
+  - Auto type casting: String (default), Number, Boolean or a function
   - Default setting value (undefined by default)
 
   Require setting to have defenition in the `constants`.
@@ -13,7 +13,7 @@
     ... nested props
     {
       default: defaultValue,
-      type: 'String',
+      type: String,
     }
   }
 
@@ -26,7 +26,7 @@
   * If the setting has default value and localStorage hasn't the property
     the value will be set to localStorage
 */
-mciModule.factory('Settings', function(SETTING_DEFS, $log, $window) {
+mciModule.factory('Settings', function(SETTING_DEFS, $log) {
   function isEither(vals) {
     return function(d) { return _.contains(vals, d) }
   }
@@ -80,7 +80,7 @@ mciModule.factory('Settings', function(SETTING_DEFS, $log, $window) {
     }
 
     // Type casting
-    return $window[descriptor.type || 'String'](value)
+    return (descriptor.type || String)(value)
   }
 
   var tree = buildSettingsTree(SETTING_DEFS, [SETTING_DEFS.GLOBAL_PREFIX])

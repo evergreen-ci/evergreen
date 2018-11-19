@@ -12,18 +12,18 @@ mciModule
       trendchart: {
         linearMode: {
           enabled: {
-            type: 'Boolean',
+            type: Boolean,
             default: true,
           },
         },
         originMode: {
           enabled: {
-            type: 'Boolean',
+            type: Boolean,
             default: true,
           },
         },
         threadLevelMode: {
-          type: 'String',
+          type: String,
           default: 'maxonly',
         }
       },

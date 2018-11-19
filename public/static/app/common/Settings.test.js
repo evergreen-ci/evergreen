@@ -18,10 +18,10 @@ describe('SettingsTest', function() {
   }
 
   it('can store different param types', function() {
-    typeCheck('Number', 1)
-    typeCheck('Boolean', true)
-    typeCheck('String', 'a')
-    typeCheck('', 'a')
+    typeCheck(Number, 1)
+    typeCheck(Boolean, true)
+    typeCheck(String, 'a')
+    typeCheck(undefined, 'a')
   })
 
   it('respect and restores deault value', function() {
@@ -36,7 +36,7 @@ describe('SettingsTest', function() {
 
   it('actually uses localStorage', function() {
     var tree = Settings._buildSettingsTree({
-      param: {type: 'String'}
+      param: {type: String}
     }, [])
 
     expect(localStorage.getItem('param')).toBe(null)
@@ -63,7 +63,7 @@ describe('SettingsTest', function() {
 
   it('respects prefix', function() {
     var tree = Settings._buildSettingsTree({
-      param: {type: 'String'}
+      param: {type: String}
     }, ['prefix'])
 
     tree.param = 'a'
@@ -72,7 +72,7 @@ describe('SettingsTest', function() {
 
   it('returns undefined by default', function() {
     var tree = Settings._buildSettingsTree({
-      param: {type: 'String'}
+      param: {type: String}
     }, [])
 
     expect(tree.param).not.toBeDefined()
