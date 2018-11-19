@@ -495,9 +495,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	for _, task := range tasks {
 		if task.DisplayOnly {
-			s.Equal(int64(0), task.Priority)
+			s.EqualValues(0, task.Priority)
 		} else {
-			s.Equal(int64(10), task.Priority)
+			s.EqualValues(10, task.Priority)
 		}
 	}
 }
