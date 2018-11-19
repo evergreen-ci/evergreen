@@ -12,8 +12,6 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
-const retryLimit = 50
-
 type GenerateConnector struct{}
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
