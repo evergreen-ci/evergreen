@@ -167,6 +167,7 @@ func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm
 	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
+
 	if err := g.saveNewBuildsAndTasks(pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}

@@ -90,7 +90,6 @@ var projectSyntaxValidators = []projectValidator{
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
 	validateTaskGroups,
-	validateGenerateTasks,
 	validateCreateHosts,
 	validateDuplicateTaskDefinition,
 }
@@ -1013,11 +1012,6 @@ func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *Va
 	return nil
 }
 
-func validateGenerateTasks(p *model.Project) ValidationErrors {
-	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
-	return validateTimesCalledPerBuildVariant(p, ts, evergreen.GenerateTasksCommandName, 1)
-}
-
 func validateCreateHosts(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.CreateHostCommandName)
 	errs := validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 3)
@@ -1036,24 +1030,6 @@ func validateTimesCalledPerTask(p *model.Project, ts map[string]int, commandName
 					})
 				}
 			}
-		}
-	}
-	return errs
-}
-
-func validateTimesCalledPerBuildVariant(p *model.Project, ts map[string]int, commandName string, times int) (errs ValidationErrors) {
-	for _, bv := range p.BuildVariants {
-		total := 0
-		for _, t := range bv.Tasks {
-			if count, ok := ts[t.Name]; ok {
-				total += count
-			}
-		}
-		if total > times {
-			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("variant %s may only call %s %d times but calls it %d times", bv.Name, commandName, times, total),
-				Level:   Error,
-			})
 		}
 	}
 	return errs
