@@ -147,7 +147,7 @@ func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm
 	if err := version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{"$set": bson.M{version.ConfigKey: v.Config}}); err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
-	if err := g.saveNewBuildsAndTasks(pm, v, p); err != nil {
+	if err := g.saveNewBuildsAndTasks(pm, v, p, t.Priority); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
 
@@ -173,7 +173,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *version.Version, p *Project) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *version.Version, p *Project, parentPriority int64) error {
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))
@@ -193,6 +193,15 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *
 			newTVPairsForNewVariants = appendTasks(newTVPairsForNewVariants, bv, p)
 		}
 	}
+
+	// inherit priority from the parent task
+	projBvs := []BuildVariant(p.BuildVariants)
+	for i, projBv := range projBvs {
+		for j, _ := range projBv.Tasks {
+			projBvs[i].Tasks[j].Priority = parentPriority
+		}
+	}
+
 	dependencies := IncludePatchDependencies(p, newTVPairsForExistingVariants.ExecTasks)
 	newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, dependencies...)
 	if err := AddNewTasks(true, v, p, newTVPairsForExistingVariants, g.TaskID); err != nil {
