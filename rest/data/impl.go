@@ -15,7 +15,6 @@ type DBConnector struct {
 	DBDistroConnector
 	DBHostConnector
 	DBTestConnector
-	DBMetricsConnector
 	DBBuildConnector
 	DBVersionConnector
 	DBPatchConnector
@@ -30,6 +29,7 @@ type DBConnector struct {
 	DBSubscriptionConnector
 	NotificationConnector
 	DBCreateHostConnector
+	StatsConnector
 }
 
 func (ctx *DBConnector) GetSuperUsers() []string   { return ctx.superUsers }
@@ -50,7 +50,6 @@ type MockConnector struct {
 	MockDistroConnector
 	MockHostConnector
 	MockTestConnector
-	MockMetricsConnector
 	MockBuildConnector
 	MockVersionConnector
 	MockPatchConnector
@@ -65,6 +64,7 @@ type MockConnector struct {
 	MockSubscriptionConnector
 	MockNotificationConnector
 	MockCreateHostConnector
+	MockStatsConnector
 }
 
 func (ctx *MockConnector) GetSuperUsers() []string   { return ctx.superUsers }

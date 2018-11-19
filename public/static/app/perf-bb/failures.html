@@ -1,18 +1,18 @@
 <form name="form" class="toolbar">
   <label class="legend">
     Lookback days:
-    <input class="input-2-char" type="number" min="0" max="45" ng-model="pwvm.lookBackDays" />
+    <input class="input-2-char" type="number" min="0" max="45" ng-model="pfvm.lookBackDays" />
   </label>
   <button class="btn btn-sm"
           ng-class="{'btn-primary': form.$dirty && form.$valid}"
           ng-disabled="!form.$dirty && form.$invalid"
-          ng-click="pwvm.applyFiltering()"
+          ng-click="pfvm.applyFiltering()"
   >Go</button>
   <span ng-show="form.$invalid" class="warning-message">The value of 'look back' should be in 0 - 45 range</span>
 </form>
 <div
   class="grid"
-  ui-grid="pwvm.gridOptions"
+  ui-grid="pfvm.gridOptions"
   ui-grid-auto-resize
   ui-grid-resize-columns
   ui-grid-move-columns
@@ -23,10 +23,10 @@
     <md-progress-circular
       mode="indeterminate"
       md-diameter="70"
-      ng-show="pwvm.isLoading"
+      ng-show="pfvm.isLoading"
     >
     </md-progress-circular>
-    <h1 ng-show="!pwvm.isLoading && !pwvm.gridOptions.data.length">
+    <h1 ng-show="!pfvm.isLoading && !pfvm.gridOptions.data.length">
       No data available!
     </h1>
   </div>

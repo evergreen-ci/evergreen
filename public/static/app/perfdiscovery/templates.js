@@ -50,9 +50,10 @@ mciModule.run(function($templateCache) {
         'multiple ' +
         'append-to-body="true" ' +
         'ng-model="vm.col.filters[0].term" ' +
-        'ng-change="vm.triggerFiltering()">' +
+        'ng-change="vm.triggerFiltering()"' +
+        'ng-init="vm.$select = $select">' +
       '<ui-select-match placeholder="Choose {{vm.col.name}}">{{$item}}</ui-select-match>' +
-      '<ui-select-choices repeat="item in (vm.col.filters[0].options | filter : $select.search)">' +
+      '<ui-select-choices repeat="item in (vm.col.filters[0].options | filter : vm.matcher)">' +
         '{{item}}' +
       '</ui-select-choices>' +
     '</ui-select>'

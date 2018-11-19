@@ -1,7 +1,7 @@
-mciModule.controller('PerfBBWarningsCtrl', function(
+mciModule.controller('PerfBBFailuresCtrl', function(
   ApiV2, $scope
 ) {
-  // Perf Warnings View-Model
+  // Perf Failures View-Model
   var vm = this
   var project = window.project
 

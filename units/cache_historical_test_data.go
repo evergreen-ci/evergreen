@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/mongodb/amboy"
@@ -64,21 +65,28 @@ func makeCacheHistoricalTestDataJob() *cacheHistoricalTestDataJob {
 func (j *cacheHistoricalTestDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
+	// Check for degraded mode flag.
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error retrieving service flags"))
+		return
+	}
+	if flags.CacheStatsJobDisabled {
+		j.AddError(errors.New("cache stats job is disabled"))
+		return
+	}
+
 	// Lookup last sync date for project
 	statsStatus, err := stats.GetStatsStatus(j.ProjectId)
 	if err != nil {
-		if err != nil {
-			j.AddError(errors.Wrap(err, "error retrieving last sync date"))
-			return
-		}
+		j.AddError(errors.Wrap(err, "error retrieving last sync date"))
+		return
 	}
 
 	tasksToIgnore, err := getTasksToIgnore(j.ProjectId)
 	if err != nil {
-		if err != nil {
-			j.AddError(errors.Wrap(err, "error retrieving project settings"))
-			return
-		}
+		j.AddError(errors.Wrap(err, "error retrieving project settings"))
+		return
 	}
 
 	jobContext := cacheHistoricalJobContext{

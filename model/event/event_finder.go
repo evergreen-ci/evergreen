@@ -47,34 +47,6 @@ func FindUnprocessedEvents() ([]EventLogEntry, error) {
 	return out, nil
 }
 
-// CountSystemEvents returns the total number of system metrics events
-// captured for the specified task. If taskId is "", then this will
-// return a count of all system events captured.
-func CountSystemEvents(taskId string) (int, error) {
-	filter := resourceTypeKeyIs(EventTaskSystemInfo)
-	filter[TypeKey] = EventTaskSystemInfo
-
-	if taskId != "" {
-		filter[ResourceIdKey] = taskId
-	}
-
-	return db.CountQ(TaskLogCollection, db.Query(filter))
-}
-
-// CountProcessEvents returns the total number of process tree metrics events
-// captured for the specified task. If taskId is "", then this will
-// return a count of all process metrics captured.
-func CountProcessEvents(taskID string) (int, error) {
-	filter := resourceTypeKeyIs(EventTaskProcessInfo)
-	filter[TypeKey] = EventTaskProcessInfo
-
-	if taskID != "" {
-		filter[ResourceIdKey] = taskID
-	}
-
-	return db.CountQ(TaskLogCollection, db.Query(filter))
-}
-
 func FindLastProcessedEvent() (*EventLogEntry, error) {
 	q := db.Query(bson.M{
 		processedAtKey: bson.M{
@@ -189,30 +161,6 @@ func AdminEventsBefore(before time.Time, n int) db.Q {
 	}
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
-}
-
-// TaskSystemInfoEvents builds a query for system info,
-// (e.g. aggregate information about the system as a whole) collected
-// during a task.
-func TaskSystemInfoEvents(taskID string, ts time.Time, limit int) db.Q {
-	filter := resourceTypeKeyIs(EventTaskSystemInfo)
-	filter[ResourceIdKey] = taskID
-	filter[TypeKey] = EventTaskSystemInfo
-	filter[TimestampKey] = bson.M{"$gte": ts}
-
-	return db.Query(filter).Sort([]string{TimestampKey}).Limit(limit)
-}
-
-// TaskProcessInfoEvents builds a query for process info, which
-// returns information about each process (and children) spawned
-// during task execution.
-func TaskProcessInfoEvents(taskID string, ts time.Time, limit int) db.Q {
-	filter := resourceTypeKeyIs(EventTaskProcessInfo)
-	filter[ResourceIdKey] = taskID
-	filter[TypeKey] = EventTaskProcessInfo
-	filter[TimestampKey] = bson.M{"$gte": ts}
-
-	return db.Query(filter).Sort([]string{TimestampKey}).Limit(limit)
 }
 
 func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {

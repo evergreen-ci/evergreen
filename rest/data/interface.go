@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -21,7 +22,6 @@ import (
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/grip/message"
 )
 
 // Connector is an interface that contains all of the methods which
@@ -73,6 +73,11 @@ type Connector interface {
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
+
+	// Create/Update project methods
+	CreateProject(*restModel.APIProjectRef) (*restModel.APIProject, error)
+	UpdateProject(*restModel.APIProjectRef) (*restModel.APIProject, error)
+
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 
@@ -116,11 +121,6 @@ type Connector interface {
 	DeleteDistroById(string) error
 	// CreateDistro is a method to insert a given distro.
 	CreateDistro(distro *distro.Distro) error
-
-	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
-	// access to the metrics data collected by agents during task execution
-	FindTaskSystemMetrics(string, time.Time, int) ([]*message.SystemInfo, error)
-	FindTaskProcessMetrics(string, time.Time, int) ([][]*message.ProcessInfo, error)
 
 	// FindCostByVersionId returns cost data of a version given its ID.
 	FindCostByVersionId(string) (*task.VersionCost, error)
@@ -218,4 +218,7 @@ type Connector interface {
 	ListHostsForTask(string) ([]host.Host, error)
 	MakeIntentHost(string, string, string, apimodels.CreateHost) (*host.Host, error)
 	CreateHostsFromTask(*task.Task, user.DBUser, string) error
+
+	// Get test execution statistics
+	GetTestStats(*stats.StatsFilter) ([]restModel.APITestStats, error)
 }

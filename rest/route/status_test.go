@@ -138,7 +138,7 @@ func (s *StatusSuite) TestExecuteDefault() {
 	resp := s.h.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp)
-	res := resp.Data().([]model.Model)[0].(*model.APITaskStats)
+	res := resp.Data().([]model.Model)[0].(*model.APIRecentTaskStats)
 	s.Equal(1, res.Total)
 	s.Equal(2, res.Inactive)
 	s.Equal(3, res.Unstarted)

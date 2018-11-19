@@ -14,12 +14,115 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
+
+func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, version.Collection, task.Collection, user.Collection, event.SubscriptionsCollection, build.Collection))
+	proj := model.ProjectRef{
+		Identifier:           "proj",
+		NotifyOnBuildFailure: true,
+		Admins:               []string{"admin"},
+	}
+	assert.NoError(proj.Insert())
+	v1 := version.Version{
+		Id:         "v1",
+		Identifier: proj.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(v1.Insert())
+	b1 := build.Build{
+		Id:      "b1",
+		Version: v1.Id,
+	}
+	assert.NoError(b1.Insert())
+	t1 := task.Task{
+		Id:          "t1",
+		Version:     v1.Id,
+		BuildId:     b1.Id,
+		Status:      evergreen.TaskFailed,
+		Project:     proj.Identifier,
+		Requester:   evergreen.RepotrackerVersionRequester,
+		DisplayName: "t1",
+	}
+	assert.NoError(t1.Insert())
+	u := user.DBUser{
+		Id:           "admin",
+		EmailAddress: "a@b.com",
+		Settings: user.UserSettings{
+			Notifications: user.NotificationPreferences{
+				BuildBreak: user.PreferenceSlack,
+			},
+		},
+	}
+	assert.NoError(u.Insert())
+
+	// a build break that no one is subscribed to should go to admins
+	assert.NoError(repotracker.AddBuildBreakSubscriptions(&v1, &proj))
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypeTask,
+		ResourceId:   t1.Id,
+		EventType:    event.TaskFinished,
+		Data: &event.TaskEventData{
+			Status: evergreen.TaskFailed,
+		},
+	}
+	n, err := NotificationsFromEvent(&e)
+	assert.NoError(err)
+	assert.Len(n, 1)
+
+	// a build triggered build break that the committer is subscribed to
+	// should only go to admins
+	v2 := version.Version{
+		Id:         "v2",
+		Identifier: proj.Identifier,
+		Requester:  evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(v2.Insert())
+	b2 := build.Build{
+		Id:      "b2",
+		Version: v2.Id,
+	}
+	assert.NoError(b2.Insert())
+	t2 := task.Task{
+		Id:          "t2",
+		Version:     v2.Id,
+		BuildId:     b2.Id,
+		Status:      evergreen.TaskFailed,
+		Project:     proj.Identifier,
+		Requester:   evergreen.RepotrackerVersionRequester,
+		TriggerID:   "abc",
+		DisplayName: "t2",
+	}
+	assert.NoError(t2.Insert())
+	sub := event.NewBuildBreakSubscriptionByOwner("me", event.Subscriber{
+		Type:   event.EmailSubscriberType,
+		Target: "committer@example.com",
+	})
+	assert.NoError(sub.Upsert())
+	assert.NoError(repotracker.AddBuildBreakSubscriptions(&v2, &proj))
+	e = event.EventLogEntry{
+		ResourceType: event.ResourceTypeTask,
+		ResourceId:   t2.Id,
+		EventType:    event.TaskFinished,
+		Data: &event.TaskEventData{
+			Status: evergreen.TaskFailed,
+		},
+	}
+	n, err = NotificationsFromEvent(&e)
+	assert.NoError(err)
+	grip.Error(err)
+	assert.Len(n, 1)
+	assert.EqualValues(user.PreferenceSlack, n[0].Subscriber.Type)
+}
 
 func TestTaskTriggers(t *testing.T) {
 	suite.Run(t, &taskSuite{})

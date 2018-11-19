@@ -1,6 +1,9 @@
 package operations
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -111,4 +114,79 @@ func TestSetDefaultAlias(t *testing.T) {
 	assert.Len(client3.Projects, 2)
 	assert.Equal(client3.Projects[0].Alias, "defaultAlias")
 	assert.Equal(client3.Projects[1].Alias, "newDefaultAlias")
+}
+
+func TestNewClientSettings(t *testing.T) {
+	tmpdir, err := ioutil.TempDir("", "newclientsettings")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	globalTestConfigPath := filepath.Join(tmpdir, ".evergreen.test.yml")
+	err = ioutil.WriteFile(globalTestConfigPath,
+		[]byte(`api_server_host: https://some.evergreen.api
+ui_server_host: https://some.evergreen.ui
+api_key: not-a-valid-token
+user: myusername
+projects:
+- name: my-primary-project
+  default: true
+  tasks: 
+    - all
+  alias: some-variants`), 0600)
+	assert.NoError(t, err)
+
+	clientSettings, err := NewClientSettings(globalTestConfigPath)
+	assert.NoError(t, err)
+	assert.Equal(t, ClientSettings{
+		APIServerHost: "https://some.evergreen.api",
+		UIServerHost:  "https://some.evergreen.ui",
+		APIKey:        "not-a-valid-token",
+		User:          "myusername",
+		LoadedFrom:    globalTestConfigPath,
+		Projects: []ClientProjectConf{
+			{
+				Name:    "my-primary-project",
+				Default: true,
+				Tasks:   []string{"all"},
+				Alias:   "some-variants",
+			},
+		},
+	}, *clientSettings)
+
+	err = ioutil.WriteFile(localConfigPath,
+		[]byte(`
+user: some-other-username
+projects:
+- name: my-other-project
+  default: true
+  tasks: 
+    - all
+  variants: 
+    - all`), 0600)
+	assert.NoError(t, err)
+	defer os.Remove(localConfigPath)
+
+	localClientSettings, err := NewClientSettings(globalTestConfigPath)
+	assert.NoError(t, err)
+	assert.Equal(t, ClientSettings{
+		// from global config
+		APIServerHost: "https://some.evergreen.api",
+		// from global config
+		UIServerHost: "https://some.evergreen.ui",
+		// from global config
+		APIKey: "not-a-valid-token",
+		// from local config
+		User: "some-other-username",
+		// from global config
+		LoadedFrom: globalTestConfigPath,
+		// from local config
+		Projects: []ClientProjectConf{
+			{
+				Name:     "my-other-project",
+				Default:  true,
+				Tasks:    []string{"all"},
+				Variants: []string{"all"},
+			},
+		},
+	}, *localClientSettings)
 }
