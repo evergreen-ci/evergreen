@@ -462,10 +462,12 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	genTask := task.Task{
-		Id:      "task_that_called_generate_task",
-		Version: "version_that_called_generate_task",
+		Id:       "task_that_called_generate_task",
+		Version:  "version_that_called_generate_task",
+		Priority: 10,
 	}
 	s.NoError(genTask.Insert())
+
 	sampleBuild := build.Build{
 		Id:           "sample_build",
 		BuildVariant: "a_variant",
@@ -490,4 +492,12 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(err)
 	s.Len(builds, 3)
 	s.Len(tasks, 6)
+
+	for _, task := range tasks {
+		if task.DisplayOnly {
+			s.EqualValues(0, task.Priority)
+		} else {
+			s.EqualValues(10, task.Priority)
+		}
+	}
 }
