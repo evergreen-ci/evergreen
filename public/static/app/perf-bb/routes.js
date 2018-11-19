@@ -18,13 +18,13 @@ mciModule.config(function($routeProvider, $locationProvider) {
     })
     // TODO make a mixin for this
     // Redirects to the same URL with filled in project id
-    .when('/perf-bb/warnings', {
+    .when('/perf-bb/failures', {
       redirectTo: applyProject,
     })
-    .when('/perf-bb/warnings/:projectId', {
-      templateUrl: '/static/app/perf-bb/warnings.html',
-      controller: 'PerfBBWarningsCtrl',
-      controllerAs: 'pwvm',
+    .when('/perf-bb/failures/:projectId', {
+      templateUrl: '/static/app/perf-bb/failures.html',
+      controller: 'PerfBBFailuresCtrl',
+      controllerAs: 'pfvm',
     })
     // This was added for compatibility with server-side routing
     .otherwise({
