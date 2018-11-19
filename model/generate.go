@@ -102,26 +102,36 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 }
 
 // NewVersion adds the buildvariants, tasks, and functions
-// from a generated project config to a project.
-func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task, *projectMaps, error) {
+// from a generated project config to a project, and returns the previous config string.
+func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task, *projectMaps, string, error) {
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding task %s", g.TaskID).Error()}
 	}
 	if t == nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
 	}
 	v, err := version.FindOneId(t.Version)
 	if err != nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
 	}
 	if v == nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find version %s", t.Version).Error()}
 	}
+	if v.Config == "" {
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Errorf("unable to find config string for version %s", t.Version).Error()}
+	}
+	prevConfig := v.Config
 	p := &Project{}
 	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
 
 	// Cache project data in maps for quick lookup
@@ -129,28 +139,38 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 
 	// Validate generated project against original project.
 	if err = g.validateGeneratedProject(p, cachedProject); err != nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
 	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
 	if err != nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
 	}
 	v.Config = config
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+		return nil, nil, nil, nil, "",
+			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
 	}
-	return p, v, t, &cachedProject, nil
+	return p, v, t, &cachedProject, prevConfig, nil
 }
 
-func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm *projectMaps) error {
-	if err := version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{"$set": bson.M{version.ConfigKey: v.Config}}); err != nil {
+func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm *projectMaps, prevConfig string) error {
+	query := bson.M{
+		version.IdKey:     v.Id,
+		version.ConfigKey: prevConfig,
+	}
+	update := bson.M{"$set": bson.M{version.ConfigKey: v.Config}}
+
+	err := version.UpdateOne(query, update)
+	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
+
 	if err := g.saveNewBuildsAndTasks(pm, v, p); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
-
 	return nil
 }
 
