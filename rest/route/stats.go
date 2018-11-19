@@ -62,7 +62,7 @@ func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
 	var err error
 
 	// requesters
-	sh.filter.Requesters, err = sh.readRequesters(vals["requesters"])
+	sh.filter.Requesters, err = sh.readRequesters(sh.readStringList(vals["requesters"]))
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid requesters value",
@@ -103,7 +103,7 @@ func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
 	}
 
 	// tests
-	sh.filter.Tests = vals["tests"]
+	sh.filter.Tests = sh.readStringList(vals["tests"])
 	if len(sh.filter.Tests) > statsAPIMaxNumTests {
 		return gimlet.ErrorResponse{
 			Message:    "Too many tests values",
@@ -112,7 +112,7 @@ func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
 	}
 
 	// tasks
-	sh.filter.Tasks = vals["tasks"]
+	sh.filter.Tasks = sh.readStringList(vals["tasks"])
 	if len(sh.filter.Tasks) > statsAPIMaxNumTasks {
 		return gimlet.ErrorResponse{
 			Message:    "Too many tasks values",
@@ -121,10 +121,10 @@ func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
 	}
 
 	// variants
-	sh.filter.BuildVariants = vals["variants"]
+	sh.filter.BuildVariants = sh.readStringList(vals["variants"])
 
 	// distros
-	sh.filter.Distros = vals["distros"]
+	sh.filter.Distros = sh.readStringList(vals["distros"])
 
 	// group_num_days
 	sh.filter.GroupNumDays, err = sh.readInt(vals.Get("group_num_days"), 1, statsAPIMaxGroupNumDays, 1)
@@ -184,6 +184,16 @@ func (sh *statsHandler) readRequesters(requesters []string) ([]string, error) {
 		}
 	}
 	return requesterValues, nil
+}
+
+// readStringList parses a string list parameter value, the values can be comma separated or specified multiple times.
+func (sh *statsHandler) readStringList(values []string) []string {
+	var parsedValues []string
+	for _, val := range values {
+		elements := strings.Split(val, ",")
+		parsedValues = append(parsedValues, elements...)
+	}
+	return parsedValues
 }
 
 // readInt parses an integer parameter value, given minimum, maximum, and default values.

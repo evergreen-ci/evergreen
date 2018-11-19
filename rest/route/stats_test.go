@@ -28,6 +28,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 		"before_date": []string{"2018-07-15"},
 		"tests":       []string{"test1", "test2"},
 		"tasks":       []string{"task1", "task2"},
+		"variants":    []string{"v1,v2", "v3"},
 	}
 	handler := testStatsHandler{}
 
@@ -43,7 +44,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 	s.Equal(time.Date(2018, 7, 15, 0, 0, 0, 0, time.UTC), handler.filter.BeforeDate)
 	s.Equal(values["tests"], handler.filter.Tests)
 	s.Equal(values["tasks"], handler.filter.Tasks)
-	s.Nil(handler.filter.BuildVariants)
+	s.Equal([]string{"v1", "v2", "v3"}, handler.filter.BuildVariants)
 	s.Nil(handler.filter.Distros)
 	s.Nil(handler.filter.StartAt)
 	s.Equal(stats.GroupByDistro, handler.filter.GroupBy)  // default value
