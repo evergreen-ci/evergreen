@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -184,4 +185,103 @@ func (h *versionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(versions)
+}
+
+/*
+ * Creates project (project_ref)
+ * PUT: /rest/v2/projects/
+ * Perm: superUser
+ */
+type projectCreateHandler struct {
+	projectRef model.APIProjectRef
+
+	sc data.Connector
+}
+
+func makeProjectCreateRoute(sc data.Connector) gimlet.RouteHandler {
+	return &projectCreateHandler{sc: sc}
+}
+
+func (h *projectCreateHandler) Factory() gimlet.RouteHandler {
+	return &projectCreateHandler{sc: h.sc}
+}
+
+func (h *projectCreateHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, &h.projectRef); err != nil {
+		return errors.Wrap(err, "problem parsing JSON from request body")
+	}
+
+	return nil
+}
+
+func (h *projectCreateHandler) Run(ctx context.Context) gimlet.Responder {
+	createdApiProject, err := h.sc.CreateProject(&h.projectRef)
+
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Cannot create project!"))
+	}
+
+	resp := gimlet.NewJSONResponse(createdApiProject)
+	err = resp.SetStatus(http.StatusCreated)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Cannot set status code"))
+	}
+
+	return resp
+}
+
+/*
+ * Updates project (project_ref) with given identifier
+ * PATCH: /rest/v2/projects/{project_id}
+ * Perm: superUser
+ */
+type projectUpdateHandler struct {
+	projectRef model.APIProjectRef
+
+	sc data.Connector
+}
+
+func makeProjectUpdateRoute(sc data.Connector) gimlet.RouteHandler {
+	return &projectUpdateHandler{sc: sc}
+}
+
+func (h *projectUpdateHandler) Factory() gimlet.RouteHandler {
+	return &projectUpdateHandler{sc: h.sc}
+}
+
+func (h *projectUpdateHandler) Parse(ctx context.Context, r *http.Request) error {
+	// Read raw bytes from request body
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	projectRef := MustHaveProjectContext(ctx).ProjectRef
+	if projectRef == nil {
+		return errors.New("Project not found")
+	}
+
+	projectId := projectRef.Identifier
+
+	if err := h.projectRef.BuildFromService(projectRef); err != nil {
+		return errors.Wrap(err, "Cannot process request")
+	}
+
+	if err := util.ReadJSONInto(body, &h.projectRef); err != nil {
+		return errors.Wrap(err, "JSON format or content is invalid!")
+	}
+
+	h.projectRef.Identifier = model.ToAPIString(projectId)
+
+	return nil
+}
+
+func (h *projectUpdateHandler) Run(ctx context.Context) gimlet.Responder {
+	updatedApiProject, err := h.sc.UpdateProject(&h.projectRef)
+	if err != nil {
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "An error occurred during project update process!"))
+	}
+
+	return gimlet.NewJSONResponse(updatedApiProject)
 }
