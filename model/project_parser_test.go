@@ -178,7 +178,7 @@ buildvariants:
   tasks:
   - name: "t1"
   - name: "t2"
-		patch_only: true
+    patch_only: true
     depends_on:
     - name: "t3"
       variant: "v0"
