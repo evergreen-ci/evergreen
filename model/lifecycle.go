@@ -605,14 +605,16 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 	return tasks
 }
 
-func shouldNotPatchBuild(t BuildVariantTaskUnit, requester string) bool {
-	if !evergreen.IsPatchRequester(requester) {
-		return false
-	}
-	if (t.Patchable != nil && !*t.Patchable) || t.Name == evergreen.PushStage {
-		return true
-	}
-	return false
+func isPatchBuild(requester string) bool {
+	return evergreen.IsPatchRequester(requester)
+}
+
+func skipOnPatchBuild(t BuildVariantTaskUnit) bool {
+	return (t.Patchable != nil && !*t.Patchable) || t.Name == evergreen.PushStage
+}
+
+func skipOnNonPatchBuild(patchOnly *bool) bool {
+	return patchOnly != nil && *patchOnly
 }
 
 // createTasksForBuild creates all of the necessary tasks for the build.  Returns a
@@ -641,17 +643,19 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		// sanity check that the config isn't malformed
 		if taskSpec.Name != "" {
-			if shouldNotPatchBuild(task, b.Requester) {
+			task.Populate(taskSpec)
+			if skipTask := isPatchBuild(b.Requester) && skipOnPatchBuild(task) ||
+				!isPatchBuild(b.Requester) && skipOnNonPatchBuild(task.PatchOnly); skipTask {
 				continue
 			}
 			if createAll || util.StringSliceContains(taskNames, task.Name) {
-				task.Populate(taskSpec)
 				tasksToCreate = append(tasksToCreate, task)
 			}
 		} else if _, ok := tgMap[task.Name]; ok {
 			tasksFromVariant := CreateTasksFromGroup(task, project)
 			for _, taskFromVariant := range tasksFromVariant {
-				if shouldNotPatchBuild(taskFromVariant, b.Requester) {
+				if skipTask := isPatchBuild(b.Requester) && skipOnPatchBuild(taskFromVariant) ||
+					!isPatchBuild(b.Requester) && skipOnNonPatchBuild(taskFromVariant.PatchOnly); skipTask {
 					continue
 				}
 				if createAll || util.StringSliceContains(taskNames, taskFromVariant.Name) {

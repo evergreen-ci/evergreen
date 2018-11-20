@@ -64,6 +64,7 @@ type BuildVariantTaskUnit struct {
 
 	// fields to overwrite ProjectTask settings.
 	Patchable *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	PatchOnly *bool                 `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 	Priority  int64                 `yaml:"priority,omitempty" bson:"priority"`
 	DependsOn []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
 	Requires  []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
@@ -122,6 +123,9 @@ func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	}
 	if bvt.Patchable == nil {
 		bvt.Patchable = pt.Patchable
+	}
+	if bvt.PatchOnly == nil {
+		bvt.PatchOnly = pt.PatchOnly
 	}
 	// TODO these are copied but unused until EVG-578 is completed
 	if bvt.ExecTimeoutSecs == 0 {
@@ -324,13 +328,13 @@ type ProjectTask struct {
 	Requires        []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
 	Commands        []PluginCommandConf   `yaml:"commands,omitempty" bson:"commands"`
 	Tags            []string              `yaml:"tags,omitempty" bson:"tags"`
-
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
 	Patchable *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	Stepback  *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	PatchOnly *bool `yaml:"patch_only,omitempty" bson:"patch_only,omitempty"`
 }
 
 // TaskIdTable is a map of [variant, task display name]->[task id].

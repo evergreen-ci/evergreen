@@ -67,9 +67,10 @@ type parserProject struct {
 type parserTaskGroup struct {
 	Name            string             `yaml:"name,omitempty"`
 	Priority        int64              `yaml:"priority,omitempty"`
-	Patchable       *bool              `yaml:"patchable,omitempty,omitempty"`
+	Patchable       *bool              `yaml:"patchable,omitempty"`
+	PatchOnly       *bool              `yaml:"patch_only,omitempty"`
 	ExecTimeoutSecs int                `yaml:"exec_timeout_secs,omitempty"`
-	Stepback        *bool              `yaml:"stepback,omitempty,omitempty"`
+	Stepback        *bool              `yaml:"stepback,omitempty"`
 	MaxHosts        int                `yaml:"max_hosts,omitempty"`
 	SetupGroup      *YAMLCommandSet    `yaml:"setup_group,omitempty"`
 	TeardownGroup   *YAMLCommandSet    `yaml:"teardown_group,omitempty"`
@@ -96,6 +97,7 @@ type parserTask struct {
 	Commands        []PluginCommandConf `yaml:"commands,omitempty"`
 	Tags            parserStringSlice   `yaml:"tags,omitempty"`
 	Patchable       *bool               `yaml:"patchable,omitempty"`
+	PatchOnly       *bool               `yaml:"patch_only,omitempty"`
 	Stepback        *bool               `yaml:"stepback,omitempty"`
 }
 
@@ -307,6 +309,7 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type parserBVTaskUnit struct {
 	Name            string             `yaml:"name,omitempty"`
 	Patchable       *bool              `yaml:"patchable,omitempty"`
+	PatchOnly       *bool              `yaml:"patch_only,omitempty"`
 	Priority        int64              `yaml:"priority,omitempty"`
 	DependsOn       parserDependencies `yaml:"depends_on,omitempty"`
 	Requires        taskSelectors      `yaml:"requires,omitempty"`
@@ -508,6 +511,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Commands:        pt.Commands,
 			Tags:            pt.Tags,
 			Patchable:       pt.Patchable,
+			PatchOnly:       pt.PatchOnly,
 			Stepback:        pt.Stepback,
 		}
 		t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
@@ -712,6 +716,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 			t := BuildVariantTaskUnit{
 				Name:            name,
 				Patchable:       pt.Patchable,
+				PatchOnly:       pt.PatchOnly,
 				Priority:        pt.Priority,
 				ExecTimeoutSecs: pt.ExecTimeoutSecs,
 				Stepback:        pt.Stepback,
