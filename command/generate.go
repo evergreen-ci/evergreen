@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -16,8 +17,8 @@ import (
 
 type generateTask struct {
 	// Files are a list of JSON documents.
-	Files []string `mapstructure:"files"`
-
+	Files       []string `mapstructure:"files" plugin:"expand"`
+	FilesFilter []string `mapstructure:"files_filter" plugin:"expand"`
 	base
 }
 
@@ -35,10 +36,25 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+
 	if conf.Task.Execution > 0 {
 		logger.Task().Warning("Refusing to generate tasks on an execution other than the first one")
 		return nil
 	}
+	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+		err = errors.Wrap(err, "error expanding params")
+		logger.Task().Error(err)
+		return err
+	}
+	if len(c.FilesFilter) != 0 {
+		var err error
+		if c.Files, err = util.BuildFileList(conf.WorkDir, c.FilesFilter...); err != nil {
+			err = errors.Wrap(err, "problem building file lists")
+			logger.Task().Error(err)
+			return err
+		}
+	}
+
 	catcher := grip.NewBasicCatcher()
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	var jsonBytes [][]byte
