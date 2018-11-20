@@ -124,20 +124,9 @@ type projectAdminMiddleware struct {
 
 func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
-	vars := gimlet.GetVars(r)
-	taskId := vars["task_id"]
-	buildId := vars["build_id"]
-	versionId := vars["version_id"]
-	patchId := vars["patch_id"]
-	projectId := vars["project_id"]
+	opCtx := MustHaveProjectContext(ctx)
+	user := MustHaveUser(ctx)
 
-	opCtx, err := m.sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-
-	user := gimlet.GetUser(ctx)
 	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
 	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
 	if !(isSuperuser || isAdmin) {
@@ -147,8 +136,6 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		}))
 		return
 	}
-
-	r = r.WithContext(context.WithValue(ctx, RequestContext, &opCtx))
 
 	next(rw, r)
 }
