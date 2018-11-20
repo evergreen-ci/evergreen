@@ -26,7 +26,7 @@ func (apiTestStats *APITestStats) BuildFromService(h interface{}) error {
 		apiTestStats.TaskName = ToAPIString(v.TaskName)
 		apiTestStats.BuildVariant = ToAPIString(v.BuildVariant)
 		apiTestStats.Distro = ToAPIString(v.Distro)
-		apiTestStats.Date = ToAPIString(v.Date.Format("2006-01-02"))
+		apiTestStats.Date = ToAPIString(v.Date.UTC().Format("2006-01-02"))
 
 		apiTestStats.NumPass = v.NumPass
 		apiTestStats.NumFail = v.NumFail
@@ -66,7 +66,7 @@ func (apiTaskStats *APITaskStats) BuildFromService(h interface{}) error {
 		apiTaskStats.TaskName = ToAPIString(v.TaskName)
 		apiTaskStats.BuildVariant = ToAPIString(v.BuildVariant)
 		apiTaskStats.Distro = ToAPIString(v.Distro)
-		apiTaskStats.Date = ToAPIString(v.Date.Format("2006-01-02"))
+		apiTaskStats.Date = ToAPIString(v.Date.UTC().Format("2006-01-02"))
 
 		apiTaskStats.NumSuccess = v.NumSuccess
 		apiTaskStats.NumFailed = v.NumFailed
