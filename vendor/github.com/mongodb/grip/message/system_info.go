@@ -16,16 +16,16 @@ import (
 // collects system-wide resource utilization statistics about memory,
 // CPU, and network use, along with an optional message.
 type SystemInfo struct {
-	Message    string                `json:"message,omitempty" bson:"message,omitempty"`
-	CPU        cpu.TimesStat         `json:"cpu,omitempty" bson:"cpu,omitempty"`
-	CPUPercent float64               `json:"cpu_percent,omitempty" bson:"cpu_percent,omitempty"`
-	NumCPU     int                   `json:"num_cpus,omitempty" bson:"num_cpus,omitempty"`
-	VMStat     mem.VirtualMemoryStat `json:"vmstat,omitempty" bson:"vmstat,omitempty"`
-	NetStat    net.IOCountersStat    `json:"netstat,omitempty" bson:"netstat,omitempty"`
-	Partitions []disk.PartitionStat  `json:"partitions,omitempty" bson:"partitions,omitempty"`
-	Usage      []disk.UsageStat      `json:"usage,omitempty" bson:"usage,omitempty"`
-	IOStat     []disk.IOCountersStat `json:"iostat,omitempty" bson:"iostat,omitempty"`
-	Errors     []string              `json:"errors,omitempty" bson:"errors,omitempty"`
+	Message    string                `json:"message" bson:"message"`
+	CPU        cpu.TimesStat         `json:"cpu" bson:"cpu"`
+	CPUPercent float64               `json:"cpu_percent" bson:"cpu_percent"`
+	NumCPU     int                   `json:"num_cpus" bson:"num_cpus"`
+	VMStat     mem.VirtualMemoryStat `json:"vmstat" bson:"vmstat"`
+	NetStat    net.IOCountersStat    `json:"netstat" bson:"netstat"`
+	Partitions []disk.PartitionStat  `json:"partitions" bson:"partitions"`
+	Usage      []disk.UsageStat      `json:"usage" bson:"usage"`
+	IOStat     []disk.IOCountersStat `json:"iostat" bson:"iostat"`
+	Errors     []string              `json:"errors" bson:"errors"`
 	Base       `json:"metadata,omitempty" bson:"metadata,omitempty"`
 	loggable   bool
 	rendered   string

@@ -176,6 +176,7 @@ func (j *JiraSuite) TestTruncate() {
 	j.Equal(mock.numSent, 0)
 
 	m := message.NewDefaultMessage(level.Info, "aaa")
+	j.True(m.Loggable())
 	sender.Send(m)
 	j.Len(mock.lastSummary, 3)
 
@@ -184,6 +185,7 @@ func (j *JiraSuite) TestTruncate() {
 		longString.WriteString("a")
 	}
 	m = message.NewDefaultMessage(level.Info, longString.String())
+	j.True(m.Loggable())
 	sender.Send(m)
 	j.Len(mock.lastSummary, 254)
 
@@ -194,6 +196,7 @@ func (j *JiraSuite) TestTruncate() {
 	}
 
 	m = message.NewDefaultMessage(level.Info, buffer.String())
+	j.True(m.Loggable())
 	sender.Send(m)
 	j.Len(mock.lastDescription, 32767)
 }
@@ -207,7 +210,7 @@ func (j *JiraSuite) TestCustomFields() {
 	j.True(ok)
 	j.Equal(mock.numSent, 0)
 
-	jiraIssue := message.JiraIssue{
+	jiraIssue := &message.JiraIssue{
 		Summary: "test",
 		Type:    "type",
 		Fields: map[string]interface{}{
@@ -237,18 +240,50 @@ func (j *JiraSuite) TestPopulateKey() {
 	j.True(ok)
 	j.Equal(mock.numSent, 0)
 
-	jiraIssue := message.JiraIssue{
+	count := 0
+	jiraIssue := &message.JiraIssue{
 		Summary: "foo",
+		Type:    "bug",
+		Callback: func(_ string) {
+			count++
+		},
 	}
+
+	j.Equal(0, count)
 	m := message.MakeJiraMessage(jiraIssue)
+	m.SetPriority(level.Alert)
+	j.True(m.Loggable())
 	sender.Send(m)
+	j.Equal(1, count)
 	issue := m.Raw().(*message.JiraIssue)
 	j.Equal(mock.issueKey, issue.IssueKey)
 
 	messageFields := message.NewFieldsMessage(level.Info, "something", message.Fields{
 		"message": "foo",
 	})
+	j.True(messageFields.Loggable())
 	sender.Send(messageFields)
 	messageIssue := messageFields.Raw().(message.Fields)
 	j.Equal(mock.issueKey, messageIssue[jiraIssueKey])
+}
+
+func (j *JiraSuite) TestWhenCallbackNil() {
+	sender, err := NewJiraLogger(j.opts, LevelInfo{level.Trace, level.Info})
+	j.NotNil(sender)
+	j.NoError(err)
+	mock, ok := j.opts.client.(*jiraClientMock)
+	j.True(ok)
+	j.Equal(mock.numSent, 0)
+
+	jiraIssue := &message.JiraIssue{
+		Summary: "foo",
+		Type:    "bug",
+	}
+
+	m := message.MakeJiraMessage(jiraIssue)
+	m.SetPriority(level.Alert)
+	j.True(m.Loggable())
+	j.NotPanics(func() {
+		sender.Send(m)
+	})
 }

@@ -134,14 +134,6 @@ func (j *eventNotificationJob) send(n *notification.Notification) error {
 	}
 
 	sender.Send(c)
-	if n.Subscriber.Type == event.JIRAIssueSubscriberType && n.Metadata.TaskID != "" {
-		issue, isIssue := c.Raw().(*message.JiraIssue)
-		if !isIssue {
-			return errors.Errorf("notification %s contains a malformed jira issue", n.ID)
-		}
-		event.LogJiraIssueCreated(n.Metadata.TaskID, n.Metadata.TaskExecution, issue.IssueKey)
-	}
-
 	return nil
 }
 
