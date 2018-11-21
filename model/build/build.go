@@ -274,3 +274,7 @@ func (b *Build) SetCachedTaskFinished(taskID, status string, detail *apimodels.T
 	}
 	return nil
 }
+
+func (b *Build) IsPatchBuild() bool {
+	return evergreen.IsPatchRequester(b.Requester)
+}

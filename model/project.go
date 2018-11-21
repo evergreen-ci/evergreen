@@ -158,6 +158,14 @@ func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error
 	return nil
 }
 
+func (bvt *BuildVariantTaskUnit) SkipOnPatchBuild() bool {
+	return (bvt.Patchable != nil && !*bvt.Patchable) || bvt.Name == evergreen.PushStage
+}
+
+func (bvt *BuildVariantTaskUnit) SkipOnNonPatchBuild() bool {
+	return bvt.PatchOnly != nil && *bvt.PatchOnly
+}
+
 type BuildVariant struct {
 	Name        string            `yaml:"name,omitempty" bson:"name"`
 	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
