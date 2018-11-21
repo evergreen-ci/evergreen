@@ -72,15 +72,22 @@ func (e *APIProjectEvent) ToService() (interface{}, error) {
 
 func DbProjectSettingsToRestModel(settings model.ProjectSettingsEvent) (APIProjectSettings, error) {
 	apiProjectRef := APIProjectRef{}
-	apiProjectRef.BuildFromService(settings.ProjectRef)
+	if err := apiProjectRef.BuildFromService(settings.ProjectRef); err != nil {
+		return APIProjectSettings{}, err
+	}
+
 	apiSubscriptions, err := DbProjectSubscriptionsToRestModel(settings.Subscriptions)
+	if err != nil {
+		return APIProjectSettings{}, err
+	}
+
 	return APIProjectSettings{
 		ProjectRef:            apiProjectRef,
 		GitHubWebhooksEnabled: settings.GitHubHooksEnabled,
 		Vars:                  DbProjectVarsToRestModel(settings.Vars),
 		Aliases:               DbProjectAliasesToRestModel(settings.Aliases),
 		Subscriptions:         apiSubscriptions,
-	}, err
+	}, nil
 }
 
 func DbProjectVarsToRestModel(vars model.ProjectVars) APIProjectVars {
