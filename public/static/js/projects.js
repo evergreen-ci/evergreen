@@ -308,6 +308,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
           delete_aliases: [],
           delete_subscriptions: [],
           files_ignored_from_cache: data.ProjectRef.files_ignored_from_cache,
+          disabled_stats_cache: data.ProjectRef.disabled_stats_cache,
         };
 
         $scope.subscriptions = _.map(data.subscriptions || [], function(v) {

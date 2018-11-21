@@ -211,6 +211,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeleteSubscriptions   []string                    `json:"delete_subscriptions"`
 		Triggers              []model.TriggerDefinition   `json:"triggers"`
 		FilesIgnoredFromCache []string                    `json:"files_ignored_from_cache"`
+		DisabledStatsCache    bool                        `json:"disabled_stats_cache"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -295,6 +296,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.NotifyOnBuildFailure = responseRef.NotifyOnBuildFailure
 	projectRef.Triggers = responseRef.Triggers
 	projectRef.FilesIgnoredFromCache = responseRef.FilesIgnoredFromCache
+	projectRef.DisabledStatsCache = responseRef.DisabledStatsCache
 
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
