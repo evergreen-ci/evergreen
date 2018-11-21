@@ -82,7 +82,7 @@ func (s *StatsSuite) TestRunTestHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
 	lastDoc := sc.MockStatsConnector.CachedTestStats[100]
-	s.Equal(handler.makeStartAtKey(lastDoc), resp.Pages().Next.Key)
+	s.Equal(lastDoc.StartAtKey(), resp.Pages().Next.Key)
 }
 
 func (s *StatsSuite) TestReadTestStartAt() {
@@ -131,5 +131,5 @@ func (s *StatsSuite) TestRunTaskHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
 	lastDoc := sc.MockStatsConnector.CachedTaskStats[100]
-	s.Equal(handler.makeStartAtKey(lastDoc), resp.Pages().Next.Key)
+	s.Equal(lastDoc.StartAtKey(), resp.Pages().Next.Key)
 }

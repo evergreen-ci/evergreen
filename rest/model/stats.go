@@ -1,6 +1,8 @@
 package model
 
 import (
+	"strings"
+
 	"github.com/evergreen-ci/evergreen/model/stats"
 	"github.com/pkg/errors"
 )
@@ -40,6 +42,17 @@ func (apiTestStats *APITestStats) BuildFromService(h interface{}) error {
 // ToService is not implemented for APITestStats.
 func (apiTestStats *APITestStats) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APITestStats")
+}
+
+// StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
+func (apiTestStats *APITestStats) StartAtKey() string {
+	return StartAtKey{
+		date:         *apiTestStats.Date,
+		buildVariant: *apiTestStats.BuildVariant,
+		taskName:     *apiTestStats.TaskName,
+		testFile:     *apiTestStats.TestFile,
+		distro:       *apiTestStats.Distro,
+	}.String()
 }
 
 // APITaskStats is the model to be returned by the API when querying task execution statistics
@@ -82,6 +95,31 @@ func (apiTaskStats *APITaskStats) BuildFromService(h interface{}) error {
 	return nil
 }
 
+// ToService is not implemented for APITaskStats.
 func (apiTaskStats *APITaskStats) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not implemented for APITaskStats")
+}
+
+// StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
+func (apiTaskStats *APITaskStats) StartAtKey() string {
+	return StartAtKey{
+		date:         *apiTaskStats.Date,
+		buildVariant: *apiTaskStats.BuildVariant,
+		taskName:     *apiTaskStats.TaskName,
+		distro:       *apiTaskStats.Distro,
+	}.String()
+}
+
+// StartAtKey is a struct used to build the start_at key parameter for pagination.
+type StartAtKey struct {
+	date         string
+	buildVariant string
+	taskName     string
+	testFile     string
+	distro       string
+}
+
+func (s StartAtKey) String() string {
+	elements := []string{s.date, s.buildVariant, s.taskName, s.testFile, s.distro}
+	return strings.Join(elements, "|")
 }

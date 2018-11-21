@@ -334,7 +334,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 
 	resp := gimlet.NewResponseBuilder()
 	if err = resp.SetFormat(gimlet.JSON); err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
+		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
 	requestLimit := tsh.filter.Limit - 1
@@ -348,7 +348,7 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         tsh.url.String(),
-				Key:             tsh.makeStartAtKey(testStatsResult[requestLimit]),
+				Key:             testStatsResult[requestLimit].StartAtKey(),
 				Limit:           requestLimit,
 			},
 		})
@@ -366,19 +366,6 @@ func (tsh *testStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-// makeTestStartAtKey creates a key string that can be used as a start_at value to fetch
-// the next results with pagination.
-func (tsh *testStatsHandler) makeStartAtKey(testStats model.APITestStats) string {
-	elements := []string{
-		*testStats.Date,
-		*testStats.BuildVariant,
-		*testStats.TaskName,
-		*testStats.TestFile,
-		*testStats.Distro,
-	}
-	return strings.Join(elements, "|")
 }
 
 func makeGetProjectTestStats(sc data.Connector) gimlet.RouteHandler {
@@ -442,7 +429,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start_at",
 				BaseURL:         tsh.url.String(),
-				Key:             tsh.makeStartAtKey(taskStatsResult[requestLimit]),
+				Key:             taskStatsResult[requestLimit].StartAtKey(),
 				Limit:           requestLimit,
 			},
 		})
@@ -460,19 +447,6 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-// makeStartAtKey creates a key string that can be used as a start_at value to fetch
-// the next results with pagination.
-func (tsh *taskStatsHandler) makeStartAtKey(taskStats model.APITaskStats) string {
-	elements := []string{
-		*taskStats.Date,
-		*taskStats.BuildVariant,
-		*taskStats.TaskName,
-		"", // Task stats do not have a TestFile field but we are using the same format as for the test stats.
-		*taskStats.Distro,
-	}
-	return strings.Join(elements, "|")
 }
 
 func makeGetProjectTaskStats(sc data.Connector) gimlet.RouteHandler {
