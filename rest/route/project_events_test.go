@@ -31,13 +31,13 @@ func TestProjectEventsTestSuite(t *testing.T) {
 func getMockProjectSettings(projectId string) restModel.APIProjectSettings {
 	return restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{
-			Owner:              restModel.ToAPIString("admin"),
-			Enabled:            true,
-			Private:            true,
-			Identifier:         restModel.ToAPIString(projectId),
-			Admins:             []restModel.APIString{},
-			GitHubHooksEnabled: true,
+			Owner:      restModel.ToAPIString("admin"),
+			Enabled:    true,
+			Private:    true,
+			Identifier: restModel.ToAPIString(projectId),
+			Admins:     []restModel.APIString{},
 		},
+		GitHubWebhooksEnabled: true,
 		Vars: restModel.APIProjectVars{
 			Vars:        map[string]string{},
 			PrivateVars: map[string]bool{},

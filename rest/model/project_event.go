@@ -18,29 +18,11 @@ type APIProjectEvent struct {
 }
 
 type APIProjectSettings struct {
-	ProjectRef    APIProjectRef     `json:"proj_ref"`
-	Vars          APIProjectVars    `json:"vars"`
-	Aliases       []APIProjectAlias `json:"aliases"`
-	Subscriptions []APISubscription `json:"subscriptions"`
-}
-
-type APIProjectRef struct {
-	Owner                APIString   `json:"owner_name"`
-	Repo                 APIString   `json:"repo_name"`
-	Branch               APIString   `json:"branch_name"`
-	Enabled              bool        `json:"enabled"`
-	Private              bool        `json:"private"`
-	BatchTime            int         `json:"batch_time"`
-	RemotePath           APIString   `json:"remote_path"`
-	Identifier           APIString   `json:"identifier"`
-	DisplayName          APIString   `json:"display_name"`
-	DeactivatePrevious   bool        `json:"deactivate_previous"`
-	TracksPushEvents     bool        `json:"tracks_push_events"`
-	PRTestingEnabled     bool        `json:"pr_testing_enabled"`
-	PatchingDisabled     bool        `json:"patching_disabled"`
-	Admins               []APIString `json:"admins"`
-	NotifyOnBuildFailure bool        `json:"notify_on_failure"`
-	GitHubHooksEnabled   bool        `json:"github_hooks_enabled"`
+	ProjectRef            APIProjectRef     `json:"proj_ref"`
+	GitHubWebhooksEnabled bool              `json:"github_webhooks_enabled"`
+	Vars                  APIProjectVars    `json:"vars"`
+	Aliases               []APIProjectAlias `json:"aliases"`
+	Subscriptions         []APISubscription `json:"subscriptions"`
 }
 
 type APIProjectVars struct {
@@ -89,39 +71,16 @@ func (e *APIProjectEvent) ToService() (interface{}, error) {
 }
 
 func DbProjectSettingsToRestModel(settings model.ProjectSettingsEvent) (APIProjectSettings, error) {
+	apiProjectRef := APIProjectRef{}
+	apiProjectRef.BuildFromService(settings.ProjectRef)
 	apiSubscriptions, err := DbProjectSubscriptionsToRestModel(settings.Subscriptions)
 	return APIProjectSettings{
-		ProjectRef:    DbProjectRefToRestModel(settings.ProjectRef, settings.GitHubHooksEnabled),
-		Vars:          DbProjectVarsToRestModel(settings.Vars),
-		Aliases:       DbProjectAliasesToRestModel(settings.Aliases),
-		Subscriptions: apiSubscriptions,
+		ProjectRef:            apiProjectRef,
+		GitHubWebhooksEnabled: settings.GitHubHooksEnabled,
+		Vars:                  DbProjectVarsToRestModel(settings.Vars),
+		Aliases:               DbProjectAliasesToRestModel(settings.Aliases),
+		Subscriptions:         apiSubscriptions,
 	}, err
-}
-
-func DbProjectRefToRestModel(projRef model.ProjectRef, githubHooksEnabled bool) APIProjectRef {
-	apiAdmins := []APIString{}
-	for _, admin := range projRef.Admins {
-		apiAdmins = append(apiAdmins, ToAPIString(admin))
-	}
-
-	return APIProjectRef{
-		Owner:                ToAPIString(projRef.Owner),
-		Repo:                 ToAPIString(projRef.Repo),
-		Branch:               ToAPIString(projRef.Branch),
-		Enabled:              projRef.Enabled,
-		Private:              projRef.Private,
-		BatchTime:            projRef.BatchTime,
-		RemotePath:           ToAPIString(projRef.RemotePath),
-		Identifier:           ToAPIString(projRef.Identifier),
-		DisplayName:          ToAPIString(projRef.DisplayName),
-		DeactivatePrevious:   projRef.DeactivatePrevious,
-		TracksPushEvents:     projRef.TracksPushEvents,
-		PRTestingEnabled:     projRef.PRTestingEnabled,
-		PatchingDisabled:     projRef.PatchingDisabled,
-		Admins:               apiAdmins,
-		NotifyOnBuildFailure: projRef.NotifyOnBuildFailure,
-		GitHubHooksEnabled:   githubHooksEnabled,
-	}
 }
 
 func DbProjectVarsToRestModel(vars model.ProjectVars) APIProjectVars {

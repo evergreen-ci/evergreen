@@ -99,9 +99,13 @@ func (s *ProjectEventSuite) TestProjectEventMetadata() {
 }
 
 func (s *ProjectEventSuite) TestProjectRef() {
+	checkProjRef(s, s.projChanges.Before.ProjectRef, s.APIEvent.Before.ProjectRef)
+	checkProjRef(s, s.projChanges.After.ProjectRef, s.APIEvent.After.ProjectRef)
+}
 
-	checkProjRef(s, s.projChanges.Before.ProjectRef, s.projChanges.Before.GitHubHooksEnabled, s.APIEvent.Before.ProjectRef)
-	checkProjRef(s, s.projChanges.After.ProjectRef, s.projChanges.After.GitHubHooksEnabled, s.APIEvent.After.ProjectRef)
+func (s *ProjectEventSuite) TestGithubHooksEnabled() {
+	s.Equal(s.projChanges.Before.GitHubHooksEnabled, s.APIEvent.Before.GitHubWebhooksEnabled)
+	s.Equal(s.projChanges.After.GitHubHooksEnabled, s.APIEvent.After.GitHubWebhooksEnabled)
 }
 
 func (s *ProjectEventSuite) TestProjectVars() {
@@ -119,8 +123,7 @@ func (s *ProjectEventSuite) TestProjectAliases() {
 	checkAliases(s, s.projChanges.After.Aliases, s.APIEvent.After.Aliases)
 }
 
-func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, inGitHubHooks bool, out APIProjectRef) {
-	suite.Equal(inGitHubHooks, out.GitHubHooksEnabled)
+func checkProjRef(suite *ProjectEventSuite, in model.ProjectRef, out APIProjectRef) {
 	suite.Equal(in.Owner, FromAPIString(out.Owner))
 	suite.Equal(in.Repo, FromAPIString(out.Repo))
 	suite.Equal(in.Branch, FromAPIString(out.Branch))
