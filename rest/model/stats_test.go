@@ -37,6 +37,25 @@ func TestAPITestStatsBuildFromService(t *testing.T) {
 	assert.Equal(serviceDoc.AvgDurationPass, apiDoc.AvgDurationPass)
 }
 
+func TestAPITestStatsStartAtKey(t *testing.T) {
+	assert := assert.New(t)
+
+	apiDoc := APITestStats{
+		TestFile:     ToAPIString("test1"),
+		TaskName:     ToAPIString("task1"),
+		BuildVariant: ToAPIString("variant1"),
+		Distro:       ToAPIString("distro1"),
+		Date:         ToAPIString("2018-07-15"),
+	}
+	assert.Equal("2018-07-15|variant1|task1|test1|distro1", apiDoc.StartAtKey())
+
+	apiDoc = APITestStats{
+		TestFile: ToAPIString("test1"),
+		Date:     ToAPIString("2018-07-15"),
+	}
+	assert.Equal("2018-07-15|||test1|", apiDoc.StartAtKey())
+}
+
 func TestAPITaskStatsBuildFromService(t *testing.T) {
 	assert := assert.New(t)
 
@@ -72,4 +91,22 @@ func TestAPITaskStatsBuildFromService(t *testing.T) {
 	assert.Equal(serviceDoc.NumSystemFailed, apiDoc.NumSystemFailed)
 	assert.Equal(serviceDoc.NumSetupFailed, apiDoc.NumSetupFailed)
 	assert.Equal(serviceDoc.AvgDurationSuccess, apiDoc.AvgDurationSuccess)
+}
+
+func TestAPITaskStatsStartAtKey(t *testing.T) {
+	assert := assert.New(t)
+
+	apiDoc := APITaskStats{
+		TaskName:     ToAPIString("task1"),
+		BuildVariant: ToAPIString("variant1"),
+		Distro:       ToAPIString("distro1"),
+		Date:         ToAPIString("2018-07-15"),
+	}
+	assert.Equal("2018-07-15|variant1|task1||distro1", apiDoc.StartAtKey())
+
+	apiDoc = APITaskStats{
+		TaskName: ToAPIString("task1"),
+		Date:     ToAPIString("2018-07-15"),
+	}
+	assert.Equal("2018-07-15||task1||", apiDoc.StartAtKey())
 }

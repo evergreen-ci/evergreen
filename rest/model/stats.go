@@ -47,11 +47,11 @@ func (apiTestStats *APITestStats) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTestStats *APITestStats) StartAtKey() string {
 	return StartAtKey{
-		date:         *apiTestStats.Date,
-		buildVariant: *apiTestStats.BuildVariant,
-		taskName:     *apiTestStats.TaskName,
-		testFile:     *apiTestStats.TestFile,
-		distro:       *apiTestStats.Distro,
+		date:         FromAPIString(apiTestStats.Date),
+		buildVariant: FromAPIString(apiTestStats.BuildVariant),
+		taskName:     FromAPIString(apiTestStats.TaskName),
+		testFile:     FromAPIString(apiTestStats.TestFile),
+		distro:       FromAPIString(apiTestStats.Distro),
 	}.String()
 }
 
@@ -103,10 +103,10 @@ func (apiTaskStats *APITaskStats) ToService() (interface{}, error) {
 // StartAtKey returns the start_at key parameter that can be used to paginate and start at this element.
 func (apiTaskStats *APITaskStats) StartAtKey() string {
 	return StartAtKey{
-		date:         *apiTaskStats.Date,
-		buildVariant: *apiTaskStats.BuildVariant,
-		taskName:     *apiTaskStats.TaskName,
-		distro:       *apiTaskStats.Distro,
+		date:         FromAPIString(apiTaskStats.Date),
+		buildVariant: FromAPIString(apiTaskStats.BuildVariant),
+		taskName:     FromAPIString(apiTaskStats.TaskName),
+		distro:       FromAPIString(apiTaskStats.Distro),
 	}.String()
 }
 
