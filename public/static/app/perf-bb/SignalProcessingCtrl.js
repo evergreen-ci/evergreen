@@ -1,7 +1,7 @@
 mciModule.controller('SignalProcessingCtrl', function(
-  $log, $scope, $window, ChangePointsService, EvgUiGridUtil, EvgUtil,
-  FORMAT, MDBQueryAdaptor, PROCESSED_TYPE, STITCH_CONFIG, Stitch,
-  uiGridConstants
+  $log, $scope, $timeout, $window, ChangePointsService, CHANGE_POINTS_GRID,
+  EvgUiGridUtil, EvgUtil, FORMAT, MDBQueryAdaptor, PROCESSED_TYPE,
+  STITCH_CONFIG, Stitch, uiGridConstants,
 ) {
   var vm = this
   // Ui grid col accessor
@@ -27,6 +27,9 @@ mciModule.controller('SignalProcessingCtrl', function(
   var state = {
     sorting: [{
       field: 'suspect_revision',
+      direction: 'asc',
+    }, {
+      field: 'magnitude',
       direction: 'asc',
     }],
     filtering: {
@@ -212,6 +215,16 @@ mciModule.controller('SignalProcessingCtrl', function(
     vm.selection = gridApi.selection.getSelectedRows()
   }
 
+  vm.refCtx = 0
+  function updateChartContext(grid) {
+    // Update context chart data for given rendered rows
+    vm.refCtx = d3.max(
+      _.map(grid.renderContainers.body.renderedRows, function(d) {
+        return d.treeNode.children.length
+      })
+    )
+  }
+
   vm.gridOptions = {
     enableFiltering: true,
     enableGridMenu: true,
@@ -219,7 +232,7 @@ mciModule.controller('SignalProcessingCtrl', function(
     enableSelectAll: true,
     selectionRowHeaderWidth: 35,
     useExternalFiltering: true,
-    useExternalSorting: true,
+    useExternalSorting: false,
     onRegisterApi: function(api) {
       vm.gridApi = api
       getCol = EvgUiGridUtil.getColAccessor(api)
@@ -230,7 +243,7 @@ mciModule.controller('SignalProcessingCtrl', function(
             direction: col.sort.direction
           }
         })
-        loadData(state)
+        // NOTE do loadData(state) here for server-side sorting
       })
 
       var onFilterChanged = _.debounce(function() {
@@ -262,12 +275,29 @@ mciModule.controller('SignalProcessingCtrl', function(
       api.selection.on.rowSelectionChangedBatch(null, function() {
         handleRowSelectionChange(api)
       })
+
+      // Using _.once, because this behavior is required on init only
+      api.core.on.rowsRendered($scope, function() {
+        // Timeout forces underlying code to be executed at the end
+        $timeout(
+          _.bind(updateChartContext, null, api.grid) // When rendered, update charts context
+        )
+      })
+
+      $scope.$watch(
+        'grid.renderContainers.body.currentTopRow', function() {
+          updateChartContext(api.grid)
+        }
+      )
     },
     columnDefs: [
       {
         // TODO Jim: Should be managed by PERF-1546
         name: 'Hazard Level',
-        cellTemplate: '<hazard-level-cell row="row" />',
+        field: 'magnitude',
+        type: 'number',
+        cellTemplate: '<hazard-level-cell row="row" ctx="grid.appScope.spvm.refCtx" />',
+        width: CHANGE_POINTS_GRID.HAZARD_COL_WIDTH,
       },
       {
         name: 'Variant',
@@ -367,6 +397,30 @@ mciModule.controller('SignalProcessingCtrl', function(
         name: 'Project',
         field: 'project',
         type: 'string',
+        visible: false,
+      },
+      {
+        name: 'Min. Magnitude',
+        field: 'min_magnitude',
+        type: 'number',
+        visible: false,
+      },
+      {
+        name: 'Magnitude',
+        field: 'magnitude',
+        type: 'number',
+        visible: false,
+      },
+      {
+        name: 'Prev. Mean',
+        field: 'statistics.previous.mean',
+        type: 'number',
+        visible: false,
+      },
+      {
+        name: 'Next Mean',
+        field: 'statistics.next.mean',
+        type: 'number',
         visible: false,
       },
     ]

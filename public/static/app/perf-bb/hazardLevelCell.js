@@ -1,50 +1,20 @@
 // TODO Jim: should be moved to python layer (PERF-1546)
 mciModule.directive('hazardLevelCell', function() {
-  var levels = [
-    {label: 'Major', color: '#C00',},
-    {label: 'Moderate', color: '#F60',},
-    {label: 'Minor', color: '#FC0',},
-    {label: 'Recovery', color: 'green',},
-  ]
-
-  function weightedRatio(point) {
-    if (point.statistics.previous.mean == 0) {
-      return 0
-    }
-    return Math.log(
-      point.statistics.previous.mean / point.statistics.next.mean
-    )
-  }
 
   function renderFoldedItem(scope, row) {
-    var children = scope.row.treeNode.children
-    var weights = _.chain(children)
-      .map(function(d) { return d.row.entity })
-      .map(weightedRatio)
-      .sortBy()
-      .value()
+    var points = _.map(scope.row.treeNode.children, (d) => d.row.entity)
+    scope.points = points
+  }
 
-    var multiplier = _.filter(weights, function(d) {
-      return d > 0
-    }).length || 1
-
-    var value = multiplier * d3.quantile(weights, .9)
-
-    var idx = (
-      value < 0   ? 3 :
-      value < 0.5 ? 2 :
-      value < 3   ? 1 :
-      0
-    )
-
-    scope.level = levels[idx]
-    scope.count = weights.length
+  function ratio(a, b) {
+    return 100 * (a > b ? a / b - 1 : -b / a + 1)
   }
 
   function renderUnfoldedItem(scope, row) {
     var a = scope.row.entity.statistics.next.mean
     var b = scope.row.entity.statistics.previous.mean
-    scope.ratio = 100 * (a > b ? a / b - 1 : -b / a + 1)
+    // Check mode (ops/sec or latency)
+    scope.ratio = a > 0 ? ratio(a, b) : ratio(b, a)
     scope.color = (
       scope.ratio > 0 ? 'green' :
       scope.ratio < 0 ? 'red' :
@@ -56,6 +26,7 @@ mciModule.directive('hazardLevelCell', function() {
     restrict: 'E',
     scope: {
       row: '=',
+      ctx: '=',
     },
     templateUrl: 'hazard-level-cell',
     link: function(scope) {
