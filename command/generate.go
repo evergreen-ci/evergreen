@@ -17,8 +17,7 @@ import (
 
 type generateTask struct {
 	// Files are a list of JSON documents.
-	Files       []string `mapstructure:"files" plugin:"expand"`
-	FilesFilter []string `mapstructure:"files_filter" plugin:"expand"`
+	Files []string `mapstructure:"files" plugin:"expand"`
 	base
 }
 
@@ -36,7 +35,7 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
-
+	var err error
 	if conf.Task.Execution > 0 {
 		logger.Task().Warning("Refusing to generate tasks on an execution other than the first one")
 		return nil
@@ -46,13 +45,17 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		logger.Task().Error(err)
 		return err
 	}
-	if len(c.FilesFilter) != 0 {
-		var err error
-		if c.Files, err = util.BuildFileList(conf.WorkDir, c.FilesFilter...); err != nil {
-			err = errors.Wrap(err, "problem building file lists")
-			logger.Task().Error(err)
-			return err
-		}
+
+	if c.Files, err = util.BuildFileList(conf.WorkDir, c.Files...); err != nil {
+		err = errors.Wrap(err, "problem building wildcard paths")
+		logger.Task().Error(err)
+		return err
+	}
+
+	if len(c.Files) == 0 {
+		err = errors.New("expanded file specification had no items")
+		logger.Task().Error(err)
+		return err
 	}
 
 	catcher := grip.NewBasicCatcher()

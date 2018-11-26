@@ -106,25 +106,6 @@ func (s *generateSuite) TestExecuteSuccess() {
 	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
-func (s *generateSuite) TestExecuteSuccessWithFilesFilter() {
-	f, err := ioutil.TempFile(s.tmpDirName, "")
-	s.Require().NoError(err)
-	tmpFile := f.Name()
-	tmpFileBase := filepath.Base(tmpFile)
-	defer os.Remove(tmpFile)
-
-	n, err := f.WriteString(s.json)
-	s.NoError(err)
-	s.Equal(len(s.json), n)
-	s.NoError(f.Close())
-
-	c := &generateTask{
-		Files:       []string{tmpFileBase},
-		FilesFilter: []string{tmpFileBase},
-	}
-	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
-}
-
 func (s *generateSuite) TestErrorWithInvalidExpansions() {
 	s.Len(s.g.Files, 0)
 	s.NoError(s.g.ParseParams(map[string]interface{}{
