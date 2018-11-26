@@ -49,7 +49,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 	s.Nil(handler.filter.StartAt)
 	s.Equal(stats.GroupByDistro, handler.filter.GroupBy)  // default value
 	s.Equal(stats.SortEarliestFirst, handler.filter.Sort) // default value
-	s.Equal(defaultLimit+1, handler.filter.Limit)         // default value
+	s.Equal(statsAPIMaxLimit+1, handler.filter.Limit)     // default value
 }
 
 func (s *StatsSuite) TestRunTestHandler() {
