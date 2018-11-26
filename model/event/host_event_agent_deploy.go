@@ -22,7 +22,7 @@ type RecentHostAgentDeploys struct {
 }
 
 func GetRecentAgentDeployStatuses(hostId string, n int) (*RecentHostAgentDeploys, error) {
-	query := resourceTypeKeyIs(ResourceTypeHost)
+	query := ResourceTypeKeyIs(ResourceTypeHost)
 	query[TypeKey] = bson.M{"$in": []string{EventHostAgentDeployed, EventHostAgentDeployFailed, EventHostStatusChanged}}
 	query[ResourceIdKey] = hostId
 

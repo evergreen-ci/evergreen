@@ -133,8 +133,11 @@ func (n *Notification) Composer() (message.Composer, error) {
 
 		payload.Project = jiraIssue.Project
 		payload.Type = jiraIssue.IssueType
+		payload.Callback = func(issueKey string) {
+			event.LogJiraIssueCreated(n.Metadata.TaskID, n.Metadata.TaskExecution, issueKey)
+		}
 
-		return message.MakeJiraMessage(*payload), nil
+		return message.MakeJiraMessage(payload), nil
 
 	case event.JIRACommentSubscriberType:
 		sub, ok := n.Subscriber.Target.(*string)

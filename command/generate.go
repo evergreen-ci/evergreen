@@ -40,11 +40,12 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		logger.Task().Warning("Refusing to generate tasks on an execution other than the first one")
 		return nil
 	}
+  
 	if err := util.ExpandValues(c, conf.Expansions); err != nil {
 		err = errors.Wrap(err, "error expanding params")
 		logger.Task().Error(err)
 		return err
-	}
+  }
 
 	if c.Files, err = util.BuildFileList(conf.WorkDir, c.Files...); err != nil {
 		err = errors.Wrap(err, "problem building wildcard paths")

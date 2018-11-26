@@ -19,7 +19,7 @@ func unprocessedEvents() bson.M {
 	}
 }
 
-func resourceTypeKeyIs(key string) bson.M {
+func ResourceTypeKeyIs(key string) bson.M {
 	return bson.M{
 		resourceTypeKey: key,
 	}
@@ -80,7 +80,7 @@ func CountUnprocessedEvents() (int, error) {
 
 // Host Events
 func HostEventsForId(id string) db.Q {
-	filter := resourceTypeKeyIs(ResourceTypeHost)
+	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	filter[ResourceIdKey] = id
 
 	return db.Query(filter)
@@ -96,7 +96,7 @@ func HostEventsInOrder(id string) db.Q {
 
 // Task Events
 func TaskEventsForId(id string) db.Q {
-	filter := resourceTypeKeyIs(ResourceTypeTask)
+	filter := ResourceTypeKeyIs(ResourceTypeTask)
 	filter[ResourceIdKey] = id
 
 	return db.Query(filter)
@@ -112,7 +112,7 @@ func TaskEventsInOrder(id string) db.Q {
 
 // Distro Events
 func DistroEventsForId(id string) db.Q {
-	filter := resourceTypeKeyIs(ResourceTypeDistro)
+	filter := ResourceTypeKeyIs(ResourceTypeDistro)
 	filter[ResourceIdKey] = id
 
 	return db.Query(filter)
@@ -128,7 +128,7 @@ func DistroEventsInOrder(id string) db.Q {
 
 // Scheduler Events
 func SchedulerEventsForId(distroID string) db.Q {
-	filter := resourceTypeKeyIs(ResourceTypeScheduler)
+	filter := ResourceTypeKeyIs(ResourceTypeScheduler)
 	filter[ResourceIdKey] = distroID
 
 	return db.Query(filter)
@@ -141,7 +141,7 @@ func RecentSchedulerEvents(distroId string, n int) db.Q {
 // Admin Events
 // RecentAdminEvents returns the N most recent admin events
 func RecentAdminEvents(n int) db.Q {
-	filter := resourceTypeKeyIs(ResourceTypeAdmin)
+	filter := ResourceTypeKeyIs(ResourceTypeAdmin)
 	filter[ResourceIdKey] = ""
 
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
@@ -154,7 +154,7 @@ func ByGuid(guid string) db.Q {
 }
 
 func AdminEventsBefore(before time.Time, n int) db.Q {
-	filter := resourceTypeKeyIs(ResourceTypeAdmin)
+	filter := ResourceTypeKeyIs(ResourceTypeAdmin)
 	filter[ResourceIdKey] = ""
 	filter[TimestampKey] = bson.M{
 		"$lt": before,

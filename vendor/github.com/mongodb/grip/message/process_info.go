@@ -15,17 +15,17 @@ import (
 // memory, io). The Process info composers produce messages in this
 // form.
 type ProcessInfo struct {
-	Message        string                   `json:"message,omitempty" bson:"message,omitempty"`
+	Message        string                   `json:"message" bson:"message"`
 	Pid            int32                    `json:"pid" bson:"pid"`
-	Parent         int32                    `json:"parentPid,omitempty" bson:"parentPid,omitempty"`
-	Threads        int                      `json:"numThreads,omitempty" bson:"numThreads,omitempty"`
-	Command        string                   `json:"command,omitempty" bson:"command,omitempty"`
-	CPU            cpu.TimesStat            `json:"cpu,omitempty" bson:"cpu,omitempty"`
-	IoStat         process.IOCountersStat   `json:"io,omitempty" bson:"io,omitempty"`
-	NetStat        []net.IOCountersStat     `json:"net,omitempty" bson:"net,omitempty"`
-	Memory         process.MemoryInfoStat   `json:"mem,omitempty" bson:"mem,omitempty"`
-	MemoryPlatform process.MemoryInfoExStat `json:"memExtra,omitempty" bson:"memExtra,omitempty"`
-	Errors         []string                 `json:"errors,omitempty" bson:"errors,omitempty"`
+	Parent         int32                    `json:"parentPid" bson:"parentPid"`
+	Threads        int                      `json:"numThreads" bson:"numThreads"`
+	Command        string                   `json:"command" bson:"command"`
+	CPU            cpu.TimesStat            `json:"cpu" bson:"cpu"`
+	IoStat         process.IOCountersStat   `json:"io" bson:"io"`
+	NetStat        []net.IOCountersStat     `json:"net" bson:"net"`
+	Memory         process.MemoryInfoStat   `json:"mem" bson:"mem"`
+	MemoryPlatform process.MemoryInfoExStat `json:"memExtra" bson:"memExtra"`
+	Errors         []string                 `json:"errors" bson:"errors"`
 	Base           `json:"metadata,omitempty" bson:"metadata,omitempty"`
 	loggable       bool
 	rendered       string

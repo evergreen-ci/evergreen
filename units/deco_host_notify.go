@@ -140,7 +140,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 		Components:  []string{"Evergreen"},
 	}
 
-	msg := message.MakeJiraMessage(issue)
+	msg := message.MakeJiraMessage(&issue)
 	grip.CatchWarning(msg.SetPriority(level.Notice))
 
 	sender.Send(msg)

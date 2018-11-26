@@ -686,7 +686,7 @@ func CacheHistoricalTestDataJob(part int) amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, project := range projects {
-			if !project.Enabled {
+			if !project.Enabled || project.DisabledStatsCache {
 				continue
 			}
 

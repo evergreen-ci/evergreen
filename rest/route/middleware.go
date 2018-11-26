@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 )
 
@@ -109,4 +110,32 @@ func validPriority(priority int64, user gimlet.User, sc data.Connector) bool {
 		return auth.IsSuperUser(sc.GetSuperUsers(), user)
 	}
 	return true
+}
+
+func NewProjectAdminMiddleware(sc data.Connector) gimlet.Middleware {
+	return &projectAdminMiddleware{
+		sc: sc,
+	}
+}
+
+type projectAdminMiddleware struct {
+	sc data.Connector
+}
+
+func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	ctx := r.Context()
+	opCtx := MustHaveProjectContext(ctx)
+	user := MustHaveUser(ctx)
+
+	isSuperuser := util.StringSliceContains(m.sc.GetSuperUsers(), user.Username())
+	isAdmin := util.StringSliceContains(opCtx.ProjectRef.Admins, user.Username())
+	if !(isSuperuser || isAdmin) {
+		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Not authorized",
+		}))
+		return
+	}
+
+	next(rw, r)
 }

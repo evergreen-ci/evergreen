@@ -178,6 +178,7 @@ buildvariants:
   tasks:
   - name: "t1"
   - name: "t2"
+    patch_only: true
     depends_on:
     - name: "t3"
       variant: "v0"
@@ -196,6 +197,7 @@ buildvariants:
 			So(len(bv.Modules), ShouldEqual, 2)
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
+			So(*bv.Tasks[1].PatchOnly, ShouldBeTrue)
 			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble,
 				taskSelector{Name: "t3", Variant: &variantSelector{stringSelector: "v0"}})
 			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
@@ -1114,4 +1116,45 @@ buildvariants:
 	assert.Equal("task_5", proj.BuildVariants[2].Tasks[1].Name)
 	assert.Equal("task_3", proj.BuildVariants[2].Tasks[0].Requires[0].Name)
 	assert.Equal("task_3", proj.BuildVariants[2].Tasks[1].Requires[0].Name)
+}
+
+func TestPatchOnlyTasks(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+tasks:
+- name: task_1
+  patch_only: true
+- name: task_2
+buildvariants:
+- name: bv_1
+  tasks:
+  - name: task_1
+  - name: task_2
+    patch_only: false
+- name: bv_2
+  tasks:
+  - name: task_1
+    patch_only: false
+  - name: task_2
+    patch_only: true
+- name: bv_3
+  tasks:
+  - name: task_2
+`
+
+	proj, errs := projectFromYAML([]byte(yml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.BuildVariants, 3)
+
+	assert.Len(proj.BuildVariants[0].Tasks, 2)
+	assert.Nil(proj.BuildVariants[0].Tasks[0].PatchOnly)
+	assert.False(*proj.BuildVariants[0].Tasks[1].PatchOnly)
+
+	assert.Len(proj.BuildVariants[1].Tasks, 2)
+	assert.False(*proj.BuildVariants[1].Tasks[0].PatchOnly)
+	assert.True(*proj.BuildVariants[1].Tasks[1].PatchOnly)
+
+	assert.Len(proj.BuildVariants[2].Tasks, 1)
+	assert.Nil(proj.BuildVariants[2].Tasks[0].PatchOnly)
 }
