@@ -40,23 +40,16 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		logger.Task().Warning("Refusing to generate tasks on an execution other than the first one")
 		return nil
 	}
-  
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
-		err = errors.Wrap(err, "error expanding params")
-		logger.Task().Error(err)
-		return err
-  }
+	if err = util.ExpandValues(c, conf.Expansions); err != nil {
+		return errors.Wrap(err, "error expanding params")
+	}
 
 	if c.Files, err = util.BuildFileList(conf.WorkDir, c.Files...); err != nil {
-		err = errors.Wrap(err, "problem building wildcard paths")
-		logger.Task().Error(err)
-		return err
+		return errors.Wrap(err, "problem building wildcard paths")
 	}
 
 	if len(c.Files) == 0 {
-		err = errors.New("expanded file specification had no items")
-		logger.Task().Error(err)
-		return err
+		return errors.New("expanded file specification had no items")
 	}
 
 	catcher := grip.NewBasicCatcher()
@@ -77,7 +70,9 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	if catcher.HasErrors() {
 		return errors.WithStack(catcher.Resolve())
 	}
-	post, err := makeJsonOfAllFiles(jsonBytes)
+
+	var post []json.RawMessage
+	post, err = makeJsonOfAllFiles(jsonBytes)
 	if err != nil {
 		return errors.Wrap(err, "problem parsing JSON")
 	}
