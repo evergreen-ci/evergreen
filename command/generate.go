@@ -60,7 +60,8 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			catcher.Add(ctx.Err())
 			break
 		}
-		data, err := generateTaskForFile(fn, conf)
+		var data []byte
+		data, err = generateTaskForFile(fn, conf)
 		if err != nil {
 			catcher.Add(err)
 			continue
