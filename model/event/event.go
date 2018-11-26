@@ -34,7 +34,7 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 	return !e.ProcessedAt.IsZero(), e.ProcessedAt
 }
 
-type unmarshalEventLogEntry struct {
+type UnmarshalEventLogEntry struct {
 	ID           interface{} `bson:"_id" json:"-"`
 	ResourceType string      `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time   `bson:"processed_at" json:"processed_at"`
@@ -59,7 +59,7 @@ var (
 const resourceTypeKey = "r_type"
 
 func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
-	temp := unmarshalEventLogEntry{}
+	temp := UnmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}

@@ -2,12 +2,15 @@ package data
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -19,6 +22,48 @@ type ProjectConnectorGetSuite struct {
 	setup    func() error
 	teardown func() error
 	suite.Suite
+}
+
+const (
+	projectId      = "mci2"
+	username       = "me"
+	projEventCount = 10
+)
+
+func getMockProjectSettings() model.ProjectSettingsEvent {
+	return model.ProjectSettingsEvent{
+		ProjectRef: model.ProjectRef{
+			Owner:      "admin",
+			Enabled:    true,
+			Private:    true,
+			Identifier: projectId,
+			Admins:     []string{},
+		},
+		GitHubHooksEnabled: true,
+		Vars: model.ProjectVars{
+			Id:          projectId,
+			Vars:        map[string]string{},
+			PrivateVars: map[string]bool{},
+		},
+		Aliases: []model.ProjectAlias{model.ProjectAlias{
+			ID:        bson.ObjectIdHex("5bedc72ee4055d31f0340b1d"),
+			ProjectID: projectId,
+			Alias:     "alias1",
+			Variant:   "ubuntu",
+			Task:      "subcommand",
+		},
+		},
+		Subscriptions: []event.Subscription{event.Subscription{
+			ID:           "subscription1",
+			ResourceType: "project",
+			Owner:        "admin",
+			Subscriber: event.Subscriber{
+				Type:   event.GithubPullRequestSubscriberType,
+				Target: event.GithubPullRequestSubscriber{},
+			},
+		},
+		},
+	}
 }
 
 func TestProjectConnectorGetSuite(t *testing.T) {
@@ -44,6 +89,30 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			}
 		}
 
+		before := getMockProjectSettings()
+		after := getMockProjectSettings()
+		after.GitHubHooksEnabled = false
+
+		h :=
+			event.EventLogEntry{
+				Timestamp:    time.Now(),
+				ResourceType: model.EventResourceTypeProject,
+				EventType:    model.EventTypeProjectModified,
+				ResourceId:   projectId,
+				Data: &model.ProjectChangeEvent{
+					User:   username,
+					Before: before,
+					After:  after,
+				},
+			}
+
+		s.Require().NoError(db.ClearCollections(event.AllLogCollection))
+		logger := event.NewDBEventLogger(event.AllLogCollection)
+		for i := 0; i < projEventCount; i++ {
+			eventShallowCpy := h
+			s.NoError(logger.LogEvent(&eventShallowCpy))
+		}
+
 		return nil
 	}
 
@@ -57,6 +126,50 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 func TestMockProjectConnectorGetSuite(t *testing.T) {
 	s := new(ProjectConnectorGetSuite)
 	s.setup = func() error {
+		projectId := "mci2"
+		beforeSettings := restModel.APIProjectSettings{
+			ProjectRef: restModel.APIProjectRef{
+				Owner:      restModel.ToAPIString("admin"),
+				Enabled:    true,
+				Private:    true,
+				Identifier: restModel.ToAPIString(projectId),
+				Admins:     []restModel.APIString{},
+			},
+			GitHubWebhooksEnabled: true,
+			Vars: restModel.APIProjectVars{
+				Vars:        map[string]string{},
+				PrivateVars: map[string]bool{},
+			},
+			Aliases: []restModel.APIProjectAlias{restModel.APIProjectAlias{
+				Alias:   restModel.ToAPIString("alias1"),
+				Variant: restModel.ToAPIString("ubuntu"),
+				Task:    restModel.ToAPIString("subcommand"),
+			},
+			},
+			Subscriptions: []restModel.APISubscription{restModel.APISubscription{
+				ID:           restModel.ToAPIString("subscription1"),
+				ResourceType: restModel.ToAPIString("project"),
+				Owner:        restModel.ToAPIString("admin"),
+				Subscriber: restModel.APISubscriber{
+					Type:   restModel.ToAPIString(event.GithubPullRequestSubscriberType),
+					Target: restModel.APIGithubPRSubscriber{},
+				},
+			},
+			},
+		}
+
+		afterSettings := beforeSettings
+		afterSettings.ProjectRef.Enabled = false
+
+		projectEvents := []restModel.APIProjectEvent{}
+		for i := 0; i < projEventCount; i++ {
+			projectEvents = append(projectEvents, restModel.APIProjectEvent{
+				Timestamp: time.Now().Add(time.Second * time.Duration(-i)),
+				User:      restModel.ToAPIString("me"),
+				Before:    beforeSettings,
+				After:     afterSettings,
+			})
+		}
 
 		s.ctx = &MockConnector{MockProjectConnector: MockProjectConnector{
 			CachedProjects: []model.ProjectRef{
@@ -67,6 +180,7 @@ func TestMockProjectConnectorGetSuite(t *testing.T) {
 				{Identifier: "projectE", Private: false},
 				{Identifier: "projectF", Private: true},
 			},
+			CachedEvents: projectEvents,
 		}}
 
 		return nil
@@ -283,6 +397,12 @@ func (s *ProjectConnectorGetSuite) TestFetchKeyOutOfBoundDesc() {
 	projects, err := s.ctx.FindProjects("aaa", 1, -1, isAuthenticated)
 	s.NoError(err)
 	s.Len(projects, 0)
+}
+
+func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
+	events, err := s.ctx.GetProjectEventLog(projectId, time.Now(), 0)
+	s.NoError(err)
+	s.Equal(projEventCount, len(events))
 }
 
 ////////////////////////////////////////////////////////////////////////

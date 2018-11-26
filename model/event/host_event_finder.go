@@ -7,7 +7,7 @@ import (
 )
 
 func getRecentStatusesForHost(hostId string, n int) (int, []string) {
-	or := resourceTypeKeyIs(ResourceTypeHost)
+	or := ResourceTypeKeyIs(ResourceTypeHost)
 	or[TypeKey] = EventTaskFinished
 	or[ResourceIdKey] = hostId
 

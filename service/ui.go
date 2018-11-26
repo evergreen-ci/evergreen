@@ -331,6 +331,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// Project routes
 	app.AddRoute("/projects").Wrap(needsLogin, needsContext).Handler(uis.projectsPage).Get()
 	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin).Handler(uis.projectPage).Get()
+	app.AddRoute("/project/{project_id}/events").Wrap(needsContext, needsAdmin).Handler(uis.projectEvents).Get()
 	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin).Handler(uis.modifyProject).Post()
 	app.AddRoute("/project/{project_id}").Wrap(needsContext, needsAdmin).Handler(uis.addProject).Put()
 	app.AddRoute("/project/{project_id}/repo_revision").Wrap(needsContext).Handler(uis.setRevision).Put()
