@@ -311,7 +311,7 @@ func (tsh *testStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Invalid query parameters")
 	}
 	err = tsh.filter.ValidateForTests()
 	if err != nil {
@@ -392,7 +392,7 @@ func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 
 	err := tsh.statsHandler.parseStatsFilter(r.URL.Query())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Invalid query parameters")
 	}
 	err = tsh.filter.ValidateForTasks()
 	if err != nil {

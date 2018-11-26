@@ -244,7 +244,7 @@ func GetTestStats(filter StatsFilter) ([]TestStats, error) {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
 	var stats []TestStats
-	pipeline := testStatsQueryPipeline(filter)
+	pipeline := filter.testStatsQueryPipeline()
 	err = db.Aggregate(dailyTestStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate test statistics")
@@ -281,7 +281,7 @@ func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
 	var stats []TaskStats
-	pipeline := taskStatsQueryPipeline(filter)
+	pipeline := filter.taskStatsQueryPipeline()
 	err = db.Aggregate(dailyTaskStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")

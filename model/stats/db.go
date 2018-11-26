@@ -600,8 +600,8 @@ var (
 )
 
 // testStatsQueryPipeline creates an aggregation pipeline to query test statistics.
-func testStatsQueryPipeline(filter StatsFilter) []bson.M {
-	matchExpr := buildMatchStageForTest(filter)
+func (filter StatsFilter) testStatsQueryPipeline() []bson.M {
+	matchExpr := filter.buildMatchStageForTest()
 
 	return []bson.M{
 		matchExpr,
@@ -636,7 +636,7 @@ func testStatsQueryPipeline(filter StatsFilter) []bson.M {
 }
 
 // buildMatchStageForTest builds the match stage of the test query pipeline based on the filter options.
-func buildMatchStageForTest(filter StatsFilter) bson.M {
+func (filter StatsFilter) buildMatchStageForTest() bson.M {
 	match := bson.M{
 		dbTestStatsIdDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
@@ -659,7 +659,7 @@ func buildMatchStageForTest(filter StatsFilter) bson.M {
 	}
 
 	if filter.StartAt != nil {
-		match["$or"] = buildTestPaginationOrBranches(filter)
+		match["$or"] = filter.buildTestPaginationOrBranches()
 	}
 
 	return bson.M{"$match": match}
@@ -721,7 +721,7 @@ func buildMatchArrayExpression(values []string) interface{} {
 }
 
 // buildTestPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
-func buildTestPaginationOrBranches(filter StatsFilter) []bson.M {
+func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
 	var dateOperator string
 	if filter.Sort == SortLatestFirst {
 		dateOperator = "$lt"
@@ -764,8 +764,8 @@ func buildTestPaginationOrBranches(filter StatsFilter) []bson.M {
 }
 
 // taskStatsQueryPipeline creates an aggregation pipeline to query task statistics.
-func taskStatsQueryPipeline(filter StatsFilter) []bson.M {
-	matchExpr := buildMatchStageForTask(filter)
+func (filter StatsFilter) taskStatsQueryPipeline() []bson.M {
+	matchExpr := filter.buildMatchStageForTask()
 
 	return []bson.M{
 		matchExpr,
@@ -807,7 +807,7 @@ func taskStatsQueryPipeline(filter StatsFilter) []bson.M {
 }
 
 // buildMatchStageForTask builds the match stage of the task query pipeline based on the filter options.
-func buildMatchStageForTask(filter StatsFilter) bson.M {
+func (filter StatsFilter) buildMatchStageForTask() bson.M {
 	match := bson.M{
 		dbTaskStatsIdDateKeyFull: bson.M{
 			"$gte": filter.AfterDate,
@@ -827,14 +827,14 @@ func buildMatchStageForTask(filter StatsFilter) bson.M {
 	}
 
 	if filter.StartAt != nil {
-		match["$or"] = buildTaskPaginationOrBranches(filter)
+		match["$or"] = filter.buildTaskPaginationOrBranches()
 	}
 
 	return bson.M{"$match": match}
 }
 
 // buildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
-func buildTaskPaginationOrBranches(filter StatsFilter) []bson.M {
+func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
 	var dateOperator string
 	if filter.Sort == SortLatestFirst {
 		dateOperator = "$lt"
