@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MaxQueryLimit             = 1000
+	MaxQueryLimit             = 1001
 	GroupByTest       GroupBy = "test"
 	GroupByTask       GroupBy = "task"
 	GroupByVariant    GroupBy = "variant"

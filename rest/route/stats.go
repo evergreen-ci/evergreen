@@ -44,6 +44,7 @@ const (
 	statsAPIMaxGroupNumDays = 26 * 7 // 26 weeks which is the maximum amount of data available
 	statsAPIMaxNumTests     = 50
 	statsAPIMaxNumTasks     = 50
+	statsAPIMaxLimit        = 1000
 
 	// Format used to encode dates in the API
 	statsAPIDateFormat = "2006-01-02"
@@ -136,7 +137,7 @@ func (sh *statsHandler) parseStatsFilter(vals url.Values) error {
 	}
 
 	// limit
-	sh.filter.Limit, err = getLimit(vals)
+	sh.filter.Limit, err = sh.readInt(vals.Get("limit"), 1, statsAPIMaxLimit, statsAPIMaxLimit)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    "Invalid limit value",
