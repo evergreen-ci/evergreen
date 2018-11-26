@@ -238,13 +238,13 @@ type TestStats struct {
 }
 
 // GetTestStats queries the precomputed test statistics using a filter.
-func GetTestStats(filter *StatsFilter) ([]TestStats, error) {
+func GetTestStats(filter StatsFilter) ([]TestStats, error) {
 	err := filter.ValidateForTests()
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
 	var stats []TestStats
-	pipeline := testStatsQueryPipeline(filter)
+	pipeline := filter.testStatsQueryPipeline()
 	err = db.Aggregate(dailyTestStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate test statistics")
@@ -275,13 +275,13 @@ type TaskStats struct {
 }
 
 // GetTaskStats queries the precomputed task statistics using a filter.
-func GetTaskStats(filter *StatsFilter) ([]TaskStats, error) {
+func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {
 	err := filter.ValidateForTasks()
 	if err != nil {
 		return nil, errors.Wrap(err, "The provided StatsFilter is invalid")
 	}
 	var stats []TaskStats
-	pipeline := taskStatsQueryPipeline(filter)
+	pipeline := filter.taskStatsQueryPipeline()
 	err = db.Aggregate(dailyTaskStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to aggregate task statistics")
