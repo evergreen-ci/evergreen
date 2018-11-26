@@ -54,7 +54,7 @@ func ByProjectAndRevision(project, revision string) db.Q {
 	})
 }
 
-func GetVersionManifest(versionID, project, revision string) (*Manifest, error) {
+func FindFromVersion(versionID, project, revision string) (*Manifest, error) {
 	manifest, err := FindOne(ById(versionID))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding manifest")
