@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/http"
+	"reflect"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -47,13 +48,13 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		as.LoggedError(w, r, http.StatusNotFound, errors.Errorf("version not found: %s", task.Version))
 		return
 	}
-	currentManifest, err := manifest.FindOne(manifest.ByProjectAndRevision(v.Identifier, v.Revision))
+	currentManifest, err := manifest.GetVersionManifest(v.Id, v.Identifier, v.Revision)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest,
 			errors.Wrapf(err, "error retrieving manifest with version id %s", task.Version))
 		return
 	}
-	if currentManifest != nil {
+	if currentManifest != nil && sameModules(*currentManifest, project.Modules) {
 		gimlet.WriteJSON(w, currentManifest)
 		return
 	}
@@ -72,4 +73,26 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	gimlet.WriteJSON(w, manifest)
+}
+
+func sameModules(m manifest.Manifest, modules []model.Module) bool {
+	manifestModules := map[string]manifest.Module{}
+	for name, module := range m.Modules {
+		manifestModules[name] = manifest.Module{
+			Branch: module.Branch,
+			Repo:   module.Repo,
+			Owner:  module.Owner,
+		}
+	}
+	projectModules := map[string]manifest.Module{}
+	for _, module := range modules {
+		owner, repo := module.GetRepoOwnerAndName()
+		projectModules[module.Name] = manifest.Module{
+			Branch: module.Branch,
+			Repo:   repo,
+			Owner:  owner,
+		}
+	}
+
+	return reflect.DeepEqual(manifestModules, projectModules)
 }

@@ -754,6 +754,8 @@ func TestCreateManifest(t *testing.T) {
 		Revision:   "abc",
 		Identifier: "proj",
 	}
+
+	// no revision specified
 	proj := model.Project{
 		Identifier: "proj",
 		Modules: []model.Module{
@@ -776,4 +778,47 @@ func TestCreateManifest(t *testing.T) {
 		assert.NotEmpty(module.Revision)
 	}
 	assert.Equal(1, count)
+
+	// revision specified
+	hash := "cf46076567e4949f9fc68e0634139d4ac495c89b"
+	proj = model.Project{
+		Identifier: "proj",
+		Modules: []model.Module{
+			{
+				Name:   "module1",
+				Repo:   "git@github.com:evergreen-ci/sample.git",
+				Branch: "master",
+				Ref:    hash,
+			},
+		},
+	}
+	manifest, err = CreateManifest(v, &proj, "branch", settings)
+	assert.NoError(err)
+	assert.Equal(v.Id, manifest.Id)
+	assert.Equal(v.Revision, manifest.Revision)
+	count = 0
+	for _, module := range manifest.Modules {
+		count++
+		assert.Equal("sample", module.Repo)
+		assert.Equal("master", module.Branch)
+		assert.Equal(hash, module.Revision)
+		assert.NotEmpty(module.URL)
+	}
+	assert.Equal(1, count)
+
+	// invalid revision
+	hash = "1234"
+	proj = model.Project{
+		Identifier: "proj",
+		Modules: []model.Module{
+			{
+				Name:   "module1",
+				Repo:   "git@github.com:evergreen-ci/sample.git",
+				Branch: "master",
+				Ref:    hash,
+			},
+		},
+	}
+	manifest, err = CreateManifest(v, &proj, "branch", settings)
+	assert.Contains(err.Error(), "No commit found for SHA")
 }
