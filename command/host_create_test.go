@@ -98,6 +98,13 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["timeout_teardown_secs"] = 55
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.Contains(s.cmd.expandAndValidate(s.conf).Error(), "timeout_teardown_secs must be between 60 and 604800")
+
+	// Validate num_hosts can be an int
+	s.params["timeout_teardown_secs"] = 60
+	s.params["scope"] = "task"
+	s.params["num_hosts"] = 2
+	s.NoError(s.cmd.ParseParams(s.params))
+	s.NoError(s.cmd.expandAndValidate(s.conf))
 }
 
 func (s *createHostSuite) TestPopulateUserdata() {
