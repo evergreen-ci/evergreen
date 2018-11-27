@@ -23,7 +23,14 @@ func (c *createHost) Name() string { return "host.create" }
 
 func (c *createHost) ParseParams(params map[string]interface{}) error {
 	c.CreateHost = &apimodels.CreateHost{}
-	return errors.Wrapf(mapstructure.Decode(params, c.CreateHost), "error parsing '%s' params", c.Name())
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Result:           c.CreateHost,
+	})
+	if err != nil {
+		return errors.Wrap(err, "problem constructing mapstructure decoder")
+	}
+	return errors.Wrapf(decoder.Decode(params), "error parsing '%s' params", c.Name())
 }
 
 func (c *createHost) expandAndValidate(conf *model.TaskConfig) error {
