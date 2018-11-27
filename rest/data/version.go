@@ -5,11 +5,15 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/mongodb/grip"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/repotracker"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -304,6 +308,57 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 	return nil
 }
 
+func (vc *DBVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*version.Version, error) {
+	ref, err := model.FindOneProjectRef(projectID)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error finding project",
+		}
+	}
+	if ref == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("project %s does not exist", projectID),
+		}
+	}
+	project := &model.Project{}
+	err = model.LoadProjectInto(config, projectID, project)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("error parsing project config: %s", err.Error()),
+		}
+	}
+	metadata := repotracker.VersionMetadata{
+		IsAdHoc: true,
+		User:    user,
+		Message: message,
+	}
+	newVersion, err := repotracker.CreateVersionFromConfig(ref, project, metadata, false, nil)
+	if err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    fmt.Sprintf("error creating version: %s", err.Error()),
+		}
+	}
+
+	if active {
+		catcher := grip.NewBasicCatcher()
+		for _, b := range newVersion.BuildIds {
+			catcher.Add(model.SetBuildActivation(b, true, evergreen.DefaultTaskActivator))
+		}
+		if catcher.HasErrors() {
+			return nil, gimlet.ErrorResponse{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("error activating builds: %s", catcher.Resolve().Error()),
+			}
+		}
+	}
+
+	return newVersion, nil
+}
+
 // MockVersionConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Version related functions.
 type MockVersionConnector struct {
@@ -374,5 +429,9 @@ func (mvc *MockVersionConnector) RestartVersion(versionId string, caller string)
 }
 
 func (mvc *MockVersionConnector) GetVersionsAndVariants(skip, numVersionElements int, project *model.Project) (*restModel.VersionVariantData, error) {
+	return nil, nil
+}
+
+func (mvc *MockVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*version.Version, error) {
 	return nil, nil
 }

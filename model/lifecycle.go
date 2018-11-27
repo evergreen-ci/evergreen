@@ -507,6 +507,8 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		rev = fmt.Sprintf("patch_%s_%s", args.Version.Revision, args.Version.Id)
 	} else if args.Version.Requester == evergreen.TriggerRequester {
 		rev = fmt.Sprintf("%s_%s", args.SourceRev, args.DefinitionID)
+	} else if args.Version.Requester == evergreen.AdHocRequester {
+		rev = args.Version.Id
 	}
 
 	// create a new build id

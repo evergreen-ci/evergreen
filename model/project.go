@@ -452,10 +452,12 @@ func NewTaskIdTable(p *Project, v *version.Version, sourceRev, defID string) Tas
 
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
-		if evergreen.IsPatchRequester(v.Requester) || v.Requester == evergreen.TriggerRequester {
+		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		} else if v.Requester == evergreen.TriggerRequester {
 			rev = fmt.Sprintf("%s_%s", sourceRev, defID)
+		} else if v.Requester == evergreen.AdHocRequester {
+			rev = v.Id
 		}
 		for _, t := range bv.Tasks {
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
