@@ -124,17 +124,8 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
-	var d distro.Distro
-	if putParams.UserData != "" {
-		d, err = distro.FindOne(distro.ById(putParams.Distro))
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding distro"))
-			return
-		}
-		(*d.ProviderSettings)["user_data"] = putParams.UserData
-	}
 	hc := &data.DBConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, authedUser, d.ProviderSettings)
+	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, putParams.UserData, authedUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

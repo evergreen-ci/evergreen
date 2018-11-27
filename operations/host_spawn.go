@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
@@ -23,6 +24,7 @@ func hostCreate() cli.Command {
 	const (
 		distroFlagName = "distro"
 		keyFlagName    = "key"
+		scriptFlagName = "script"
 	)
 
 	return cli.Command{
@@ -37,11 +39,16 @@ func hostCreate() cli.Command {
 				Name:  joinFlagNames(keyFlagName, "k"),
 				Usage: "name or value of an public key to use",
 			},
+			cli.StringFlag{
+				Name:  joinFlagNames(scriptFlagName, "s"),
+				Usage: "path to userdata script to run",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
 			key := c.String(keyFlagName)
+			fn := c.String(scriptFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -53,7 +60,17 @@ func hostCreate() cli.Command {
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
-			host, err := client.CreateSpawnHost(ctx, distro, key)
+			var script string
+			if fn != "" {
+				var out []byte
+				out, err = ioutil.ReadFile(fn)
+				if err != nil {
+					return errors.Wrapf(err, "problem reading userdata file '%s'", fn)
+				}
+				script = string(out)
+			}
+
+			host, err := client.CreateSpawnHost(ctx, distro, key, script)
 			if host == nil {
 				return errors.New("Unable to create a spawn host. Double check that the params and .evergreen.yml are correct")
 			}
