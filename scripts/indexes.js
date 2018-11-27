@@ -92,14 +92,14 @@ db.tasks.ensureIndex({ "finish_time": 1, "_id": 1})
 db.tasks.ensureIndex({ "build_variant": 1, "branch" : 1, "order" : 1})
 db.tasks.ensureIndex({ "execution_tasks": 1})
 db.tasks.createIndex({ "distro": 1, "status": 1, "activated": 1, "priority": 1 }, { background: true })
-db.tasks.createIndex({"branch": 1, "finish_time": 1})
+db.tasks.createIndex({ "branch": 1, "finish_time": 1 })
 
 //======old_tasks======//
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1, "create_time": 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.old_tasks.ensureIndex({ "old_task_id": 1})
-db.old_tasks.ensureIndex({"branch": 1, "finish_time": 1})
+db.old_tasks.ensureIndex({ "branch": 1, "finish_time": 1})
 db.old_tasks.createIndex({ "execution_tasks": 1})
 
 //======versions======//
@@ -148,16 +148,17 @@ db.notifications.ensureIndex({ "sent_at": 1 })
 
 //======hourly_test_stats======//
 db.hourly_test_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
-db.hourly_test_stats.createIndex({ "_id.project": 1 }, { "_id.requester": 1}, {"_id.task_name": 1}, {"_id.date": 1})
+db.hourly_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.task_name": 1, "_id.date": 1 })
 
 //======daily_test_stats======//
 db.daily_test_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
-db.daily_test_stats.createIndex({ "_id.project": 1 }, {"_id.test_file": 1}, {"_id.date": 1})
-db.daily_test_stats.createIndex({ "_id.project": 1 }, {"_id.task_name": 1}, {"_id.date": 1})
+db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.test_file": 1, "_id.date": 1 })
+db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.task_name": 1, "_id.date": 1 })
+db.daily_test_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.task_name": 1, "_id.test_file": 1, "_id.date": 1 })
 
 //======daily_task_stats======//
 db.daily_task_stats.createIndex({ "_id.date": 1 }, { expireAfterSeconds: 26 * 7 * 24 * 3600 })  // 26 weeks TTL
-db.daily_task_stats.createIndex({ "_id.project": 1 }, {"_id.task_name": 1}, {"_id.date": 1})
+db.daily_task_stats.createIndex({ "_id.project": 1, "_id.requester": 1, "_id.task_name": 1, "_id.date": 1 })
 
 //======manifest======//
 db.manifest.createIndex({ "project": 1, "revision": 1 }) 
