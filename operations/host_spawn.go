@@ -62,7 +62,8 @@ func hostCreate() cli.Command {
 
 			var script string
 			if fn != "" {
-				out, err := ioutil.ReadFile(fn)
+				var out []byte
+				out, err = ioutil.ReadFile(fn)
 				if err != nil {
 					return errors.Wrapf(err, "problem reading userdata file '%s'", fn)
 				}
