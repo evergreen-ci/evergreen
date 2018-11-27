@@ -69,7 +69,8 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userDat
 	}
 	var providerSettings *map[string]interface{}
 	if userData != "" {
-		d, err := distro.FindOne(distro.ById(distroID))
+		var d distro.Distro
+		d, err = distro.FindOne(distro.ById(distroID))
 		if err != nil {
 			return nil, errors.Wrapf(err, "error finding distro '%s'", distroID)
 		}
