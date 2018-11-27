@@ -88,7 +88,6 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 					Message:    err.Error(),
 				})
 			}
-
 		} else {
 			if err = h.sc.SetHostStatus(foundHost, status["status"], user.Id); err != nil {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

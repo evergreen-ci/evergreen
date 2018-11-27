@@ -35,6 +35,7 @@ func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]
 	return hostRes, nil
 }
 
+// FindHostById queries the database for the host with id matching the hostId
 func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	h, err := host.FindOne(host.ById(id))
 	if err != nil {
