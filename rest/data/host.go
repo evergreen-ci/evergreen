@@ -35,19 +35,17 @@ func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]
 	return hostRes, nil
 }
 
-// FindHostById queries the database for the host with id matching the hostId
 func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	h, err := host.FindOne(host.ById(id))
-	if h == nil { //&& err == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host with id '%s' not found", id),
-		}
-	}
 	if err != nil {
 		return nil, err
 	}
-
+	if h == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with id %s not found", id),
+		}
+	}
 	return h, nil
 }
 

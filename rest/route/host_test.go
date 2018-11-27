@@ -115,7 +115,43 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]map[string]string{
+		"host1": {"status": "terminated"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]map[string]string{
 		"host1": {"status": "running"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]map[string]string{
+		"host1": {"status": "quarantined"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]map[string]string{
+		"host1": {"status": "decommissioned"},
 	}
 
 	ctx := context.Background()

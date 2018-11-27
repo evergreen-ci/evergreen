@@ -58,7 +58,6 @@ func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request)
 
 func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	fmt.Print(h.HostToStatus)
 	for id := range h.HostToStatus {
 		foundHost, err := h.sc.FindHostByIdWithOwner(id, user)
 		if err != nil {
