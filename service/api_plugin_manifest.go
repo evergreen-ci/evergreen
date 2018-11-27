@@ -25,19 +25,6 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest,
-			errors.Wrapf(err, "project not found for ProjectRef %s", projectRef.Identifier))
-		return
-	}
-	if project == nil {
-		as.LoggedError(w, r, http.StatusBadRequest,
-			errors.Errorf("empty project not found for ProjectRef %s", projectRef.Identifier))
-		return
-	}
-
-	// try to get the manifest
 	v, err := version.FindOne(version.ById(task.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error retrieving version for task"))
@@ -53,14 +40,16 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 			errors.Wrapf(err, "error retrieving manifest with version id %s", task.Version))
 		return
 	}
-	if currentManifest != nil && project.Modules.IsIdentical(*currentManifest) {
-		gimlet.WriteJSON(w, currentManifest)
+
+	var project *model.Project
+	err = model.LoadProjectInto([]byte(v.Config), v.Identifier, project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "error loading project from version"))
 		return
 	}
 
-	if task.Version == "" {
-		as.LoggedError(w, r, http.StatusBadRequest,
-			errors.Errorf("found empty version when retrieving manifest for %s", projectRef.Identifier))
+	if currentManifest != nil && project.Modules.IsIdentical(*currentManifest) {
+		gimlet.WriteJSON(w, currentManifest)
 		return
 	}
 
