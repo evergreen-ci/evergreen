@@ -8,11 +8,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const testConfigFile = ".evergreen.yml"
-
 type PatchUtilTestSuite struct {
 	suite.Suite
-	tempDir string
+	tempDir        string
+	testConfigFile string
 }
 
 func TestPatchUtilTestSuite(t *testing.T) {
@@ -24,6 +23,7 @@ func (s *PatchUtilTestSuite) SetupSuite() {
 	s.Require().NoError(err)
 
 	s.tempDir = dir
+	s.testConfigFile = dir + ".evergreen.yml"
 }
 
 func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
@@ -39,19 +39,20 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
    - mytask1
    - mytask2`
 
-	err := ioutil.WriteFile(s.tempDir+testConfigFile, []byte(fileContents), 0644)
+	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{Project: "mci"}
-	conf, err := NewClientSettings(s.tempDir + testConfigFile)
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
 
-	pp.loadAlias(conf)
-	pp.loadVariants(conf)
-	pp.loadTasks(conf)
+	s.Require().NoError(pp.loadAlias(conf))
+	s.Require().NoError(pp.loadVariants(conf))
+	s.Require().NoError(pp.loadTasks(conf))
 
 	s.Equal("testing", pp.Alias)
-	s.Equal([]string(nil), pp.Variants)
-	s.Equal([]string(nil), pp.Tasks)
+	s.Nil(pp.Variants)
+	s.Nil(pp.Tasks)
 }
 
 func (s *PatchUtilTestSuite) TestLoadVariantsTasksFromFile() {
@@ -66,19 +67,22 @@ func (s *PatchUtilTestSuite) TestLoadVariantsTasksFromFile() {
    - mytask1
    - mytask2`
 
-	err := ioutil.WriteFile(s.tempDir+testConfigFile, []byte(fileContents), 0644)
+	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{Project: "mci"}
-	conf, err := NewClientSettings(s.tempDir + testConfigFile)
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
 
-	pp.loadAlias(conf)
-	pp.loadVariants(conf)
-	pp.loadTasks(conf)
+	s.Require().NoError(pp.loadAlias(conf))
+	s.Require().NoError(pp.loadVariants(conf))
+	s.Require().NoError(pp.loadTasks(conf))
 
-	s.Equal("", pp.Alias)
-	s.Equal([]string{"myvariant1", "myvariant2"}, pp.Variants)
-	s.Equal([]string{"mytask1", "mytask2"}, pp.Tasks)
+	s.Zero(pp.Alias)
+	s.Contains(pp.Variants, "myvariant1")
+	s.Contains(pp.Variants, "myvariant2")
+	s.Contains(pp.Tasks, "mytask1")
+	s.Contains(pp.Tasks, "mytask2")
 }
 
 func (s *PatchUtilTestSuite) TestAliasFromCLI() {
@@ -93,7 +97,7 @@ func (s *PatchUtilTestSuite) TestAliasFromCLI() {
    - mytask1
    - mytask2`
 
-	err := ioutil.WriteFile(s.tempDir+testConfigFile, []byte(fileContents), 0644)
+	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{
@@ -101,15 +105,16 @@ func (s *PatchUtilTestSuite) TestAliasFromCLI() {
 		Alias:       "testing",
 		SkipConfirm: true,
 	}
-	conf, err := NewClientSettings(s.tempDir + testConfigFile)
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
 
-	pp.loadAlias(conf)
-	pp.loadVariants(conf)
-	pp.loadTasks(conf)
+	s.Require().NoError(pp.loadAlias(conf))
+	s.Require().NoError(pp.loadVariants(conf))
+	s.Require().NoError(pp.loadTasks(conf))
 
 	s.Equal("testing", pp.Alias)
-	s.Equal([]string(nil), pp.Variants)
-	s.Equal([]string(nil), pp.Tasks)
+	s.Nil(pp.Variants)
+	s.Nil(pp.Tasks)
 }
 
 func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
@@ -119,7 +124,7 @@ func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
   default: true
   alias: testing`
 
-	err := ioutil.WriteFile(s.tempDir+testConfigFile, []byte(fileContents), 0644)
+	err := ioutil.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
 
 	pp := patchParams{
@@ -128,17 +133,20 @@ func (s *PatchUtilTestSuite) TestVariantsTasksFromCLI() {
 		Tasks:       []string{"mytask1", "mytask2"},
 		SkipConfirm: true,
 	}
-	conf, err := NewClientSettings(s.tempDir + testConfigFile)
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
 
-	pp.loadAlias(conf)
-	pp.loadVariants(conf)
-	pp.loadTasks(conf)
+	s.Require().NoError(pp.loadAlias(conf))
+	s.Require().NoError(pp.loadVariants(conf))
+	s.Require().NoError(pp.loadTasks(conf))
 
-	s.Equal("", pp.Alias)
-	s.Equal([]string{"myvariant1", "myvariant2"}, pp.Variants)
-	s.Equal([]string{"mytask1", "mytask2"}, pp.Tasks)
+	s.Zero(pp.Alias)
+	s.Contains(pp.Variants, "myvariant1")
+	s.Contains(pp.Variants, "myvariant2")
+	s.Contains(pp.Tasks, "mytask1")
+	s.Contains(pp.Tasks, "mytask2")
 }
 
 func (s *PatchUtilTestSuite) TearDownSuite() {
-	os.RemoveAll(s.tempDir)
+	s.Require().NoError(os.RemoveAll(s.tempDir))
 }
