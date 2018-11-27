@@ -38,15 +38,16 @@ func (hc *DBHostConnector) FindHostsById(id, status, user string, limit int) ([]
 // FindHostById queries the database for the host with id matching the hostId
 func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	h, err := host.FindOne(host.ById(id))
+	if h == nil { //&& err == nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with id '%s' not found", id),
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
-	if h == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host with id %s not found", id),
-		}
-	}
+
 	return h, nil
 }
 
@@ -244,18 +245,27 @@ func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User)
 
 func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
 	host, err := c.FindHostById(hostID)
+	if host == nil {
+		return nil, err
+		//return nil, gimlet.ErrorResponse{
+		//StatusCode: http.StatusNotFound,
+		// Message:    fmt.Sprintf("host with id '%s' does not exist", hostID),
+		//Message: err.Message,
+		//}
+	}
+
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error fetching host information",
 		}
 	}
-	if host == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "host does not exist",
-		}
-	}
+	// if host == nil {
+	// 	return nil, gimlet.ErrorResponse{
+	// 		StatusCode: http.StatusBadRequest,
+	// 		Message:    "host does not exist",
+	// 	}
+	// }
 
 	if user.Username() != host.StartedBy {
 		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
