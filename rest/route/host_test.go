@@ -164,11 +164,10 @@ func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
 	h.HostToStatus = map[string]map[string]string{
 		"invalid": {"status": "decommissioned"},
-		"host4":   {"status": "terminated"},
 	}
 
 	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
 	res := h.Run(ctx)
 	s.Equal(http.StatusNotFound, res.Status())
 }

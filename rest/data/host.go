@@ -245,11 +245,6 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 	host, err := c.FindHostById(hostID)
 	if host == nil {
 		return nil, err
-		//return nil, gimlet.ErrorResponse{
-		//StatusCode: http.StatusNotFound,
-		// Message:    fmt.Sprintf("host with id '%s' does not exist", hostID),
-		//Message: err.Message,
-		//}
 	}
 
 	if err != nil {
@@ -258,12 +253,6 @@ func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.
 			Message:    "error fetching host information",
 		}
 	}
-	// if host == nil {
-	// 	return nil, gimlet.ErrorResponse{
-	// 		StatusCode: http.StatusBadRequest,
-	// 		Message:    "host does not exist",
-	// 	}
-	// }
 
 	if user.Username() != host.StartedBy {
 		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
