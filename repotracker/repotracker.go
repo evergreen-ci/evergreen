@@ -516,17 +516,29 @@ func CreateManifest(v version.Version, proj *model.Project, branch string, setti
 	defer cancel()
 
 	var gitBranch *github.Branch
+	var gitCommit *github.RepositoryCommit
 	modules := map[string]*manifest.Module{}
 	for _, module := range proj.Modules {
 		var sha, url string
 		owner, repo := module.GetRepoOwnerAndName()
-		gitBranch, err = thirdparty.GetBranchEvent(ctx, token, owner, repo, module.Branch)
-		if err != nil {
-			return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
-		}
-		if gitBranch != nil && gitBranch.Commit != nil {
-			sha = *gitBranch.Commit.SHA
-			url = *gitBranch.Commit.URL
+		if module.Ref == "" {
+			gitBranch, err = thirdparty.GetBranchEvent(ctx, token, owner, repo, module.Branch)
+			if err != nil {
+				return nil, errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name)
+			}
+			if gitBranch != nil && gitBranch.Commit != nil {
+				sha = *gitBranch.Commit.SHA
+				url = *gitBranch.Commit.URL
+			}
+		} else {
+			sha = module.Ref
+			gitCommit, err = thirdparty.GetCommitEvent(ctx, token, owner, repo, module.Ref)
+			if err != nil {
+				return nil, errors.Wrapf(err, "problem retrieving getting git commit for module %s with hash %s", module.Name, module.Ref)
+			}
+			if gitCommit != nil {
+				url = *gitCommit.URL
+			}
 		}
 
 		modules[module.Name] = &manifest.Module{
