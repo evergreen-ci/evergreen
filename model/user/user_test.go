@@ -253,3 +253,21 @@ func (s *UserTestSuite) TestGetLoginCache() {
 	s.False(valid)
 	s.Nil(u)
 }
+
+func (s *UserTestSuite) TestClearLoginCache() {
+	// Error on non-existant user
+	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}))
+
+	// A valid user...
+	u, valid, err := GetLoginCache("1234", time.Minute)
+	s.Require().NoError(err)
+	s.Require().True(valid)
+	s.Require().Equal("Test1", u.Username())
+	// Once cleared...
+	s.NoError(ClearLoginCache(u))
+	// Is no longer found
+	u, valid, err = GetLoginCache("1234", time.Minute)
+	s.NoError(err)
+	s.False(valid)
+	s.Nil(u)
+}
