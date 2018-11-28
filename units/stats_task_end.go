@@ -132,6 +132,7 @@ func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 		"provider":        j.host.Distro.Provider,
 		"host":            j.host.Id,
 		"total_wait_secs": j.task.FinishTime.Sub(j.task.GetTaskCreatedTime()).Seconds(),
+		"status":          j.task.Details,
 	}
 
 	if cost != 0 {
