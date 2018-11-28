@@ -14,10 +14,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	allTasks = "All Tasks"
+)
+
+type UIDisplayTask struct {
+	Name           string   `json:"name"`
+	ExecutionTasks []string `json:"execution_tasks"`
+}
+
 // UIBuildVariant contains the name of the build variant and the tasks associated with that build variant.
 type UIBuildVariant struct {
-	Name      string   `json:"name"`
-	TaskNames []string `json:"task_names"`
+	Name         string          `json:"name"`
+	TaskNames    []string        `json:"task_names"`
+	DisplayTasks []UIDisplayTask `json:"display_tasks"`
 }
 
 // UIProject has all the tasks that are in a project and all the BuildVariants.
@@ -74,10 +84,20 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 
 	// populate buildVariants by iterating over the build variants tasks
 	for _, bv := range project.BuildVariants {
-		newBv := UIBuildVariant{bv.Name, []string{}}
+		newBv := UIBuildVariant{bv.Name, []string{}, []UIDisplayTask{}}
 		for _, task := range bv.Tasks {
 			newBv.TaskNames = append(newBv.TaskNames, task.Name)
 		}
+
+		// Copy display and execution tasks to UIBuildVariant ui-model
+		for _, dispTask := range bv.DisplayTasks {
+			executionTasks := dispTask.ExecutionTasks
+			newBv.DisplayTasks = append(newBv.DisplayTasks, UIDisplayTask{
+				Name:           dispTask.Name,
+				ExecutionTasks: executionTasks,
+			})
+		}
+
 		currentProject.BuildVariants = append(currentProject.BuildVariants, newBv)
 	}
 	for _, task := range project.Tasks {
@@ -130,7 +150,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// if its all tasks find the build
-	if taskName == "" || taskName == "All Tasks" {
+	if taskName == "" || taskName == allTasks {
 		// TODO: switch this to be a query on the builds TaskCache
 		var builds []build.Build
 
