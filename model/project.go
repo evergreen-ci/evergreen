@@ -583,7 +583,21 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
+
+	config, err := evergreen.GetConfig()
+	if err != nil {
+		return nil, errors.New("")
+	}
+	token, err := config.GetGithubOauthToken()
+	if err != nil {
+		return nil, errors.New("")
+	}
+	if len(token) == 0 {
+		return nil, errors.New("")
+	}
+
 	expansions := util.Expansions{}
+	expansions.Put("github_oauth_token", token)
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)
@@ -592,7 +606,6 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
-
 	expansions.Put("distro_id", h.Distro.Id)
 
 	if t.TriggerID != "" {
