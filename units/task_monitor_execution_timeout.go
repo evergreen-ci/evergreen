@@ -16,7 +16,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -32,6 +31,8 @@ func init() {
 }
 
 type taskExecutionTimeoutJob struct {
+	taskID string `bson:"task_id"`
+
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
@@ -49,59 +50,39 @@ func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
 	return j
 }
 
-func NewTaskExecutionMonitorJob(id string) amboy.Job {
+func NewTaskExecutionMonitorJob(taskID string, execution int) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
-	j.SetID(fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, id))
+	j.TaskID = taskID
+	j.SetID(fmt.Sprintf("%s.%s.%d", taskExecutionTimeoutJobName, taskID, execution))
 	return j
 }
 
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	flags, err := evergreen.GetServiceFlags()
+	t, err := task.FindOneId(j.TaskID)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrap(err, "error finding task"))
+		return
+	}
+	if t == nil {
+		j.AddError(errors.New("no task found"))
 		return
 	}
 
-	if flags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message":   "monitor is disabled",
-			"operation": j.Type().Name,
-			"impact":    "skipping task heartbeat cleanup job",
-			"mode":      "degraded",
-		})
-		return
-	}
-
-	tasks, err := task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold))
-	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
-		return
-	}
-
-	for _, task := range tasks {
-		msg := message.Fields{
-			"operation": j.Type().Name,
-			"id":        j.ID(),
-			"task":      task.Id,
-			"host":      task.HostId,
-		}
-
-		if err := cleanUpTimedOutTask(task); err != nil {
-			grip.Warning(message.WrapError(err, msg))
-			j.AddError(err)
-			continue
-		}
-
-		grip.Debug(msg)
-	}
-
-	grip.Info(message.Fields{
+	msg := message.Fields{
 		"operation": j.Type().Name,
 		"id":        j.ID(),
-		"num_tasks": len(tasks),
-	})
+		"task":      t.Id,
+		"host":      t.HostId,
+	}
+
+	if err := cleanUpTimedOutTask(*t); err != nil {
+		grip.Warning(message.WrapError(err, msg))
+		j.AddError(err)
+	}
+
+	grip.Debug(msg)
 }
 
 // function to clean up a single task
