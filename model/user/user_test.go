@@ -256,7 +256,7 @@ func (s *UserTestSuite) TestGetLoginCache() {
 }
 
 func (s *UserTestSuite) TestClearLoginCache() {
-	// Error on non-existant user
+	// Error on non-existent user
 	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}, false))
 
 	// A valid user...
