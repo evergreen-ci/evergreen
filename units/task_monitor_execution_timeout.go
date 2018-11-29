@@ -31,7 +31,7 @@ func init() {
 }
 
 type taskExecutionTimeoutJob struct {
-	taskID string `bson:"task_id"`
+	Task string `bson:"task_id"`
 
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
@@ -52,7 +52,7 @@ func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
 
 func NewTaskExecutionMonitorJob(taskID string, execution int) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
-	j.TaskID = taskID
+	j.Task = taskID
 	j.SetID(fmt.Sprintf("%s.%s.%d", taskExecutionTimeoutJobName, taskID, execution))
 	return j
 }
@@ -60,7 +60,7 @@ func NewTaskExecutionMonitorJob(taskID string, execution int) amboy.Job {
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	t, err := task.FindOneId(j.taskID)
+	t, err := task.FindOneId(j.Task)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding task"))
 		return
