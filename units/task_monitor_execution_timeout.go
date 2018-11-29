@@ -60,7 +60,7 @@ func NewTaskExecutionMonitorJob(taskID string, execution int) amboy.Job {
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	t, err := task.FindOneId(j.TaskID)
+	t, err := task.FindOneId(j.taskID)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding task"))
 		return
