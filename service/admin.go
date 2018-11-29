@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/ldap"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -18,9 +19,13 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	if DBUser != nil && uis.isSuperUser(DBUser) {
 		template = "admin.html"
 	}
+
+	_, authIsLDAP := uis.UserManager.(*ldap.UserService)
+
 	data := struct {
 		ViewData
-	}{uis.GetCommonViewData(w, r, true, true)}
+		AuthIsLDAP bool
+	}{uis.GetCommonViewData(w, r, true, true), authIsLDAP}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 

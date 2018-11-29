@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/gimlet/ldap"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -111,13 +112,16 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	}
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url}
 
+	_, authIsLDAP := uis.UserManager.(*ldap.UserService)
+
 	uis.render.WriteResponse(w, http.StatusOK, struct {
 		Data       user.UserSettings
 		Config     confFile
 		Binaries   []evergreen.ClientBinary
 		GithubUser string
 		GithubUID  int
+		AuthIsLDAP bool
 		ViewData
-	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.GetCommonViewData(w, r, true, true)},
+	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, authIsLDAP, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }
