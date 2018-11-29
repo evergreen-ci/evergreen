@@ -255,7 +255,8 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                       <td><a href="/task/[[task.display_task]]">Parent display task</a></td>
                     </tr>
                     <tr ng-if="task.display_only">
-                      <td><a ng-href="[[getTestHistoryUrl(project, task)]]">All Task History</a></td>
+                      <td></td>
+                      <td><a ng-href="[[getTestHistoryUrl(project, task)]]">View All Tasks History</a></td>
                     </tr>
                     <tr ng-show="task.display_only">
                       <td colspan="2">
