@@ -161,44 +161,41 @@ func findBrowserCommand() ([]string, error) {
 }
 
 // Performs validation for patch or patch-file
-func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (ref *model.ProjectRef, err error) {
+func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (*model.ProjectRef, error) {
 	if p.Project == "" {
 		p.Project = conf.FindDefaultProject()
 	} else {
 		if conf.FindDefaultProject() == "" &&
 			!p.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.Project), true) {
 			conf.SetDefaultProject(p.Project)
-			if err = conf.Write(""); err != nil {
+			if err := conf.Write(""); err != nil {
 				grip.Warningf("warning - failed to set default project: %v\n", err)
 			}
 		}
 	}
 
 	if p.Project == "" {
-		err = errors.Errorf("Need to specify a project.")
-		return
+		return nil, errors.Errorf("Need to specify a project.")
 	}
 
-	if err = p.loadAlias(conf); err != nil {
+	if err := p.loadAlias(conf); err != nil {
 		grip.Warningf("warning - failed to set default alias: %v\n", err)
 	}
 
-	if err = p.loadVariants(conf); err != nil {
+	if err := p.loadVariants(conf); err != nil {
 		grip.Warningf("warning - failed to set default variants: %v\n", err)
 	}
 
-	if err = p.loadTasks(conf); err != nil {
+	if err := p.loadTasks(conf); err != nil {
 		grip.Warningf("warning - failed to set default tasks: %v\n", err)
 	}
 
 	// Validate the alias exists
 	if p.Alias != "" {
 		validAlias := false
-		var aliases []model.ProjectAlias
-		aliases, err = comm.ListAliases(ctx, p.Project)
+		aliases, err := comm.ListAliases(ctx, p.Project)
 		if err != nil {
-			err = errors.Wrap(err, "error contacting API server")
-			return
+			return nil, errors.Wrap(err, "error contacting API server")
 		}
 		for _, alias := range aliases {
 			if alias.Alias == p.Alias {
@@ -207,30 +204,28 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 			}
 		}
 		if !validAlias {
-			err = errors.Errorf("%s is not a valid alias", p.Alias)
-			return
+			return nil, errors.Errorf("%s is not a valid alias", p.Alias)
 		}
 	}
 
 	// Validate the project exists
-	ref, err = ac.GetProjectRef(p.Project)
+	ref, err := ac.GetProjectRef(p.Project)
 	if err != nil {
 		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
 			err = errors.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
 		}
-		return
+		return nil, err
 	}
 
 	if (len(p.Tasks) == 0 || len(p.Variants) == 0) && p.Alias == "" && p.Finalize {
-		err = errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
-		return
+		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing.")
 	}
 
 	if p.Description == "" && !p.SkipConfirm {
 		p.Description = prompt("Enter a description for this patch (optional):")
 	}
 
-	return
+	return ref, nil
 }
 
 // Sets the patch's alias to either the passed in option or the default
