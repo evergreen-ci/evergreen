@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -53,6 +54,9 @@ type VersionMetadata struct {
 	EventID       string
 	DefinitionID  string
 	SourceVersion *version.Version
+	IsAdHoc       bool
+	User          *user.DBUser
+	Message       string
 }
 
 // The RepoPoller interface specifies behavior required of all repository poller
@@ -642,6 +646,18 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 	if metadata.TriggerType != "" {
 		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.DefinitionID))
 		v.Requester = evergreen.TriggerRequester
+	} else if metadata.IsAdHoc {
+		v.Id = bson.NewObjectId().Hex()
+		v.Requester = evergreen.AdHocRequester
+		v.CreateTime = time.Now()
+		v.Message = metadata.Message
+		if metadata.User != nil {
+			num, err := metadata.User.IncPatchNumber()
+			if err != nil {
+				return nil, errors.Wrap(err, "error incrementing patch number")
+			}
+			v.RevisionOrderNumber = num
+		}
 	} else {
 		v.Id = util.CleanName(fmt.Sprintf("%s_%s", ref.String(), metadata.Revision.Revision))
 	}

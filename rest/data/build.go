@@ -49,7 +49,7 @@ func (bc *DBBuildConnector) SetBuildPriority(buildId string, priority int64) err
 
 // SetBuildActivated wraps the service level method
 func (bc *DBBuildConnector) SetBuildActivated(buildId string, user string, activated bool) error {
-	return model.SetBuildActivation(buildId, activated, user)
+	return model.SetBuildActivation(buildId, activated, user, false)
 }
 
 // RestartBuild wraps the service level RestartBuild
