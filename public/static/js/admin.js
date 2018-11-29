@@ -1,4 +1,4 @@
-mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, mciAdminRestService, notificationService) {
+mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, $http, mciAdminRestService, notificationService) {
   $scope.load = function() {
     $scope.Settings = {};
     $scope.getSettings();
@@ -130,6 +130,19 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', 'mciAdminR
     }
 
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
+  }
+
+  $scope.clearAllUserTokens = function(){
+    if(!confirm("This will log out all users from all existing sessions. Continue?"))
+      return
+
+    $http.post('/admin/cleartokens').then(
+      function(resp) {
+        window.location.reload();
+      },
+      function(resp) {
+        notificationService.pushNotification("Failed to clear user tokens: " + resp.data.error,'errorHeader');
+      });
   }
 
   var flagDisplayNames = {

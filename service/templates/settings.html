@@ -38,7 +38,10 @@ user: "[[userConf.user]]"
 api_key: "[[userConf.api_key]]"
 api_server_host: "[[userConf.api_server_host]]"
 ui_server_host: "[[userConf.ui_server_host]]"</pre>
-            <div><button ng-click="newKey()" class="btn btn-primary">Reset API Key</button></div>
+            <div>
+              <button ng-click="newKey()" class="btn btn-primary">Reset API Key</button>
+              <button ng-click="clearToken()" class="btn btn-primary">Logout Everywhere</button>
+            </div>
           </div>
         </div>
       </md-card>

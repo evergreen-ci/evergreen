@@ -91,9 +91,11 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) clearUserToken(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
 	if err := uis.UserManager.ClearUser(u, false); err != nil {
-		gimlet.WriteTextInternalError(w, "can't clear user token")
+		gimlet.WriteJSONInternalError(w, struct {
+			Error string `json:"error"`
+		}{Error: err.Error()})
 	} else {
-		gimlet.WriteText(w, "cleared user token")
+		gimlet.WriteJSON(w, map[string]string{})
 	}
 }
 

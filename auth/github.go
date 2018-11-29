@@ -153,5 +153,5 @@ func (*GithubUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
 	return getOrCreateUser(u)
 }
 func (*GithubUserManager) ClearUser(u gimlet.User, all bool) error {
-	return errors.New("GithubUserManager does not implement ClearUser")
+	return errors.New("Github Authentication does not support Clear User")
 }

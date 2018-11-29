@@ -66,6 +66,19 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       });
   }
 
+  $scope.clearToken = function(){
+    if(!confirm("This will log out the current user from all existing sessions. Continue?"))
+      return
+
+    $http.post('/settings/cleartoken').then(
+      function(resp) {
+        window.location.reload();
+      },
+      function(resp) {
+        notifier.pushNotification("Failed to clear user token: " + resp.data.error,'errorHeader');
+      });
+  }
+
   $scope.updateUserSettings = function(new_tz, new_waterfall) {
     data = {
         timezone: new_tz,
