@@ -204,7 +204,7 @@ type Connector interface {
 	GetCLIUpdate() (*restModel.APICLIUpdate, error)
 
 	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-	GenerateTasks(string, []json.RawMessage) error
+	GenerateTasks(context.Context, string, []json.RawMessage) error
 
 	// SaveSubscriptions saves a set of notification subscriptions
 	SaveSubscriptions([]event.Subscription) error

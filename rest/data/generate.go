@@ -1,10 +1,13 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
@@ -15,7 +18,7 @@ import (
 type GenerateConnector struct{}
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
-func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
+func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage) error {
 	projects, err := ParseProjects(jsonBytes)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -26,20 +29,25 @@ func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMe
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = taskID
 
-	p, v, t, pm, prevConfig, err := g.NewVersion()
-	if err != nil {
-		return err
-	}
-	if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
-		return err
-	}
-	err = g.Save(p, v, t, pm, prevConfig)
-	if err != nil && errors.Cause(err) == mgo.ErrNotFound {
-		return gimlet.ErrorResponse{
-			StatusCode: http.StatusInternalServerError,
-			Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),
-		}
-	}
+	_, err = util.RetryWithContext(
+		ctx,
+		func() (bool, error) {
+			p, v, t, pm, prevConfig, err := g.NewVersion()
+			if err != nil {
+				return false, err
+			}
+			if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
+				return false, err
+			}
+			err = g.Save(p, v, t, pm, prevConfig)
+			if err != nil && errors.Cause(err) == mgo.ErrNotFound {
+				return true, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),
+				}
+			}
+			return false, nil
+		}, 10, 100*time.Millisecond)
 	return err
 }
 
@@ -61,6 +69,6 @@ func ParseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error
 
 type MockGenerateConnector struct{}
 
-func (gc *MockGenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
+func (gc *MockGenerateConnector) GenerateTasks(ctx context.Context, taskID string, jsonBytes []json.RawMessage) error {
 	return nil
 }
