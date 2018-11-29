@@ -32,7 +32,7 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	_, err = util.RetryWithContext(
 		ctx,
 		func() (bool, error) {
-			p, v, t, pm, prevConfig, err := g.NewVersion()
+			p, v, t, pm, prevConfig, err := g.NewVersion() // nolint
 			if err != nil {
 				return false, err
 			}
