@@ -88,6 +88,15 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 	}{newKey})
 }
 
+func (uis *UIServer) clearUserToken(w http.ResponseWriter, r *http.Request) {
+	u := MustHaveUser(r)
+	if err := uis.UserManager.ClearUser(u, false); err != nil {
+		gimlet.WriteTextInternalError(w, "can't clear user token")
+	} else {
+		gimlet.WriteText(w, "cleared user token")
+	}
+}
+
 func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
 	settingsData := currentUser.Settings

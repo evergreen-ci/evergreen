@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -115,50 +114,4 @@ func (h *userSettingsGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(apiSettings)
-}
-
-////////////////////////////////////////////////////////////////////////
-//
-// POST /rest/v2/users/logoff
-type userLogoffHandler struct {
-	sc  data.Connector
-	all bool
-}
-
-func makeLogoffUsersHandler(sc data.Connector) gimlet.RouteHandler {
-	return &userLogoffHandler{
-		sc: sc,
-	}
-}
-
-func (h *userLogoffHandler) Factory() gimlet.RouteHandler {
-	return &userLogoffHandler{
-		sc:  h.sc,
-		all: false,
-	}
-}
-
-func (h *userLogoffHandler) Parse(ctx context.Context, r *http.Request) error {
-	vals := r.URL.Query()
-
-	// if the key is present in the query
-	_, h.all = vals["all"]
-
-	return nil
-}
-
-func (h *userLogoffHandler) Run(ctx context.Context) gimlet.Responder {
-	u := MustHaveUser(ctx)
-	um := gimlet.GetUserManager(ctx)
-
-	if h.all {
-		if !auth.IsSuperUser(h.sc.GetSuperUsers(), u) {
-			return gimlet.MakeJSONErrorResponder(errors.New("can't log out other users"))
-		}
-		um.ClearUser(u, true)
-	} else {
-		um.ClearUser(u, false)
-	}
-
-	return gimlet.NewJSONResponse(struct{}{})
 }
