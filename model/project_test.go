@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -1158,4 +1159,45 @@ func (s *projectSuite) TestIsGenerateTask() {
 	s.False(s.project.IsGenerateTask("disabled_task"))
 	s.False(s.project.IsGenerateTask("another_disabled_task"))
 	s.False(s.project.IsGenerateTask("task_does_not_exist"))
+}
+
+func TestModuleList(t *testing.T) {
+	assert := assert.New(t)
+
+	projModules := ModuleList{
+		{Name: "enterprise", Repo: "git@github.com:something/enterprise.git", Branch: "master"},
+		{Name: "wt", Repo: "git@github.com:else/wt.git", Branch: "develop"},
+	}
+
+	manifest1 := manifest.Manifest{
+		Modules: map[string]*manifest.Module{
+			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
+			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
+		},
+	}
+	assert.True(projModules.IsIdentical(manifest1))
+
+	manifest2 := manifest.Manifest{
+		Modules: map[string]*manifest.Module{
+			"wt":         &manifest.Module{Branch: "different branch", Repo: "wt", Owner: "else", Revision: "123"},
+			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
+		},
+	}
+	assert.False(projModules.IsIdentical(manifest2))
+
+	manifest3 := manifest.Manifest{
+		Modules: map[string]*manifest.Module{
+			"wt":         &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
+			"enterprise": &manifest.Module{Branch: "master", Repo: "enterprise", Owner: "something", Revision: "abc"},
+			"extra":      &manifest.Module{Branch: "master", Repo: "repo", Owner: "something", Revision: "abc"},
+		},
+	}
+	assert.False(projModules.IsIdentical(manifest3))
+
+	manifest4 := manifest.Manifest{
+		Modules: map[string]*manifest.Module{
+			"wt": &manifest.Module{Branch: "develop", Repo: "wt", Owner: "else", Revision: "123"},
+		},
+	}
+	assert.False(projModules.IsIdentical(manifest4))
 }

@@ -86,6 +86,7 @@ func (s *MetricsSuite) TestProcConverterOverwritesExistingData() {
 }
 
 func (s *MetricsSuite) TestSysInfoConverterOverwritesExistingData() {
+	s.T().Skip("skipping flaky test: EVG-5569")
 	first := message.CollectSystemInfo()
 	second := message.CollectSystemInfo()
 

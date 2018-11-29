@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -19,18 +20,25 @@ type listHosts struct {
 	Wait        bool   `mapstructure:"wait"`
 	Silent      bool   `mapstructure:"silent"`
 	TimeoutSecs int    `mapstructure:"timeout_seconds"`
-	NumHosts    int    `mapstructure:"num_hosts"`
+	NumHosts    string `mapstructure:"num_hosts" plugin:"expand"`
 	base
 }
 
 func listHostFactory() Command  { return &listHosts{} }
 func (*listHosts) Name() string { return "host.list" }
 func (c *listHosts) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c); err != nil {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Result:           c,
+	})
+	if err != nil {
+		return errors.Wrap(err, "problem constructing mapstructure decoder")
+	}
+	if err := decoder.Decode(params); err != nil {
 		return errors.Wrapf(err, "error parsing '%s' params", c.Name())
 	}
 
-	if c.Wait && c.NumHosts == 0 {
+	if c.Wait && (c.NumHosts == "" || c.NumHosts == "0") {
 		return errors.New("cannot reasonably wait for 0 hosts")
 	}
 
@@ -78,6 +86,14 @@ func (c *listHosts) Execute(ctx context.Context, comm client.Communicator, logge
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	var numHosts int
+	if c.NumHosts != "" {
+		numHosts, err = strconv.Atoi(c.NumHosts)
+		if err != nil {
+			return errors.Wrapf(err, "cannot convert '%s' to int", c.NumHosts)
+		}
+	}
+
 waitForHosts:
 	for {
 		select {
@@ -88,12 +104,12 @@ waitForHosts:
 			hosts, err = comm.ListHosts(ctx, td)
 
 			if c.Wait {
-				if err == nil && c.NumHosts == len(hosts) {
+				if err == nil && numHosts == len(hosts) {
 					break waitForHosts
 				} else if err != nil {
 					// pass
 				} else {
-					err = errors.Errorf("%d hosts of %d are up, waiting", len(hosts), c.NumHosts)
+					err = errors.Errorf("%d hosts of %d are up, waiting", len(hosts), numHosts)
 				}
 			} else if err == nil {
 				break waitForHosts

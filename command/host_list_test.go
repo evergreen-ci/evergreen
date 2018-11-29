@@ -30,7 +30,7 @@ func (s *HostListSuite) SetupTest() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.comm = client.NewMock("http://localhost.com")
-	s.conf = &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	s.conf = &model.TaskConfig{Expansions: &util.Expansions{"foo": "3"}, Task: &task.Task{}, Project: &model.Project{}}
 	s.logger = s.comm.GetLoggerProducer(s.ctx, client.TaskData{ID: s.conf.Task.Id, Secret: s.conf.Task.Secret})
 	s.cmd = listHostFactory().(*listHosts)
 }
@@ -50,9 +50,9 @@ func (s *HostListSuite) TestCommandIsProperlyConstructed() {
 func (s *HostListSuite) TestEarlyValidationAvoidsBlockingForNothing() {
 	s.NoError(s.cmd.ParseParams(nil))
 	s.cmd.Wait = true
-	s.cmd.NumHosts = 0
+	s.cmd.NumHosts = "0"
 	s.Error(s.cmd.ParseParams(nil))
-	s.cmd.NumHosts = 1
+	s.cmd.NumHosts = "1"
 	s.NoError(s.cmd.ParseParams(nil))
 }
 
@@ -80,7 +80,25 @@ func (s *HostListSuite) TestMockExecuteUnconfigured() {
 
 func (s *HostListSuite) TestMockExecuteWithWait() {
 	s.cmd.Wait = true
-	s.cmd.NumHosts = 1
+	s.cmd.NumHosts = "1"
 	s.cmd.TimeoutSecs = 1
 	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+func (s *HostListSuite) TestExpansions() {
+	s.NoError(s.cmd.ParseParams(
+		map[string]interface{}{
+			"num_hosts": 2,
+		},
+	))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Equal("2", s.cmd.NumHosts)
+
+	s.NoError(s.cmd.ParseParams(
+		map[string]interface{}{
+			"num_hosts": "${foo}",
+		},
+	))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Equal("3", s.cmd.NumHosts)
 }

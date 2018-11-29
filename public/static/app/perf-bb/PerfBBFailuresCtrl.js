@@ -38,14 +38,14 @@ mciModule.controller('PerfBBFailuresCtrl', function(
     enableFiltering: true,
     enableGridMenu: true,
     columnDefs: [{
+      name: 'Create Time',
+      field: 'create_time',
+    }, {
       name: 'Name',
       field: 'display_name',
     }, {
       name: 'Variant',
       field: 'build_variant',
-    }, {
-      name: 'Created',
-      field: 'create_time',
     }, {
       name: 'Status',
       field: 'status',

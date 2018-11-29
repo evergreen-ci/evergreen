@@ -81,6 +81,7 @@ type Connector interface {
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
+	CreateVersionFromConfig(string, []byte, *user.DBUser, string, bool) (*version.Version, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
@@ -107,7 +108,7 @@ type Connector interface {
 	FindHostByIdWithOwner(string, gimlet.User) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-	NewIntentHost(string, string, string, *user.DBUser, *map[string]interface{}) (*host.Host, error)
+	NewIntentHost(string, string, string, string, *user.DBUser) (*host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)

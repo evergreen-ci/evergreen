@@ -3,8 +3,7 @@ mciModule.run(function($templateCache) {
     '<div>' +
       '<div class="ui-grid-cell-contents" style="text-align: center;">' +
         '<div ng-if="row.groupHeader" >' +
-          '<span style="font-weight: bold;" ng-style="{color: level.color}">{{level.label}} </span>' +
-          '({{count}})' +
+          '<micro-hazard-chart points="points" ctx="ctx" />' +
         '</div>' +
         '<div ng-if="!row.groupHeader" ng-style="{color: color}">' +
           '{{ratio > 0 ? "+" : ""}}{{ratio | number : 0}}%' +

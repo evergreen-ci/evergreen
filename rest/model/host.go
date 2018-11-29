@@ -24,6 +24,7 @@ type APIHost struct {
 type HostPostRequest struct {
 	DistroID string `json:"distro"`
 	KeyName  string `json:"keyname"`
+	UserData string `json:"userdata"`
 }
 
 type DistroInfo struct {

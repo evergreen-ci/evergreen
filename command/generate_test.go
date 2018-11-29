@@ -106,11 +106,10 @@ func (s *generateSuite) TestExecuteSuccess() {
 	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
-func (s *generateSuite) TestExecuteSuccessWithFilesFilter() {
+func (s *generateSuite) TestExecuteSuccessWithValidGlobbing() {
 	f, err := ioutil.TempFile(s.tmpDirName, "")
 	s.Require().NoError(err)
 	tmpFile := f.Name()
-	tmpFileBase := filepath.Base(tmpFile)
 	defer os.Remove(tmpFile)
 
 	n, err := f.WriteString(s.json)
@@ -118,10 +117,7 @@ func (s *generateSuite) TestExecuteSuccessWithFilesFilter() {
 	s.Equal(len(s.json), n)
 	s.NoError(f.Close())
 
-	c := &generateTask{
-		Files:       []string{tmpFileBase},
-		FilesFilter: []string{tmpFileBase},
-	}
+	c := &generateTask{Files: []string{"*"}}
 	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
@@ -136,6 +132,30 @@ func (s *generateSuite) TestErrorWithInvalidExpansions() {
 	s.Equal("fo${bar", s.g.Files[0])
 
 	s.Error(s.g.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+func (s *generateSuite) TestNoErrorWithValidExpansions() {
+	f, err := ioutil.TempFile(s.tmpDirName, "")
+	s.Require().NoError(err)
+	tmpFile := f.Name()
+	tmpFileBase := filepath.Base(tmpFile)
+	defer os.Remove(tmpFile)
+
+	s.conf.Expansions = &util.Expansions{"bar": tmpFileBase}
+
+	n, err := f.WriteString(s.json)
+	s.NoError(err)
+	s.Equal(len(s.json), n)
+	s.NoError(f.Close())
+
+	s.Len(s.g.Files, 0)
+	s.NoError(s.g.ParseParams(map[string]interface{}{
+		"files": []string{
+			"${bar}",
+		},
+	}))
+	s.Len(s.g.Files, 1)
+	s.NoError(s.g.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
 func (s *generateSuite) TestMakeJsonOfAllFiles() {

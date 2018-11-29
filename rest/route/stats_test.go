@@ -49,7 +49,7 @@ func (s *StatsSuite) TestParseStatsFilter() {
 	s.Nil(handler.filter.StartAt)
 	s.Equal(stats.GroupByDistro, handler.filter.GroupBy)  // default value
 	s.Equal(stats.SortEarliestFirst, handler.filter.Sort) // default value
-	s.Equal(defaultLimit+1, handler.filter.Limit)         // default value
+	s.Equal(statsAPIMaxLimit+1, handler.filter.Limit)     // default value
 }
 
 func (s *StatsSuite) TestRunTestHandler() {
@@ -59,7 +59,6 @@ func (s *StatsSuite) TestRunTestHandler() {
 		URL:                "https://example.net/test",
 	}
 	handler := makeGetProjectTestStats(sc).(*testStatsHandler)
-	handler.url, err = url.Parse("https://example.net/test")
 	s.Require().NoError(err)
 
 	// 100 documents will be returned
@@ -108,7 +107,6 @@ func (s *StatsSuite) TestRunTaskHandler() {
 		URL:                "https://example.net/task",
 	}
 	handler := makeGetProjectTaskStats(sc).(*taskStatsHandler)
-	handler.url, err = url.Parse("https://example.net/test")
 	s.Require().NoError(err)
 
 	// 100 documents will be returned

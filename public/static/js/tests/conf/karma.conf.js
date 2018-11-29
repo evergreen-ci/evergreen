@@ -72,11 +72,11 @@ module.exports = function(config) {
       require('karma-junit-reporter'),
       require('jasmine'),
       require('karma-jasmine'),
-      require('karma-phantomjs-launcher')
+      require('karma-jsdom-launcher')
     ],
 
     // Start these browsers
-    browsers: ['PhantomJS'],
+    browsers: ['jsdom'],
 
 
     // If browser does not capture in given timeout [ms], kill it

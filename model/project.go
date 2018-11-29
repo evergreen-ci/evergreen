@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -43,7 +45,7 @@ type Project struct {
 	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
 	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
 	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules         []Module                   `yaml:"modules,omitempty" bson:"modules"`
+	Modules         ModuleList                 `yaml:"modules,omitempty" bson:"modules"`
 	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
@@ -201,6 +203,30 @@ type Module struct {
 	Repo   string `yaml:"repo,omitempty" bson:"repo"`
 	Prefix string `yaml:"prefix,omitempty" bson:"prefix"`
 	Ref    string `yaml:"ref,omitempty" bson:"ref"`
+}
+
+type ModuleList []Module
+
+func (l *ModuleList) IsIdentical(m manifest.Manifest) bool {
+	manifestModules := map[string]manifest.Module{}
+	for name, module := range m.Modules {
+		manifestModules[name] = manifest.Module{
+			Branch: module.Branch,
+			Repo:   module.Repo,
+			Owner:  module.Owner,
+		}
+	}
+	projectModules := map[string]manifest.Module{}
+	for _, module := range *l {
+		owner, repo := module.GetRepoOwnerAndName()
+		projectModules[module.Name] = manifest.Module{
+			Branch: module.Branch,
+			Repo:   repo,
+			Owner:  owner,
+		}
+	}
+
+	return reflect.DeepEqual(manifestModules, projectModules)
 }
 
 type TestSuite struct {
@@ -452,10 +478,12 @@ func NewTaskIdTable(p *Project, v *version.Version, sourceRev, defID string) Tas
 
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
-		if evergreen.IsPatchRequester(v.Requester) || v.Requester == evergreen.TriggerRequester {
+		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		} else if v.Requester == evergreen.TriggerRequester {
 			rev = fmt.Sprintf("%s_%s", sourceRev, defID)
+		} else if v.Requester == evergreen.AdHocRequester {
+			rev = v.Id
 		}
 		for _, t := range bv.Tasks {
 			if tg := p.FindTaskGroup(t.Name); tg != nil {
