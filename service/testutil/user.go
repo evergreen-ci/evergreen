@@ -28,6 +28,6 @@ func (MockUserManager) GetLoginCallbackHandler() http.HandlerFunc {
 }
 func (MockUserManager) GetOrCreateUser(gimlet.User) (gimlet.User, error) { return &MockUser, nil }
 func (MockUserManager) GetUserByID(string) (gimlet.User, error)          { return &MockUser, nil }
-func (MockUserManager) ClearUser(gimlet.User) error {
+func (MockUserManager) ClearUser(gimlet.User, bool) error {
 	return errors.New("MockUserManager does not implement ClearUser")
 }

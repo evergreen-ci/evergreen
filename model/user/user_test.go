@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -256,7 +257,7 @@ func (s *UserTestSuite) TestGetLoginCache() {
 
 func (s *UserTestSuite) TestClearLoginCache() {
 	// Error on non-existant user
-	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}))
+	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}, false))
 
 	// A valid user...
 	u, valid, err := GetLoginCache("1234", time.Minute)
@@ -264,9 +265,20 @@ func (s *UserTestSuite) TestClearLoginCache() {
 	s.Require().True(valid)
 	s.Require().Equal("Test1", u.Username())
 	// Once cleared...
-	s.NoError(ClearLoginCache(u))
+	s.NoError(ClearLoginCache(u, false))
 	// Is no longer found
 	u, valid, err = GetLoginCache("1234", time.Minute)
+	s.NoError(err)
+	s.False(valid)
+	s.Nil(u)
+
+	// Put the user back
+	token, err := PutLoginCache(s.users[0])
+	s.NoError(err)
+	// Clear all users
+	s.NoError(ClearLoginCache(gimlet.MakeBasicUser(), true))
+	// The user is no longer in cache
+	u, valid, err = GetLoginCache(token, time.Minute)
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u)
