@@ -42,3 +42,11 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 	}{events, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
+
+func (uis *UIServer) clearAllUserTokens(w http.ResponseWriter, r *http.Request) {
+	if err := uis.UserManager.ClearUser(gimlet.MakeBasicUser(), true); err != nil {
+		gimlet.WriteTextInternalError(w, "can't clear user tokens")
+	} else {
+		gimlet.WriteText(w, "cleared user tokens")
+	}
+}

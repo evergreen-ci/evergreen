@@ -320,6 +320,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
 	app.AddRoute("/settings/newkey").Wrap(needsLogin, needsContext).Handler(uis.newAPIKey).Post()
+	app.AddRoute("/settings/cleartoken").Wrap(needsLogin).Handler(uis.clearUserToken).Post()
 	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.notificationsPage).Get()
 
 	// Task stats
@@ -338,6 +339,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Admin routes
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext).Handler(uis.adminSettings).Get()
+	app.AddRoute("/admin/cleartokens").Wrap(needsSuperUser).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext).Handler(uis.adminEvents).Get()
 
 	// Plugin routes
