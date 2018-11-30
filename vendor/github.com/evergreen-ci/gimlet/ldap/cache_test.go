@@ -125,6 +125,25 @@ func TestUserCache(t *testing.T) {
 						users[u.Username()] = u
 						return u, nil
 					},
+					ClearCache: func(u gimlet.User, all bool) error {
+						if all {
+							users = make(map[string]gimlet.User)
+							cache = make(map[string]gimlet.User)
+							return nil
+						}
+
+						if _, ok := users[u.Username()]; !ok {
+							return errors.New("not found")
+						}
+						delete(users, u.Username())
+						for token, user := range cache {
+							if user.Username() == u.Username() {
+								delete(cache, token)
+								break
+							}
+						}
+						return nil
+					},
 				}.MakeUserCache()
 			},
 		},
@@ -209,6 +228,36 @@ func TestUserCache(t *testing.T) {
 				cu, err := cache.GetOrCreate(u)
 				require.NoError(t, err)
 				assert.Equal(t, u, cu)
+			})
+			t.Run("ClearUser", func(t *testing.T) {
+				cache := impl.factory()
+				u := gimlet.NewBasicUser("usr", "", "", "", []string{})
+				u, err := cache.GetOrCreate(u)
+				require.NoError(t, err)
+				require.NotNil(t, u)
+				token, err := cache.Put(u)
+				require.NoError(t, err)
+
+				// Clear just this user
+				err = cache.Clear(u, false)
+				assert.NoError(t, err)
+
+				noUser, isValidToken, err := cache.Get(token)
+				assert.Nil(t, noUser)
+				assert.False(t, isValidToken)
+				assert.NoError(t, err)
+
+				token, err = cache.Put(u)
+				require.NoError(t, err)
+
+				// Clear all users
+				err = cache.Clear(nil, true)
+				assert.NoError(t, err)
+
+				u, isValidToken, err = cache.Get(token)
+				assert.Nil(t, u)
+				assert.False(t, isValidToken)
+				assert.NoError(t, err)
 			})
 		})
 	}

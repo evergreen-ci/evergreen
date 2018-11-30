@@ -35,6 +35,7 @@ func (s *LDAPSuite) SetupTest() {
 		UserGroup:     "10gen",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		connect:       mockConnect,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
@@ -51,6 +52,7 @@ func (s *LDAPSuite) SetupTest() {
 		ServiceGroup:  "10gen",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		connect:       mockConnect,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
@@ -66,6 +68,7 @@ func (s *LDAPSuite) SetupTest() {
 		UserGroup:     "badgroup",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		connect:       mockConnectErr,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
@@ -81,6 +84,7 @@ func (s *LDAPSuite) SetupTest() {
 		UserGroup:     "badgroup",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -203,6 +207,10 @@ func mockGetMissing(token string) (gimlet.User, bool, error) {
 	return nil, false, nil
 }
 
+func mockClearCache(u gimlet.User, all bool) error {
+	return nil
+}
+
 func mockGetUserByID(id string) (gimlet.User, error) {
 	u := gimlet.NewBasicUser(id, "", "", "", []string{})
 	return u, nil
@@ -222,6 +230,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -236,6 +245,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -250,6 +260,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -264,6 +275,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -278,6 +290,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -292,6 +305,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      nil,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -306,6 +320,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      mockPutSuccess,
 		GetCache:      nil,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -320,6 +335,22 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    nil,
+		GetUser:       mockGetUserByID,
+		GetCreateUser: mockGetOrCreateUser,
+	})
+	s.Error(err)
+	s.Nil(l)
+
+	l, err = NewUserService(CreationOpts{
+		URL:           "url",
+		Port:          "port",
+		UserPath:      "path",
+		ServicePath:   "bots",
+		UserGroup:     "group",
+		PutCache:      mockPutSuccess,
+		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       nil,
 		GetCreateUser: mockGetOrCreateUser,
 	})
@@ -334,6 +365,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 		UserGroup:     "group",
 		PutCache:      mockPutSuccess,
 		GetCache:      mockGetValid,
+		ClearCache:    mockClearCache,
 		GetUser:       mockGetUserByID,
 		GetCreateUser: nil,
 	})
@@ -344,7 +376,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 func (s *LDAPSuite) TestGetUserByToken() {
 	ctx := context.Background()
 
-	impl, ok := s.um.(*userService).cache.(*externalUserCache)
+	impl, ok := s.um.(*UserService).cache.(*externalUserCache)
 	s.True(ok)
 	impl.get = mockGetErr
 	u, err := s.um.GetUserByToken(ctx, "foo")
@@ -361,14 +393,14 @@ func (s *LDAPSuite) TestGetUserByToken() {
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	serviceGroupImpl, ok := s.serviceGroupUm.(*userService).cache.(*externalUserCache)
+	serviceGroupImpl, ok := s.serviceGroupUm.(*UserService).cache.(*externalUserCache)
 	s.True(ok)
 	serviceGroupImpl.get = mockGetExpired
 	u, err = s.badGroupUm.GetUserByToken(ctx, "foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	badGroupImpl, ok := s.badGroupUm.(*userService).cache.(*externalUserCache)
+	badGroupImpl, ok := s.badGroupUm.(*UserService).cache.(*externalUserCache)
 	s.True(ok)
 	badGroupImpl.get = mockGetExpired
 	u, err = s.badGroupUm.GetUserByToken(ctx, "foo")
@@ -384,7 +416,7 @@ func (s *LDAPSuite) TestGetUserByToken() {
 	s.Error(err)
 	s.Nil(u)
 
-	realConnImpl, ok := s.realConnUm.(*userService).cache.(*externalUserCache)
+	realConnImpl, ok := s.realConnUm.(*UserService).cache.(*externalUserCache)
 	s.True(ok)
 	realConnImpl.get = mockGetExpired
 	u, err = s.realConnUm.GetUserByToken(ctx, "foo")
@@ -410,7 +442,7 @@ func (s *LDAPSuite) TestCreateUserToken() {
 	s.Error(err)
 	s.Empty(token)
 
-	impl, ok := s.um.(*userService).cache.(*externalUserCache)
+	impl, ok := s.um.(*UserService).cache.(*externalUserCache)
 	s.True(ok)
 	impl.put = mockPutErr
 	token, err = s.um.CreateUserToken("foo", "hunter2")
@@ -452,10 +484,19 @@ func (s *LDAPSuite) TestGetOrCreateUser() {
 }
 
 func (s *LDAPSuite) TestLoginUsesBothPaths() {
-	userManager, ok := s.um.(*userService)
+	userManager, ok := s.um.(*UserService)
 	s.True(ok)
 	s.NotNil(userManager)
 	s.Error(userManager.login("foo", "hunter1"))
 	s.NoError(userManager.login("foo", "hunter2"))
 	s.NoError(userManager.login("foo", "hunter3"))
+}
+
+func (s *LDAPSuite) TestClearCache() {
+	basicUser := gimlet.NewBasicUser("foo", "", "", "", []string{})
+	user, err := s.um.GetOrCreateUser(basicUser)
+	s.Require().NoError(err)
+
+	err = s.um.ClearUser(user, false)
+	s.NoError(err)
 }

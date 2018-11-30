@@ -51,4 +51,7 @@ type UserManager interface {
 	// authenticator.
 	GetUserByID(string) (User, error)
 	GetOrCreateUser(User) (User, error)
+
+	// Log out user or all users
+	ClearUser(user User, all bool) error
 }
