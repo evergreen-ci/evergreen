@@ -3,8 +3,6 @@ mciModule.controller('TaskTimingController', function(
 ) {
     $scope.currentProject = $window.activeProject;
     let bvs = $scope.currentProject.build_variants
-    // sort the task names for the current project
-    $scope.currentProject.task_names.sort()
     bvs.sort(function(a,b){
         return (a.name < b.name) ? -1 : 1
     });
@@ -20,13 +18,14 @@ mciModule.controller('TaskTimingController', function(
     var patch_requester = "patch_request"
     var nsPerMs = 1000000;
 
+    // Will contain all display task names
+    let allDisplayTasks = []
     // {bvName: [list of selectable task names], ...}
     $scope.selectableTasksPerBV = _.reduce(bvs, function(m, bv) {
+      let dispTaskNames = _.pluck(bv.display_tasks, 'name')
       m[bv.name] = _.chain(bv.task_names)
         // Include display task names
-        .union(
-          _.pluck(bv.display_tasks, 'name')
-        )
+        .union(dispTaskNames)
         // exclude execution task names
         .difference(
           _.flatten(
@@ -36,8 +35,16 @@ mciModule.controller('TaskTimingController', function(
         )
         .sortBy()
         .value()
+
+      // Side effect - collect list of all display task names
+      Array.prototype.push.apply(allDisplayTasks, dispTaskNames)
+
       return m
     }, {})
+
+    // add all display task names to tasks list
+    // sort the task names for the current project
+    $scope.taskNames = $scope.currentProject.task_names.concat(allDisplayTasks).sort()
 
     var initialHash = $locationHash.get();
     // TODO do we keep this?

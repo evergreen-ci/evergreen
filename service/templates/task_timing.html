@@ -34,9 +34,9 @@ Evergreen - Task Timing
       <h3>Tasks</h3>
       <div class="task-timing-list-container">
       <ul id="task-names" class="task-timing-list">
-          <li ng-repeat="task in currentProject.task_names" ng-click="form.$setPristine();setTaskName(task)"
-          ng-class="{'active-elt': task == currentTask, 'semi-transparent': !checkTaskForGraph(task), 'full-opacity': checkTaskForGraph(task)}">
-          [[task]]
+          <li ng-repeat="taskName in taskNames" ng-click="form.$setPristine();setTaskName(taskName)"
+          ng-class="{'active-elt': taskName == currentTask, 'semi-transparent': !checkTaskForGraph(task), 'full-opacity': checkTaskForGraph(taskName)}">
+          [[taskName]]
         </li>
       </ul>
     </div>
