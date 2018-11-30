@@ -245,21 +245,24 @@ func GetLoginCache(token string, expireAfter time.Duration) (gimlet.User, bool, 
 // ClearLoginCache clears a user or all users' tokens from the cache, forcibly logging them out
 func ClearLoginCache(user gimlet.User, all bool) error {
 	update := bson.M{"$unset": bson.M{LoginCacheKey: 1}}
-	updatee := bson.M{}
-	if !all {
+
+	if all {
+		query := bson.M{}
+		if err := UpdateAll(query, update); err != nil {
+			return errors.Wrap(err, "problem updating user cache")
+		}
+	} else {
 		u, err := FindOneById(user.Username())
 		if err != nil {
-			return errors.Wrap(err, "problem finding user by id")
+			return errors.Wrapf(err, "problem finding user %s by id", user.Username())
 		}
 		if u == nil {
 			return errors.Errorf("no user '%s' found", user.Username())
 		}
-		updatee = bson.M{IdKey: u.Id}
+		query := bson.M{IdKey: u.Id}
+		if err := UpdateOne(query, update); err != nil {
+			return errors.Wrap(err, "problem updating user cache")
+		}
 	}
-
-	if err := UpdateAll(updatee, update); err != nil {
-		return errors.Wrap(err, "problem updating user cache")
-	}
-
 	return nil
 }

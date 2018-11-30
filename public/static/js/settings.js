@@ -68,7 +68,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   }
 
   $scope.clearToken = function(){
-    if(!confirm("This will log out the current user from all existing sessions. Continue?"))
+    if(!confirm("This will log you out from all existing sessions. Continue?"))
       return
 
     $http.post('/settings/cleartoken').then(
