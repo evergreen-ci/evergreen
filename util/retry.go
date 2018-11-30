@@ -52,9 +52,6 @@ func getBackoff(initialSleep time.Duration, numAttempts int) *backoff.Backoff {
 //
 // If you specify less than 0 attempts, Retry will use an attempt value of 1.
 func Retry(ctx context.Context, op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
-	if ctx.Err() != nil {
-		return false, errors.New("context canceled")
-	}
 	if attempts < 1 {
 		attempts = 1
 	}
@@ -64,7 +61,7 @@ func Retry(ctx context.Context, op RetriableFunc, attempts int, sleep time.Durat
 	for {
 		select {
 		case <-ctx.Done():
-			return false, errors.Errorf("context canceled after %d retries", attempt+1)
+			return false, errors.Errorf("context canceled after %d retries", attempt)
 		case <-timer.C:
 			shouldRetry, err := op()
 			if err == nil {
