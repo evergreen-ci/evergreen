@@ -588,16 +588,14 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	if err != nil {
 		return nil, errors.New("")
 	}
-	token, err := config.GetGithubOauthToken()
+	// globalToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
+	globalToken, err := config.GetGithubOauthToken()
 	if err != nil {
-		return nil, errors.New("")
-	}
-	if len(token) == 0 {
-		return nil, errors.New("")
+		return nil, err
 	}
 
 	expansions := util.Expansions{}
-	expansions.Put("github_oauth_token", token)
+	expansions.Put("global_github_oauth_token", globalToken)
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)

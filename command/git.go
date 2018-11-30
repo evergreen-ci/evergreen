@@ -34,7 +34,11 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	Token string `plugin:"expand"`
+	// Token is soourced from the project's YAML file
+	Token string `plugin:"expand""`
+	// GlobalGitHubOauthToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
+	GlobalGitHubOauthToken string `mapstructure:"global_github_oauth_token"`
+	alphaToken string
 
 	base
 }
@@ -104,7 +108,8 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	}
 
 	var cloneCmd []string
-	if c.Token == "" {
+	//if c.Token == "" {
+	if c.alphaToken == "" {
 		location, err := conf.ProjectRef.Location()
 		if err != nil {
 			return nil, err
@@ -125,7 +130,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 			repo:     conf.ProjectRef.Repo,
 			branch:   conf.ProjectRef.Branch,
 			dir:      c.Directory,
-			token:    c.Token,
+			token:    c.alphaToken,
 		}
 		cloneCmd, err = buildHTTPCloneCommand(opts)
 		if err != nil {
@@ -188,7 +193,8 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 			owner:    owner,
 			repo:     repo,
 			dir:      moduleBase,
-			token:    c.Token,
+			token:    c.alphaToken,
+			// token:    c.Token,
 		}
 		cmds, err := buildHTTPCloneCommand(opts)
 		if err != nil {
@@ -201,15 +207,56 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 	return gitCommands, nil
 }
 
+// conf.Expansions
+//
+// "execution",
+// "version_id"
+// "task_id"
+// "task_name"
+// "build_id"
+// "build_variant"
+// "revision"
+// "project"
+// "distro_id"
+// "trigger_event_identifier"
+// "trigger_event_type"
+// "trigger_id"
+// "trigger_status"
+// "trigger_revision"
+// "trigger_status"
+// "trigger_revision"
+// "trigger_repo_owner"
+// "trigger_repo_name"
+// "trigger_branch"
+// "branch_name"
+// "author"
+// "created_at"
+// "is_patch"
+// "revision_order_id"
+// "github_pr_number"
+// "github_org"
+// "github_repo"
+// "github_author"
+// "revision_order_id"
+//
+// "global_github_oauth_token"
+
 // Execute gets the source code required by the project
 func (c *gitFetchProject) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	var err error
 
-	// expand the github parameters before running the task
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return err
+	}
+
+	// Which token takes precendence: GlobalGitHubOauthToken or Token?
+
+	token := c.Token;
+
+	if len(c.Token) == 0 {
+		c.Token = c.globalGitHubOauthToken
 	}
 
 	if strings.HasPrefix(c.Token, "token") {
