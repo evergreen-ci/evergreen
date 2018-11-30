@@ -32,7 +32,7 @@ func TestCleanupTask(t *testing.T) {
 		Convey("an error should be thrown if the passed-in projects slice"+
 			" does not contain the task's project", func() {
 
-			err := cleanUpTimedOutTask(task.Task{
+			err := cleanUpTimedOutTask(&task.Task{
 				Project: "proj",
 			})
 			So(err, ShouldNotBeNil)
@@ -85,7 +85,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTimedOutTask(*newTask), ShouldBeNil)
+				So(cleanUpTimedOutTask(newTask), ShouldBeNil)
 
 				// refresh the task - it should be reset
 				newTask, err := task.FindOne(task.ById("t1"))
@@ -120,7 +120,7 @@ func TestCleanupTask(t *testing.T) {
 					}
 					So(b.Insert(), ShouldBeNil)
 
-					So(cleanUpTimedOutTask(*et), ShouldBeNil)
+					So(cleanUpTimedOutTask(et), ShouldBeNil)
 					oldTask, err := task.FindOneOld(task.ByOldTaskID(dt.Id))
 					So(err, ShouldBeNil)
 					So(oldTask.ResetWhenFinished, ShouldBeTrue)
@@ -160,7 +160,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTimedOutTask(*newTask), ShouldBeNil)
+				So(cleanUpTimedOutTask(newTask), ShouldBeNil)
 
 				// refresh the host, make sure its running task field has
 				// been reset
