@@ -81,7 +81,6 @@ func Retry(ctx context.Context, op RetriableFunc, attempts int, sleep time.Durat
 			}
 		}
 	}
-	return false, errors.New("unable to complete retry operation")
 }
 
 func RehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {
