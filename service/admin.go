@@ -49,7 +49,7 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) clearAllUserTokens(w http.ResponseWriter, r *http.Request) {
-	if err := uis.UserManager.ClearUser(gimlet.MakeBasicUser(), true); err != nil {
+	if err := uis.UserManager.ClearUser(nil, true); err != nil {
 		gimlet.WriteJSONInternalError(w, struct {
 			Error string `json:"error"`
 		}{Error: err.Error()})
