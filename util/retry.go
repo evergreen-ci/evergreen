@@ -41,8 +41,17 @@ func getBackoff(initialSleep time.Duration, numAttempts int) *backoff.Backoff {
 	}
 }
 
-// RetryWithContext provides the same semantics as Retry, but will not retry again if the context is canceled.
-func RetryWithContext(ctx context.Context, op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
+// Retry provides a mechanism to retry an operation with exponential
+// backoff (that uses some jitter) Specify the maximum number of
+// retry attempts that you want to permit as well as the initial
+// period that you want to sleep between attempts.
+//
+// Retry requires that the starting sleep interval be at least 100
+// milliseconds, and forces this interval if you attempt to use a
+// shorter period.
+//
+// If you specify 0 attempts, Retry will use an attempt value of 1.
+func Retry(ctx context.Context, op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
 	if ctx.Err() != nil {
 		return false, errors.New("context canceled")
 	}
@@ -73,22 +82,6 @@ func RetryWithContext(ctx context.Context, op RetriableFunc, attempts int, sleep
 	}
 
 	return false, errors.New("unable to complete retry operation")
-}
-
-// Retry provides a mechanism to retry an operation with exponential
-// backoff (that uses some jitter,) Specify the maximum number of
-// retry attempts that you want to permit as well as the initial
-// period that you want to sleep between attempts.
-//
-// Retry requires that the starting sleep interval be at least 100
-// milliseconds, and forces this interval if you attempt to use a
-// shorter period.
-//
-// If you specify 0 attempts, Retry will use an attempt value of one.
-func Retry(op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	return RetryWithContext(ctx, op, attempts, sleep)
 }
 
 func RehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {

@@ -29,7 +29,7 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = taskID
 
-	_, err = util.RetryWithContext(
+	_, err = util.Retry(
 		ctx,
 		func() (bool, error) {
 			p, v, t, pm, prevConfig, err := g.NewVersion() // nolint

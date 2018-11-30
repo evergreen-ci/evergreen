@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -89,26 +90,30 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	grip.Infof("performing S3 copy: '%s' => '%s'", copyFromLocation, copyToLocation)
 
-	_, err = util.Retry(func() (bool, error) {
-		err = errors.WithStack(thirdparty.S3CopyFile(auth,
-			s3CopyReq.S3SourceBucket,
-			s3CopyReq.S3SourcePath,
-			s3CopyReq.S3DestinationBucket,
-			s3CopyReq.S3DestinationPath,
-			string(s3.PublicRead),
-		))
-		if err != nil {
-			grip.Errorf("S3 copy failed for task %s, retrying: %+v", task.Id, err)
-			return true, err
-		}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err = util.Retry(
+		ctx,
+		func() (bool, error) {
+			err = errors.WithStack(thirdparty.S3CopyFile(auth,
+				s3CopyReq.S3SourceBucket,
+				s3CopyReq.S3SourcePath,
+				s3CopyReq.S3DestinationBucket,
+				s3CopyReq.S3DestinationPath,
+				string(s3.PublicRead),
+			))
+			if err != nil {
+				grip.Errorf("S3 copy failed for task %s, retrying: %+v", task.Id, err)
+				return true, err
+			}
 
-		err = errors.Wrapf(newPushLog.UpdateStatus(model.PushLogSuccess),
-			"updating pushlog status failed for task %s", task.Id)
+			err = errors.Wrapf(newPushLog.UpdateStatus(model.PushLogSuccess),
+				"updating pushlog status failed for task %s", task.Id)
 
-		grip.Error(err)
+			grip.Error(err)
 
-		return false, err
-	}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second)
+			return false, err
+		}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second)
 
 	if err != nil {
 		grip.Error(errors.Wrap(errors.WithStack(newPushLog.UpdateStatus(model.PushLogFailed)), "updating pushlog status failed"))
