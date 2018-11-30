@@ -1297,7 +1297,7 @@ func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions in
 			version.CreateTimeKey,
 			version.TriggerIDKey,
 			version.TriggerTypeKey,
-		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
+		).Sort([]string{"-" + version.CreateTimeKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error fetching versions from database")

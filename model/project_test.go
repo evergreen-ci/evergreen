@@ -2,6 +2,7 @@ package model
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -1105,6 +1106,7 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 		Id:                  "v1",
 		Identifier:          s.project.Identifier,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          time.Now(),
 		RevisionOrderNumber: 1,
 	}
 	s.NoError(v1.Insert())
@@ -1112,6 +1114,7 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 		Id:                  "v2",
 		Identifier:          s.project.Identifier,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          time.Now().Add(1 * time.Minute),
 		RevisionOrderNumber: 2,
 	}
 	s.NoError(v2.Insert())
@@ -1119,6 +1122,7 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 		Id:                  "v3",
 		Identifier:          s.project.Identifier,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		CreateTime:          time.Now().Add(5 * time.Minute),
 		RevisionOrderNumber: 3,
 	}
 	s.NoError(v3.Insert())

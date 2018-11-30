@@ -646,6 +646,7 @@ func shellVersionFromRevision(ref *model.ProjectRef, metadata VersionMetadata) (
 	if metadata.TriggerType != "" {
 		v.Id = util.CleanName(fmt.Sprintf("%s_%s_%s", ref.String(), metadata.SourceVersion.Revision, metadata.DefinitionID))
 		v.Requester = evergreen.TriggerRequester
+		v.CreateTime = metadata.SourceVersion.CreateTime
 	} else if metadata.IsAdHoc {
 		v.Id = bson.NewObjectId().Hex()
 		v.Requester = evergreen.AdHocRequester
