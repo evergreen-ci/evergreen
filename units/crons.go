@@ -236,7 +236,7 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for _, t := range tasks {
-			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(t.Id, t.Execution)))
+			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(t.Id, t.Execution, 1)))
 		}
 		grip.Info(message.Fields{
 			"operation": "task-execution-timeout",
