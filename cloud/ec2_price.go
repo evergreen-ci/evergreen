@@ -483,20 +483,24 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 
 	var data []byte
 
-	_, err := util.Retry(func() (bool, error) {
-		resp, err := client.Get(endpoint)
-		if resp != nil {
-			defer resp.Body.Close()
-		}
-		if err != nil {
-			return true, errors.Wrapf(err, "fetching %s", endpoint)
-		}
-		data, err = ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return true, errors.Wrap(err, "reading response body")
-		}
-		return false, nil
-	}, awsClientImplRetries, awsClientImplStartPeriod)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := util.Retry(
+		ctx,
+		func() (bool, error) {
+			resp, err := client.Get(endpoint)
+			if resp != nil {
+				defer resp.Body.Close()
+			}
+			if err != nil {
+				return true, errors.Wrapf(err, "fetching %s", endpoint)
+			}
+			data, err = ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return true, errors.Wrap(err, "reading response body")
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
 		return errors.WithStack(err)
 	}
