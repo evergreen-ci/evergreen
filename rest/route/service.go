@@ -96,6 +96,7 @@ func AttachHandler(app *gimlet.APIApp, queue amboy.Queue, URL string, superUsers
 	app.AddRoute("/user/settings").Version(2).Post().Wrap(checkUser).RouteHandler(makeSetUserConfig(sc))
 	app.AddRoute("/users/{user_id}/hosts").Version(2).Get().Wrap(checkUser).RouteHandler(makeFetchHosts(sc))
 	app.AddRoute("/users/{user_id}/patches").Version(2).Get().Wrap(checkUser).RouteHandler(makeUserPatchHandler(sc))
+	app.AddRoute("/versions").Version(2).Put().RouteHandler(makeVersionCreateHandler(sc))
 	app.AddRoute("/versions/{version_id}").Version(2).Get().RouteHandler(makeGetVersionByID(sc))
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(checkUser).RouteHandler(makeAbortVersion(sc))
 	app.AddRoute("/versions/{version_id}/builds").Version(2).Get().RouteHandler(makeGetVersionBuilds(sc))

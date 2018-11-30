@@ -88,6 +88,14 @@ func (s *HostListSuite) TestMockExecuteWithWait() {
 func (s *HostListSuite) TestExpansions() {
 	s.NoError(s.cmd.ParseParams(
 		map[string]interface{}{
+			"num_hosts": 2,
+		},
+	))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Equal("2", s.cmd.NumHosts)
+
+	s.NoError(s.cmd.ParseParams(
+		map[string]interface{}{
 			"num_hosts": "${foo}",
 		},
 	))

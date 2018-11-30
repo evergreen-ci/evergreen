@@ -51,7 +51,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 		return err
 	}
 	for _, b := range builds {
-		err = SetBuildActivation(b.Id, active, caller)
+		err = SetBuildActivation(b.Id, active, caller, false)
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func SetVersionActivation(versionId string, active bool, caller string) error {
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
-func SetBuildActivation(buildId string, active bool, caller string) error {
+func SetBuildActivation(buildId string, active bool, caller string, skipDependencies bool) error {
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
@@ -75,18 +75,20 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 		if err != nil {
 			return errors.Wrap(err, "problem updating tasks for activation")
 		}
-		var tasks []task.Task
-		tasks, err = task.FindTasksFromBuildWithDependencies(buildId)
-		if err != nil {
-			return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
-		}
-		catcher := grip.NewBasicCatcher()
-		for _, t := range tasks {
-			for _, d := range t.DependsOn {
-				catcher.Add(SetActiveState(d.TaskId, caller, active))
+		if !skipDependencies {
+			var tasks []task.Task
+			tasks, err = task.FindTasksFromBuildWithDependencies(buildId)
+			if err != nil {
+				return errors.Wrapf(err, "problem finding tasks with dependencies for build %s", buildId)
 			}
+			catcher := grip.NewBasicCatcher()
+			for _, t := range tasks {
+				for _, d := range t.DependsOn {
+					catcher.Add(SetActiveState(d.TaskId, caller, active))
+				}
+			}
+			grip.Error(errors.Wrapf(catcher.Resolve(), "problem settings dependencies for build %s", buildId))
 		}
-		grip.Error(errors.Wrapf(catcher.Resolve(), "problem settings dependencies for build %s", buildId))
 	} else {
 
 		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
@@ -507,6 +509,8 @@ func CreateBuildFromVersion(args BuildCreateArgs) (string, error) {
 		rev = fmt.Sprintf("patch_%s_%s", args.Version.Revision, args.Version.Id)
 	} else if args.Version.Requester == evergreen.TriggerRequester {
 		rev = fmt.Sprintf("%s_%s", args.SourceRev, args.DefinitionID)
+	} else if args.Version.Requester == evergreen.AdHocRequester {
+		rev = args.Version.Id
 	}
 
 	// create a new build id
