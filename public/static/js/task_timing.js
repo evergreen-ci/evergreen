@@ -18,8 +18,9 @@ mciModule.controller('TaskTimingController', function(
     var patch_requester = "patch_request"
     var nsPerMs = 1000000;
 
-    // Will contain all display task names
-    let allDisplayTasks = []
+    // Intermediate accumulator for code below
+    let displayTaskNamesSet = new Set()
+
     // {bvName: [list of selectable task names], ...}
     $scope.selectableTasksPerBV = _.reduce(bvs, function(m, bv) {
       let dispTaskNames = _.pluck(bv.display_tasks, 'name')
@@ -36,11 +37,15 @@ mciModule.controller('TaskTimingController', function(
         .sortBy()
         .value()
 
-      // Side effect - collect list of all display task names
-      Array.prototype.push.apply(allDisplayTasks, dispTaskNames)
+      // Side effect - collect set of all display task names
+      for (let name of dispTaskNames) displayTaskNamesSet.add(name)
 
       return m
     }, {})
+
+    // Will contain all display task names
+    // Converting unique set to an array
+    let allDisplayTasks = [...displayTaskNamesSet]
 
     // add all display task names to tasks list
     // sort the task names for the current project
