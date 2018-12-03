@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -26,7 +27,9 @@ func TestRetriesUsedUp(t *testing.T) {
 		}
 
 		start := time.Now()
-		retryFail, err := Retry(failingFunc, TestRetries, TestSleep)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		retryFail, err := Retry(ctx, failingFunc, TestRetries, TestSleep)
 		end := time.Now()
 
 		Convey("calling it with Retry should return an error", func() {
@@ -54,7 +57,9 @@ func TestRetryUntilSuccess(t *testing.T) {
 		}
 
 		start := time.Now()
-		retryFail, err := Retry(retryPassingFunc, TestRetries, TestSleep)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		retryFail, err := Retry(ctx, retryPassingFunc, TestRetries, TestSleep)
 		end := time.Now()
 
 		Convey("calling it with Retry should not return any error", func() {
@@ -79,7 +84,9 @@ func TestNonRetriableFailure(t *testing.T) {
 			return false, errors.New("something went wrong")
 		}
 
-		retryFail, err := Retry(failingFuncNoRetry, TestRetries, TestSleep)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		retryFail, err := Retry(ctx, failingFuncNoRetry, TestRetries, TestSleep)
 
 		Convey("calling it with Retry should return an error", func() {
 			So(err, ShouldNotBeNil)

@@ -11,7 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -399,4 +401,87 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	s.False(activeVersions.RolledUp)
 	s.EqualValues(restModel.ToAPIString("v1"), activeVersions.Versions[0].Id)
 	s.EqualValues(restModel.ToAPIString("I am v1"), activeVersions.Versions[0].Message)
+}
+
+func TestCreateVersionFromConfig(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, version.Collection, distro.Collection, task.Collection, build.Collection, user.Collection))
+	ref := model.ProjectRef{
+		Identifier: "mci",
+	}
+	assert.NoError(ref.Insert())
+	d := distro.Distro{
+		Id: "d",
+	}
+	assert.NoError(d.Insert())
+	u := user.DBUser{
+		Id:          "u",
+		PatchNumber: 5,
+	}
+	assert.NoError(u.Insert())
+	config1 := `{
+			"stepback": true,
+			"buildvariants": [{
+				"name": "v1",
+				"run_on": "d",
+				"tasks": [
+					{"name": "t1"},
+				]
+			}],
+			"tasks": [
+				{"name": "t1"}
+			]
+		}`
+
+	dc := DBVersionConnector{}
+	newVersion, err := dc.CreateVersionFromConfig(ref.Identifier, []byte(config1), &u, "my message", true)
+	assert.NoError(err)
+	assert.Equal("my message", newVersion.Message)
+	assert.Equal(evergreen.VersionCreated, newVersion.Status)
+	assert.Equal(ref.Identifier, newVersion.Identifier)
+	assert.Equal(6, newVersion.RevisionOrderNumber)
+	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
+	assert.NotEmpty(newVersion.Config)
+
+	b, err := build.FindOneId(newVersion.BuildIds[0])
+	assert.NoError(err)
+	assert.Equal(evergreen.BuildCreated, b.Status)
+	assert.True(b.Activated)
+	assert.Len(b.Tasks, 1)
+
+	dbTask, err := task.FindOneId(b.Tasks[0].Id)
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	assert.True(dbTask.Activated)
+
+	config2 := `
+stepback: true
+buildvariants:
+- name: v1
+  run_on: d
+  tasks:
+  - name: t1
+tasks:
+- name: t1
+`
+
+	newVersion, err = dc.CreateVersionFromConfig(ref.Identifier, []byte(config2), &u, "message 2", true)
+	assert.NoError(err)
+	assert.Equal("message 2", newVersion.Message)
+	assert.Equal(evergreen.VersionCreated, newVersion.Status)
+	assert.Equal(ref.Identifier, newVersion.Identifier)
+	assert.Equal(7, newVersion.RevisionOrderNumber)
+	assert.Equal(evergreen.AdHocRequester, newVersion.Requester)
+	assert.NotEmpty(newVersion.Config)
+
+	b, err = build.FindOneId(newVersion.BuildIds[0])
+	assert.NoError(err)
+	assert.Equal(evergreen.BuildCreated, b.Status)
+	assert.True(b.Activated)
+	assert.Len(b.Tasks, 1)
+
+	dbTask, err = task.FindOneId(b.Tasks[0].Id)
+	assert.NoError(err)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	assert.True(dbTask.Activated)
 }

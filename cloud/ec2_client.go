@@ -133,6 +133,7 @@ func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstance
 	var err error
 	msg := makeAWSLogMessage("RunInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.RunInstancesWithContext(ctx, input)
 			if err != nil {
@@ -156,6 +157,7 @@ func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.Descri
 	var err error
 	msg := makeAWSLogMessage("DescribeInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
 			if err != nil {
@@ -179,6 +181,7 @@ func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInp
 	var err error
 	msg := makeAWSLogMessage("CreateTags", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CreateTagsWithContext(ctx, input)
 			if err != nil {
@@ -202,6 +205,7 @@ func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.Termi
 	var err error
 	msg := makeAWSLogMessage("TerminateInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.TerminateInstancesWithContext(ctx, input)
 			if err != nil {
@@ -236,6 +240,7 @@ func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.Req
 	var err error
 	msg := makeAWSLogMessage("RequestSpotInstances", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.RequestSpotInstancesWithContext(ctx, input)
 			if err != nil {
@@ -259,6 +264,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input 
 	var err error
 	msg := makeAWSLogMessage("DescribeSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
@@ -335,6 +341,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *e
 	var err error
 	msg := makeAWSLogMessage("CancelSpotInstanceRequests", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CancelSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
@@ -361,6 +368,7 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 	var err error
 	msg := makeAWSLogMessage("DescribeVolumes", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVolumesWithContext(ctx, input)
 			if err != nil {
@@ -384,6 +392,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2
 	var err error
 	msg := makeAWSLogMessage("DescribeSpotPriceHistory", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotPriceHistoryWithContext(ctx, input)
 			if err != nil {
@@ -407,6 +416,7 @@ func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.Describe
 	var err error
 	msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
 			if err != nil {
@@ -430,6 +440,7 @@ func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpc
 	var err error
 	msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
 			if err != nil {
@@ -479,6 +490,7 @@ func (c *awsClientImpl) CreateKeyPair(ctx context.Context, input *ec2.CreateKeyP
 	var err error
 	msg := makeAWSLogMessage("CreateKeyPair", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.CreateKeyPairWithContext(ctx, input)
 			if err != nil {
@@ -502,6 +514,7 @@ func (c *awsClientImpl) DeleteKeyPair(ctx context.Context, input *ec2.DeleteKeyP
 	var err error
 	msg := makeAWSLogMessage("DeleteKeyPair", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.EC2.DeleteKeyPairWithContext(ctx, input)
 			if err != nil {
@@ -525,6 +538,7 @@ func (c *awsClientImpl) GetProducts(ctx context.Context, input *pricing.GetProdu
 	var err error
 	msg := makeAWSLogMessage("GetProducts", fmt.Sprintf("%T", c), input)
 	_, err = util.Retry(
+		ctx,
 		func() (bool, error) {
 			output, err = c.pricing.GetProductsWithContext(ctx, input)
 			if err != nil {

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"math"
 	"math/rand"
 	"time"
@@ -41,7 +42,7 @@ func getBackoff(initialSleep time.Duration, numAttempts int) *backoff.Backoff {
 }
 
 // Retry provides a mechanism to retry an operation with exponential
-// backoff (that uses some jitter,) Specify the maximum number of
+// backoff (that uses some jitter) Specify the maximum number of
 // retry attempts that you want to permit as well as the initial
 // period that you want to sleep between attempts.
 //
@@ -49,30 +50,34 @@ func getBackoff(initialSleep time.Duration, numAttempts int) *backoff.Backoff {
 // milliseconds, and forces this interval if you attempt to use a
 // shorter period.
 //
-// If you specify 0 attempts, Retry will use an attempt value of one.
-func Retry(op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
+// If you specify less than 0 attempts, Retry will use an attempt value of 1.
+func Retry(ctx context.Context, op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
+	if attempts < 1 {
+		attempts = 1
+	}
+	attempt := 0
 	backoff := getBackoff(sleep, attempts)
-	for i := attempts; i >= 0; i-- {
-		shouldRetry, err := op()
-
-		if err == nil {
-			//the attempt succeeded, so we return no error
-			return false, nil
-		}
-
-		if shouldRetry {
-			if i == 0 {
-				// used up all retry attempts, so return the failure.
-				return true, errors.Wrapf(err, "after %d retries, operation failed", attempts)
+	timer := time.NewTimer(backoff.Duration())
+	for {
+		select {
+		case <-ctx.Done():
+			return false, errors.Errorf("context canceled after %d retries", attempt)
+		case <-timer.C:
+			shouldRetry, err := op()
+			if err == nil {
+				return false, nil
 			}
-
-			time.Sleep(backoff.Duration())
-		} else {
-			return false, err
+			if shouldRetry {
+				attempt++
+				if attempt == attempts {
+					return true, errors.Wrapf(err, "after %d retries, operation failed", attempts)
+				}
+				timer.Reset(backoff.Duration())
+			} else {
+				return false, err
+			}
 		}
 	}
-
-	return false, errors.New("unable to complete retry operation")
 }
 
 func RehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {

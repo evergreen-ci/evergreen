@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -200,7 +201,7 @@ func TestGenerateTasks(t *testing.T) {
 	}
 	require.NoError(sampleTask.Insert())
 	gc := GenerateConnector{}
-	err := gc.GenerateTasks("sample_task", sampleGeneratedProject)
+	err := gc.GenerateTasks(context.Background(), "sample_task", sampleGeneratedProject)
 	assert.NoError(err)
 	tasks := []task.Task{}
 	err = db.FindAllQ(task.Collection, task.ByBuildId("sample_build_id"), &tasks)

@@ -423,9 +423,9 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 	}
 
 	// switch how to sort the versions
-	sortVersions := []string{version.RevisionOrderNumberKey}
+	sortVersions := []string{version.CreateTimeKey}
 	if before {
-		sortVersions = []string{"-" + version.RevisionOrderNumberKey}
+		sortVersions = []string{"-" + version.CreateTimeKey}
 	}
 
 	// fetch the versions

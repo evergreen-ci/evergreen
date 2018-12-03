@@ -3,6 +3,7 @@ package manifest
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -51,4 +52,18 @@ func ByProjectAndRevision(project, revision string) db.Q {
 		ProjectNameKey:      project,
 		ManifestRevisionKey: revision,
 	})
+}
+
+func FindFromVersion(versionID, project, revision string) (*Manifest, error) {
+	manifest, err := FindOne(ById(versionID))
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding manifest")
+	}
+	if manifest == nil {
+		manifest, err = FindOne(ByProjectAndRevision(project, revision))
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding manifest")
+		}
+	}
+	return manifest, err
 }

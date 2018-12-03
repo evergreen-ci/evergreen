@@ -35,6 +35,52 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		Repo:      projCtx.ProjectRef.Repo,
 	}
 
+	if projCtx.Version.TriggerID != "" {
+		var projectID, revision string
+		if projCtx.Version.TriggerType == model.ProjectTriggerLevelTask {
+			var upstreamTask *task.Task
+			upstreamTask, err = task.FindOneId(projCtx.Version.TriggerID)
+			if err != nil {
+				http.Error(w, "error finding upstream task", http.StatusInternalServerError)
+				return
+			}
+			if upstreamTask == nil {
+				http.Error(w, "upstream task not found", http.StatusNotFound)
+				return
+			}
+			revision = upstreamTask.Revision
+			projectID = upstreamTask.Project
+		} else if projCtx.Version.TriggerType == model.ProjectTriggerLevelBuild {
+			var upstreamBuild *build.Build
+			upstreamBuild, err = build.FindOneId(projCtx.Version.TriggerID)
+			if err != nil {
+				http.Error(w, "error finding upstream build", http.StatusInternalServerError)
+				return
+			}
+			if upstreamBuild == nil {
+				http.Error(w, "upstream build not found", http.StatusNotFound)
+				return
+			}
+			revision = upstreamBuild.Revision
+			projectID = upstreamBuild.Project
+		}
+		var project *model.ProjectRef
+		project, err = model.FindOneProjectRef(projectID)
+		if err != nil {
+			http.Error(w, "error finding upstream project", http.StatusInternalServerError)
+			return
+		}
+		if project == nil {
+			http.Error(w, "upstream project not found", http.StatusNotFound)
+			return
+		}
+		versionAsUI.UpstreamData = &uiUpstreamData{
+			Owner:    project.Owner,
+			Repo:     project.Repo,
+			Revision: revision,
+		}
+	}
+
 	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

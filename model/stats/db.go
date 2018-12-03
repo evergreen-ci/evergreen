@@ -720,13 +720,23 @@ func buildMatchArrayExpression(values []string) interface{} {
 	return nil
 }
 
+// getNextDate returns the date of the grouping period following the one specified in startAt.
+func (filter StatsFilter) getNextDate() time.Time {
+	numDays := time.Duration(filter.GroupNumDays) * 24 * time.Hour
+	if filter.Sort == SortLatestFirst {
+		return filter.StartAt.Date.Add(-numDays)
+	} else {
+		return filter.StartAt.Date.Add(numDays)
+	}
+}
+
 // buildTestPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
-	var dateOperator string
-	if filter.Sort == SortLatestFirst {
-		dateOperator = "$lt"
-	} else {
-		dateOperator = "$gt"
+	var dateDescending = filter.Sort == SortLatestFirst
+	var nextDate interface{}
+
+	if filter.GroupNumDays > 1 {
+		nextDate = filter.getNextDate()
 	}
 
 	var fields []paginationField
@@ -734,29 +744,29 @@ func (filter StatsFilter) buildTestPaginationOrBranches() []bson.M {
 	switch filter.GroupBy {
 	case GroupByTest:
 		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gte", Value: filter.StartAt.Test},
+			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: dbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByTask:
 		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTestStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gte", Value: filter.StartAt.Test},
+			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: dbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: dbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByVariant:
 		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTestStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
-			{Field: dbTestStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gte", Value: filter.StartAt.Test},
+			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: dbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: dbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: dbTestStatsIdTestFileKeyFull, Strict: false, Value: filter.StartAt.Test},
 		}
 	case GroupByDistro:
 		fields = []paginationField{
-			{Field: dbTestStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTestStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
-			{Field: dbTestStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
-			{Field: dbTestStatsIdTestFileKeyFull, Operator: "$gt", Value: filter.StartAt.Test},
-			{Field: dbTestStatsIdDistroKeyFull, Operator: "$gte", Value: filter.StartAt.Distro},
+			{Field: dbTestStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: dbTestStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: dbTestStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: dbTestStatsIdTestFileKeyFull, Strict: true, Value: filter.StartAt.Test},
+			{Field: dbTestStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
 		}
 	}
 
@@ -835,11 +845,11 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 
 // buildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
-	var dateOperator string
-	if filter.Sort == SortLatestFirst {
-		dateOperator = "$lt"
-	} else {
-		dateOperator = "$gt"
+	var dateDescending = filter.Sort == SortLatestFirst
+	var nextDate interface{}
+
+	if filter.GroupNumDays > 1 {
+		nextDate = filter.getNextDate()
 	}
 
 	var fields []paginationField
@@ -847,21 +857,21 @@ func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
 	switch filter.GroupBy {
 	case GroupByTask:
 		fields = []paginationField{
-			{Field: dbTaskStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gte", Value: filter.StartAt.Task},
+			{Field: dbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: dbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByVariant:
 		fields = []paginationField{
-			{Field: dbTaskStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTaskStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gte", Value: filter.StartAt.Task},
+			{Field: dbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: dbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: dbTaskStatsIdTaskNameKeyFull, Strict: false, Value: filter.StartAt.Task},
 		}
 	case GroupByDistro:
 		fields = []paginationField{
-			{Field: dbTaskStatsIdDateKeyFull, Operator: dateOperator, Value: filter.StartAt.Date},
-			{Field: dbTaskStatsIdBuildVariantKeyFull, Operator: "$gt", Value: filter.StartAt.BuildVariant},
-			{Field: dbTaskStatsIdTaskNameKeyFull, Operator: "$gt", Value: filter.StartAt.Task},
-			{Field: dbTaskStatsIdDistroKeyFull, Operator: "$gte", Value: filter.StartAt.Distro},
+			{Field: dbTaskStatsIdDateKeyFull, Descending: dateDescending, Strict: true, Value: filter.StartAt.Date, NextValue: nextDate},
+			{Field: dbTaskStatsIdBuildVariantKeyFull, Strict: true, Value: filter.StartAt.BuildVariant},
+			{Field: dbTaskStatsIdTaskNameKeyFull, Strict: true, Value: filter.StartAt.Task},
+			{Field: dbTaskStatsIdDistroKeyFull, Strict: false, Value: filter.StartAt.Distro},
 		}
 	}
 
@@ -881,9 +891,9 @@ func buildPaginationOrBranches(fields []paginationField) []bson.M {
 		for k, v := range baseConstraints {
 			branch[k] = v
 		}
-		branch[field.Field] = bson.M{field.Operator: field.Value}
+		branch[field.Field] = field.getNextExpression()
 		branches = append(branches, branch)
-		baseConstraints[field.Field] = field.Value
+		baseConstraints[field.Field] = field.getEqExpression()
 	}
 	return branches
 }
@@ -917,10 +927,63 @@ func sortDateOrder(sort Sort) int {
 	}
 }
 
+// paginationField represents a statistics document field that is used to determine where to resume during pagination.
 type paginationField struct {
-	Field    string
-	Operator string
-	Value    interface{}
+	Field      string
+	Descending bool
+	Strict     bool
+	Value      interface{}
+	NextValue  interface{}
+}
+
+// getEqExpression returns an expression that can be used to match the documents which have the same field value or
+// are in the same range as this paginationField.
+func (pf paginationField) getEqExpression() interface{} {
+	if pf.NextValue == nil {
+		return pf.Value
+	}
+	if pf.Descending {
+		return bson.M{
+			"$lte": pf.Value,
+			"$gt":  pf.NextValue,
+		}
+	} else {
+		return bson.M{
+			"$gte": pf.Value,
+			"$lt":  pf.NextValue,
+		}
+	}
+}
+
+// getNextExpression returns an expression that can be used to match the documents which have a field value
+// greater or smaller than the this paginationField.
+func (pf paginationField) getNextExpression() bson.M {
+	var operator string
+	var value interface{}
+	var strict bool
+
+	if pf.NextValue != nil {
+		value = pf.NextValue
+		strict = false
+	} else {
+		value = pf.Value
+		strict = pf.Strict
+	}
+
+	if pf.Descending {
+		if strict {
+			operator = "$lt"
+		} else {
+			operator = "$lte"
+		}
+	} else {
+		if strict {
+			operator = "$gt"
+		} else {
+			operator = "$gte"
+		}
+	}
+	return bson.M{operator: value}
 }
 
 //////////////////////////////////////////////////////////////////

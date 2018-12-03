@@ -136,9 +136,9 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       author: $scope.version.Version.author,
       author_email: $scope.version.Version.author_email,
       create_time: $scope.version.Version.create_time,
-      gitspec: $scope.version.Version.revision,
-      repo_owner: $scope.version.repo_owner,
-      repo_name: $scope.version.repo_name
+      gitspec: $scope.version.upstream?$scope.version.upstream.revision:$scope.version.Version.revision,
+      repo_owner: $scope.version.upstream?$scope.version.upstream.owner:$scope.version.repo_owner,
+      repo_name: $scope.version.upstream?$scope.version.upstream.repo:$scope.version.repo_name
     };
 
     $scope.taskStatuses = {};

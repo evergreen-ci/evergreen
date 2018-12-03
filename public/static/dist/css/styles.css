@@ -1243,6 +1243,7 @@ ul.tooltip-tasks li.tooltip-task {
 }
 .signal-processing {
   background: #f0f0f0;
+  height: 100%;
 }
 .signal-processing .input-2-char {
   width: 45px;

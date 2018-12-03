@@ -27,9 +27,6 @@ type listHosts struct {
 func listHostFactory() Command  { return &listHosts{} }
 func (*listHosts) Name() string { return "host.list" }
 func (c *listHosts) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, c); err != nil {
-		return errors.Wrapf(err, "error parsing '%s' params", c.Name())
-	}
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c,

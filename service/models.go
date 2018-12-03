@@ -33,12 +33,19 @@ type pluginData struct {
 }
 
 type uiVersion struct {
-	Version     version.Version
-	Builds      []uiBuild
-	PatchInfo   *uiPatch `json:",omitempty"`
-	ActiveTasks int
-	RepoOwner   string `json:"repo_owner"`
-	Repo        string `json:"repo_name"`
+	Version      version.Version
+	Builds       []uiBuild
+	PatchInfo    *uiPatch `json:",omitempty"`
+	ActiveTasks  int
+	RepoOwner    string          `json:"repo_owner"`
+	Repo         string          `json:"repo_name"`
+	UpstreamData *uiUpstreamData `json:"upstream"`
+}
+
+type uiUpstreamData struct {
+	Owner    string `json:"owner"`
+	Repo     string `json:"repo"`
+	Revision string `json:"revision"`
 }
 
 type uiPatch struct {
