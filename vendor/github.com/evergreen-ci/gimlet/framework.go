@@ -3,6 +3,7 @@ package gimlet
 import (
 	"context"
 	"net/http"
+	"net/url"
 )
 
 // RouteHandler provides an alternate method for defining routes with
@@ -63,7 +64,8 @@ func handleHandler(h RouteHandler) http.HandlerFunc {
 
 		// if this response is paginated, add the appropriate metadata.
 		if resp.Pages() != nil {
-			w.Header().Set("Link", resp.Pages().GetLinks(r.URL.Path))
+			routeURL := url.URL{Path: r.URL.Path, RawQuery: r.URL.RawQuery}
+			w.Header().Set("Link", resp.Pages().GetLinks(routeURL.String()))
 		}
 
 		WriteResponse(w, resp)
