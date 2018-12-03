@@ -585,9 +585,9 @@ func PopulateExpansions(t *task.Task, h *host.Host, setting *evergreen.Settings)
 	}
 
 	// globalToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
-	globalToken, err := setting.GetGithubOauthToken()
-	if err != nil {
-		return nil, err
+	globalToken, error := setting.GetGithubOauthToken()
+	if error != nil {
+		return nil, error
 	}
 
 	expansions := util.Expansions{}

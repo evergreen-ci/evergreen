@@ -38,7 +38,7 @@ type gitFetchProject struct {
 	ProjectToken string `plugin:"expand" mapstructure:"token"`
 	// GlobalGitHubOauthToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
 	GlobalGitHubOauthToken string `mapstructure:"global_github_oauth_token"`
-	// If Token is NOT empty: alphaToken := Token.  Otherwise, alphaToken := GlobalGitHubOauthToken
+	// If len(ProjectToken) != 0: c.alphaToken = c.ProjectToken; else: c.alphaToken = c.GlobalGitHubOauthToken
 	alphaToken string
 
 	base
@@ -212,7 +212,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	var err error
 
-	// Expand the global_github_oauth_token Expansion (if set) and set c.GlobalGitHubOauthToken
+	// Expand the global_github_oauth_token (if present), setting c.GlobalGitHubOauthToken
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return err
 	}
