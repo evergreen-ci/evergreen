@@ -376,7 +376,7 @@ func (s *LDAPSuite) TestLDAPConstructorRequiresNonEmptyArgs() {
 func (s *LDAPSuite) TestGetUserByToken() {
 	ctx := context.Background()
 
-	impl, ok := s.um.(*UserService).cache.(*externalUserCache)
+	impl, ok := s.um.(*userService).cache.(*externalUserCache)
 	s.True(ok)
 	impl.get = mockGetErr
 	u, err := s.um.GetUserByToken(ctx, "foo")
@@ -393,14 +393,14 @@ func (s *LDAPSuite) TestGetUserByToken() {
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	serviceGroupImpl, ok := s.serviceGroupUm.(*UserService).cache.(*externalUserCache)
+	serviceGroupImpl, ok := s.serviceGroupUm.(*userService).cache.(*externalUserCache)
 	s.True(ok)
 	serviceGroupImpl.get = mockGetExpired
 	u, err = s.badGroupUm.GetUserByToken(ctx, "foo")
 	s.NoError(err)
 	s.Equal("foo", u.Username())
 
-	badGroupImpl, ok := s.badGroupUm.(*UserService).cache.(*externalUserCache)
+	badGroupImpl, ok := s.badGroupUm.(*userService).cache.(*externalUserCache)
 	s.True(ok)
 	badGroupImpl.get = mockGetExpired
 	u, err = s.badGroupUm.GetUserByToken(ctx, "foo")
@@ -416,7 +416,7 @@ func (s *LDAPSuite) TestGetUserByToken() {
 	s.Error(err)
 	s.Nil(u)
 
-	realConnImpl, ok := s.realConnUm.(*UserService).cache.(*externalUserCache)
+	realConnImpl, ok := s.realConnUm.(*userService).cache.(*externalUserCache)
 	s.True(ok)
 	realConnImpl.get = mockGetExpired
 	u, err = s.realConnUm.GetUserByToken(ctx, "foo")
@@ -442,7 +442,7 @@ func (s *LDAPSuite) TestCreateUserToken() {
 	s.Error(err)
 	s.Empty(token)
 
-	impl, ok := s.um.(*UserService).cache.(*externalUserCache)
+	impl, ok := s.um.(*userService).cache.(*externalUserCache)
 	s.True(ok)
 	impl.put = mockPutErr
 	token, err = s.um.CreateUserToken("foo", "hunter2")
@@ -484,7 +484,7 @@ func (s *LDAPSuite) TestGetOrCreateUser() {
 }
 
 func (s *LDAPSuite) TestLoginUsesBothPaths() {
-	userManager, ok := s.um.(*UserService)
+	userManager, ok := s.um.(*userService)
 	s.True(ok)
 	s.NotNil(userManager)
 	s.Error(userManager.login("foo", "hunter1"))

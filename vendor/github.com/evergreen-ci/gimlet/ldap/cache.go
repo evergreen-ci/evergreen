@@ -114,8 +114,8 @@ func (c *userCache) Get(token string) (gimlet.User, bool, error) {
 }
 
 func (c *userCache) Clear(u gimlet.User, all bool) error {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	if all {
 		c.cache = make(map[string]cacheValue)
