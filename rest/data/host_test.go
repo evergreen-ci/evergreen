@@ -163,7 +163,7 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 	s.NotNil(hosts)
 	for _, h := range hosts {
 		statusFound := false
-		for _, status := range evergreen.UphostStatus {
+		for _, status := range evergreen.UpHostStatus {
 			if h.Status == status {
 				statusFound = true
 			}

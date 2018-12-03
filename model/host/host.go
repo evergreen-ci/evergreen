@@ -1023,7 +1023,7 @@ func FindTerminatedHostsRunningTasks() ([]Host, error) {
 func (hosts HostGroup) CountContainersOnParents() (int, error) {
 	ids := hosts.GetHostIds()
 	query := db.Query(bson.M{
-		StatusKey:   bson.M{"$in": evergreen.UphostStatus},
+		StatusKey:   bson.M{"$in": evergreen.UpHostStatus},
 		ParentIDKey: bson.M{"$in": ids},
 	})
 	return Count(query)
@@ -1065,7 +1065,7 @@ func CountUphostParentsByContainerPool(poolId string) (int, error) {
 	hostContainerPoolId := bsonutil.GetDottedKeyName(ContainerPoolSettingsKey, evergreen.ContainerPoolIdKey)
 	return db.Count(Collection, bson.M{
 		HasContainersKey:    true,
-		StatusKey:           bson.M{"$in": evergreen.UphostStatus},
+		StatusKey:           bson.M{"$in": evergreen.UpHostStatus},
 		hostContainerPoolId: poolId,
 	})
 }

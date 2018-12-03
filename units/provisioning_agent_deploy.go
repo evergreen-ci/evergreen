@@ -83,6 +83,10 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 			return
 		}
 	}
+	if util.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
+		j.AddError(errors.Errorf("%s is %s, not attempting to deploy agent", j.host.Id, j.host.Status))
+		return
+	}
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()

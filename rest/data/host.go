@@ -142,7 +142,7 @@ func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int) (
 			}
 		} else {
 			statusFound := false
-			for _, status := range evergreen.UphostStatus {
+			for _, status := range evergreen.UpHostStatus {
 				if h.Status == status {
 					statusFound = true
 				}
