@@ -160,14 +160,13 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	}
 
 	refs := strings.Split(*event.Ref, "/")
-	if len(refs) != 3 {
+	if len(refs) < 3 {
 		return "", gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("Unexpected Git ref format: %s", *event.Ref),
 		}
 	}
-
-	return refs[2], nil
+	return strings.Join(refs[2:], "/"), nil
 }
 
 func validateProjectRefs(owner, repo, branch string) ([]model.ProjectRef, error) {

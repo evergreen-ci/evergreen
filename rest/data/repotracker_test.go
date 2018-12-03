@@ -44,6 +44,28 @@ func TestValidatePushEvent(t *testing.T) {
 	branch, err = validatePushEvent(&event)
 	assert.NoError(err)
 	assert.Empty(branch)
+
+	event = github.PushEvent{}
+	branch, err = validatePushEvent(&event)
+	assert.Error(err)
+	assert.IsType(gimlet.ErrorResponse{}, err)
+	assert.Empty(branch)
+
+	event.Ref = github.String("refs/heads/support/3.x")
+	event.Repo = &github.PushEventRepository{}
+	event.Repo.Name = github.String("public-repo")
+	event.Repo.Owner = &github.PushEventRepoOwner{}
+	event.Repo.Owner.Name = github.String("baxterthehacker")
+	event.Repo.FullName = github.String("baxterthehacker/public-repo")
+
+	branch, err = validatePushEvent(&event)
+	assert.NoError(err)
+	assert.Equal("support/3.x", branch)
+
+	event.Ref = github.String("refs/tags/v9001")
+	branch, err = validatePushEvent(&event)
+	assert.NoError(err)
+	assert.Empty(branch)
 }
 
 func TestValidateProjectRefs(t *testing.T) {
