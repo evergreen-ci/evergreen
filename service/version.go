@@ -38,7 +38,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Version.TriggerID != "" {
 		var projectID, revision string
 		if projCtx.Version.TriggerType == model.ProjectTriggerLevelTask {
-			upstreamTask, err := task.FindOneId(projCtx.Version.TriggerID)
+			var upstreamTask *task.Task
+			upstreamTask, err = task.FindOneId(projCtx.Version.TriggerID)
 			if err != nil {
 				http.Error(w, "error finding upstream task", http.StatusInternalServerError)
 				return
@@ -50,7 +51,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			revision = upstreamTask.Revision
 			projectID = upstreamTask.Project
 		} else if projCtx.Version.TriggerType == model.ProjectTriggerLevelBuild {
-			upstreamBuild, err := build.FindOneId(projCtx.Version.TriggerID)
+			var upstreamBuild *build.Build
+			upstreamBuild, err = build.FindOneId(projCtx.Version.TriggerID)
 			if err != nil {
 				http.Error(w, "error finding upstream build", http.StatusInternalServerError)
 				return
@@ -62,7 +64,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			revision = upstreamBuild.Revision
 			projectID = upstreamBuild.Project
 		}
-		project, err := model.FindOneProjectRef(projectID)
+		var project *model.ProjectRef
+		project, err = model.FindOneProjectRef(projectID)
 		if err != nil {
 			http.Error(w, "error finding upstream project", http.StatusInternalServerError)
 			return
