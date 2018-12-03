@@ -1,13 +1,53 @@
 package shrub
 
 import (
+	"sync"
 	"time"
 )
+
+var registeredCommands *commandRegistry
+
+func init() {
+	registeredCommands = &commandRegistry{
+		mu:       &sync.RWMutex{},
+		commands: map[string]commandFactory{},
+	}
+	toRegister := []commandFactory{
+		subprocessExecFactory,
+		shellExecFactory,
+		s3PutFactory,
+		s3GetFactory,
+		s3CopyFactory,
+		getProjectFactory,
+		jsonResultsFactory,
+		xunitResultsFactory,
+		goTestResultsFactory,
+		archiveCreateZipFactory,
+		archiveCreateTarballFactory,
+		archiveExtractZipFactory,
+		archiveExtractTarballFactory,
+		archiveExtractAutoFactory,
+		attachArtifactsFactory,
+	}
+	registeredCommands.mu.Lock()
+	defer registeredCommands.mu.Unlock()
+	for _, factory := range toRegister {
+		registeredCommands.commands[factory().Name()] = factory
+	}
+}
 
 type Command interface {
 	Resolve() *CommandDefinition
 	Validate() error
+	Name() string
 }
+
+type commandRegistry struct {
+	mu       *sync.RWMutex
+	commands map[string]commandFactory
+}
+
+type commandFactory func() Command
 
 type CommandDefinition struct {
 	FunctionName  string                 `json:"func,omitempty"`
@@ -110,4 +150,14 @@ func (s *CommandSequence) Extend(cmds ...Command) *CommandSequence {
 		*s = append(*s, cmd.Resolve())
 	}
 	return s
+}
+
+func GetCommand(cmdName string) Command {
+	registeredCommands.mu.RLock()
+	defer registeredCommands.mu.RUnlock()
+	factory, found := registeredCommands.commands[cmdName]
+	if !found {
+		return nil
+	}
+	return factory()
 }

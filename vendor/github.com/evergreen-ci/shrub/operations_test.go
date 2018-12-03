@@ -44,6 +44,7 @@ type unmarshableCmd struct {
 	name string
 }
 
+func (u unmarshableCmd) Name() string                { return "foo" }
 func (u unmarshableCmd) Validate() error             { return nil }
 func (u unmarshableCmd) Resolve() *CommandDefinition { panic("always") }
 func (u unmarshableCmd) MarshalJSON() ([]byte, error) {

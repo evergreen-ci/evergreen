@@ -31,7 +31,7 @@ type Configuration struct {
 	Timeout   *CommandSequence            `json:"timeout,omitempty"`
 
 	// Top Level Options
-	ExecTimeoutSecs int      `json:"timeout,omitempty"`
+	ExecTimeoutSecs int      `json:"exec_timeout_secs,omitempty"`
 	BatchTimeSecs   int      `json:"batchtime,omitempty"`
 	Stepback        bool     `json:"stepback,omitempty"`
 	CommandType     string   `json:"command_type,omitempty"`

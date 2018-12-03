@@ -1,10 +1,9 @@
 package shrub
 
 import (
+	"errors"
 	"fmt"
 	"testing"
-
-	"github.com/pkg/errors"
 )
 
 type panicContent struct {
