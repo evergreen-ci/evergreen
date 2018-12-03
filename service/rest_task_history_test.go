@@ -28,7 +28,7 @@ func init() {
 }
 
 func TestGetTestHistory(t *testing.T) {
-	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
 	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{

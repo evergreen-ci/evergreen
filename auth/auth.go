@@ -12,31 +12,31 @@ import (
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager
 // depending on what type of authentication is used.
-func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, error) {
+func LoadUserManager(authConfig evergreen.AuthConfig) (gimlet.UserManager, bool, error) {
 	var manager gimlet.UserManager
 	var err error
 	if authConfig.LDAP != nil {
 		manager, err = NewLDAPUserManager(authConfig.LDAP)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem setting up ldap authentication")
+			return nil, false, errors.Wrap(err, "problem setting up ldap authentication")
 		}
-		return manager, nil
+		return manager, true, nil
 	}
 	if authConfig.Naive != nil {
 		manager, err = NewNaiveUserManager(authConfig.Naive)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem setting up naive authentication")
+			return nil, false, errors.Wrap(err, "problem setting up naive authentication")
 		}
-		return manager, nil
+		return manager, false, nil
 	}
 	if authConfig.Github != nil {
 		manager, err = NewGithubUserManager(authConfig.Github)
 		if err != nil {
-			return nil, errors.Wrap(err, "problem setting up github authentication")
+			return nil, false, errors.Wrap(err, "problem setting up github authentication")
 		}
-		return manager, nil
+		return manager, false, nil
 	}
-	return nil, errors.New("Must have at least one form of authentication, currently there are none")
+	return nil, false, errors.New("Must have at least one form of authentication, currently there are none")
 }
 
 // sets the Token in the session cookie for authentication

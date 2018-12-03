@@ -121,3 +121,7 @@ func (m *MockUserManager) GetOrCreateUser(u User) (User, error) {
 
 	return u, nil
 }
+
+func (m *MockUserManager) ClearUser(u User, all bool) error {
+	return errors.New("MockUserManager does not support Clear User")
+}

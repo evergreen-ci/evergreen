@@ -88,6 +88,17 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 	}{newKey})
 }
 
+func (uis *UIServer) clearUserToken(w http.ResponseWriter, r *http.Request) {
+	u := MustHaveUser(r)
+	if err := uis.UserManager.ClearUser(u, false); err != nil {
+		gimlet.WriteJSONInternalError(w, struct {
+			Error string `json:"error"`
+		}{Error: err.Error()})
+	} else {
+		gimlet.WriteJSON(w, map[string]string{})
+	}
+}
+
 func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
 	settingsData := currentUser.Settings
@@ -106,7 +117,8 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		Binaries   []evergreen.ClientBinary
 		GithubUser string
 		GithubUID  int
+		AuthIsLDAP bool
 		ViewData
-	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.GetCommonViewData(w, r, true, true)},
+	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.umIsLDAP, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }

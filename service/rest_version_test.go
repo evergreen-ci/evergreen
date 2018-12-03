@@ -27,7 +27,7 @@ var versionTestConfig = testutil.TestConfig()
 
 func TestGetRecentVersions(t *testing.T) {
 
-	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
 	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{
@@ -336,7 +336,7 @@ func TestGetVersionInfo(t *testing.T) {
 
 func TestGetVersionInfoViaRevision(t *testing.T) {
 
-	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
 	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{
@@ -569,7 +569,7 @@ func TestActivateVersion(t *testing.T) {
 
 func TestGetVersionStatus(t *testing.T) {
 
-	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
 	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{

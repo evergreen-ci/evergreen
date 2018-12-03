@@ -62,3 +62,6 @@ func (*NaiveUserManager) GetUserByID(id string) (gimlet.User, error) { return ge
 func (*NaiveUserManager) GetOrCreateUser(u gimlet.User) (gimlet.User, error) {
 	return getOrCreateUser(u)
 }
+func (b *NaiveUserManager) ClearUser(u gimlet.User, all bool) error {
+	return errors.New("Naive Authentication does not support Clear User")
+}

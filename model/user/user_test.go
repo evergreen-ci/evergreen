@@ -68,6 +68,13 @@ func (s *UserTestSuite) SetupTest() {
 			},
 			APIKey: "67890",
 		},
+		&DBUser{
+			Id: "Test4",
+			LoginCache: LoginCache{
+				Token: "5678",
+				TTL:   time.Now(),
+			},
+		},
 	}
 
 	for _, user := range s.users {
@@ -249,6 +256,45 @@ func (s *UserTestSuite) TestGetLoginCache() {
 	s.Equal("Test2", u.Username())
 
 	u, valid, err = GetLoginCache("asdf", time.Minute)
+	s.NoError(err)
+	s.False(valid)
+	s.Nil(u)
+}
+
+func (s *UserTestSuite) TestClearLoginCacheSingleUser() {
+	// Error on non-existent user
+	s.Error(ClearLoginCache(&DBUser{Id: "asdf"}, false))
+
+	// Two valid users...
+	u1, valid, err := GetLoginCache("1234", time.Minute)
+	s.Require().NoError(err)
+	s.Require().True(valid)
+	s.Require().Equal("Test1", u1.Username())
+	u2, valid, err := GetLoginCache("5678", time.Minute)
+	s.Require().NoError(err)
+	s.Require().True(valid)
+	s.Require().Equal("Test4", u2.Username())
+
+	// One is cleared...
+	s.NoError(ClearLoginCache(u1, false))
+	// and is no longer found
+	u1, valid, err = GetLoginCache("1234", time.Minute)
+	s.NoError(err)
+	s.False(valid)
+	s.Nil(u1)
+
+	// The other user remains
+	u2, valid, err = GetLoginCache("5678", time.Minute)
+	s.NoError(err)
+	s.True(valid)
+	s.Equal("Test4", u2.Username())
+}
+
+func (s *UserTestSuite) TestClearLoginCacheAllUsers() {
+	// Clear all users
+	s.NoError(ClearLoginCache(nil, true))
+	// Sample user is no longer in cache
+	u, valid, err := GetLoginCache("1234", time.Minute)
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u)

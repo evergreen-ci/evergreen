@@ -20,6 +20,7 @@ func randStr() string {
 type UserCache interface {
 	Add(gimlet.User) error
 	Put(gimlet.User) (string, error)
+	Clear(gimlet.User, bool) error
 	GetOrCreate(gimlet.User) (gimlet.User, error)
 	Get(string) (gimlet.User, bool, error)
 	Find(string) (gimlet.User, error)
@@ -112,6 +113,27 @@ func (c *userCache) Get(token string) (gimlet.User, bool, error) {
 	return u.user, true, nil
 }
 
+func (c *userCache) Clear(u gimlet.User, all bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if all {
+		c.cache = make(map[string]cacheValue)
+		c.userToToken = make(map[string]string)
+		return nil
+	}
+
+	token, ok := c.userToToken[u.Username()]
+	if !ok {
+		return errors.New("invalid user")
+	}
+
+	delete(c.userToToken, u.Username())
+	delete(c.cache, token)
+
+	return nil
+}
+
 func (c *userCache) Find(id string) (gimlet.User, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -149,6 +171,7 @@ func (c *userCache) GetOrCreate(u gimlet.User) (gimlet.User, error) {
 type externalUserCache struct {
 	put         PutUserGetToken // Put user to cache
 	get         GetUserByToken  // Get user from cache
+	clear       ClearUserToken  // Clear user from cache
 	find        GetUserByID     // Get user from storage
 	getOrCreate GetOrCreateUser // Get or create user from storage
 }
@@ -161,6 +184,7 @@ func (opts CreationOpts) MakeUserCache() UserCache {
 	return &externalUserCache{
 		put:         opts.PutCache,
 		get:         opts.GetCache,
+		clear:       opts.ClearCache,
 		find:        opts.GetUser,
 		getOrCreate: opts.GetCreateUser,
 	}
@@ -169,5 +193,6 @@ func (opts CreationOpts) MakeUserCache() UserCache {
 func (c *externalUserCache) Add(u gimlet.User) error                        { _, err := c.getOrCreate(u); return err }
 func (c *externalUserCache) Put(u gimlet.User) (string, error)              { return c.put(u) }
 func (c *externalUserCache) Get(token string) (gimlet.User, bool, error)    { return c.get(token) }
+func (c *externalUserCache) Clear(u gimlet.User, all bool) error            { return c.clear(u, all) }
 func (c *externalUserCache) Find(id string) (gimlet.User, error)            { return c.find(id) }
 func (c *externalUserCache) GetOrCreate(u gimlet.User) (gimlet.User, error) { return c.getOrCreate(u) }

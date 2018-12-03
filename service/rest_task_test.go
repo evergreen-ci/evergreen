@@ -71,7 +71,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResults []t
 
 func TestGetTaskInfo(t *testing.T) {
 
-	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
 	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{
@@ -270,7 +270,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 func TestGetTaskStatus(t *testing.T) {
 
-	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
 	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
 	uis := UIServer{
@@ -401,7 +401,7 @@ func TestGetTaskStatus(t *testing.T) {
 func TestGetDisplayTaskInfo(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	userManager, _, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
 	require.NoError(err)
 
 	uis := UIServer{

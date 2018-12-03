@@ -18,9 +18,11 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	if DBUser != nil && uis.isSuperUser(DBUser) {
 		template = "admin.html"
 	}
+
 	data := struct {
 		ViewData
-	}{uis.GetCommonViewData(w, r, true, true)}
+		AuthIsLDAP bool
+	}{uis.GetCommonViewData(w, r, true, true), uis.umIsLDAP}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
 
@@ -41,4 +43,14 @@ func (uis *UIServer) adminEvents(w http.ResponseWriter, r *http.Request) {
 		ViewData
 	}{events, uis.GetCommonViewData(w, r, true, true)}
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
+}
+
+func (uis *UIServer) clearAllUserTokens(w http.ResponseWriter, r *http.Request) {
+	if err := uis.UserManager.ClearUser(nil, true); err != nil {
+		gimlet.WriteJSONInternalError(w, struct {
+			Error string `json:"error"`
+		}{Error: err.Error()})
+	} else {
+		gimlet.WriteJSON(w, map[string]string{})
+	}
 }

@@ -50,6 +50,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.binaries = $window.binaries;
   $scope.notifications = $window.notifications;
   $scope.slack_username = $window.slack_username;
+  $scope.auth_is_ldap = $window.auth_is_ldap;
 
   $scope.newKey = function(){
     if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
@@ -63,6 +64,19 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       },
       function(resp) {
         console.log(resp.data,resp.status);
+      });
+  }
+
+  $scope.clearToken = function(){
+    if(!confirm("This will log you out from all existing sessions. Continue?"))
+      return
+
+    $http.post('/settings/cleartoken').then(
+      function(resp) {
+        window.location.reload();
+      },
+      function(resp) {
+        notifier.pushNotification("Failed to clear user token: " + resp.data.error,'errorHeader');
       });
   }
 

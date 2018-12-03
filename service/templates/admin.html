@@ -1,4 +1,5 @@
 {{define "scripts"}}
+<script>window.auth_is_ldap = {{.AuthIsLDAP}};</script>
 <script src="{{Static "js" "admin.js"}}?hash={{ BuildRevision }}"></script>
 <script type="text/javascript" src="{{Static "thirdparty" "js-yaml.min.js"}}?hash={{ BuildRevision }}"></script>
 <style type="text/css">
@@ -537,6 +538,7 @@ Admin Settings
 		    <label>Expire After Minutes</label>
 		    <input type="text" ng-model="Settings.auth.ldap.expire_after_minutes">
 		  </md-input-container>
+      <div><button ng-show="auth_is_ldap" ng-click="clearAllUserTokens()" class="btn btn-primary">Logout Everyone</button></div>
 		</md-card-content>
 	      </md-card>
 

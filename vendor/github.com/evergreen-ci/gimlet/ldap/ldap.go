@@ -40,6 +40,7 @@ type CreationOpts struct {
 	// Functions to produce a UserCache
 	PutCache      PutUserGetToken // Put user to cache
 	GetCache      GetUserByToken  // Get user from cache
+	ClearCache    ClearUserToken  // Remove user(s) from cache
 	GetUser       GetUserByID     // Get user from storage
 	GetCreateUser GetOrCreateUser // Get or create user from storage
 
@@ -56,6 +57,10 @@ type PutUserGetToken func(gimlet.User) (string, error)
 // It returns (<user>, false, nil) if the user is present in the cache but has expired.
 // It returns (nil, false, nil) if the user is not present in the cache.
 type GetUserByToken func(string) (gimlet.User, bool, error)
+
+// ClearUserToken is a function provided by the client to remove users' tokens from
+// cache. Passing true will ignore the user passed and clear all users.
+type ClearUserToken func(gimlet.User, bool) error
 
 // GetUserByID is a function provided by the client to get a user from persistent storage.
 type GetUserByID func(string) (gimlet.User, error)
@@ -104,8 +109,8 @@ func (opts CreationOpts) validate() error {
 	}
 
 	if opts.UserCache == nil {
-		if opts.PutCache == nil || opts.GetCache == nil {
-			catcher.Add(errors.New("PutCache and GetCache must not be nil"))
+		if opts.PutCache == nil || opts.GetCache == nil || opts.ClearCache == nil {
+			catcher.Add(errors.New("PutCache, GetCache, and ClearCache must not be nil"))
 		}
 		if opts.GetUser == nil || opts.GetCreateUser == nil {
 			catcher.Add(errors.New("GetUserByID and GetOrCreateUser must not be nil"))
@@ -177,6 +182,11 @@ func (u *userService) GetUserByID(id string) (gimlet.User, error) {
 // GetOrCreateUser gets a user from persistent storage or creates one.
 func (u *userService) GetOrCreateUser(user gimlet.User) (gimlet.User, error) {
 	return u.cache.GetOrCreate(user)
+}
+
+// Clear users from the cache, forcibly logging them out
+func (u *userService) ClearUser(user gimlet.User, all bool) error {
+	return u.cache.Clear(user, all)
 }
 
 // bind wraps u.conn.Bind, reconnecting if the LDAP server has closed the connection.

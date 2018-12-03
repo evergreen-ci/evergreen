@@ -35,6 +35,7 @@ type UIServer struct {
 
 	//authManager
 	UserManager        gimlet.UserManager
+	umIsLDAP           bool
 	Settings           evergreen.Settings
 	CookieStore        *sessions.CookieStore
 	clientConfig       *evergreen.ClientConfig
@@ -59,7 +60,7 @@ type ViewData struct {
 }
 
 func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, fo TemplateFunctionOptions) (*UIServer, error) {
-	userManager, err := auth.LoadUserManager(settings.AuthConfig)
+	userManager, isLDAP, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -75,6 +76,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string, f
 		queue:              queue,
 		Home:               home,
 		UserManager:        userManager,
+		umIsLDAP:           isLDAP,
 		clientConfig:       evergreen.GetEnvironment().ClientConfig(),
 		CookieStore:        sessions.NewCookieStore([]byte(settings.Ui.Secret)),
 		buildBaronProjects: bbGetConfig(settings),
@@ -320,6 +322,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	// User settings
 	app.AddRoute("/settings").Wrap(needsLogin, needsContext).Handler(uis.userSettingsPage).Get()
 	app.AddRoute("/settings/newkey").Wrap(needsLogin, needsContext).Handler(uis.newAPIKey).Post()
+	app.AddRoute("/settings/cleartoken").Wrap(needsLogin).Handler(uis.clearUserToken).Post()
 	app.AddRoute("/notifications").Wrap(needsLogin, needsContext).Handler(uis.notificationsPage).Get()
 
 	// Task stats
@@ -338,6 +341,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Admin routes
 	app.AddRoute("/admin").Wrap(needsLogin, needsContext).Handler(uis.adminSettings).Get()
+	app.AddRoute("/admin/cleartokens").Wrap(needsSuperUser).Handler(uis.clearAllUserTokens).Post()
 	app.AddRoute("/admin/events").Wrap(needsLogin, needsContext).Handler(uis.adminEvents).Get()
 
 	// Plugin routes

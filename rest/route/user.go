@@ -18,7 +18,7 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
-// POST /rest/v2/users/settings
+// POST /rest/v2/user/settings
 
 type userSettingsPostHandler struct {
 	settings model.APIUserSettings
@@ -94,7 +94,7 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// GET /rest/v2/users/settings
+// GET /rest/v2/user/settings
 
 type userSettingsGetHandler struct{}
 

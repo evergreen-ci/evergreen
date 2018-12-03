@@ -23,23 +23,27 @@ func TestLoadUserManager(t *testing.T) {
 	n := evergreen.NaiveAuthConfig{}
 
 	a := evergreen.AuthConfig{}
-	um, err := LoadUserManager(a)
+	um, isLDAP, err := LoadUserManager(a)
 	assert.Error(t, err, "a UserManager should not be able to be created in an empty AuthConfig")
+	assert.False(t, isLDAP)
 	assert.Nil(t, um, "a UserManager should not be able to be created in an empty AuthConfig")
 
 	a = evergreen.AuthConfig{Github: &g}
-	um, err = LoadUserManager(a)
+	um, isLDAP, err = LoadUserManager(a)
 	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Github")
+	assert.False(t, isLDAP)
 	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Github")
 
 	a = evergreen.AuthConfig{LDAP: &l}
-	um, err = LoadUserManager(a)
+	um, isLDAP, err = LoadUserManager(a)
 	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is LDAP")
+	assert.True(t, isLDAP)
 	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is LDAP")
 
 	a = evergreen.AuthConfig{Naive: &n}
-	um, err = LoadUserManager(a)
+	um, isLDAP, err = LoadUserManager(a)
 	assert.NoError(t, err, "a UserManager should be able to be created if one AuthConfig type is Naive")
+	assert.False(t, isLDAP)
 	assert.NotNil(t, um, "a UserManager should be able to be created if one AuthConfig type is Naive")
 }
 
