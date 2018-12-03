@@ -396,7 +396,10 @@ mciModule.controller('PerfController', function PerfController(
 
   function markChangePoints(points, mark) {
     ChangePointsService.markPoints(points, mark).then(function() {
-      $scope.$emit('changePointsRemove', _.pluck(points, 'suspect_revision'))
+      // Acked points should remain (at least for now)
+      if (mark != PROCESSED_TYPE.ACKNOWLEDGED) {
+        $scope.$emit('changePointsRemove', _.pluck(points, 'suspect_revision'))
+      }
     }, _.noop)
   }
 
