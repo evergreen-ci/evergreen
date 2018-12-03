@@ -217,7 +217,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		return err
 	}
 
-	// When setting alphaToken: c.Token (from the project's YAML file) takes
+	// When setting alphaToken: c.ProjectToken (from the project's YAML file) takes
 	// precedence over the c.GlobalGitHubOauthToken, unless it is an empty string.
 	c.alphaToken = c.ProjectToken
 	if len(c.alphaToken) == 0 {

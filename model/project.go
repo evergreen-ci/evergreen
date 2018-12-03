@@ -576,7 +576,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host, setting *evergreen.Settings) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
@@ -584,14 +584,18 @@ func PopulateExpansions(t *task.Task, h *host.Host, setting *evergreen.Settings)
 		return nil, errors.New("host cannot be nil")
 	}
 
-	// globalToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
-	globalToken, error := setting.GetGithubOauthToken()
-	if error != nil {
-		return nil, error
+	expansions := util.Expansions{}
+
+	if _, ok := settings.Credentials["github"]; ok {
+		// globalToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
+		globalToken, error := settings.GetGithubOauthToken()
+		if error != nil {
+			return nil, error
+		}
+
+		expansions.Put("global_github_oauth_token", globalToken)
 	}
 
-	expansions := util.Expansions{}
-	expansions.Put("global_github_oauth_token", globalToken)
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)
