@@ -97,7 +97,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	// we may be running these jobs on hosts that are already
 	// terminated.
-	grip.InfoWhen(!util.StringSliceContains(evergreen.UphostStatus, j.host.Status),
+	grip.InfoWhen(!util.StringSliceContains(evergreen.UpHostStatus, j.host.Status),
 		message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
@@ -198,7 +198,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"message":  "problem getting cloud host instance status",
 		}))
 
-		if !util.StringSliceContains(evergreen.UphostStatus, j.host.Status) {
+		if !util.StringSliceContains(evergreen.UpHostStatus, j.host.Status) {
 			if err := j.host.Terminate(evergreen.User); err != nil {
 				j.AddError(err)
 			}

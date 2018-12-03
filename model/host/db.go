@@ -97,7 +97,7 @@ func ByUserWithRunningStatus(user string) db.Q {
 func IsLive() bson.M {
 	return bson.M{
 		StartedByKey: evergreen.User,
-		StatusKey:    bson.M{"$in": evergreen.UphostStatus},
+		StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
 	}
 }
 
@@ -187,7 +187,7 @@ func allHostsSpawnedByFinishedTasks() ([]Host, error) {
 	const runningTasks = "running_tasks"
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			StatusKey: bson.M{"$in": evergreen.UphostStatus},
+			StatusKey: bson.M{"$in": evergreen.UpHostStatus},
 			bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true}},
 		{"$lookup": bson.M{
 			"from":         task.Collection,
@@ -211,7 +211,7 @@ func allHostsSpawnedByFinishedBuilds() ([]Host, error) {
 	const runningBuilds = "running_builds"
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			StatusKey: bson.M{"$in": evergreen.UphostStatus},
+			StatusKey: bson.M{"$in": evergreen.UpHostStatus},
 			bsonutil.GetDottedKeyName(SpawnOptionsKey, SpawnOptionsSpawnedByTaskKey): true}},
 		{"$lookup": bson.M{
 			"from":         build.Collection,
@@ -328,7 +328,7 @@ func ByDistroIdDoc(distroId string) bson.M {
 	return bson.M{
 		dId:          distroId,
 		StartedByKey: evergreen.User,
-		StatusKey:    bson.M{"$in": evergreen.UphostStatus},
+		StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
 	}
 }
 
@@ -536,7 +536,7 @@ func GetHostsByFromIDWithStatus(id, status, user string, limit int) ([]Host, err
 	if status != "" {
 		statusMatch = status
 	} else {
-		statusMatch = bson.M{"$in": evergreen.UphostStatus}
+		statusMatch = bson.M{"$in": evergreen.UpHostStatus}
 	}
 
 	filter := bson.M{

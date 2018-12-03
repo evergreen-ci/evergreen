@@ -278,15 +278,21 @@ var (
 		GithubPRRequester,
 	}
 
-	// UphostStatus is a list of all host statuses that are considered "up."
-	// This is used for query building.
-	UphostStatus = []string{
+	// UpHostStatus is a list of all host statuses that are considered up.
+	UpHostStatus = []string{
 		HostRunning,
 		HostUninitialized,
 		HostBuilding,
 		HostStarting,
 		HostProvisioning,
 		HostProvisionFailed,
+	}
+
+	// DownHostStatus is a list of all host statuses that are considered down.
+	DownHostStatus = []string{
+		HostTerminated,
+		HostQuarantined,
+		HostDecommissioned,
 	}
 
 	// Hosts in "initializing" status aren't actually running yet:
