@@ -84,7 +84,11 @@ func (j *agentDeployJob) Run(ctx context.Context) {
 		}
 	}
 	if util.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
-		j.AddError(errors.Errorf("%s is %s, not attempting to deploy agent", j.host.Id, j.host.Status))
+		grip.Debug(message.Fields{
+			"host_id": j.host.Id,
+			"status":  j.host.Status,
+			"message": "host already down, not attempting to deploy agent",
+		})
 		return
 	}
 
