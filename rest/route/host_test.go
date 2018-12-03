@@ -45,9 +45,9 @@ func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 	s.NoError(err)
-	s.Equal("quarantined", s.route.HostToStatus["host1"]["status"])
-	s.Equal("decommissioned", s.route.HostToStatus["host2"]["status"])
-	s.Equal("terminated", s.route.HostToStatus["host4"]["status"])
+	s.Equal("quarantined", s.route.HostToStatus["host1"].Status)
+	s.Equal("decommissioned", s.route.HostToStatus["host2"].Status)
+	s.Equal("terminated", s.route.HostToStatus["host4"].Status)
 }
 
 func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
@@ -59,7 +59,7 @@ func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
 	err := s.route.Parse(ctx, req)
 
 	s.Error(err)
-	s.EqualError(err, fmt.Sprintf("Invalid host status '%s' for host '%s'", s.route.HostToStatus["host1"]["status"], "host1"))
+	s.EqualError(err, fmt.Sprintf("Invalid host status '%s' for host '%s'", s.route.HostToStatus["host1"].Status, "host1"))
 }
 
 func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
@@ -70,14 +70,14 @@ func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
 	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
 	err := s.route.Parse(ctx, req)
 	s.Error(err)
-	s.EqualError(err, "Argument read error: error attempting to unmarshal into *map[string]map[string]string: unexpected end of JSON input")
+	s.EqualError(err, "Argument read error: error attempting to unmarshal into *map[string]route.hostStatus: unexpected end of JSON input")
 }
 
 func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"host2": {"status": "decommissioned"},
-		"host4": {"status": "terminated"},
+	h.HostToStatus = map[string]hostStatus{
+		"host2": hostStatus{Status: "decommissioned"},
+		"host4": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
@@ -88,9 +88,9 @@ func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
 
 func (s *HostsChangeStatusesSuite) TestRunHostNotStartedByUser() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"host3": {"status": "decommissioned"},
-		"host4": {"status": "terminated"},
+	h.HostToStatus = map[string]hostStatus{
+		"host3": hostStatus{Status: "decommissioned"},
+		"host4": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
@@ -101,9 +101,9 @@ func (s *HostsChangeStatusesSuite) TestRunHostNotStartedByUser() {
 
 func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"host3": {"status": "decommissioned"},
-		"host4": {"status": "terminated"},
+	h.HostToStatus = map[string]hostStatus{
+		"host3": hostStatus{Status: "decommissioned"},
+		"host4": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
@@ -114,8 +114,8 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 
 func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"host1": {"status": "terminated"},
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "terminated"},
 	}
 
 	ctx := context.Background()
@@ -126,8 +126,8 @@ func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
 
 func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"host1": {"status": "running"},
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "running"},
 	}
 
 	ctx := context.Background()
@@ -138,8 +138,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
 
 func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"host1": {"status": "quarantined"},
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "quarantined"},
 	}
 
 	ctx := context.Background()
@@ -150,8 +150,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
 
 func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"host1": {"status": "decommissioned"},
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "decommissioned"},
 	}
 
 	ctx := context.Background()
@@ -162,8 +162,8 @@ func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
 
 func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
 	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]map[string]string{
-		"invalid": {"status": "decommissioned"},
+	h.HostToStatus = map[string]hostStatus{
+		"invalid": hostStatus{Status: "decommissioned"},
 	}
 
 	ctx := context.Background()

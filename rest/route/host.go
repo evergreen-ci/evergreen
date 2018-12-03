@@ -16,12 +16,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+type hostStatus struct {
+	Status string `json:"status"`
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // PATCH /rest/v2/hosts
 
 type hostsChangeStatusesHandler struct {
-	HostToStatus map[string]map[string]string
+	HostToStatus map[string]hostStatus
 	sc           data.Connector
 }
 
@@ -40,16 +44,17 @@ func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
 func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
+
 	if err := util.ReadJSONInto(body, &h.HostToStatus); err != nil {
 		return errors.Wrap(err, "Argument read error")
 	}
-
 	if len(h.HostToStatus) == 0 {
 		return fmt.Errorf("Missing host id and status")
 	}
-	for host, json := range h.HostToStatus {
-		if !util.StringSliceContains(evergreen.ValidUserSetStatus, json["status"]) {
-			return fmt.Errorf("Invalid host status '%s' for host '%s'", json["status"], host)
+
+	for hostID, status := range h.HostToStatus {
+		if !util.StringSliceContains(evergreen.ValidUserSetStatus, status.Status) {
+			return fmt.Errorf("Invalid host status '%s' for host '%s'", status.Status, hostID)
 		}
 	}
 
@@ -81,7 +86,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
 		}
-		if status["status"] == evergreen.HostTerminated {
+		if status.Status == evergreen.HostTerminated {
 			if err = h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
@@ -89,7 +94,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 				})
 			}
 		} else {
-			if err = h.sc.SetHostStatus(foundHost, status["status"], user.Id); err != nil {
+			if err = h.sc.SetHostStatus(foundHost, status.Status, user.Id); err != nil {
 				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
