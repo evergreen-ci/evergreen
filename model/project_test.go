@@ -383,7 +383,11 @@ buildvariants:
 		Project:      "mci",
 	}
 
-	expansions, err := PopulateExpansions(taskDoc, &h)
+	settings := &evergreen.Settings{
+		Credentials: map[string]string{"github": "oneMoreToken"},
+	}
+
+	expansions, err := PopulateExpansions(taskDoc, &h, settings)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 16)
 	assert.Equal("0", expansions.Get("execution"))
@@ -408,7 +412,7 @@ buildvariants:
 	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
 		"$set": bson.M{version.RequesterKey: evergreen.PatchVersionRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h)
+	expansions, err = PopulateExpansions(taskDoc, &h, settings)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -419,7 +423,7 @@ buildvariants:
 	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
 		"$set": bson.M{version.RequesterKey: evergreen.GithubPRRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h)
+	expansions, err = PopulateExpansions(taskDoc, &h, settings)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -437,8 +441,7 @@ buildvariants:
 		},
 	}
 	assert.NoError(patchDoc.Insert())
-
-	expansions, err = PopulateExpansions(taskDoc, &h)
+	expansions, err = PopulateExpansions(taskDoc, &h, settings)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 20)
 	assert.Equal("true", expansions.Get("is_patch"))
@@ -461,7 +464,8 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-	expansions, err = PopulateExpansions(taskDoc, &h)
+
+	expansions, err = PopulateExpansions(taskDoc, &h, settings)
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 28)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))

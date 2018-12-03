@@ -34,10 +34,11 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	// Token is soourced from the project's YAML file
-	Token string `plugin:"expand""`
+	// Token is sourced from the project's YAML file
+	Token string `plugin:"expand"`
 	// GlobalGitHubOauthToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
 	GlobalGitHubOauthToken string `mapstructure:"global_github_oauth_token"`
+	// If Token is NOT empty: alphaToken := Token.  Otherwise, alphaToken := GlobalGitHubOauthToken
 	alphaToken string
 
 	base
@@ -108,7 +109,6 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	}
 
 	var cloneCmd []string
-	//if c.Token == "" {
 	if c.alphaToken == "" {
 		location, err := conf.ProjectRef.Location()
 		if err != nil {
@@ -194,7 +194,6 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 			repo:     repo,
 			dir:      moduleBase,
 			token:    c.alphaToken,
-			// token:    c.Token,
 		}
 		cmds, err := buildHTTPCloneCommand(opts)
 		if err != nil {
@@ -207,64 +206,30 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, owner, repo, moduleB
 	return gitCommands, nil
 }
 
-// conf.Expansions
-//
-// "execution",
-// "version_id"
-// "task_id"
-// "task_name"
-// "build_id"
-// "build_variant"
-// "revision"
-// "project"
-// "distro_id"
-// "trigger_event_identifier"
-// "trigger_event_type"
-// "trigger_id"
-// "trigger_status"
-// "trigger_revision"
-// "trigger_status"
-// "trigger_revision"
-// "trigger_repo_owner"
-// "trigger_repo_name"
-// "trigger_branch"
-// "branch_name"
-// "author"
-// "created_at"
-// "is_patch"
-// "revision_order_id"
-// "github_pr_number"
-// "github_org"
-// "github_repo"
-// "github_author"
-// "revision_order_id"
-//
-// "global_github_oauth_token"
-
 // Execute gets the source code required by the project
 func (c *gitFetchProject) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
 	var err error
 
+	// Expand the global_github_oauth_token Expansion (if set) and set c.GlobalGitHubOauthToken
 	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return err
 	}
 
-	// Which token takes precendence: GlobalGitHubOauthToken or Token?
-
-	token := c.Token;
-
+	// When setting alphaToken: c.Token (from the project's YAML file) takes
+	// precedence over the c.GlobalGitHubOauthToken, unless it is an empty string.
+	c.alphaToken = c.Token
 	if len(c.Token) == 0 {
-		c.Token = c.globalGitHubOauthToken
+		c.Token = c.GlobalGitHubOauthToken
 	}
 
-	if strings.HasPrefix(c.Token, "token") {
-		splitToken := strings.Split(c.Token, " ")
+	if strings.HasPrefix(c.alphaToken, "token") {
+		splitToken := strings.Split(c.alphaToken, " ")
 		if len(splitToken) != 2 {
 			return errors.New("token format is invalid")
 		}
-		c.Token = splitToken[1]
+		c.alphaToken = splitToken[1]
 	}
 
 	gitCommands, err := c.buildCloneCommand(conf)
@@ -289,8 +254,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	logger.Execution().Info("Fetching source from git...")
 	redactedCmds := cmdsJoined
-	if c.Token != "" {
-		redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", -1)
+	if c.alphaToken != "" {
+		redactedCmds = strings.Replace(redactedCmds, c.alphaToken, "[redacted oauth token]", -1)
 	}
 	logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 
