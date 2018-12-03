@@ -65,7 +65,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
 	settings := &evergreen.Settings{
 		Credentials: map[string]string{
-			"github": "GITHUBTOKEN",
+			"github": "token GITHUBTOKEN",
 		},
 	}
 	s.modelData1, err = modelutil.SetupAPITestData(settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
@@ -99,7 +99,7 @@ func (s *GitGetProjectSuite) SetupTest() {
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 	git := &gitFetchProject{
 		Directory:              "dir",
-		Token:                  "GITHUBTOKEN",
+		ProjectToken:           "GITHUBTOKEN",
 		GlobalGitHubOauthToken: "globalGitHubOauthToken",
 		alphaToken:             "GITHUBTOKEN",
 	}
@@ -112,7 +112,7 @@ func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
 func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
 	git := &gitFetchProject{
 		Directory:              "dir",
-		Token:                  "",
+		ProjectToken:           "",
 		GlobalGitHubOauthToken: "",
 		alphaToken:             "",
 	}
@@ -281,8 +281,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("cd dir", cmds[4])
 	s.Equal("git reset --hard ", cmds[5])
 
-	// ensure clone command with a token uses http
-	// c.Token = "GITHUBTOKEN"
+	// ensure clone command with a token uses https
 	c.alphaToken = "GITHUBTOKEN"
 	cmds, err = c.buildCloneCommand(conf)
 	s.NoError(err)
@@ -320,7 +319,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	c := gitFetchProject{
 		Directory:              "dir",
-		Token:                  "GITHUBTOKEN",
+		ProjectToken:           "GITHUBTOKEN",
 		GlobalGitHubOauthToken: "globalGithubOauthToken",
 		alphaToken:             "GITHUBTOKEN",
 	}

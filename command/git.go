@@ -34,8 +34,8 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
-	// Token is sourced from the project's YAML file
-	Token string `plugin:"expand"`
+	// ProjectToken is sourced from the project's YAML file
+	ProjectToken string `plugin:"expand" mapstructure:"token"`
 	// GlobalGitHubOauthToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
 	GlobalGitHubOauthToken string `mapstructure:"global_github_oauth_token"`
 	// If Token is NOT empty: alphaToken := Token.  Otherwise, alphaToken := GlobalGitHubOauthToken
@@ -219,9 +219,9 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	// When setting alphaToken: c.Token (from the project's YAML file) takes
 	// precedence over the c.GlobalGitHubOauthToken, unless it is an empty string.
-	c.alphaToken = c.Token
-	if len(c.Token) == 0 {
-		c.Token = c.GlobalGitHubOauthToken
+	c.alphaToken = c.ProjectToken
+	if len(c.alphaToken) == 0 {
+		c.alphaToken = c.GlobalGitHubOauthToken
 	}
 
 	if strings.HasPrefix(c.alphaToken, "token") {
