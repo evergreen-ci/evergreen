@@ -16,13 +16,13 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
 const (
 	heartbeatTimeoutThreshold   = 7 * time.Minute
 	taskExecutionTimeoutJobName = "task-execution-timeout"
+	maxAttempts                 = 10
 )
 
 func init() {
@@ -32,7 +32,12 @@ func init() {
 }
 
 type taskExecutionTimeoutJob struct {
-	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	Task      string `bson:"task_id"`
+	Execution int    `bson:"execution"`
+	Attempt   int    `bson:"attempt"`
+
+	successful bool
+	job.Base   `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
 func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
@@ -49,63 +54,66 @@ func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
 	return j
 }
 
-func NewTaskExecutionMonitorJob(id string) amboy.Job {
+func NewTaskExecutionMonitorJob(taskID string, execution int, attempt int) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
-	j.SetID(fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, id))
+	j.Task = taskID
+	j.Execution = execution
+	j.Attempt = attempt
+	j.SetID(fmt.Sprintf("%s.%s.%d.attempt-%d", taskExecutionTimeoutJobName, taskID, execution, attempt))
 	return j
 }
 
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+	defer j.tryRequeue()
 
-	flags, err := evergreen.GetServiceFlags()
+	t, err := task.FindOneId(j.Task)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrap(err, "error finding task"))
+		return
+	}
+	if t == nil {
+		j.AddError(errors.New("no task found"))
 		return
 	}
 
-	if flags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message":   "monitor is disabled",
-			"operation": j.Type().Name,
-			"impact":    "skipping task heartbeat cleanup job",
-			"mode":      "degraded",
-		})
-		return
-	}
-
-	tasks, err := task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold))
-	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
-		return
-	}
-
-	for _, task := range tasks {
-		msg := message.Fields{
-			"operation": j.Type().Name,
-			"id":        j.ID(),
-			"task":      task.Id,
-			"host":      task.HostId,
-		}
-
-		if err := cleanUpTimedOutTask(task); err != nil {
-			grip.Warning(message.WrapError(err, msg))
-			j.AddError(err)
-			continue
-		}
-
-		grip.Debug(msg)
-	}
-
-	grip.Info(message.Fields{
+	msg := message.Fields{
 		"operation": j.Type().Name,
 		"id":        j.ID(),
-		"num_tasks": len(tasks),
+		"task":      t.Id,
+		"host":      t.HostId,
+	}
+
+	err = cleanUpTimedOutTask(t)
+	if err != nil {
+		grip.Warning(message.WrapError(err, msg))
+		j.AddError(err)
+	} else {
+		j.successful = true
+	}
+	grip.Debug(msg)
+}
+
+func (j *taskExecutionTimeoutJob) tryRequeue() {
+	if j.successful || j.Attempt >= maxAttempts {
+		return
+	}
+	newJob := NewTaskExecutionMonitorJob(j.Task, j.Execution, j.Attempt+1)
+	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
+		WaitUntil: time.Now().Add(time.Minute),
 	})
+	err := evergreen.GetEnvironment().RemoteQueue().Put(newJob)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":  "failed to requeue task timeout job",
+		"task":     j.Task,
+		"job":      j.ID(),
+		"attempts": j.Attempt,
+	}))
+	j.AddError(err)
 }
 
 // function to clean up a single task
-func cleanUpTimedOutTask(t task.Task) error {
+func cleanUpTimedOutTask(t *task.Task) error {
 	// get tlhe host for the task
 	host, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
@@ -141,7 +149,7 @@ func cleanUpTimedOutTask(t task.Task) error {
 	// if the host still has the task as its running task, clear it.
 	if host.RunningTask == t.Id {
 		// clear out the host's running task
-		if err = host.ClearRunningAndSetLastTask(&t); err != nil {
+		if err = host.ClearRunningAndSetLastTask(t); err != nil {
 			return errors.Wrapf(err, "error clearing running task %s from host %s", t.Id, host.Id)
 		}
 	}
@@ -159,7 +167,7 @@ func cleanUpTimedOutTask(t task.Task) error {
 		if err != nil {
 			return errors.Wrap(err, "error requesting task reset")
 		}
-		return errors.Wrap(model.MarkEnd(&t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
+		return errors.Wrap(model.MarkEnd(t, "monitor", time.Now(), detail, false, &model.StatusChanges{}), "error marking task ended")
 	}
 	return errors.Wrapf(model.TryResetTask(t.Id, "", "monitor", detail), "error trying to reset task %s", t.Id)
 }
