@@ -427,6 +427,10 @@ var mciModule = angular.module('MCI', [
   $mdThemingProvider.theme('default')
     .primaryPalette('green')
 }).run(function($window) {
+  // JSDOM fails while executing these lines for some reason
+  if (!$window.document) return
+  if (!$window.nav) return
+
   let currentNavHeight; 
   let navEl = $window.nav
   let bodyEl = $window.document.body
