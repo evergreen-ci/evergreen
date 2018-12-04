@@ -143,11 +143,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding host")
 	}
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	e, err := PopulateExpansions(t, h, settings)
+	e, err := PopulateExpansions(t, h, &evergreen.Settings{})
 	if err != nil {
 		return nil, errors.Wrap(err, "error populating expansions")
 	}

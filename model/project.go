@@ -583,19 +583,11 @@ func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
+	// oauthToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
+	oauthToken, _ := settings.GetGithubOauthToken()
 
 	expansions := util.Expansions{}
-
-	if _, ok := settings.Credentials["github"]; ok {
-		// globalToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
-		globalToken, error := settings.GetGithubOauthToken()
-		if error != nil {
-			return nil, error
-		}
-
-		expansions.Put("global_github_oauth_token", globalToken)
-	}
-
+	expansions.Put("global_github_oauth_token", oauthToken)
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)
