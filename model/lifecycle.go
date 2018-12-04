@@ -466,7 +466,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 		return nil, errors.Wrapf(err, "error creating tasks for build '%s'", b.Id)
 	}
 
-	if err = tasks.Insert(); err != nil {
+	if err = tasks.InsertUnordered(); err != nil {
 		return nil, errors.Wrapf(err, "error inserting tasks for build '%s'", b.Id)
 	}
 
