@@ -77,6 +77,8 @@ type BuildVariantTaskUnit struct {
 	// currently unsupported (TODO EVG-578)
 	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+
+	Variant string
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
@@ -1068,6 +1070,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 		for _, t := range b.Tasks {
 			if pTask := tasksByName[t.Name]; pTask != nil {
 				t.Populate(*pTask)
+				t.Variant = b.Name
 				allBVTs = append(allBVTs, t)
 			}
 		}
