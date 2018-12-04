@@ -712,7 +712,12 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, metadata Vers
 		}
 		buildId, err := model.CreateBuildFromVersion(args)
 		if err != nil {
-			return errors.WithStack(err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "error inserting build",
+				"version": v.Id,
+				"variant": buildvariant.DisplayName,
+			}))
+			continue
 		}
 
 		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
