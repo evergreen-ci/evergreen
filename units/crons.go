@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
@@ -229,21 +228,9 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 			return nil
 		}
 
-		tasks, err := task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold))
-		if err != nil {
-			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
-		}
+		ts := util.RoundPartOfHour(2).Format(tsFormat)
 
-		catcher := grip.NewBasicCatcher()
-		for _, t := range tasks {
-			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(t.Id, t.Execution, 1)))
-		}
-		grip.Info(message.Fields{
-			"operation": "task-execution-timeout",
-			"num_tasks": len(tasks),
-		})
-
-		return catcher.Resolve()
+		return queue.Put(NewTaskExecutionMonitorJob(ts))
 	}
 }
 
