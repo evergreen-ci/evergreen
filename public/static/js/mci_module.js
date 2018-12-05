@@ -426,4 +426,25 @@ var mciModule = angular.module('MCI', [
 }]).config(function($mdThemingProvider) {
   $mdThemingProvider.theme('default')
     .primaryPalette('green')
+}).run(function($window) {
+  // JSDOM fails while executing these lines for some reason
+  if (!$window.document) return
+  if (!$window.nav) return
+
+  let currentNavHeight; 
+  let navEl = $window.nav
+  let bodyEl = $window.document.body
+
+  function onResize() {
+    if (navEl.clientHeight != currentNavHeight) {
+      bodyEl.style.paddingTop = navEl.clientHeight + 'px'
+      currentNavHeight = navEl.clientHeight
+    }
+  }
+
+  // Make navbar/content height responsive
+  angular.element($window).bind('resize', onResize)
+
+  // Trigger on app start
+  onResize()
 })

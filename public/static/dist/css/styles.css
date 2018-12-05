@@ -95,6 +95,11 @@ header .header-pagination {
   float: right;
   margin-top: 15px;
 }
+header .pagination-fixed {
+  position: fixed;
+  right: 20px;
+  margin-top: 15px;
+}
 .one-liner {
   overflow: hidden;
   white-space: nowrap;
@@ -2031,7 +2036,7 @@ pre {
 }
 /* body {
  background-color: #f3f3f3;
-} FIXME after we remove old waterfall */
+ } FIXME after we remove old waterfall */
 #root.waterfall-2 {
   min-height: 100%;
 }
