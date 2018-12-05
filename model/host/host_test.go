@@ -2581,6 +2581,12 @@ func TestStaleRunningTasks(t *testing.T) {
 		Status:      evergreen.HostRunning,
 	}
 	assert.NoError(h2.Insert())
+	h3 := Host{
+		Id:          "h3",
+		RunningTask: "t3",
+		Status:      evergreen.HostRunning,
+	}
+	assert.NoError(h3.Insert())
 	t1 := task.Task{
 		Id:            "t1",
 		Status:        evergreen.TaskStarted,
@@ -2596,7 +2602,7 @@ func TestStaleRunningTasks(t *testing.T) {
 	t3 := task.Task{
 		Id:            "t3",
 		Status:        evergreen.TaskStarted,
-		LastHeartbeat: time.Now().Add(-15 * time.Minute),
+		LastHeartbeat: time.Now().Add(-1 * time.Minute),
 	}
 	assert.NoError(t3.Insert())
 

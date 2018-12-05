@@ -479,6 +479,11 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 					task.StatusKey:       evergreen.TaskDispatched,
 					task.DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * cutoff)},
 				},
+				{
+					task.StatusKey:        evergreen.TaskUndispatched,
+					task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)},
+					task.LastHeartbeatKey: bson.M{"$ne": util.ZeroTime},
+				},
 			},
 		},
 	})

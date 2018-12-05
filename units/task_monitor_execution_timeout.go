@@ -66,7 +66,6 @@ func NewTaskExecutionMonitorJob(taskID string, execution int, attempt int) amboy
 
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
-	defer j.tryRequeue()
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -82,6 +81,7 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 		})
 		return
 	}
+	defer j.tryRequeue()
 
 	t, err := task.FindOneId(j.Task)
 	if err != nil {
