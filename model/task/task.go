@@ -566,7 +566,6 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 		}
 	}
 	return nil
-
 }
 
 // Removes tasks older than the unscheduable threshold (e.g. two
@@ -1066,7 +1065,7 @@ func (t *Task) String() (taskStruct string) {
 	taskStruct += fmt.Sprintf("FinishTime: %v\n", t.FinishTime)
 	taskStruct += fmt.Sprintf("TimeTaken: %v\n", t.TimeTaken)
 	taskStruct += fmt.Sprintf("Activated: %v\n", t.Activated)
-	taskStruct += fmt.Sprintf("Requester: %v\n", t.FinishTime)
+	taskStruct += fmt.Sprintf("Requester: %v\n", t.Requester)
 	taskStruct += fmt.Sprintf("PredictedDuration: %v\n", t.DurationPrediction)
 
 	return

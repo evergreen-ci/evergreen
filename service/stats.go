@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -192,6 +193,16 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			if t.Name == taskName {
 				foundTask = true
 				break
+			}
+		}
+
+		// Try found Display Task with name taskName
+		if !foundTask {
+			for _, dt := range bv.DisplayTasks {
+				if dt.Name == taskName {
+					foundTask = true
+					break
+				}
 			}
 		}
 

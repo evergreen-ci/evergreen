@@ -1,6 +1,7 @@
 mciModule.controller('TaskTimingController', function(
   $scope, $http, $window, $filter, $locationHash, mciTime, notificationService
 ) {
+    let ttvm = this
     $scope.currentProject = $window.activeProject;
     let bvs = $scope.currentProject.build_variants
     bvs.sort(function(a,b){
@@ -79,7 +80,8 @@ mciModule.controller('TaskTimingController', function(
             }
         }
     }
-    $scope.onlySuccessful = initialHash.onlySuccessful
+
+    ttvm.onlySuccessful = initialHash.onlySuccessful === 'true'
 
     $scope.taskData = {};
     $scope.locked = false;
@@ -257,7 +259,6 @@ mciModule.controller('TaskTimingController', function(
             }
           }), nonZeroTimeFilter).sort();
 
-
         if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
           return 0;
         } else {
@@ -274,7 +275,6 @@ mciModule.controller('TaskTimingController', function(
         var tasks = _.filter(build.tasks, function(task){return nonZeroTimeFilter(new Date(task.start_time));})
         return mciTime.fromNanoseconds(_.reduce(tasks, function(sum, task){return sum + task.time_taken}, 0));
       }
-
 
       var xMap = function(task){
         return moment(task.create_time);
@@ -317,7 +317,7 @@ mciModule.controller('TaskTimingController', function(
       var query = (!!before ? 'before=' + encodeURIComponent(before) : '');
       query += (query.length > 0 && !!limit ? '&' : '');
       query += (!!limit ? 'limit=' + encodeURIComponent(limit) : '');
-      query += $scope.onlySuccessful ? "&onlySuccessful=true" : "";
+      query += ttvm.onlySuccessful ? "&onlySuccessful=true" : "";
       url = '/json/task_timing/' +
           encodeURIComponent($scope.currentProject.name) + '/' +
           encodeURIComponent($scope.currentBV.name) + '/' +
@@ -344,7 +344,7 @@ mciModule.controller('TaskTimingController', function(
           return function(){
               $locationHash.set({ project: p, buildVariant: bv, taskName: t, requester:r, limit: l, onlySuccessful: o});
           }
-      }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks, $scope.onlySuccessful), 0)
+      }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks, ttvm.onlySuccessful), 0)
     };
 
     // formatting function for the way the y values should show up.
@@ -389,6 +389,7 @@ mciModule.controller('TaskTimingController', function(
         var xScale = d3.scale.linear()
         .domain([0, $scope.taskData.length - 1 ])
         .range([0, width])
+      console.info($scope.taskData)
 
         var yAxis = d3.svg.axis()
         .scale(yScale)
@@ -437,7 +438,6 @@ mciModule.controller('TaskTimingController', function(
         })
         .attr("font-size", 10)
 
-
         var scaledX = function(x, i){return xScale(i);}
         var scaledY = function(y){return yScale(yMap(y));}
 
@@ -467,7 +467,6 @@ mciModule.controller('TaskTimingController', function(
         // create a focus circle
         var focus = svg.append("circle")
         .attr("r", radius + 1);
-
 
         // create a transparent rectangle for tracking hovering
         svg.append("rect")
