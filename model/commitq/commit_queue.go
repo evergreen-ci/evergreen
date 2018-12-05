@@ -5,7 +5,7 @@ import (
 )
 
 type CommitQueue struct {
-	ProjectID    string   `bson:"project_id"`
+	ProjectID    string   `bson:"_id"`
 	Queue        []string `bson:"queue"`
 	MergeAction  string   `bson:"merge"`
 	StatusAction string   `bson:"status"`
@@ -43,7 +43,7 @@ func (q *CommitQueue) Remove(item string) error {
 	}
 
 	if err := remove(q.ProjectID, item); err != nil {
-		return err
+		return errors.Wrap(err, "can't remove item")
 	}
 
 	q.Queue = append(q.Queue[:itemIndex], q.Queue[itemIndex+1:]...)
@@ -52,7 +52,7 @@ func (q *CommitQueue) Remove(item string) error {
 
 func (q *CommitQueue) RemoveAll() error {
 	if err := removeAll(q.ProjectID); err != nil {
-		return err
+		return errors.Wrap(err, "can't clear queue")
 	}
 	q.Queue = []string{}
 	return nil
