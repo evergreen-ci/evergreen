@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -66,6 +67,21 @@ func NewTaskExecutionMonitorJob(taskID string, execution int, attempt int) amboy
 func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	defer j.tryRequeue()
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if flags.MonitorDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message":   "monitor is disabled",
+			"operation": j.Type().Name,
+			"impact":    "skipping task heartbeat cleanup job",
+			"mode":      "degraded",
+		})
+		return
+	}
 
 	t, err := task.FindOneId(j.Task)
 	if err != nil {

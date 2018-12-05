@@ -485,7 +485,10 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 
 	tasks := []task.Task{}
 	err := db.Aggregate(Collection, pipeline, &tasks)
-	return tasks, errors.Wrap(err, "error finding stale running tasks")
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding stale running tasks")
+	}
+	return tasks, nil
 }
 
 // NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
