@@ -78,7 +78,7 @@ type BuildVariantTaskUnit struct {
 	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
-	Variant string
+	Variant string `yaml:"-" bson:"-"`
 }
 
 func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
