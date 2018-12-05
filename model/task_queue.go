@@ -231,13 +231,24 @@ func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	}
 
 	// Otherwise, find the next dispatchable task.
+	spec = TaskSpec{}
 	for _, it := range self.Queue {
 		// Always return a task if the task group is empty.
 		if it.Group == "" {
 			return &it
 		}
+
+		// If we already determined that this task group is not runnable, continue.
+		if it.Group == spec.Group &&
+			it.BuildVariant == spec.BuildVariant &&
+			it.Project == spec.ProjectID &&
+			it.Version == spec.Version &&
+			it.GroupMaxHosts == spec.GroupMaxHosts {
+			continue
+		}
+
 		// Otherwise, return the task if it is running on fewer than its task group's max hosts.
-		spec := TaskSpec{
+		spec = TaskSpec{
 			Group:         it.Group,
 			BuildVariant:  it.BuildVariant,
 			ProjectID:     it.Project,
