@@ -104,18 +104,21 @@ func (s *CommitQueueSuite) TestRemoveAll() {
 	s.Empty(dbq.All())
 }
 
-func (s *CommitQueueSuite) TestUpdateMerge() {
+func (s *CommitQueueSuite) TestMerge() {
 	s.Equal("squash", s.q.MergeAction)
 	s.NoError(s.q.UpdateMergeAction("rebase"))
 	s.Equal("rebase", s.q.MergeAction)
+	s.NotNil(GetMergeAction(s.q.MergeAction))
 
 	dbq, err := FindOneId("mci")
 	s.NoError(err)
 	s.Equal("rebase", dbq.MergeAction)
 }
 
-func (s *CommitQueueSuite) TestUpdateStatus() {
+func (s *CommitQueueSuite) TestStatus() {
 	s.Equal("github", s.q.StatusAction)
+	s.NotNil(GetStatusAction(s.q.StatusAction))
+
 	s.NoError(s.q.UpdateStatusAction("email"))
 	s.Equal("email", s.q.StatusAction)
 

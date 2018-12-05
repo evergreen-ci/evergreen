@@ -66,12 +66,20 @@ func (q *CommitQueue) UpdateMergeAction(mergeAction string) error {
 	return nil
 }
 
+func (q *CommitQueue) GetMergeFunction() MergeFunction {
+	return GetMergeAction(q.MergeAction)
+}
+
 func (q *CommitQueue) UpdateStatusAction(statusAction string) error {
 	if err := updateStatus(q.ProjectID, statusAction); err != nil {
 		return errors.Wrap(err, "can't update merge")
 	}
 	q.StatusAction = statusAction
 	return nil
+}
+
+func (q *CommitQueue) GetStatusFunction() StatusFunction {
+	return GetStatusAction(q.StatusAction)
 }
 
 func (q CommitQueue) findItem(item string) int {
