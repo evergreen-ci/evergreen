@@ -426,6 +426,68 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 	})
 }
 
+// StateRunningTasks returns tasks documents that are currently run by a host and stale
+func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
+	pipeline := []bson.M{}
+	pipeline = append(pipeline, bson.M{
+		"$match": bson.M{
+			RunningTaskKey: bson.M{
+				"$exists": true,
+			},
+			StatusKey: bson.M{
+				"$in": evergreen.UpHostStatus,
+			},
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$lookup": bson.M{
+			"from":         task.Collection,
+			"localField":   RunningTaskKey,
+			"foreignField": task.IdKey,
+			"as":           "_task",
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			"_task": 1,
+			"_id":   0,
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$replaceRoot": bson.M{
+			"newRoot": bson.M{
+				"$mergeObjects": []interface{}{
+					bson.M{"$arrayElemAt": []interface{}{"$_task", 0}},
+					"$$ROOT",
+				},
+			},
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			"_task": 0,
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$match": bson.M{
+			"$or": []bson.M{
+				{
+					task.StatusKey:        task.SelectorTaskInProgress,
+					task.LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-cutoff)},
+				},
+				{
+					task.StatusKey:       evergreen.TaskDispatched,
+					task.DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * cutoff)},
+				},
+			},
+		},
+	})
+
+	tasks := []task.Task{}
+	err := db.Aggregate(Collection, pipeline, &tasks)
+	return tasks, errors.Wrap(err, "error finding stale running tasks")
+}
+
 // NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
 // or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
 func NeedsNewAgent(currentTime time.Time) db.Q {
