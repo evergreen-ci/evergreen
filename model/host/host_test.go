@@ -2565,3 +2565,48 @@ func TestRemoveStaleInitializing(t *testing.T) {
 	assert.Equal(4, numHosts)
 
 }
+
+func TestStaleRunningTasks(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(db.ClearCollections(Collection, task.Collection))
+	h1 := Host{
+		Id:          "h1",
+		RunningTask: "t1",
+		Status:      evergreen.HostRunning,
+	}
+	assert.NoError(h1.Insert())
+	h2 := Host{
+		Id:          "h2",
+		RunningTask: "t2",
+		Status:      evergreen.HostRunning,
+	}
+	assert.NoError(h2.Insert())
+	h3 := Host{
+		Id:          "h3",
+		RunningTask: "t3",
+		Status:      evergreen.HostRunning,
+	}
+	assert.NoError(h3.Insert())
+	t1 := task.Task{
+		Id:            "t1",
+		Status:        evergreen.TaskStarted,
+		LastHeartbeat: time.Now().Add(-15 * time.Minute),
+	}
+	assert.NoError(t1.Insert())
+	t2 := task.Task{
+		Id:            "t2",
+		Status:        evergreen.TaskDispatched,
+		LastHeartbeat: time.Now().Add(-25 * time.Minute),
+	}
+	assert.NoError(t2.Insert())
+	t3 := task.Task{
+		Id:            "t3",
+		Status:        evergreen.TaskStarted,
+		LastHeartbeat: time.Now().Add(-1 * time.Minute),
+	}
+	assert.NoError(t3.Insert())
+
+	tasks, err := FindStaleRunningTasks(10 * time.Minute)
+	assert.NoError(err)
+	assert.Len(tasks, 2)
+}

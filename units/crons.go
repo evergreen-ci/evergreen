@@ -228,9 +228,21 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 			return nil
 		}
 
-		ts := util.RoundPartOfHour(2).Format(tsFormat)
+		tasks, err := host.FindStaleRunningTasks(heartbeatTimeoutThreshold)
+		if err != nil {
+			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
+		}
 
-		return queue.Put(NewTaskExecutionMonitorJob(ts))
+		catcher := grip.NewBasicCatcher()
+		for _, t := range tasks {
+			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(t.Id, t.Execution, 1)))
+		}
+		grip.Info(message.Fields{
+			"operation": "task-execution-timeout",
+			"num_tasks": len(tasks),
+		})
+
+		return catcher.Resolve()
 	}
 }
 
