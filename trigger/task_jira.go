@@ -95,18 +95,22 @@ type jiraTemplateData struct {
 }
 
 func makeSpecificTaskStatus(t *task.Task) string {
-	switch {
-	case t.Status == evergreen.TaskSucceeded:
+	if t.Status == evergreen.TaskSucceeded {
 		return evergreen.TaskSucceeded
-	case t.Details.TimedOut:
-		return evergreen.TaskTimedOut
-	case t.Details.Type == evergreen.CommandTypeSystem:
-		return evergreen.TaskSystemFailed
-	case t.Details.Type == evergreen.CommandTypeSetup:
-		return evergreen.TaskSetupFailed
-	default:
-		return evergreen.TaskFailed
 	}
+	if t.Details.TimedOut {
+		return evergreen.TaskTimedOut
+	}
+	if t.Details.Type == evergreen.CommandTypeSystem {
+		if t.Details.TimedOut && t.Details.Description == "heartbeat" {
+			return evergreen.TaskSystemUnresponse
+		}
+		return evergreen.TaskSystemFailed
+	}
+	if t.Details.Type == evergreen.CommandTypeSetup {
+		return evergreen.TaskSetupFailed
+	}
+	return evergreen.TaskFailed
 }
 
 func makeSummaryPrefix(t *task.Task, failed int) string {
@@ -116,6 +120,8 @@ func makeSummaryPrefix(t *task.Task, failed int) string {
 		return "Succeeded: "
 	case s == evergreen.TaskTimedOut:
 		return "Timed Out: "
+	case s == evergreen.TaskSystemUnresponse:
+		return "System Unresponsive: "
 	case s == evergreen.TaskSystemFailed:
 		return "System Failure: "
 	case s == evergreen.TaskSetupFailed:
