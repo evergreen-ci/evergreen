@@ -55,11 +55,9 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	}
 	grip.Infof("Deleting directory for completed task: %s", tc.taskDirectory)
 
-	if err := os.RemoveAll(tc.taskDirectory); err != nil {
-		grip.Criticalf("Error removing working directory for the task: %s", err)
-	} else {
-		grip.Infof("Successfully deleted directory for completed task: %s", tc.taskDirectory)
-	}
+	err := os.RemoveAll(tc.taskDirectory)
+	grip.Critical(message.Wrapf("Error removing working directory for the task: %s", err))
+	grip.InfoWhenf(err == nil, "Successfully deleted directory for completed task: %s", tc.taskDirectory)
 }
 
 // tryCleanupDirectory is a very conservative function that attempts
