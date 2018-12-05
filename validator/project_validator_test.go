@@ -526,7 +526,7 @@ func TestVerifyTaskRequirements(t *testing.T) {
 				},
 			}
 			So(verifyTaskRequirements(p), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskRequirements(p)), ShouldEqual, 2)
+			So(len(verifyTaskRequirements(p)), ShouldEqual, 4)
 		})
 		Convey("projects with requirements for non-existing variants should error", func() {
 			p := &model.Project{
@@ -542,7 +542,56 @@ func TestVerifyTaskRequirements(t *testing.T) {
 				},
 			}
 			So(verifyTaskRequirements(p), ShouldNotResemble, ValidationErrors{})
-			So(len(verifyTaskRequirements(p)), ShouldEqual, 2)
+			So(len(verifyTaskRequirements(p)), ShouldEqual, 4)
+		})
+		Convey("projects with requirements with valid tasks but not in variant should fail", func() {
+			beforeDep := []model.TaskUnitDependency{{Name: "before"}}
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "before"},
+					{Name: "1", DependsOn: beforeDep},
+					{Name: "2", DependsOn: beforeDep},
+					{Name: "3", DependsOn: beforeDep},
+					{Name: "after"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{{
+						Name: "after",
+						Requires: []model.TaskUnitRequirement{{
+							Name: "before",
+						}},
+					}}},
+				},
+			}
+			So(verifyTaskRequirements(p)[0].Error(), ShouldResemble, "task 'after' requires task 'before' on variant 'v1'")
+		})
+		Convey("projects with requirements with valid tasks in wrong variant should fail", func() {
+			beforeDep := []model.TaskUnitDependency{{Name: "before"}}
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "before"},
+					{Name: "1", DependsOn: beforeDep},
+					{Name: "2", DependsOn: beforeDep},
+					{Name: "3", DependsOn: beforeDep},
+					{Name: "after"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{
+						{
+							Name: "after",
+							Requires: []model.TaskUnitRequirement{{
+								Name:    "before",
+								Variant: "v2",
+							}},
+						},
+						{
+							Name: "before",
+						},
+					}},
+					{Name: "v2"},
+				},
+			}
+			So(verifyTaskRequirements(p)[0].Error(), ShouldResemble, "task 'after' requires task 'before' on variant 'v2'")
 		})
 		Convey("projects with requirements for a normal project configuration should pass", func() {
 			all := []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"},

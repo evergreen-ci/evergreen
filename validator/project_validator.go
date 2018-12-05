@@ -826,6 +826,16 @@ func verifyTaskRequirements(project *model.Project) ValidationErrors {
 				errs = append(errs, ValidationError{Message: fmt.Sprintf(
 					"task '%v' requires non-existent variant '%v'", bvt.Name, r.Variant)})
 			}
+			vs := project.FindVariantsWithTask(r.Name)
+			if r.Variant != "" && r.Variant != model.AllVariants && !util.StringSliceContains(vs, r.Variant) {
+				errs = append(errs, ValidationError{Message: fmt.Sprintf(
+					"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, r.Variant)})
+			} else {
+				if !util.StringSliceContains(vs, bvt.Variant) {
+					errs = append(errs, ValidationError{Message: fmt.Sprintf(
+						"task '%s' requires task '%s' on variant '%s'", bvt.Name, r.Name, bvt.Variant)})
+				}
+			}
 		}
 	}
 	return errs
