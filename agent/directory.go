@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/pkg/errors"
 )
 
 // createTaskDirectory makes a directory for the agent to execute
@@ -56,7 +57,7 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	grip.Infof("Deleting directory for completed task: %s", tc.taskDirectory)
 
 	err := os.RemoveAll(tc.taskDirectory)
-	grip.Critical(message.Wrapf("Error removing working directory for the task: %s", err))
+	grip.Critical(errors.Wrapf(err, "Error removing working directory for the task: %s", tc.taskDirectory))
 	grip.InfoWhenf(err == nil, "Successfully deleted directory for completed task: %s", tc.taskDirectory)
 }
 
