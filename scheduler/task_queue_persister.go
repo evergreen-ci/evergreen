@@ -39,7 +39,7 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string, tasks []task.T
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue)
-	err := queue.Save()
+	err := queue.Save() // queue.Save() will only save the first 1000 items
 
 	return taskQueue, errors.WithStack(err)
 }

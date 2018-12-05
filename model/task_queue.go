@@ -201,6 +201,9 @@ func BlockTaskGroupTasks(taskID string) error {
 }
 
 func (self *TaskQueue) Save() error {
+	if len(self.Queue) > 1000 {
+		self.Queue = self.Queue[:1000]
+	}
 	return updateTaskQueue(self.Distro, self.Queue)
 }
 

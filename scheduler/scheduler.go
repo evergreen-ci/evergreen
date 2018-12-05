@@ -82,9 +82,6 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 		"operation": "saving task queue for distro",
 	})
 
-	if len(prioritizedTasks) > 1000 {
-		prioritizedTasks = prioritizedTasks[:1000]
-	}
 	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks)
 	if err != nil {
 		res.err = errors.Wrapf(err, "Error processing distro %s saving task queue", distroId)
