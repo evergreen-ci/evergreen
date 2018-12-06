@@ -312,6 +312,29 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     updateActiveLevels()
 
+    // Depend on threadMode, key, activeLevelNames, cfg
+    function getCompValues(compSample) {
+      if (threadMode == MAXONLY) {
+        return [compSample.maxThroughputForTest(key)]
+      } else { // All thread levels mode
+        var testResult = compSample.resultForTest(key)
+        if (testResult) {
+          return _.map(activeLevelNames, function(lvl) {
+            return testResult.results[lvl][cfg.valueAttr]
+          })
+        }
+      }
+    }
+
+    // Convert compare samples into something that could
+    // be rendered on the chart
+    // Type: [[num, ...], ...]
+    // First level array contain values for each baseline
+    // Each value represent baseline value for thread level(s)
+    let compSamplesValues = _.map(compareSamples, function(compSample) {
+      return _.filter(getCompValues(compSample))
+    })
+
     // For given `activeLevels` returns those which exists in the `sample`
     function threadLevelsForSample(sample, activeLevels) {
       return _.filter(activeLevels, function(d) {
@@ -381,14 +404,6 @@ mciModule.factory('DrawPerfTrendChart', function (
       return d && d.length > 1
     })
 
-    var compareMax = 0
-    if (compareSamples && compareSamples.length) {
-      compareMax = _.chain(compareSamples)
-        .map(function(d) { return d.maxThroughputForTest(key) })
-        .max()
-        .value()
-    }
-
     // Calculate X Ticks values
     var idxStep = (series.length / cfg.xAxis.maxTicks + 2) | 0
     var xTicksData = _.filter(series, function(d, i) {
@@ -423,9 +438,12 @@ mciModule.factory('DrawPerfTrendChart', function (
         })
       )
 
-      var multiSeriesAvg = d3.mean(flatOpsValues)
-      var multiSeriesMin = d3.min(flatOpsValues)
-      var multiSeriesMax = d3.max(flatOpsValues)
+      let flatCompValues = _.flatten(compSamplesValues)
+      let allValuesFlat = flatOpsValues.concat(flatCompValues)
+
+      var multiSeriesAvg = d3.mean(allValuesFlat)
+      var multiSeriesMin = d3.min(allValuesFlat)
+      var multiSeriesMax = d3.max(allValuesFlat)
 
       // Zoomed mode / linear scale is default.
       // If the upper and lower y-axis values are very close to the average (within 10%)
@@ -698,53 +716,56 @@ mciModule.factory('DrawPerfTrendChart', function (
         })
     }
 
-    // TODO This lines should be rewritten from scratch
+    // Draws reference lines.
+    // !! Should be executed in context of ref. line group only
+    function drawRefLines(values, idx) {
+      let refLines = d3.select(this)
+        .selectAll('line')
+        .data(values)
+
+      // Create new elements (ref. lines)
+      refLines
+        .enter()
+        .append('line')
+        .attr({
+          class: 'mean-line',
+          x1: 0,
+          x2: cfg.effectiveWidth,
+          'stroke-width': '2',
+          'stroke-dasharray': '5,5'
+        })
+
+      // Update existing elements (ref. lines)
+      refLines
+        .attr({
+          y1: d => yScale(d),
+          y2: function() { return this.attributes.y1.value }, // Tricky way to  y2 = y1
+          stroke: function() { return d3.rgb(colors(idx + 1)).brighter() },
+        })
+
+      // Remove unused elements (ref. lines)
+      refLines.exit().remove()
+    }
+
+    const refLinesTopLevelG = chartG.append('g').attr('class', 'cmp-lines')
+
+    // top-level function which redraws reference lines
+    // alias: baselines
     function redrawRefLines() {
-      if (compareSamples) {
-        // Remove group if exists
-        chartG.select('g.cmp-lines').remove()
-        // Recreate group
-        var cmpLinesG = chartG.append('g')
-          .attr({class: 'cmp-lines'})
+      let refLinesG = refLinesTopLevelG.selectAll('g')
+        .data(compSamplesValues)
 
-        for(var j=0; j < compareSamples.length; j++) {
-          var g = cmpLinesG.append('g')
-            .attr('class', 'cmp-' + j)
-          var compareSample = compareSamples[j]
-          var compareMax = compareSample.maxThroughputForTest(key)
+      refLinesG
+        .enter()
+        .append('g')
 
-          var values;
-          if (threadMode == MAXONLY) {
-            var values = [yScale(compareSample.maxThroughputForTest(key))]
-          } else {
-            var testResult = compareSample.resultForTest(key)
-            if (testResult) {
-              var values = _.map(activeLevelNames, function(lvl) {
-                return yScale(testResult.results[lvl][cfg.valueAttr])
-              })
-            }
-          }
+      // Create new elements (ref. line groups)
+      refLinesG
+        .attr({class: (_, idx) => 'cmp-' + idx})
+        .each(drawRefLines)
 
-          values = _.filter(values)
-
-          if (values && values.length) {
-            g.selectAll('.mean-line')
-              .data(values)
-              .enter()
-              .append('svg:line')
-              .attr({
-                class: 'mean-line',
-                x1: 0,
-                x2: cfg.effectiveWidth,
-                y1: _.identity,
-                y2: _.identity,
-                stroke: function() { return d3.rgb(colors(j + 1)).brighter() },
-                'stroke-width': '2',
-                'stroke-dasharray': '5,5'
-              })
-          }
-        }
-      }
+      // Remove unused elements (ref. line groups)
+      refLinesG.exit().remove()
     }
 
     redrawRefLines()
