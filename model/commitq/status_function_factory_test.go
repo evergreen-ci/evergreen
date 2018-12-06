@@ -9,9 +9,11 @@ import (
 func TestStatusFunctionRegistry(t *testing.T) {
 	assert := assert.New(t)
 
-	action := GetStatusAction("asdf")
+	action, err := GetStatusAction("asdf")
 	assert.Nil(action)
+	assert.Error(err)
 
-	action = GetStatusAction("github")
+	action, err = GetStatusAction("github")
 	assert.NotNil(action)
+	assert.NoError(err)
 }

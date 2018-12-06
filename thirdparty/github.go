@@ -723,10 +723,23 @@ func buildPatchURL(gp *patch.GithubPatch) string {
 	return url.String()
 }
 
-func GithubPRMerge(title string, message string, sha string, mergeMethod string) error {
+type GithubMergeParams struct {
+	Title       string
+	Message     string
+	SHA         string
+	MergeMethod string
+}
+
+func GithubPRMerge(params GithubMergeParams) error {
 	return nil
 }
 
-func GithubPostStatus(state string, description string, context string) error {
+type GithubStatusParams struct {
+	State       string
+	Description string
+	Generator   string
+}
+
+func GithubPostStatus(params GithubStatusParams) error {
 	return nil
 }

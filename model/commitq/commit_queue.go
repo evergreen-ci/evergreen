@@ -66,7 +66,7 @@ func (q *CommitQueue) UpdateMergeAction(mergeAction string) error {
 	return nil
 }
 
-func (q *CommitQueue) GetMergeFunction() MergeFunction {
+func (q *CommitQueue) GetMergeFunction() (MergeFunction, error) {
 	return GetMergeAction(q.MergeAction)
 }
 
@@ -78,7 +78,7 @@ func (q *CommitQueue) UpdateStatusAction(statusAction string) error {
 	return nil
 }
 
-func (q *CommitQueue) GetStatusFunction() StatusFunction {
+func (q *CommitQueue) GetStatusFunction() (StatusFunction, error) {
 	return GetStatusAction(q.StatusAction)
 }
 

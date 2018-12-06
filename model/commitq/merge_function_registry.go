@@ -1,31 +1,45 @@
 package commitq
 
 import (
+	"errors"
+
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
-type MergeFunction interface{}
+type MergeArgs struct {
+	Title   string
+	Message string
+	SHA     string
+}
+
+type MergeFunction func(MergeArgs) error
 
 var mergeMethods map[string]MergeFunction
 
-func init() {
-	mergeMethods = map[string]MergeFunction{
-		"merge": func(title string, message string, sha string) error {
-			return thirdparty.GithubPRMerge(title, message, sha, "merge")
-		},
-		"squash": func(title string, message string, sha string) error {
-			return thirdparty.GithubPRMerge(title, message, sha, "squash")
-		},
-		"rebase": func(title string, message string, sha string) error {
-			return thirdparty.GithubPRMerge(title, message, sha, "rebase")
-		},
+func githubMergeFunction(action string) func(MergeArgs) error {
+	return func(args MergeArgs) error {
+		mergeArgs := thirdparty.GithubMergeParams{
+			Title:       args.Title,
+			Message:     args.Message,
+			SHA:         args.SHA,
+			MergeMethod: action,
+		}
+		return thirdparty.GithubPRMerge(mergeArgs)
 	}
 }
 
-func GetMergeAction(actionString string) MergeFunction {
+func init() {
+	mergeMethods = map[string]MergeFunction{
+		"merge":  githubMergeFunction("merge"),
+		"squash": githubMergeFunction("squash"),
+		"rebase": githubMergeFunction("rebase"),
+	}
+}
+
+func GetMergeAction(actionString string) (MergeFunction, error) {
 	action, ok := mergeMethods[actionString]
 	if !ok {
-		return nil
+		return nil, errors.New("no matching merge action")
 	}
-	return action
+	return action, nil
 }

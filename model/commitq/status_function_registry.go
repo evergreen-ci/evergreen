@@ -1,10 +1,12 @@
 package commitq
 
 import (
+	"errors"
+
 	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
-type StatusFunction interface{}
+type StatusFunction func(thirdparty.GithubStatusParams) error
 
 var statusMethods map[string]StatusFunction
 
@@ -14,10 +16,10 @@ func init() {
 	}
 }
 
-func GetStatusAction(actionString string) StatusFunction {
+func GetStatusAction(actionString string) (StatusFunction, error) {
 	action, ok := statusMethods[actionString]
 	if !ok {
-		return nil
+		return nil, errors.New("no matching status action")
 	}
-	return action
+	return action, nil
 }

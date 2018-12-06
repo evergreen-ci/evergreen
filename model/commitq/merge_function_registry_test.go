@@ -9,15 +9,19 @@ import (
 func TestMergeFunctionRegistry(t *testing.T) {
 	assert := assert.New(t)
 
-	action := GetMergeAction("asdf")
+	action, err := GetMergeAction("asdf")
 	assert.Nil(action)
+	assert.Error(err)
 
-	action = GetMergeAction("merge")
+	action, err = GetMergeAction("merge")
 	assert.NotNil(action)
+	assert.NoError(err)
 
-	action = GetMergeAction("squash")
+	action, err = GetMergeAction("squash")
 	assert.NotNil(action)
+	assert.NoError(err)
 
-	action = GetMergeAction("rebase")
+	action, err = GetMergeAction("rebase")
 	assert.NotNil(action)
+	assert.NoError(err)
 }
