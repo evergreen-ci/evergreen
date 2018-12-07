@@ -1066,5 +1066,5 @@ func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName s
 
 func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
-	return validateTimesCalledPerTask(p, ts, evergreen.CreateHostCommandName, 1)
+	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1)
 }
