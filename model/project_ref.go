@@ -86,11 +86,13 @@ type TriggerDefinition struct {
 	BuildVariantRegex string `bson:"variant_regex,omitempty" json:"variant_regex,omitempty"`
 	TaskRegex         string `bson:"task_regex,omitempty" json:"task_regex,omitempty"`
 	Status            string `bson:"status,omitempty" json:"status,omitempty"`
+	DateCutoff        *int   `bson:"date_cutoff,omitempty" json:"date_cutoff,omitempty"`
 
 	// definitions for tasks to run for this trigger
 	ConfigFile   string `bson:"config_file,omitempty" json:"config_file,omitempty"`
 	Command      string `bson:"command,omitempty" json:"command,omitempty"`
 	GenerateFile string `bson:"generate_file,omitempty" json:"generate_file,omitempty"`
+	Alias        string `bson:"alias,omitempty" json:"alias,omitempty"`
 }
 
 func (a AlertConfig) GetSettingsMap() map[string]string {

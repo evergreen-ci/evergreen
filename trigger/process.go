@@ -2,6 +2,7 @@ package trigger
 
 import (
 	"regexp"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -157,6 +158,9 @@ projectLoop:
 				continue
 			}
 			if trigger.Status != "" && trigger.Status != t.Status {
+				continue
+			}
+			if trigger.DateCutoff != nil && time.Now().Add(-24*time.Duration(*trigger.DateCutoff)*time.Hour).After(t.IngestTime) {
 				continue
 			}
 			if trigger.TaskRegex != "" {
