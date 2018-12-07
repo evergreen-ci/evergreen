@@ -1064,6 +1064,8 @@ func validateTimesCalledTotal(p *model.Project, ts map[string]int, commandName s
 	return errs
 }
 
+// validateGenerateTasks validates that no task calls 'generate.tasks' more than once, since if one
+// does, the server will noop it.
 func validateGenerateTasks(p *model.Project) ValidationErrors {
 	ts := p.TasksThatCallCommand(evergreen.GenerateTasksCommandName)
 	return validateTimesCalledPerTask(p, ts, evergreen.GenerateTasksCommandName, 1)
