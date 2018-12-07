@@ -125,7 +125,7 @@ mciModule.controller('SignalProcessingCtrl', function(
         project: project,
         revision: doc.suspect_revision,
         buildVariant: doc.variant,
-        dateCreated: doc.createTime,
+        createTime: doc.create_time,
       })
     })
   }
