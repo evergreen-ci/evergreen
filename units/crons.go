@@ -237,7 +237,7 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 		for _, t := range tasks {
 			taskIDs[t.Id] = t.Execution
 		}
-		tasks, err = task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold))
+		tasks, err = task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold).WithFields(task.IdKey, task.ExecutionKey))
 		if err != nil {
 			return errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats")
 		}
@@ -247,7 +247,8 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 
 		catcher := grip.NewBasicCatcher()
 		for id, execution := range taskIDs {
-			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(id, execution, 1)))
+			ts := util.RoundPartOfHour(15)
+			catcher.Add(queue.Put(NewTaskExecutionMonitorJob(id, execution, 1, ts.Format(tsFormat))))
 		}
 		grip.Info(message.Fields{
 			"operation": "task-execution-timeout",

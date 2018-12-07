@@ -487,6 +487,12 @@ func FindStaleRunningTasks(cutoff time.Duration) ([]task.Task, error) {
 			},
 		},
 	})
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			task.IdKey:        1,
+			task.ExecutionKey: 1,
+		},
+	})
 
 	tasks := []task.Task{}
 	err := db.Aggregate(Collection, pipeline, &tasks)
