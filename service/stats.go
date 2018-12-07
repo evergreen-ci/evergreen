@@ -50,6 +50,7 @@ type UITask struct {
 	Status        string    `json:"status"`
 	Host          string    `json:"host"`
 	Distro        string    `json:"distro"`
+	IsDisplay     bool      `json:"is_display"`
 }
 
 //UIBuild has the fields that are necessary to send over the wire for builds
@@ -215,7 +216,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		fields := []string{task.CreateTimeKey, task.DispatchTimeKey,
 			task.ScheduledTimeKey, task.StartTimeKey, task.FinishTimeKey,
 			task.VersionKey, task.HostIdKey, task.StatusKey, task.HostIdKey,
-			task.DistroIdKey}
+			task.DistroIdKey, task.DisplayOnlyKey}
 
 		if beforeTaskId != "" {
 			var t *task.Task
@@ -229,7 +230,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			tasks, err = task.Find(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
+			tasks, err = task.FindAll(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
 				buildVariant, taskName, project.Identifier, []string{request}).Limit(limit).WithFields(fields...))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
@@ -237,8 +238,13 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			}
 
 		} else {
-			tasks, err = task.Find(task.ByStatuses(statuses,
+			tasks, err = task.FindAll(task.ByStatuses(statuses,
 				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+
+			grip.Infoln(task.ByStatuses(statuses,
+				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+
+			grip.Infoln(tasks)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
@@ -261,6 +267,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				Status:        t.Status,
 				Host:          t.HostId,
 				Distro:        t.DistroId,
+				IsDisplay:     t.DisplayOnly,
 			}
 			uiTasks = append(uiTasks, uiTask)
 			versionIds = append(versionIds, t.Version)

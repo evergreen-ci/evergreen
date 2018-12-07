@@ -118,21 +118,16 @@ mciModule.controller('TaskTimingController', function(
     }
 
     // normal task options
-    $scope.timeDiffOptions = [
-        {
-            name: "Start \u21E2 Finish",
-            diff: ["finish_time", "start_time"]
-
-        },
-        {
-            name: "Scheduled \u21E2 Start",
-            diff: ["start_time", "scheduled_time"]
-        },
-        {
-            name: "Scheduled \u21E2 Finish",
-            diff: ["finish_time", "scheduled_time"]
-        }
-    ];
+    $scope.timeDiffOptions = [{
+      name: "Start \u21E2 Finish",
+      diff: ["finish_time", "start_time"]
+    }, {
+      name: "Scheduled \u21E2 Start",
+      diff: ["start_time", "scheduled_time"]
+    }, {
+      name: "Scheduled \u21E2 Finish",
+      diff: ["finish_time", "scheduled_time"]
+    }]
 
     $scope.timeDiff = $scope.timeDiffOptions[0];
 
@@ -142,16 +137,14 @@ mciModule.controller('TaskTimingController', function(
     }
 
     // options for the all tasks functionality
-    $scope.allTasksOptions = [
-        {
-            name: "Makespan",
-            type: makespan,
+    $scope.allTasksOptions = [{
+      name: "Makespan",
+      type: makespan,
+    }, {
+      name: "Total Processing Time",
+      type: processing_time,
+    }]
 
-        },
-        { name: "Total Processing Time",
-            type: processing_time,
-        },
-    ];
     $scope.allTasksView = $scope.allTasksOptions[0];
 
     $scope.setAllTasksView = function(view) {
