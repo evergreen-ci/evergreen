@@ -63,6 +63,7 @@ var (
 	DisplayOnlyKey          = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	TaskGroupKey            = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	GenerateTaskKey         = bsonutil.MustHaveTag(Task{}, "GenerateTask")
+	GeneratedTasksKey       = bsonutil.MustHaveTag(Task{}, "GeneratedTasks")
 	GeneratedByKey          = bsonutil.MustHaveTag(Task{}, "GeneratedBy")
 	ResetWhenFinishedKey    = bsonutil.MustHaveTag(Task{}, "ResetWhenFinished")
 

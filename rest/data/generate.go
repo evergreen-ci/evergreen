@@ -36,6 +36,9 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 			if err != nil {
 				return false, err
 			}
+			if t.GeneratedTasks {
+				return false, nil // already generated tasks, noop
+			}
 			if err = validator.CheckProjectConfigurationIsValid(p); err != nil {
 				return false, err
 			}
@@ -44,6 +47,12 @@ func (gc *GenerateConnector) GenerateTasks(ctx context.Context, taskID string, j
 				return true, gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "error updating config in `generate.tasks`").Error(),
+				}
+			}
+			if err = t.MarkGeneratedTasks(); err != nil {
+				return true, gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    errors.Wrapf(err, "problem marking task '%s' as having generated tasks", t.Id).Error(),
 				}
 			}
 			return false, nil
