@@ -144,6 +144,9 @@ type Task struct {
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task.
 	GenerateTask bool `bson:"generate_task,omitempty" json:"generate_task,omitempty"`
+	// GeneratedTasks indicates that the task has already generated other tasks. This fields
+	// allows us to noop future requests, since a task should only generate others once.
+	GeneratedTasks bool `bson:"generated_tasks,omitempty" json:"generated_tasks,omitempty"`
 	// GeneratedBy, if present, is the ID of the task that generated this task.
 	GeneratedBy string `bson:"generated_by,omitempty" json:"generated_by,omitempty"`
 
@@ -528,6 +531,21 @@ func (t *Task) MarkAsUndispatched() error {
 				HostIdKey:        "",
 				AbortedKey:       "",
 				DetailsKey:       "",
+			},
+		},
+	)
+}
+
+// MarkGeneratedTasks marks that the task has generated tasks.
+func (t *Task) MarkGeneratedTasks() error {
+	t.GeneratedTasks = true
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				GeneratedTasksKey: true,
 			},
 		},
 	)
