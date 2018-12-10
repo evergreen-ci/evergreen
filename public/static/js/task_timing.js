@@ -1,7 +1,16 @@
 mciModule.controller('TaskTimingController', function(
-  $scope, $http, $window, $filter, $locationHash, mciTime, notificationService
+  $scope, $http, $window, $filter, $locationHash, mciTime,
+  notificationService
 ) {
-    let ttvm = this
+    const ttvm = this
+    const ALL_TASKS = 'All Tasks'
+    const time_taken = 'tt'
+    const makespan = 'makespan'
+    const processing_time = 'tpt'
+    const repotracker_requester = 'gitter_request'
+    const patch_requester = 'patch_request'
+    const nsPerMs = 1000000
+
     $scope.currentProject = $window.activeProject;
     let bvs = $scope.currentProject.build_variants
     bvs.sort(function(a,b){
@@ -10,14 +19,6 @@ mciModule.controller('TaskTimingController', function(
     $scope.currentBV = null;
     $scope.currentTask = "";
     $scope.currentHover = -1;
-
-    var ALL_TASKS = "All Tasks";
-    var time_taken = "tt";
-    var makespan = "makespan";
-    var processing_time = "tpt";
-    var repotracker_requester = "gitter_request";
-    var patch_requester = "patch_request"
-    var nsPerMs = 1000000;
 
     // Intermediate accumulator for code below
     let displayTaskNamesSet = new Set()
@@ -50,7 +51,9 @@ mciModule.controller('TaskTimingController', function(
 
     // add all display task names to tasks list
     // sort the task names for the current project
-    $scope.taskNames = $scope.currentProject.task_names.concat(allDisplayTasks).sort()
+    $scope.taskNames = [ALL_TASKS].concat(
+      $scope.currentProject.task_names.concat(allDisplayTasks).sort()
+    )
 
     var initialHash = $locationHash.get();
     // TODO do we keep this?
@@ -161,15 +164,13 @@ mciModule.controller('TaskTimingController', function(
     } else {
       $scope.numTasks = 50;
     }
+
     $scope.numTasksOptions = [25, 50, 100, 200, 500, 1000, 2000];
 
     $scope.setNumTasks = function(num){
         $scope.numTasks = num;
         $scope.load();
     }
-
-    // add an all tasks field
-    $scope.currentProject.task_names.unshift(ALL_TASKS);
 
     $scope.setBuildVariant = function(bv) {
         $scope.currentBV = bv;
@@ -382,7 +383,6 @@ mciModule.controller('TaskTimingController', function(
         var xScale = d3.scale.linear()
         .domain([0, $scope.taskData.length - 1 ])
         .range([0, width])
-      console.info($scope.taskData)
 
         var yAxis = d3.svg.axis()
         .scale(yScale)

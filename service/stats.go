@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -241,10 +240,6 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			tasks, err = task.FindAll(task.ByStatuses(statuses,
 				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 
-			grip.Infoln(task.ByStatuses(statuses,
-				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
-
-			grip.Infoln(tasks)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return

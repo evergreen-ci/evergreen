@@ -5,7 +5,7 @@ describe('TaskTimingControllerTest', function() {
 
   const $window = {
     activeProject: {
-      task_names: ['T_A', 'T_B', 'T_C', 'T_D'],
+      task_names: ['T_A', 'T_C', 'T_D'],
       build_variants: [{
         name: 'BV_A',
         task_names: ['T_A', 'T_C'],
@@ -17,16 +17,35 @@ describe('TaskTimingControllerTest', function() {
         name: 'BV_B',
         task_names: ['T_A', 'T_D'],
         display_tasks: [],
+      }, {
+        name: 'BV_C',
+        display_tasks: [{
+          name: 'T_X',
+          execution_tasks: ['T_C']
+        }]
+      }, {
+        name: 'BV_D',
+        display_tasks: [{
+          name: 'T_X',
+          execution_tasks: ['T_C']
+        }]
       }]
     }
   }
 
   beforeEach(inject(function($injector, $rootScope, _$controller_) {
+    // Controller's code mutates input data
+    // makie a hard copy of some data parts
+    let windowCopy = {activeProject: _.clone($window.activeProject)}
+    windowCopy.activeProject.task_names = _.map(
+      $window.activeProject.task_names
+    )
+
     let $controller = _$controller_
     scope = $rootScope.$new()
     ctrl = $controller('TaskTimingController', {
       $scope: scope,
-      $window: $window,
+      $window: windowCopy,
     })
   }))
 
@@ -34,6 +53,8 @@ describe('TaskTimingControllerTest', function() {
     expect(scope.selectableTasksPerBV).toEqual({
       BV_A: ['T_A', 'T_B'],
       BV_B: ['T_A', 'T_D'],
+      BV_C: ['T_X'],
+      BV_D: ['T_X'],
     })
   })
 
@@ -66,5 +87,15 @@ describe('TaskTimingControllerTest', function() {
         ).toBe(checkStatus)
       })
     })
+  })
+
+  it('collect list of unique display task names across al bvs', function() {
+    expect(scope.taskNames.length).toEqual(6)
+    expect(scope.taskNames).toContain('All Tasks')
+    expect(scope.taskNames).toContain('T_A')
+    expect(scope.taskNames).toContain('T_C')
+    expect(scope.taskNames).toContain('T_B')
+    expect(scope.taskNames).toContain('T_D')
+    expect(scope.taskNames).toContain('T_X')
   })
 })
