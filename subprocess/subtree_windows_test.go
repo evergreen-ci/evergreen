@@ -14,7 +14,7 @@ import (
 
 func init() {
 	err := grip.SetSender(send.MakeNative())
-	grip.CatchError(err)
+	grip.Error(err)
 }
 
 func TestWindowsProcessRegistry(t *testing.T) {
@@ -82,7 +82,7 @@ func TestWindowsProcessRegistry(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(reg.jobs), ShouldEqual, 1)
 
-			grip.CatchError(reg.removeJob(id))
+			grip.Error(reg.removeJob(id))
 			So(len(reg.jobs), ShouldEqual, 0)
 		})
 	})

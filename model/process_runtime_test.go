@@ -22,7 +22,7 @@ func init() {
 }
 
 func resetCollection() {
-	grip.CatchError(db.Clear(RuntimesCollection))
+	grip.Error(db.Clear(RuntimesCollection))
 }
 
 // Test that Upserts happen properly

@@ -26,9 +26,9 @@ func main() {
 	flag.Parse()
 
 	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", 2*time.Second)
-	grip.CatchEmergencyFatal(err)
+	grip.EmergencyFatal(err)
 	c := session.DB(dbName).C(collection)
 
-	grip.CatchEmergencyFatal(c.UpdateId(id, bson.M{"$set": bson.M{key: value}}))
+	grip.EmergencyFatal(c.UpdateId(id, bson.M{"$set": bson.M{key: value}}))
 	grip.Infof("set the value of '%s' for document '%s' in collection '%s'", key, id, collection)
 }

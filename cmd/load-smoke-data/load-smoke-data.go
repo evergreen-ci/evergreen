@@ -38,7 +38,7 @@ func getFiles(root string) ([]string, error) {
 
 func main() {
 	wd, err := os.Getwd()
-	grip.CatchEmergencyFatal(err)
+	grip.EmergencyFatal(err)
 	var (
 		path   string
 		dbName string
@@ -49,14 +49,14 @@ func main() {
 	flag.Parse()
 
 	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", 5*time.Second)
-	grip.CatchEmergencyFatal(err)
+	grip.EmergencyFatal(err)
 	session.SetSocketTimeout(10 * time.Second)
 	db := session.DB(dbName)
-	grip.CatchEmergencyFatal(db.DropDatabase())
+	grip.EmergencyFatal(db.DropDatabase())
 
 	var file *os.File
 	files, err := getFiles(path)
-	grip.CatchEmergencyFatal(err)
+	grip.EmergencyFatal(err)
 
 	doc := map[string]interface{}{}
 	catcher := grip.NewBasicCatcher()
@@ -87,5 +87,5 @@ func main() {
 		grip.Infof("imported %d documents into %s", count, collName)
 	}
 
-	grip.CatchEmergencyFatal(catcher.Resolve())
+	grip.EmergencyFatal(catcher.Resolve())
 }
