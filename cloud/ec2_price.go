@@ -61,6 +61,7 @@ func init() {
 }
 
 func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
+	dur := t.end.Sub(t.start)
 	if h.ComputeCostPerHour > 0 {
 		grip.Debug(message.Fields{
 			"message":               "returning cost data cached in host",
@@ -80,7 +81,6 @@ func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient
 		if err != nil {
 			return 0, errors.Wrap(err, "could not get zone for host")
 		}
-		dur := t.end.Sub(t.start)
 		region := azToRegion(zone)
 		price, err := cpf.getEC2OnDemandCost(ctx, client, os, h.InstanceType, region)
 		if err != nil {
