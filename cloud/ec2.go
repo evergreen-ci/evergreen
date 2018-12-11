@@ -564,18 +564,20 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 
 	// Get host statuses
 	hostsToCheck = append(hostsToCheck, onDemandHostIDs...)
-	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: hostsToCheck,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "error describing instances")
-	}
-	reservationsMap := map[string]string{}
-	for i := range out.Reservations {
-		reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = *out.Reservations[i].Instances[0].State.Name
-	}
-	for i := range hostsToCheck {
-		hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]]] = ec2StatusToEvergreenStatus(reservationsMap[*hostsToCheck[i]])
+	if len(hostsToCheck) > 0 {
+		out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
+			InstanceIds: hostsToCheck,
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "error describing instances")
+		}
+		reservationsMap := map[string]string{}
+		for i := range out.Reservations {
+			reservationsMap[*out.Reservations[i].Instances[0].InstanceId] = *out.Reservations[i].Instances[0].State.Name
+		}
+		for i := range hostsToCheck {
+			hostToStatusMap[instanceIdToHostMap[*hostsToCheck[i]]] = ec2StatusToEvergreenStatus(reservationsMap[*hostsToCheck[i]])
+		}
 	}
 
 	// Populate cloud statuses
