@@ -26,6 +26,8 @@ imports:
 
 - name: github.com/stretchr/testify
   version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+- name: github.com/pkg/errors
+  version: 248dadf4e9068a0b3e79f02ed0a610d935de5302
 
 - name: github.com/fuyufjh/splunk-hec-go
   version: 69956d6a6cbd511dade209563c3256c204c9ae51

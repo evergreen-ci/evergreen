@@ -26,7 +26,7 @@ func main() {
 	// environment.
 	app := buildApp()
 	err := app.Run(os.Args)
-	grip.CatchEmergencyFatal(err)
+	grip.EmergencyFatal(err)
 }
 
 func buildApp() *cli.App {

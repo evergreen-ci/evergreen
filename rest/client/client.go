@@ -138,15 +138,15 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 	local := grip.GetSender()
 
 	exec := newLogSender(ctx, c, apimodels.AgentLogPrefix, taskData)
-	grip.CatchWarning(exec.SetFormatter(send.MakeDefaultFormatter()))
+	grip.Warning(exec.SetFormatter(send.MakeDefaultFormatter()))
 	exec = send.NewConfiguredMultiSender(local, exec)
 
 	task := newTimeoutLogSender(ctx, c, apimodels.TaskLogPrefix, taskData)
-	grip.CatchWarning(task.SetFormatter(send.MakeDefaultFormatter()))
+	grip.Warning(task.SetFormatter(send.MakeDefaultFormatter()))
 	task = send.NewConfiguredMultiSender(local, task)
 
 	system := newLogSender(ctx, c, apimodels.SystemLogPrefix, taskData)
-	grip.CatchWarning(system.SetFormatter(send.MakeDefaultFormatter()))
+	grip.Warning(system.SetFormatter(send.MakeDefaultFormatter()))
 	system = send.NewConfiguredMultiSender(local, system)
 
 	return &logHarness{

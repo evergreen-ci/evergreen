@@ -126,7 +126,7 @@ func checkTaskByCommit(username, key string) error {
 			grip.Error(err)
 			return err
 		}
-		grip.CatchWarning(resp.Body.Close())
+		grip.Warning(resp.Body.Close())
 
 		err = json.Unmarshal(body, &builds)
 		if err != nil {

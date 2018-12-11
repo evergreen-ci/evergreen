@@ -46,7 +46,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) error {
 				grip.Info(err)
 				return
 			}
-			grip.CatchEmergencyFatal(err)
+			grip.EmergencyFatal(err)
 		}
 	}()
 
@@ -88,7 +88,7 @@ func (agt *Agent) statusHandler() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_, err = w.Write(out)
-		grip.CatchError(err)
+		grip.Error(err)
 	}
 }
 
@@ -114,7 +114,7 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
-	grip.CatchError(err)
+	grip.Error(err)
 
 	// need to use os.exit rather than a panic because the panic
 	// handler will recover.

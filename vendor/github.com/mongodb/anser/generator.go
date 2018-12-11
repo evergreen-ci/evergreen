@@ -101,7 +101,7 @@ func generator(env Environment, groupID string, input <-chan amboy.Job) (<-chan 
 
 			for _, group := range network.Resolve(groupID) {
 				for _, edge := range network.GetGroup(group) {
-					grip.CatchNotice(dep.AddEdge(edge))
+					grip.Notice(dep.AddEdge(edge))
 				}
 			}
 

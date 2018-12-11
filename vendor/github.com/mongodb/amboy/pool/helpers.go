@@ -28,9 +28,30 @@ func runJob(ctx context.Context, job amboy.Job) {
 	job.Run(ctx)
 }
 
-func executeJob(ctx context.Context, job amboy.Job, q amboy.Queue) {
+func handleJob(ctx context.Context, job amboy.Job, q amboy.Queue) {
+	start := time.Now()
+
+	executeJob(ctx, job, q, start)
+
+	ti := job.TimeInfo()
+
+	r := message.Fields{
+		"job":           job.ID(),
+		"job_type":      job.Type().Name,
+		"duration_secs": ti.Duration().Seconds(),
+		"queue_type":    fmt.Sprintf("%T", q),
+	}
+	if err := job.Error(); err != nil {
+		r["error"] = err.Error()
+		grip.Error(r)
+	} else {
+		grip.Debug(r)
+	}
+}
+
+func executeJob(ctx context.Context, job amboy.Job, q amboy.Queue, startAt time.Time) {
 	ti := amboy.JobTimeInfo{
-		Start: time.Now(),
+		Start: startAt,
 	}
 	job.UpdateTimeInfo(ti)
 
@@ -45,19 +66,6 @@ func executeJob(ctx context.Context, job amboy.Job, q amboy.Queue) {
 	q.Complete(ctx, job)
 	ti.End = time.Now()
 	job.UpdateTimeInfo(ti)
-
-	r := message.Fields{
-		"job":           job.ID(),
-		"job_type":      job.Type().Name,
-		"duration_secs": ti.Duration().Seconds(),
-		"queue_type":    fmt.Sprintf("%T", q),
-	}
-	if err := job.Error(); err != nil {
-		r["error"] = err.Error()
-		grip.Error(r)
-	} else {
-		grip.Debug(r)
-	}
 
 }
 
@@ -98,7 +106,7 @@ func worker(ctx context.Context, jobs <-chan workUnit, q amboy.Queue, wg *sync.W
 
 			job = wu.job
 			cancel = wu.cancel
-			executeJob(ctx, job, q)
+			executeJob(ctx, job, q, time.Now())
 			cancel()
 		}
 	}

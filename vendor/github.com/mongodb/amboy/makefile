@@ -176,7 +176,9 @@ vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/mongodb/grip/
+	rm -rf vendor/github.com/evergreen-ci/gimlet/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pkg/errors/
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
 	rm -rf vendor/gopkg.in/mgo.v2/testdb/
 	rm -rf vendor/gopkg.in/mgo.v2/testserver/

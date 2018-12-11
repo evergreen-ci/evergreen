@@ -16,6 +16,6 @@ func init() {
 	}
 
 	sender, err := send.NewNativeLogger(std.Name(), std.GetSender().Level())
-	std.CatchAlert(std.SetSender(sender))
-	std.CatchAlert(err)
+	std.Alert(std.SetSender(sender))
+	std.Alert(err)
 }

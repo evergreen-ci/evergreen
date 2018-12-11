@@ -85,8 +85,60 @@ func runUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int, assert 
 		statCounter++
 		assert.True(stat.ID != "")
 	}
-	assert.Equal(statCounter, numJobs)
+	assert.Equal(numJobs, statCounter, fmt.Sprintf("want jobStats for every job"))
 
+	grip.Infof("completed results check for %d worker smoke test", size)
+}
+
+// Simple does not check numJobs against Stats values in the case of Queue update delay
+func runSimpleUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int,
+	assert *assert.Assertions) {
+	if err := q.Start(ctx); !assert.NoError(err) {
+		return
+	}
+
+	testNames := []string{"test", "second", "workers", "forty-two", "true", "false", ""}
+	numJobs := size * len(testNames)
+
+	wg := &sync.WaitGroup{}
+
+	for i := 0; i < size; i++ {
+		wg.Add(1)
+		go func(num int) {
+			for _, name := range testNames {
+				j := newMockJob()
+				j.SetID(fmt.Sprintf("%s.%d", name, num))
+				assert.NoError(q.Put(j),
+					fmt.Sprintf("with %d workers", num))
+				_, ok := q.Get(j.ID())
+				assert.True(ok)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
+	amboy.WaitCtxInterval(ctx, q, time.Minute)
+
+	grip.Infof("workers complete for %d worker smoke test", size)
+	assert.True(q.Stats().Total <= numJobs)
+	for result := range q.Results(ctx) {
+		assert.True(result.Status().Completed, fmt.Sprintf("with %d workers", size))
+		// assert that we had valid time info persisted
+		ti := result.TimeInfo()
+		assert.NotZero(ti.Start)
+		assert.NotZero(ti.End)
+	}
+
+	stats := q.Stats()
+	grip.Alertln(stats)
+
+	statCounter := 0
+	for stat := range q.JobStats(ctx) {
+		statCounter++
+		assert.True(stat.ID != "")
+	}
+	assert.Equal(numJobs, statCounter, fmt.Sprintf("want jobStats for every job"))
 	grip.Infof("completed results check for %d worker smoke test", size)
 }
 
@@ -493,6 +545,72 @@ func TestSmokePriorityQueueWithWorkerPools(t *testing.T) {
 
 		q := NewLocalPriorityQueue(poolSize)
 		runUnorderedSmokeTest(ctx, q, poolSize, assert)
+
+		cancel()
+	}
+}
+
+func TestSmokeSQSFifoQueueWithSingleWorker(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+
+	q, err := NewSQSFifoQueue(randomString(4), 1)
+	assert.NoError(err)
+	runner := pool.NewSingle()
+	assert.NoError(runner.SetQueue(q))
+
+	assert.NoError(q.SetRunner(runner))
+	assert.Equal(runner, q.Runner())
+
+	runSimpleUnorderedSmokeTest(ctx, q, 1, assert)
+}
+
+func TestSmokeSQSFifoQueueWithWorkerPools(t *testing.T) {
+	assert := assert.New(t) // nolint
+	baseCtx := context.Background()
+
+	for _, poolSize := range []int{2, 4} {
+		ctx, cancel := context.WithTimeout(baseCtx, time.Minute)
+
+		q, err := NewSQSFifoQueue(randomString(4), poolSize)
+		assert.NoError(err)
+		runSimpleUnorderedSmokeTest(ctx, q, poolSize, assert)
+
+		cancel()
+	}
+}
+
+func TestSmokeSQSFifoQueueWithAbortablePools(t *testing.T) {
+	assert := assert.New(t) // nolint
+	baseCtx := context.Background()
+	for _, poolSize := range []int{2, 4} {
+		grip.Infoln("testing priority queue for:", poolSize)
+		ctx, cancel := context.WithTimeout(baseCtx, time.Minute)
+
+		q, err := NewSQSFifoQueue(randomString(4), 1)
+		assert.NoError(err)
+		q.SetRunner(pool.NewAbortablePool(poolSize, q))
+		runSimpleUnorderedSmokeTest(ctx, q, poolSize, assert)
+
+		cancel()
+	}
+}
+
+func TestSmokeSQSFifoQueueWithRateLimitingPools(t *testing.T) {
+	assert := assert.New(t) // nolint
+	baseCtx := context.Background()
+
+	for _, poolSize := range []int{2, 4} {
+		grip.Infoln("testing priority queue for:", poolSize)
+		ctx, cancel := context.WithTimeout(baseCtx, time.Minute)
+
+		q, err := NewSQSFifoQueue(randomString(4), 1)
+		assert.NoError(err)
+		runner, _ := pool.NewSimpleRateLimitedWorkers(poolSize, time.Millisecond, q)
+		q.SetRunner(runner)
+		runSimpleUnorderedSmokeTest(ctx, q, poolSize, assert)
 
 		cancel()
 	}
@@ -944,7 +1062,7 @@ func TestSmokeRemoteOrderedWithWorkerPoolsAndMongoDB(t *testing.T) {
 	}
 }
 
-func TestSmokeWaitUntilAdaptiveOrerQueuePools(t *testing.T) {
+func TestSmokeWaitUntilAdaptiveOrderQueuePools(t *testing.T) {
 	assert := assert.New(t) // nolint
 
 	for _, poolSize := range []int{1, 2} {

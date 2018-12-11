@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -171,7 +172,7 @@ func (p *abortablePool) runJob(ctx context.Context, job amboy.Job) {
 		delete(p.jobs, job.ID())
 	}()
 
-	executeJob(ctx, job, p.queue)
+	executeJob(ctx, job, p.queue, time.Now())
 }
 
 func (p *abortablePool) IsRunning(id string) bool {

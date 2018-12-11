@@ -193,10 +193,6 @@ func (p *ewmaRateLimiting) addCanceler(id string, cancel context.CancelFunc) {
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
 	start := time.Now()
-	ti := amboy.JobTimeInfo{
-		Start: start,
-	}
-	j.UpdateTimeInfo(ti)
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
@@ -209,17 +205,9 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		delete(p.jobs, j.ID())
 	}()
 
-	runJob(ctx, j)
+	executeJob(ctx, j, p.queue, start)
 
-	// belt and suspenders
-	ti.End = time.Now()
-	j.UpdateTimeInfo(ti)
-
-	p.queue.Complete(ctx, j)
-	ti.End = time.Now()
-	j.UpdateTimeInfo(ti)
 	duration := time.Since(start)
-
 	interval := p.getNextTime(duration)
 	r := message.Fields{
 		"id":            j.ID(),

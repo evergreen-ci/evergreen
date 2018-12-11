@@ -113,9 +113,9 @@ func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) 
 		return -1, errors.Wrapf(err, "error opening target archive file %s", c.Target)
 	}
 	defer func() {
-		logger.CatchError(tarWriter.Close())
-		logger.CatchError(gz.Close())
-		logger.CatchError(f.Close())
+		logger.Error(tarWriter.Close())
+		logger.Error(gz.Close())
+		logger.Error(f.Close())
 	}()
 
 	// Build the archive

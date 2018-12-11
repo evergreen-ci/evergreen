@@ -119,15 +119,6 @@ func (s *GripInternalSuite) TestCatchMethods() {
 	s.NoError(s.grip.SetSender(sink))
 
 	cases := []interface{}{
-		s.grip.CatchAlert,
-		s.grip.CatchCritical,
-		s.grip.CatchDebug,
-		s.grip.CatchEmergency,
-		s.grip.CatchError,
-		s.grip.CatchInfo,
-		s.grip.CatchNotice,
-		s.grip.CatchWarning,
-
 		s.grip.Alert,
 		s.grip.Critical,
 		s.grip.Debug,
@@ -182,7 +173,6 @@ func (s *GripInternalSuite) TestCatchMethods() {
 		s.grip.NoticeWhenf,
 		s.grip.WarningWhenf,
 
-		func(err error) { s.grip.CatchLog(level.Info, err) },
 		func(w bool, m interface{}) { s.grip.LogWhen(w, level.Info, m) },
 		func(w bool, m ...interface{}) { s.grip.LogWhenln(w, level.Info, m...) },
 		func(w bool, m string, a ...interface{}) { s.grip.LogWhenf(w, level.Info, m, a...) },

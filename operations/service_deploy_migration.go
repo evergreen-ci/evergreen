@@ -27,7 +27,7 @@ func deployMigration() cli.Command {
 			db := parseDB(c)
 			env := evergreen.GetEnvironment()
 			err := env.Configure(ctx, c.String(confFlagName), db)
-			grip.CatchEmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
+			grip.EmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			settings := env.Settings()
 
 			// avoid working on remote jobs during migrations

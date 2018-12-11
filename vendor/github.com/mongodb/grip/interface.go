@@ -25,19 +25,6 @@ type Journaler interface {
 	LogWhenf(bool, level.Priority, string, ...interface{})
 	LogWhenln(bool, level.Priority, ...interface{})
 
-	// Log a message (the contents of the error,) only if the
-	// error is non-nil. These are redundant to the similar base
-	// methods. (e.g. Alert and CatchAlert have the same behavior.)
-	CatchLog(level.Priority, error)
-	CatchEmergency(error)
-	CatchAlert(error)
-	CatchCritical(error)
-	CatchError(error)
-	CatchWarning(error)
-	CatchNotice(error)
-	CatchInfo(error)
-	CatchDebug(error)
-
 	// Methods for sending messages at specific levels. If you
 	// send a message at a level that is below the threshold, then it is a no-op.
 
@@ -46,8 +33,6 @@ type Journaler interface {
 	// to be below threshold, however, if the message isn't
 	// loggable (e.g. error is nil, or message is empty,) these
 	// methods will not panic/error.
-	CatchEmergencyFatal(error)
-	CatchEmergencyPanic(error)
 	EmergencyFatal(interface{})
 	EmergencyFatalf(string, ...interface{})
 	EmergencyFatalln(...interface{})

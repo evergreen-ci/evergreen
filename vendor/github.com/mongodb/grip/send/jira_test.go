@@ -251,7 +251,7 @@ func (j *JiraSuite) TestPopulateKey() {
 
 	j.Equal(0, count)
 	m := message.MakeJiraMessage(jiraIssue)
-	m.SetPriority(level.Alert)
+	j.NoError(m.SetPriority(level.Alert))
 	j.True(m.Loggable())
 	sender.Send(m)
 	j.Equal(1, count)
@@ -281,7 +281,7 @@ func (j *JiraSuite) TestWhenCallbackNil() {
 	}
 
 	m := message.MakeJiraMessage(jiraIssue)
-	m.SetPriority(level.Alert)
+	j.NoError(m.SetPriority(level.Alert))
 	j.True(m.Loggable())
 	j.NotPanics(func() {
 		sender.Send(m)

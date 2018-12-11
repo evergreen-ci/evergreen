@@ -196,16 +196,16 @@ func extractTarArcive(ctx context.Context, tarReader *tar.Reader, rootPath strin
 			}
 
 			if _, err = io.Copy(f, tarReader); err != nil {
-				grip.CatchError(f.Close())
+				grip.Error(f.Close())
 				return errors.WithStack(err)
 			}
 
 			// File's permissions should match what was in the archive
 			if err = os.Chmod(f.Name(), os.FileMode(int32(hdr.Mode))); err != nil {
-				grip.CatchError(f.Close())
+				grip.Error(f.Close())
 				return errors.WithStack(err)
 			}
-			grip.CatchError(f.Close())
+			grip.Error(f.Close())
 		} else {
 			return errors.New("Unknown file type in archive.")
 		}

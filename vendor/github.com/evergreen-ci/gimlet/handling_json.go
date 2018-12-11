@@ -13,7 +13,7 @@ import (
 func WriteJSONResponse(w http.ResponseWriter, code int, data interface{}) {
 	response, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		grip.CatchDebug(err)
+		grip.Debug(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

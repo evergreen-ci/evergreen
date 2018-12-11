@@ -141,7 +141,7 @@ func (j *decoHostNotifyJob) Run(_ context.Context) {
 	}
 
 	msg := message.MakeJiraMessage(&issue)
-	grip.CatchWarning(msg.SetPriority(level.Notice))
+	grip.Warning(msg.SetPriority(level.Notice))
 
 	sender.Send(msg)
 }

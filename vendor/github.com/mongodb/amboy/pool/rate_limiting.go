@@ -13,14 +13,12 @@ package pool
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -142,39 +140,9 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan workUnit) {
 				job = wu.job
 				cancel = wu.cancel
 
-				ti := amboy.JobTimeInfo{
-					Start: time.Now(),
-				}
-				job.UpdateTimeInfo(ti)
-
-				runJob(ctx, job)
-
-				// belt and suspenders
-				ti.End = time.Now()
-				job.UpdateTimeInfo(ti)
-
-				p.queue.Complete(ctx, job)
-
-				ti.End = time.Now()
-				job.UpdateTimeInfo(ti)
-
-				r := message.Fields{
-					"job":           job.ID(),
-					"job_type":      job.Type().Name,
-					"duration_secs": ti.Duration().Seconds(),
-					"queue_type":    fmt.Sprintf("%T", p.queue),
-					"pool":          "rate limiting",
-				}
-
-				if err := job.Error(); err != nil {
-					r["error"] = err.Error()
-					grip.Error(r)
-				} else {
-					grip.Debug(r)
-				}
+				executeJob(ctx, job, p.queue, time.Now())
 
 				cancel()
-
 				timer.Reset(p.interval)
 			}
 		}

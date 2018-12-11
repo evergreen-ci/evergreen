@@ -64,7 +64,7 @@ func (c *metricsCollector) processInfoCollector(ctx context.Context, interval ti
 			return
 		case <-timer.C:
 			msgs := message.CollectProcessInfoSelfWithChildren()
-			grip.CatchNotice(c.comm.SendProcessInfo(ctx, c.taskData, convertProcInfo(msgs)))
+			grip.Notice(c.comm.SendProcessInfo(ctx, c.taskData, convertProcInfo(msgs)))
 			grip.DebugWhen(sometimes.Fifth(), msgs)
 
 			timer.Reset(interval)
@@ -109,7 +109,7 @@ func (c *metricsCollector) sysInfoCollector(ctx context.Context, interval time.D
 				return
 			}
 
-			grip.CatchNotice(c.comm.SendSystemInfo(ctx, c.taskData, sysinfo))
+			grip.Notice(c.comm.SendSystemInfo(ctx, c.taskData, sysinfo))
 			grip.DebugWhen(sometimes.Fifth(), msg)
 
 			timer.Reset(interval)

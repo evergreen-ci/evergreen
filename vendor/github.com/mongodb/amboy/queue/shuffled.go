@@ -55,7 +55,7 @@ func (q *shuffledLocal) Start(ctx context.Context) error {
 	q.starter.Do(func() {
 		q.operations = make(chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job))
 		go q.reactor(ctx)
-		grip.CatchError(q.runner.Start(ctx))
+		grip.Error(q.runner.Start(ctx))
 		grip.Info("started shuffled job storage rector")
 	})
 

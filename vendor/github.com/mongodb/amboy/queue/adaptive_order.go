@@ -41,7 +41,7 @@ func (q *adaptiveLocalOrdering) Start(ctx context.Context) error {
 	q.starter.Do(func() {
 		q.operations = make(chan func(context.Context, *adaptiveOrderItems))
 		go q.reactor(ctx)
-		grip.CatchError(q.runner.Start(ctx))
+		grip.Error(q.runner.Start(ctx))
 		grip.Info("started adaptive ordering job rector")
 	})
 

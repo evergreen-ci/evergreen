@@ -23,7 +23,7 @@ func (s *GripSuite) TestSenderGetterReturnsExpectedJournaler() {
 	s.NoError(grip.SetSender(sender))
 	s.NoError(err)
 
-	defer func() { std.CatchError(os.Remove("foo")) }()
+	defer func() { std.Error(os.Remove("foo")) }()
 
 	s.Equal(grip.Name(), "sender_swap")
 	s.NotEqual(grip.GetSender(), ns)

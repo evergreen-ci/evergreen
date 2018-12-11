@@ -29,7 +29,7 @@ type remoteSimpleOrdered struct {
 // runner with the specified number of workers.
 func NewSimpleRemoteOrdered(size int) Remote {
 	q := &remoteSimpleOrdered{remoteBase: newRemoteBase()}
-	grip.CatchError(q.SetRunner(pool.NewLocalWorkers(size, q)))
+	grip.Error(q.SetRunner(pool.NewLocalWorkers(size, q)))
 	grip.Infof("creating new remote job queue with %d workers", size)
 
 	return q
@@ -65,13 +65,13 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 
 			job, err = q.driver.Get(job.ID())
 			if err != nil {
-				grip.CatchNotice(q.driver.Unlock(job))
+				grip.Notice(q.driver.Unlock(job))
 				grip.Warning(err)
 				continue
 			}
 
 			if job.Status().Completed {
-				grip.CatchWarning(q.driver.Unlock(job))
+				grip.Warning(q.driver.Unlock(job))
 				continue
 			}
 
@@ -91,7 +91,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 				count++
 				return job
 			case dependency.Passed:
-				grip.CatchWarning(q.driver.Unlock(job))
+				grip.Warning(q.driver.Unlock(job))
 				q.addBlocked(job.ID())
 				continue
 			case dependency.Unresolved:
@@ -101,7 +101,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 						"edges": dep.Edges(),
 						"dep":   dep.Type(),
 					}))
-				grip.CatchWarning(q.driver.Unlock(job))
+				grip.Warning(q.driver.Unlock(job))
 				q.addBlocked(job.ID())
 				continue
 			case dependency.Blocked:
@@ -109,7 +109,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 				// to move that job *up* in the queue by submitting it here. there's a
 				// chance, however, that it's already in progress and we'll end up
 				// running it twice.
-				grip.CatchWarning(q.driver.Unlock(job))
+				grip.Warning(q.driver.Unlock(job))
 
 				edges := dep.Edges()
 				grip.Debugf("job %s is blocked. eep! [%v]", id, edges)
@@ -131,7 +131,7 @@ func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 
 				continue
 			default:
-				grip.CatchWarning(q.driver.Unlock(job))
+				grip.Warning(q.driver.Unlock(job))
 				grip.Warning(message.MakeFieldsMessage("detected invalid dependency",
 					message.Fields{
 						"job":   id,

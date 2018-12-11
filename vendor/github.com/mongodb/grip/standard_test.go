@@ -1,7 +1,6 @@
 package grip
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -18,7 +17,6 @@ type (
 	basicMethod  func(interface{})
 	lnMethod     func(...interface{})
 	fMethod      func(string, ...interface{})
-	catchMethod  func(error)
 	whenMethod   func(bool, interface{})
 	whenlnMethod func(bool, ...interface{})
 	whenfMethod  func(bool, string, ...interface{})
@@ -45,32 +43,6 @@ func (s *LoggingMethodSuite) SetupTest() {
 	s.loggingSender = send.MakeInternalLogger()
 	s.NoError(s.logger.SetSender(s.loggingSender))
 	s.Exactly(s.logger.GetSender(), s.loggingSender)
-}
-
-func (s *LoggingMethodSuite) TestCatchMethods() {
-	cases := map[string][]catchMethod{
-		"emergency": []catchMethod{CatchEmergency, s.logger.CatchEmergency},
-		"alert":     []catchMethod{CatchAlert, s.logger.CatchAlert},
-		"critical":  []catchMethod{CatchCritical, s.logger.CatchCritical},
-		"error":     []catchMethod{CatchError, s.logger.CatchError},
-		"warning":   []catchMethod{CatchWarning, s.logger.CatchWarning},
-		"notice":    []catchMethod{CatchNotice, s.logger.CatchNotice},
-		"info":      []catchMethod{CatchInfo, s.logger.CatchInfo},
-		"debug":     []catchMethod{CatchDebug, s.logger.CatchDebug},
-	}
-
-	msg := errors.New("hello world")
-	for kind, loggers := range cases {
-		s.Len(loggers, 2)
-		loggers[0](msg)
-		loggers[1](msg)
-
-		lgrMsg := s.loggingSender.GetMessage()
-		stdMsg := s.stdSender.GetMessage()
-		s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
-			fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
-	}
-
 }
 
 func (s *LoggingMethodSuite) TestWhenMethods() {

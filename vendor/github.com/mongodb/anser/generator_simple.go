@@ -139,7 +139,7 @@ func (j *simpleMigrationGenerator) Jobs() <-chan amboy.Job {
 	close(jobs)
 
 	out, err := generator(env, j.ID(), jobs)
-	grip.CatchError(err)
+	grip.Error(err)
 	grip.Infof("produced %d tasks for migration %s", len(j.Migrations), j.ID())
 	j.Migrations = []*simpleMigrationJob{}
 	return out
