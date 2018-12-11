@@ -56,7 +56,7 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024, // 1MB
 	}
-	opts := subprocess.OutputOptions{Output: output, SendErrorToOutput: true}
+	opts := subprocess.OutputOptions{Output: output, Error: output}
 
 	proc := subprocess.NewRemoteCommand(
 		cmd,
