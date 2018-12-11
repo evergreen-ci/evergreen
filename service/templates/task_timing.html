@@ -3,7 +3,6 @@
 <script type="text/javascript">
   window.activeProject = {{.Project}};
 </script>
-<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.min.js"></script>
 <script type="text/javascript" src="{{Static "js" "task_timing.js"}}?hash={{ BuildRevision }}"></script>
 {{end}}
 
@@ -12,7 +11,7 @@ Evergreen - Task Timing
 {{end}}
 
 {{define "content"}}
-  <div id="content" class="container-fluid" ng-controller="TaskTimingController">
+  <div id="content" class="container-fluid" ng-controller="TaskTimingController as ttvm">
     <div class="row">
       <ul class="nav nav-tabs">
     <li ng-repeat="view in requestViewOptions" ng-class="{active:currentRequest.requester == view.requester }"><a href="#" ng-click="setCurrentRequest(view)">[[view.name]]</a></li>
@@ -35,9 +34,9 @@ Evergreen - Task Timing
       <h3>Tasks</h3>
       <div class="task-timing-list-container">
       <ul id="task-names" class="task-timing-list">
-          <li ng-repeat="task in currentProject.task_names" ng-click="form.$setPristine();setTaskName(task)"
-          ng-class="{'active-elt': task == currentTask, 'semi-transparent': !checkTaskForGraph(task), 'full-opacity': checkTaskForGraph(task)}">
-          [[task]]
+          <li ng-repeat="taskName in taskNames" ng-click="form.$setPristine();setTaskName(taskName)"
+          ng-class="{'active-elt': taskName == currentTask, 'semi-transparent': !checkTaskForGraph(task), 'full-opacity': checkTaskForGraph(taskName)}">
+          [[taskName]]
         </li>
       </ul>
     </div>
@@ -67,7 +66,7 @@ Evergreen - Task Timing
         </button>
       </div>
       <div id="divChkSuccessful">
-        <input type="checkbox" id="chkSuccessful" ng-model="onlySuccessful" ng-click="load()">Only Show Successful</input>
+        <input type="checkbox" id="chkSuccessful" ng-model="ttvm.onlySuccessful" ng-click="load()">Only Show Successful</input>
       </div>
     </div>
       </div>

@@ -855,6 +855,16 @@ func Find(query db.Q) ([]Task, error) {
 	return filtered, err
 }
 
+// Find returns really all tasks that satisfy the query.
+func FindAll(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, query, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	return tasks, err
+}
+
 func FindWithDisplayTasks(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)

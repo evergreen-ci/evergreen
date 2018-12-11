@@ -1,21 +1,59 @@
-mciModule.controller('TaskTimingController', function($scope, $http, $window, $filter, $locationHash, mciTime, notificationService) {
+mciModule.controller('TaskTimingController', function(
+  $scope, $http, $window, $filter, $locationHash, mciTime,
+  notificationService
+) {
+    const ttvm = this
+    const ALL_TASKS = 'All Tasks'
+    const time_taken = 'tt'
+    const makespan = 'makespan'
+    const processing_time = 'tpt'
+    const repotracker_requester = 'gitter_request'
+    const patch_requester = 'patch_request'
+    const nsPerMs = 1000000
+
     $scope.currentProject = $window.activeProject;
-    // sort the task names for the current project
-    $scope.currentProject.task_names.sort()
-    $scope.currentProject.build_variants.sort(function(a,b){
+    let bvs = $scope.currentProject.build_variants
+    bvs.sort(function(a,b){
         return (a.name < b.name) ? -1 : 1
     });
-    $scope.currentBV = "";
+    $scope.currentBV = null;
     $scope.currentTask = "";
     $scope.currentHover = -1;
 
-    var allTasksField = "All Tasks";
-    var time_taken = "tt";
-    var makespan = "makespan";
-    var processing_time = "tpt";
-    var repotracker_requester = "gitter_request";
-    var patch_requester = "patch_request"
-    var nsPerMs = 1000000;
+    // Intermediate accumulator for code below
+    let displayTaskNamesSet = new Set()
+
+    // {bvName: [list of selectable task names], ...}
+    $scope.selectableTasksPerBV = _.reduce(bvs, function(m, bv) {
+      let dispTaskNames = _.pluck(bv.display_tasks, 'name')
+      m[bv.name] = _.chain(bv.task_names)
+        // Include display task names
+        .union(dispTaskNames)
+        // exclude execution task names
+        .difference(
+          _.flatten(
+            _.pluck(bv.display_tasks, 'execution_tasks'),
+            true
+          )
+        )
+        .sortBy()
+        .value()
+
+      // Side effect - collect set of all display task names
+      for (let name of dispTaskNames) displayTaskNamesSet.add(name)
+
+      return m
+    }, {})
+
+    // Will contain all display task names
+    // Converting unique set to an array
+    let allDisplayTasks = [...displayTaskNamesSet]
+
+    // add all display task names to tasks list
+    // sort the task names for the current project
+    $scope.taskNames = [ALL_TASKS].concat(
+      $scope.currentProject.task_names.concat(allDisplayTasks).sort()
+    )
 
     var initialHash = $locationHash.get();
     // TODO do we keep this?
@@ -27,7 +65,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         }
     } else {
         // check if there are no build variants in the project
-        if ($scope.currentProject.build_variants != []) {
+        if (!_.isEmpty($scope.currentProject.build_variants)) {
             $scope.currentBV = $scope.currentProject.build_variants[0];
         }
     }
@@ -37,19 +75,16 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     if(initialHash.taskName){
         $scope.currentTask = initialHash.taskName
     } else {
-        if ($scope.currentProject.task_names != []) {
-            if ($scope.currentBV.task_names != []) {
+        if (!_.isEmpty($scope.currentProject.task_names)) {
+            if (!_.isEmpty($scope.currentBV.task_names)) {
                 $scope.currentTask = $scope.currentBV.task_names[0];
             } else {
                 $scope.currentTask = $scope.currentProject.task_names[0];
             }
         }
     }
-    if (initialHash.onlySuccessful === true) {
-      $scope.onlySuccessful = true;
-    } else {
-      $scope.onlySuccessful = false;
-    }
+
+    ttvm.onlySuccessful = initialHash.onlySuccessful === 'true'
 
     $scope.taskData = {};
     $scope.locked = false;
@@ -86,21 +121,16 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     }
 
     // normal task options
-    $scope.timeDiffOptions = [
-        {
-            name: "Start \u21E2 Finish",
-            diff: ["finish_time", "start_time"]
-
-        },
-        {
-            name: "Scheduled \u21E2 Start",
-            diff: ["start_time", "scheduled_time"]
-        },
-        {
-            name: "Scheduled \u21E2 Finish",
-            diff: ["finish_time", "scheduled_time"]
-        }
-    ];
+    $scope.timeDiffOptions = [{
+      name: "Start \u21E2 Finish",
+      diff: ["finish_time", "start_time"]
+    }, {
+      name: "Scheduled \u21E2 Start",
+      diff: ["start_time", "scheduled_time"]
+    }, {
+      name: "Scheduled \u21E2 Finish",
+      diff: ["finish_time", "scheduled_time"]
+    }]
 
     $scope.timeDiff = $scope.timeDiffOptions[0];
 
@@ -110,18 +140,15 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     }
 
     // options for the all tasks functionality
-    $scope.allTasksOptions = [
-        {
-            name: "Makespan",
-            type: makespan,
+    $scope.allTasksOptions = [{
+      name: "Makespan",
+      type: makespan,
+    }, {
+      name: "Total Processing Time",
+      type: processing_time,
+    }]
 
-        },
-        { name: "Total Processing Time",
-            type: processing_time,
-        },
-    ];
     $scope.allTasksView = $scope.allTasksOptions[0];
-
 
     $scope.setAllTasksView = function(view) {
         $scope.allTasksView = view;
@@ -129,55 +156,42 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     }
 
     $scope.isAllTasks = function(){
-      return $scope.allTasks || $scope.currentTask == "All Tasks";
+      return $scope.allTasks || $scope.currentTask == ALL_TASKS
     }
-
 
     if (initialHash.limit) {
       $scope.numTasks = initialHash.limit;
     } else {
       $scope.numTasks = 50;
     }
-    $scope.numTasksOptions = [25, 50, 100, 200, 500, 1000, 2000];
 
+    $scope.numTasksOptions = [25, 50, 100, 200, 500, 1000, 2000];
 
     $scope.setNumTasks = function(num){
         $scope.numTasks = num;
         $scope.load();
     }
 
-    // add an all tasks field
-    $scope.currentProject.task_names.unshift(allTasksField);
-
-
-
     $scope.setBuildVariant = function(bv) {
         $scope.currentBV = bv;
         $scope.load();
-
     };
 
     $scope.setTaskName = function(task) {
-        if (task == allTasksField){
-            $scope.allTasks = true;
-            $scope.currentTask = task;
-            $scope.load();
-            return
-        }
-        $scope.allTasks = false;
+        $scope.allTasks = task == ALL_TASKS
         $scope.currentTask = task;
         $scope.load();
     }
 
-
     // check that task is in list of build variants
     $scope.checkTaskForGraph = function (task) {
-        if (task == allTasksField){
+        if (task == ALL_TASKS){
             return true;
         }
-        return _.some($scope.currentBV.task_names, function(name){ return name == task});
+        return _.any($scope.selectableTasksPerBV[$scope.currentBV.name], function(name) {
+          return name == task
+        })
     }
-
 
     $scope.getLink = function() {
         if ($scope.isAllTasks()) {
@@ -239,7 +253,6 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
             }
           }), nonZeroTimeFilter).sort();
 
-
         if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
           return 0;
         } else {
@@ -256,7 +269,6 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         var tasks = _.filter(build.tasks, function(task){return nonZeroTimeFilter(new Date(task.start_time));})
         return mciTime.fromNanoseconds(_.reduce(tasks, function(sum, task){return sum + task.time_taken}, 0));
       }
-
 
       var xMap = function(task){
         return moment(task.create_time);
@@ -299,7 +311,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
       var query = (!!before ? 'before=' + encodeURIComponent(before) : '');
       query += (query.length > 0 && !!limit ? '&' : '');
       query += (!!limit ? 'limit=' + encodeURIComponent(limit) : '');
-      query += $scope.onlySuccessful ? "&onlySuccessful=true" : "";
+      query += ttvm.onlySuccessful ? "&onlySuccessful=true" : "";
       url = '/json/task_timing/' +
           encodeURIComponent($scope.currentProject.name) + '/' +
           encodeURIComponent($scope.currentBV.name) + '/' +
@@ -326,7 +338,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
           return function(){
               $locationHash.set({ project: p, buildVariant: bv, taskName: t, requester:r, limit: l, onlySuccessful: o});
           }
-      }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks, $scope.onlySuccessful), 0)
+      }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks, ttvm.onlySuccessful), 0)
     };
 
     // formatting function for the way the y values should show up.
@@ -356,13 +368,10 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-
         // sort task data by create time
         $scope.taskData.sort(function(a,b){
             return moment(a.create_time).diff(moment(b.create_time));
         })
-
-
 
         var maxTime = d3.max($scope.taskData, function(task){return yMap(task);});
         var minTime = d3.min($scope.taskData, function(task){ return yMap(task);});
@@ -422,7 +431,6 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         })
         .attr("font-size", 10)
 
-
         var scaledX = function(x, i){return xScale(i);}
         var scaledY = function(y){return yScale(yMap(y));}
 
@@ -452,7 +460,6 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         // create a focus circle
         var focus = svg.append("circle")
         .attr("r", radius + 1);
-
 
         // create a transparent rectangle for tracking hovering
         svg.append("rect")
