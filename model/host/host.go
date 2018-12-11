@@ -86,6 +86,10 @@ type Host struct {
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
 
+	// ComputeCostPerHour is the compute (not storage) cost of one host for one hour. Cloud
+	// managers can but are not required to cache this price.
+	ComputeCostPerHour float64 `bson:"compute_cost_per_hour,omitempty" json:"compute_cost_per_hour,omitempty"`
+
 	// incremented by task start and end stats collectors and
 	// should reflect hosts total costs. Only populated for build-hosts
 	// where host providers report costs.

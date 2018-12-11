@@ -61,6 +61,19 @@ func init() {
 }
 
 func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
+	if h.ComputeCostPerHour > 0 {
+		grip.Debug(message.Fields{
+			"message":               "returning cost data cached in host",
+			"host_id":               h.Id,
+			"compute_cost_per_hour": h.ComputeCostPerHour,
+		})
+		return h.ComputeCostPerHour * dur.Hours(), nil
+	}
+	grip.Debug(message.Fields{
+		"message": "calculating cost data",
+		"host_id": h.Id,
+		"action":  "do not remove cost code until this message no longer appears",
+	})
 	os := getOsName(h)
 	if isHostOnDemand(h) {
 		zone, err := getZone(ctx, client, h)
@@ -350,6 +363,7 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 			return 0, errors.Wrap(err, "error getting latest lowest spot price")
 		}
 		if spotPrice < onDemandPrice {
+			h.ComputeCostPerHour = spotPrice
 			ec2settings.BidPrice = onDemandPrice
 			if ec2settings.VpcName != "" {
 				subnetID, err := m.getSubnetForAZ(ctx, az, ec2settings.VpcName)
@@ -361,6 +375,7 @@ func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings 
 			h.Distro.Provider = evergreen.ProviderNameEc2Spot
 			return spotProvider, nil
 		}
+		h.ComputeCostPerHour = onDemandPrice
 		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 		return onDemandProvider, nil
 	}
