@@ -2,8 +2,8 @@ mciModule.controller('PerfBBFailuresCtrl', function(
   ApiV2, $scope
 ) {
   // Perf Failures View-Model
-  var vm = this
-  var project = window.project
+  const vm = this
+  const project = window.project
 
   vm.state = {
     lookBackDays: 14,
@@ -47,14 +47,15 @@ mciModule.controller('PerfBBFailuresCtrl', function(
       name: 'Variant',
       field: 'build_variant',
     }, {
-      name: 'Status',
-      field: 'status',
-    }, {
       name: 'Fail Type',
       field: 'status_details.type',
     }, {
       name: 'Timed Out',
       field: 'status_details.timed_out',
+    }, {
+      name: 'Status',
+      field: 'status',
+      visible: false,
     }],
   }
 })
