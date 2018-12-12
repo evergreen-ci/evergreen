@@ -71,10 +71,6 @@ func (o OutputOptions) Validate() error {
 		catcher.Add(errors.New("cannot suppress error if error is defined"))
 	}
 
-	if o.Error == o.Output && !o.errorIsNull() {
-		catcher.Add(errors.New("cannot specify the same value for error and output"))
-	}
-
 	if o.SuppressOutput && o.SendOutputToError {
 		catcher.Add(errors.New("cannot suppress output and redirect it to error"))
 	}
