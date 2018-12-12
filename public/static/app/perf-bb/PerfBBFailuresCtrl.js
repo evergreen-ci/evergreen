@@ -27,6 +27,7 @@ mciModule.controller('PerfBBFailuresCtrl', function(
       status: vm.state.status,
     }).then(function(res) {
       vm.gridOptions.data = res.data
+      console.log(res.data)
     }).finally(function() {
       vm.isLoading = false
     })
@@ -41,11 +42,19 @@ mciModule.controller('PerfBBFailuresCtrl', function(
       name: 'Create Time',
       field: 'create_time',
     }, {
-      name: 'Name',
+      name: 'Task',
       field: 'display_name',
+      cellTemplate: 'ui-grid-link',
+      _link: function(row, col) {
+        return '/task/' + row.entity.task_id
+      }
     }, {
       name: 'Variant',
       field: 'build_variant',
+      cellTemplate: 'ui-grid-link',
+      _link: function(row, col) {
+        return '/build/' + row.entity.build_id
+      }
     }, {
       name: 'Status',
       field: 'status',
