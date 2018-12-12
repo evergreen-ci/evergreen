@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -56,12 +55,12 @@ func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
 	return j
 }
 
-func NewTaskExecutionMonitorJob(taskID string, execution int, attempt int, ts string) amboy.Job {
+func NewTaskExecutionMonitorJob(taskID string, execution int, attempt int) amboy.Job {
 	j := makeTaskExecutionTimeoutMonitorJob()
 	j.Task = taskID
 	j.Execution = execution
 	j.Attempt = attempt
-	j.SetID(fmt.Sprintf("%s.%s.%d.attempt-%d.%s", taskExecutionTimeoutJobName, taskID, execution, attempt, ts))
+	j.SetID(fmt.Sprintf("%s.%s.%d.attempt-%d", taskExecutionTimeoutJobName, taskID, execution, attempt))
 	return j
 }
 
@@ -115,8 +114,7 @@ func (j *taskExecutionTimeoutJob) tryRequeue() {
 	if j.successful || j.Attempt >= maxAttempts {
 		return
 	}
-	ts := util.RoundPartOfHour(15)
-	newJob := NewTaskExecutionMonitorJob(j.Task, j.Execution, j.Attempt+1, ts.Format(tsFormat))
+	newJob := NewTaskExecutionMonitorJob(j.Task, j.Execution, j.Attempt+1)
 	newJob.UpdateTimeInfo(amboy.JobTimeInfo{
 		WaitUntil: time.Now().Add(time.Minute),
 	})
