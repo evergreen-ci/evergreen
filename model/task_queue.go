@@ -37,7 +37,7 @@ type TaskDep struct {
 }
 type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
-	IsDispatched        bool          `bson:"dispatched" json:"dispatched`
+	IsDispatched        bool          `bson:"dispatched" json:"dispatched"`
 	DisplayName         string        `bson:"display_name" json:"display_name"`
 	Group               string        `bson:"group_name" json:"group_name"`
 	GroupMaxHosts       int           `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`

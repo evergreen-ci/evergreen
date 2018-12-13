@@ -68,6 +68,7 @@ lintArgs += --disable="megacheck" --enable="unused" --enable="gosimple"
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude="error return value not checked \((defer .*|fmt.Fprint.*) \(errcheck\)$$"
 lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
+lintArgs += --exclude=".*file is not goimported"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
 lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg

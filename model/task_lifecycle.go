@@ -159,11 +159,11 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 	// if we've reached the max number of executions for this task, mark it as finished and failed
 	if t.Execution >= evergreen.MaxTaskExecution {
 		// restarting from the UI bypasses the restart cap
-		message := fmt.Sprintf("Task '%v' reached max execution (%v):", t.Id, evergreen.MaxTaskExecution)
+		msg := fmt.Sprintf("Task '%v' reached max execution (%v):", t.Id, evergreen.MaxTaskExecution)
 		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
-			grip.Debugln(message, "allowing exception for", user)
+			grip.Debugln(msg, "allowing exception for", user)
 		} else {
-			grip.Debugln(message, "marking as failed")
+			grip.Debugln(msg, "marking as failed")
 			if detail != nil {
 				updates := StatusChanges{}
 				if t.DisplayOnly {
