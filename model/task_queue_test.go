@@ -142,7 +142,7 @@ func TestDequeueTask(t *testing.T) {
 			taskQueue.useModerDequeueOp = true
 
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 2)
+			So(taskQueue.Length(), ShouldEqual, 1)
 		})
 		Convey("legacy: duplicate tasks shouldn't lead to anics", func() {
 			taskQueue.Queue = []TaskQueueItem{
@@ -152,7 +152,7 @@ func TestDequeueTask(t *testing.T) {
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
-			So(taskQueue.Length(), ShouldEqual, 2)
+			So(taskQueue.Length(), ShouldEqual, 1)
 		})
 	})
 }

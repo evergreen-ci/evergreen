@@ -475,7 +475,7 @@ outer:
 			if queueItem.Id == taskId {
 				found = true
 				self.Queue = append(self.Queue[:idx], self.Queue[idx+1:]...)
-				break outer
+				continue outer
 			}
 		}
 		break
