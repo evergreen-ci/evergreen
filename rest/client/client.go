@@ -16,7 +16,7 @@ import (
 const (
 	defaultMaxAttempts  = 10
 	defaultTimeoutStart = time.Second * 2
-	defaultTimeoutMax   = time.Minute * 10
+	defaultTimeoutMax   = time.Minute * 1
 	heartbeatTimeout    = time.Minute * 1
 )
 
