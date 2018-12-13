@@ -6,7 +6,7 @@ mciModule.controller('PerfBBFailuresCtrl', function(
   const project = window.project
 
   vm.state = {
-    lookBackDays: 344,
+    lookBackDays: 14,
     status: ['failed'],
   }
 
