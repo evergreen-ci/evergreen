@@ -51,9 +51,9 @@ mciModule.controller('TaskTimingController', function(
 
     // add all display task names to tasks list
     // sort the task names for the current project
-    $scope.taskNames = [ALL_TASKS].concat(
+    $scope.taskNames = _.unique([ALL_TASKS].concat(
       $scope.currentProject.task_names.concat(allDisplayTasks).sort()
-    )
+    ), true)
 
     var initialHash = $locationHash.get();
     // TODO do we keep this?
