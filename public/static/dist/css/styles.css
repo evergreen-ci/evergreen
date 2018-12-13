@@ -1273,6 +1273,11 @@ ul.tooltip-tasks li.tooltip-task {
 .signal-processing .nav-tabs > li.active > a:focus {
   background: #dee0e3;
 }
+.signal-processing .task-status-cell {
+  text-transform: uppercase;
+  font-weight: bold;
+  text-align: center;
+}
 textarea {
   background-position: bottom right;
   background-repeat: no-repeat;
