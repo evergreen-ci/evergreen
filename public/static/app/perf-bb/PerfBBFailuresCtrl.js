@@ -6,7 +6,7 @@ mciModule.controller('PerfBBFailuresCtrl', function(
   const project = window.project
 
   vm.state = {
-    lookBackDays: 14,
+    lookBackDays: 344,
     status: ['failed'],
   }
 
@@ -45,16 +45,25 @@ mciModule.controller('PerfBBFailuresCtrl', function(
       name: 'Task',
       field: 'display_name',
       cellTemplate: 'ui-grid-link',
-      _link: function(row, col) {
+      _link: function(row) {
         return '/task/' + row.entity.task_id
       }
     }, {
       name: 'Variant',
       field: 'build_variant',
       cellTemplate: 'ui-grid-link',
-      _link: function(row, col) {
+      _link: function(row) {
         return '/build/' + row.entity.build_id
       }
+    }, {
+      name: 'Kind',
+      field: 'status_details.type',
+      cellClass: 'task-status-cell',
+      cellTemplate:
+        '<div class="ui-grid-cell-contents {{row.entity | statusFilter}}">' +
+          '{{row.entity | statusLabel}}' +
+        '</div>',
+      width: 160,
     }, {
       name: 'Fail Type',
       field: 'status_details.type',

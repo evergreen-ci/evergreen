@@ -277,17 +277,21 @@ var mciModule = angular.module('MCI', [
       cls = 'success';
     } else if (task.status == 'failed') {
       cls = 'failed';
-      if ('task_end_details' in task) {
-        if ('type' in task.task_end_details) {
-          if (task.task_end_details.type == 'system' && task.task_end_details.status != 'success') {
+      // Get a property name where task details are stored
+      // Name may differe from API to API
+      let detailsProp = _.find(['task_end_details', 'status_details'],  d => d in task)
+      if (detailsProp) {
+        let details = task[detailsProp]
+        if ('type' in details) {
+          if (details.type == 'system' && details.status != 'success') {
             cls = 'system-failed';
           }
-          if (task.task_end_details.type == 'setup' && task.task_end_details.status != 'success') {
+          if (details.type == 'setup' && details.status != 'success') {
             cls = 'setup-failed';
           }
         }
-        if ('timed_out' in task.task_end_details) {
-          if (task.task_end_details.timed_out && 'desc' in task.task_end_details && task.task_end_details.desc == 'heartbeat') {
+        if ('timed_out' in details) {
+          if (details.timed_out && 'desc' in details && details.desc == 'heartbeat') {
             cls = 'system-failed';
           }
         }
@@ -318,21 +322,24 @@ var mciModule = angular.module('MCI', [
     } else if (task.status == 'success') {
       return 'success';
     } else if (task.status == 'failed') {
-      if ('task_end_details' in task) {
-        if ('timed_out' in task.task_end_details) {
-          if (task.task_end_details.timed_out && 'desc' in task.task_end_details && task.task_end_details.desc == 'heartbeat') {
+      // Get a property name where task details are stored
+      // Name may differe from API to API
+      let detailsProp = _.find(['task_end_details', 'status_details'],  d => d in task)
+      if (detailsProp) {
+        let details = task[detailsProp]
+        if ('timed_out' in details) {
+          if (details.timed_out && 'desc' in details && details.desc == 'heartbeat') {
             return 'system unresponsive';
           }
-
-          if (task.task_end_details.type == 'system') {
+          if (details.type == 'system') {
             return 'system timed out';
           }
           return 'test timed out';
         }
-        if (task.task_end_details.type == 'system' && task.task_end_details.status != 'success') {
+        if (details.type == 'system' && details.status != 'success') {
           return 'system failure';
         }
-        if (task.task_end_details.type == 'setup' && task.task_end_details.status != 'success') {
+        if (details.type == 'setup' && details.status != 'success') {
           return 'setup failure';
         }
         return 'failed';
