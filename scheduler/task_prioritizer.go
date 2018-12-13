@@ -35,13 +35,6 @@ type CmpBasedTaskComparator struct {
 	setupFuncs     []sortSetupFunc
 	comparators    []taskPriorityCmp
 	projects       map[string]project
-
-	// caches for sorting
-	previousTasksCache map[string]task.Task
-
-	// cache the number of tasks that have failed in other buildvariants; tasks
-	// with the same revision, project, display name and requester
-	similarFailingCount map[string]int
 }
 
 // CmpBasedTaskQueues represents the three types of queues that are created for merging together into one queue.
