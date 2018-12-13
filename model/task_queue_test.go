@@ -86,6 +86,16 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
+			// should be safe to remove the last item
+			So(taskQueue.DequeueTask(taskIds[2]), ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 1)
+
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 0)
+
+			So(taskQueue.DequeueTask("foo"), ShouldNotBeNil)
+			So(taskQueue.Length(), ShouldEqual, 0)
+
 		})
 
 		Convey("with modern dequeue, if the task is present in the queue, it should be removed"+
@@ -112,8 +122,38 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
-		})
+			// should be safe to remove the last item
+			So(taskQueue.DequeueTask(taskIds[2]), ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 1)
 
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 0)
+
+			So(taskQueue.DequeueTask("foo"), ShouldNotBeNil)
+			So(taskQueue.Length(), ShouldEqual, 0)
+		})
+		Convey("modern: duplicate tasks shouldn't lead to anics", func() {
+			taskQueue.Queue = []TaskQueueItem{
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[0]},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			taskQueue.useModerDequeueOp = true
+
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 2)
+		})
+		Convey("legacy: duplicate tasks shouldn't lead to anics", func() {
+			taskQueue.Queue = []TaskQueueItem{
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[0]},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 2)
+		})
 	})
 }
 
