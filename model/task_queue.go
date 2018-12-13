@@ -317,7 +317,7 @@ func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 		},
 		{
 			"$unwind": bson.M{
-				"path": "$" + taskQueueQueueKey,
+				"path":                       "$" + taskQueueQueueKey,
 				"preserveNullAndEmptyArrays": true,
 			},
 		},
@@ -469,12 +469,16 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 func (self *TaskQueue) DequeueTask(taskId string) error {
 	// first, remove from the in-memory queue
 	found := false
-	for idx, queueItem := range self.Queue {
-		if queueItem.Id == taskId {
-			found = true
-			self.Queue = append(self.Queue[:idx], self.Queue[idx+1:]...)
-			continue
+outer:
+	for {
+		for idx, queueItem := range self.Queue {
+			if queueItem.Id == taskId {
+				found = true
+				self.Queue = append(self.Queue[:idx], self.Queue[idx+1:]...)
+				break outer
+			}
 		}
+		break
 	}
 
 	// validate that the task is there
