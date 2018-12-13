@@ -1509,7 +1509,7 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 	}))
 
 	expectedDuration, ok := t.DurationPrediction.Get()
-	if !ok {
+	if ok {
 		if err := t.cacheExpectedDuration(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"task":    t.Id,
