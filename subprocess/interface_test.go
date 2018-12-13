@@ -31,16 +31,13 @@ func TestOutputOptions(t *testing.T) {
 	opts.Error = stderr
 	assert.NoError(opts.Validate())
 
-	// invalid if both streams are the same
-	opts.Output = stderr
-	assert.Error(opts.Validate())
-	opts.Output = stdout
+	opts.Output = stderr // valid if they're the same
 	assert.NoError(opts.Validate())
+	opts.Output = stdout // reset
 
 	// if the redirection and suppression options don't make
 	// sense, validate should error, for stderr
 	opts.SuppressError = true
-	assert.Error(opts.Validate())
 	opts.Error = nil
 	assert.NoError(opts.Validate())
 	opts.SendOutputToError = true
@@ -53,7 +50,6 @@ func TestOutputOptions(t *testing.T) {
 
 	// the same but for stdout
 	opts.SuppressOutput = true
-	assert.Error(opts.Validate())
 	opts.Output = nil
 	assert.NoError(opts.Validate())
 	opts.SendErrorToOutput = true
@@ -75,11 +71,14 @@ func TestOutputOptionsIntegrationTableTest(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	shouldFail := []OutputOptions{
-		{Output: buf, Error: buf},
 		{Output: buf, SendOutputToError: true},
+		{SendOutputToError: true, SuppressError: true},
+		{SendErrorToOutput: true, SuppressOutput: true},
+		{SendErrorToOutput: true, SendOutputToError: true},
 	}
 
 	shouldPass := []OutputOptions{
+		{Output: buf, Error: buf},
 		{SuppressError: true, SuppressOutput: true},
 		{Output: buf, SendErrorToOutput: true},
 		{Output: &util.CappedWriter{Buffer: buf, MaxBytes: 1024 * 1024}, SendErrorToOutput: true},

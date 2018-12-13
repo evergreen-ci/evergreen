@@ -45,6 +45,10 @@ func (o OutputOptions) outputIsNull() bool {
 		return true
 	}
 
+	if o.SuppressOutput {
+		return true
+	}
+
 	return false
 }
 
@@ -54,6 +58,10 @@ func (o OutputOptions) errorIsNull() bool {
 	}
 
 	if o.Error == ioutil.Discard {
+		return true
+	}
+
+	if o.SuppressError {
 		return true
 	}
 
@@ -71,8 +79,8 @@ func (o OutputOptions) Validate() error {
 		catcher.Add(errors.New("cannot suppress error if error is defined"))
 	}
 
-	if o.Error == o.Output && !o.errorIsNull() {
-		catcher.Add(errors.New("cannot specify the same value for error and output"))
+	if o.SendOutputToError && o.SendErrorToOutput {
+		catcher.Add(errors.New("cannot cyclically redirect output"))
 	}
 
 	if o.SuppressOutput && o.SendOutputToError {
@@ -80,14 +88,14 @@ func (o OutputOptions) Validate() error {
 	}
 
 	if o.SuppressError && o.SendErrorToOutput {
-		catcher.Add(errors.New("cannot suppress output and redirect it to error"))
+		catcher.Add(errors.New("cannot suppress error and redirect it to output"))
 	}
 
-	if o.SendOutputToError && o.Error == nil {
+	if o.SendOutputToError && o.errorIsNull() {
 		catcher.Add(errors.New("cannot redirect output to error without a defined error writer"))
 	}
 
-	if o.SendErrorToOutput && o.Output == nil {
+	if o.SendErrorToOutput && o.outputIsNull() {
 		catcher.Add(errors.New("cannot redirect error to output without a defined output writer"))
 	}
 

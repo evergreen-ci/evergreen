@@ -43,6 +43,16 @@ const (
 	sshTimeout = 2 * time.Minute
 )
 
+func getSSHOutputOptions() subprocess.OutputOptions {
+	// store up to 1MB of streamed command output to print if a command fails
+	output := &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
+
+	return subprocess.OutputOptions{Output: output, SendErrorToOutput: true}
+}
+
 // RunSSHCommand runs an SSH command on a remote host.
 func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []string) (string, error) {
 	// compute any info necessary to ssh into the host
@@ -51,12 +61,8 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 		return "", errors.Wrapf(err, "error parsing ssh info %v", h.Host)
 	}
 
-	// store up to 1MB of streamed command output to print if a command fails
-	output := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-	opts := subprocess.OutputOptions{Output: output, SendErrorToOutput: true}
+	opts := getSSHOutputOptions()
+	output := opts.Output.(*util.CappedWriter)
 
 	proc := subprocess.NewRemoteCommand(
 		cmd,
@@ -95,5 +101,6 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 
 	err = proc.Run(ctx)
 	grip.Notice(proc.Stop())
+
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }
