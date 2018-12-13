@@ -13,7 +13,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/tychoish/tarjan"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -27,6 +27,8 @@ type TaskQueue struct {
 	Distro      string          `bson:"distro" json:"distro"`
 	GeneratedAt time.Time       `bson:"generated_at" json:"generated_at"`
 	Queue       []TaskQueueItem `bson:"queue" json:"queue"`
+
+	useModerDequeueOp bool
 }
 
 type TaskDep struct {
@@ -35,6 +37,7 @@ type TaskDep struct {
 }
 type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
+	IsDispatched        bool          `bson:"dispatched" json:"dispatched"`
 	DisplayName         string        `bson:"display_name" json:"display_name"`
 	Group               string        `bson:"group_name" json:"group_name"`
 	GroupMaxHosts       int           `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`
@@ -48,7 +51,7 @@ type TaskQueueItem struct {
 	Priority            int64         `bson:"priority" json:"priority"`
 }
 
-// nolint
+// must not no-lint these values
 var (
 	// bson fields for the task queue struct
 	taskQueueIdKey          = bsonutil.MustHaveTag(TaskQueue{}, "Id")
@@ -57,15 +60,19 @@ var (
 	taskQueueQueueKey       = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
 
 	// bson fields for the individual task queue items
-	taskQueueItemIdKey           = bsonutil.MustHaveTag(TaskQueueItem{}, "Id")
-	taskQueueItemDisplayNameKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "DisplayName")
-	taskQueueItemBuildVariantKey = bsonutil.MustHaveTag(TaskQueueItem{}, "BuildVariant")
-	taskQueueItemConKey          = bsonutil.MustHaveTag(TaskQueueItem{}, "RevisionOrderNumber")
-	taskQueueItemRequesterKey    = bsonutil.MustHaveTag(TaskQueueItem{}, "Requester")
-	taskQueueItemRevisionKey     = bsonutil.MustHaveTag(TaskQueueItem{}, "Revision")
-	taskQueueItemProjectKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
-	taskQueueItemExpDurationKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
-	taskQueuePriorityKey         = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
+	taskQueueItemIdKey            = bsonutil.MustHaveTag(TaskQueueItem{}, "Id")
+	taskQueueItemIsDispatchedKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "IsDispatched")
+	taskQueueItemDisplayNameKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "DisplayName")
+	taskQueueItemGroupKey         = bsonutil.MustHaveTag(TaskQueueItem{}, "Group")
+	taskQueueItemGroupMaxHostsKey = bsonutil.MustHaveTag(TaskQueueItem{}, "GroupMaxHosts")
+	taskQueueItemVersionKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Version")
+	taskQueueItemBuildVariantKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "BuildVariant")
+	taskQueueItemConKey           = bsonutil.MustHaveTag(TaskQueueItem{}, "RevisionOrderNumber")
+	taskQueueItemRequesterKey     = bsonutil.MustHaveTag(TaskQueueItem{}, "Requester")
+	taskQueueItemRevisionKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Revision")
+	taskQueueItemProjectKey       = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
+	taskQueueItemExpDurationKey   = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
+	taskQueueItemPriorityKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
 )
 
 // TaskSpec is an argument structure to formalize the way that callers
@@ -302,20 +309,82 @@ func ClearTaskQueue(distro string) error {
 }
 
 func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
-	taskQueue := &TaskQueue{}
-	err := db.FindOne(
-		TaskQueuesCollection,
-		bson.M{
-			taskQueueDistroKey: distroId,
+	isDispatchedKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIsDispatchedKey)
+
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{taskQueueDistroKey: distroId},
 		},
-		db.NoProjection,
-		db.NoSort,
-		taskQueue,
-	)
-	if err == mgo.ErrNotFound {
+		{
+			"$unwind": bson.M{
+				"path": "$" + taskQueueQueueKey,
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
+		{
+			"$match": bson.M{
+				"$or": []bson.M{
+					{ // queue is empty
+						taskQueueQueueKey: bson.M{"$exists": false},
+					},
+					{ // omitempty/unpopulated is not dispatched
+						isDispatchedKey: bson.M{"$exists": false},
+					},
+					{ // explicitly set to false
+						isDispatchedKey: false,
+					},
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": taskQueueIdKey,
+				taskQueueQueueKey: bson.M{
+					"$push": bson.M{
+						taskQueueItemIdKey:            "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey),
+						taskQueueItemIsDispatchedKey:  "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIsDispatchedKey),
+						taskQueueItemDisplayNameKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemDisplayNameKey),
+						taskQueueItemGroupKey:         "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemGroupKey),
+						taskQueueItemGroupMaxHostsKey: "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemGroupMaxHostsKey),
+						taskQueueItemVersionKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemVersionKey),
+						taskQueueItemBuildVariantKey:  "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemBuildVariantKey),
+						taskQueueItemConKey:           "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemConKey),
+						taskQueueItemRequesterKey:     "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemRequesterKey),
+						taskQueueItemRevisionKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemRevisionKey),
+						taskQueueItemProjectKey:       "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemProjectKey),
+						taskQueueItemExpDurationKey:   "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemExpDurationKey),
+						taskQueueItemPriorityKey:      "$" + bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemPriorityKey),
+					},
+				},
+			},
+		},
+	}
+
+	out := []TaskQueue{}
+
+	err := db.Aggregate(TaskQueuesCollection, pipeline, &out)
+	if err != nil {
+		if errors.Cause(err) == mgo.ErrNotFound {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "problem building task queue for '%s'", distroId)
+	}
+	if len(out) == 0 {
 		return nil, nil
 	}
-	return taskQueue, err
+	if len(out) > 1 {
+		return nil, errors.Errorf("task queue result malformed [num=%d, id=%s], programmer error",
+			len(out), distroId)
+	}
+
+	val := &out[0]
+
+	if len(val.Queue) == 1 && val.Queue[0].Id == "" {
+		val.Queue = nil
+	}
+	val.Distro = distroId
+
+	return val, nil
 }
 
 // FindMinimumQueuePositionForTask finds the position of a task in the many task queues
@@ -414,6 +483,38 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 			taskId, self.Distro)
 	}
 
+	var err error
+	if self.useModerDequeueOp {
+		err = self.dequeueUpdate(taskId)
+	} else {
+		err = self.legacyDequeueUpdate(taskId)
+	}
+
+	if errors.Cause(err) == mgo.ErrNotFound {
+		return nil
+	}
+
+	return errors.WithStack(err)
+}
+
+func (self *TaskQueue) dequeueUpdate(taskId string) error {
+	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
+
+	return errors.WithStack(db.Update(
+		TaskQueuesCollection,
+		bson.M{
+			taskQueueDistroKey: self.Distro,
+			itemKey:            taskId,
+		},
+		bson.M{
+			"$set": bson.M{
+				taskQueueQueueKey + ".$." + taskQueueItemIsDispatchedKey: true,
+			},
+		},
+	))
+}
+
+func (self *TaskQueue) legacyDequeueUpdate(taskId string) error {
 	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
