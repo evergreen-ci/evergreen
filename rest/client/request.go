@@ -175,6 +175,9 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	backoff := c.getBackoff()
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 2*backoff.ForAttempt(float64(c.maxAttempts)))
+	defer cancel()
 	for i := 1; i <= c.maxAttempts; i++ {
 		select {
 		case <-ctx.Done():
