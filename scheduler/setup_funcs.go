@@ -41,27 +41,6 @@ func cachePreviousTasks(comparator *CmpBasedTaskComparator) error {
 	return nil
 }
 
-// cacheSimilarFailing fetches all failed tasks with the same display name,
-// revision, requester and project but in other buildvariants
-func cacheSimilarFailing(comparator *CmpBasedTaskComparator) error {
-	// find if there are any similar failing tasks
-	var err error
-	comparator.similarFailingCount = make(map[string]int)
-	for _, t := range comparator.tasks {
-		numSimilarFailing := 0
-
-		// only relevant for repotracker tasks
-		if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
-			numSimilarFailing, err = t.CountSimilarFailingTasks()
-			if err != nil {
-				return errors.Wrap(err, "cacheSimilarFailing")
-			}
-		}
-		comparator.similarFailingCount[t.Id] = numSimilarFailing
-	}
-	return nil
-}
-
 // project is a type for holding a subset of the model.Project type.
 type project struct {
 	TaskGroups []model.TaskGroup `yaml:"task_groups"`

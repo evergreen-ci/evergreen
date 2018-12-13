@@ -432,8 +432,7 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 
 // Find the previously completed task for the same project +
 // build variant + display name combination as the specified task
-func (t *Task) PreviousCompletedTask(project string,
-	statuses []string) (*Task, error) {
+func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
 		statuses = CompletedStatuses
 	}

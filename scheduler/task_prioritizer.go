@@ -59,8 +59,6 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 	return &CmpBasedTaskComparator{
 		runtimeID: id,
 		setupFuncs: []sortSetupFunc{
-			cachePreviousTasks,
-			cacheSimilarFailing,
 			cacheTaskGroups,
 			groupTaskGroups,
 		},
@@ -71,8 +69,6 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 			byGenerateTasks,
 			byAge,
 			byRuntime,
-			bySimilarFailing,
-			byRecentlyFailing,
 		},
 	}
 }
@@ -86,7 +82,6 @@ type CmpBasedTaskPrioritizer struct {
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
 func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]version.Version) ([]task.Task, error) {
-
 	comparator := NewCmpBasedTaskComparator(prioritizer.runtimeID)
 	comparator.versions = versions
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
