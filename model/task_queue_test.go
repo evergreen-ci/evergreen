@@ -63,7 +63,7 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
 		})
 
-		Convey("if the task is present in the queue, it should be removed"+
+		Convey("with legacy dequeue, if the task is present in the queue, it should be removed"+
 			" from the in-memory and db versions of the queue", func() {
 			taskQueue.Queue = []TaskQueueItem{
 				{Id: taskIds[0]},
@@ -86,6 +86,32 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
 		})
+
+		Convey("with modern dequeue, if the task is present in the queue, it should be removed"+
+			" from the in-memory and db versions of the queue", func() {
+			taskQueue.Queue = []TaskQueueItem{
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[2]},
+			}
+			So(taskQueue.Save(), ShouldBeNil)
+			taskQueue.useModerDequeueOp = true
+			So(taskQueue.DequeueTask(taskIds[1]), ShouldBeNil)
+
+			// make sure the queue was updated in memory
+			So(taskQueue.Length(), ShouldEqual, 2)
+			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
+			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
+
+			// make sure the db representation was updated
+			taskQueue, err := LoadTaskQueue(distroId)
+			So(err, ShouldBeNil)
+			So(taskQueue.Length(), ShouldEqual, 2)
+			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
+			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
+
+		})
+
 	})
 }
 

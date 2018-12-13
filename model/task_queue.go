@@ -27,6 +27,8 @@ type TaskQueue struct {
 	Distro      string          `bson:"distro" json:"distro"`
 	GeneratedAt time.Time       `bson:"generated_at" json:"generated_at"`
 	Queue       []TaskQueueItem `bson:"queue" json:"queue"`
+
+	useModerDequeueOp bool
 }
 
 type TaskDep struct {
@@ -481,9 +483,24 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 			taskId, self.Distro)
 	}
 
+	var err error
+	if self.useModerDequeueOp {
+		err = self.dequeueUpdate(taskId)
+	} else {
+		err = self.legacyDequeueUpdate(taskId)
+	}
+
+	if errors.Cause(err) == mgo.ErrNotFound {
+		return nil
+	}
+
+	return errors.WithStack(err)
+}
+
+func (self *TaskQueue) dequeueUpdate(taskId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
-	err := db.Update(
+	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
 			taskQueueDistroKey: self.Distro,
@@ -494,10 +511,21 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 				taskQueueQueueKey + ".$." + taskQueueItemIsDispatchedKey: true,
 			},
 		},
-	)
-	if errors.Cause(err) == mgo.ErrNotFound {
-		return nil
-	}
+	))
+}
 
-	return errors.WithStack(err)
+func (self *TaskQueue) legacyDequeueUpdate(taskId string) error {
+	return errors.WithStack(db.Update(
+		TaskQueuesCollection,
+		bson.M{
+			taskQueueDistroKey: self.Distro,
+		},
+		bson.M{
+			"$pull": bson.M{
+				taskQueueQueueKey: bson.M{
+					taskQueueItemIdKey: taskId,
+				},
+			},
+		},
+	))
 }
