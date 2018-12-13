@@ -35,13 +35,6 @@ type CmpBasedTaskComparator struct {
 	setupFuncs     []sortSetupFunc
 	comparators    []taskPriorityCmp
 	projects       map[string]project
-
-	// caches for sorting
-	previousTasksCache map[string]task.Task
-
-	// cache the number of tasks that have failed in other buildvariants; tasks
-	// with the same revision, project, display name and requester
-	similarFailingCount map[string]int
 }
 
 // CmpBasedTaskQueues represents the three types of queues that are created for merging together into one queue.
@@ -59,8 +52,6 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 	return &CmpBasedTaskComparator{
 		runtimeID: id,
 		setupFuncs: []sortSetupFunc{
-			cachePreviousTasks,
-			cacheSimilarFailing,
 			cacheTaskGroups,
 			groupTaskGroups,
 		},
@@ -71,8 +62,6 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 			byGenerateTasks,
 			byAge,
 			byRuntime,
-			bySimilarFailing,
-			byRecentlyFailing,
 		},
 	}
 }
@@ -86,7 +75,6 @@ type CmpBasedTaskPrioritizer struct {
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
 func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]version.Version) ([]task.Task, error) {
-
 	comparator := NewCmpBasedTaskComparator(prioritizer.runtimeID)
 	comparator.versions = versions
 	// split the tasks into repotracker tasks and patch tasks, then prioritize

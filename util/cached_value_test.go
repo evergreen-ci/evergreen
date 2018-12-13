@@ -70,9 +70,9 @@ func TestCachedDurationValue(t *testing.T) {
 
 	assert.True(time.Since(cv.CollectedAt) < cv.TTL)
 
-	// its ok because it's not stale
+	// don't need to save (ok) if it's not stale
 	val, ok := cv.Get()
-	assert.True(ok)
+	assert.False(ok)
 	assert.Equal(21*time.Second, val)
 
 	// make it stale but don't set a refresher

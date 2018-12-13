@@ -56,14 +56,14 @@ func TestTaskImportanceComparators(t *testing.T) {
 		Convey("all other things being equal, the longer"+
 			"running tasks should be before tests", func() {
 
-			tasks[0].TimeTaken = 20 * time.Minute
-			tasks[1].TimeTaken = time.Hour
-
-			taskComparator.previousTasksCache = map[string]task.Task{}
-			taskComparator.previousTasksCache[tasks[0].Id] = tasks[0]
-			taskComparator.previousTasksCache[tasks[1].Id] = tasks[1]
-
 			result, err := byRuntime(tasks[0], tasks[1], taskComparator)
+			So(err, ShouldBeNil)
+			So(result, ShouldEqual, 0)
+
+			tasks[0].ExpectedDuration = 20 * time.Minute
+			tasks[1].ExpectedDuration = time.Hour
+
+			result, err = byRuntime(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, -1)
 
@@ -75,16 +75,17 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(result, ShouldEqual, 0)
 
-			tasks[0].TimeTaken = time.Duration(0)
-			taskComparator.previousTasksCache[tasks[0].Id] = tasks[0]
+			tasks[0].ExpectedDuration = time.Duration(1)
+			tasks[0].DurationPrediction.Value = time.Duration(1)
+			tasks[0].DurationPrediction.TTL = time.Hour
 
 			result, err = byRuntime(tasks[0], tasks[1], taskComparator)
 			So(err, ShouldBeNil)
-			So(result, ShouldEqual, 0)
+			So(result, ShouldEqual, -1)
 
 			result, err = byRuntime(tasks[1], tasks[0], taskComparator)
 			So(err, ShouldBeNil)
-			So(result, ShouldEqual, 0)
+			So(result, ShouldEqual, 1)
 		})
 
 		Convey("the dependent count comparator should prioritize a task"+
@@ -181,88 +182,7 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 		})
-
-		Convey("the recent failure comparator should prioritize a task"+
-			" whose last execution failed", func() {
-
-			prevTaskIds := []string{"pt1", "pt2"}
-
-			prevTasks := map[string]task.Task{
-				taskIds[0]: {Id: prevTaskIds[0]},
-				taskIds[1]: {Id: prevTaskIds[1]},
-			}
-
-			taskComparator.previousTasksCache = prevTasks
-
-			cmpResult, err := byRecentlyFailing(tasks[0], tasks[1],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 0)
-
-			pt1 := taskComparator.previousTasksCache[taskIds[0]]
-			pt1.Status = evergreen.TaskFailed
-			taskComparator.previousTasksCache[taskIds[0]] = pt1
-
-			cmpResult, err = byRecentlyFailing(tasks[0], tasks[1],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 1)
-
-			cmpResult, err = byRecentlyFailing(tasks[1], tasks[0],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, -1)
-
-			pt2 := taskComparator.previousTasksCache[taskIds[1]]
-			pt2.Status = evergreen.TaskFailed
-			taskComparator.previousTasksCache[taskIds[1]] = pt2
-
-			cmpResult, err = byRecentlyFailing(tasks[0], tasks[1],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 0)
-
-		})
-
-		Convey("the similar failing comparator should prioritize a task if "+
-			"it has more similar failing tasks", func() {
-			prlTaskIds := []string{"t1", "t2"}
-
-			similarFailingCountMap := map[string]int{
-				prlTaskIds[0]: 3,
-				prlTaskIds[1]: 3,
-			}
-
-			taskComparator.similarFailingCount = similarFailingCountMap
-
-			cmpResult, err := bySimilarFailing(tasks[0], tasks[1],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 0)
-
-			taskComparator.similarFailingCount[prlTaskIds[0]] = 4
-
-			cmpResult, err = bySimilarFailing(tasks[0], tasks[1],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 1)
-
-			taskComparator.similarFailingCount[prlTaskIds[1]] = 5
-			cmpResult, err = bySimilarFailing(tasks[0], tasks[1],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, -1)
-
-			taskComparator.similarFailingCount[prlTaskIds[0]] = 5
-
-			cmpResult, err = bySimilarFailing(tasks[0], tasks[1],
-				taskComparator)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 0)
-
-		})
 	})
-
 }
 
 func TestByTaskGroupOrder(t *testing.T) {

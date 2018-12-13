@@ -432,8 +432,7 @@ func (t *Task) CountSimilarFailingTasks() (int, error) {
 
 // Find the previously completed task for the same project +
 // build variant + display name combination as the specified task
-func (t *Task) PreviousCompletedTask(project string,
-	statuses []string) (*Task, error) {
+func (t *Task) PreviousCompletedTask(project string, statuses []string) (*Task, error) {
 	if len(statuses) == 0 {
 		statuses = CompletedStatuses
 	}
@@ -464,6 +463,7 @@ func (t *Task) cacheExpectedDuration() error {
 		bson.M{
 			"$set": bson.M{
 				DurationPredictionKey: t.DurationPrediction,
+				ExpectedDurationKey:   t.DurationPrediction.Value,
 			},
 		},
 	)
@@ -1466,6 +1466,15 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 		// before now slightly.
 		t.DurationPrediction.Value = t.ExpectedDuration
 		t.DurationPrediction.CollectedAt = time.Now().Add(-time.Minute)
+
+		if err := t.cacheExpectedDuration(); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"task":    t.Id,
+				"message": "caching expected duration",
+			}))
+		}
+
+		return t.ExpectedDuration
 	}
 
 	grip.Debug(message.WrapError(t.DurationPrediction.SetRefresher(func(previous time.Duration) (time.Duration, bool) {
@@ -1501,13 +1510,6 @@ func (t *Task) FetchExpectedDuration() time.Duration {
 
 	expectedDuration, ok := t.DurationPrediction.Get()
 	if ok {
-		if err := t.SetExpectedDuration(expectedDuration); err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"task":    t.Id,
-				"message": "problem updating projected task duration",
-			}))
-		}
-	} else {
 		if err := t.cacheExpectedDuration(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"task":    t.Id,

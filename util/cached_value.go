@@ -144,11 +144,11 @@ func (v *CachedDurationValue) SetRefresher(r CachedDurationValueRefresher) error
 }
 
 // Get returns the value, refreshing it when its stale. The "ok" value
-// reports errors with the refresh process and alerts callers that
-// the value might be stale.
+// tells the caller that the value needs to be persisted and may have
+// changed since the last time Get was called.
 func (v *CachedDurationValue) Get() (time.Duration, bool) {
 	if time.Since(v.CollectedAt) < v.TTL {
-		return v.Value, true
+		return v.Value, false
 	}
 
 	if v.refresher == nil {

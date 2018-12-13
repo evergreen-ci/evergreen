@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -15,52 +13,6 @@ import (
 // Function run before sorting all the tasks.  Used to fetch and store
 // information needed for prioritizing the tasks.
 type sortSetupFunc func(comparator *CmpBasedTaskComparator) error
-
-// Get all of the previous completed tasks for the ones to be sorted, and cache
-// them appropriately.
-func cachePreviousTasks(comparator *CmpBasedTaskComparator) error {
-	// get the relevant previous completed tasks
-	var err error
-	comparator.previousTasksCache = make(map[string]task.Task)
-	for _, t := range comparator.tasks {
-		prevTask := &task.Task{}
-
-		// only relevant for repotracker tasks
-		if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
-			prevTask, err = t.PreviousCompletedTask(t.Project, []string{})
-			if err != nil {
-				return errors.Wrap(err, "cachePreviousTasks")
-			}
-			if prevTask == nil {
-				prevTask = &task.Task{}
-			}
-		}
-		comparator.previousTasksCache[t.Id] = *prevTask
-	}
-
-	return nil
-}
-
-// cacheSimilarFailing fetches all failed tasks with the same display name,
-// revision, requester and project but in other buildvariants
-func cacheSimilarFailing(comparator *CmpBasedTaskComparator) error {
-	// find if there are any similar failing tasks
-	var err error
-	comparator.similarFailingCount = make(map[string]int)
-	for _, t := range comparator.tasks {
-		numSimilarFailing := 0
-
-		// only relevant for repotracker tasks
-		if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
-			numSimilarFailing, err = t.CountSimilarFailingTasks()
-			if err != nil {
-				return errors.Wrap(err, "cacheSimilarFailing")
-			}
-		}
-		comparator.similarFailingCount[t.Id] = numSimilarFailing
-	}
-	return nil
-}
 
 // project is a type for holding a subset of the model.Project type.
 type project struct {

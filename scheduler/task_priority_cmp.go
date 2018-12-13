@@ -84,84 +84,22 @@ func byAge(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
 // which we expect will shorten makespan (without shortening total
 // runtime,) leading to faster feedback for users.
 func byRuntime(t1, t2 task.Task, comp *CmpBasedTaskComparator) (int, error) {
-	prevOne, okOne := comp.previousTasksCache[t1.Id]
-	prevTwo, okTwo := comp.previousTasksCache[t2.Id]
-	if !okOne || !okTwo {
+	oneExpected := t1.FetchExpectedDuration()
+	twoExpected := t2.FetchExpectedDuration()
+
+	if oneExpected == 0 || twoExpected == 0 {
 		return 0, nil
 	}
 
-	if prevOne.TimeTaken == 0 || prevTwo.TimeTaken == 0 {
+	if oneExpected == twoExpected {
 		return 0, nil
 	}
 
-	if prevOne.TimeTaken == prevTwo.TimeTaken {
-		return 0, nil
-	}
-
-	if prevOne.TimeTaken > prevTwo.TimeTaken {
+	if oneExpected > twoExpected {
 		return 1, nil
 	}
 
 	return -1, nil
-}
-
-// byRecentlyFailing compares the results of the previous executions of each
-// Task, and considers one more important if its previous execution resulted in
-// failure.
-func byRecentlyFailing(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
-	firstPrev, present := comparator.previousTasksCache[t1.Id]
-	if !present {
-		return 0, errors.Errorf("No cached previous task available for task with"+
-			" id %v", t1.Id)
-	}
-	secondPrev, present := comparator.previousTasksCache[t2.Id]
-	if !present {
-		return 0, errors.Errorf("No cached previous task available for task with"+
-			" id %v", t2.Id)
-	}
-
-	if firstPrev.Status == evergreen.TaskFailed &&
-		secondPrev.Status != evergreen.TaskFailed {
-		return 1, nil
-	}
-	if secondPrev.Status == evergreen.TaskFailed &&
-		firstPrev.Status != evergreen.TaskFailed {
-		return -1, nil
-	}
-
-	return 0, nil
-}
-
-// bySimilarFailing takes two tasks with the same revision, and considers one
-// more important if it has a greater number of failed tasks with the same
-// revision, project, display name and requester (but in one or more
-// buildvariants) that failed.
-func bySimilarFailing(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
-	// this comparator only applies to tasks within the same revision
-	if t1.Revision != t2.Revision {
-		return 0, nil
-	}
-
-	numSimilarFailingOne, ok := comparator.similarFailingCount[t1.Id]
-	if !ok {
-		return 0, errors.Errorf("No similar failing count entry for task with "+
-			"id %v", t1.Id)
-	}
-
-	numSimilarFailingTwo, ok := comparator.similarFailingCount[t2.Id]
-	if !ok {
-		return 0, errors.Errorf("No similar failing count entry for task with "+
-			"id %v", t2.Id)
-	}
-
-	if numSimilarFailingOne > numSimilarFailingTwo {
-		return 1, nil
-	}
-
-	if numSimilarFailingOne < numSimilarFailingTwo {
-		return -1, nil
-	}
-	return 0, nil
 }
 
 // utilities
