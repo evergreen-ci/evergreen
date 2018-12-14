@@ -20,40 +20,51 @@ mciModule.controller('TaskTimingController', function(
     $scope.currentTask = "";
     $scope.currentHover = -1;
 
-    // Intermediate accumulator for code below
-    let displayTaskNamesSet = new Set()
+    // Intermediate accumulators for code below
+    const displayTaskNamesSet = new Set()
+    const executionTaskNamesSet = new Set()
 
     // {bvName: [list of selectable task names], ...}
     $scope.selectableTasksPerBV = _.reduce(bvs, function(m, bv) {
       let dispTaskNames = _.pluck(bv.display_tasks, 'name')
+      let execTaskNames = _.flatten(
+        _.pluck(bv.display_tasks, 'execution_tasks'), true
+      )
+
       m[bv.name] = _.chain(bv.task_names)
         // Include display task names
         .union(dispTaskNames)
         // exclude execution task names
-        .difference(
-          _.flatten(
-            _.pluck(bv.display_tasks, 'execution_tasks'),
-            true
-          )
-        )
+        .difference(execTaskNames)
         .sortBy()
         .value()
 
-      // Side effect - collect set of all display task names
+      // Side effect - collect set of all display/exec task names
       for (let name of dispTaskNames) displayTaskNamesSet.add(name)
+      for (let name of execTaskNames) executionTaskNamesSet.add(name)
 
       return m
     }, {})
 
-    // Will contain all display task names
-    // Converting unique set to an array
-    let allDisplayTasks = [...displayTaskNamesSet]
+    // List of task names displayed on UI
+    $scope.taskNames = _.unique(
+      _.without.bind(_,
+        // 1. Include 'All Tasks' item
+        [ALL_TASKS]
+          // 2. Include all project's task names
+          .concat($scope.currentProject.task_names)
+          // 3. Include all display task names
+          .concat([...displayTaskNamesSet])
+      // 4. Exclude all execution task names
+      ).apply(null, [...executionTaskNamesSet])
+      // 5. Sort the list
+      .sort()
+    // 6. Ensure item name uniqueness
+    , true)
 
-    // add all display task names to tasks list
-    // sort the task names for the current project
-    $scope.taskNames = _.unique([ALL_TASKS].concat(
-      $scope.currentProject.task_names.concat(allDisplayTasks).sort()
-    ), true)
+    // We don't need these sets anymore
+    displayTaskNamesSet.clear()
+    executionTaskNamesSet.clear()
 
     var initialHash = $locationHash.get();
     // TODO do we keep this?
