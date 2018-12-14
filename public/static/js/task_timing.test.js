@@ -89,11 +89,11 @@ describe('TaskTimingControllerTest', function() {
     })
   })
 
+  // Execution tasks shouldn't be displayed - EVG-5608
   it('collect list of unique display task names across al bvs', function() {
-    expect(scope.taskNames.length).toEqual(6)
+    expect(scope.taskNames.length).toEqual(5)
     expect(scope.taskNames).toContain('All Tasks')
     expect(scope.taskNames).toContain('T_A')
-    expect(scope.taskNames).toContain('T_C')
     expect(scope.taskNames).toContain('T_B')
     expect(scope.taskNames).toContain('T_D')
     expect(scope.taskNames).toContain('T_X')
