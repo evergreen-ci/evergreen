@@ -124,7 +124,12 @@ LOOP:
 			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
-					return errors.New("task response missing secret")
+					grip.Critical(message.WrapError(err, message.Fields{
+						"message": "task response missing secret",
+						"task":    tc.task.ID,
+					}))
+					timer.Reset(0)
+					continue LOOP
 				}
 				tc, exit = a.prepareNextTask(ctx, nextTask, tc)
 				if exit {
@@ -134,12 +139,22 @@ LOOP:
 					continue LOOP
 				}
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
-					return errors.WithStack(err)
+					grip.Critical(message.WrapError(err, message.Fields{
+						"message": "error setting up logger",
+						"task":    tc.task.ID,
+					}))
+					timer.Reset(0)
+					continue LOOP
 				}
 				tskCtx, tskCancel := context.WithCancel(ctx)
 				defer tskCancel()
 				if err := a.runTask(tskCtx, tskCancel, tc); err != nil {
-					return errors.WithStack(err)
+					grip.Critical(message.WrapError(err, message.Fields{
+						"message": "error running task",
+						"task":    tc.task.ID,
+					}))
+					timer.Reset(0)
+					continue LOOP
 				}
 				needPostGroup = true
 				timer.Reset(0)
