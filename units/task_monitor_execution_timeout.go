@@ -179,7 +179,7 @@ func cleanUpTimedOutTask(t *task.Task) error {
 
 	// try to reset the task
 	if t.IsPartOfDisplay() {
-		err = t.DisplayTask.SetResetWhenFinished(detail)
+		err = t.DisplayTask.SetResetWhenFinished()
 		if err != nil {
 			return errors.Wrap(err, "error requesting task reset")
 		}
