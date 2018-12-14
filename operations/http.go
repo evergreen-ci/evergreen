@@ -481,27 +481,6 @@ func (ac *legacyClient) GetOptimalMakespans(numberBuilds int, csv bool) (io.Read
 	return resp.Body, nil
 }
 
-// GetTestHistory takes in a project identifier, the url query parameter string, and a csv flag and
-// returns the body of the response of the test_history api endpoint.
-func (ac *legacyClient) GetTestHistory(project, queryParams string, isCSV bool) (io.ReadCloser, error) {
-	if isCSV {
-		queryParams += "&csv=true"
-	}
-	resp, err := ac.get(fmt.Sprintf("projects/%v/test_history?%v", project, queryParams), nil)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, errors.New("not found")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-
-	return resp.Body, nil
-}
-
 // GetPatchModules retrieves a list of modules available for a given patch.
 func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, error) {
 	var out []string
