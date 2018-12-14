@@ -19,6 +19,7 @@ import (
 
 func init() {
 	reporting.QuietMode()
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func TestCheckHostWrapper(t *testing.T) {
