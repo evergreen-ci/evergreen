@@ -70,11 +70,6 @@ func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient
 		})
 		return h.ComputeCostPerHour * dur.Hours(), nil
 	}
-	grip.Debug(message.Fields{
-		"message": "calculating cost data",
-		"host_id": h.Id,
-		"action":  "do not remove cost code until this message no longer appears",
-	})
 	os := getOsName(h)
 	if isHostOnDemand(h) {
 		zone, err := getZone(ctx, client, h)
