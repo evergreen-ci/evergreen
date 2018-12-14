@@ -16,13 +16,111 @@ import (
 	"github.com/pkg/errors"
 )
 
+type hostStatus struct {
+	Status string `json:"status"`
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// PATCH /rest/v2/hosts
+
+type hostsChangeStatusesHandler struct {
+	HostToStatus map[string]hostStatus
+	sc           data.Connector
+}
+
+func makeChangeHostsStatuses(sc data.Connector) gimlet.RouteHandler {
+	return &hostsChangeStatusesHandler{
+		sc: sc,
+	}
+}
+
+func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
+	return &hostsChangeStatusesHandler{
+		sc: h.sc,
+	}
+}
+
+func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request) error {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, &h.HostToStatus); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+	if len(h.HostToStatus) == 0 {
+		return fmt.Errorf("Missing host id and status")
+	}
+
+	for hostID, status := range h.HostToStatus {
+		if !util.StringSliceContains(evergreen.ValidUserSetStatus, status.Status) {
+			return fmt.Errorf("Invalid host status '%s' for host '%s'", status.Status, hostID)
+		}
+	}
+
+	return nil
+}
+
+func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	for id := range h.HostToStatus {
+		foundHost, err := h.sc.FindHostByIdWithOwner(id, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
+		}
+		if foundHost.Status == evergreen.HostTerminated {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf("Host '%s' is terminated; its status cannot be changed", foundHost.Id),
+			})
+		}
+	}
+
+	resp := gimlet.NewResponseBuilder()
+	if err := resp.SetFormat(gimlet.JSON); err != nil {
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+
+	for id, status := range h.HostToStatus {
+		foundHost, err := h.sc.FindHostByIdWithOwner(id, user)
+		if err != nil {
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", id))
+		}
+		if status.Status == evergreen.HostTerminated {
+			if err = h.sc.TerminateHost(ctx, foundHost, user.Id); err != nil {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    err.Error(),
+				})
+			}
+		} else {
+			if err = h.sc.SetHostStatus(foundHost, status.Status, user.Id); err != nil {
+				return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+					StatusCode: http.StatusInternalServerError,
+					Message:    err.Error(),
+				})
+			}
+		}
+
+		host := &model.APIHost{}
+		if err = host.BuildFromService(foundHost); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from host.Host to model.APIHost"))
+		}
+		if err = resp.AddData(host); err != nil {
+			return gimlet.MakeJSONErrorResponder(err)
+		}
+	}
+
+	return resp
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // PATCH /rest/v2/hosts/{host_id}
 
 type hostChangeStatusHandler struct {
 	Status string
-	hostId string
+	hostID string
 	sc     data.Connector
 }
 
@@ -39,7 +137,7 @@ func (h *hostChangeStatusHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) error {
-	h.hostId = gimlet.GetVars(r)["host_id"]
+	h.hostID = gimlet.GetVars(r)["host_id"]
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -48,7 +146,7 @@ func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) er
 	}
 
 	if !util.StringSliceContains(evergreen.ValidUserSetStatus, h.Status) {
-		return errors.New("Invalid host status")
+		return fmt.Errorf("Invalid host status '%s' for host '%s'", h.Status, h.hostID)
 	}
 
 	return nil
@@ -56,15 +154,15 @@ func (h *hostChangeStatusHandler) Parse(ctx context.Context, r *http.Request) er
 
 func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	foundHost, err := h.sc.FindHostByIdWithOwner(h.hostId, user)
+	foundHost, err := h.sc.FindHostByIdWithOwner(h.hostID, user)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", h.hostID))
 	}
 
 	if foundHost.Status == evergreen.HostTerminated {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("Host %s is terminated; its status cannot be changed ", foundHost.Id),
+			Message:    fmt.Sprintf("Host '%s' is terminated; its status cannot be changed", foundHost.Id),
 		})
 	}
 
@@ -87,7 +185,7 @@ func (h *hostChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 
 	host := &model.APIHost{}
 	if err = host.BuildFromService(foundHost); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from host.Host to model.APIHost"))
 	}
 
 	return gimlet.NewJSONResponse(host)
@@ -104,7 +202,7 @@ func makeGetHostByID(sc data.Connector) gimlet.RouteHandler {
 }
 
 type hostIDGetHandler struct {
-	hostId string
+	hostID string
 	sc     data.Connector
 }
 
@@ -116,7 +214,7 @@ func (high *hostIDGetHandler) Factory() gimlet.RouteHandler {
 
 // ParseAndValidate fetches the hostId from the http request.
 func (high *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	high.hostId = gimlet.GetVars(r)["host_id"]
+	high.hostID = gimlet.GetVars(r)["host_id"]
 
 	return nil
 }
@@ -124,14 +222,14 @@ func (high *hostIDGetHandler) Parse(ctx context.Context, r *http.Request) error 
 // Execute calls the data FindHostById function and returns the host
 // from the provider.
 func (high *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundHost, err := high.sc.FindHostById(high.hostId)
+	foundHost, err := high.sc.FindHostById(high.hostID)
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "Database error"))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "Database error for find() by distro id '%s'", high.hostID))
 	}
 
 	hostModel := &model.APIHost{}
 	if err = hostModel.BuildFromService(*foundHost); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API model error"))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "API Error converting from host.Host to model.APIHost"))
 	}
 
 	if foundHost.RunningTask != "" {

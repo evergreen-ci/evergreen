@@ -252,16 +252,14 @@ func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user gimlet.User)
 
 func findHostByIdWithOwner(c Connector, hostID string, user gimlet.User) (*host.Host, error) {
 	host, err := c.FindHostById(hostID)
+	if host == nil {
+		return nil, err
+	}
+
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error fetching host information",
-		}
-	}
-	if host == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "host does not exist",
 		}
 	}
 

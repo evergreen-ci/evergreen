@@ -19,6 +19,161 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+////////////////////////////////////////////////////////////////////////
+
+type HostsChangeStatusesSuite struct {
+	route *hostsChangeStatusesHandler
+	sc    *data.MockConnector
+
+	suite.Suite
+}
+
+func TestHostsChangeStatusesSuite(t *testing.T) {
+	suite.Run(t, new(HostsChangeStatusesSuite))
+}
+
+func (s *HostsChangeStatusesSuite) SetupTest() {
+	s.sc = getMockHostsConnector()
+	s.route = makeChangeHostsStatuses(s.sc).(*hostsChangeStatusesHandler)
+}
+
+func (s *HostsChangeStatusesSuite) TestParseValidStatus() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+
+	json := []byte(`{"host1": {"status": "quarantined"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
+	err := s.route.Parse(ctx, req)
+	s.NoError(err)
+	s.Equal("quarantined", s.route.HostToStatus["host1"].Status)
+	s.Equal("decommissioned", s.route.HostToStatus["host2"].Status)
+	s.Equal("terminated", s.route.HostToStatus["host4"].Status)
+}
+
+func (s *HostsChangeStatusesSuite) TestParseInValidStatus() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+
+	json := []byte(`{"host1": {"status": "This is an invalid state"}, "host2": {"status": "decommissioned"}, "host4": {"status": "terminated"}}`)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts", bytes.NewBuffer(json))
+	err := s.route.Parse(ctx, req)
+
+	s.Error(err)
+	s.EqualError(err, fmt.Sprintf("Invalid host status '%s' for host '%s'", s.route.HostToStatus["host1"].Status, "host1"))
+}
+
+func (s *HostsChangeStatusesSuite) TestParseMissingPayload() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+
+	json := []byte(``)
+	req, _ := http.NewRequest("PATCH", "http://example.com/api/rest/v2/hosts/host1", bytes.NewBuffer(json))
+	err := s.route.Parse(ctx, req)
+	s.Error(err)
+	s.EqualError(err, "Argument read error: error attempting to unmarshal into *map[string]route.hostStatus: unexpected end of JSON input")
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostsValidStatusesChange() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"host2": hostStatus{Status: "decommissioned"},
+		"host4": hostStatus{Status: "terminated"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostNotStartedByUser() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"host3": hostStatus{Status: "decommissioned"},
+		"host4": hostStatus{Status: "terminated"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusUnauthorized, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"host3": hostStatus{Status: "decommissioned"},
+		"host4": hostStatus{Status: "terminated"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["root"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusOK, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "terminated"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "running"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostQuarantinedOnTerminatedHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "quarantined"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunHostDecommissionedOnTerminatedHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"host1": hostStatus{Status: "decommissioned"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusBadRequest, res.Status())
+}
+
+func (s *HostsChangeStatusesSuite) TestRunWithInvalidHost() {
+	h := s.route.Factory().(*hostsChangeStatusesHandler)
+	h.HostToStatus = map[string]hostStatus{
+		"invalid": hostStatus{Status: "decommissioned"},
+	}
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user0"])
+	res := h.Run(ctx)
+	s.Equal(http.StatusNotFound, res.Status())
+}
+
+////////////////////////////////////////////////////////////////////////
+
 type HostChangeStatusSuite struct {
 	route *hostChangeStatusHandler
 	sc    *data.MockConnector
@@ -55,7 +210,7 @@ func (s *HostChangeStatusSuite) TestParseInValidStatus() {
 	err := s.route.Parse(ctx, req)
 
 	s.Error(err)
-	s.EqualError(err, "Invalid host status")
+	s.EqualError(err, fmt.Sprintf("Invalid host status '%s' for host '%s'", s.route.Status, s.route.hostID))
 }
 
 func (s *HostChangeStatusSuite) TestParseMissingStatus() {
@@ -71,7 +226,7 @@ func (s *HostChangeStatusSuite) TestParseMissingStatus() {
 
 func (s *HostChangeStatusSuite) TestRunHostValidStatusChange() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "host4"
+	h.hostID = "host4"
 	h.Status = evergreen.HostTerminated
 
 	ctx := context.Background()
@@ -82,7 +237,7 @@ func (s *HostChangeStatusSuite) TestRunHostValidStatusChange() {
 
 func (s *HostChangeStatusSuite) TestRunHostNotStartedByUser() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "host4"
+	h.hostID = "host4"
 	h.Status = evergreen.HostTerminated
 
 	ctx := context.Background()
@@ -93,7 +248,7 @@ func (s *HostChangeStatusSuite) TestRunHostNotStartedByUser() {
 
 func (s *HostChangeStatusSuite) TestRunSuperUserSetStatusAnyHost() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "host4"
+	h.hostID = "host4"
 	h.Status = evergreen.HostTerminated
 
 	ctx := context.Background()
@@ -104,7 +259,7 @@ func (s *HostChangeStatusSuite) TestRunSuperUserSetStatusAnyHost() {
 
 func (s *HostChangeStatusSuite) TestRunTerminatedOnTerminatedHost() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "host1"
+	h.hostID = "host1"
 	h.Status = evergreen.HostTerminated
 
 	ctx := context.Background()
@@ -115,7 +270,7 @@ func (s *HostChangeStatusSuite) TestRunTerminatedOnTerminatedHost() {
 
 func (s *HostChangeStatusSuite) TestRunHostRunningOnTerminatedHost() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "host1"
+	h.hostID = "host1"
 	h.Status = evergreen.HostRunning
 
 	ctx := context.Background()
@@ -126,7 +281,7 @@ func (s *HostChangeStatusSuite) TestRunHostRunningOnTerminatedHost() {
 
 func (s *HostChangeStatusSuite) TestRunHostQuarantinedOnTerminatedHost() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "host1"
+	h.hostID = "host1"
 	h.Status = evergreen.HostQuarantined
 
 	ctx := context.Background()
@@ -137,7 +292,7 @@ func (s *HostChangeStatusSuite) TestRunHostQuarantinedOnTerminatedHost() {
 
 func (s *HostChangeStatusSuite) TestRunHostDecommissionedOnTerminatedHost() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "host1"
+	h.hostID = "host1"
 	h.Status = evergreen.HostDecommissioned
 
 	ctx := context.Background()
@@ -148,14 +303,16 @@ func (s *HostChangeStatusSuite) TestRunHostDecommissionedOnTerminatedHost() {
 
 func (s *HostChangeStatusSuite) TestRunWithInvalidHost() {
 	h := s.route.Factory().(*hostChangeStatusHandler)
-	h.hostId = "Doesn't exist"
+	h.hostID = "Doesn't exist"
 	h.Status = evergreen.HostDecommissioned
 
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, s.sc.MockUserConnector.CachedUsers["user1"])
 	res := s.route.Run(ctx)
-	s.Equal(http.StatusInternalServerError, res.Status())
+	s.Equal(http.StatusNotFound, res.Status())
 }
+
+////////////////////////////////////////////////////////////////////////
 
 type HostSuite struct {
 	route *hostIDGetHandler
@@ -179,7 +336,7 @@ func (s *HostSuite) SetupTest() {
 }
 
 func (s *HostSuite) TestFindByIdFirst() {
-	s.route.hostId = "host1"
+	s.route.hostID = "host1"
 	res := s.route.Run(context.TODO())
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
@@ -193,7 +350,7 @@ func (s *HostSuite) TestFindByIdFirst() {
 }
 
 func (s *HostSuite) TestFindByIdLast() {
-	s.route.hostId = "host2"
+	s.route.hostID = "host2"
 	res := s.route.Run(context.TODO())
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
@@ -208,7 +365,7 @@ func (s *HostSuite) TestFindByIdLast() {
 }
 
 func (s *HostSuite) TestFindByIdFail() {
-	s.route.hostId = "host5"
+	s.route.hostID = "host5"
 	res := s.route.Run(context.TODO())
 	s.NotNil(res)
 	s.Equal(http.StatusNotFound, res.Status(), "%+v", res)
@@ -231,6 +388,8 @@ func (s *HostSuite) TestBuildFromServiceHost() {
 	s.Equal(apiHost.Distro.Provider, model.ToAPIString(host.Distro.Provider))
 	s.Equal(apiHost.Distro.ImageId, model.ToAPIString(""))
 }
+
+////////////////////////////////////////////////////////////////////////
 
 type hostTerminateHostHandlerSuite struct {
 	rm *hostTerminateHandler
@@ -332,6 +491,8 @@ func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 	s.Equal(http.StatusUnauthorized, resp.Status())
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 }
+
+////////////////////////////////////////////////////////////////////////
 
 type hostChangeRDPPasswordHandlerSuite struct {
 	rm gimlet.RouteHandler
@@ -442,6 +603,8 @@ func (s *hostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpa
 
 	return h.Parse(context.TODO(), r)
 }
+
+////////////////////////////////////////////////////////////////////////
 
 type hostExtendExpirationHandlerSuite struct {
 	rm gimlet.RouteHandler
