@@ -1,5 +1,5 @@
 mciModule.controller('PerfBBFailuresCtrl', function(
-  ApiV2, $scope
+  ApiV2, $scope, uiGridConstants
 ) {
   // Perf Failures View-Model
   const vm = this
@@ -41,20 +41,32 @@ mciModule.controller('PerfBBFailuresCtrl', function(
     columnDefs: [{
       name: 'Create Time',
       field: 'create_time',
+      sort: {
+        direction: uiGridConstants.DESC,
+        priority: 0,
+      },
     }, {
       name: 'Task',
       field: 'display_name',
       cellTemplate: 'ui-grid-link',
+      sort: {
+        direction: uiGridConstants.ASC,
+        priority: 2,
+      },
       _link: function(row) {
         return '/task/' + row.entity.task_id
-      }
+      },
     }, {
       name: 'Variant',
       field: 'build_variant',
       cellTemplate: 'ui-grid-link',
+      sort: {
+        direction: uiGridConstants.ASC,
+        priority: 1,
+      },
       _link: function(row) {
         return '/build/' + row.entity.build_id
-      }
+      },
     }, {
       name: 'Kind',
       field: 'status_details.type',
