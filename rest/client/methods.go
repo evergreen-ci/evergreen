@@ -313,6 +313,9 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("log")
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
 	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
 		return errors.Wrapf(err, "problem sending %d log messages for task %s", len(msgs), taskData.ID)
 	}
