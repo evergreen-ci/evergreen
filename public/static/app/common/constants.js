@@ -60,7 +60,6 @@ mciModule
     PROJECTS_DETAIL_API: 'projects/{project_id}',
     PROJECTS_VERSION_API: 'projects/{project_id}/versions',
     PROJECTS_REVISIONS_API: 'projects/{project_id}/revisions/{revision}',
-    PROJECTS_HISTORY_API: 'projects/{project_id}/test_history',
     PROJECTS_LAST_GREEN_API: 'projects/{project_id}/last_green',
 
     // TODO ## PATCHES API ##
