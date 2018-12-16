@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -53,6 +54,21 @@ func makeHostStatsCollector() *hostStatsCollector {
 
 func (j *hostStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	if flags.BackgroundStatsDisabled {
+		grip.Debug(message.Fields{
+			"mode":     "degraded",
+			"job":      j.ID(),
+			"job_type": j.Type().Name,
+		})
+		return
+	}
 
 	if j.logger == nil {
 		j.logger = logging.MakeGrip(grip.GetSender())
