@@ -75,7 +75,7 @@ type Task struct {
 	TaskGroup         string `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 
-	// only relevant if the task is runnin.  the time of the last heartbeat
+	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
@@ -1241,14 +1241,12 @@ func (t *Task) GetTestResultsForDisplayTask() ([]TestResult, error) {
 	return tasks[0].LocalTestResults, nil
 }
 
-func (t *Task) SetResetWhenFinished(detail *apimodels.TaskEndDetail) error {
+// SetResetWhenFinished requests that a display task reset itself when finished. Will mark itself as system failed
+func (t *Task) SetResetWhenFinished() error {
 	if !t.DisplayOnly {
 		return errors.Errorf("%s is not a display task", t.Id)
 	}
 	t.ResetWhenFinished = true
-	if detail != nil {
-		t.Details = *detail
-	}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -1256,7 +1254,6 @@ func (t *Task) SetResetWhenFinished(detail *apimodels.TaskEndDetail) error {
 		bson.M{
 			"$set": bson.M{
 				ResetWhenFinishedKey: true,
-				DetailsKey:           detail,
 			},
 		},
 	)

@@ -1,7 +1,12 @@
+// Copyright (C) MongoDB, Inc. 2017-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package mongo
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,10 +16,10 @@ import (
 	"time"
 
 	"github.com/mongodb/mongo-go-driver/bson"
-	"github.com/mongodb/mongo-go-driver/mongo/connstring"
-	"github.com/mongodb/mongo-go-driver/mongo/internal/testutil/helpers"
+	"github.com/mongodb/mongo-go-driver/internal/testutil/helpers"
 	"github.com/mongodb/mongo-go-driver/mongo/readconcern"
 	"github.com/mongodb/mongo-go-driver/mongo/writeconcern"
+	"github.com/mongodb/mongo-go-driver/x/network/connstring"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,13 +127,13 @@ func runConnectionStringTest(t *testing.T, testName string, testCase *connection
 			rcBSON, err := rc.MarshalBSONElement()
 			require.NoError(t, err)
 
-			rcDoc := rcBSON.Value().MutableDocument()
+			rcDoc := rcBSON.Value.Document()
 			expectedLevel, expectedFound := testCase.ReadConcern["level"]
-			actualLevel, actualErr := rcDoc.Lookup("level")
+			actualLevel, actualErr := rcDoc.LookupErr("level")
 			require.Equal(t, expectedFound, actualErr == nil)
 
 			if expectedFound {
-				require.Equal(t, expectedLevel, actualLevel.Value().StringValue())
+				require.Equal(t, expectedLevel, actualLevel.StringValue())
 			}
 		}
 
@@ -141,7 +146,7 @@ func runConnectionStringTest(t *testing.T, testName string, testCase *connection
 			wcBSON, err := wc.MarshalBSONElement()
 			require.NoError(t, err)
 
-			wcDoc := wcBSON.Value().MutableDocument()
+			wcDoc := wcBSON.Value.Document()
 
 			// Don't count journal=false since our write concern type doesn't encode it.
 			expectedLength := len(testCase.WriteConcern)
@@ -149,13 +154,11 @@ func runConnectionStringTest(t *testing.T, testName string, testCase *connection
 				expectedLength--
 			}
 
-			require.Equal(t, wcDoc.Len(), expectedLength)
+			require.Equal(t, len(wcDoc), expectedLength)
 
-			itr := wcDoc.Iterator()
-			for itr.Next() {
-				e := itr.Element()
+			for _, e := range wcDoc {
 
-				switch e.Key() {
+				switch e.Key {
 				case "w":
 					v, found := testCase.WriteConcern["w"]
 					require.True(t, found)
@@ -163,24 +166,24 @@ func runConnectionStringTest(t *testing.T, testName string, testCase *connection
 					vInt := testhelpers.GetIntFromInterface(v)
 
 					if vInt == nil {
-						require.Equal(t, e.Value().Type(), bson.TypeString)
+						require.Equal(t, e.Value.Type(), bson.TypeString)
 
 						vString, ok := v.(string)
 						require.True(t, ok)
-						require.Equal(t, vString, e.Value().StringValue())
+						require.Equal(t, vString, e.Value.StringValue())
 
 						break
 					}
 
-					require.Equal(t, e.Value().Type(), bson.TypeInt32)
-					require.Equal(t, *vInt, int64(e.Value().Int32()))
+					require.Equal(t, e.Value.Type(), bson.TypeInt32)
+					require.Equal(t, *vInt, int64(e.Value.Int32()))
 				case "wtimeout":
 					v, found := testCase.WriteConcern["wtimeoutMS"]
 					require.True(t, found)
 
 					i := testhelpers.GetIntFromInterface(v)
 					require.NotNil(t, i)
-					require.Equal(t, *i, e.Value().Int64())
+					require.Equal(t, *i, e.Value.Int64())
 				case "j":
 					v, found := testCase.WriteConcern["journal"]
 					require.True(t, found)
@@ -188,10 +191,9 @@ func runConnectionStringTest(t *testing.T, testName string, testCase *connection
 					vBool, ok := v.(bool)
 					require.True(t, ok)
 
-					require.Equal(t, vBool, e.Value().Boolean())
+					require.Equal(t, vBool, e.Value.Boolean())
 				}
 			}
-			require.NoError(t, itr.Err())
 		}
 	})
 }
@@ -203,11 +205,10 @@ func runDocumentTest(t *testing.T, testName string, testCase *documentTest) {
 			rcDoc, err := rc.MarshalBSONElement()
 			require.NoError(t, err)
 
-			rcBytes := rcDoc.Value().ReaderDocument()
+			rcBytes, _ := rcDoc.Value.Document().MarshalBSON()
 
 			actual := make(map[string]interface{})
-			decoder := bson.NewDecoder(bytes.NewBuffer(rcBytes))
-			err = decoder.Decode(actual)
+			err = bson.Unmarshal(rcBytes, &actual)
 
 			requireMapEqual(t, testCase.ReadConcernDocument, actual)
 		}
@@ -228,11 +229,10 @@ func runDocumentTest(t *testing.T, testName string, testCase *documentTest) {
 
 			require.NoError(t, err)
 
-			wcBytes := wcDoc.Value().ReaderDocument()
+			wcBytes, _ := wcDoc.Value.Document().MarshalBSON()
 
 			actual := make(map[string]interface{})
-			decoder := bson.NewDecoder(bytes.NewBuffer(wcBytes))
-			err = decoder.Decode(actual)
+			err = bson.Unmarshal(wcBytes, &actual)
 			require.NoError(t, err)
 
 			requireMapEqual(t, testCase.WriteConcernDocument, actual)

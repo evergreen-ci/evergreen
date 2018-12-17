@@ -53,7 +53,6 @@ func buildApp() *cli.App {
 		operations.Evaluate(),
 		operations.Validate(),
 		operations.List(),
-		operations.TestHistory(),
 		operations.LastGreen(),
 		operations.Subscriptions(),
 

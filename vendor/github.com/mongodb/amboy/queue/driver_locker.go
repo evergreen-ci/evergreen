@@ -219,6 +219,7 @@ func (l *lockManager) Lock(ctx context.Context, j amboy.Job) error {
 
 	stat.Owner = l.name
 	stat.InProgress = true
+
 	job.SetStatus(stat)
 
 	if err := l.d.SaveStatus(job, stat); err != nil {
@@ -242,7 +243,6 @@ func (l *lockManager) Unlock(j amboy.Job) error {
 	stat := j.Status()
 	stat.InProgress = false
 	stat.Owner = ""
-	j.SetStatus(stat)
 
 	l.removePing(j.ID())
 
@@ -250,10 +250,15 @@ func (l *lockManager) Unlock(j amboy.Job) error {
 		grip.Info(message.WrapError(err, message.Fields{
 			"job":  j.ID(),
 			"stat": stat,
+			"op":   "unlocking job",
 		}))
 
-		return errors.Wrapf(err, "problem unlocking '%s'", j.ID())
+		// it seems like we should error here, but if we hit
+		// an error here then we probably don't hold the lock,
+		// and therefore we've "unlocked."
 	}
+
+	j.SetStatus(stat)
 
 	return nil
 }

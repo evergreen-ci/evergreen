@@ -428,6 +428,7 @@ func PopulateSchedulerJobs(env evergreen.Environment) amboy.QueueOperation {
 				"impact":  "new tasks are not enqueued",
 				"mode":    "degraded",
 			})
+			return nil
 		}
 
 		catcher := grip.NewBasicCatcher()

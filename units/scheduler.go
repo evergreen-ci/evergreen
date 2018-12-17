@@ -11,6 +11,8 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -55,6 +57,22 @@ func NewDistroSchedulerJob(env evergreen.Environment, distroID string, ts time.T
 
 func (j *distroSchedulerJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	if flags.SchedulerDisabled {
+		grip.Debug(message.Fields{
+			"mode":     "degraded",
+			"distro":   j.DistroID,
+			"job":      j.ID(),
+			"job_type": j.Type().Name,
+		})
+		return
+	}
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()

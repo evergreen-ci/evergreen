@@ -66,7 +66,7 @@ func TestRemoteUnorderedMongoDBSuite(t *testing.T) {
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
 	tests.driverConstructor = func() Driver {
-		return NewMongoDBDriver(name, opts)
+		return NewMgoDriver(name, opts)
 	}
 
 	tests.tearDown = func() {

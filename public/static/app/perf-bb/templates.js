@@ -11,4 +11,17 @@ mciModule.run(function($templateCache) {
       '</div>' +
     '</div>'
   )
+
+  $templateCache.put('grouped-link-cell',
+    '<div>' +
+      '<div class="ui-grid-cell-contents">' +
+        '<div ng-if="row.groupHeader" >' +
+          '<strong>{{COL_FIELD}}</strong>' +
+        '</div>' +
+        '<div ng-if="!row.groupHeader">' +
+          '<a ng-href="{{col.colDef._link(row, col)}}" target="_blank" rel="noopener">{{COL_FIELD}}</a>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  )
 })

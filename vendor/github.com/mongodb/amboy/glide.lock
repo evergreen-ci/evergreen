@@ -25,7 +25,7 @@ imports:
   version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 
 - name: github.com/mongodb/mongo-go-driver
-  version: 06bd46c0f04382c3ec90c4cbe127cd00f5ba98e3
+  version: bc25b34a523bda7bc5980c618bc362df9cb36ef9
 
 - name: github.com/mongodb/grip
   version: af5d4f01dce67c1dafa9c9a9334f9cae31b2b437

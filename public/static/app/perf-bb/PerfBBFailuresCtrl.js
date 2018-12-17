@@ -1,5 +1,5 @@
 mciModule.controller('PerfBBFailuresCtrl', function(
-  ApiV2, $scope
+  ApiV2, $scope, uiGridConstants, uiGridGroupingConstants
 ) {
   // Perf Failures View-Model
   const vm = this
@@ -41,20 +41,40 @@ mciModule.controller('PerfBBFailuresCtrl', function(
     columnDefs: [{
       name: 'Create Time',
       field: 'create_time',
+      sort: {
+        direction: uiGridConstants.DESC,
+        priority: 2,
+      },
+      treeAggregationType: uiGridGroupingConstants.aggregation.MAX,
+      customTreeAggregationFinalizerFn: agg => agg.rendered = agg.value,
     }, {
       name: 'Task',
       field: 'display_name',
-      cellTemplate: 'ui-grid-link',
+      cellTemplate: 'grouped-link-cell',
+      sort: {
+        direction: uiGridConstants.ASC,
+        priority: 1,
+      },
+      grouping: {
+        groupPriority: 1,
+      },
       _link: function(row) {
         return '/task/' + row.entity.task_id
-      }
+      },
     }, {
       name: 'Variant',
       field: 'build_variant',
-      cellTemplate: 'ui-grid-link',
+      cellTemplate: 'grouped-link-cell',
+      sort: {
+        direction: uiGridConstants.ASC,
+        priority: 0,
+      },
+      grouping: {
+        groupPriority: 0,
+      },
       _link: function(row) {
         return '/build/' + row.entity.build_id
-      }
+      },
     }, {
       name: 'Kind',
       field: 'status_details.type',

@@ -72,10 +72,24 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, Current
 }
 
 func (j *createHostJob) Run(ctx context.Context) {
-	var err error
 	defer j.MarkComplete()
 
 	j.start = time.Now()
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(err)
+	}
+
+	if flags.HostinitDisabled {
+		grip.Debug(message.Fields{
+			"mode":     "degraded",
+			"host":     j.HostID,
+			"job":      j.ID(),
+			"job_type": j.Type().Name,
+		})
+		return
+	}
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
