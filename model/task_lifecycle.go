@@ -878,12 +878,12 @@ func ClearAndResetStrandedTask(h *host.Host) error {
 	}
 
 	if time.Since(t.StartTime) < task.UnschedulableThreshold {
+		if t.IsPartOfDisplay() {
+			return t.DisplayTask.SetResetWhenFinished()
+		}
 		detail := &apimodels.TaskEndDetail{
 			Status: evergreen.TaskFailed,
 			Type:   "system",
-		}
-		if t.IsPartOfDisplay() {
-			return t.DisplayTask.SetResetWhenFinished(detail)
 		}
 		return errors.Wrap(TryResetTask(t.Id, "mci", evergreen.MonitorPackage, detail), "problem resetting task")
 	}
@@ -982,7 +982,12 @@ func UpdateDisplayTask(t *task.Task) error {
 	if !wasFinished && t.IsFinished() {
 		event.LogDisplayTaskFinished(t.Id, t.Execution, t.Status)
 		if t.ResetWhenFinished {
-			return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, &t.Details), "error resetting display task")
+
+			details := &apimodels.TaskEndDetail{
+				Type:   evergreen.CommandTypeSystem,
+				Status: evergreen.TaskFailed,
+			}
+			return errors.Wrap(TryResetTask(t.Id, evergreen.User, evergreen.User, details), "error resetting display task")
 		}
 	}
 	return nil

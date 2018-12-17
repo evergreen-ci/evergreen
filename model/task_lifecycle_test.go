@@ -2250,15 +2250,9 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	assert.NoError(b.Insert())
 
 	// request that the task restarts when it's done
-	detail := &apimodels.TaskEndDetail{
-		Description: "foo",
-		Type:        evergreen.CommandTypeTest,
-		Status:      evergreen.TaskSucceeded,
-	}
-	assert.NoError(dt.SetResetWhenFinished(detail))
+	assert.NoError(dt.SetResetWhenFinished())
 	dbTask, err := task.FindOne(task.ById(dt.Id))
 	assert.NoError(err)
-	assert.Equal(detail.Description, dbTask.Details.Description)
 	assert.True(dbTask.ResetWhenFinished)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
@@ -2269,7 +2263,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
 	oldTask, err := task.FindOneOld(task.ById("dt_0"))
 	assert.NoError(err)
-	assert.Equal(detail.Description, oldTask.Details.Description)
+	assert.NotNil(oldTask)
 }
 
 func TestEvalStepback(t *testing.T) {
