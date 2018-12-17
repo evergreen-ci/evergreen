@@ -75,7 +75,7 @@ type Task struct {
 	TaskGroup         string `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 
-	// only relevant if the task is runnin.  the time of the last heartbeat
+	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
