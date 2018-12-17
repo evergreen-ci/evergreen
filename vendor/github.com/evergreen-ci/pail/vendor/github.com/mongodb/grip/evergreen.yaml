@@ -1,0 +1,144 @@
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/mongodb/grip
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  run-make:
+    command: shell.exec
+    type: test
+    params:
+       script: |
+         set -o errexit
+         set -o verbose
+
+         # Configure a local go path for this build.
+         export GOPATH=`pwd`/gopath
+
+         # on windows we need to turn the slashes the other way
+         if [ "Windows_NT" == "$OS" ]; then
+            export GOPATH=$(cygpath -m $GOPATH)
+         fi
+
+         cd gopath/src/github.com/mongodb/grip
+
+         # Run make, called with proper environment variables set,
+         # running the target.
+         ${build_env|} make ${target}
+
+
+#######################################
+#                Tasks                #
+#######################################
+post:
+  - command: gotest.parse_files
+    type: setup
+    params:
+      files:
+        - "gopath/src/github.com/mongodb/grip/build/output.*"
+        - "gopath/src/github.com/mongodb/grip/build/test.*.out"
+        - "gopath/src/github.com/mongodb/grip/build/race.*.out"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/mongodb/grip/build/output.*.coverage.html"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/html
+      permissions: public-read
+      display_name: "(html) coverage:"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/mongodb/grip/build/output.*.coverage"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: public-read
+      display_name: "(txt) coverage:"
+
+tasks:
+  # the build (with and without the race detector) and lint tasks use
+  # a template that does not include test result parsing.
+  - name: lint
+    tags: ["report"]
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/mongodb/grip
+      - func: run-make
+        vars: { target: "lint" }
+
+  - name: coverage
+    tags: [ "report" ]
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/mongodb/grip
+      - func: run-make
+        vars:
+          target: "coverage-html"
+          make_args: "-k"
+
+  - <<: *run-build
+    tags: ["test"]
+    name: test
+
+  - <<: *run-build
+    tags: ["race"]
+    name: race
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: race-detector
+    display_name: Race Detector (Arch Linux)
+    run_on:
+      - archlinux-test
+    tasks: [ ".race", ".report" ]
+
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    expansions:
+      build_env: "PATH=/opt/go/bin:$PATH GOROOT=/opt/go"
+    run_on:
+      - ubuntu1604-build
+    tasks: [ ".test" ]
+
+  - name: macos
+    display_name: macOS 10.12
+    expansions:
+      build_env: "PATH=/usr/local/go/bin:$PATH"
+    run_on:
+      - macos-1012
+    tasks: [ ".test" ]
+
+  - name: windows
+    display_name: Windows
+    run_on:
+      - windows-64-vs2015-small
+    expansions:
+      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes"
+    tasks: [ ".test" ]

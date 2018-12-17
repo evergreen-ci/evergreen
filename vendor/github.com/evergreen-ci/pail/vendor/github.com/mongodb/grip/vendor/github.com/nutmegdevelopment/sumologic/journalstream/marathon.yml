@@ -1,0 +1,38 @@
+id: /sumologic-journalstream
+cpus: 0.01
+mem: 400
+instances: {{count}}
+args: [
+    "-u",
+    "{{url}}",
+    "-w",
+    "{{window}}",
+    "-n",
+    "APP_NAME",
+    "{{opts}}"
+    ]
+constraints:
+  -
+    - hostname
+    - UNIQUE
+container:
+    volumes:
+    -
+        containerPath: "/var/log/journal"
+        hostPath: "/var/log/journal"
+        mode: RO
+    docker:
+        image: {{registry}}/sumologic-journalstream:{{version}}
+        privileged: true
+        parameters:
+        -
+            key: label
+            value: APP_NAME=sumologic-journalstream
+        -
+            key: log-driver
+            value: json-file
+        -
+            key: security-opt
+            value: label:disable
+        portMappings:
+        - containerPort: 6060

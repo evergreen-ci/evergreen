@@ -1,0 +1,49 @@
+hash: 4ebbd5afba4a96a96d61429f912861f3c5e29158a4c58456bd77ed1c13fdb5b2
+updated: 2016-06-14T12:03:19.851358667-04:00
+imports:
+- name: github.com/coreos/go-systemd
+  version: 6dc8b843c670f2027cc26b164935635840a40526
+  subpackages:
+  - journal
+- name: github.com/nutmegdevelopment/sumologic
+  version: 42ed9b372fa36887ba95cba2eab345991ca6e217
+- name: github.com/bluele/slack
+  version: 1f14901342cf5347555c2a6b0160d1a94f9c46ea
+- name: github.com/mattn/go-xmpp
+  version: f4550b5399387339df5ce4c3f88c1ef85333bdd5
+- name: github.com/shirou/gopsutil
+  version: 93564b314264efac01934715fad4c355ed6af1c5
+- name: github.com/shirou/w32
+  version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
+- name: github.com/StackExchange/wmi
+  version: e54cbda6595d7293a7a468ccf9525f6bc8887f99
+- name: github.com/go-ole/go-ole
+  version: 5e9c030faf78847db7aa77e3661b9cc449de29b7
+  subpackages:
+  - oleutil
+
+- name: github.com/stretchr/testify
+  version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+
+- name: github.com/fuyufjh/splunk-hec-go
+  version: 69956d6a6cbd511dade209563c3256c204c9ae51
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
+
+- name: github.com/andygrunwald/go-jira
+  version: c8c6680f245f3721d613b773ea4ab9ee7741b828
+- name: github.com/trivago/tgo
+  version: 27c472027c1e3b665eb2f6368d000ce9b879f34a
+- name: github.com/fatih/structs
+  version: 74a29b9fac7397d933f47e33eba94d2d83a464a2
+- name: github.com/google/go-querystring
+  version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
+
+- name: github.com/google/go-github
+  version: 7a51fb928f52a196d5f31daefb8a489453ef54ff
+- name: golang.org/x/oauth2
+  version: f047394b6d14284165300fd82dad67edb3a4d7f6
+- name: golang.org/x/sys
+  version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
+
+devImports: []
