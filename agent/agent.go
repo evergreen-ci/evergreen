@@ -148,13 +148,17 @@ LOOP:
 				}
 				tskCtx, tskCancel := context.WithCancel(ctx)
 				defer tskCancel()
-				if err := a.runTask(tskCtx, tskCancel, tc); err != nil {
+				shouldExit, err := a.runTask(tskCtx, tskCancel, tc)
+				if err != nil {
 					grip.Critical(message.WrapError(err, message.Fields{
 						"message": "error running task",
 						"task":    tc.task.ID,
 					}))
 					timer.Reset(0)
 					continue LOOP
+				}
+				if shouldExit {
+					return nil
 				}
 				needPostGroup = true
 				timer.Reset(0)
@@ -221,7 +225,9 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *taskContext) (err error) {
+// runTask returns true if the agent should exit, and separate an error if relevant
+func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *taskContext) (bool, error) {
+	var err error
 	defer func() { err = recovery.HandlePanicWithError(recover(), err, "running task") }()
 
 	grip.Info(message.Fields{
@@ -237,7 +243,7 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 		}
 
 		if err = metrics.start(ctx); err != nil {
-			return errors.Wrap(err, "problem setting up metrics collection")
+			return false, errors.Wrap(err, "problem setting up metrics collection")
 		}
 	}
 
@@ -249,7 +255,7 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 	// the task failed during initial task setup.
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
-		return errors.New("problem during configuring initial state")
+		return false, errors.New("problem during configuring initial state")
 	}
 	tc.setCurrentCommand(factory())
 
@@ -267,16 +273,16 @@ func (a *Agent) runTask(ctx context.Context, cancel context.CancelFunc, tc *task
 	var resp *apimodels.EndTaskResponse
 	resp, err = a.finishTask(ctx, tc, status)
 	if err != nil {
-		return errors.Wrap(err, "exiting due to error marking task complete")
+		return false, errors.Wrap(err, "error marking task complete")
 	}
 	if resp == nil {
 		grip.Error("response was nil, indicating a 409 or an empty response from the API server")
-		return nil
+		return false, nil
 	}
 	if resp.ShouldExit {
-		return errors.New("task response indicates that agent should exit")
+		return true, nil
 	}
-	return errors.WithStack(err)
+	return false, errors.WithStack(err)
 }
 
 func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
