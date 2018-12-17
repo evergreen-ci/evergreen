@@ -84,5 +84,7 @@ func cacheExpectedDurations(comparator *CmpBasedTaskComparator) error {
 		tasks = append(tasks, t)
 	}
 
+	comparator.tasks
+
 	return nil
 }
