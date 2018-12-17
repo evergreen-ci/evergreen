@@ -13,21 +13,18 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	humanize "github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 const defaultCloneDepth = 500
-const unshallowCloneDepth = 999999
 
 func Fetch() cli.Command {
 	const (
@@ -37,7 +34,6 @@ func Fetch() cli.Command {
 		artifactsFlagName = "artifacts"
 		shallowFlagName   = "shallow"
 		noPatchFlagName   = "patch"
-		tokenFlagName     = "token"
 	)
 
 	return cli.Command{
@@ -51,10 +47,6 @@ func Fetch() cli.Command {
 			cli.StringFlag{
 				Name:  joinFlagNames(taskFlagName, "t"),
 				Usage: "task associated with the data to fetch",
-			},
-			cli.StringFlag{
-				Name:  joinFlagNames(tokenFlagName, "k"),
-				Usage: "github API token",
 			},
 			cli.BoolFlag{
 				Name:  sourceFlagName,
@@ -102,7 +94,6 @@ func Fetch() cli.Command {
 			taskID := c.String(taskFlagName)
 			noPatch := c.Bool(noPatchFlagName)
 			shallow := c.Bool(shallowFlagName)
-			token := c.String(tokenFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -120,7 +111,7 @@ func Fetch() cli.Command {
 			}
 
 			if doFetchSource {
-				if err = fetchSource(ac, rc, wd, taskID, token, noPatch); err != nil {
+				if err = fetchSource(ac, rc, wd, taskID, noPatch); err != nil {
 					return err
 				}
 			}
@@ -140,7 +131,7 @@ func Fetch() cli.Command {
 //
 // Implementation details (legacy)
 
-func fetchSource(ac, rc *legacyClient, rootPath, taskId, token string, noPatch bool) error {
+func fetchSource(ac, rc *legacyClient, rootPath, taskId string, noPatch bool) error {
 	task, err := rc.GetTask(taskId)
 	if err != nil {
 		return err
@@ -174,7 +165,7 @@ func fetchSource(ac, rc *legacyClient, rootPath, taskId, token string, noPatch b
 	}
 	cloneDir = filepath.Join(rootPath, cloneDir)
 
-	err = cloneSource(task, project, config, cloneDir, token)
+	err = cloneSource(task, project, config, cloneDir)
 	if err != nil {
 		return err
 	}
@@ -189,75 +180,77 @@ func fetchSource(ac, rc *legacyClient, rootPath, taskId, token string, noPatch b
 }
 
 type cloneOptions struct {
-	token      string
-	owner      string
-	repository string
-	revision   string
-	rootDir    string
-	branch     string
-	depth      uint
+	repo     string
+	revision string
+	rootDir  string
+	branch   string
+	depth    uint
 }
 
 func clone(opts cloneOptions) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	var url string
-	if opts.token != "" {
-		url = fmt.Sprintf("https://%s@github.com/%s/%s.git", opts.token, opts.owner, opts.repository)
-	} else {
-		url = fmt.Sprintf("git@github.com:%v/%v.git", opts.owner, opts.repository)
-	}
-	cloneOpts := git.CloneOptions{
-		URL:      url,
-		Depth:    int(opts.depth),
-		Progress: os.Stdout,
+	// clone the repo first
+	cloneArgs := []string{"clone", opts.repo}
+	if opts.depth > 0 {
+		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))
 	}
 	if opts.branch != "" {
-		cloneOpts.ReferenceName = plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", opts.branch))
+		cloneArgs = append(cloneArgs, "-b", opts.branch)
 	}
-	repo, err := git.PlainCloneContext(ctx, opts.rootDir, false, &cloneOpts)
+
+	cloneArgs = append(cloneArgs, opts.rootDir)
+	grip.Debug(cloneArgs)
+
+	c := exec.Command("git", cloneArgs...)
+	c.Stdout, c.Stderr = os.Stdout, os.Stderr
+	err := c.Run()
 	if err != nil {
-		return errors.Wrap(err, "error cloning repo")
+		return err
 	}
-	workTree, err := repo.Worktree()
+
+	// try to check out the revision we want
+	checkoutArgs := []string{"checkout", opts.revision}
+	grip.Debug(checkoutArgs)
+
+	c = exec.Command("git", checkoutArgs...)
+	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
+	c.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
+	c.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
+	c.Dir = opts.rootDir
+	err = c.Run()
 	if err != nil {
-		return errors.Wrap(err, "error getting working tree")
-	}
-	checkoutOpts := git.CheckoutOptions{
-		Hash: plumbing.NewHash(opts.revision),
-	}
-	err = workTree.Checkout(&checkoutOpts)
-	if err != nil {
-		if !strings.Contains(err.Error(), "reference is not a tree") {
-			return errors.Wrap(err, "error checking out revision")
+		if !bytes.Contains(stderrBuf.Bytes(), []byte("reference is not a tree:")) {
+			return err
 		}
 
 		// we have to go deeper
-		fetchOpts := git.FetchOptions{
-			Depth:    unshallowCloneDepth,
-			Progress: os.Stdout,
-		}
-		err = repo.FetchContext(ctx, &fetchOpts)
+		fetchArgs := []string{"fetch", "--unshallow"}
+		grip.Debug(fetchArgs)
+
+		c = exec.Command("git", fetchArgs...)
+		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
+		err = c.Run()
 		if err != nil {
-			return errors.Wrap(err, "error fetching revisions")
+			return err
 		}
 		// now it's unshallow, so try again to check it out
-		return workTree.Checkout(&checkoutOpts)
+		checkoutRetryArgs := []string{"checkout", opts.revision}
+		grip.Debug(checkoutRetryArgs)
+
+		c = exec.Command("git", checkoutRetryArgs...)
+		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
+		return c.Run()
 	}
 	return nil
 }
 
-func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project, cloneDir, token string) error {
+func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project, cloneDir string) error {
 	// Fetch the outermost repo for the task
 	err := clone(cloneOptions{
-		owner:      project.Owner,
-		repository: project.Repo,
-		revision:   task.Revision,
-		rootDir:    cloneDir,
-		branch:     project.Branch,
-		depth:      defaultCloneDepth,
-		token:      token,
+		repo:     fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
+		revision: task.Revision,
+		rootDir:  cloneDir,
+		branch:   project.Branch,
+		depth:    defaultCloneDepth,
 	})
 
 	if err != nil {
@@ -277,11 +270,9 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
 		err = clone(cloneOptions{
-			owner:      project.Owner,
-			repository: project.Repo,
-			revision:   module.Branch,
-			rootDir:    filepath.ToSlash(moduleBase),
-			token:      token,
+			repo:     module.Repo,
+			revision: module.Branch,
+			rootDir:  filepath.ToSlash(moduleBase),
 		})
 		if err != nil {
 			return err

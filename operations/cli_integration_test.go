@@ -78,39 +78,21 @@ func setupCLITestHarness() cliTestHarness {
 	So(db.Clear(patch.Collection), ShouldBeNil)
 	So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
 	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(), ShouldBeNil)
-	configBytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
+	localConfBytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
 	So(err, ShouldBeNil)
 
 	projectRef := &model.ProjectRef{
-		Identifier: "sample",
-		Owner:      "evergreen-ci",
-		Repo:       "sample",
-		RepoKind:   "github",
-		Branch:     "master",
-		RemotePath: "evergreen.yml",
-		Enabled:    true,
-		BatchTime:  180,
+		Identifier:  "sample",
+		Owner:       "evergreen-ci",
+		Repo:        "sample",
+		RepoKind:    "github",
+		Branch:      "master",
+		RemotePath:  "evergreen.yml",
+		LocalConfig: string(localConfBytes),
+		Enabled:     true,
+		BatchTime:   180,
 	}
 	So(projectRef.Insert(), ShouldBeNil)
-
-	// Create the base versions
-	err = (&version.Version{
-		Id:         "baseVersion1",
-		Identifier: "sample",
-		CreateTime: time.Now(),
-		Revision:   "3c7bfeb82d492dc453e7431be664539c35b5db4b",
-		Requester:  evergreen.RepotrackerVersionRequester,
-		Config:     string(configBytes),
-	}).Insert()
-	So(err, ShouldBeNil)
-	err = (&version.Version{
-		Id:         "baseVersion2",
-		Identifier: "render-module",
-		CreateTime: time.Now(),
-		Revision:   "1e5232709595db427893826ce19289461cba3f75",
-		Requester:  evergreen.RepotrackerVersionRequester,
-	}).Insert()
-	So(err, ShouldBeNil)
 
 	// create a settings file for the command line client
 	settings := ClientSettings{
@@ -137,14 +119,12 @@ func TestCLIFetchSource(t *testing.T) {
 	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
+	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
 
 	Convey("with a task containing patches and modules", t, func() {
-		evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
-		token, err := testConfig.GetGithubOauthToken()
-		So(err, ShouldBeNil)
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()
-		err = os.RemoveAll("source-patch-1_sample")
+		err := os.RemoveAll("source-patch-1_sample")
 		So(err, ShouldBeNil)
 
 		// first, create a patch
@@ -182,7 +162,7 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(testTask, ShouldNotBeNil)
 
-		err = fetchSource(ac, rc, "", testTask.Id, token, false)
+		err = fetchSource(ac, rc, "", testTask.Id, false)
 		So(err, ShouldBeNil)
 
 		fileStat, err := os.Stat("./source-patch-1_sample/README.md")
