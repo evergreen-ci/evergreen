@@ -672,7 +672,11 @@ mciModule.factory('DrawPerfTrendChart', function (
       // Current revision marker
       var commitCircle = chartG
         .selectAll('circle.current')
-        .data(threadLevelsForSample(series[currentItemIdx], activeLevels))
+        .data(
+          threadMode == MAXONLY
+            ? activeLevels
+            : threadLevelsForSample(series[currentItemIdx], activeLevels)
+        )
 
       commitCircle
         .enter()
