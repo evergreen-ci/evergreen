@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model/commitq"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -11,6 +12,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -185,6 +187,38 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		return gimlet.NewJSONResponse(struct{}{})
+
+	case *github.IssueCommentEvent:
+		isPullRequestComment := event.Issue.IsPullRequest()
+		triggersCommitq := commitq.TriggersCommitQueue(*event.Action, *event.Comment.Body)
+		if !(isPullRequestComment && triggersCommitq) {
+			return gimlet.NewJSONResponse(struct{}{})
+		}
+
+		prBranch, err := gh.sc.FindPRBranchByPRNum(*event.Issue.Number)
+		if err != nil {
+			grip.Error(message.WrapError(err, "no matching PR"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "no matching PR"))
+		}
+
+		owner := *event.Repo.Owner.Login
+		repo := *event.Repo.Name
+		branch := prBranch
+		projectID, err := gh.sc.FindProjectIDWithCommitQByOwnerRepoAndBranch(owner, repo, branch)
+		if err != nil {
+			grip.Error(message.WrapError(err, "can't get project from db"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get project from db"))
+		}
+		if projectID == "" {
+			grip.Error("no matching project with commit queue")
+			return gimlet.MakeJSONErrorResponder(errors.New("no matching project with commit queue"))
+		}
+
+		err = gh.sc.EnqueueItem(projectID, *event.Issue.PullRequestLinks.HTMLURL)
+		if err != nil {
+			grip.Error(message.WrapError(err, "can't enqueue item on commit queue"))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't enqueue item on commit queue"))
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

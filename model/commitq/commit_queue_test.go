@@ -123,3 +123,15 @@ func (s *CommitQueueSuite) TestUpdateStatus() {
 	s.NoError(err)
 	s.Equal("email", dbq.StatusAction)
 }
+
+func (s *CommitQueueSuite) TestCommentTrigger() {
+	comment := "no dice"
+	action := "create"
+	s.False(TriggersCommitQueue(action, comment))
+
+	comment = triggerComment
+	s.True(TriggersCommitQueue(action, comment))
+
+	action = "delete"
+	s.False(TriggersCommitQueue(action, comment))
+}

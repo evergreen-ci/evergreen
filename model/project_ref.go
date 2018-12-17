@@ -38,6 +38,7 @@ type ProjectRef struct {
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
 	PRTestingEnabled bool `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+	CommitQEnabled   bool `bson:"commitq_enabled" json:"commitq_enabled" yaml:"commitq_enabled"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked          bool `bson:"tracked" json:"tracked"`
@@ -126,6 +127,7 @@ var (
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefCommitQEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "CommitQEnabled")
 	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefNotifyOnFailureKey    = bsonutil.MustHaveTag(ProjectRef{}, "NotifyOnBuildFailure")
 	projectRefTriggersKey           = bsonutil.MustHaveTag(ProjectRef{}, "Triggers")
@@ -288,6 +290,28 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (
 	}
 
 	return &projectRefs[target], nil
+}
+
+func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+	projRef := &ProjectRef{}
+	if err := db.FindOne(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefOwnerKey:          owner,
+			ProjectRefRepoKey:           repo,
+			ProjectRefBranchKey:         branch,
+			projectRefCommitQEnabledKey: true,
+		},
+		db.NoProjection,
+		db.NoSort,
+		projRef,
+	); err == mgo.ErrNotFound {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return projRef, nil
 }
 
 // FindProjectRefs returns limit refs starting at project identifier key

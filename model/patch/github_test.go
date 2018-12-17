@@ -207,6 +207,19 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	s.Len(found, 3)
 }
 
+func (s *GithubSuite) TestFindGithubIntentByPRNum() {
+	intent, err := NewGithubIntent("300", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	s.Require().NoError(err)
+	s.Require().NotNil(intent)
+	s.Require().NoError(intent.Insert())
+
+	found, err := FindGithubIntentByPRNum(s.pr)
+	s.NoError(err)
+	s.NotNil(found)
+
+	s.Equal(intent, found)
+}
+
 func (s *GithubSuite) TestNewPatch() {
 	intent, err := NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)

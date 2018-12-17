@@ -64,6 +64,18 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 	return nil
 }
 
+func (p *DBPatchIntentConnector) FindPRBranchByPRNum(PRNum int) (string, error) {
+	pr, err := patch.FindGithubIntentByPRNum(PRNum)
+	if err != nil {
+		return "", errors.Wrap(err, "can't query for PR")
+	}
+	if pr == nil {
+		return "", errors.New("PR not found")
+	}
+
+	return pr.BaseBranch, nil
+}
+
 type MockPatchIntentKey struct {
 	intentType string
 	msgID      string
@@ -81,4 +93,8 @@ func (p *MockPatchIntentConnector) AddPatchIntent(newIntent patch.Intent, _ ambo
 	p.CachedIntents[key] = newIntent
 
 	return nil
+}
+
+func (p *MockPatchIntentConnector) FindPRBranchByPRNum(PRNum int) (string, error) {
+	return "master", nil
 }

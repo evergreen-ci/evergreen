@@ -4,6 +4,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const triggerComment = "evergreen merge"
+
 type CommitQueue struct {
 	ProjectID    string   `bson:"_id"`
 	Queue        []string `bson:"queue"`
@@ -81,4 +83,11 @@ func (q CommitQueue) findItem(item string) int {
 		}
 	}
 	return -1
+}
+
+func TriggersCommitQueue(commentAction string, comment string) bool {
+	if commentAction == "delete" {
+		return false
+	}
+	return comment == triggerComment
 }
