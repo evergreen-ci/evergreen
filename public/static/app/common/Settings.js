@@ -68,7 +68,7 @@ mciModule.factory('Settings', function(SETTING_DEFS, $log) {
   function readSetting(descriptor) {
     var value = localStorage.getItem(descriptor.path)
     if (value === null) {
-      defValue = descriptor.default
+      let defValue = descriptor.default
       if (defValue !== undefined) {
         value = defValue
 

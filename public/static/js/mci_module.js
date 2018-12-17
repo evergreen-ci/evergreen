@@ -14,7 +14,16 @@ _.mixin({
     _.each(coll, function(d) {
       _.extend(d, patch)
     })
-  }
+  },
+  // Extracts referenced element from the obj
+  // For obj = {a: {b: 3}} and reference = 'a.b'
+  // Returns 3
+  // Returns undefined if referenced element does not exist
+  dereference: function(obj, reference) {
+    return _.reduce(reference.split('.'), function(m, ref) {
+      return m ? m[ref] : undefined
+    }, obj)
+  },
 })
 
 var mciModule = angular.module('MCI', [
