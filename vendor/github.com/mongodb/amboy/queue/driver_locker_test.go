@@ -89,7 +89,6 @@ func (s *LockManagerSuite) TestLockReachesTimeout() {
 	s.NoError(s.lm.Lock(s.ctx, j))
 	time.Sleep(s.lm.timeout * 3)
 	s.NoError(s.lm.Lock(s.ctx, j))
-	s.Error(s.lm.Lock(s.ctx, j))
 }
 
 func (s *LockManagerSuite) TestPanicJobIsUnlocked() {

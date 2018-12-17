@@ -48,14 +48,14 @@ func TestDriverSuiteWithPriorityInstance(t *testing.T) {
 	suite.Run(t, tests)
 }
 
-func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
+func TestDriverSuiteWithMgoInstance(t *testing.T) {
 	tests := new(DriverSuite)
 	tests.uuid = uuid.NewV4().String()
 	opts := DefaultMongoDBOptions()
 	opts.DB = "amboy_test"
-	mDriver := NewMongoDBDriver(
+	mDriver := NewMgoDriver(
 		"test-"+tests.uuid,
-		opts).(*mongoDB)
+		opts).(*mgoDriver)
 
 	tests.driverConstructor = func() Driver {
 		return mDriver
@@ -66,6 +66,27 @@ func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 		defer session.Close()
 		err := jobs.DropCollection()
 		grip.Infof("removed %s collection (%+v)", jobs.Name, err)
+	}
+
+	suite.Run(t, tests)
+}
+
+func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
+	tests := new(DriverSuite)
+	tests.uuid = uuid.NewV4().String()
+	opts := DefaultMongoDBOptions()
+	opts.DB = "amboy_test"
+	mDriver := NewMongoDriver(
+		"test-"+tests.uuid,
+		opts).(*mongoDriver)
+
+	tests.driverConstructor = func() Driver {
+		return mDriver
+	}
+
+	tests.tearDown = func() {
+		err := mDriver.getCollection().Drop(nil)
+		grip.Infof("removed %s collection (%+v)", mDriver.getCollection().Name(), err)
 	}
 
 	suite.Run(t, tests)
@@ -122,7 +143,7 @@ func (s *DriverSuite) TestSaveJobPersistsJobInDriver() {
 
 	s.Equal(0, s.driver.Stats().Total)
 
-	err := s.driver.Save(j)
+	err := s.driver.Put(j)
 	s.NoError(err)
 
 	s.Equal(1, s.driver.Stats().Total)
@@ -141,7 +162,7 @@ func (s *DriverSuite) TestSaveAndGetRoundTripObjects() {
 
 	s.Equal(0, s.driver.Stats().Total)
 
-	err := s.driver.Save(j)
+	err := s.driver.Put(j)
 	s.NoError(err)
 
 	s.Equal(1, s.driver.Stats().Total)
@@ -161,7 +182,7 @@ func (s *DriverSuite) TestReloadRefreshesJobFromMemory() {
 	j := job.NewShellJob("echo foo", "")
 
 	originalCommand := j.Command
-	err := s.driver.Save(j)
+	err := s.driver.Put(j)
 	s.NoError(err)
 
 	s.Equal(1, s.driver.Stats().Total)
@@ -174,7 +195,7 @@ func (s *DriverSuite) TestReloadRefreshesJobFromMemory() {
 	s.NoError(err)
 
 	reloadedJob, err := s.driver.Get(j.ID())
-	s.NoError(err)
+	s.Require().NoError(err)
 	j = reloadedJob.(*job.ShellJob)
 	s.NotEqual(originalCommand, j.Command)
 	s.Equal(newCommand, j.Command)
@@ -190,7 +211,7 @@ func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 	j := job.NewShellJob("echo foo", "")
 
 	s.Equal(0, s.driver.Stats().Total)
-	s.NoError(s.driver.Save(j))
+	s.NoError(s.driver.Put(j))
 	s.Equal(1, s.driver.Stats().Total)
 	s.Equal(0, s.driver.Stats().Completed)
 	s.Equal(1, s.driver.Stats().Pending)
@@ -235,7 +256,7 @@ func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
 	j := job.NewShellJob("echo foo", "")
 	j.MarkComplete()
 
-	s.NoError(s.driver.Save(j))
+	s.NoError(s.driver.Put(j))
 	s.Equal(1, s.driver.Stats().Total)
 
 	s.Equal(1, s.driver.Stats().Total)
@@ -252,7 +273,7 @@ func (s *DriverSuite) TestJobsMethodReturnsAllJobs() {
 	for idx := range [24]int{} {
 		name := fmt.Sprintf("echo test num %d", idx)
 		j := job.NewShellJob(name, "")
-		s.NoError(s.driver.Save(j))
+		s.NoError(s.driver.Put(j))
 		mocks[j.ID()] = j
 	}
 
@@ -277,7 +298,7 @@ func (s *DriverSuite) TestStatsMethodReturnsAllJobs() {
 		cmd := fmt.Sprintf("echo 'foo: %d'", i)
 		j := job.NewShellJob(cmd, "")
 
-		s.NoError(s.driver.Save(j))
+		s.NoError(s.driver.Put(j))
 		names[j.ID()] = struct{}{}
 	}
 

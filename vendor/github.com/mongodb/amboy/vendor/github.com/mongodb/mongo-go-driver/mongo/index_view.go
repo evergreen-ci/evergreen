@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2017-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package mongo
 
 import (
@@ -7,7 +13,11 @@ import (
 	"fmt"
 
 	"github.com/mongodb/mongo-go-driver/bson"
-	"github.com/mongodb/mongo-go-driver/mongo/private/ops"
+	"github.com/mongodb/mongo-go-driver/bson/bsontype"
+	"github.com/mongodb/mongo-go-driver/mongo/options"
+	"github.com/mongodb/mongo-go-driver/x/bsonx"
+	"github.com/mongodb/mongo-go-driver/x/mongo/driver"
+	"github.com/mongodb/mongo-go-driver/x/network/command"
 )
 
 // ErrInvalidIndexValue indicates that the index Keys document has a value that isn't either a number or a string.
@@ -26,23 +36,38 @@ type IndexView struct {
 
 // IndexModel contains information about an index.
 type IndexModel struct {
-	Keys    *bson.Document
-	Options *bson.Document
+	Keys    bsonx.Doc
+	Options bsonx.Doc
 }
 
 // List returns a cursor iterating over all the indexes in the collection.
-func (iv IndexView) List(ctx context.Context) (Cursor, error) {
-	s, err := iv.coll.getWriteableServer(ctx)
+func (iv IndexView) List(ctx context.Context, opts ...*options.ListIndexesOptions) (Cursor, error) {
+	sess := sessionFromContext(ctx)
+
+	err := iv.coll.client.ValidSession(sess)
 	if err != nil {
 		return nil, err
 	}
 
-	return ops.ListIndexes(ctx, s, iv.coll.namespace(), ops.ListIndexesOptions{})
+	listCmd := command.ListIndexes{
+		NS:      iv.coll.namespace(),
+		Session: sess,
+		Clock:   iv.coll.client.clock,
+	}
+
+	return driver.ListIndexes(
+		ctx, listCmd,
+		iv.coll.client.topology,
+		iv.coll.writeSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 }
 
 // CreateOne creates a single index in the collection specified by the model.
-func (iv IndexView) CreateOne(ctx context.Context, model IndexModel) (string, error) {
-	names, err := iv.CreateMany(ctx, model)
+func (iv IndexView) CreateOne(ctx context.Context, model IndexModel, opts ...*options.CreateIndexesOptions) (string, error) {
+	names, err := iv.CreateMany(ctx, []IndexModel{model}, opts...)
 	if err != nil {
 		return "", err
 	}
@@ -52,11 +77,15 @@ func (iv IndexView) CreateOne(ctx context.Context, model IndexModel) (string, er
 
 // CreateMany creates multiple indexes in the collection specified by the models. The names of the
 // creates indexes are returned.
-func (iv IndexView) CreateMany(ctx context.Context, models ...IndexModel) ([]string, error) {
+func (iv IndexView) CreateMany(ctx context.Context, models []IndexModel, opts ...*options.CreateIndexesOptions) ([]string, error) {
 	names := make([]string, 0, len(models))
-	indexes := bson.NewArray()
+	indexes := bsonx.Arr{}
 
 	for _, model := range models {
+		if model.Keys == nil {
+			return nil, fmt.Errorf("index model keys cannot be nil")
+		}
+
 		name, err := getOrGenerateIndexName(model)
 		if err != nil {
 			return nil, err
@@ -64,26 +93,37 @@ func (iv IndexView) CreateMany(ctx context.Context, models ...IndexModel) ([]str
 
 		names = append(names, name)
 
-		index := bson.NewDocument(
-			bson.EC.SubDocument("key", model.Keys),
-		)
+		index := bsonx.Doc{{"key", bsonx.Document(model.Keys)}}
 		if model.Options != nil {
-			err = index.Concat(model.Options)
-			if err != nil {
-				return nil, err
-			}
+			index = append(index, model.Options...)
 		}
-		index.Set(bson.EC.String("name", name))
+		index = index.Set("name", bsonx.String(name))
 
-		indexes.Append(bson.VC.Document(index))
+		indexes = append(indexes, bsonx.Document(index))
 	}
 
-	s, err := iv.coll.getWriteableServer(ctx)
+	sess := sessionFromContext(ctx)
+
+	err := iv.coll.client.ValidSession(sess)
 	if err != nil {
 		return nil, err
 	}
 
-	err = ops.CreateIndexes(ctx, s, iv.coll.namespace(), indexes)
+	cmd := command.CreateIndexes{
+		NS:      iv.coll.namespace(),
+		Indexes: indexes,
+		Session: sess,
+		Clock:   iv.coll.client.clock,
+	}
+
+	_, err = driver.CreateIndexes(
+		ctx, cmd,
+		iv.coll.client.topology,
+		iv.coll.writeSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -92,52 +132,83 @@ func (iv IndexView) CreateMany(ctx context.Context, models ...IndexModel) ([]str
 }
 
 // DropOne drops the index with the given name from the collection.
-func (iv IndexView) DropOne(ctx context.Context, name string) (bson.Reader, error) {
+func (iv IndexView) DropOne(ctx context.Context, name string, opts ...*options.DropIndexesOptions) (bson.Raw, error) {
 	if name == "*" {
 		return nil, ErrMultipleIndexDrop
 	}
 
-	s, err := iv.coll.getWriteableServer(ctx)
+	sess := sessionFromContext(ctx)
+
+	err := iv.coll.client.ValidSession(sess)
 	if err != nil {
 		return nil, err
 	}
 
-	return ops.DropIndexes(ctx, s, iv.coll.namespace(), name)
+	cmd := command.DropIndexes{
+		NS:      iv.coll.namespace(),
+		Index:   name,
+		Session: sess,
+		Clock:   iv.coll.client.clock,
+	}
+
+	return driver.DropIndexes(
+		ctx, cmd,
+		iv.coll.client.topology,
+		iv.coll.writeSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 }
 
 // DropAll drops all indexes in the collection.
-func (iv IndexView) DropAll(ctx context.Context) (bson.Reader, error) {
-	s, err := iv.coll.getWriteableServer(ctx)
+func (iv IndexView) DropAll(ctx context.Context, opts ...*options.DropIndexesOptions) (bson.Raw, error) {
+	sess := sessionFromContext(ctx)
+
+	err := iv.coll.client.ValidSession(sess)
 	if err != nil {
 		return nil, err
 	}
 
-	return ops.DropIndexes(ctx, s, iv.coll.namespace(), "*")
+	cmd := command.DropIndexes{
+		NS:      iv.coll.namespace(),
+		Index:   "*",
+		Session: sess,
+		Clock:   iv.coll.client.clock,
+	}
+
+	return driver.DropIndexes(
+		ctx, cmd,
+		iv.coll.client.topology,
+		iv.coll.writeSelector,
+		iv.coll.client.id,
+		iv.coll.client.topology.SessionPool,
+		opts...,
+	)
 }
 
 func getOrGenerateIndexName(model IndexModel) (string, error) {
 	if model.Options != nil {
-		nameVal, err := model.Options.Lookup("name")
+		nameVal, err := model.Options.LookupErr("name")
 
-		switch err {
-		case bson.ErrElementNotFound:
+		switch err.(type) {
+		case bsonx.KeyNotFound:
 			break
 		case nil:
-			if nameVal.Value().Type() != bson.TypeString {
+			if nameVal.Type() != bson.TypeString {
 				return "", ErrNonStringIndexName
 			}
 
-			return nameVal.Value().StringValue(), nil
+			return nameVal.StringValue(), nil
 		default:
 			return "", err
 		}
 	}
 
 	name := bytes.NewBufferString("")
-	itr := model.Keys.Iterator()
 	first := true
 
-	for itr.Next() {
+	for _, elem := range model.Keys {
 		if !first {
 			_, err := name.WriteRune('_')
 			if err != nil {
@@ -145,8 +216,7 @@ func getOrGenerateIndexName(model IndexModel) (string, error) {
 			}
 		}
 
-		elem := itr.Element()
-		_, err := name.WriteString(elem.Key())
+		_, err := name.WriteString(elem.Key)
 		if err != nil {
 			return "", err
 		}
@@ -158,13 +228,13 @@ func getOrGenerateIndexName(model IndexModel) (string, error) {
 
 		var value string
 
-		switch elem.Value().Type() {
-		case bson.TypeInt32:
-			value = fmt.Sprintf("%d", elem.Value().Int32())
-		case bson.TypeInt64:
-			value = fmt.Sprintf("%d", elem.Value().Int64())
-		case bson.TypeString:
-			value = elem.Value().StringValue()
+		switch elem.Value.Type() {
+		case bsontype.Int32:
+			value = fmt.Sprintf("%d", elem.Value.Int32())
+		case bsontype.Int64:
+			value = fmt.Sprintf("%d", elem.Value.Int64())
+		case bsontype.String:
+			value = elem.Value.StringValue()
 		default:
 			return "", ErrInvalidIndexValue
 		}
@@ -175,9 +245,6 @@ func getOrGenerateIndexName(model IndexModel) (string, error) {
 		}
 
 		first = false
-	}
-	if err := itr.Err(); err != nil {
-		return "", err
 	}
 
 	return name.String(), nil

@@ -7,61 +7,55 @@
 package mongo
 
 import (
-	"fmt"
-	"reflect"
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/mongodb/mongo-go-driver/bson"
+	"github.com/mongodb/mongo-go-driver/x/bsonx"
 )
 
 func TestTransformDocument(t *testing.T) {
 	testCases := []struct {
 		name     string
 		document interface{}
-		want     *bson.Document
+		want     bsonx.Doc
 		err      error
 	}{
 		{
 			"bson.Marshaler",
-			bMarsh{bson.NewDocument(bson.EC.String("foo", "bar"))},
-			bson.NewDocument(bson.EC.String("foo", "bar")),
-			nil,
-		},
-		{
-			"bson.DocumentMarshaler",
-			dMarsh{bson.NewDocument(bson.EC.String("foo", "bar"))},
-			bson.NewDocument(bson.EC.String("foo", "bar")),
+			bMarsh{bsonx.Doc{{"foo", bsonx.String("bar")}}},
+			bsonx.Doc{{"foo", bsonx.String("bar")}},
 			nil,
 		},
 		{
 			"reflection",
 			reflectStruct{Foo: "bar"},
-			bson.NewDocument(bson.EC.String("foo", "bar")),
+			bsonx.Doc{{"foo", bsonx.String("bar")}},
 			nil,
 		},
 		{
 			"reflection pointer",
 			&reflectStruct{Foo: "bar"},
-			bson.NewDocument(bson.EC.String("foo", "bar")),
+			bsonx.Doc{{"foo", bsonx.String("bar")}},
 			nil,
 		},
 		{
 			"unsupported type",
 			[]string{"foo", "bar"},
 			nil,
-			fmt.Errorf("cannot transform type %s to a *bson.Document", reflect.TypeOf([]string{})),
+			MarshalError{Value: []string{"foo", "bar"}, Err: errors.New("invalid state transition: TopLevel -> ArrayMode")},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := TransformDocument(tc.document)
+			got, err := transformDocument(bson.NewRegistryBuilder().Build(), tc.document)
 			if !cmp.Equal(err, tc.err, cmp.Comparer(compareErrors)) {
 				t.Errorf("Error does not match expected error. got %v; want %v", err, tc.err)
 			}
 
-			if diff := cmp.Diff(got, tc.want, cmp.AllowUnexported(bson.Document{}, bson.Element{}, bson.Value{})); diff != "" {
+			if diff := cmp.Diff(got, tc.want, cmp.AllowUnexported(bsonx.Elem{}, bsonx.Val{})); diff != "" {
 				t.Errorf("Returned documents differ: (-got +want)\n%s", diff)
 			}
 		})
@@ -87,21 +81,11 @@ func compareErrors(err1, err2 error) bool {
 var _ bson.Marshaler = bMarsh{}
 
 type bMarsh struct {
-	*bson.Document
+	bsonx.Doc
 }
 
 func (b bMarsh) MarshalBSON() ([]byte, error) {
-	return b.Document.MarshalBSON()
-}
-
-var _ bson.DocumentMarshaler = dMarsh{}
-
-type dMarsh struct {
-	d *bson.Document
-}
-
-func (d dMarsh) MarshalBSONDocument() (*bson.Document, error) {
-	return d.d, nil
+	return b.Doc.MarshalBSON()
 }
 
 type reflectStruct struct {

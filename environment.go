@@ -222,7 +222,7 @@ func (e *envState) createQueues(ctx context.Context) error {
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
 
-	qmdb, err := queue.OpenNewMongoDBDriver(ctx, e.settings.Amboy.Name, opts, e.session)
+	qmdb, err := queue.OpenNewMgoDriver(ctx, e.settings.Amboy.Name, opts, e.session)
 	if err != nil {
 		return errors.Wrap(err, "problem setting queue backend")
 	}
