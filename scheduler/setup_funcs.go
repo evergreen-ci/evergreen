@@ -2,7 +2,9 @@ package scheduler
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
+	"sync"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -50,5 +52,36 @@ func groupTaskGroups(comparator *CmpBasedTaskComparator) error {
 	for i, k := range taskKeys {
 		comparator.tasks[i] = taskMap[k]
 	}
+	return nil
+}
+
+func cacheExpectedDurations(comparator *CmpBasedTaskComparator) error {
+	work := make(chan task.Task, len(comparator.tasks))
+	output := make(chan task.Task, len(comparator.tasks))
+
+	for _, t := range comparator.tasks {
+		work <- t
+	}
+
+	wg := &sync.WaitGroup{}
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for t := range work {
+				_ = t.FetchExpectedDuration()
+				output <- t
+			}
+		}()
+	}
+	wg.Wait()
+
+	close(output)
+	tasks := make([]task.Task, 0, len(comparator.tasks))
+
+	for t := range output {
+		tasks = append(tasks, t)
+	}
+
 	return nil
 }
