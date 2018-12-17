@@ -69,8 +69,23 @@ func NewAgentDeployJob(env evergreen.Environment, h host.Host, id string) amboy.
 }
 
 func (j *agentDeployJob) Run(ctx context.Context) {
-	var err error
 	defer j.MarkComplete()
+
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+
+	if flags.TaskrunnerDisabled {
+		grip.Debug(message.Fields{
+			"mode":     "degraded",
+			"host":     j.HostID,
+			"job":      j.ID(),
+			"job_type": j.Type().Name,
+		})
+		return
+	}
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
