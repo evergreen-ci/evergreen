@@ -199,9 +199,9 @@ mciModule.controller('PerfController', function PerfController(
         threadMode: scope.threadLevelsRadio.value,
         linearMode: scope.scaleModel.linearMode,
         originMode: scope.rangeModel.originMode
-      });
-      scope.showToolbar = true
+      })
     }
+    scope.showToolbar = true
   }
 
   // converts a percentage to a color. Higher -> greener, Lower -> redder.
