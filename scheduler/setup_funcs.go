@@ -62,6 +62,7 @@ func cacheExpectedDurations(comparator *CmpBasedTaskComparator) error {
 	for _, t := range comparator.tasks {
 		work <- t
 	}
+	close(work)
 
 	wg := &sync.WaitGroup{}
 	for i := 0; i < runtime.NumCPU(); i++ {
