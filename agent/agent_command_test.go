@@ -68,7 +68,7 @@ func (s *CommandSuite) TestShellExec() {
 	err = s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, cancel, tc)
+	_, err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -116,7 +116,7 @@ func (s *CommandSuite) TestS3Copy() {
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
-	err = s.a.runTask(ctx, cancel, tc)
+	_, err = s.a.runTask(ctx, cancel, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()

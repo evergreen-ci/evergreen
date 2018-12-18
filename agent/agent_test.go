@@ -96,8 +96,11 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := s.a.loop(ctx)
-	s.Error(err)
+	go func() {
+		err := s.a.loop(ctx)
+		s.NoError(err)
+	}()
+	time.Sleep(1 * time.Second)
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {
@@ -124,7 +127,7 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	defer cancel()
 
 	err := s.a.loop(ctx)
-	s.Error(err)
+	s.NoError(err)
 }
 
 func (s *AgentSuite) TestNextTaskConflict() {
@@ -166,13 +169,7 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 }
 
 func (s *AgentSuite) TestCancelStartTask() {
-	resetIdleTimeout := make(chan time.Duration)
 	complete := make(chan string)
-	go func() {
-		for range resetIdleTimeout {
-			// discard
-		}
-	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	s.a.startTask(ctx, s.tc, complete)
@@ -343,7 +340,7 @@ func (s *AgentSuite) TestAbort() {
 	s.a.opts.HeartbeatInterval = time.Nanosecond
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err := s.a.runTask(ctx, cancel, s.tc)
+	_, err := s.a.runTask(ctx, cancel, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{

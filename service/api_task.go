@@ -146,6 +146,28 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if currentHost.RunningTask == "" {
+		grip.Error(message.Fields{
+			"message":                 "host is not assigned task, not clearing, asking agent to exit",
+			"task_id":                 t.Id,
+			"task_status_from_db":     t.Status,
+			"task_details_from_db":    t.Details,
+			"task_details_from_agent": details,
+			"host_id":                 currentHost.Id,
+		})
+		endTaskResp.ShouldExit = true
+		gimlet.WriteJSON(w, endTaskResp)
+		return
+	}
+
+	// clear the running task on the host now that the task has finished
+	if err := currentHost.ClearRunningAndSetLastTask(t); err != nil {
+		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
+		grip.Errorf(err.Error())
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	projectRef, err := model.FindOneProjectRef(t.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -190,28 +212,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			"message": "blocked task group tasks for task",
 			"task_id": t.Id,
 		})
-	}
-
-	if currentHost.RunningTask == "" {
-		grip.Error(message.Fields{
-			"message":                 "host is not assigned task, not clearing, asking agent to exit",
-			"task_id":                 t.Id,
-			"task_status_from_db":     t.Status,
-			"task_details_from_db":    t.Details,
-			"task_details_from_agent": details,
-			"host_id":                 currentHost.Id,
-		})
-		endTaskResp.ShouldExit = true
-		gimlet.WriteJSON(w, endTaskResp)
-		return
-	}
-
-	// clear the running task on the host now that the task has finished
-	if err = currentHost.ClearRunningAndSetLastTask(t); err != nil {
-		err = errors.Wrapf(err, "error clearing running task %s for host %s", t.Id, currentHost.Id)
-		grip.Errorf(err.Error())
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
 	}
 
 	job := units.NewCollectTaskEndDataJob(t, currentHost)
