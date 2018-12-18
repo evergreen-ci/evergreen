@@ -644,12 +644,12 @@ function TrendSamples(samples){
     }
   }
 
-  for(let key in this.seriesByName){
+  for (let key in this.seriesByName) {
     this.seriesByName[key] = _.sortBy(this.seriesByName[key], 'order');
     this.testNames.unshift(key);
   }
 
-  for(let i = 0; i < this.testNames.length; i++) {
+  for (let i = 0; i < this.testNames.length; i++) {
     //make an index for commit hash -> sample for each test series
     var k = this.testNames[i];
     // FIXME Unknown behavior (coma operator after _groupBy stmt)
