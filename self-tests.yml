@@ -445,7 +445,7 @@ buildvariants:
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2015-small
+      - windows-64-vs2017-test
     expansions:
       disable_coverage: yes
       gobin: /cygdrive/c/go1.8/go/bin/go
