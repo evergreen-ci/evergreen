@@ -24,7 +24,7 @@ providers:
         aws_id: "aws id"
     docker:
         api_version: 1.32
-
+        
 auth:
     naive:
       users:

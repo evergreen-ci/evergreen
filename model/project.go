@@ -606,18 +606,14 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
-	// oauthToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
-	oauthToken, _ := settings.GetGithubOauthToken()
-
 	expansions := util.Expansions{}
-	expansions.Put("global_github_oauth_token", oauthToken)
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)
@@ -626,6 +622,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
+
 	expansions.Put("distro_id", h.Distro.Id)
 
 	if t.TriggerID != "" {

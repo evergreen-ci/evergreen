@@ -899,7 +899,7 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     redrawChangePoints()
 
-    var changePointPanelG = chartG.append('g')
+    chartG.append('g')
       .attr({class: 'change-point-info'})
 
     // -- REGULAR POINT HOVER --

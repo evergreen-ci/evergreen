@@ -242,7 +242,7 @@ mciModule.controller('PerfController', function PerfController(
     return _.max(_.filter(_.pluck(_.values(r), 'ops_per_sec'), numericFilter));
   }
 
-  cleanId = function(id){
+  let cleanId = function(id){
     return id.replace(/\./g,"-")
   }
   $scope.cleanId = cleanId
@@ -264,7 +264,6 @@ mciModule.controller('PerfController', function PerfController(
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
       var series = [series1];
-      var numSeries = 1;
       if(compareSamples){
         for(var j=0;j<compareSamples.length;j++){
           var compareSeries = compareSamples[j].threadsVsOps(testName);
@@ -331,7 +330,7 @@ mciModule.controller('PerfController', function PerfController(
       bar.selectAll(".err")
         .data(function(d) {
           return d.filter(function(d){
-            return ("ops_per_sec_values" in d) && ("ops_per_sec_values" in d) && (d.ops_per_sec_values != undefined && d.ops_per_sec_values.length > 1);
+            return ("ops_per_sec_values" in d) && (d.ops_per_sec_values != undefined && d.ops_per_sec_values.length > 1);
           })
         })
       .enter().append("svg")
@@ -483,33 +482,30 @@ mciModule.controller('PerfController', function PerfController(
       }, 0)
   }
 
-  if($scope.conf.enabled){
-    if($location.hash().length>0){
+  if ($scope.conf.enabled){
+    if ($location.hash().length>0){
       try {
         var hashparsed = JSON.parse(decodeURIComponent($location.hash()))
-        if('hiddenGraphs' in hashparsed){
-          for(var i=0;i<hashparsed.hiddenGraphs.length;i++){
+        if ('hiddenGraphs' in hashparsed){
+          for (let i = 0; i < hashparsed.hiddenGraphs.length; i++) {
             $scope.hiddenGraphs[hashparsed.hiddenGraphs[i]]=true
           }
         }
-        if('perftab' in hashparsed){
+        if ('perftab' in hashparsed){
           $scope.perftab = hashparsed.perftab
         }
-        if('compare' in hashparsed){
-          for(var i=0;i<hashparsed.compare.length;i++){
+        if ('compare' in hashparsed){
+          for (let i = 0; i < hashparsed.compare.length; i++) {
             $scope.addComparisonForm(hashparsed.compare[i], false)
           }
         }
-      }catch (e){ }
+      } catch (e) { }
     }
     // Populate the graph and table for this task
     $http.get("/plugin/json/task/" + $scope.task.id + "/perf/").then(
       function(resp){
         var d = resp.data;
         $scope.perfSample = new TestSample(d);
-        var w = 700;
-        var bw = 1;
-        var h = 100;
         if("tag" in d && d.tag.length > 0){
           $scope.perfTagData.tag = d.tag
         }
@@ -593,17 +589,6 @@ function TrendSamples(samples){
   this.samples = samples;
   var NON_THREAD_LEVELS = ['start', 'end']
 
-  // minor TODO: move this function to utils
-  // Extracts referenced element from the obj
-  // For obj = {a: {b: 3}} and reference = 'a.b'
-  // Returns 3
-  // Returns undefined if referenced element does not exist
-  var dereference = function(obj, reference) {
-    return _.reduce(reference.split('.'), function(m, ref) {
-      return m ? m[ref] : undefined
-    }, obj)
-  }
-
   // _sampleByCommitIndexes is a map of mappings of (githash -> sample data), keyed by test name.
   // e.g.
   // {
@@ -659,24 +644,30 @@ function TrendSamples(samples){
     }
   }
 
-  for(key in this.seriesByName){
+  for (let key in this.seriesByName) {
     this.seriesByName[key] = _.sortBy(this.seriesByName[key], 'order');
     this.testNames.unshift(key);
   }
 
-  for(var i=0; i < this.testNames.length; i++){
+  for (let i = 0; i < this.testNames.length; i++) {
     //make an index for commit hash -> sample for each test series
     var k = this.testNames[i];
+    // FIXME Unknown behavior (coma operator after _groupBy stmt)
     this._sampleByCommitIndexes[k] = _.groupBy(this.seriesByName[k], "revision"), function(x){return x[0]};
-    for(t in this._sampleByCommitIndexes[k]){
+    for(let t in this._sampleByCommitIndexes[k]){
       this._sampleByCommitIndexes[k][t] = this._sampleByCommitIndexes[k][t][0];
     }
   }
 
   // Returns a list of samples for a given test, sorted in the order that they were committed.
   this.tasksByCommitOrder = function(){
-    if(!this._tasks){
-      this._tasks = _.sortBy(_.uniq(_.flatten(_.values(this.seriesByName)), false,  function(x){return x.task_id}), "order");
+    if (!this._tasks) {
+      this._tasks = _.chain(this.seriesByName)
+        .values()
+        .flatten()
+        .uniq(false, d => d.task_id)
+        .sortBy('order')
+        .value()
     }
     return this._tasks;
   }
@@ -694,7 +685,7 @@ function TrendSamples(samples){
 
   this.indexOfCommitInSeries = function(testName, revision){
     var t = this.tasksByCommitOrderByTestName(testName)
-    return findIndex(t, function(x){x.revision==revision})
+    return findIndex(t, function(x) { return x.revision==revision })
   }
 
   this.noiseAtCommit = function(testName, revision){
