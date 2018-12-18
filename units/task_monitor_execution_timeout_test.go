@@ -93,7 +93,7 @@ func TestCleanupTask(t *testing.T) {
 				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(newTask.Restarts, ShouldEqual, 2)
 
-				Convey("an execution task should request its display task be reset", func() {
+				Convey("an execution task should be cleaned up", func() {
 					dt := &task.Task{
 						Id:             "dt",
 						Status:         evergreen.TaskStarted,
@@ -115,18 +115,19 @@ func TestCleanupTask(t *testing.T) {
 					So(dt.Insert(), ShouldBeNil)
 					So(et.Insert(), ShouldBeNil)
 					b := &build.Build{
-						Id:    "b2",
-						Tasks: []build.TaskCache{{Id: "dt"}},
+						Id:      "b2",
+						Tasks:   []build.TaskCache{{Id: "dt"}},
+						Version: "v1",
 					}
 					So(b.Insert(), ShouldBeNil)
 
 					So(cleanUpTimedOutTask(et), ShouldBeNil)
-					oldTask, err := task.FindOneOld(task.ByOldTaskID(dt.Id))
+					et, err := task.FindOneId(et.Id)
 					So(err, ShouldBeNil)
-					So(oldTask.ResetWhenFinished, ShouldBeTrue)
-					dbTask, err := task.FindOne(task.ById(dt.Id))
+					So(et.Status, ShouldEqual, evergreen.TaskFailed)
+					dt, err = task.FindOneId(dt.Id)
 					So(err, ShouldBeNil)
-					So(dbTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+					So(dt.Status, ShouldEqual, evergreen.TaskSystemUnresponse)
 				})
 			})
 
