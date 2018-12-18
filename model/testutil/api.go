@@ -210,7 +210,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get db session!")
 	}
-	e, err := model.PopulateExpansions(taskOne, testHost, testConfig)
+	e, err := model.PopulateExpansions(taskOne, testHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "error populating expansions")
 	}

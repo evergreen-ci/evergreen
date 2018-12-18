@@ -385,13 +385,9 @@ buildvariants:
 		Project:      "mci",
 	}
 
-	settings := &evergreen.Settings{
-		Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-	}
-
-	expansions, err := PopulateExpansions(taskDoc, &h, settings)
+	expansions, err := PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 17)
+	assert.Len(map[string]string(expansions), 16)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -414,9 +410,9 @@ buildvariants:
 	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
 		"$set": bson.M{version.RequesterKey: evergreen.PatchVersionRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 18)
+	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
@@ -425,9 +421,9 @@ buildvariants:
 	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
 		"$set": bson.M{version.RequesterKey: evergreen.GithubPRRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 18)
+	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
@@ -443,9 +439,10 @@ buildvariants:
 		},
 	}
 	assert.NoError(patchDoc.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 21)
+	assert.Len(map[string]string(expansions), 20)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
@@ -466,10 +463,9 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 29)
+	assert.Len(map[string]string(expansions), 28)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
