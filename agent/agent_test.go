@@ -94,13 +94,13 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 		TaskSecret: "",
 		ShouldExit: false}
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	go func() {
 		err := s.a.loop(ctx)
 		s.NoError(err)
 	}()
 	time.Sleep(1 * time.Second)
-	cancel()
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {
