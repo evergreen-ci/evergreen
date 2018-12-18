@@ -331,32 +331,40 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.C
 }
 
 func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
-	if h.UserHost {
+	var (
+		err           error
+		onDemandPrice float64
+		spotPrice     float64
+		az            string
+		r             string
+	)
+	if h.UserHost || m.provider == onDemandProvider || m.provider == autoProvider {
+		r, err = getRegion(h)
+		if err != nil {
+			return 0, errors.Wrap(err, "problem getting region for host")
+		}
+		onDemandPrice, err = pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, r)
+		if err != nil {
+			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
+		}
+	}
+	if m.provider == spotProvider || m.provider == autoProvider {
+		spotPrice, az, err = pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h))
+		if err != nil {
+			return 0, errors.Wrap(err, "error getting latest lowest spot price")
+		}
+	}
+	if h.UserHost || m.provider == onDemandProvider {
 		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+		h.ComputeCostPerHour = onDemandPrice
 		return onDemandProvider, nil
 	}
 	if m.provider == spotProvider {
 		h.Distro.Provider = evergreen.ProviderNameEc2Spot
+		h.ComputeCostPerHour = spotPrice
 		return spotProvider, nil
 	}
-	if m.provider == onDemandProvider {
-		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-		return onDemandProvider, nil
-	}
 	if m.provider == autoProvider {
-		r, err := getRegion(h)
-		if err != nil {
-			return 0, errors.Wrap(err, "problem getting region for host")
-		}
-		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(ctx, m.client, getOsName(h), ec2settings.InstanceType, r)
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
-		}
-
-		spotPrice, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h))
-		if err != nil {
-			return 0, errors.Wrap(err, "error getting latest lowest spot price")
-		}
 		if spotPrice < onDemandPrice {
 			h.ComputeCostPerHour = spotPrice
 			ec2settings.BidPrice = onDemandPrice
