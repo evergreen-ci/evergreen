@@ -47,7 +47,7 @@ mciModule.directive('microHazardChart', function(
     var barWidth = effectiveChartWidth / categories.length
 
     // Zero-level line
-    var line = svg.append('line')
+    svg.append('line')
       .attr({
         x1: cfg.margin,
         x2: effectiveWidth,
