@@ -340,6 +340,8 @@ func (s *CostIntegrationSuite) TestFetchOnDemandPricingUncached() {
 func (s *CostIntegrationSuite) TestGetProviderStatic() {
 	h := &host.Host{}
 	settings := &EC2ProviderSettings{}
+	settings.InstanceType = "m4.large"
+	settings.IsVpc = true
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -215,6 +215,9 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	h := &host.Host{}
+	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
+		odInfo{"Linux", "instanceType", "US East (N. Virginia)"}: .1,
+	}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	h.Distro.ProviderSettings = &map[string]interface{}{
@@ -254,6 +257,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	tagsInput := *mock.CreateTagsInput
 	s.Equal("instance_id", *tagsInput.Resources[0])
 	s.Len(tagsInput.Tags, 8)
+	s.Equal(.1, h.ComputeCostPerHour)
 	var foundInstanceName bool
 	var foundDistroID bool
 	for _, tag := range tagsInput.Tags {
