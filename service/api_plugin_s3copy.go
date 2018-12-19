@@ -7,14 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/s3"
+	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -22,6 +21,7 @@ import (
 const (
 	s3CopyRetrySleepTimeSec = 5
 	s3CopyRetryNumRetries   = 5
+	region                  = "us-east-1"
 )
 
 // Takes a request for a task's file to be copied from
@@ -83,9 +83,25 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Now copy the file into the permanent location
-	auth := &aws.Auth{
-		AccessKey: s3CopyReq.AwsKey,
-		SecretKey: s3CopyReq.AwsSecret,
+	srcOpts := pail.S3Options{
+		Credentials: credentials.NewStaticCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
+		Region:      region,
+		Name:        s3CopyReq.S3SourceBucket,
+		Permission:  "public-read",
+	}
+	srcBucket, err := pail.NewS3MultiPartBucket(srcOpts)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket"))
+	}
+	destOpts := pail.S3Options{
+		Credentials: credentials.NewStaticCredentials(s3CopyReq.AwsKey, s3CopyReq.AwsSecret, ""),
+		Region:      region,
+		Name:        s3CopyReq.S3DestinationBucket,
+		Permission:  "public-read",
+	}
+	destBucket, err := pail.NewS3MultiPartBucket(destOpts)
+	if err != nil {
+		grip.Error(errors.Wrap(err, "S3 copy failed, could not establish connection to destination bucket"))
 	}
 
 	grip.Infof("performing S3 copy: '%s' => '%s'", copyFromLocation, copyToLocation)
@@ -95,13 +111,12 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 	_, err = util.Retry(
 		ctx,
 		func() (bool, error) {
-			err = errors.WithStack(thirdparty.S3CopyFile(auth,
-				s3CopyReq.S3SourceBucket,
-				s3CopyReq.S3SourcePath,
-				s3CopyReq.S3DestinationBucket,
-				s3CopyReq.S3DestinationPath,
-				string(s3.PublicRead),
-			))
+			copyOpts := pail.CopyOptions{
+				SourceKey:         s3CopyReq.S3SourcePath,
+				DestinationKey:    s3CopyReq.S3DestinationPath,
+				DestinationBucket: destBucket,
+			}
+			err = srcBucket.Copy(ctx, copyOpts)
 			if err != nil {
 				grip.Errorf("S3 copy failed for task %s, retrying: %+v", task.Id, err)
 				return true, err

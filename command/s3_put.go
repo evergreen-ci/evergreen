@@ -3,19 +3,18 @@ package command
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/goamz/goamz/aws"
+	"github.com/evergreen-ci/pail"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -78,6 +77,8 @@ type s3put struct {
 	// workDir will be empty if an absolute path is provided to the file.
 	workDir     string
 	skipMissing bool
+
+	bucket pail.Bucket
 
 	taskdata client.TaskData
 	base
@@ -145,6 +146,15 @@ func (s3pc *s3put) validate() error {
 	if !validS3Permissions(s3pc.Permissions) {
 		catcher.Add(errors.Errorf("permissions '%v' are not valid", s3pc.Permissions))
 	}
+
+	// create pail bucket and check if valid
+	err := s3pc.createPailBucket()
+	if err != nil {
+		return errors.Wrap(err, "problem connecting to s3")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s3pc.bucket.Check(ctx)
 
 	return catcher.Resolve()
 }
@@ -239,11 +249,6 @@ func (s3pc *s3put) Execute(ctx context.Context,
 func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, logger client.LoggerProducer) error {
 	backoffCounter := getS3OpBackoff()
 
-	auth := &aws.Auth{
-		AccessKey: s3pc.AwsKey,
-		SecretKey: s3pc.AwsSecret,
-	}
-
 	var (
 		err           error
 		uploadedFiles []string
@@ -292,14 +297,8 @@ retryLoop:
 					remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
 				}
 
-				s3URL := url.URL{
-					Scheme: "s3",
-					Host:   s3pc.Bucket,
-					Path:   remoteName,
-				}
-
 				fpath = filepath.Join(s3pc.workDir, fpath)
-				err = thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
+				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -381,4 +380,17 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 	logger.Execution().Info("API attach files call succeeded")
 	return nil
+}
+
+func (c *s3put) createPailBucket() error {
+	opts := pail.S3Options{
+		Credentials: credentials.NewStaticCredentials(c.AwsKey, c.AwsSecret, ""),
+		Region:      "us-east-1",
+		Name:        c.Bucket,
+		Permission:  c.Permissions,
+		ContentType: c.ContentType,
+	}
+	bucket, err := pail.NewS3MultiPartBucket(opts)
+	c.bucket = bucket
+	return err
 }
