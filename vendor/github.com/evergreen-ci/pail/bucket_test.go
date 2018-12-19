@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
@@ -100,7 +100,7 @@ func TestBucket(t *testing.T) {
 	defer func() { ses.DB(uuid).DropDatabase() }()
 
 	s3BucketName := "build-test-curator"
-	s3Prefix := "pail-test-"
+	s3Prefix := newUUID() + "-"
 	s3Region := "us-east-1"
 	defer func() { require.NoError(t, cleanUpS3Bucket(s3BucketName, s3Prefix, s3Region)) }()
 
@@ -291,13 +291,103 @@ func TestBucket(t *testing.T) {
 					test: func(t *testing.T, b Bucket) {
 						assert.NoError(t, b.Check(ctx))
 						badOptions := S3Options{
-							Credentials: credentials.NewStaticCredentials("asdf", "asdf", "asdf"),
+							Credentials: CreateAWSCredentials("asdf", "asdf", "asdf"),
 							Region:      s3Region,
 							Name:        s3BucketName,
 						}
 						badBucket, err := NewS3Bucket(badOptions)
 						assert.Nil(t, err)
 						assert.Error(t, badBucket.Check(ctx))
+					},
+				},
+				{
+					id: "TestPermissions",
+					test: func(t *testing.T, b Bucket) {
+						// default permissions
+						key := newUUID()
+						writer, err := b.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket := b.(*s3BucketSmall)
+						objectAclInput := &s3.GetObjectAclInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						objectAclOutput, err := rawBucket.svc.GetObjectAcl(objectAclInput)
+						require.NoError(t, err)
+						require.Equal(t, 1, len(objectAclOutput.Grants))
+						assert.Equal(t, "FULL_CONTROL", *objectAclOutput.Grants[0].Permission)
+
+						// explicitly set permissions
+						openOptions := S3Options{
+							Region:     s3Region,
+							Name:       s3BucketName,
+							Prefix:     s3Prefix + newUUID(),
+							Permission: "public-read",
+						}
+						openBucket, err := NewS3Bucket(openOptions)
+						key = newUUID()
+						writer, err = openBucket.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket = openBucket.(*s3BucketSmall)
+						objectAclInput = &s3.GetObjectAclInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						objectAclOutput, err = rawBucket.svc.GetObjectAcl(objectAclInput)
+						require.NoError(t, err)
+						require.Equal(t, 2, len(objectAclOutput.Grants))
+						assert.Equal(t, "READ", *objectAclOutput.Grants[1].Permission)
+					},
+				},
+				{
+					id: "TestContentType",
+					test: func(t *testing.T, b Bucket) {
+						// default content type
+						key := newUUID()
+						writer, err := b.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket := b.(*s3BucketSmall)
+						getObjectInput := &s3.GetObjectInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						getObjectOutput, err := rawBucket.svc.GetObject(getObjectInput)
+						require.NoError(t, err)
+						assert.Nil(t, getObjectOutput.ContentType)
+
+						// explicitly set content type
+						htmlOptions := S3Options{
+							Region:      s3Region,
+							Name:        s3BucketName,
+							Prefix:      s3Prefix + newUUID(),
+							ContentType: "html/text",
+						}
+						htmlBucket, err := NewS3Bucket(htmlOptions)
+						key = newUUID()
+						writer, err = htmlBucket.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket = htmlBucket.(*s3BucketSmall)
+						getObjectInput = &s3.GetObjectInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						getObjectOutput, err = rawBucket.svc.GetObject(getObjectInput)
+						require.NoError(t, err)
+						require.NotNil(t, getObjectOutput.ContentType)
+						fmt.Println(*getObjectOutput.ContentType)
+						assert.Equal(t, "html/text", *getObjectOutput.ContentType)
 					},
 				},
 			},
@@ -321,6 +411,95 @@ func TestBucket(t *testing.T) {
 						bucket, ok := b.(*s3BucketLarge)
 						require.True(t, ok)
 						assert.NotNil(t, bucket)
+					},
+				},
+				{
+					id: "TestPermissions",
+					test: func(t *testing.T, b Bucket) {
+						// default permissions
+						key := newUUID()
+						writer, err := b.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket := b.(*s3BucketLarge)
+						objectAclInput := &s3.GetObjectAclInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						objectAclOutput, err := rawBucket.svc.GetObjectAcl(objectAclInput)
+						require.NoError(t, err)
+						require.Equal(t, 1, len(objectAclOutput.Grants))
+						assert.Equal(t, "FULL_CONTROL", *objectAclOutput.Grants[0].Permission)
+
+						// explicitly set permissions
+						openOptions := S3Options{
+							Region:     s3Region,
+							Name:       s3BucketName,
+							Prefix:     s3Prefix + newUUID(),
+							Permission: "public-read",
+						}
+						openBucket, err := NewS3MultiPartBucket(openOptions)
+						key = newUUID()
+						writer, err = openBucket.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket = openBucket.(*s3BucketLarge)
+						objectAclInput = &s3.GetObjectAclInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						objectAclOutput, err = rawBucket.svc.GetObjectAcl(objectAclInput)
+						require.NoError(t, err)
+						require.Equal(t, 2, len(objectAclOutput.Grants))
+						assert.Equal(t, "READ", *objectAclOutput.Grants[1].Permission)
+					},
+				},
+				{
+					id: "TestContentType",
+					test: func(t *testing.T, b Bucket) {
+						// default content type
+						key := newUUID()
+						writer, err := b.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket := b.(*s3BucketLarge)
+						getObjectInput := &s3.GetObjectInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						getObjectOutput, err := rawBucket.svc.GetObject(getObjectInput)
+						require.NoError(t, err)
+						assert.Nil(t, getObjectOutput.ContentType)
+
+						// explicitly set content type
+						htmlOptions := S3Options{
+							Region:      s3Region,
+							Name:        s3BucketName,
+							Prefix:      s3Prefix + newUUID(),
+							ContentType: "html/text",
+						}
+						htmlBucket, err := NewS3MultiPartBucket(htmlOptions)
+						key = newUUID()
+						writer, err = htmlBucket.Writer(ctx, key)
+						require.NoError(t, err)
+						_, err = writer.Write([]byte("hello world"))
+						require.NoError(t, err)
+						require.NoError(t, writer.Close())
+						rawBucket = htmlBucket.(*s3BucketLarge)
+						getObjectInput = &s3.GetObjectInput{
+							Bucket: aws.String(s3BucketName),
+							Key:    aws.String(rawBucket.normalizeKey(key)),
+						}
+						getObjectOutput, err = rawBucket.svc.GetObject(getObjectInput)
+						require.NoError(t, err)
+						require.NotNil(t, getObjectOutput.ContentType)
+						assert.Equal(t, "html/text", *getObjectOutput.ContentType)
 					},
 				},
 			},
@@ -502,7 +681,7 @@ func TestBucket(t *testing.T) {
 
 				bucket := impl.constructor(t)
 				for k, v := range data {
-					assert.NoError(t, writeDataToFile(ctx, bucket, k, v))
+					require.NoError(t, writeDataToFile(ctx, bucket, k, v))
 				}
 
 				iter, err := bucket.List(ctx, "")
@@ -526,8 +705,8 @@ func TestBucket(t *testing.T) {
 					assert.NoError(t, reader.Close())
 					assert.Equal(t, string(out), data[item.Name()])
 				}
-				assert.Equal(t, 300, count)
 				assert.NoError(t, iter.Err())
+				assert.Equal(t, len(data), count)
 			})
 			t.Run("PullFromBucket", func(t *testing.T) {
 				data := map[string]string{}
