@@ -224,4 +224,8 @@ type Connector interface {
 	// Get test execution statistics
 	GetTestStats(stats.StatsFilter) ([]restModel.APITestStats, error)
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
+
+	// Commit queue methods
+	GithubPREnqueueItem(string, string, int) error
+	EnqueueItem(string, string, string, string) error
 }

@@ -21,6 +21,7 @@ type APIProject struct {
 	Admins             []APIString `json:"admins"`
 	TracksPushEvents   bool        `json:"tracks_push_events"`
 	PRTestingEnabled   bool        `json:"pr_testing_enabled"`
+	CommitQEnabled     bool        `json:"commitq_enabled"`
 }
 
 func (apiProject *APIProject) BuildFromService(p interface{}) error {
@@ -46,6 +47,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Tracked = v.Tracked
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
+	apiProject.CommitQEnabled = v.CommitQEnabled
 	apiProject.DeactivatePrevious = v.DeactivatePrevious
 
 	admins := []APIString{}
@@ -87,6 +89,7 @@ type APIProjectRef struct {
 	DeactivatePrevious   bool        `json:"deactivate_previous"`
 	TracksPushEvents     bool        `json:"tracks_push_events"`
 	PRTestingEnabled     bool        `json:"pr_testing_enabled"`
+	CommitQEnabled       bool        `json:"commitq_enabled"`
 	Tracked              bool        `json:"tracked"`
 	PatchingDisabled     bool        `json:"patching_disabled"`
 	Admins               []APIString `json:"admins"`
@@ -111,6 +114,7 @@ func (p *APIProjectRef) ToService() (model.ProjectRef, error) {
 		DeactivatePrevious:   p.DeactivatePrevious,
 		TracksPushEvents:     p.TracksPushEvents,
 		PRTestingEnabled:     p.PRTestingEnabled,
+		CommitQEnabled:       p.CommitQEnabled,
 		Tracked:              p.Tracked,
 		PatchingDisabled:     p.PatchingDisabled,
 		NotifyOnBuildFailure: p.NotifyOnBuildFailure,
@@ -168,6 +172,7 @@ func (p *APIProjectRef) BuildFromService(v interface{}) error {
 	p.DeactivatePrevious = projectRef.DeactivatePrevious
 	p.TracksPushEvents = projectRef.TracksPushEvents
 	p.PRTestingEnabled = projectRef.PRTestingEnabled
+	p.CommitQEnabled = projectRef.CommitQEnabled
 	p.Tracked = projectRef.Tracked
 	p.PatchingDisabled = projectRef.PatchingDisabled
 	p.NotifyOnBuildFailure = projectRef.NotifyOnBuildFailure

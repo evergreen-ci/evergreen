@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DBPatchConnector is a struct that implements the Patch related methods
+// DBProjectConnector is a struct that implements the Project related methods
 // from the Connector through interactions with the backing database.
 type DBProjectConnector struct{}
 
