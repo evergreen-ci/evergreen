@@ -96,11 +96,14 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	errChan := make(chan error)
 	go func() {
-		err := s.a.loop(ctx)
-		s.NoError(err)
+		errChan <- s.a.loop(ctx)
 	}()
 	time.Sleep(1 * time.Second)
+	cancel()
+	err := <-errChan
+	s.NoError(err)
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {
