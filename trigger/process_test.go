@@ -45,6 +45,7 @@ func (s *projectTriggerSuite) SetupSuite() {
 		Id:          "task",
 		Project:     "toTrigger",
 		DisplayName: "taskName",
+		IngestTime:  time.Now().Add(-48 * time.Hour),
 		Version:     "v",
 		Requester:   evergreen.RepotrackerVersionRequester,
 	}
@@ -141,6 +142,25 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 	versions, err := EvalProjectTriggers(&e, s.processor)
 	s.NoError(err)
 	s.Len(versions, 3)
+}
+
+func (s *projectTriggerSuite) TestDateCutoff() {
+	date := 1
+	proj := model.ProjectRef{
+		Identifier: "proj",
+		Triggers: []model.TriggerDefinition{
+			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile", DateCutoff: &date},
+		},
+	}
+	s.NoError(proj.Insert())
+
+	e := event.EventLogEntry{
+		EventType:  event.TaskFinished,
+		ResourceId: "task",
+	}
+	versions, err := EvalProjectTriggers(&e, s.processor)
+	s.NoError(err)
+	s.Len(versions, 0)
 }
 
 func (s *projectTriggerSuite) TestWrongEvent() {
