@@ -87,18 +87,6 @@ func (ac *DBProjectConnector) GetProjectEventLog(id string, before time.Time, n 
 	return out, catcher.Resolve()
 }
 
-func (ac *DBProjectConnector) FindProjectIDWithCommitQByOwnerRepoAndBranch(owner, repo, branch string) (string, error) {
-	projRef, err := model.FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch)
-	if err != nil {
-		return "", err
-	}
-	if projRef == nil {
-		return "", nil
-	}
-
-	return projRef.Identifier, nil
-}
-
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockProjectConnector struct {
@@ -147,8 +135,4 @@ func (pc *MockProjectConnector) UpdateProject(apiProjectRef *restModel.APIProjec
 
 func (pc *MockProjectConnector) GetProjectEventLog(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	return pc.CachedEvents, nil
-}
-
-func (pc *MockProjectConnector) FindProjectIDWithCommitQByOwnerRepoAndBranch(owner, repo, branch string) (string, error) {
-	return "test", nil
 }

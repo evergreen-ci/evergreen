@@ -214,7 +214,6 @@ func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
 		s.Equal(http.StatusOK, resp.Status())
 	}
 
-	mockProjectName, err := s.sc.FindProjectIDWithCommitQByOwnerRepoAndBranch("", "", "")
 	s.NoError(err)
-	s.Len(s.sc.MockCommitQConnector.Queue[mockProjectName], 1)
+	s.Len(s.sc.MockCommitQConnector.Queue, 1)
 }

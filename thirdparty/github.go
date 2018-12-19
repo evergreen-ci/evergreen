@@ -656,6 +656,25 @@ func GetPullRequestMergeBase(ctx context.Context, token string, data patch.Githu
 	return *commit.Parents[0].SHA, nil
 }
 
+func GetGithubPullRequest(ctx context.Context, token, baseOwner, baseRepo string, PRNumber int) (*github.PullRequest, error) {
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetryWith404s)
+	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+
+	if err != nil {
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	pr, _, err := client.PullRequests.Get(ctx, baseOwner, baseRepo, PRNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return pr, nil
+}
+
 // GetGithubDiff downloads a diff from a Github Pull Request diff. This function
 // does not use go-github because this operation is not supported
 func GetGithubPullRequestDiff(ctx context.Context, token string, gh *patch.GithubPatch) (string, []patch.Summary, error) {

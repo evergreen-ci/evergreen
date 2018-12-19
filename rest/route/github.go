@@ -195,28 +195,21 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.NewJSONResponse(struct{}{})
 		}
 
-		prBranch, err := gh.sc.FindPRBranchByPRNum(*event.Issue.Number)
-		if err != nil {
-			grip.Error(message.WrapError(err, "no matching PR"))
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "no matching PR"))
-		}
-
 		owner := *event.Repo.Owner.Login
 		repo := *event.Repo.Name
-		branch := prBranch
-		projectID, err := gh.sc.FindProjectIDWithCommitQByOwnerRepoAndBranch(owner, repo, branch)
+		PRNum := *event.Issue.Number
+		err := gh.sc.GithubPREnqueueItem(owner, repo, PRNum)
 		if err != nil {
-			grip.Error(message.WrapError(err, "can't get project from db"))
-			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't get project from db"))
-		}
-		if projectID == "" {
-			grip.Error("no matching project with commit queue")
-			return gimlet.MakeJSONErrorResponder(errors.New("no matching project with commit queue"))
-		}
-
-		err = gh.sc.EnqueueItem(projectID, *event.Issue.PullRequestLinks.HTMLURL)
-		if err != nil {
-			grip.Error(message.WrapError(err, "can't enqueue item on commit queue"))
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"owner":   owner,
+				"repo":    repo,
+				"item":    PRNum,
+				"message": "commit queue enqueue failed",
+			}))
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't enqueue item on commit queue"))
 		}
 	}

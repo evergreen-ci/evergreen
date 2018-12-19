@@ -308,7 +308,7 @@ func FindOneProjectRefWithCommitQByOwnerRepoAndBranch(owner, repo, branch string
 	); err == mgo.ErrNotFound {
 		return nil, nil
 	} else if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "can't query for project with commit queue. owner: %s, repo: %s, branch: %s", owner, repo, branch)
 	}
 
 	return projRef, nil

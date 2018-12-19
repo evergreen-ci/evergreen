@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -213,19 +212,6 @@ func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 		return []*githubIntent{}, err
 	}
 	return intents, nil
-}
-
-func FindGithubIntentByPRNum(PRNumber int) (*githubIntent, error) {
-	query := db.Query(bson.M{
-		prNumberKey: PRNumber,
-	})
-
-	pr := &githubIntent{}
-	err := db.FindOneQ(IntentCollection, query, pr)
-	if err == mgo.ErrNotFound {
-		return nil, nil
-	}
-	return pr, err
 }
 
 func (g *githubIntent) NewPatch() *Patch {

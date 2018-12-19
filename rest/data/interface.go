@@ -73,7 +73,6 @@ type Connector interface {
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
-	FindProjectIDWithCommitQByOwnerRepoAndBranch(string, string, string) (string, error)
 
 	// Create/Update project methods
 	CreateProject(*restModel.APIProjectRef) (*restModel.APIProject, error)
@@ -188,7 +187,6 @@ type Connector interface {
 	UpdateSettings(*user.DBUser, user.UserSettings) error
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
-	FindPRBranchByPRNum(int) (string, error)
 
 	SetHostStatus(*host.Host, string, string) error
 	SetHostExpirationTime(*host.Host, time.Time) error
@@ -228,5 +226,6 @@ type Connector interface {
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
 
 	// Commit queue methods
-	EnqueueItem(string, string) error
+	GithubPREnqueueItem(string, string, int) error
+	EnqueueItem(string, string, string, string) error
 }
