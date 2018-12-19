@@ -64,6 +64,7 @@ func buildApp() *cli.App {
 		operations.PatchRemoveModule(),
 		operations.PatchFinalize(),
 		operations.PatchCancel(),
+		operations.CreateVersion(),
 	}
 
 	userHome, err := homedir.Dir()
