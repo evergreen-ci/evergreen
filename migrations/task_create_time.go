@@ -11,13 +11,15 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+//nolint: deadcode, megacheck, unused
 const (
 	migrationTaskCreateTime = "task-create-time"
 	versionsCollection      = "versions"
 )
 
 // This migration updates the CreateTime field of patch tasks to be the push time of the base commit.
-func taskCreateTimeGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
+// nolint: unused
+func taskCreateTimeGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "task_create_time"
 
 	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskCreateTimeMigrationFunction(args.db)); err != nil {
