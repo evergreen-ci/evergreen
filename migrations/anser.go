@@ -89,6 +89,9 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		// migrationTestResultsOldTasks: oldTestResultsGenerator,
 		// migrationTestResultstasks: testResultsGenerator,
 
+		// Migration disabled because it iterates over all existing tasks.
+		// migrationTaskCreateTime:                     taskCreateTimeGenerator,
+
 		migrationProjectAliasesToCollection:         projectAliasesToCollectionGenerator,
 		migrationGithubHooksToCollection:            githubHooksToCollectionGenerator,
 		migrationZeroDateFix:                        zeroDateFixGenerator(githubToken),
@@ -100,7 +103,6 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		migrationDistroSecurityGroups:               distroSecurityGroupsGenerator,
 		migrationLegacyNotificationsToSubscriptions: legacyNotificationsToSubscriptionsGenerator,
 		migrationSubscriptionBSONObjectIDToString:   makeBSONObjectIDToStringGenerator("subscriptions"),
-		migrationTaskCreateTime:                     taskCreateTimeGenerator,
 	}
 	catcher := grip.NewBasicCatcher()
 
