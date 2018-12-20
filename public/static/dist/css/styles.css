@@ -2298,6 +2298,14 @@ path {
 #chkSuccessful {
   margin-right: 6px;
 }
+.spinner-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  padding-top: 10%;
+  display: flex;
+  justify-content: center;
+}
 .log-elt {
   margin-right: 100px;
 }
