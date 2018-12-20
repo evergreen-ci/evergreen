@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -192,7 +191,7 @@ func TestFindTask(t *testing.T) {
 func TestBlockTaskGroupTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, version.Collection))
+	require.NoError(db.ClearCollections(TaskQueuesCollection, task.Collection, ProjectRefCollection, VersionCollection))
 
 	projectRef := &ProjectRef{Identifier: "a"}
 	assert.Nil(projectRef.Insert())
@@ -206,7 +205,7 @@ tasks:
 - name: task_id
 - name: one
 `
-	v := version.Version{
+	v := Version{
 		Identifier: "a",
 		Revision:   "b",
 		Requester:  evergreen.RepotrackerVersionRequester,

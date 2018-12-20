@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +35,7 @@ type buildDetail struct {
 
 // BuildFromService converts from service level structs to an APIVersion.
 func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
-	v, ok := h.(*version.Version)
+	v, ok := h.(*model.Version)
 	if !ok {
 		return errors.Errorf("incorrect type when fetching converting version type")
 	}

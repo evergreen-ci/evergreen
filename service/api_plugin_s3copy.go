@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -39,7 +38,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	// Get the version for this task, so we can check if it has
 	// any already-done pushes
-	v, err := version.FindOne(version.ById(task.Version))
+	v, err := model.VersionFindOne(model.VersionById(task.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "problem querying task %s with version id %s",

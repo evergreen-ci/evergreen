@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -21,11 +20,11 @@ func dropTestDB(t *testing.T) {
 }
 
 func createVersion(order int, project string, buildVariants []string) error {
-	v := &version.Version{}
+	v := &Version{}
 	testActivationTime := time.Now().Add(time.Duration(4) * time.Hour)
 
 	for _, variant := range buildVariants {
-		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
+		v.BuildVariants = append(v.BuildVariants, VersionBuildStatus{
 			BuildVariant: variant,
 			Activated:    false,
 			ActivateAt:   testActivationTime,

@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
@@ -342,18 +341,18 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 func TestAddNewPatch(t *testing.T) {
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, version.Collection, build.Collection, task.Collection), t, "problem clearing collections")
+	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection), t, "problem clearing collections")
 	p := &patch.Patch{
 		Activated: true,
 	}
-	v := &version.Version{
+	v := &Version{
 		Id:         "version",
 		Revision:   "1234",
 		Requester:  evergreen.PatchVersionRequester,
 		CreateTime: time.Now(),
 	}
 	baseCommitTime := time.Date(2018, time.July, 15, 16, 45, 0, 0, time.UTC)
-	baseVersion := &version.Version{
+	baseVersion := &Version{
 		Id:         "baseVersion",
 		Revision:   "1234",
 		Requester:  evergreen.RepotrackerVersionRequester,
@@ -421,11 +420,11 @@ func TestAddNewPatch(t *testing.T) {
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	assert := assert.New(t)
 
-	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, version.Collection, build.Collection, task.Collection), t, "problem clearing collections")
+	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection), t, "problem clearing collections")
 	p := &patch.Patch{
 		Activated: true,
 	}
-	v := &version.Version{
+	v := &Version{
 		Id:         "version",
 		Revision:   "1234",
 		Requester:  evergreen.PatchVersionRequester,

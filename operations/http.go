@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -236,7 +235,7 @@ func (ac *legacyClient) GetConfig(versionId string) (*model.Project, error) {
 }
 
 // GetLastGreen returns the most recent successful version for the given project and variants.
-func (ac *legacyClient) GetLastGreen(project string, variants []string) (*version.Version, error) {
+func (ac *legacyClient) GetLastGreen(project string, variants []string) (*model.Version, error) {
 	qs := []string{}
 	for _, v := range variants {
 		qs = append(qs, url.QueryEscape(v))
@@ -249,7 +248,7 @@ func (ac *legacyClient) GetLastGreen(project string, variants []string) (*versio
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewAPIError(resp)
 	}
-	v := &version.Version{}
+	v := &model.Version{}
 	if err := util.ReadJSONInto(resp.Body, v); err != nil {
 		return nil, err
 	}

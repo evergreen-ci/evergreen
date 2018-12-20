@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -131,7 +130,7 @@ type taskTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.TaskEventData
 	task     *task.Task
-	version  *version.Version
+	version  *model.Version
 	uiConfig evergreen.UIConfig
 
 	oldTestResults map[string]*task.TestResult
@@ -172,7 +171,7 @@ func (t *taskTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrap(err, "error getting display task")
 	}
 
-	t.version, err = version.FindOne(version.ById(t.task.Version))
+	t.version, err = model.VersionFindOne(model.VersionById(t.task.Version))
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch version")
 	}
@@ -719,7 +718,7 @@ func JIRATaskPayload(subID, project, uiUrl, eventID string, t *task.Task) (*mess
 		}
 	}
 
-	versionDoc, err := version.FindOneId(t.Version)
+	versionDoc, err := model.VersionFindOneId(t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch version while building jira task payload")
 	}

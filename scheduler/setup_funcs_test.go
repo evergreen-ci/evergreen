@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,9 +14,9 @@ import (
 func TestCacheTaskGroups(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	require.NoError(db.ClearCollections(version.Collection))
+	require.NoError(db.ClearCollections(model.VersionCollection))
 	tasks := []task.Task{}
-	versions := []version.Version{}
+	versions := []model.Version{}
 	oddYml := `
 task_groups:
 - name: odd_task_group
@@ -26,10 +26,10 @@ task_groups:
 task_groups:
 - name: even_task_group
 `
-	versionMap := map[string]version.Version{}
+	versionMap := map[string]model.Version{}
 	for i := 0; i < 10; i++ {
 		versionId := fmt.Sprintf("version-%d", i)
-		v := version.Version{
+		v := model.Version{
 			Id: versionId,
 		}
 

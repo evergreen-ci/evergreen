@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -238,8 +237,8 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 
 	history.Builds = make([]*uiBuild, len(builds))
 	for i := 0; i < len(builds); i++ {
-		var v *version.Version
-		v, err = version.FindOne(version.ById(builds[i].Version))
+		var v *model.Version
+		v, err = model.VersionFindOne(model.VersionById(builds[i].Version))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error getting version for build %v: %v", builds[i].Id, err), http.StatusInternalServerError)
 			return
@@ -260,7 +259,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 
 	lastSuccess, err := getBuildVariantHistoryLastSuccess(buildId)
 	if err == nil && lastSuccess != nil {
-		v, err := version.FindOne(version.ById(lastSuccess.Version))
+		v, err := model.VersionFindOne(model.VersionById(lastSuccess.Version))
 		if err != nil {
 			http.Error(
 				w, fmt.Sprintf("error getting last successful build version: %v", err),

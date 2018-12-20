@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
@@ -234,7 +233,7 @@ func TestRaceSuggesters(t *testing.T) {
 
 func TestMakeTicket(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, version.Collection, build.Collection, model.ProjectRefCollection))
+	assert.NoError(db.ClearCollections(task.Collection, model.VersionCollection, build.Collection, model.ProjectRefCollection))
 	t1 := task.Task{
 		Id:      "t1",
 		Version: "v",
@@ -242,7 +241,7 @@ func TestMakeTicket(t *testing.T) {
 		BuildId: "b",
 	}
 	assert.NoError(t1.Insert())
-	v := version.Version{
+	v := model.Version{
 		Id:       "v",
 		Revision: "1234567890",
 	}

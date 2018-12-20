@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -13,7 +12,7 @@ import (
 
 func DoProjectActivation(id string) error {
 	// fetch the most recent, non-ignored version version to activate
-	activateVersion, err := version.FindOne(version.ByMostRecentNonIgnored(id))
+	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -35,7 +34,7 @@ func DoProjectActivation(id string) error {
 }
 
 // Activates any builds if their BatchTimes have elapsed.
-func ActivateElapsedBuilds(v *version.Version) error {
+func ActivateElapsedBuilds(v *Version) error {
 	hasActivated := false
 	now := time.Now()
 	for i, status := range v.BuildVariants {

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -94,20 +94,20 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		if patch.Version != "" {
 			versionIds = append(versionIds, patch.Version)
 		}
-		var baseVersion *version.Version
-		baseVersion, err = version.FindOne(version.ByProjectIdAndRevision(patch.Project, patch.Githash))
+		var baseVersion *model.Version
+		baseVersion, err = model.VersionFindOne(model.VersionByProjectIdAndRevision(patch.Project, patch.Githash))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		var baseVersionId string
 		if baseVersion != nil {
-			baseVersionId = baseVersion.Id
+			baseVersionId = baseVersionId
 		}
 		patch.Patches = nil
 		uiPatches = append(uiPatches, uiPatch{Patch: patch, BaseVersionId: baseVersionId})
 	}
-	versions, err := version.Find(version.ByIds(versionIds).WithoutFields(version.ConfigKey))
+	versions, err := model.VersionFind(model.VersionByIds(versionIds).WithoutFields(model.VersionConfigKey))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching versions for patches"))
 		return

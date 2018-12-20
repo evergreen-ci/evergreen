@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
 	anserdb "github.com/mongodb/anser/db"
@@ -33,7 +32,7 @@ type fixZeroDateSuite struct {
 	expectedTime time.Time
 	nowTime      time.Time
 	patches      []patch.Patch
-	versions     []version.Version
+	versions     []model.Version
 	builds       []build.Build
 	tasks        []task.Task
 
@@ -73,7 +72,7 @@ func TestFixZeroDateMigration(t *testing.T) {
 }
 
 func (s *fixZeroDateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.Collection, version.Collection, build.Collection, task.Collection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.Collection, model.VersionCollection, build.Collection, task.Collection))
 
 	ref := model.ProjectRef{
 		Identifier: "mci",
@@ -110,7 +109,7 @@ func (s *fixZeroDateSuite) SetupTest() {
 		s.NoError(s.patches[i].Insert())
 	}
 
-	s.versions = []version.Version{
+	s.versions = []model.Version{
 		{
 			Id:         "no-errors",
 			Identifier: "mci",
@@ -200,7 +199,7 @@ func (s *fixZeroDateSuite) TestMigration() {
 		}
 	}
 
-	versions, err := version.Find(db.Q{})
+	versions, err := model.VersionFind(db.Q{})
 	s.NoError(err)
 	s.Len(versions, len(s.versions))
 

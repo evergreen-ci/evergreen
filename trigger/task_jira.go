@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -87,7 +86,7 @@ type jiraTemplateData struct {
 	Build              *build.Build
 	Host               *host.Host
 	Project            *model.ProjectRef
-	Version            *version.Version
+	Version            *model.Version
 	FailedTests        []task.TestResult
 	FailedTestNames    []string
 	Tests              []jiraTestFailure

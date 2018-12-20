@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -94,7 +93,7 @@ func TestMockVersionConnectorSuite(t *testing.T) {
 	s := new(VersionConnectorSuite)
 	s.ctx = &MockConnector{
 		MockVersionConnector: MockVersionConnector{
-			CachedVersions: []version.Version{{Id: "version1"}, {Id: "version2"}},
+			CachedVersions: []model.Version{{Id: "version1"}, {Id: "version2"}},
 			CachedTasks: []task.Task{
 				{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
 				{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
@@ -111,11 +110,11 @@ func TestMockVersionConnectorSuite(t *testing.T) {
 func (s *VersionConnectorSuite) SetupTest() {
 	s.Require().NoError(db.Clear(task.Collection))
 	s.Require().NoError(db.Clear(task.OldCollection))
-	s.Require().NoError(db.Clear(version.Collection))
+	s.Require().NoError(db.Clear(model.VersionCollection))
 	s.Require().NoError(db.Clear(build.Collection))
 
 	// Insert data for the test paths
-	versions := []*version.Version{
+	versions := []*model.Version{
 		{Id: "version1"},
 		{Id: "version2"},
 	}
@@ -257,7 +256,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 			},
 		},
 	}
-	v1 := version.Version{
+	v1 := model.Version{
 		Id:                  "v1",
 		Revision:            "abcd1",
 		RevisionOrderNumber: 1,
@@ -266,7 +265,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Message:             "I am v1",
 	}
-	v2 := version.Version{
+	v2 := model.Version{
 		Id:                  "v2",
 		Revision:            "abcd2",
 		RevisionOrderNumber: 2,
@@ -405,7 +404,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 
 func TestCreateVersionFromConfig(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(model.ProjectRefCollection, version.Collection, distro.Collection, task.Collection, build.Collection, user.Collection))
+	assert.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, distro.Collection, task.Collection, build.Collection, user.Collection))
 	ref := model.ProjectRef{
 		Identifier: "mci",
 	}

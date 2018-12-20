@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -16,7 +15,7 @@ func init() {
 
 func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 	Convey("works", t, func() {
-		So(db.ClearCollections(TaskQueuesCollection, version.Collection, build.Collection), ShouldBeNil)
+		So(db.ClearCollections(TaskQueuesCollection, VersionCollection, build.Collection), ShouldBeNil)
 
 		project := "MyProject"
 		bv1 := "linux"
@@ -78,7 +77,7 @@ func insertPatchBuild(id string, project string, buildVariant string, status str
 }
 
 func insertVersion(id string, order int, project string) {
-	v := &version.Version{
+	v := &Version{
 		Id:                  id,
 		RevisionOrderNumber: order,
 		Identifier:          project,

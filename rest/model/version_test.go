@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +28,7 @@ func TestVersionBuildFromService(t *testing.T) {
 	bi1 := "buildId1"
 	bi2 := "buildId2"
 
-	buildVariants := []version.BuildStatus{
+	buildVariants := []model.VersionBuildStatus{
 		{
 			BuildVariant: bv1,
 			BuildId:      bi1,
@@ -38,7 +38,7 @@ func TestVersionBuildFromService(t *testing.T) {
 			BuildId:      bi2,
 		},
 	}
-	v := &version.Version{
+	v := &model.Version{
 		Id:            versionId,
 		CreateTime:    time,
 		StartTime:     time,

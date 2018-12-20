@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -602,7 +601,7 @@ func waterfallDataAdaptor(vvData versionVariantData, project *model.Project, ski
 	finalData.Rows = rows
 
 	// compute the total number of versions that exist
-	finalData.TotalVersions, err = version.Count(version.ByProjectId(project.Identifier))
+	finalData.TotalVersions, err = model.VersionCount(model.VersionByProjectId(project.Identifier))
 	if err != nil {
 		return waterfallData{}, err
 	}

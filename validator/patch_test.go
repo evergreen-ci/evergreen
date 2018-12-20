@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
@@ -51,7 +50,7 @@ func clearAll(t *testing.T) {
 		db.ClearCollections(
 			model.ProjectRefCollection,
 			patch.Collection,
-			version.Collection,
+			model.VersionCollection,
 			build.Collection,
 			task.Collection,
 			distro.Collection,
@@ -79,7 +78,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	err := projectRef.Insert()
 	testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: %v", err)
 
-	baseVersion := &version.Version{
+	baseVersion := &model.Version{
 		Identifier: patchedProject,
 		CreateTime: time.Now(),
 		Revision:   patchedRevision,
