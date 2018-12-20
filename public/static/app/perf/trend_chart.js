@@ -114,13 +114,6 @@ mciModule.factory('PerfChartService', function() {
       256: { colorId: 6 },
       512: { colorId: 7 },
     },
-    formatters: {
-      large: d3.format(',.0f'), // grouped thousands, no significant digits
-      digits_1: d3.format('.01f'), // floating point 1 digits
-      digits_2: d3.format('.02f'), // floating point 2 digits
-      digits_3: d3.format('.03f'), // floating point 3 digits
-      si: d3.format(',s'), // si notation
-    }
   };
 
   // Non-persistent color id offset for unusual thread level
@@ -204,9 +197,10 @@ mciModule.factory('PerfChartService', function() {
 
 // TODO Create AngularJS directive
 mciModule.factory('DrawPerfTrendChart', function (
-  PerfChartService
+  PerfChartService, Rounder
 ) {
-  var MAXONLY = 'maxonly';
+  const MAXONLY = 'maxonly';
+  let round = Rounder.get({rre: 0.01, trailingZeros: true})
 
   return function(params) {
 
@@ -491,19 +485,7 @@ mciModule.factory('DrawPerfTrendChart', function (
         .scale(yScale)
         .orient('left')
         .ticks(cfg.yAxis.ticks, function(value) {
-          var absolute = Math.abs(value)
-          if (absolute == 0) {
-            return "0"
-          }
-          if (absolute < 1) {
-            if ( absolute >= .1) {
-              return cfg.formatters.digits_1(value);
-            } else {
-              return cfg.formatters.digits_2(value);
-            }
-          } else{
-            return cfg.formatters.si(value);
-          }
+          return round(value)
         })
 
     // ## CHART STRUCTURE ##
@@ -1167,20 +1149,7 @@ mciModule.factory('DrawPerfTrendChart', function (
     }
 
     function formatNumber(value) {
-      var absolute = Math.abs(value);
-      if (absolute == 0) {
-        return "0";
-      } else if (absolute < 1) {
-        if (absolute >= .1) {
-          return cfg.formatters.digits_1(value);
-        } else if (absolute >= .01) {
-          return cfg.formatters.digits_2(value);
-        } else {
-          return cfg.formatters.digits_3(value);
-        }
-      } else{
-        return cfg.formatters.large(value);
-      }
+      return round(value)
     }
 
     // Overlay to handle hover action
