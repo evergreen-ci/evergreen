@@ -509,9 +509,9 @@ func PopulateAgentDeployJobs(env evergreen.Environment) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		if flags.TaskrunnerDisabled {
+		if flags.AgentStartDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "taskrunner disabled",
+				"message": "agent start disabled",
 				"impact":  "agents are not deployed",
 				"mode":    "degraded",
 			})

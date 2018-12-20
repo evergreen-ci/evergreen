@@ -165,7 +165,7 @@ func setServiceFlagValues(args []string, target bool, flags *model.APIServiceFla
 		case "alerts", "alert", "notify", "notifications", "notification":
 			flags.AlertsDisabled = target
 		case "taskrunner", "new-agents", "agents":
-			flags.TaskrunnerDisabled = target
+			flags.AgentStartDisabled = target
 		case "github", "repotracker", "gitter", "commits", "repo-tracker":
 			flags.RepotrackerDisabled = target
 		case "scheduler":

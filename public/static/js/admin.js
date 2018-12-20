@@ -147,29 +147,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       });
   }
 
-  var flagDisplayNames = {
-    task_dispatch_disabled: "task dispatch",
-    hostinit_disabled: "hostinit",
-    monitor_disabled: "monitor",
-    notifications_disabled: "notifications",
-    alerts_disabled: "alerts",
-    taskrunner_disabled: "taskrunner",
-    repotracker_disabled: "repotracker",
-    scheduler_disabled: "scheduler",
-    github_pr_testing_disabled: "github_pr_testing",
-    repotracker_push_event_disabled: "repotracker_push_event",
-    cli_updates_disabled: "cli_updates",
-    background_stats_disabled: "background stats",
-    "task_logging_disabled": "task logging",
-    cache_stats_job_disabled: "cache_stats_job",
-    event_processing_disabled: "event_processing",
-    jira_notifications_disabled: "jira_notifications",
-    slack_notifications_disabled: "slack_notifications",
-    email_notifications_disabled: "email_notifications",
-    webhook_notifications_disabled: "webhook_notifications",
-    github_status_api_disabled: "github_status_api"
-  }
-
   timestamp = function(ts) {
     return "[" + moment(ts, "YYYY-MM-DDTHH:mm:ss").format("lll") + "] ";
   }

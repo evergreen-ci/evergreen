@@ -110,79 +110,73 @@ Admin Settings
 		    </thead>
 		    <tbody>
 		      <tr>
-			<td>Task Dispatching</td>
+			<td>Dispatch tasks</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.task_dispatch_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Host Initialization</td>
+			<td>Create and provision hosts</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.hostinit_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Monitoring</td>
+			<td>Monitor hosts and tasks</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.monitor_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Alerts</td>
+			<td>Alert for spawn host expiration</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.alerts_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Task Runner</td>
-			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.taskrunner_disabled">
+			<td>Start agents on hosts</td>
+			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.agent_start_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Repo Tracker (Runner)</td>
+			<td>Track GitHub repositories</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Repo Tracker (Github Push Event)</td>
-			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_push_event_disabled">
-			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-			</md-radio-group></td>
-		      </tr>
-		      <tr>
-			<td>Scheduler</td>
+			<td>Schedule tasks</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.scheduler_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Github PR Testing</td>
+			<td>Test GitHub pull requests</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_pr_testing_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>CLI Updates</td>
+			<td>Update CLI</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.cli_updates_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Background Stats Collectors</td>
+			<td>Collect background statistics</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.background_stats_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Task Logging</td>
+			<td>Persist task and test logs</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.task_logging_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Cache Historical Test Data Job</td>
+			<td>Cache historical statistics</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.cache_stats_job_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
@@ -191,37 +185,37 @@ Admin Settings
 			  <td>&nbsp;</td>
 		      </tr>
 		      <tr>
-			<td>Event Processing</td>
+			<td>Process notification events</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.event_processing_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>JIRA Notifications</td>
+			<td>Send JIRA notifications</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.jira_notifications_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Slack Notifications</td>
+			<td>Send Slack notifications</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.slack_notifications_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Email Notifications</td>
+			<td>Send Email notifications</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.email_notifications_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Webhook Notifications</td>
+			<td>Send Webhook notifications</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.webhook_notifications_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
 		      </tr>
 		      <tr>
-			<td>Github PR Status Notifications</td>
+			<td>Send Github PR status notifications</td>
 			<td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_status_api_disabled">
 			  <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
 			</md-radio-group></td>
