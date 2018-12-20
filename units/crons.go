@@ -113,20 +113,6 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 
 func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		flags, err := evergreen.GetServiceFlags()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if flags.TaskDispatchDisabled {
-			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-				"message": "task dispatching disabled",
-				"mode":    "degraded",
-				"impact":  "skipping stepback activation",
-			})
-			return nil
-		}
-
 		projects, err := model.FindAllTrackedProjectRefs()
 		if err != nil {
 			return errors.WithStack(err)
@@ -140,7 +126,7 @@ func PopulateActivationJobs(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewVersionActiationJob(proj.Identifier, ts)))
+			catcher.Add(queue.Put(NewVersionActivationJob(proj.Identifier, ts)))
 		}
 
 		return catcher.Resolve()

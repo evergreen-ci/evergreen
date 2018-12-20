@@ -22,9 +22,9 @@ func TestVersionActivationJob(t *testing.T) {
 	assert.True(ok)
 	assert.NotNil(j)
 
-	jOne := NewVersionActiationJob("foo", "id")
-	jTwo := NewVersionActiationJob("foo", "id")
-	jThree := NewVersionActiationJob("foo", "id0")
+	jOne := NewVersionActivationJob("foo", "id")
+	jTwo := NewVersionActivationJob("foo", "id")
+	jThree := NewVersionActivationJob("foo", "id0")
 	assert.Equal(jOne.ID(), jTwo.ID())
 	assert.Equal(jOne, jTwo)
 	assert.NotEqual(jThree.ID(), jOne.ID())
