@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -515,7 +514,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 
 func TestUpdateBuildStatusForTask(t *testing.T) {
 	Convey("With two tasks and a build", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -524,7 +523,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			Version:   "abc",
 			Activated: true,
 		}
-		v := &version.Version{
+		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionStarted,
 		}
@@ -574,7 +573,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
-			v, err = version.FindOne(version.ById(v.Id))
+			v, err = VersionFindOne(VersionById(v.Id))
 			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionFailed)
 		})
@@ -587,7 +586,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		var (
 			b        *build.Build
-			v        *version.Version
+			v        *Version
 			testTask *task.Task
 			detail   *apimodels.TaskEndDetail
 		)
@@ -604,7 +603,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 					},
 				},
 			}
-			v = &version.Version{
+			v = &Version{
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
 			}
@@ -622,7 +621,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Status: evergreen.TaskSucceeded,
 			}
 
-			testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, version.Collection), t,
+			testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection), t,
 				"Error clearing task and build collections")
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
@@ -782,7 +781,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 func TestMarkEnd(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection),
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection),
 		"Error clearing task and build collections")
 
 	ref := &ProjectRef{
@@ -797,7 +796,7 @@ func TestMarkEnd(t *testing.T) {
 		Status:  evergreen.BuildStarted,
 		Version: "abc",
 	}
-	v := &version.Version{
+	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
 	}
@@ -840,7 +839,7 @@ func TestMarkEnd(t *testing.T) {
 			},
 		}
 		So(b.Insert(), ShouldBeNil)
-		v := &version.Version{
+		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionStarted,
 		}
@@ -882,7 +881,7 @@ func TestMarkEnd(t *testing.T) {
 func TestTryResetTask(t *testing.T) {
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
-			testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), t,
 				"Error clearing task and build collections")
 			displayName := "testName"
 			userName := "testUser"
@@ -891,7 +890,7 @@ func TestTryResetTask(t *testing.T) {
 				Status:  evergreen.BuildSucceeded,
 				Version: "abc",
 			}
-			v := &version.Version{
+			v := &Version{
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
 			}
@@ -956,7 +955,7 @@ func TestTryResetTask(t *testing.T) {
 
 		})
 		Convey("resetting a task with a max number of excutions", func() {
-			testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 				"Error clearing task and build collections")
 			displayName := "testName"
 			userName := "testUser"
@@ -965,7 +964,7 @@ func TestTryResetTask(t *testing.T) {
 				Status:  evergreen.BuildStarted,
 				Version: "abc",
 			}
-			v := &version.Version{
+			v := &Version{
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
 			}
@@ -1037,7 +1036,7 @@ func TestTryResetTask(t *testing.T) {
 			},
 		}
 		So(b.Insert(), ShouldBeNil)
-		v := &version.Version{
+		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionStarted,
 		}
@@ -1074,7 +1073,7 @@ func TestTryResetTask(t *testing.T) {
 
 func TestAbortTask(t *testing.T) {
 	Convey("With a task and a build", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task, build, and version collections")
 		displayName := "testName"
 		userName := "testUser"
@@ -1158,7 +1157,7 @@ func TestAbortTask(t *testing.T) {
 }
 func TestMarkStart(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -1166,7 +1165,7 @@ func TestMarkStart(t *testing.T) {
 			Status:  evergreen.BuildCreated,
 			Version: "abc",
 		}
-		v := &version.Version{
+		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionCreated,
 		}
@@ -1205,7 +1204,7 @@ func TestMarkStart(t *testing.T) {
 			So(b.Tasks, ShouldNotBeNil)
 			So(len(b.Tasks), ShouldEqual, 1)
 			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskStarted)
-			v, err = version.FindOne(version.ById(v.Id))
+			v, err = VersionFindOne(VersionById(v.Id))
 			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionStarted)
 		})
@@ -1224,7 +1223,7 @@ func TestMarkStart(t *testing.T) {
 			},
 		}
 		So(b.Insert(), ShouldBeNil)
-		v := &version.Version{
+		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionStarted,
 		}
@@ -1263,7 +1262,7 @@ func TestMarkStart(t *testing.T) {
 
 func TestMarkUndispatched(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -1271,7 +1270,7 @@ func TestMarkUndispatched(t *testing.T) {
 			Status:  evergreen.BuildStarted,
 			Version: "abc",
 		}
-		v := &version.Version{
+		v := &Version{
 			Id:     b.Version,
 			Status: evergreen.VersionStarted,
 		}
@@ -1311,7 +1310,7 @@ func TestMarkUndispatched(t *testing.T) {
 
 func TestMarkDispatched(t *testing.T) {
 	Convey("With a task, build and version", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing task and build collections")
 		displayName := "testName"
 		b := &build.Build{
@@ -1371,7 +1370,7 @@ buildvariants:
 `
 
 	Convey("When the project has a stepback policy set to true", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, VersionCollection), t,
 			"Error clearing collections")
 
 		ref := &ProjectRef{
@@ -1446,7 +1445,7 @@ buildvariants:
 
 func TestFailedTaskRestart(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), t,
 		"Error clearing task and build collections")
 	userName := "testUser"
 	b := &build.Build{
@@ -1454,7 +1453,7 @@ func TestFailedTaskRestart(t *testing.T) {
 		Status:  evergreen.BuildStarted,
 		Version: "abc",
 	}
-	v := &version.Version{
+	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
 	}
@@ -1588,7 +1587,7 @@ func TestFailedTaskRestart(t *testing.T) {
 
 func TestStepback(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection), t,
 		"Error clearing task and build collections")
 	b1 := &build.Build{
 		Id:        "build1",
@@ -1793,7 +1792,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, ProjectRefCollection, event.AllLogCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, ProjectRefCollection, event.AllLogCollection))
 	ref := ProjectRef{
 		Identifier: "sample",
 	}
@@ -1881,7 +1880,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	require.NoError(b.Insert())
 	assert.False(b.IsFinished())
 
-	v := &version.Version{
+	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
 	}
@@ -1949,7 +1948,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, event.AllLogCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
 
 	buildID := "buildtest"
 	testTask := task.Task{
@@ -2000,7 +1999,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	}
 	require.NoError(b.Insert())
 
-	v := &version.Version{
+	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
 	}
@@ -2032,7 +2031,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, event.AllLogCollection))
+	require.NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.AllLogCollection))
 
 	buildID := "buildtest"
 	testTask := task.Task{
@@ -2082,7 +2081,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	}
 	require.NoError(b.Insert())
 
-	v := &version.Version{
+	v := &Version{
 		Id:     b.Version,
 		Status: evergreen.VersionStarted,
 	}

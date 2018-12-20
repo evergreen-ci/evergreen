@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/grid"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -25,8 +25,8 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 
 	// If no version was specified in the URL, grab the latest version on the project
 	if projCtx.Version == nil {
-		var v []version.Version
-		v, err = version.Find(version.ByMostRecentSystemRequester(project.Identifier).Limit(1))
+		var v []model.Version
+		v, err = model.VersionFind(model.VersionByMostRecentSystemRequester(project.Identifier).Limit(1))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding version"))
 			return
@@ -36,7 +36,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var versions map[string]version.Version
+	var versions map[string]model.Version
 	var cells grid.Grid
 	var failures grid.Failures
 	var revisionFailures grid.RevisionFailures
@@ -58,17 +58,17 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projCtx.Version != nil {
-		recentVersions, err := version.Find(version.
-			ByProjectIdAndOrder(projCtx.Version.Identifier, projCtx.Version.RevisionOrderNumber).
-			WithFields(version.IdKey, version.RevisionKey, version.RevisionOrderNumberKey, version.MessageKey, version.AuthorKey, version.CreateTimeKey).
-			Sort([]string{"-" + version.RevisionOrderNumberKey}).
-			Limit(depth + 1))
+		recentVersions, err := model.VersionFind(
+			model.VersionByProjectIdAndOrder(projCtx.Version.Identifier, projCtx.Version.RevisionOrderNumber).
+				WithFields(model.VersionIdKey, model.VersionRevisionKey, model.VersionRevisionOrderNumberKey, model.VersionMessageKey, model.VersionAuthorKey, model.VersionCreateTimeKey).
+				Sort([]string{"-" + model.VersionRevisionOrderNumberKey}).
+				Limit(depth + 1))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching versions"))
 			return
 		}
 
-		versions = make(map[string]version.Version, len(recentVersions))
+		versions = make(map[string]model.Version, len(recentVersions))
 		for _, v := range recentVersions {
 			versions[v.Revision] = v
 		}
@@ -91,13 +91,13 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		versions = make(map[string]version.Version)
+		versions = make(map[string]model.Version)
 		cells = make(grid.Grid, 0)
 		failures = make(grid.Failures, 0)
 		revisionFailures = make(grid.RevisionFailures, 0)
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Versions         map[string]version.Version
+		Versions         map[string]model.Version
 		GridCells        grid.Grid
 		Failures         grid.Failures
 		RevisionFailures grid.RevisionFailures

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
@@ -170,7 +169,7 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
 	// Get the version for this task, so we can get its config data
-	v, err := version.FindOne(version.ById(t.Version))
+	v, err := model.VersionFindOne(model.VersionById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

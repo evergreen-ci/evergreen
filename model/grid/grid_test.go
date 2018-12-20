@@ -7,9 +7,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,9 +27,9 @@ func init() {
 
 func TestFetchFailures(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(version.Collection, task.Collection, testresult.Collection), t, "error cleraing collections")
+	testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, task.Collection, testresult.Collection), t, "error cleraing collections")
 	generateData(assert)
-	current := version.Version{
+	current := model.Version{
 		RevisionOrderNumber: numVersions + 1,
 		Identifier:          projName,
 	}
@@ -46,9 +46,9 @@ func TestFetchFailures(t *testing.T) {
 
 func TestFetchRevisionOrderFailures(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(version.Collection, task.Collection, testresult.Collection), t, "error cleraing collections")
+	testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, task.Collection, testresult.Collection), t, "error cleraing collections")
 	generateData(assert)
-	current := version.Version{
+	current := model.Version{
 		RevisionOrderNumber: numVersions + 1,
 		Identifier:          projName,
 	}
@@ -65,7 +65,7 @@ func TestFetchRevisionOrderFailures(t *testing.T) {
 
 func generateData(assert *assert.Assertions) {
 	for i := 0; i < numVersions; i++ {
-		v := version.Version{
+		v := model.Version{
 			Id:                  fmt.Sprintf("v%d", i),
 			RevisionOrderNumber: i + 1,
 			Identifier:          projName,

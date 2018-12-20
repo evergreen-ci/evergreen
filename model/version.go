@@ -1,4 +1,4 @@
-package version
+package model
 
 import (
 	"fmt"
@@ -12,23 +12,23 @@ import (
 )
 
 type Version struct {
-	Id                  string        `bson:"_id" json:"id,omitempty"`
-	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time     `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time     `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision            string        `bson:"gitspec" json:"revision,omitempty"`
-	Author              string        `bson:"author" json:"author,omitempty"`
-	AuthorEmail         string        `bson:"author_email" json:"author_email,omitempty"`
-	Message             string        `bson:"message" json:"message,omitempty"`
-	Status              string        `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int           `bson:"order,omitempty" json:"order,omitempty"`
-	Config              string        `bson:"config" json:"config,omitempty"`
-	Ignored             bool          `bson:"ignored" json:"ignored"`
-	Owner               string        `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string        `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string        `bson:"branch_name" json:"branch_name,omitempty"`
-	RepoKind            string        `bson:"repo_kind" json:"repo_kind,omitempty"`
-	BuildVariants       []BuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	Id                  string               `bson:"_id" json:"id,omitempty"`
+	CreateTime          time.Time            `bson:"create_time" json:"create_time,omitempty"`
+	StartTime           time.Time            `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime          time.Time            `bson:"finish_time" json:"finish_time,omitempty"`
+	Revision            string               `bson:"gitspec" json:"revision,omitempty"`
+	Author              string               `bson:"author" json:"author,omitempty"`
+	AuthorEmail         string               `bson:"author_email" json:"author_email,omitempty"`
+	Message             string               `bson:"message" json:"message,omitempty"`
+	Status              string               `bson:"status" json:"status,omitempty"`
+	RevisionOrderNumber int                  `bson:"order,omitempty" json:"order,omitempty"`
+	Config              string               `bson:"config" json:"config,omitempty"`
+	Ignored             bool                 `bson:"ignored" json:"ignored"`
+	Owner               string               `bson:"owner_name" json:"owner_name,omitempty"`
+	Repo                string               `bson:"repo_name" json:"repo_name,omitempty"`
+	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
+	RepoKind            string               `bson:"repo_kind" json:"repo_kind,omitempty"`
+	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`
@@ -59,8 +59,8 @@ type Version struct {
 }
 
 func (v *Version) LastSuccessful() (*Version, error) {
-	lastGreen, err := FindOne(BySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
-		[]string{"-" + RevisionOrderNumberKey}))
+	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
+		[]string{"-" + VersionRevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "error retrieving last successful version")
 	}
@@ -68,22 +68,22 @@ func (v *Version) LastSuccessful() (*Version, error) {
 }
 
 func (self *Version) UpdateBuildVariants() error {
-	return UpdateOne(
-		bson.M{IdKey: self.Id},
+	return VersionUpdateOne(
+		bson.M{VersionIdKey: self.Id},
 		bson.M{
 			"$set": bson.M{
-				BuildVariantsKey: self.BuildVariants,
+				VersionBuildVariantsKey: self.BuildVariants,
 			},
 		},
 	)
 }
 
 func (self *Version) Insert() error {
-	return db.Insert(Collection, self)
+	return db.Insert(VersionCollection, self)
 }
 
-// BuildStatus stores metadata relating to each build
-type BuildStatus struct {
+// VersionBuildStatus stores metadata relating to each build
+type VersionBuildStatus struct {
 	BuildVariant string    `bson:"build_variant" json:"id"`
 	Activated    bool      `bson:"activated" json:"activated"`
 	ActivateAt   time.Time `bson:"activate_at,omitempty" json:"activate_at,omitempty"`
@@ -91,10 +91,10 @@ type BuildStatus struct {
 }
 
 var (
-	BuildStatusVariantKey    = bsonutil.MustHaveTag(BuildStatus{}, "BuildVariant")
-	BuildStatusActivatedKey  = bsonutil.MustHaveTag(BuildStatus{}, "Activated")
-	BuildStatusActivateAtKey = bsonutil.MustHaveTag(BuildStatus{}, "ActivateAt")
-	BuildStatusBuildIdKey    = bsonutil.MustHaveTag(BuildStatus{}, "BuildId")
+	VersionBuildStatusVariantKey    = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildVariant")
+	VersionBuildStatusActivatedKey  = bsonutil.MustHaveTag(VersionBuildStatus{}, "Activated")
+	VersionBuildStatusActivateAtKey = bsonutil.MustHaveTag(VersionBuildStatus{}, "ActivateAt")
+	VersionBuildStatusBuildIdKey    = bsonutil.MustHaveTag(VersionBuildStatus{}, "BuildId")
 )
 
 type DuplicateVersionsID struct {
@@ -107,51 +107,8 @@ type DuplicateVersions struct {
 	Versions []Version           `bson:"versions"`
 }
 
-func FindDuplicateVersions(since time.Time) ([]DuplicateVersions, error) {
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				RequesterKey: bson.M{
-					"$in": evergreen.SystemVersionRequesterTypes,
-				},
-				CreateTimeKey: bson.M{
-					"$gte": since,
-				},
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id": bson.M{
-					"project_id": "$" + IdentifierKey,
-					"hash":       "$" + RevisionKey,
-				},
-				"count": bson.M{
-					"$sum": 1,
-				},
-				"versions": bson.M{
-					"$push": "$$ROOT",
-				},
-			},
-		},
-		{
-			"$match": bson.M{
-				"count": bson.M{
-					"$gt": 1,
-				},
-			},
-		},
-	}
-
-	out := []DuplicateVersions{}
-	if err := db.Aggregate(Collection, pipeline, &out); err != nil {
-		return nil, err
-	}
-
-	return out, nil
-}
-
-func GetHistory(versionId string, N int) ([]Version, error) {
-	v, err := FindOne(ById(versionId))
+func VersionGetHistory(versionId string, N int) ([]Version, error) {
+	v, err := VersionFindOne(VersionById(versionId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	} else if v == nil {
@@ -161,14 +118,14 @@ func GetHistory(versionId string, N int) ([]Version, error) {
 	// Versions in the same push event, assuming that no two push events happen at the exact same time
 	// Never want more than 2N+1 versions, so make sure we add a limit
 
-	siblingVersions, err := Find(db.Query(
+	siblingVersions, err := VersionFind(db.Query(
 		bson.M{
-			RevisionOrderNumberKey: v.RevisionOrderNumber,
-			RequesterKey: bson.M{
+			VersionRevisionOrderNumberKey: v.RevisionOrderNumber,
+			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-			IdentifierKey: v.Identifier,
-		}).WithoutFields(ConfigKey).Sort([]string{RevisionOrderNumberKey}).Limit(2*N + 1))
+			VersionIdentifierKey: v.Identifier,
+		}).WithoutFields(VersionConfigKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N + 1))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -186,15 +143,15 @@ func GetHistory(versionId string, N int) ([]Version, error) {
 	if versionIndex < N {
 		// There are less than N later versions from the same push event
 		// N subsequent versions plus the specified one
-		subsequentVersions, err := Find(
+		subsequentVersions, err := VersionFind(
 			//TODO encapsulate this query in version pkg
 			db.Query(bson.M{
-				RevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
-				RequesterKey: bson.M{
+				VersionRevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
+				VersionRequesterKey: bson.M{
 					"$in": evergreen.SystemVersionRequesterTypes,
 				},
-				IdentifierKey: v.Identifier,
-			}).WithoutFields(ConfigKey).Sort([]string{RevisionOrderNumberKey}).Limit(N - versionIndex))
+				VersionIdentifierKey: v.Identifier,
+			}).WithoutFields(VersionConfigKey).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N - versionIndex))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -208,13 +165,13 @@ func GetHistory(versionId string, N int) ([]Version, error) {
 	}
 
 	if numSiblings-versionIndex < N {
-		previousVersions, err := Find(db.Query(bson.M{
-			RevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
-			RequesterKey: bson.M{
+		previousVersions, err := VersionFind(db.Query(bson.M{
+			VersionRevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
+			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
-			IdentifierKey: v.Identifier,
-		}).WithoutFields(ConfigKey).Sort([]string{fmt.Sprintf("-%v", RevisionOrderNumberKey)}).Limit(N))
+			VersionIdentifierKey: v.Identifier,
+		}).WithoutFields(VersionConfigKey).Sort([]string{fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)}).Limit(N))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

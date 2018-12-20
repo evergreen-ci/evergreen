@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -72,7 +71,7 @@ func setupCLITestHarness() cliTestHarness {
 			patch.Collection,
 			model.ProjectRefCollection,
 			artifact.Collection,
-			version.Collection,
+			model.VersionCollection,
 		),
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
@@ -263,7 +262,7 @@ func TestCLITestHistory(t *testing.T) {
 			now := time.Now()
 			revisionBeginning := "101112dfac9f1251466afe7c4bf9f56b"
 			project := "sample"
-			testVersion := version.Version{
+			testVersion := model.Version{
 				Id:                  "version1",
 				Revision:            fmt.Sprintf("%vversion1", revisionBeginning),
 				RevisionOrderNumber: 1,
@@ -271,7 +270,7 @@ func TestCLITestHistory(t *testing.T) {
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
 			So(testVersion.Insert(), ShouldBeNil)
-			testVersion2 := version.Version{
+			testVersion2 := model.Version{
 				Id:                  "version2",
 				Revision:            fmt.Sprintf("%vversion2", revisionBeginning),
 				RevisionOrderNumber: 2,
@@ -279,7 +278,7 @@ func TestCLITestHistory(t *testing.T) {
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
 			So(testVersion2.Insert(), ShouldBeNil)
-			testVersion3 := version.Version{
+			testVersion3 := model.Version{
 				Id:                  "version3",
 				Revision:            fmt.Sprintf("%vversion3", revisionBeginning),
 				RevisionOrderNumber: 4,

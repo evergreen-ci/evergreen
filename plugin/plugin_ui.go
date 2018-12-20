@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -88,7 +87,7 @@ type UIContext struct {
 	User       gimlet.User
 	Task       *task.Task
 	Build      *build.Build
-	Version    *version.Version
+	Version    *model.Version
 	Patch      *patch.Patch
 	ProjectRef *model.ProjectRef
 	Request    *http.Request

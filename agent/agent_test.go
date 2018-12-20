@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/suite"
 )
@@ -213,7 +212,7 @@ pre:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -246,7 +245,7 @@ post:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -282,7 +281,7 @@ post:
     params:
       script: "exit 0"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -583,7 +582,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -621,7 +620,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -659,7 +658,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -696,7 +695,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -735,7 +734,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -778,7 +777,7 @@ timeout:
         sleep 5
         echo "bye"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}

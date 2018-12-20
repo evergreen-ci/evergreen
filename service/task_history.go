@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -75,7 +74,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	taskName := gimlet.GetVars(r)["task_name"]
 
 	var chunk model.TaskHistoryChunk
-	var v *version.Version
+	var v *model.Version
 	var before bool
 
 	if strBefore := r.FormValue("before"); strBefore != "" {
@@ -87,7 +86,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	buildVariants := project.GetVariantsWithTask(taskName)
 
 	if revision := r.FormValue("revision"); revision != "" {
-		v, err = version.FindOne(version.ByProjectIdAndRevision(project.Identifier, revision))
+		v, err = model.VersionFindOne(model.VersionByProjectIdAndRevision(project.Identifier, revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -144,11 +143,11 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	beforeCommitId := r.FormValue("before")
 	isJson := (r.FormValue("format") == "json")
 
-	var beforeCommit *version.Version
+	var beforeCommit *model.Version
 	var err error
 	beforeCommit = nil
 	if beforeCommitId != "" {
-		beforeCommit, err = version.FindOne(version.ById(beforeCommitId))
+		beforeCommit, err = model.VersionFindOne(model.VersionById(beforeCommitId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -186,7 +185,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		Variant   string
 		Tasks     []bson.M
 		TaskNames []string
-		Versions  []version.Version
+		Versions  []model.Version
 		Project   string
 	}{variant, tasks, suites, versions, project.Identifier}
 	if isJson {
@@ -381,7 +380,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 }
 
 func getVersionsInWindow(wt, projectId string, anchorOrderNum, radius int,
-	center *version.Version) ([]version.Version, error) {
+	center *model.Version) ([]model.Version, error) {
 	if wt == beforeWindow {
 		return makeVersionsQuery(anchorOrderNum, projectId, radius, true)
 	} else if wt == afterWindow {
@@ -415,7 +414,7 @@ func getVersionsInWindow(wt, projectId string, anchorOrderNum, radius int,
 // Helper to make the appropriate query to the versions collection for what
 // we will need.  "before" indicates whether to fetch versions before or
 // after the passed-in task.
-func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int, before bool) ([]version.Version, error) {
+func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
 	// decide how the versions we want relative to the task's revision order number
 	ronQuery := bson.M{"$gt": anchorOrderNum}
 	if before {
@@ -423,27 +422,27 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 	}
 
 	// switch how to sort the versions
-	sortVersions := []string{version.CreateTimeKey}
+	sortVersions := []string{model.VersionCreateTimeKey}
 	if before {
-		sortVersions = []string{"-" + version.CreateTimeKey}
+		sortVersions = []string{"-" + model.VersionCreateTimeKey}
 	}
 
 	// fetch the versions
-	return version.Find(
+	return model.VersionFind(
 		db.Query(bson.M{
-			version.IdentifierKey:          projectId,
-			version.RevisionOrderNumberKey: ronQuery,
-			version.RequesterKey: bson.M{
+			model.VersionIdentifierKey:          projectId,
+			model.VersionRevisionOrderNumberKey: ronQuery,
+			model.VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 		}).WithFields(
-			version.RevisionOrderNumberKey,
-			version.RevisionKey,
-			version.MessageKey,
-			version.CreateTimeKey,
-			version.ErrorsKey,
-			version.WarningsKey,
-			version.IgnoredKey,
+			model.VersionRevisionOrderNumberKey,
+			model.VersionRevisionKey,
+			model.VersionMessageKey,
+			model.VersionCreateTimeKey,
+			model.VersionErrorsKey,
+			model.VersionWarningsKey,
+			model.VersionIgnoredKey,
 		).Sort(sortVersions).Limit(versionsToFetch))
 }
 
@@ -451,7 +450,7 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 // groups of tasks.  They will be sorted by ascending revision order number,
 // unless reverseOrder is true, in which case they will be sorted
 // descending.
-func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, versions []version.Version) ([]taskDrawerItem, error) {
+func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, versions []model.Version) ([]taskDrawerItem, error) {
 
 	versionIds := []string{}
 	for _, v := range versions {
@@ -490,7 +489,7 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 
 // Given versions and the appropriate tasks within them, sorted by build
 // variant, create sibling groups for the tasks.
-func createSiblingTaskGroups(tasks []task.Task, versions []version.Version) []taskDrawerItem {
+func createSiblingTaskGroups(tasks []task.Task, versions []model.Version) []taskDrawerItem {
 	// version id -> group
 	groupsByVersion := map[string]taskDrawerItem{}
 

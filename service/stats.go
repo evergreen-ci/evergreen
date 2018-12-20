@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -66,10 +66,10 @@ type UIBuild struct {
 
 // UIStats is all of the data that the stats page might need.
 type UIStats struct {
-	Tasks    []*UITask         `json:"tasks"`
-	Builds   []*UIBuild        `json:"builds"`
-	Versions []version.Version `json:"versions"`
-	Patches  []patch.Patch     `json:"patches"`
+	Tasks    []*UITask       `json:"tasks"`
+	Builds   []*UIBuild      `json:"builds"`
+	Versions []model.Version `json:"versions"`
+	Patches  []patch.Patch   `json:"patches"`
 }
 
 func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
@@ -272,10 +272,10 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 	// Populate the versions field if with commits, otherwise patches field
 	if util.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
-		versions, err := version.Find(version.ByIds(versionIds).
-			WithFields(version.IdKey, version.CreateTimeKey, version.MessageKey,
-				version.AuthorKey, version.RevisionKey, version.RevisionOrderNumberKey).
-			Sort([]string{"-" + version.RevisionOrderNumberKey}))
+		versions, err := model.VersionFind(model.VersionByIds(versionIds).
+			WithFields(model.VersionIdKey, model.VersionCreateTimeKey, model.VersionMessageKey,
+				model.VersionAuthorKey, model.VersionRevisionKey, model.VersionRevisionOrderNumberKey).
+			Sort([]string{"-" + model.VersionRevisionOrderNumberKey}))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return

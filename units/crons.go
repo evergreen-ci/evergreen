@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -50,7 +49,7 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 				continue
 			}
 
-			mostRecentVersion, err := version.FindOne(version.ByMostRecentSystemRequester(proj.Identifier))
+			mostRecentVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(proj.Identifier))
 			catcher.Add(err)
 			if mostRecentVersion == nil {
 				grip.Warning(message.Fields{

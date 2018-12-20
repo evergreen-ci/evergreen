@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
@@ -27,7 +27,7 @@ func init() {
 type versionTriggers struct {
 	event    *event.EventLogEntry
 	data     *event.VersionEventData
-	version  *version.Version
+	version  *model.Version
 	uiConfig evergreen.UIConfig
 
 	base
@@ -52,7 +52,7 @@ func (t *versionTriggers) Fetch(e *event.EventLogEntry) error {
 		return errors.Wrap(err, "Failed to fetch ui config")
 	}
 
-	t.version, err = version.FindOne(version.ById(e.ResourceId))
+	t.version, err = model.VersionFindOne(model.VersionById(e.ResourceId))
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch version")
 	}
@@ -220,7 +220,7 @@ func (t *versionTriggers) versionRegression(sub *event.Subscription) (*notificat
 	return nil, nil
 }
 
-func MakeVersionSelectors(v version.Version) []event.Selector {
+func MakeVersionSelectors(v model.Version) []event.Selector {
 	selectors := []event.Selector{
 		{
 			Type: selectorID,

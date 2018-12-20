@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -116,8 +115,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 				diffs = append(diffs, diff.Tasks...)
 			}
 		}
-		var baseVersion *version.Version
-		baseVersion, err = version.FindOne(version.BaseVersionFromPatch(projCtx.Version.Identifier, projCtx.Version.Revision))
+		var baseVersion *model.Version
+		baseVersion, err = model.VersionFindOne(model.VersionBaseVersionFromPatch(projCtx.Version.Identifier, projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -202,7 +201,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent: pluginContent,
 		CanEdit:       currentUser != nil,
 		JiraHost:      uis.Settings.Jira.Host,
-		ViewData:      uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
+		ViewData:      uis.GetCommonViewData(w, r, false, true)}, "base", "model.Versionhtml", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
@@ -268,7 +267,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 	// After the version has been modified, re-load it from DB and send back the up-to-date view
 	// to the client.
-	projCtx.Version, err = version.FindOne(version.ById(projCtx.Version.Id))
+	projCtx.Version, err = model.VersionFindOne(model.VersionById(projCtx.Version.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -341,7 +340,7 @@ func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild) error {
 
 func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	data, err := version.GetHistory(projCtx.Version.Id, 5)
+	data, err := model.VersionGetHistory(projCtx.Version.Id, 5)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -408,7 +407,7 @@ func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "revision not long enough: must be at least 5 characters", http.StatusBadRequest)
 		return
 	}
-	foundVersions, err := version.Find(version.ByProjectIdAndRevisionPrefix(id, revision).Limit(2))
+	foundVersions, err := model.VersionFind(model.VersionByProjectIdAndRevisionPrefix(id, revision).Limit(2))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

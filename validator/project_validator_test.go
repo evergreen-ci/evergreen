@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/model/version"
 	_ "github.com/evergreen-ci/evergreen/plugin"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -1337,7 +1336,7 @@ func TestValidatePluginCommands(t *testing.T) {
 
 func TestCheckProjectSyntax(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.Clear(version.Collection))
+	assert.NoError(db.Clear(model.VersionCollection))
 
 	distros := []distro.Distro{
 		{Id: "test-distro-one"},

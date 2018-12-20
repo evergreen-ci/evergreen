@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -321,7 +320,7 @@ func getProjectRefCache() (map[string]model.ProjectRef, error) {
 
 // GetRunnableTasksAndVersions finds tasks whose versions have already been
 // created, and returns those tasks, as well as a map of version IDs to versions.
-func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]version.Version, error) {
+func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]model.Version, error) {
 	ids := make(map[string]struct{})
 
 	for _, t := range tasks {
@@ -333,12 +332,12 @@ func filterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]ver
 		idlist = append(idlist, id)
 	}
 
-	vs, err := version.FindByIds(idlist)
+	vs, err := model.VersionFindByIds(idlist)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "problem resolving version cache")
 	}
 
-	versions := make(map[string]version.Version)
+	versions := make(map[string]model.Version)
 	for _, v := range vs {
 		versions[v.Id] = v
 	}

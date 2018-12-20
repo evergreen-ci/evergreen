@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 )
 
@@ -32,7 +31,7 @@ func perfDashGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "empty project ref", http.StatusNotFound)
 		return
 	}
-	v, err := version.FindOne(version.ById(versionId).WithFields(version.RevisionKey))
+	v, err := model.VersionFindOne(model.VersionById(versionId).WithFields(model.VersionRevisionKey))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

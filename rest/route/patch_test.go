@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -337,7 +337,7 @@ func (s *PatchRestartSuite) SetupSuite() {
 		CachedAborted: make(map[string]string),
 	}
 	s.versionData = data.MockVersionConnector{
-		CachedVersions: []version.Version{
+		CachedVersions: []serviceModel.Version{
 			{Id: s.objIds[0].Hex()},
 			{Id: s.objIds[1].Hex()},
 		},
