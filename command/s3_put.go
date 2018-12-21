@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -78,7 +79,8 @@ type s3put struct {
 	workDir     string
 	skipMissing bool
 
-	bucket pail.Bucket
+	bucketSet bool
+	bucket    pail.Bucket
 
 	taskdata client.TaskData
 	base
@@ -206,14 +208,14 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	}
 
 	// create bucket if not yet created
-	if !bucketSet {
-		err := c.createPailBucket()
+	if !s3pc.bucketSet {
+		err := s3pc.createPailBucket()
 		if err != nil {
 			return errors.Wrap(err, "problem connecting to s3")
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		if err := c.bucket.Check(ctx); err != nil {
+		if err := s3pc.bucket.Check(ctx); err != nil {
 			return errors.Wrap(err, "invalid bucket")
 		}
 	}
@@ -388,12 +390,13 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 func (c *s3put) createPailBucket() error {
 	opts := pail.S3Options{
-		Credentials: credentials.NewCredentials(&StaticProvider{Value: Value{
-			AccessKeyID:     c.AwsKey,
-			SecretAccessKey: c.AwsSecret,
-		}}),
+		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
+			Value: credentials.Value{
+				AccessKeyID:     c.AwsKey,
+				SecretAccessKey: c.AwsSecret,
+			}}),
 
-		Region:      "us-east-1",
+		Region:      endpoints.UsEast1RegionID,
 		Name:        c.Bucket,
 		Permission:  c.Permissions,
 		ContentType: c.ContentType,

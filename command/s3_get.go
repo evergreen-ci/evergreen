@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -126,7 +127,7 @@ func (c *s3get) Execute(ctx context.Context,
 	}
 
 	// create bucket if not yet created
-	if !bucketSet {
+	if !c.bucketSet {
 		err := c.createPailBucket()
 		if err != nil {
 			return errors.Wrap(err, "problem connecting to s3")
@@ -244,11 +245,12 @@ func (c *s3get) get(ctx context.Context) error {
 
 func (c *s3get) createPailBucket() error {
 	opts := pail.S3Options{
-		Credentials: credentials.NewCredentials(&StaticProvider{Value: Value{
-			AccessKeyID:     c.AwsKey,
-			SecretAccessKey: c.AwsSecret,
-		}}),
-		Region: "us-east-1",
+		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
+			Value: credentials.Value{
+				AccessKeyID:     c.AwsKey,
+				SecretAccessKey: c.AwsSecret,
+			}}),
+		Region: endpoints.UsEast1RegionID,
 		Name:   c.Bucket,
 	}
 	bucket, err := pail.NewS3Bucket(opts)

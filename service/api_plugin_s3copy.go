@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go/service/iot"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -21,7 +23,7 @@ import (
 const (
 	s3CopyRetrySleepTimeSec = 5
 	s3CopyRetryNumRetries   = 5
-	region                  = "us-east-1"
+	region                  = endpoints.UsEast1RegionID
 )
 
 // Takes a request for a task's file to be copied from
@@ -84,26 +86,28 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	// Now copy the file into the permanent location
 	srcOpts := pail.S3Options{
-		Credentials: credentials.NewCredentials(&StaticProvider{Value: Value{
-			AccessKeyID:     s3CopyReq.AwsKey,
-			SecretAccessKey: s3CopyReq.AwsSecret,
-		}}),
+		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
+			Value: credentials.Value{
+				AccessKeyID:     s3CopyReq.AwsKey,
+				SecretAccessKey: s3CopyReq.AwsSecret,
+			}}),
 		Region:     region,
 		Name:       s3CopyReq.S3SourceBucket,
-		Permission: "public-read",
+		Permission: iot.CannedAccessControlListPublicRead,
 	}
 	srcBucket, err := pail.NewS3MultiPartBucket(srcOpts)
 	if err != nil {
 		grip.Error(errors.Wrap(err, "S3 copy failed, could not establish connection to source bucket"))
 	}
 	destOpts := pail.S3Options{
-		Credentials: credentials.NewCredentials(&StaticProvider{Value: Value{
-			AccessKeyID:     s3CopyReq.AwsKey,
-			SecretAccessKey: s3CopyReq.AwsSecret,
-		}}),
+		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
+			Value: credentials.Value{
+				AccessKeyID:     s3CopyReq.AwsKey,
+				SecretAccessKey: s3CopyReq.AwsSecret,
+			}}),
 		Region:     region,
 		Name:       s3CopyReq.S3DestinationBucket,
-		Permission: "public-read",
+		Permission: iot.CannedAccessControlListPublicRead,
 	}
 	destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 	if err != nil {
