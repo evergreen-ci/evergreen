@@ -220,6 +220,8 @@ mciModule.controller('TaskTimingController', function(
     }
 
     var getHoverInfo = function(i){
+        // Avoid type errors when no/less data available
+        if ($scope.versions.length <= i) return {}
         var hoverInfo;
         if (isPatch()){
             hoverInfo =  {
@@ -285,18 +287,19 @@ mciModule.controller('TaskTimingController', function(
         return moment(task.create_time);
       }
 
-      var yMap  = function(task){
-        if ($scope.isAllTasks()){
-         if ($scope.allTasksView.type == makespan) {
-          return calculateMakespan(task);
-        } else {
-          return calculateTotalProcessingTime(task);
+      var yMap  = function(task) {
+        if (!task) return
+        if ($scope.isAllTasks()) {
+          if ($scope.allTasksView.type == makespan) {
+            return calculateMakespan(task);
+          } else {
+            return calculateTotalProcessingTime(task);
+          }
         }
+        var a1 = moment(task[$scope.timeDiff.diff[0]]);
+        var a2 = moment(task[$scope.timeDiff.diff[1]]);
+        return mciTime.fromMilliseconds(a1.diff(a2));
       }
-      var a1 = moment(task[$scope.timeDiff.diff[0]]);
-      var a2 = moment(task[$scope.timeDiff.diff[1]]);
-      return mciTime.fromMilliseconds(a1.diff(a2));
-    }
 
     // isValidDate checks that none of the start, finish or scheduled times are zero
     // and that the span from start-end is >= 1 sec in order to reduce noise
@@ -328,8 +331,10 @@ mciModule.controller('TaskTimingController', function(
           encodeURIComponent($scope.currentBV.name) + '/' +
           encodeURIComponent($scope.currentRequest.requester) + '/' +
           encodeURIComponent($scope.currentTask)
+
+      $scope.isLoading = true
       $http.get(
-      url + '?' + query).then(
+        url + '?' + query).then(
       function(resp) {
           var data = resp.data;
           $scope.taskData = ($scope.isAllTasks()) ? data.builds.reverse() : data.tasks.reverse();
@@ -343,7 +348,8 @@ mciModule.controller('TaskTimingController', function(
       function(resp) {
           notificationService.pushNotification("Error loading data: `" + resp.data.error+"`", 'errorHeader', "error");
           $scope.taskData = [];
-      });
+      })
+      .finally(function() { $scope.isLoading = false })
 
       setTimeout(function(p, bv, t, r, l, o){
           return function(){
