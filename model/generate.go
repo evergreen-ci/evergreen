@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -103,7 +102,7 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 
 // NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project, and returns the previous config string.
-func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task, *projectMaps, string, error) {
+func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projectMaps, string, error) {
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
@@ -114,7 +113,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 		return nil, nil, nil, nil, "",
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrapf(err, "unable to find task %s", g.TaskID).Error()}
 	}
-	v, err := version.FindOneId(t.Version)
+	v, err := VersionFindOneId(t.Version)
 	if err != nil {
 		return nil, nil, nil, nil, "",
 			gimlet.ErrorResponse{StatusCode: http.StatusInternalServerError, Message: errors.Wrapf(err, "error finding version %s", t.Version).Error()}
@@ -156,14 +155,14 @@ func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task,
 	return p, v, t, &cachedProject, prevConfig, nil
 }
 
-func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm *projectMaps, prevConfig string) error {
+func (g *GeneratedProject) Save(p *Project, v *Version, t *task.Task, pm *projectMaps, prevConfig string) error {
 	query := bson.M{
-		version.IdKey:     v.Id,
-		version.ConfigKey: prevConfig,
+		VersionIdKey:     v.Id,
+		VersionConfigKey: prevConfig,
 	}
-	update := bson.M{"$set": bson.M{version.ConfigKey: v.Config}}
+	update := bson.M{"$set": bson.M{VersionConfigKey: v.Config}}
 
-	err := version.UpdateOne(query, update)
+	err := VersionUpdateOne(query, update)
 	if err != nil {
 		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
@@ -193,7 +192,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *version.Version, p *Project, parentPriority int64) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *Version, p *Project, parentPriority int64) error {
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
 	builds, err := build.Find(build.ByVersion(v.Id).WithFields(build.IdKey, build.BuildVariantKey))

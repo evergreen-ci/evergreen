@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -210,4 +211,36 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.Error(err)
 	assert.Contains(err.Error(), "found 2 project refs, when 1 was expected")
 	require.Nil(projectRef)
+}
+
+func TestFindOneProjectRefWithCommitQByOwnerRepoAndBranch(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.Clear(ProjectRefCollection))
+
+	projectRef, err := FindOneProjectRefWithCommitQByOwnerRepoAndBranch("mongodb", "mci", "master")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	doc := &ProjectRef{
+		Owner:          "mongodb",
+		Repo:           "mci",
+		Branch:         "master",
+		RepoKind:       "github",
+		Identifier:     "mci",
+		CommitQEnabled: false,
+	}
+	require.NoError(doc.Insert())
+
+	projectRef, err = FindOneProjectRefWithCommitQByOwnerRepoAndBranch("mongodb", "mci", "master")
+	assert.NoError(err)
+	assert.Nil(projectRef)
+
+	doc.CommitQEnabled = true
+	require.NoError(db.Update(ProjectRefCollection, bson.M{ProjectRefIdentifierKey: "mci"}, doc))
+
+	projectRef, err = FindOneProjectRefWithCommitQByOwnerRepoAndBranch("mongodb", "mci", "master")
+	assert.NoError(err)
+	assert.NotNil(projectRef)
 }

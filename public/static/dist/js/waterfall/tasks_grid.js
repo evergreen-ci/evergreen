@@ -8,8 +8,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _objectDestructuringEmpty(obj) { if (obj == null) throw new TypeError("Cannot destructure undefined"); }
-
 var MaxFailedTestDisplay = 5;
 
 // endOfPath strips off all of the begging characters from a file path so that just the file name is left.
@@ -269,9 +267,7 @@ function ActiveBuild(_ref4) {
 }
 
 // All tasks are inactive, so we display the words "inactive build"
-function InactiveBuild(_ref5) {
-  _objectDestructuringEmpty(_ref5);
-
+function InactiveBuild() {
   return React.createElement(
     'div',
     { className: 'inactive-build' },
@@ -279,15 +275,13 @@ function InactiveBuild(_ref5) {
   );
 }
 // No build associated with a given version and variant, so we render an empty div
-function EmptyBuild(_ref6) {
-  _objectDestructuringEmpty(_ref6);
-
+function EmptyBuild() {
   return React.createElement('div', null);
 }
 
-function TooltipContent(_ref7) {
-  var task = _ref7.task,
-      eta = _ref7.eta;
+function TooltipContent(_ref5) {
+  var task = _ref5.task,
+      eta = _ref5.eta;
 
   var topLineContent = task.display_name + " - " + labelFromTask(task);
   if (task.status == 'success' || task.status == 'failed') {
@@ -453,9 +447,9 @@ var ETADisplay = function (_React$Component) {
 // A Task contains the information for a single task for a build, including the link to its page, and a tooltip
 
 
-function Task(_ref8) {
-  var task = _ref8.task,
-      currentTime = _ref8.currentTime;
+function Task(_ref6) {
+  var task = _ref6.task,
+      currentTime = _ref6.currentTime;
 
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Popover = ReactBootstrap.Popover;
@@ -489,9 +483,9 @@ function Task(_ref8) {
 
 // A CollapsedBuild contains a set of PartialProgressBars, which in turn make up a full progress bar
 // We iterate over the 5 different main types of task statuses, each of which have a different color association
-function CollapsedBuild(_ref9) {
-  var build = _ref9.build,
-      activeTaskStatuses = _ref9.activeTaskStatuses;
+function CollapsedBuild(_ref7) {
+  var build = _ref7.build,
+      activeTaskStatuses = _ref7.activeTaskStatuses;
 
   var taskStats = build.taskStatusCount;
 
@@ -520,10 +514,10 @@ function CollapsedBuild(_ref9) {
 
 // A TaskSummary is the class for one rolled up task type
 // A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks
-function TaskSummary(_ref10) {
-  var status = _ref10.status,
-      count = _ref10.count,
-      build = _ref10.build;
+function TaskSummary(_ref8) {
+  var status = _ref8.status,
+      count = _ref8.count,
+      build = _ref8.build;
 
   var id_link = "/build/" + build.id;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;

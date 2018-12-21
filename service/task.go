@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -349,7 +348,7 @@ type taskHistoryPageData struct {
 	Tasks       []bson.M
 	Variants    []string
 	FailedTests map[string][]task.TestResult
-	Versions    []version.Version
+	Versions    []model.Version
 
 	// Flags that indicate whether the beginning/end of history has been reached
 	ExhaustedBefore bool

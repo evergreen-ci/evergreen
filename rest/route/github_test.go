@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/commitq"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -23,14 +24,15 @@ import (
 )
 
 type GithubWebhookRouteSuite struct {
-	sc       *data.MockConnector
-	rm       gimlet.RouteHandler
-	canceler context.CancelFunc
-	conf     *evergreen.Settings
-	prBody   []byte
-	pushBody []byte
-	h        *githubHookApi
-	queue    amboy.Queue
+	sc          *data.MockConnector
+	rm          gimlet.RouteHandler
+	canceler    context.CancelFunc
+	conf        *evergreen.Settings
+	prBody      []byte
+	pushBody    []byte
+	commentBody []byte
+	h           *githubHookApi
+	queue       amboy.Queue
 	suite.Suite
 }
 
@@ -56,6 +58,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	grip.Critical(s.conf.Api)
 
 	s.NoError(db.Clear(model.ProjectRefCollection))
+	s.NoError(db.Clear(commitq.Collection))
 
 	s.queue = evergreen.GetEnvironment().LocalQueue()
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
@@ -66,12 +69,14 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	var err error
 	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
-
 	s.NoError(err)
 	s.Len(s.prBody, 24743)
 	s.pushBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
 	s.Len(s.pushBody, 7603)
+	s.commentBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "comment_event.json"))
+	s.NoError(err)
+	s.Len(s.commentBody, 11470)
 
 	var ok bool
 	s.h, ok = s.rm.Factory().(*githubHookApi)
@@ -111,7 +116,7 @@ func (s *GithubWebhookRouteSuite) TestAddDuplicateIntentFails() {
 func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	ctx := context.Background()
 	secret := []byte(s.conf.Api.GithubWebhookSecret)
-	req, err := makeRequest("1", s.prBody, secret)
+	req, err := makeRequest("1", "pull_request", s.prBody, secret)
 	s.NoError(err)
 	req.Header.Del("X-Hub-Signature")
 
@@ -123,7 +128,7 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	ctx := context.Background()
 	secret := []byte(s.conf.Api.GithubWebhookSecret)
-	req, err := makeRequest("1", s.prBody, secret)
+	req, err := makeRequest("1", "pull_request", s.prBody, secret)
 	s.NoError(err)
 
 	err = s.h.Parse(ctx, req)
@@ -132,20 +137,28 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	s.Equal("pull_request", s.h.eventType)
 	s.Equal("1", s.h.msgID)
 
-	req, err = makeRequest("2", s.pushBody, secret)
+	req, err = makeRequest("2", "push", s.pushBody, secret)
 	s.NoError(err)
 	s.NotNil(req)
-	req.Header.Del("X-Github-Event")
-	req.Header.Add("X-Github-Event", "push")
 
 	err = s.h.Parse(ctx, req)
 	s.NoError(err)
 	s.NotNil(s.h.event)
 	s.Equal("push", s.h.eventType)
 	s.Equal("2", s.h.msgID)
+
+	req, err = makeRequest("3", "issue_comment", s.commentBody, secret)
+	s.NoError(err)
+	s.NotNil(req)
+
+	err = s.h.Parse(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.h.event)
+	s.Equal("issue_comment", s.h.eventType)
+	s.Equal("3", s.h.msgID)
 }
 
-func makeRequest(uid string, body, secret []byte) (*http.Request, error) {
+func makeRequest(uid, event string, body, secret []byte) (*http.Request, error) {
 	req, err := http.NewRequest("POST", "http://example.com/rest/v2/hooks/github", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -157,7 +170,7 @@ func makeRequest(uid string, body, secret []byte) (*http.Request, error) {
 	}
 
 	req.Header.Add("Content-type", "application/json")
-	req.Header.Add("X-Github-Event", "pull_request")
+	req.Header.Add("X-Github-Event", event)
 	req.Header.Add("X-GitHub-Delivery", uid)
 	req.Header.Add("X-Hub-Signature", signature)
 	return req, nil
@@ -185,4 +198,22 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	if s.NotNil(resp) {
 		s.Equal(http.StatusOK, resp.Status())
 	}
+}
+
+func (s *GithubWebhookRouteSuite) TestCommitQueueCommentTrigger() {
+	s.TestAddIntent()
+
+	event, err := github.ParseWebHook("issue_comment", s.commentBody)
+	s.NotNil(event)
+	s.NoError(err)
+	s.h.event = event
+	s.h.msgID = "1"
+	ctx := context.Background()
+	resp := s.h.Run(ctx)
+	if s.NotNil(resp) {
+		s.Equal(http.StatusOK, resp.Status())
+	}
+
+	s.NoError(err)
+	s.Len(s.sc.MockCommitQConnector.Queue, 1)
 }

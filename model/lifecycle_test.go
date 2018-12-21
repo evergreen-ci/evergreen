@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -201,12 +200,12 @@ func TestBuildRestart(t *testing.T) {
 func TestBuildMarkAborted(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection, VersionCollection), t,
 			"Error clearing test collection")
 
-		v := &version.Version{
+		v := &Version{
 			Id: "v",
-			BuildVariants: []version.BuildStatus{
+			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: "bv",
 					Activated:    true,
@@ -586,7 +585,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 	Convey("When creating a build from a version", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, version.Collection, build.Collection, task.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, VersionCollection, build.Collection, task.Collection), t,
 			"Error clearing test collection")
 
 		// the mock build variant we'll be using. runs all three tasks
@@ -680,13 +679,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 
 		// the mock version we'll be using
-		v := &version.Version{
+		v := &Version{
 			Id:                  "versionId",
 			CreateTime:          time.Now(),
 			Revision:            "foobar",
 			RevisionOrderNumber: 500,
 			Requester:           evergreen.RepotrackerVersionRequester,
-			BuildVariants: []version.BuildStatus{
+			BuildVariants: []VersionBuildStatus{
 				{
 					BuildVariant: buildVar1.Name,
 					Activated:    false,
@@ -1234,13 +1233,13 @@ func TestCreateTaskGroup(t *testing.T) {
 	proj.Identifier = "test"
 	assert.NotNil(proj)
 	assert.Empty(errs)
-	v := &version.Version{
+	v := &Version{
 		Id:                  "versionId",
 		CreateTime:          time.Now(),
 		Revision:            "foobar",
 		RevisionOrderNumber: 500,
 		Requester:           evergreen.RepotrackerVersionRequester,
-		BuildVariants: []version.BuildStatus{
+		BuildVariants: []VersionBuildStatus{
 			{
 				BuildVariant: "bv",
 				Activated:    false,
@@ -1629,10 +1628,10 @@ func TestDisplayTaskRestart(t *testing.T) {
 }
 
 func resetTaskData() error {
-	if err := db.ClearCollections(build.Collection, task.Collection, version.Collection, task.OldCollection); err != nil {
+	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection); err != nil {
 		return err
 	}
-	v := &version.Version{
+	v := &Version{
 		Id: "version",
 	}
 	if err := v.Insert(); err != nil {

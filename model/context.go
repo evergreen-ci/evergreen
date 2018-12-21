@@ -4,7 +4,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +14,7 @@ import (
 type Context struct {
 	Task       *task.Task
 	Build      *build.Build
-	Version    *version.Version
+	Version    *Version
 	Patch      *patch.Patch
 	ProjectRef *ProjectRef
 
@@ -120,7 +119,7 @@ func (ctx *Context) populateTaskBuildVersion(taskId, buildId, versionId string) 
 		}
 	}
 	if len(versionId) > 0 {
-		ctx.Version, err = version.FindOne(version.ById(versionId))
+		ctx.Version, err = VersionFindOne(VersionById(versionId))
 		if err != nil {
 			return "", err
 		}
@@ -153,7 +152,7 @@ func (ctx *Context) populatePatch(patchId string) error {
 	// If there's a finalized patch loaded into context but not a version, load the version
 	// associated with the patch as the context's version.
 	if ctx.Version == nil && ctx.Patch != nil && ctx.Patch.Version != "" {
-		ctx.Version, err = version.FindOne(version.ById(ctx.Patch.Version))
+		ctx.Version, err = VersionFindOne(VersionById(ctx.Patch.Version))
 		if err != nil {
 			return errors.WithStack(err)
 		}

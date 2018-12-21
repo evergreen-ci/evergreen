@@ -5,7 +5,7 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -49,7 +49,7 @@ func LastGreen() cli.Command {
 			}
 
 			return lastGreenTemplate.Execute(os.Stdout, struct {
-				Version *version.Version
+				Version *model.Version
 				UIURL   string
 			}{v, conf.UIServerHost})
 		},

@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -46,7 +45,7 @@ var (
 	PushLogRonKey        = bsonutil.MustHaveTag(PushLog{}, "RevisionOrderNumber")
 )
 
-func NewPushLog(v *version.Version, task *task.Task, location string) *PushLog {
+func NewPushLog(v *Version, task *task.Task, location string) *PushLog {
 	return &PushLog{
 		Id:                  bson.NewObjectId(),
 		Location:            location,

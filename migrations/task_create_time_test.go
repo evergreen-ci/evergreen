@@ -9,8 +9,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	evgdb "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
@@ -37,11 +37,11 @@ const (
 
 func versionDocument(id string, project string, revision string, createTime time.Time) db.Document {
 	return db.Document{
-		version.IdKey:         id,
-		version.CreateTimeKey: createTime,
-		version.RevisionKey:   revision,
-		version.IdentifierKey: project,
-		version.RequesterKey:  evergreen.RepotrackerVersionRequester,
+		model.VersionIdKey:         id,
+		model.VersionCreateTimeKey: createTime,
+		model.VersionRevisionKey:   revision,
+		model.VersionIdentifierKey: project,
+		model.VersionRequesterKey:  evergreen.RepotrackerVersionRequester,
 	}
 }
 
@@ -70,13 +70,13 @@ func oldTaskDocument(id string, taskId string, execution int, project string, re
 
 func (s *taskCreateTimeMigrationSuite) SetupTest() {
 	require := s.Require()
-	require.NoError(evgdb.ClearCollections(tasksCollection, versionsCollection, oldTasksCollection))
+	require.NoError(evgdb.ClearCollections(tasksCollection, model.VersionCollection, oldTasksCollection))
 
 	// Insert 2 base versions.
 	doc := versionDocument("version1", project, revision1, commitTime1)
-	require.NoError(evgdb.Insert(versionsCollection, doc))
+	require.NoError(evgdb.Insert(model.VersionCollection, doc))
 	doc = versionDocument("version2", project, revision2, commitTime2)
-	require.NoError(evgdb.Insert(versionsCollection, doc))
+	require.NoError(evgdb.Insert(model.VersionCollection, doc))
 	// Insert 1 patch task for version 1 without old task.
 	doc = taskDocument("task1", 0, project, revision1, evergreen.PatchVersionRequester, patchTime)
 	require.NoError(evgdb.Insert(tasksCollection, doc))

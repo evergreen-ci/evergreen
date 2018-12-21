@@ -19,7 +19,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
   $scope.modalOpen = false;
   $scope.newProject = {};
   $scope.newProjectMessage="";
-  $scope.new_trigger = {level: "task", status: ""};
 
   $scope.repoChanged = false;
   $scope.repoChange = function() {
@@ -360,9 +359,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
 
   $scope.saveProject = function() {
     $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time);
-    if ($scope.new_trigger) {
-      $scope.addProjectTrigger();
-    }
     $scope.settingsFormData.triggers = $scope.project_triggers;
     _.each($scope.settingsFormData.triggers, function(trigger) {
       if (trigger.command) {
@@ -447,13 +443,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
       item = Object.assign({}, $scope.patch_alias)
       $scope.patch_aliases = $scope.patch_aliases.concat([item]);
       delete $scope.patch_alias
-    }
-  };
-
-  $scope.addProjectTrigger = function() {
-    if ($scope.validProjectTrigger()) {
-      $scope.project_triggers = $scope.project_triggers.concat([$scope.new_trigger]);
-      $scope.new_trigger = {level: "task", status: ""};
     }
   };
 
@@ -582,12 +571,79 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location, 
     return true;
   };
 
-  $scope.validProjectTrigger = function() {
-    if (!$scope.new_trigger.project || !$scope.new_trigger.level || !$scope.new_trigger.file) {
-      return false;
+  $scope.showTriggerModal = function(index) {
+    if (index != undefined) {
+      var toEdit = $scope.project_triggers[index];
+      if (!toEdit.status) {
+        toEdit.status="all";
+      }
     }
+    var modal = $mdDialog.confirm({
+      title:"New Trigger",
+      templateUrl: "/static/partials/project_trigger_modal.html",
+      controllerAs: "data",
+      controller: newTriggerController,
+      bindToController: true,
+      locals: {
+        "toEdit": toEdit,
+        "index": index
+      },
+    });
 
-    return true;
+    $mdDialog.show(modal).then(function(update) {
+      if (update.index != undefined) {
+        if (update.delete) {
+          $scope.project_triggers.splice(update.index, 1);
+        } else {
+          $scope.project_triggers[update.index] = update.trigger;
+        }
+      } else {
+        $scope.project_triggers = $scope.project_triggers.concat([update.trigger]);
+      }
+      $scope.isDirty = true;
+    });
+  };
+
+  function newTriggerController($scope, $mdDialog) {
+    if ($scope.data.toEdit) {
+      $scope.trigger = $scope.data.toEdit;
+      $scope.index = $scope.data.index;
+    } else {
+      $scope.trigger = {level: "task", status: "all"};
+    }
+    $scope.closeDialog = function(save) {
+      if(save) {
+        if (!$scope.validProjectTrigger()) {
+          return;
+        }
+        if ($scope.trigger.status === "all") {
+          // workaround for https://github.com/angular/material/issues/9178
+          $scope.trigger.status = "";
+        }
+        $mdDialog.hide({"trigger": $scope.trigger, "index": $scope.index});
+      }
+      $mdDialog.cancel();
+    };
+
+    $scope.deleteTrigger = function() {
+      $mdDialog.hide({"delete": true, "index": $scope.index});
+    };
+
+    $scope.validProjectTrigger = function() {
+      if (!$scope.trigger.project || !$scope.trigger.level || !$scope.trigger.file) {
+        return false;
+      }
+
+      return true;
+    };
+
+    $scope.modalTitle = function() {
+      if ($scope.data.toEdit) {
+        return "Edit Trigger";
+      } else {
+        return "New Trigger";
+      }
+    };
   }
 
   $scope.addSubscription = function() {

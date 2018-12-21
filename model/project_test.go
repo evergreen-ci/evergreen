@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -43,7 +42,7 @@ func TestFindProject(t *testing.T) {
 
 		Convey("if the project file exists and is valid, the project spec within"+
 			"should be unmarshalled and returned", func() {
-			v := &version.Version{
+			v := &Version{
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
@@ -286,7 +285,7 @@ func boolPtr(b bool) *bool {
 
 func TestGetTaskGroup(t *testing.T) {
 	assert := assert.New(t)
-	testutil.HandleTestingErr(db.ClearCollections(version.Collection), t, "failed to clear collections")
+	testutil.HandleTestingErr(db.ClearCollections(VersionCollection), t, "failed to clear collections")
 	tgName := "example_task_group"
 	projYml := `
 tasks:
@@ -318,7 +317,7 @@ task_groups:
 	proj, errs := projectFromYAML([]byte(projYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
-	v := version.Version{
+	v := Version{
 		Id:     "v1",
 		Config: projYml,
 	}
@@ -340,7 +339,7 @@ task_groups:
 
 func TestPopulateExpansions(t *testing.T) {
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(version.Collection, patch.Collection, ProjectRefCollection, task.Collection))
+	assert.NoError(db.ClearCollections(VersionCollection, patch.Collection, ProjectRefCollection, task.Collection))
 
 	h := host.Host{
 		Id: "h",
@@ -366,7 +365,7 @@ buildvariants:
     cake: lie
     github_org: wut?
 `
-	v := &version.Version{
+	v := &Version{
 		Id:                  "v1",
 		Branch:              "master",
 		Author:              "somebody",
@@ -385,13 +384,9 @@ buildvariants:
 		Project:      "mci",
 	}
 
-	settings := &evergreen.Settings{
-		Credentials: map[string]string{"github": "token globalGitHubOauthToken"},
-	}
-
-	expansions, err := PopulateExpansions(taskDoc, &h, settings)
+	expansions, err := PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 17)
+	assert.Len(map[string]string(expansions), 16)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -411,23 +406,23 @@ buildvariants:
 	assert.False(expansions.Exists("github_pr_number"))
 	assert.Equal("lie", expansions.Get("cake"))
 
-	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
-		"$set": bson.M{version.RequesterKey: evergreen.PatchVersionRequester},
+	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 18)
+	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("github_pr_number"))
 
-	assert.NoError(version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{
-		"$set": bson.M{version.RequesterKey: evergreen.GithubPRRequester},
+	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 18)
+	assert.Len(map[string]string(expansions), 17)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
@@ -443,9 +438,10 @@ buildvariants:
 		},
 	}
 	assert.NoError(patchDoc.Insert())
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 21)
+	assert.Len(map[string]string(expansions), 20)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("evergreen", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
@@ -466,10 +462,9 @@ buildvariants:
 	assert.NoError(upstreamProject.Insert())
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
-
-	expansions, err = PopulateExpansions(taskDoc, &h, settings)
+	expansions, err = PopulateExpansions(taskDoc, &h)
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 29)
+	assert.Len(map[string]string(expansions), 28)
 	assert.Equal(taskDoc.TriggerID, expansions.Get("trigger_event_identifier"))
 	assert.Equal(taskDoc.TriggerType, expansions.Get("trigger_event_type"))
 	assert.Equal(upstreamTask.Revision, expansions.Get("trigger_revision"))
@@ -489,7 +484,7 @@ func TestProject(t *testing.T) {
 }
 
 func (s *projectSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(ProjectVarsCollection, ProjectAliasCollection, version.Collection, build.Collection))
+	s.Require().NoError(db.ClearCollections(ProjectVarsCollection, ProjectAliasCollection, VersionCollection, build.Collection))
 	s.vars = ProjectVars{
 		Id: "project",
 	}
@@ -1062,7 +1057,7 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 			},
 		},
 	}
-	v := &version.Version{
+	v := &Version{
 		Revision: "revision",
 	}
 	pairs := TaskVariantPairs{
@@ -1106,7 +1101,7 @@ tasks:
 }
 
 func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
-	v1 := version.Version{
+	v1 := Version{
 		Id:                  "v1",
 		Identifier:          s.project.Identifier,
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -1114,7 +1109,7 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 		RevisionOrderNumber: 1,
 	}
 	s.NoError(v1.Insert())
-	v2 := version.Version{
+	v2 := Version{
 		Id:                  "v2",
 		Identifier:          s.project.Identifier,
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -1122,7 +1117,7 @@ func (s *projectSuite) TestFetchVersionsAndAssociatedBuilds() {
 		RevisionOrderNumber: 2,
 	}
 	s.NoError(v2.Insert())
-	v3 := version.Version{
+	v3 := Version{
 		Id:                  "v3",
 		Identifier:          s.project.Identifier,
 		Requester:           evergreen.RepotrackerVersionRequester,

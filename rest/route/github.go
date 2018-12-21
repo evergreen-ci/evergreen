@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model/commitq"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -11,6 +12,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -185,6 +187,31 @@ func (gh *githubHookApi) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		return gimlet.NewJSONResponse(struct{}{})
+
+	case *github.IssueCommentEvent:
+		isPullRequestComment := event.Issue.IsPullRequest()
+		triggersCommitq := commitq.TriggersCommitQueue(*event.Action, *event.Comment.Body)
+		if !(isPullRequestComment && triggersCommitq) {
+			return gimlet.NewJSONResponse(struct{}{})
+		}
+
+		owner := *event.Repo.Owner.Login
+		repo := *event.Repo.Name
+		PRNum := *event.Issue.Number
+		err := gh.sc.GithubPREnqueueItem(owner, repo, PRNum)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   gh.eventType,
+				"action":  *event.Action,
+				"owner":   owner,
+				"repo":    repo,
+				"item":    PRNum,
+				"message": "commit queue enqueue failed",
+			}))
+			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "can't enqueue item on commit queue"))
+		}
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})

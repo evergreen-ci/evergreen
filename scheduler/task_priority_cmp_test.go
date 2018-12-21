@@ -6,8 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -189,8 +189,8 @@ func TestByTaskGroupOrder(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	require.NoError(db.ClearCollections(version.Collection))
-	defer db.ClearCollections(version.Collection)
+	require.NoError(db.ClearCollections(model.VersionCollection))
+	defer db.ClearCollections(model.VersionCollection)
 
 	taskComparator := &CmpBasedTaskComparator{}
 	tasks := []task.Task{
@@ -244,13 +244,13 @@ task_groups:
   - first_task
   - another_task
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     "version_id",
 		Config: yml,
 	}
 	require.NoError(v.Insert())
 	taskComparator.tasks = tasks
-	versionMap := map[string]version.Version{"version_id": *v}
+	versionMap := map[string]model.Version{"version_id": *v}
 	taskComparator.versions = versionMap
 	assert.NoError(cacheTaskGroups(taskComparator))
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
@@ -258,7 +258,7 @@ task_groups:
 	assert.Equal(1, result)
 
 	// t2 is earlier
-	require.NoError(db.ClearCollections(version.Collection))
+	require.NoError(db.ClearCollections(model.VersionCollection))
 	yml = `
 task_groups:
 - name: example_task_group
@@ -268,7 +268,7 @@ task_groups:
 `
 	v.Config = yml
 	require.NoError(v.Insert())
-	versionMap = map[string]version.Version{"version_id": *v}
+	versionMap = map[string]model.Version{"version_id": *v}
 	taskComparator.versions = versionMap
 	assert.NoError(cacheTaskGroups(taskComparator))
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
@@ -279,7 +279,7 @@ task_groups:
 func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(version.Collection))
+	require.NoError(db.ClearCollections(model.VersionCollection))
 	yml := `
 task_groups:
 - name: example_task_group
@@ -287,13 +287,13 @@ task_groups:
   - first_task
   - another_task
 `
-	v := version.Version{
+	v := model.Version{
 		Id:     "version_1",
 		Config: yml,
 	}
-	versions := map[string]version.Version{"version_1": v}
+	versions := map[string]model.Version{"version_1": v}
 	require.NoError(v.Insert())
-	v = version.Version{
+	v = model.Version{
 		Id:     "version_2",
 		Config: yml,
 	}
@@ -345,7 +345,7 @@ task_groups:
 func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(version.Collection))
+	require.NoError(db.ClearCollections(model.VersionCollection))
 	yml := `
 task_groups:
 - name: example_task_group
@@ -353,13 +353,13 @@ task_groups:
   - earlier_task
   - later_task
 `
-	v := version.Version{
+	v := model.Version{
 		Id:     "version_1",
 		Config: yml,
 	}
-	versions := map[string]version.Version{"version_1": v}
+	versions := map[string]model.Version{"version_1": v}
 	require.NoError(v.Insert())
-	v = version.Version{
+	v = model.Version{
 		Id:     "version_2",
 		Config: yml,
 	}

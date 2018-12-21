@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -471,7 +470,7 @@ func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []strin
 }
 
 // TaskIdTable builds a TaskIdTable for the given version and project
-func NewTaskIdTable(p *Project, v *version.Version, sourceRev, defID string) TaskIdConfig {
+func NewTaskIdTable(p *Project, v *Version, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
@@ -510,7 +509,7 @@ func NewTaskIdTable(p *Project, v *version.Version, sourceRev, defID string) Tas
 }
 
 // NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
-func NewPatchTaskIdTable(proj *Project, v *version.Version, tasks TaskVariantPairs) TaskIdConfig {
+func NewPatchTaskIdTable(proj *Project, v *Version, tasks TaskVariantPairs) TaskIdConfig {
 	config := TaskIdConfig{}
 	processedVariants := map[string]bool{}
 
@@ -553,7 +552,7 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, tasks TaskVariantPai
 	return config
 }
 
-func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks TVPairSet, table TaskIdTable, tgMap map[string]TaskGroup) TaskIdTable {
+func generateIdsForVariant(vt TVPair, proj *Project, v *Version, tasks TVPairSet, table TaskIdTable, tgMap map[string]TaskGroup) TaskIdTable {
 	if table == nil {
 		table = map[TVPair]string{}
 	}
@@ -585,7 +584,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks T
 	return table
 }
 
-func generateId(name string, proj *Project, projBV *BuildVariant, rev string, v *version.Version) string {
+func generateId(name string, proj *Project, projBV *BuildVariant, rev string, v *Version) string {
 	return fmt.Sprintf("%s_%s_%s_%s_%s",
 		proj.Identifier,
 		projBV.Name,
@@ -606,18 +605,14 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings) (util.Expansions, error) {
+func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	if t == nil {
 		return nil, errors.New("task cannot be nil")
 	}
 	if h == nil {
 		return nil, errors.New("host cannot be nil")
 	}
-	// oauthToken is sourced from db.admin.find({"_id": "global"},{"credentials.github": 1})
-	oauthToken, _ := settings.GetGithubOauthToken()
-
 	expansions := util.Expansions{}
-	expansions.Put("global_github_oauth_token", oauthToken)
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)
@@ -626,6 +621,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
+
 	expansions.Put("distro_id", h.Distro.Id)
 
 	if t.TriggerID != "" {
@@ -668,7 +664,7 @@ func PopulateExpansions(t *task.Task, h *host.Host, settings *evergreen.Settings
 		expansions.Put("trigger_branch", upstreamProject.Branch)
 	}
 
-	v, err := version.FindOneId(t.Version)
+	v, err := VersionFindOneId(t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
@@ -873,7 +869,7 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 }
 
 func FindProjectFromVersionID(versionStr string) (*Project, error) {
-	ver, err := version.FindOne(version.ById(versionStr))
+	ver, err := VersionFindOne(VersionById(versionStr))
 	if err != nil {
 		return nil, err
 	}
@@ -927,7 +923,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	// If the last known good configuration does not exist,
 	// load the configuration from the local config in the project ref.
 	if revision == "" {
-		lastGoodVersion, err := version.FindOne(version.ByLastKnownGoodConfig(projectRef.Identifier))
+		lastGoodVersion, err := VersionFindOne(VersionByLastKnownGoodConfig(projectRef.Identifier))
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error finding recent valid version for '%s'", projectRef.Identifier)
 		}
@@ -954,7 +950,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if revision != "" {
 		// we immediately return an error if the repotracker version isn't found
 		// for the given project at the given revision
-		v, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revision))
+		v, err := VersionFindOne(VersionByProjectIdAndRevision(projectRef.Identifier, revision))
 		if err != nil {
 			return nil, errors.Wrapf(err, "error fetching version for project %v revision %v", projectRef.Identifier, revision)
 		}
@@ -1288,22 +1284,22 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 // FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.
 // Returns the versions themselves, as well as a map of version id -> the
 // builds that are a part of the version (unsorted).
-func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int, showTriggered bool) ([]version.Version, map[string][]build.Build, error) {
+func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, error) {
 
 	// fetch the versions from the db
-	versionsFromDB, err := version.Find(version.ByProjectAndTrigger(project.Identifier, showTriggered).
+	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
-			version.RevisionKey,
-			version.ErrorsKey,
-			version.WarningsKey,
-			version.IgnoredKey,
-			version.MessageKey,
-			version.AuthorKey,
-			version.RevisionOrderNumberKey,
-			version.CreateTimeKey,
-			version.TriggerIDKey,
-			version.TriggerTypeKey,
-		).Sort([]string{"-" + version.CreateTimeKey}).Skip(skip).Limit(numVersions))
+			VersionRevisionKey,
+			VersionErrorsKey,
+			VersionWarningsKey,
+			VersionIgnoredKey,
+			VersionMessageKey,
+			VersionAuthorKey,
+			VersionRevisionOrderNumberKey,
+			VersionCreateTimeKey,
+			VersionTriggerIDKey,
+			VersionTriggerTypeKey,
+		).Sort([]string{"-" + VersionCreateTimeKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error fetching versions from database")

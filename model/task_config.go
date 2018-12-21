@@ -10,14 +10,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
 type TaskConfig struct {
 	Distro          *distro.Distro
-	Version         *version.Version
+	Version         *Version
 	ProjectRef      *ProjectRef
 	Project         *Project
 	Task            *task.Task
@@ -60,7 +59,7 @@ func (t *TaskConfig) GetExecTimeout() int {
 	return t.Timeout.ExecTimeoutSecs
 }
 
-func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
+func NewTaskConfig(d *distro.Distro, v *Version, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch, e util.Expansions) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
 		return nil, errors.Errorf("project for task with project_id %v is empty", t.Project)
@@ -115,7 +114,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if t == nil {
 		return nil, errors.New("no task to make a TaskConfig from")
 	}
-	v, err := version.FindOne(version.ById(t.Version))
+	v, err := VersionFindOne(VersionById(t.Version))
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding version")
 	}
@@ -143,11 +142,7 @@ func MakeConfigFromTask(t *task.Task) (*TaskConfig, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding host")
 	}
-	settings, err := evergreen.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	e, err := PopulateExpansions(t, h, settings)
+	e, err := PopulateExpansions(t, h)
 	if err != nil {
 		return nil, errors.Wrap(err, "error populating expansions")
 	}

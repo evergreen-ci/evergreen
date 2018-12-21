@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -57,7 +56,7 @@ func TestJIRASummary(t *testing.T) {
 					Details:     apimodels.TaskEndDetail{},
 				},
 				Build:   &build.Build{DisplayName: buildName},
-				Version: &version.Version{Revision: versionRevision},
+				Version: &model.Version{Revision: versionRevision},
 				Host: &host.Host{
 					Id:   hostId,
 					Host: hostDNS,
@@ -264,7 +263,7 @@ func TestJIRADescription(t *testing.T) {
 				},
 				Host:  &host.Host{Id: hostId, Host: hostDNS},
 				Build: &build.Build{DisplayName: buildName, Id: buildId},
-				Version: &version.Version{
+				Version: &model.Version{
 					Revision: versionRevision,
 					Message:  versionMessage,
 				},
@@ -430,7 +429,7 @@ func TestCustomFields(t *testing.T) {
 			},
 			Host:  &host.Host{Id: hostId, Host: hostDNS},
 			Build: &build.Build{DisplayName: buildName, Id: buildId},
-			Version: &version.Version{
+			Version: &model.Version{
 				Revision: versionRevision,
 				Message:  versionMessage,
 			},

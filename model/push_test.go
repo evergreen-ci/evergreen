@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -28,7 +27,7 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is no conflicting push, then nothing should be"+
 			" returned", func() {
 
-			versionOne := &version.Version{
+			versionOne := &Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
@@ -42,7 +41,7 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is a push at the same location for an older commit,"+
 			" nothing should be returned", func() {
 
-			versionOne := &version.Version{
+			versionOne := &Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
@@ -54,7 +53,7 @@ func TestFindPushLogAfter(t *testing.T) {
 			pushLog := NewPushLog(versionOne, t, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
-			versionTwo := &version.Version{
+			versionTwo := &Version{
 				Id:                  "versionIdTwo",
 				RevisionOrderNumber: 600,
 			}
@@ -68,7 +67,7 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is a push at the same location for the same commit,"+
 			" it should be returned", func() {
 
-			versionOne := &version.Version{
+			versionOne := &Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
@@ -89,7 +88,7 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is a push at the same location for a newer commit,"+
 			" it should be returned", func() {
 
-			versionOne := &version.Version{
+			versionOne := &Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
@@ -101,7 +100,7 @@ func TestFindPushLogAfter(t *testing.T) {
 			pushLog := NewPushLog(versionOne, t, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
-			versionTwo := &version.Version{
+			versionTwo := &Version{
 				Id:                  "versionIdTwo",
 				RevisionOrderNumber: 400,
 			}

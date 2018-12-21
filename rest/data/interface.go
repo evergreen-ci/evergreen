@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/google/go-github/github"
@@ -81,7 +80,7 @@ type Connector interface {
 	// GetVersionsAndVariants returns recent versions for a project
 	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 	GetProjectEventLog(string, time.Time, int) ([]restModel.APIProjectEvent, error)
-	CreateVersionFromConfig(string, []byte, *user.DBUser, string, bool) (*version.Version, error)
+	CreateVersionFromConfig(string, []byte, *user.DBUser, string, bool) (*model.Version, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
@@ -135,7 +134,7 @@ type Connector interface {
 	ClearTaskQueue(string) error
 
 	// FindVersionById returns version given its ID.
-	FindVersionById(string) (*version.Version, error)
+	FindVersionById(string) (*model.Version, error)
 
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
@@ -224,4 +223,8 @@ type Connector interface {
 	// Get test execution statistics
 	GetTestStats(stats.StatsFilter) ([]restModel.APITestStats, error)
 	GetTaskStats(stats.StatsFilter) ([]restModel.APITaskStats, error)
+
+	// Commit queue methods
+	GithubPREnqueueItem(string, string, int) error
+	EnqueueItem(string, string, string, string) error
 }

@@ -179,7 +179,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       alert("The from/to date and time must be populated to restart tasks");
       return;
     }
-    if (!$scope.restartRed && !$scope.restartPurple && !scope.restartLavender) {
+    if (!$scope.restartRed && !$scope.restartPurple && !$scope.restartLavender) {
       alert("No tasks selected to restart");
       return;
     }

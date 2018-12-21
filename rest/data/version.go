@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -25,7 +24,7 @@ type DBVersionConnector struct{}
 
 // FindCostByVersionId queries the backing database for cost data associated
 // with the given versionId. This is done by aggregating TimeTaken over all tasks
-// of the given version.
+// of the given model.Version
 func (vc *DBVersionConnector) FindCostByVersionId(versionId string) (*task.VersionCost, error) {
 	pipeline := task.CostDataByVersionIdPipeline(versionId)
 	res := []task.VersionCost{}
@@ -48,8 +47,8 @@ func (vc *DBVersionConnector) FindCostByVersionId(versionId string) (*task.Versi
 }
 
 // FindVersionById queries the backing database for the version with the given versionId.
-func (vc *DBVersionConnector) FindVersionById(versionId string) (*version.Version, error) {
-	v, err := version.FindOne(version.ById(versionId))
+func (vc *DBVersionConnector) FindVersionById(versionId string) (*model.Version, error) {
+	v, err := model.VersionFindOne(model.VersionById(versionId))
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +62,7 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*version.Versio
 }
 
 // AbortVersion aborts all tasks of a version given its ID.
-// It wraps the service level AbortVersion.
+// It wraps the service level AbortModel.Version
 func (vc *DBVersionConnector) AbortVersion(versionId, caller string) error {
 	return model.AbortVersion(versionId, caller)
 }
@@ -308,7 +307,7 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 	return nil
 }
 
-func (vc *DBVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*version.Version, error) {
+func (vc *DBVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
 	ref, err := model.FindOneProjectRef(projectID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -363,7 +362,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(projectID string, config [
 // implementations of the Connector interface's Version related functions.
 type MockVersionConnector struct {
 	CachedTasks             []task.Task
-	CachedVersions          []version.Version
+	CachedVersions          []model.Version
 	CachedRestartedVersions map[string]string
 }
 
@@ -394,7 +393,7 @@ func (mvc *MockVersionConnector) FindCostByVersionId(versionId string) (*task.Ve
 
 // FindVersionById is the mock implementation of the function for the Connector interface
 // without needing to use a database. It returns results based on the cached versions in the MockVersionConnector.
-func (mvc *MockVersionConnector) FindVersionById(versionId string) (*version.Version, error) {
+func (mvc *MockVersionConnector) FindVersionById(versionId string) (*model.Version, error) {
 	for _, v := range mvc.CachedVersions {
 		if v.Id == versionId {
 			return &v, nil
@@ -432,6 +431,6 @@ func (mvc *MockVersionConnector) GetVersionsAndVariants(skip, numVersionElements
 	return nil, nil
 }
 
-func (mvc *MockVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*version.Version, error) {
+func (mvc *MockVersionConnector) CreateVersionFromConfig(projectID string, config []byte, user *user.DBUser, message string, active bool) (*model.Version, error) {
 	return nil, nil
 }

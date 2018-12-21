@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -86,13 +85,13 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, tasks TaskVariantPairs) error {
+func AddNewBuildsForPatch(p *patch.Patch, patchVersion *Version, project *Project, tasks TaskVariantPairs) error {
 	return AddNewBuilds(p.Activated, patchVersion, project, tasks, "")
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TaskVariantPairs) error {
+func AddNewTasksForPatch(p *patch.Patch, patchVersion *Version, project *Project, pairs TaskVariantPairs) error {
 	return AddNewTasks(p.Activated, patchVersion, project, pairs, "")
 }
 
@@ -224,8 +223,8 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 // Finalizes a patch:
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
-// Creates builds based on the version.
-func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
+// Creates builds based on the Version
+func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
 	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
@@ -248,7 +247,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
 
-	patchVersion := &version.Version{
+	patchVersion := &Version{
 		Id:                  p.Id.Hex(),
 		CreateTime:          time.Now(),
 		Identifier:          p.Project,
@@ -256,7 +255,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Author:              p.Author,
 		Message:             p.Description,
 		BuildIds:            []string{},
-		BuildVariants:       []version.BuildStatus{},
+		BuildVariants:       []VersionBuildStatus{},
 		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
@@ -312,7 +311,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		}
 		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
 		patchVersion.BuildVariants = append(patchVersion.BuildVariants,
-			version.BuildStatus{
+			VersionBuildStatus{
 				BuildVariant: vt.Variant,
 				Activated:    true,
 				BuildId:      buildId,

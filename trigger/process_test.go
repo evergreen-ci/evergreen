@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,9 +21,9 @@ type projectTriggerSuite struct {
 	processor projectProcessor
 }
 
-func mockTriggerVersion(args ProcessorArgs) (*version.Version, error) {
+func mockTriggerVersion(args ProcessorArgs) (*model.Version, error) {
 	// we're putting the input params into arbitrary fields of the struct so that the tests can inspect them
-	v := version.Version{
+	v := model.Version{
 		Branch:      args.DownstreamProject.Identifier,
 		Config:      args.ConfigFile,
 		Message:     args.Command,
@@ -40,11 +39,12 @@ func TestProjectTriggers(t *testing.T) {
 
 func (s *projectTriggerSuite) SetupSuite() {
 	s.processor = mockTriggerVersion
-	s.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
+	s.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection))
 	t := task.Task{
 		Id:          "task",
 		Project:     "toTrigger",
 		DisplayName: "taskName",
+		IngestTime:  time.Now().Add(-48 * time.Hour),
 		Version:     "v",
 		Requester:   evergreen.RepotrackerVersionRequester,
 	}
@@ -57,7 +57,7 @@ func (s *projectTriggerSuite) SetupSuite() {
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(b.Insert())
-	v := version.Version{
+	v := model.Version{
 		Id: "v",
 	}
 	s.NoError(v.Insert())
@@ -141,6 +141,25 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 	versions, err := EvalProjectTriggers(&e, s.processor)
 	s.NoError(err)
 	s.Len(versions, 3)
+}
+
+func (s *projectTriggerSuite) TestDateCutoff() {
+	date := 1
+	proj := model.ProjectRef{
+		Identifier: "proj",
+		Triggers: []model.TriggerDefinition{
+			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile", DateCutoff: &date},
+		},
+	}
+	s.NoError(proj.Insert())
+
+	e := event.EventLogEntry{
+		EventType:  event.TaskFinished,
+		ResourceId: "task",
+	}
+	versions, err := EvalProjectTriggers(&e, s.processor)
+	s.NoError(err)
+	s.Len(versions, 0)
 }
 
 func (s *projectTriggerSuite) TestWrongEvent() {
@@ -236,7 +255,7 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 func TestProjectTriggerIntegration(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	assert.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection, evergreen.ConfigCollection, model.ProjectRefCollection, model.RepositoriesCollection))
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection, evergreen.ConfigCollection, model.ProjectRefCollection, model.RepositoriesCollection))
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestProjectTriggerIntegration")
 	assert.NoError(config.Set())
@@ -255,7 +274,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Project:     "upstream",
 	}
 	assert.NoError(upstreamTask.Insert())
-	upstreamVersion := version.Version{
+	upstreamVersion := model.Version{
 		Id:         "upstreamVersion",
 		Author:     "me",
 		CreateTime: time.Now(),
@@ -281,11 +300,11 @@ func TestProjectTriggerIntegration(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(&e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := version.Find(version.ByProjectIdAndRevision(downstreamProjectRef.Identifier, downstreamRevision))
+	dbVersions, err := model.VersionFind(model.VersionByProjectIdAndRevision(downstreamProjectRef.Identifier, downstreamRevision))
 	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)
-	versions := []version.Version{downstreamVersions[0], dbVersions[0]}
+	versions := []model.Version{downstreamVersions[0], dbVersions[0]}
 	for _, v := range versions {
 		assert.Equal("downstream_abc_def1", v.Id)
 		assert.Equal(downstreamRevision, v.Revision)

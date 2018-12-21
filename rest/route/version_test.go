@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -53,8 +53,8 @@ func (s *VersionSuite) SetupSuite() {
 	s.bv = append(s.bv, "buildvariant1", "buildvariant2")
 	s.bi = append(s.bi, "buildId1", "buildId2")
 
-	// Initialize fields for a test version.Version
-	buildVariants := []version.BuildStatus{
+	// Initialize fields for a test model.Version
+	buildVariants := []serviceModel.VersionBuildStatus{
 		{
 			BuildVariant: s.bv[0],
 			BuildId:      s.bi[0],
@@ -64,7 +64,7 @@ func (s *VersionSuite) SetupSuite() {
 			BuildId:      s.bi[1],
 		},
 	}
-	testVersion1 := version.Version{
+	testVersion1 := serviceModel.Version{
 		Id:            versionId,
 		CreateTime:    timeField,
 		StartTime:     timeField,
@@ -98,7 +98,7 @@ func (s *VersionSuite) SetupSuite() {
 	}
 
 	s.versionData = data.MockVersionConnector{
-		CachedVersions: []version.Version{testVersion1},
+		CachedVersions: []serviceModel.Version{testVersion1},
 		CachedTasks: []task.Task{
 			{Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
 			{Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},

@@ -14,9 +14,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/model/version"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -55,8 +55,8 @@ func TestGetRecentVersions(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(version.Collection, build.Collection), t,
-			"Error clearing '%v' collection", version.Collection)
+		testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, build.Collection), t,
+			"Error clearing '%v' collection", model.VersionCollection)
 
 		projectName := "project_test"
 
@@ -68,11 +68,11 @@ func TestGetRecentVersions(t *testing.T) {
 		buildIdPreface := "build-id-for-version%v"
 
 		So(NumRecentVersions, ShouldBeGreaterThan, 0)
-		versions := make([]*version.Version, 0, NumRecentVersions)
+		versions := make([]*model.Version, 0, NumRecentVersions)
 
 		// Insert a bunch of versions into the database
 		for i := 0; i < NumRecentVersions; i++ {
-			v := &version.Version{
+			v := &model.Version{
 				Id:                  fmt.Sprintf("version%v", i),
 				Identifier:          projectName,
 				Author:              fmt.Sprintf("author%v", i),
@@ -88,7 +88,7 @@ func TestGetRecentVersions(t *testing.T) {
 		// Construct a version that should not be present in the response
 		// since the length of the build ids slice is different than that
 		// of the build variants slice
-		earlyVersion := &version.Version{
+		earlyVersion := &model.Version{
 			Id:                  "some-id",
 			Identifier:          projectName,
 			Author:              "some-author",
@@ -101,7 +101,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		// Construct a version that should not be present in the response
 		// since it belongs to a different project
-		otherVersion := &version.Version{
+		otherVersion := &model.Version{
 			Id:                  "some-other-id",
 			Identifier:          otherProjectName,
 			Author:              "some-other-author",
@@ -260,8 +260,8 @@ func TestGetVersionInfo(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding info on a particular version", t, func() {
-		testutil.HandleTestingErr(db.Clear(version.Collection), t,
-			"Error clearing '%v' collection", version.Collection)
+		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
+			"Error clearing '%v' collection", model.VersionCollection)
 
 		versionId := "my-version"
 		projectName := "project_test"
@@ -269,7 +269,7 @@ func TestGetVersionInfo(t *testing.T) {
 		err = modelutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 
-		v := &version.Version{
+		v := &model.Version{
 			Id:          versionId,
 			CreateTime:  time.Now().Add(-20 * time.Minute),
 			StartTime:   time.Now().Add(-10 * time.Minute),
@@ -280,7 +280,7 @@ func TestGetVersionInfo(t *testing.T) {
 			Message:     "some-message",
 			Status:      "success",
 			BuildIds:    []string{"some-build-id"},
-			BuildVariants: []version.BuildStatus{{
+			BuildVariants: []model.VersionBuildStatus{{
 				BuildVariant: "some-build-variant",
 				Activated:    true,
 				ActivateAt:   time.Now().Add(-20 * time.Minute),
@@ -360,13 +360,13 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	projectName := "project_test"
 
 	Convey("When finding info on a particular version by its revision", t, func() {
-		testutil.HandleTestingErr(db.Clear(version.Collection), t,
-			"Error clearing '%v' collection", version.Collection)
+		testutil.HandleTestingErr(db.Clear(model.VersionCollection), t,
+			"Error clearing '%v' collection", model.VersionCollection)
 
 		versionId := "my-version"
 		revision := fmt.Sprintf("%x", rand.Int())
 
-		v := &version.Version{
+		v := &model.Version{
 			Id:          versionId,
 			CreateTime:  time.Now().Add(-20 * time.Minute),
 			StartTime:   time.Now().Add(-10 * time.Minute),
@@ -377,7 +377,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			Message:     "some-message",
 			Status:      "success",
 			BuildIds:    []string{"some-build-id"},
-			BuildVariants: []version.BuildStatus{{
+			BuildVariants: []model.VersionBuildStatus{{
 				BuildVariant: "some-build-variant",
 				Activated:    true,
 				ActivateAt:   time.Now().Add(-20 * time.Minute),
@@ -453,7 +453,7 @@ func TestActivateVersion(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "error setting up router")
 
 	Convey("When marking a particular version as active", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(version.Collection, build.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(model.VersionCollection, build.Collection), t,
 			"Error clearing collections")
 
 		versionId := "my-version"
@@ -465,7 +465,7 @@ func TestActivateVersion(t *testing.T) {
 		}
 		So(build.Insert(), ShouldBeNil)
 
-		v := &version.Version{
+		v := &model.Version{
 			Id:                  versionId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
@@ -476,7 +476,7 @@ func TestActivateVersion(t *testing.T) {
 			Message:             "some-message",
 			Status:              "success",
 			BuildIds:            []string{build.Id},
-			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}}, // nolint
+			BuildVariants:       []model.VersionBuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}}, // nolint
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -800,7 +800,7 @@ func TestGetVersionStatus(t *testing.T) {
 	})
 }
 
-func validateVersionInfo(v *version.Version, response *httptest.ResponseRecorder) {
+func validateVersionInfo(v *model.Version, response *httptest.ResponseRecorder) {
 	Convey("response should match contents of database", func() {
 		var jsonBody map[string]interface{}
 		err := json.Unmarshal(response.Body.Bytes(), &jsonBody)

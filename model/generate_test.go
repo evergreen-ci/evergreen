@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -224,7 +223,7 @@ func TestGenerateSuite(t *testing.T) {
 }
 
 func (s *GenerateSuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
+	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, VersionCollection))
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
@@ -472,7 +471,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 		Id:           "sample_build",
 		BuildVariant: "a_variant",
 	}
-	v := &version.Version{
+	v := &Version{
 		Id:       "version_that_called_generate_task",
 		BuildIds: []string{"sample_build"},
 		Config:   sampleProjYml,

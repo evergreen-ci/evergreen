@@ -244,11 +244,11 @@ function ActiveBuild({tasks, taskFilter, currentTime}){
 }
 
 // All tasks are inactive, so we display the words "inactive build"
-function InactiveBuild ({}){
+function InactiveBuild() {
     return (<div className="inactive-build"> inactive build </div>)
 }
 // No build associated with a given version and variant, so we render an empty div
-function EmptyBuild ({}){
+function EmptyBuild() {
     return (<div></div>)
 }
 

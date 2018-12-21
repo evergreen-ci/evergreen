@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,7 +30,7 @@ func TestMetadataFromVersion(t *testing.T) {
 		},
 	}
 	assert.NoError(author.Insert())
-	source := version.Version{
+	source := model.Version{
 		Author:     "name",
 		CreateTime: time.Now(),
 		Revision:   "abc",

@@ -44,7 +44,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
 	};
 
     $scope.restart = function() {
-        $scope.isRestarting = true;
+        $scope.noClose = true;
         taskRestService.takeActionOnTask(
             $scope.taskId,
             'restart',
@@ -100,7 +100,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$window', '$rootScope', 'mc
 
 	$scope.openAdminModal = function(opt) {
 		$scope.adminOption = opt;
-		var modal = $('#admin-modal').modal('show');
+		var modal = $('#admin-modal').modal( {"show": true, "backdrop": "static"});
 
         if (opt === "setPriority") {
             modal.on('shown.bs.modal', function() {
@@ -194,8 +194,8 @@ mciModule.directive('adminRestartTask', function() {
     '<div class="row">' +
       '<div class="col-lg-12">' +
         'Restart current task?' +
-        '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
-        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="restart()" ng-disabled="isRestarting">Yes</button>' +
+        '<button type="button" class="btn btn-danger" style="float: right;" ng-disabled="noClose" data-dismiss="modal">Cancel</button>' +
+        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="restart()" ng-disabled="noClose">Yes</button>' +
       '</div>' +
     '</div>'
   }

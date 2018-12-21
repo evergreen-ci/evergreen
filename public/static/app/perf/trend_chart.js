@@ -672,7 +672,11 @@ mciModule.factory('DrawPerfTrendChart', function (
       // Current revision marker
       var commitCircle = chartG
         .selectAll('circle.current')
-        .data(threadLevelsForSample(series[currentItemIdx], activeLevels))
+        .data(
+          threadMode == MAXONLY
+            ? activeLevels
+            : threadLevelsForSample(series[currentItemIdx], activeLevels)
+        )
 
       commitCircle
         .enter()
@@ -895,7 +899,7 @@ mciModule.factory('DrawPerfTrendChart', function (
 
     redrawChangePoints()
 
-    var changePointPanelG = chartG.append('g')
+    chartG.append('g')
       .attr({class: 'change-point-info'})
 
     // -- REGULAR POINT HOVER --

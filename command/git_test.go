@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -57,33 +56,27 @@ func TestGitGetProjectSuite(t *testing.T) {
 
 func (s *GitGetProjectSuite) SetupTest() {
 	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
-		version.Collection, host.Collection, model.TaskLogCollection))
+		model.VersionCollection, host.Collection, model.TaskLogCollection))
 	var err error
 	s.NoError(err)
 	configPath1 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_clone.yml")
 	configPath2 := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test_config.yml")
 	patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "test.patch")
-	settings := &evergreen.Settings{
-		Credentials: map[string]string{
-			"github": "token GITHUBTOKEN",
-		},
-	}
-	s.modelData1, err = modelutil.SetupAPITestData(settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
+	s.modelData1, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath1, modelutil.NoPatch)
 	s.NoError(err)
-	s.modelData1.TaskConfig.Expansions = util.NewExpansions(map[string]string{"global_github_oauth_token": "token globalGithubOauthToken"})
+	s.modelData1.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 
-	s.modelData2, err = modelutil.SetupAPITestData(settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData2, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
-	s.modelData2.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
-
+	s.modelData2.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	//SetupAPITestData always creates BuildVariant with no modules so this line works around that
 	s.modelData2.TaskConfig.BuildVariant.Modules = []string{"sample"}
 	err = plugintest.SetupPatchData(s.modelData1, patchPath, s.T())
 	s.NoError(err)
 
-	s.modelData3, err = modelutil.SetupAPITestData(settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
+	s.modelData3, err = modelutil.SetupAPITestData(s.settings, "testtask1", "rhel55", configPath2, modelutil.NoPatch)
 	s.NoError(err)
-	s.modelData3.TaskConfig.Expansions = util.NewExpansions(settings.Credentials)
+	s.modelData3.TaskConfig.Expansions = util.NewExpansions(s.settings.Credentials)
 	s.modelData3.TaskConfig.GithubPatchData = patch.GithubPatch{
 		PRNumber:   9001,
 		BaseOwner:  "evergreen-ci",
@@ -94,28 +87,6 @@ func (s *GitGetProjectSuite) SetupTest() {
 		HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
 		Author:     "octocat",
 	}
-}
-
-func (s *GitGetProjectSuite) TestBuildCloneCommandUsesHTTPS() {
-	c := &gitFetchProject{
-		Directory:    "dir",
-		ProjectToken: "GITHUBTOKEN",
-	}
-	conf := s.modelData1.TaskConfig
-
-	cmds, _ := c.buildCloneCommand(conf, c.ProjectToken)
-	s.Equal("git clone https://GITHUBTOKEN@github.com/deafgoat/mci_test.git 'dir' --branch 'master'", cmds[5])
-}
-
-func (s *GitGetProjectSuite) TestBuildCloneCommandUsesSSH() {
-	c := &gitFetchProject{
-		Directory:    "dir",
-		ProjectToken: "",
-	}
-	conf := s.modelData1.TaskConfig
-
-	cmds, _ := c.buildCloneCommand(conf, c.ProjectToken)
-	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
 }
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
@@ -263,12 +234,11 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	conf := s.modelData1.TaskConfig
 
 	c := gitFetchProject{
-		Directory:    "dir",
-		ProjectToken: "GITHUBTOKEN",
+		Directory: "dir",
 	}
 
 	// ensure clone command without specified token uses ssh
-	cmds, err := c.buildCloneCommand(conf, "")
+	cmds, err := c.buildCloneCommand(conf)
 	s.NoError(err)
 	s.Require().Len(cmds, 6)
 	s.Equal("set -o xtrace", cmds[0])
@@ -278,8 +248,9 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("cd dir", cmds[4])
 	s.Equal("git reset --hard ", cmds[5])
 
-	// ensure clone command with a token uses https
-	cmds, err = c.buildCloneCommand(conf, c.ProjectToken)
+	// ensure clone command with a token uses http
+	c.Token = "GITHUBTOKEN"
+	cmds, err = c.buildCloneCommand(conf)
 	s.NoError(err)
 	s.Require().Len(cmds, 9)
 	s.Equal("set -o xtrace", cmds[0])
@@ -294,7 +265,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 
 	// ensure clone command cannot be built if projectref has no owner
 	conf.ProjectRef.Owner = ""
-	cmds, err = c.buildCloneCommand(conf, c.ProjectToken)
+	cmds, err = c.buildCloneCommand(conf)
 	s.Error(err)
 	s.Nil(cmds)
 }
@@ -304,7 +275,7 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 		Directory: "dir",
 	}
 
-	cmds, err := c.buildCloneCommand(s.modelData3.TaskConfig, c.ProjectToken)
+	cmds, err := c.buildCloneCommand(s.modelData3.TaskConfig)
 	s.NoError(err)
 	s.Len(cmds, 8)
 	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
@@ -314,12 +285,12 @@ func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	c := gitFetchProject{
-		Directory:    "dir",
-		ProjectToken: "GITHUBTOKEN",
+		Directory: "dir",
+		Token:     "GITHUBTOKEN",
 	}
 
 	// ensure module clone command with ssh URL does not inject token
-	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", c.ProjectToken)
+	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.Equal("set -o xtrace", cmds[0])
@@ -329,7 +300,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'master'", cmds[4])
 
 	// ensure module clone command with http URL injects token
-	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", c.ProjectToken)
+	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("set -o xtrace", cmds[0])
@@ -342,7 +313,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("git checkout 'master'", cmds[7])
 
 	// ensure insecure github url is force to use https
-	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master", c.ProjectToken)
+	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "deafgoat", "mci_test", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.Equal("echo \"git clone https://[redacted oauth token]@github.com/deafgoat/mci_test.git 'module'\"", cmds[3])

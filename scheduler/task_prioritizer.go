@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -22,7 +22,7 @@ type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]version.Version) ([]task.Task, error)
+	PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]model.Version) ([]task.Task, error)
 }
 
 // CmpBasedTaskComparator runs the tasks through a slice of comparator functions
@@ -30,7 +30,7 @@ type TaskPrioritizer interface {
 type CmpBasedTaskComparator struct {
 	runtimeID      string
 	tasks          []task.Task
-	versions       map[string]version.Version
+	versions       map[string]model.Version
 	errsDuringSort []error
 	setupFuncs     []sortSetupFunc
 	comparators    []taskPriorityCmp
@@ -52,6 +52,7 @@ func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
 	return &CmpBasedTaskComparator{
 		runtimeID: id,
 		setupFuncs: []sortSetupFunc{
+			cacheExpectedDurations,
 			cacheTaskGroups,
 			groupTaskGroups,
 		},
@@ -74,7 +75,7 @@ type CmpBasedTaskPrioritizer struct {
 // whether they are part of patch versions or automatically created versions.
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
-func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]version.Version) ([]task.Task, error) {
+func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]model.Version) ([]task.Task, error) {
 	comparator := NewCmpBasedTaskComparator(prioritizer.runtimeID)
 	comparator.versions = versions
 	// split the tasks into repotracker tasks and patch tasks, then prioritize

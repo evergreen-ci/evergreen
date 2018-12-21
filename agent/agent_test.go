@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/suite"
 )
@@ -96,8 +95,14 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := s.a.loop(ctx)
-	s.Error(err)
+	errChan := make(chan error)
+	go func() {
+		errChan <- s.a.loop(ctx)
+	}()
+	time.Sleep(1 * time.Second)
+	cancel()
+	err := <-errChan
+	s.NoError(err)
 }
 
 func (s *AgentSuite) TestErrorGettingNextTask() {
@@ -124,7 +129,7 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	defer cancel()
 
 	err := s.a.loop(ctx)
-	s.Error(err)
+	s.NoError(err)
 }
 
 func (s *AgentSuite) TestNextTaskConflict() {
@@ -166,13 +171,7 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 }
 
 func (s *AgentSuite) TestCancelStartTask() {
-	resetIdleTimeout := make(chan time.Duration)
 	complete := make(chan string)
-	go func() {
-		for range resetIdleTimeout {
-			// discard
-		}
-	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	s.a.startTask(ctx, s.tc, complete)
@@ -213,7 +212,7 @@ pre:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -246,7 +245,7 @@ post:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -282,7 +281,7 @@ post:
     params:
       script: "exit 0"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -343,7 +342,7 @@ func (s *AgentSuite) TestAbort() {
 	s.a.opts.HeartbeatInterval = time.Nanosecond
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err := s.a.runTask(ctx, cancel, s.tc)
+	_, err := s.a.runTask(ctx, cancel, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	shouldFind := map[string]bool{
@@ -583,7 +582,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -621,7 +620,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -659,7 +658,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -696,7 +695,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -735,7 +734,7 @@ task_groups:
     params:
       script: "echo hi"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
@@ -778,7 +777,7 @@ timeout:
         sleep 5
         echo "bye"
 `
-	v := &version.Version{
+	v := &model.Version{
 		Id:     versionId,
 		Config: projYml,
 	}

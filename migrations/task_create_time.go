@@ -11,13 +11,15 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+//nolint: deadcode, megacheck, unused
 const (
 	migrationTaskCreateTime = "task-create-time"
-	versionsCollection      = "versions"
+	VersionCollection       = "versions"
 )
 
 // This migration updates the CreateTime field of patch tasks to be the push time of the base commit.
-func taskCreateTimeGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
+// nolint: unused
+func taskCreateTimeGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "task_create_time"
 
 	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskCreateTimeMigrationFunction(args.db)); err != nil {
@@ -41,7 +43,7 @@ func taskCreateTimeGenerator(env anser.Environment, args migrationGeneratorFacto
 
 func makeTaskCreateTimeMigrationFunction(database string) db.MigrationOperation {
 	const tasksCollection = "tasks"
-	const versionsCollection = "versions"
+	const VersionCollection = "versions"
 
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
@@ -78,7 +80,7 @@ func makeTaskCreateTimeMigrationFunction(database string) db.MigrationOperation 
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 		}
-		q := session.DB(database).C(versionsCollection).Find(query)
+		q := session.DB(database).C(VersionCollection).Find(query)
 		if err := q.One(&baseVersion); err != nil {
 			return errors.Wrap(err, "error finding base version")
 		}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -25,7 +24,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	v, err := version.FindOne(version.ById(task.Version))
+	v, err := model.VersionFindOne(model.VersionById(task.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error retrieving version for task"))
 		return

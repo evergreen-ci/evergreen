@@ -6,12 +6,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -33,7 +33,7 @@ type pluginData struct {
 }
 
 type uiVersion struct {
-	Version      version.Version
+	Version      model.Version
 	Builds       []uiBuild
 	PatchInfo    *uiPatch `json:",omitempty"`
 	ActiveTasks  int
@@ -69,7 +69,7 @@ type uiHost struct {
 
 type uiBuild struct {
 	Build           build.Build
-	Version         version.Version
+	Version         model.Version
 	PatchInfo       *uiPatch `json:",omitempty"`
 	Tasks           []uiTask
 	Elapsed         time.Duration
@@ -92,7 +92,7 @@ type uiTask struct {
 	ExpectedDuration time.Duration `json:"expected_duration"`
 }
 
-func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
+func PopulateUIVersion(version *model.Version) (*uiVersion, error) {
 	buildIds := version.BuildIds
 	dbBuilds, err := build.Find(build.ByIds(buildIds))
 	if err != nil {
@@ -136,17 +136,17 @@ func getTimelineData(projectName string, versionsToSkip, versionsPerPage int) (*
 	data := &timelineData{}
 
 	// get the total number of versions in the database (used for pagination)
-	totalVersions, err := version.Count(version.ByProjectId(projectName))
+	totalVersions, err := model.VersionCount(model.VersionByProjectId(projectName))
 	if err != nil {
 		return nil, err
 	}
 	data.TotalVersions = totalVersions
 
-	q := version.ByMostRecentSystemRequester(projectName).WithoutFields(version.ConfigKey).
+	q := model.VersionByMostRecentSystemRequester(projectName).WithoutFields(model.VersionConfigKey).
 		Skip(versionsToSkip * versionsPerPage).Limit(versionsPerPage)
 
 	// get the most recent versions, to display in their entirety on the page
-	versionsFromDB, err := version.Find(q)
+	versionsFromDB, err := model.VersionFind(q)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -19,28 +18,28 @@ func TestLastKnownGoodConfig(t *testing.T) {
 		identifier := "identifier"
 		Convey("no versions should be returned if there're no good "+
 			"last known configurations", func() {
-			v := &version.Version{
+			v := &Version{
 				Identifier: identifier,
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Errors:     []string{"error 1", "error 2"},
 			}
 			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
-			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
+			lastGood, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
 			testutil.HandleTestingErr(err, t, "error finding last known good")
 			So(lastGood, ShouldBeNil)
 		})
 		Convey("a version should be returned if there is a last known good configuration", func() {
-			v := &version.Version{
+			v := &Version{
 				Identifier: identifier,
 				Requester:  evergreen.RepotrackerVersionRequester,
 			}
 			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
-			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
+			lastGood, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
 			testutil.HandleTestingErr(err, t, "error finding last known good: %s", lastGood.Id)
 			So(lastGood, ShouldNotBeNil)
 		})
 		Convey("most recent version should be found if there are several recent good configs", func() {
-			v := &version.Version{
+			v := &Version{
 				Id:                  "1",
 				Identifier:          identifier,
 				Requester:           evergreen.RepotrackerVersionRequester,
@@ -56,13 +55,13 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			v.RevisionOrderNumber = 2
 			v.Config = "2"
 			testutil.HandleTestingErr(v.Insert(), t, "Error inserting test version: %s", v.Id)
-			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
+			lastGood, err := VersionFindOne(VersionByLastKnownGoodConfig(identifier))
 			testutil.HandleTestingErr(err, t, "error finding last known good: %s", v.Id)
 			So(lastGood, ShouldNotBeNil)
 			So(lastGood.Config, ShouldEqual, "5")
 		})
 		Reset(func() {
-			So(db.Clear(version.Collection), ShouldBeNil)
+			So(db.Clear(VersionCollection), ShouldBeNil)
 		})
 	})
 }
