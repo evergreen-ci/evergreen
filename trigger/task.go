@@ -35,6 +35,7 @@ const (
 	triggerTaskFirstFailureInVersionWithName = "first-failure-in-version-with-name"
 	triggerTaskRegressionByTest              = "regression-by-test"
 	triggerBuildBreak                        = "build-break"
+	keyFailureType                           = "failure-type"
 )
 
 func makeTaskTriggers() eventHandler {
@@ -438,6 +439,9 @@ func isTaskRegression(sub *event.Subscription, t *task.Task) (bool, *alertrecord
 	if t.Status != evergreen.TaskFailed || !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return false, nil, nil
 	}
+	if !matchingFailureType(sub.TriggerData[keyFailureType], t.Details.Type) {
+		return false, nil, nil
+	}
 
 	previousTask, err := task.FindOne(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber,
 		task.CompletedStatuses, t.BuildVariant, t.DisplayName, t.Project, evergreen.SystemVersionRequesterTypes))
@@ -654,6 +658,9 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	if !util.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.task.Requester) || !isFailedTaskStatus(t.task.Status) {
 		return nil, nil
 	}
+	if !matchingFailureType(sub.TriggerData[keyFailureType], t.task.Details.Type) {
+		return nil, nil
+	}
 	// if no tests, alert only if it's a regression in task status
 	if len(t.task.LocalTestResults) == 0 {
 		return t.taskRegression(sub)
@@ -695,6 +702,13 @@ func (t *taskTriggers) taskRegressionByTest(sub *event.Subscription) (*notificat
 	}
 
 	return n, catcher.Resolve()
+}
+
+func matchingFailureType(requested, actual string) bool {
+	if requested == "any" || requested == "" {
+		return true
+	}
+	return requested == actual
 }
 
 func (j *taskTriggers) makeJIRATaskPayload(subID, project string) (*message.JiraIssue, error) {

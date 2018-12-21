@@ -158,7 +158,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
             return false;
         }
         if (!$scope.targets[$scope.method.value]) {
-            return false
+            return false;
         }
 
         if ($scope.method.value === SUBSCRIPTION_JIRA_COMMENT) {
@@ -199,6 +199,11 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         if (trigger.resource_type === $scope.trigger.resource_type &&
               trigger.trigger === $scope.trigger.trigger) {
           $scope.extraFields = trigger.extraFields;
+          _.each($scope.extraFields, function(field) {
+            if (field.default) {
+              $scope.extraData[field.key] = field.default;
+            }
+          });
           $scope.regexSelectorOptions = trigger.regex_selectors;
           $scope.addCustomValidation(trigger.extraFields);
           return;
@@ -262,7 +267,7 @@ function subCtrl($scope, $mdDialog, mciUserSettingsService) {
         }
         $scope.bindTrigger();
         _.each($scope.c.subscription.regex_selectors, function(selector){
-          var typeLabel = $scope.$scope.findRegexTypeLabel(selector.type);
+          var typeLabel = $scope.findRegexTypeLabel(selector.type);
           $scope.regexSelectors[selector.type] = {type_label: typeLabel.type_label, data: selector.data};
         });
         $scope.extraData = $scope.c.subscription.trigger_data;

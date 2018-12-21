@@ -11,7 +11,8 @@
                 <p ng-show="extraFields">
                   <div ng-repeat="field in extraFields">
                     <span>[[field.text]]</span>
-                    <input type="text" ng-model="extraData[field.key]"/>
+                    <input type="text" ng-show="field.type!='select'" ng-model="extraData[field.key]"/>
+                    <select ng-show="field.type=='select'" ng-model="extraData[field.key]" ng-options="option for option in field.options"></select>
                   </div>
                 </p>
                 <div ng-show="regexSelectorOptions.length > 0">
