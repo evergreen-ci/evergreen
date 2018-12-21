@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -388,20 +387,15 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 	return nil
 }
 
-func (c *s3put) createPailBucket() error {
+func (s3pc *s3put) createPailBucket() error {
 	opts := pail.S3Options{
-		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
-			Value: credentials.Value{
-				AccessKeyID:     c.AwsKey,
-				SecretAccessKey: c.AwsSecret,
-			}}),
-
+		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, ""),
 		Region:      endpoints.UsEast1RegionID,
-		Name:        c.Bucket,
-		Permission:  c.Permissions,
-		ContentType: c.ContentType,
+		Name:        s3pc.Bucket,
+		Permission:  s3pc.Permissions,
+		ContentType: s3pc.ContentType,
 	}
 	bucket, err := pail.NewS3MultiPartBucket(opts)
-	c.bucket = bucket
+	s3pc.bucket = bucket
 	return err
 }

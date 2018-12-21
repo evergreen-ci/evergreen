@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -245,13 +244,9 @@ func (c *s3get) get(ctx context.Context) error {
 
 func (c *s3get) createPailBucket() error {
 	opts := pail.S3Options{
-		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
-			Value: credentials.Value{
-				AccessKeyID:     c.AwsKey,
-				SecretAccessKey: c.AwsSecret,
-			}}),
-		Region: endpoints.UsEast1RegionID,
-		Name:   c.Bucket,
+		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, ""),
+		Region:      endpoints.UsEast1RegionID,
+		Name:        c.Bucket,
 	}
 	bucket, err := pail.NewS3Bucket(opts)
 	c.bucket = bucket
