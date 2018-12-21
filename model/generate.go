@@ -126,11 +126,20 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 		return nil, nil, nil, nil, "",
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Errorf("unable to find config string for version %s", t.Version).Error()}
 	}
-	prevConfig := v.Config
-	p := &Project{}
-	if err = LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return nil, nil, nil, nil, "",
-			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+	var p *Project
+	var prevConfig string
+	var prevProject *parserProject
+	if v.Project == nil {
+		prevConfig = v.Config
+		if p, err = LoadProjectInto([]byte(v.Config), t.Project); err != nil {
+			return nil, nil, nil, nil, "",
+				gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project yaml").Error()}
+		}
+	} else {
+		if p, err = translateProject(v.Project); err != nil {
+			return nil, nil, nil, nil, "",
+				gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error reading project from version").Error()}
+		}
 	}
 
 	// Cache project data in maps for quick lookup
@@ -142,7 +151,7 @@ func (g *GeneratedProject) NewVersion() (*Project, *Version, *task.Task, *projec
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "generated project is invalid").Error()}
 	}
 
-	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
+	config, err := g.addGeneratedProjectToConfig(v.Config, v.Project, cachedProject)
 	if err != nil {
 		return nil, nil, nil, nil, "",
 			gimlet.ErrorResponse{StatusCode: http.StatusBadRequest, Message: errors.Wrap(err, "error creating config from generated config").Error()}
@@ -255,11 +264,16 @@ func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPai
 }
 
 // addGeneratedProjectToConfig takes a YML config and returns a new one with the GeneratedProject included.
-func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProject projectMaps) (string, error) {
-	// Append buildvariants, tasks, and functions to the config.
-	intermediateProject, errs := createIntermediateProject([]byte(config))
-	if errs != nil {
-		return "", errors.Wrap(errs[0], "error creating intermediate project")
+func (g *GeneratedProject) addGeneratedProjectToConfig(config string, pp *parserProject, cachedProject projectMaps) (*parserProject, error) {
+	var errs []error
+	var intermediateProject *parserProject
+	if pp == nil { // Legacy tasks have only a config string, not a Project.
+		intermediateProject, errs = createIntermediateProject([]byte(config))
+		if errs != nil {
+			return "", errors.Wrap(errs[0], "error creating intermediate project")
+		}
+	} else {
+		intermediateProject = pp
 	}
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
@@ -280,11 +294,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProj
 			intermediateProject.BuildVariants = append(intermediateProject.BuildVariants, bv)
 		}
 	}
-	byteConfig, err := yaml.Marshal(intermediateProject)
-	if err != nil {
-		return "", errors.Wrap(err, "error marshalling new project config")
-	}
-	return string(byteConfig), nil
+	return intermediateProject, nil
 }
 
 // projectMaps is a struct of maps of project fields, which allows efficient comparisons of generated projects to projects.

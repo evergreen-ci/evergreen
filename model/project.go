@@ -269,7 +269,7 @@ type ArtifactInstructions struct {
 	ExcludeFiles []string `yaml:"excludefiles,omitempty" bson:"exclude_files"`
 }
 
-type YAMLCommandSet struct {
+type YAMLCommandSet struct { // TODO Does this need bson tags or a custom marshaler??
 	SingleCommand *PluginCommandConf
 	MultiCommand  []PluginCommandConf
 }
