@@ -391,10 +391,19 @@ func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) e
 	return nil
 }
 
+// ProjectFromVersion returns a project from a version, using the embedded parserProject if
+// possible, the config string otherwise. It returns both the parserProject and the Project.
+func ProjectFromVersion(v *Version) (*parserProject, *Project, error) {
+	if v.Project == nil {
+		// TODO
+	}
+	if 
+}
+
 // LoadProjectInto loads the raw data from the config file into project
 // and sets the project's identifier field to identifier. Tags are evaluateed.
-func LoadProjectInto(data []byte, identifier string) (*Project, error) {
-	p, errs := projectFromYAML(data) // ignore warnings, for now (TODO)
+func LoadProjectInto(data []byte, identifier string) (*parserProject, *Project, error) {
+	pp, p, errs := projectFromYAML(data) // ignore warnings, for now (TODO)
 	if len(errs) > 0 {
 		// create a human-readable error list
 		buf := bytes.Buffer{}
@@ -405,23 +414,23 @@ func LoadProjectInto(data []byte, identifier string) (*Project, error) {
 			buf.WriteString(e.Error())
 		}
 		if len(errs) > 1 {
-			return errors.Errorf("project errors: %v", buf.String())
+			return nil, nil, errors.Errorf("project errors: %v", buf.String())
 		}
-		return errors.Errorf("project error: %v", buf.String())
+		return nil, nil, errors.Errorf("project error: %s", buf.String())
 	}
 	p.Identifier = identifier
-	return p, nil
+	return pp, p, nil
 }
 
 // projectFromYAML reads and evaluates project YAML, returning a project and warnings and
 // errors encountered during parsing or evaluation.
-func projectFromYAML(yml []byte) (*Project, []error) {
-	intermediateProject, errs := createIntermediateProject(yml)
+func projectFromYAML(yml []byte) (*parserProject, *Project, []error) {
+	pp, errs := createIntermediateProject(yml)
 	if len(errs) > 0 {
 		return nil, errs
 	}
-	p, errs := translateProject(intermediateProject)
-	return p, errs
+	p, errs := translateProject(pp)
+	return pp, p, errs
 }
 
 // createIntermediateProject marshals the supplied YAML into our

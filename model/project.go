@@ -694,8 +694,8 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj := &Project{}
-	err = LoadProjectInto([]byte(v.Config), t.Project, proj)
+	var proj *Project
+	_, proj, err = LoadProjectInto([]byte(v.Config), t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "error unmarshaling project")
 	}
@@ -832,9 +832,22 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	var p Project
-	if err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
-		return nil, errors.Wrap(err, "error retrieving project for task group")
+	var intermediateProject *parserProject
+	var errs []error
+	if tc.Version.Project == nil {
+		if intermediateProject, errs = createIntermediateProject([]byte(tc.Version.Config)); len(errs) > 0 {
+			return nil, errors.Wrap(errs[0], "error retrieving project for task group")
+		}
+	} else {
+		intermediateProject = tc.Version.Project
+	}
+	var p *Project
+	if p, errs = translateProject(intermediateProject); len(errs) > 0 {
+		catcher := grip.NewBasicCatcher()
+		for _, e := range errs {
+			catcher.Add(e)
+		}
+		return nil, errors.Wrap(catcher.Resolve(), "error retrieving project for task group")
 	}
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
@@ -877,10 +890,22 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
-	project := &Project{}
-	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+	var project *Project
+	if ver.Project == nil {
+		_, project, err = LoadProjectInto([]byte(ver.Config), ver.Identifier)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+		}
+		return project, nil
+	}
+	// TODO Need to set project identifier everywhere
+	var errs []error
+	if project, errs = translateProject(ver.Project); len(errs) > 0 {
+		catcher := grip.NewBasicCatcher()
+		for _, e := range errs {
+			catcher.Add(e)
+		}
+		return nil, errors.Wrapf(catcher.Resolve(), "unable to create project from intermediate form for version %s", versionStr)
 	}
 	return project, nil
 }
