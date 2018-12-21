@@ -162,4 +162,7 @@ type Communicator interface {
 	// GetSubscriptions fetches the subscriptions for the user defined
 	// in the local evergreen yaml
 	GetSubscriptions(context.Context) ([]event.Subscription, error)
+
+	// CreateVersionFromConfig takes an evergreen config and makes runnable tasks from it
+	CreateVersionFromConfig(context.Context, string, string, bool, []byte) (*version.Version, error)
 }
