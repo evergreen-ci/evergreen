@@ -637,6 +637,7 @@ func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project,
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read response")
