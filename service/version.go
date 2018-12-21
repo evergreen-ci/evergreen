@@ -201,7 +201,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent: pluginContent,
 		CanEdit:       currentUser != nil,
 		JiraHost:      uis.Settings.Jira.Host,
-		ViewData:      uis.GetCommonViewData(w, r, false, true)}, "base", "model.Versionhtml", "base_angular.html", "menu.html")
+		ViewData:      uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
