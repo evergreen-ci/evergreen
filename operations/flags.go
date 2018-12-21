@@ -23,8 +23,6 @@ const (
 	hostFlagName          = "host"
 	startTimeFlagName     = "time"
 	limitFlagName         = "limit"
-	messageFlagName       = "message"
-	activeFlagName        = "active"
 
 	anserDryRunFlagName      = "dry-run"
 	anserLimitFlagName       = "limit"

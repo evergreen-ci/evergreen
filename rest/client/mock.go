@@ -563,7 +563,3 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 		},
 	}, nil
 }
-
-func (c *Mock) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*version.Version, error) {
-	return &version.Version{}, nil
-}

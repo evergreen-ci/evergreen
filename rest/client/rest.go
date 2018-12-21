@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -614,47 +613,4 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	}
 
 	return subs, nil
-}
-
-func (c *communicatorImpl) CreateVersionFromConfig(ctx context.Context, project, message string, active bool, config []byte) (*version.Version, error) {
-	info := requestInfo{
-		method:  put,
-		version: apiVersion2,
-		path:    "/versions",
-	}
-	body := struct {
-		ProjectID string          `json:"project_id"`
-		Message   string          `json:"message"`
-		Active    bool            `json:"activate"`
-		Config    json.RawMessage `json:"config"`
-	}{
-		ProjectID: project,
-		Message:   message,
-		Active:    active,
-		Config:    config,
-	}
-	resp, err := c.request(ctx, info, body)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read response")
-	}
-	if resp.StatusCode != http.StatusOK {
-		restErr := gimlet.ErrorResponse{}
-		if err = json.Unmarshal(bytes, &restErr); err != nil {
-			return nil, errors.Errorf("received an error but was unable to parse: %s", string(bytes))
-		}
-
-		return nil, errors.Wrap(restErr, "error while creating version from config")
-	}
-	v := &version.Version{}
-	err = json.Unmarshal(bytes, v)
-	if err != nil {
-		return nil, errors.Wrap(err, "error parsing version data")
-	}
-
-	return v, nil
 }
