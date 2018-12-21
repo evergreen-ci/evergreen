@@ -40,8 +40,7 @@ func Evaluate() cli.Command {
 			}
 
 			p := &model.Project{}
-			err = model.LoadProjectInto(configBytes, "", p)
-			if err != nil {
+			if _, p, err = model.LoadProjectInto(configBytes, ""); err != nil {
 				return errors.Wrap(err, "error loading project")
 			}
 

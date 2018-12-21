@@ -212,7 +212,7 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 			return nil, errors.Wrap(err, "could not read patched config file")
 		}
 		project := &Project{}
-		if err = LoadProjectInto(data, p.Project, project); err != nil {
+		if _, project, err = LoadProjectInto(data, p.Project); err != nil {
 			return nil, errors.WithStack(err)
 		}
 		return project, nil
@@ -225,9 +225,7 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 // Creates a version for this patch and links it.
 // Creates builds based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*Version, error) {
-	// unmarshal the project YAML for storage
-	project := &Project{}
-	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
+	pp, project, err := LoadProjectInto([]byte(p.PatchedConfig), p.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -257,6 +255,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		BuildIds:            []string{},
 		BuildVariants:       []VersionBuildStatus{},
 		Config:              p.PatchedConfig,
+		Project:             pp,
 		Status:              evergreen.PatchCreated,
 		Requester:           requester,
 		Branch:              projectRef.Branch,

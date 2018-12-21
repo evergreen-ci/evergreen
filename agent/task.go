@@ -240,8 +240,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*model.Tas
 	}
 
 	confProject := &model.Project{}
-	err = model.LoadProjectInto([]byte(confVersion.Config), confVersion.Identifier, confProject)
-	if err != nil {
+	if _, confProject, err = model.LoadProjectInto([]byte(confVersion.Config), confVersion.Identifier); err != nil {
 		return nil, errors.Wrapf(err, "reading project config")
 	}
 

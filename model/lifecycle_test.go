@@ -1229,7 +1229,7 @@ func TestCreateTaskGroup(t *testing.T) {
     - name: example_task_group
     - name: example_task_3
   `
-	proj, errs := projectFromYAML([]byte(projYml))
+	_, proj, errs := projectFromYAML([]byte(projYml))
 	proj.Identifier = "test"
 	assert.NotNil(proj)
 	assert.Empty(errs)

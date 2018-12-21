@@ -84,7 +84,7 @@ func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken str
 		}
 	} else {
 		// configuration is not patched
-		if err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+		if _, project, err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier); err != nil {
 			return nil, errors.WithStack(err)
 		}
 	}

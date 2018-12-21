@@ -1619,11 +1619,10 @@ func TestTaskGroupValidation(t *testing.T) {
     tasks:
     - name: example_task_group
   `
-	var proj model.Project
-	err := model.LoadProjectInto([]byte(duplicateYml), "", &proj)
+	_, proj, err := model.LoadProjectInto([]byte(duplicateYml), "")
 	assert.NotNil(proj)
 	assert.NoError(err)
-	validationErrs := validateTaskGroups(&proj)
+	validationErrs := validateTaskGroups(proj)
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "example_task_1 is listed in task group example_task_group more than once")
 
@@ -1641,10 +1640,10 @@ func TestTaskGroupValidation(t *testing.T) {
     tasks:
     - name: foo
   `
-	err = model.LoadProjectInto([]byte(duplicateTaskYml), "", &proj)
+	_, proj, err = model.LoadProjectInto([]byte(duplicateTaskYml), "")
 	assert.NotNil(proj)
 	assert.NoError(err)
-	validationErrs = validateTaskGroups(&proj)
+	validationErrs = validateTaskGroups(proj)
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "foo is used as a name for both a task and task group")
 
@@ -1669,10 +1668,10 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	err = model.LoadProjectInto([]byte(attachInGroupTeardownYml), "", &proj)
+	_, proj, err = model.LoadProjectInto([]byte(attachInGroupTeardownYml), "")
 	assert.NotNil(proj)
 	assert.NoError(err)
-	validationErrs = validateTaskGroups(&proj)
+	validationErrs = validateTaskGroups(proj)
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
 
@@ -1694,10 +1693,10 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	err = model.LoadProjectInto([]byte(largeMaxHostYml), "", &proj)
+	_, proj, err = model.LoadProjectInto([]byte(largeMaxHostYml), "")
 	assert.NotNil(proj)
 	assert.NoError(err)
-	validationErrs = checkTaskGroups(&proj)
+	validationErrs = checkTaskGroups(proj)
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 2 greater than half the number of tasks 3")
 	assert.Equal(validationErrs[0].Level, Warning)
@@ -1736,8 +1735,7 @@ buildvariants:
   - name: not_in_a_task_group
   - name: example_task_group
 `
-	proj := model.Project{}
-	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	_, proj, err := model.LoadProjectInto([]byte(exampleYml), "example_project")
 	assert.NotNil(proj)
 	assert.Empty(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1746,10 +1744,10 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	syntaxErrs, err := CheckProjectSyntax(&proj)
+	syntaxErrs, err := CheckProjectSyntax(proj)
 	assert.Len(syntaxErrs, 0)
 	assert.NoError(err)
-	semanticErrs := CheckProjectSemantics(&proj)
+	semanticErrs := CheckProjectSemantics(proj)
 	assert.Len(semanticErrs, 0)
 	assert.NoError(err)
 }
@@ -1780,8 +1778,7 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	proj := model.Project{}
-	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	_, proj, err := model.LoadProjectInto([]byte(exampleYml), "example_project")
 	assert.NotNil(proj)
 	assert.Empty(err)
 	assert.Len(proj.TaskGroups, 1)
@@ -1790,11 +1787,11 @@ buildvariants:
 	assert.Len(tg.Tasks, 1)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("not_in_a_task_group", proj.Tasks[1].DependsOn[0].Name)
-	syntaxErrs, err := CheckProjectSyntax(&proj)
+	syntaxErrs, err := CheckProjectSyntax(proj)
 	assert.Len(syntaxErrs, 1)
 	assert.Equal("dependency error for 'task_in_a_task_group' task: dependency bv/not_in_a_task_group is not present in the project config", syntaxErrs[0].Error())
 	assert.NoError(err)
-	semanticErrs := CheckProjectSemantics(&proj)
+	semanticErrs := CheckProjectSemantics(proj)
 	assert.Len(semanticErrs, 0)
 	assert.NoError(err)
 }
@@ -1828,21 +1825,20 @@ buildvariants:
     - one
     - two
 `
-	proj := model.Project{}
-	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	_, proj, err := model.LoadProjectInto([]byte(exampleYml), "example_project")
 	assert.NotNil(proj)
 	assert.NoError(err)
 
 	proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks = append(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks,
 		"display_three")
 
-	syntaxErrs, err := CheckProjectSyntax(&proj)
+	syntaxErrs, err := CheckProjectSyntax(proj)
 	assert.Len(syntaxErrs, 1)
 	assert.NoError(err)
 	assert.Equal(syntaxErrs[0].Level, Error)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
 		syntaxErrs[0].Message)
-	semanticErrs := CheckProjectSemantics(&proj)
+	semanticErrs := CheckProjectSemantics(proj)
 	assert.NoError(err)
 	assert.Len(semanticErrs, 0)
 }
@@ -1862,10 +1858,9 @@ func TestValidateCreateHosts(t *testing.T) {
     tasks:
     - name: t_1
   `
-	var p model.Project
-	err := model.LoadProjectInto([]byte(yml), "id", &p)
+	_, p, err := model.LoadProjectInto([]byte(yml), "id")
 	require.NoError(err)
-	errs := validateCreateHosts(&p)
+	errs := validateCreateHosts(p)
 	assert.Len(errs, 0)
 
 	// error: times called per task
@@ -1882,9 +1877,9 @@ func TestValidateCreateHosts(t *testing.T) {
     tasks:
     - name: t_1
   `
-	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	_, p, err = model.LoadProjectInto([]byte(yml), "id")
 	require.NoError(err)
-	errs = validateCreateHosts(&p)
+	errs = validateCreateHosts(p)
 	assert.Len(errs, 1)
 
 	// error: total times called
@@ -1948,9 +1943,9 @@ func TestValidateCreateHosts(t *testing.T) {
     - name: t_8
     - name: t_9
   `
-	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	_, p, err = model.LoadProjectInto([]byte(yml), "id")
 	require.NoError(err)
-	errs = validateCreateHosts(&p)
+	errs = validateCreateHosts(p)
 	assert.Len(errs, 1)
 }
 
@@ -1971,10 +1966,9 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - tg1
     - t1
   `
-	var p model.Project
-	err := model.LoadProjectInto([]byte(yml), "", &p)
+	_, p, err := model.LoadProjectInto([]byte(yml), "")
 	assert.NoError(err)
-	errs := validateDuplicateTaskDefinition(&p)
+	errs := validateDuplicateTaskDefinition(p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 
@@ -1992,9 +1986,9 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - t1
     - tg1
   `
-	err = model.LoadProjectInto([]byte(yml), "", &p)
+	_, p, err = model.LoadProjectInto([]byte(yml), "")
 	assert.NoError(err)
-	errs = validateDuplicateTaskDefinition(&p)
+	errs = validateDuplicateTaskDefinition(p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 
@@ -2015,9 +2009,9 @@ func TestDuplicateTaskInBV(t *testing.T) {
     - tg1
     - tg2
   `
-	err = model.LoadProjectInto([]byte(yml), "", &p)
+	_, p, err = model.LoadProjectInto([]byte(yml), "")
 	assert.NoError(err)
-	errs = validateDuplicateTaskDefinition(&p)
+	errs = validateDuplicateTaskDefinition(p)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Message, "task 't1' in 'bv' is listed more than once")
 }

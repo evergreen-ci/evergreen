@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -178,6 +179,15 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 	if v == nil {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
+	}
+
+	if v.Project != nil {
+		var conf []byte
+		if conf, err = yaml.Marshal(v.Project); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "problem marshaling project"))
+			return
+		}
+		v.Config = string(conf)
 	}
 
 	gimlet.WriteJSON(w, v)
@@ -415,7 +425,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
+	if _, project, err = model.LoadProjectInto(yamlBytes, ""); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return

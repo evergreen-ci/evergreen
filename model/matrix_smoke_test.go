@@ -46,12 +46,13 @@ func taskNames(v *BuildVariant) []string {
 
 func TestPythonMatrixIntegration(t *testing.T) {
 	Convey("With a sample matrix project mocking up a python driver", t, func() {
-		p := Project{}
+		p := &Project{}
 		bytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
 			"testdata", "matrix_python.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {
-			err := LoadProjectInto(bytes, "python", &p)
+			var err error
+			_, p, err = LoadProjectInto(bytes, "python")
 			So(err, ShouldBeNil)
 			Convey("and contain the correct variants", func() {
 				So(len(p.BuildVariants), ShouldEqual, (2*2*4 - 4))
@@ -103,12 +104,12 @@ func TestPythonMatrixIntegration(t *testing.T) {
 
 func TestDepsMatrixIntegration(t *testing.T) {
 	Convey("With a sample matrix project mocking up a python driver", t, func() {
-		p := Project{}
+		p := &Project{}
 		bytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
 			"testdata", "matrix_deps.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {
-			err := LoadProjectInto(bytes, "deps", &p)
+			_, p, err = LoadProjectInto(bytes, "deps")
 			So(err, ShouldBeNil)
 			Convey("and contain the correct variants", func() {
 				So(len(p.BuildVariants), ShouldEqual, (1 + 3*3))

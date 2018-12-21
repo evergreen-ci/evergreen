@@ -431,32 +431,68 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 }
 
 func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
-	p := &Project{}
-	err := LoadProjectInto([]byte(sampleProjYml), "", p)
+	_, p, err := LoadProjectInto([]byte(sampleProjYml), "")
 	s.NoError(err)
 	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
-	config, err := g.addGeneratedProjectToConfig(sampleProjYml, cachedProject)
+	intermediateProject, errs := CreateIntermediateProject([]byte(sampleProjYml))
+	s.Empty(errs)
+	config, err := g.addGeneratedProjectToConfig(intermediateProject, cachedProject)
 	s.NoError(err)
-	s.Contains(config, "say-hi")
-	s.Contains(config, "new_task")
-	s.Contains(config, "a_variant")
-	s.Contains(config, "new_buildvariant")
-	s.Contains(config, "a_function")
-	s.Contains(config, "new_function")
-	s.Contains(config, "say-bye")
-	s.Contains(config, "my_display_task_new_variant")
-	s.Contains(config, "my_display_task_old_variant")
 
-	config, err = g.addGeneratedProjectToConfig(sampleProjYmlNoFunctions, cachedProject)
+	taskNames := []string{}
+	for _, t := range config.Tasks {
+		taskNames = append(taskNames, t.Name)
+	}
+	s.Contains(taskNames, "say-hi")
+	s.Contains(taskNames, "new_task")
+	s.Contains(taskNames, "say-bye")
+
+	variantNames := []string{}
+	for _, v := range config.BuildVariants {
+		variantNames = append(variantNames, v.Name)
+		if v.Name == "another_variant" {
+			s.Equal("my_display_task_new_variant", v.DisplayTasks[0].Name)
+		}
+		if v.Name == "a_variant" {
+			s.Equal("my_display_task_old_variant", v.DisplayTasks[0].Name)
+		}
+	}
+	s.Contains(variantNames, "a_variant")
+	s.Contains(variantNames, "new_buildvariant")
+
+	functionNames := []string{}
+	for f := range config.Functions {
+		functionNames = append(functionNames, f)
+	}
+	s.Contains(functionNames, "a_function")
+	s.Contains(functionNames, "new_function")
+
+	intermediateProject, errs = CreateIntermediateProject([]byte(sampleProjYmlNoFunctions))
+	s.Empty(errs)
+	config, err = g.addGeneratedProjectToConfig(intermediateProject, cachedProject)
 	s.NoError(err)
-	s.Contains(config, "say-hi")
-	s.Contains(config, "new_task")
-	s.Contains(config, "a_variant")
-	s.Contains(config, "new_buildvariant")
-	s.Contains(config, "say-bye")
-	s.Contains(config, "my_display_task_new_variant")
-	s.Contains(config, "my_display_task_old_variant")
+
+	taskNames = []string{}
+	for _, t := range config.Tasks {
+		taskNames = append(taskNames, t.Name)
+	}
+	s.Contains(taskNames, "say-hi")
+	s.Contains(taskNames, "new_task")
+	s.Contains(taskNames, "say-bye")
+
+	variantNames = []string{}
+	for _, v := range config.BuildVariants {
+		variantNames = append(variantNames, v.Name)
+		if v.Name == "another_variant" {
+			s.Equal("my_display_task_new_variant", v.DisplayTasks[0].Name)
+		}
+		if v.Name == "a_variant" {
+			s.Equal("my_display_task_old_variant", v.DisplayTasks[0].Name)
+		}
+	}
+	s.Contains(variantNames, "a_variant")
+	s.Contains(variantNames, "new_buildvariant")
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {

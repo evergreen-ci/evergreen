@@ -270,8 +270,8 @@ type ArtifactInstructions struct {
 }
 
 type YAMLCommandSet struct {
-	SingleCommand *PluginCommandConf
-	MultiCommand  []PluginCommandConf
+	SingleCommand *PluginCommandConf  `bson:"single_command,omitempty"`
+	MultiCommand  []PluginCommandConf `bson:"multi_command,omitempty"`
 }
 
 func (c *YAMLCommandSet) List() []PluginCommandConf {
@@ -694,8 +694,8 @@ func PopulateExpansions(t *task.Task, h *host.Host) (util.Expansions, error) {
 	for _, e := range h.Distro.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-	proj := &Project{}
-	err = LoadProjectInto([]byte(v.Config), t.Project, proj)
+	var proj *Project
+	_, proj, err = LoadProjectInto([]byte(v.Config), t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "error unmarshaling project")
 	}
@@ -832,9 +832,22 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	if tc.Version == nil {
 		return nil, errors.New("version is nil")
 	}
-	var p Project
-	if err := LoadProjectInto([]byte(tc.Version.Config), tc.Task.Project, &p); err != nil {
-		return nil, errors.Wrap(err, "error retrieving project for task group")
+	var intermediateProject *parserProject
+	var errs []error
+	if tc.Version.Project == nil {
+		if intermediateProject, errs = CreateIntermediateProject([]byte(tc.Version.Config)); len(errs) > 0 {
+			return nil, errors.Wrap(errs[0], "error retrieving project for task group")
+		}
+	} else {
+		intermediateProject = tc.Version.Project
+	}
+	p := &Project{}
+	if p, errs = TranslateProject(intermediateProject); len(errs) > 0 {
+		catcher := grip.NewBasicCatcher()
+		for _, e := range errs {
+			catcher.Add(e)
+		}
+		return nil, errors.Wrap(catcher.Resolve(), "error retrieving project for task group")
 	}
 	if taskGroup == "" {
 		// if there is no named task group, fall back to project definitions
@@ -878,9 +891,20 @@ func FindProjectFromVersionID(versionStr string) (*Project, error) {
 	}
 
 	project := &Project{}
-	err = LoadProjectInto([]byte(ver.Config), ver.Identifier, project)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+	if ver.Project == nil {
+		_, project, err = LoadProjectInto([]byte(ver.Config), ver.Identifier)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+		}
+		return project, nil
+	}
+	var errs []error
+	if project, errs = TranslateProject(ver.Project); len(errs) > 0 {
+		catcher := grip.NewBasicCatcher()
+		for _, e := range errs {
+			catcher.Add(e)
+		}
+		return nil, errors.Wrapf(catcher.Resolve(), "unable to create project from intermediate form for version %s", versionStr)
 	}
 	return project, nil
 }
@@ -931,16 +955,14 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			// for new repositories, we don't want to error out when we don't have
 			// any versions stored in the database so we default to the skeletal
 			// information we already have from the project file on disk
-			err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier, project)
-			if err != nil {
+			if _, project, err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier); err != nil {
 				return nil, errors.Wrapf(err, "Error loading project from "+
 					"last good version for project, %s", lastGoodVersion.Identifier)
 			}
 		} else {
 			// Check to see if there is a local configuration in the project ref
 			if projectRef.LocalConfig != "" {
-				err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
-				if err != nil {
+				if _, project, err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier); err != nil {
 					return nil, errors.Wrapf(err, "Error loading local config for project ref, %s", projectRef.Identifier)
 				}
 			}
@@ -960,7 +982,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 		}
 
 		project = &Project{}
-		if err = LoadProjectInto([]byte(v.Config), projectRef.Identifier, project); err != nil {
+		if _, project, err = LoadProjectInto([]byte(v.Config), projectRef.Identifier); err != nil {
 			return nil, errors.Wrap(err, "Error loading project from version")
 		}
 	}

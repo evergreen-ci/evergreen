@@ -77,8 +77,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, 
 	}
 
 	projectConfig = &model.Project{}
-	err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, projectConfig)
-	if err != nil {
+	if _, projectConfig, err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier); err != nil {
 		return nil, thirdparty.YAMLFormatError{Message: err.Error()}
 	}
 

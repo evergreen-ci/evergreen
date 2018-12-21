@@ -227,9 +227,15 @@ func TestGenerateTasks(t *testing.T) {
 	// Make sure first project was not changed
 	v, err := model.VersionFindOneId("random_version")
 	assert.NoError(err)
-	p := model.Project{}
-	err = model.LoadProjectInto([]byte(v.Config), "mci", &p)
+	p := &model.Project{}
+	_, p, err = model.LoadProjectInto([]byte(v.Config), "mci")
 	assert.NoError(err)
+	assert.Len(p.Tasks, 2)
+	assert.Len(p.BuildVariants[0].Tasks, 1)
+	assert.Len(p.BuildVariants[1].Tasks, 2)
+	var errs []error
+	p, errs = model.TranslateProject(v.Project)
+	assert.Empty(errs)
 	assert.Len(p.Tasks, 2)
 	assert.Len(p.BuildVariants[0].Tasks, 1)
 	assert.Len(p.BuildVariants[1].Tasks, 2)
@@ -237,8 +243,8 @@ func TestGenerateTasks(t *testing.T) {
 	// Verify second project was changed
 	v, err = model.VersionFindOneId("sample_version")
 	assert.NoError(err)
-	p = model.Project{}
-	err = model.LoadProjectInto([]byte(v.Config), "mci", &p)
+	p = &model.Project{}
+	p, errs = model.TranslateProject(v.Project)
 	assert.NoError(err)
 	assert.Len(p.Tasks, 4)
 	assert.Len(p.BuildVariants[0].Tasks, 1)

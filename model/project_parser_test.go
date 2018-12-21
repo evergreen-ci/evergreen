@@ -47,7 +47,7 @@ tasks:
     status: "failed"
     patch_optional: true
 `
-			p, errs := createIntermediateProject([]byte(simple))
+			p, errs := CreateIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
@@ -64,7 +64,7 @@ tasks:
 - name: task1
   depends_on: task0
 `
-			p, errs := createIntermediateProject([]byte(single))
+			p, errs := CreateIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
@@ -76,7 +76,7 @@ tasks:
 - name: "compile"
   depends_on: ""
 `
-				p, errs := createIntermediateProject([]byte(nameless))
+				p, errs := CreateIntermediateProject([]byte(nameless))
 				So(p, ShouldBeNil)
 				So(len(errs), ShouldEqual, 1)
 			})
@@ -88,7 +88,7 @@ tasks:
   - name: "task1"
   - status: "failed" #this has no task attached
 `
-				p, errs := createIntermediateProject([]byte(nameless))
+				p, errs := CreateIntermediateProject([]byte(nameless))
 				So(p, ShouldBeNil)
 				So(len(errs), ShouldEqual, 1)
 			})
@@ -97,7 +97,7 @@ tasks:
 tasks:
 - name: "compile"
 `
-				p, errs := createIntermediateProject([]byte(nameless))
+				p, errs := CreateIntermediateProject([]byte(nameless))
 				So(p, ShouldNotBeNil)
 				So(len(errs), ShouldEqual, 0)
 			})
@@ -117,7 +117,7 @@ tasks:
     variant: "v1"
   - "task2"
 `
-			p, errs := createIntermediateProject([]byte(simple))
+			p, errs := CreateIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[1].Requires[0].Name, ShouldEqual, "task0")
@@ -133,7 +133,7 @@ tasks:
     name: "task0"
     variant: "v1"
 `
-			p, errs := createIntermediateProject([]byte(simple))
+			p, errs := CreateIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
@@ -152,7 +152,7 @@ tasks:
       - green
       - blue
 `
-			p, errs := createIntermediateProject([]byte(simple))
+			p, errs := CreateIntermediateProject([]byte(simple))
 			So(errs, ShouldBeNil)
 			So(p, ShouldNotBeNil)
 			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
@@ -187,7 +187,7 @@ buildvariants:
     stepback: false
     priority: 77
 `
-			p, errs := createIntermediateProject([]byte(simple))
+			p, errs := CreateIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			bv := p.BuildVariants[0]
@@ -214,7 +214,7 @@ buildvariants:
     depends_on: "t3"
     requires: "t4"
 `
-			p, errs := createIntermediateProject([]byte(simple))
+			p, errs := CreateIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			bv := p.BuildVariants[0]
@@ -233,7 +233,7 @@ buildvariants:
   tasks:
     name: "t1"
 `
-			p, errs := createIntermediateProject([]byte(simple))
+			p, errs := CreateIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(len(p.BuildVariants), ShouldEqual, 2)
@@ -257,7 +257,7 @@ buildvariants:
   run_on: "distro1"
   tasks: "*"
 `
-			p, errs := createIntermediateProject([]byte(single))
+			p, errs := CreateIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(len(p.Ignore), ShouldEqual, 1)
@@ -278,7 +278,7 @@ buildvariants:
   - name: "t1"
     run_on: "test"
 `
-			p, errs := createIntermediateProject([]byte(single))
+			p, errs := CreateIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.BuildVariants[0].Tasks[0].Distros[0], ShouldEqual, "test")
@@ -293,7 +293,7 @@ buildvariants:
     run_on: "test"
     distros: "asdasdasd"
 `
-			p, errs := createIntermediateProject([]byte(single))
+			p, errs := CreateIntermediateProject([]byte(single))
 			So(p, ShouldBeNil)
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -316,7 +316,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: "t2", Variant: &variantSelector{stringSelector: "v1"}}}},
 				},
 			}
-			out, errs := translateProject(pp)
+			out, errs := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			deps := out.Tasks[2].DependsOn
@@ -340,7 +340,7 @@ func TestTranslateDependsOn(t *testing.T) {
 						Name: ".a !.b", Variant: &variantSelector{stringSelector: ".cool"}}}},
 				},
 			}
-			out, errs := translateProject(pp)
+			out, errs := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(out.Tasks[1].DependsOn[0].Name, ShouldEqual, "*")
@@ -368,7 +368,7 @@ func TestTranslateDependsOn(t *testing.T) {
 					{TaskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
 				}},
 			}
-			out, errs := translateProject(pp)
+			out, errs := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 6)
 		})
@@ -390,7 +390,7 @@ func TestTranslateRequires(t *testing.T) {
 					{Name: "t2", Variant: &variantSelector{stringSelector: "v1"}},
 				}},
 			}
-			out, errs := translateProject(pp)
+			out, errs := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			reqs := out.Tasks[2].Requires
@@ -412,7 +412,7 @@ func TestTranslateRequires(t *testing.T) {
 					{Name: "t1 t2"}, //nothing returned
 				}},
 			}
-			out, errs := translateProject(pp)
+			out, errs := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 7)
 		})
@@ -438,7 +438,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 				},
 			}}
 
-			out, errs := translateProject(pp)
+			out, errs := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			bvts := out.BuildVariants[0].Tasks
@@ -458,7 +458,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 					{Name: "t1", Requires: taskSelectors{{Name: ".b"}}},
 				},
 			}}
-			out, errs := translateProject(pp)
+			out, errs := TranslateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 2)
 		})
@@ -577,7 +577,7 @@ tasks:
 - name: execTask3
 - name: execTask4
 `
-	p, errs := createIntermediateProject([]byte(yml))
+	p, errs := CreateIntermediateProject([]byte(yml))
 
 	// check that display tasks in bv1 parsed correctly
 	assert.Len(errs, 0)
@@ -624,7 +624,7 @@ tasks:
 - name: execTask4
 `
 
-	proj, errs := projectFromYAML([]byte(validYml))
+	_, proj, errs := projectFromYAML([]byte(validYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 0)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -656,7 +656,7 @@ tasks:
 - name: execTask4
 `
 
-	proj, errs = projectFromYAML([]byte(nonexistentTaskYml))
+	_, proj, errs = projectFromYAML([]byte(nonexistentTaskYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
 	assert.EqualError(errs[0], "notHere: nothing named 'notHere'")
@@ -688,7 +688,7 @@ tasks:
 - name: execTask4
 `
 
-	proj, errs = projectFromYAML([]byte(duplicateTaskYml))
+	_, proj, errs = projectFromYAML([]byte(duplicateTaskYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
 	assert.EqualError(errs[0], "execution task execTask3 is listed in more than 1 display task")
@@ -713,7 +713,7 @@ tasks:
 - name: execTask4
 `
 
-	proj, errs = projectFromYAML([]byte(conflictYml))
+	_, proj, errs = projectFromYAML([]byte(conflictYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
 	assert.EqualError(errs[0], "display task execTask1 cannot have the same name as an execution task")
@@ -742,7 +742,7 @@ tasks:
 - name: execTask4
 `
 
-	proj, errs = projectFromYAML([]byte(wildcardYml))
+	_, proj, errs = projectFromYAML([]byte(wildcardYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 0)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
@@ -775,7 +775,7 @@ tasks:
   tags: [ "even" ]
 `
 
-	proj, errs = projectFromYAML([]byte(tagYml))
+	_, proj, errs = projectFromYAML([]byte(tagYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 0)
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
@@ -823,7 +823,7 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	proj, errs := projectFromYAML([]byte(validYml))
+	_, proj, errs := projectFromYAML([]byte(validYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	assert.Len(proj.TaskGroups, 1)
@@ -852,7 +852,7 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	proj, errs = projectFromYAML([]byte(wrongTaskYml))
+	_, proj, errs = projectFromYAML([]byte(wrongTaskYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Error(), `nothing named 'example_task_3'`)
@@ -886,7 +886,7 @@ buildvariants:
   tasks:
   - name: example_task_group
 `
-	proj, errs = projectFromYAML([]byte(orderedYml))
+	_, proj, errs = projectFromYAML([]byte(orderedYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 0)
 	for i, t := range proj.TaskGroups[0].Tasks {
@@ -917,7 +917,7 @@ buildvariants:
   - name: even_task_group
   - name: odd_task_group
 `
-	proj, errs = projectFromYAML([]byte(tagYml))
+	_, proj, errs = projectFromYAML([]byte(tagYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 0)
 	assert.Len(proj.TaskGroups, 2)
@@ -952,7 +952,7 @@ buildvariants:
       - task_1
       - task_2
 `
-	proj, errs := projectFromYAML([]byte(validYml))
+	_, proj, errs := projectFromYAML([]byte(validYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	assert.Len(proj.TaskGroups, 1)
@@ -986,7 +986,7 @@ buildvariants:
       execution_tasks:
       - ".tag_1"
 `
-	proj, errs := projectFromYAML([]byte(validYml))
+	_, proj, errs := projectFromYAML([]byte(validYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	assert.Len(proj.TaskGroups, 1)
@@ -1020,7 +1020,7 @@ buildvariants:
       - task_1
       - task_2
 `
-	proj, errs := projectFromYAML([]byte(validYml))
+	_, proj, errs := projectFromYAML([]byte(validYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	assert.Len(proj.TaskGroups, 1)
@@ -1053,7 +1053,7 @@ buildvariants:
       execution_tasks:
       - ".tag_1"
 `
-	proj, errs := projectFromYAML([]byte(validYml))
+	_, proj, errs := projectFromYAML([]byte(validYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	assert.Len(proj.TaskGroups, 1)
@@ -1093,7 +1093,7 @@ buildvariants:
     - name: task_4
     - name: task_5
 `
-	proj, errs := projectFromYAML([]byte(yml))
+	_, proj, errs := projectFromYAML([]byte(yml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	assert.Len(proj.BuildVariants, 3)
@@ -1142,7 +1142,7 @@ buildvariants:
   - name: task_2
 `
 
-	proj, errs := projectFromYAML([]byte(yml))
+	_, proj, errs := projectFromYAML([]byte(yml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	assert.Len(proj.BuildVariants, 3)

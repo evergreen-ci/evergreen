@@ -118,12 +118,11 @@ func makeDownstreamConfigFromFile(ref model.ProjectRef, file string) (*model.Pro
 		return nil, errors.Wrapf(err, "unable to decode config file for '%s'", ref.Identifier)
 	}
 
-	config := model.Project{}
-	err = model.LoadProjectInto(fileContents, ref.Identifier, &config)
-	if err != nil {
+	config := &model.Project{}
+	if _, config, err = model.LoadProjectInto(fileContents, ref.Identifier); err != nil {
 		return nil, errors.Wrapf(err, "error parsing config file for '%s'", ref.Identifier)
 	}
-	return &config, nil
+	return config, nil
 }
 
 func makeDownstreamConfigFromCommand(ref model.ProjectRef, command, generateFile string) (*model.Project, error) {

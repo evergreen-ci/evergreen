@@ -659,8 +659,7 @@ tasks:
 - name: task1
 - name: task2
 `
-	p := &model.Project{}
-	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	_, p, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier)
 	s.NoError(err)
 	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.NoError(err)
@@ -693,8 +692,7 @@ tasks:
 - name: task1
 - name: task2
 `
-	p := &model.Project{}
-	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	_, p, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier)
 	s.NoError(err)
 	v, err := CreateVersionFromConfig(s.ref, p, VersionMetadata{Revision: *s.rev}, false, nil)
 	s.NoError(err)
@@ -726,8 +724,7 @@ tasks:
 - name: task1
 - name: task2
 `
-	p := &model.Project{}
-	err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier, p)
+	_, p, err := model.LoadProjectInto([]byte(configYml), s.ref.Identifier)
 	s.NoError(err)
 	vErrs := VersionErrors{
 		Errors:   []string{"err1"},

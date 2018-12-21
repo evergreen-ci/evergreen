@@ -314,7 +314,7 @@ task_groups:
   - example_task_1
   - example_task_2
 `
-	proj, errs := projectFromYAML([]byte(projYml))
+	_, proj, errs := projectFromYAML([]byte(projYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
 	v := Version{
@@ -1092,7 +1092,7 @@ tasks:
   depends_on:
     - name: dist-test
 `
-	intermediate, errs := createIntermediateProject([]byte(projYml))
+	intermediate, errs := CreateIntermediateProject([]byte(projYml))
 	s.Len(errs, 0)
 	marshaled, err := yaml.Marshal(intermediate)
 	s.NoError(err)

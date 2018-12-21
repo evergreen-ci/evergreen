@@ -322,8 +322,7 @@ func (vc *DBVersionConnector) CreateVersionFromConfig(projectID string, config [
 		}
 	}
 	project := &model.Project{}
-	err = model.LoadProjectInto(config, projectID, project)
-	if err != nil {
+	if _, project, err = model.LoadProjectInto(config, projectID); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("error parsing project config: %s", err.Error()),
