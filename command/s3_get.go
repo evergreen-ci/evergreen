@@ -40,7 +40,8 @@ type s3get struct {
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 
-	bucket pail.Bucket
+	bucketSet bool
+	bucket    pail.Bucket
 
 	base
 }
@@ -90,15 +91,6 @@ func (c *s3get) validateParams() error {
 		return errors.New("must specify either local_file or extract_to")
 	}
 
-	// create pail bucket and check if valid
-	err := c.createPailBucket()
-	if err != nil {
-		return errors.Wrap(err, "problem connecting to s3")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	c.bucket.Check(ctx)
-
 	return nil
 }
 
@@ -131,6 +123,19 @@ func (c *s3get) Execute(ctx context.Context,
 	// validate the params
 	if err := c.validateParams(); err != nil {
 		return errors.Wrap(err, "expanded params are not valid")
+	}
+
+	// create bucket if not yet created
+	if !bucketSet {
+		err := c.createPailBucket()
+		if err != nil {
+			return errors.Wrap(err, "problem connecting to s3")
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		if err := c.bucket.Check(ctx); err != nil {
+			return errors.Wrap(err, "invalid bucket")
+		}
 	}
 
 	if !c.shouldRunForVariant(conf.BuildVariant.Name) {
@@ -221,7 +226,9 @@ func (c *s3get) get(ctx context.Context) error {
 		}
 
 		// download to local file
-		return errors.WithStack(c.bucket.Download(ctx, c.RemoteFile, c.LocalFile))
+		return errors.Wrapf(c.bucket.Download(ctx, c.RemoteFile, c.LocalFile),
+			"error downloading %s to %s", c.RemoteFile, c.LocalFile)
+
 	}
 
 	reader, err := c.bucket.Reader(ctx, c.RemoteFile)
@@ -237,9 +244,12 @@ func (c *s3get) get(ctx context.Context) error {
 
 func (c *s3get) createPailBucket() error {
 	opts := pail.S3Options{
-		Credentials: credentials.NewStaticCredentials(c.AwsKey, c.AwsSecret, ""),
-		Region:      "us-east-1",
-		Name:        c.Bucket,
+		Credentials: credentials.NewCredentials(&StaticProvider{Value: Value{
+			AccessKeyID:     c.AwsKey,
+			SecretAccessKey: c.AwsSecret,
+		}}),
+		Region: "us-east-1",
+		Name:   c.Bucket,
 	}
 	bucket, err := pail.NewS3Bucket(opts)
 	c.bucket = bucket

@@ -147,15 +147,6 @@ func (s3pc *s3put) validate() error {
 		catcher.Add(errors.Errorf("permissions '%v' are not valid", s3pc.Permissions))
 	}
 
-	// create pail bucket and check if valid
-	err := s3pc.createPailBucket()
-	if err != nil {
-		return errors.Wrap(err, "problem connecting to s3")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s3pc.bucket.Check(ctx)
-
 	return catcher.Resolve()
 }
 
@@ -212,6 +203,19 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	// re-validate command here, in case an expansion is not defined
 	if err := s3pc.validate(); err != nil {
 		return errors.WithStack(err)
+	}
+
+	// create bucket if not yet created
+	if !bucketSet {
+		err := c.createPailBucket()
+		if err != nil {
+			return errors.Wrap(err, "problem connecting to s3")
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		if err := c.bucket.Check(ctx); err != nil {
+			return errors.Wrap(err, "invalid bucket")
+		}
 	}
 
 	s3pc.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
@@ -384,7 +388,11 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 func (c *s3put) createPailBucket() error {
 	opts := pail.S3Options{
-		Credentials: credentials.NewStaticCredentials(c.AwsKey, c.AwsSecret, ""),
+		Credentials: credentials.NewCredentials(&StaticProvider{Value: Value{
+			AccessKeyID:     c.AwsKey,
+			SecretAccessKey: c.AwsSecret,
+		}}),
+
 		Region:      "us-east-1",
 		Name:        c.Bucket,
 		Permission:  c.Permissions,
