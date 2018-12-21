@@ -9,7 +9,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/service/iot"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -93,7 +93,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 			}}),
 		Region:     region,
 		Name:       s3CopyReq.S3SourceBucket,
-		Permission: iot.CannedAccessControlListPublicRead,
+		Permission: s3.BucketCannedACLPublicRead,
 	}
 	srcBucket, err := pail.NewS3MultiPartBucket(srcOpts)
 	if err != nil {
@@ -107,7 +107,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 			}}),
 		Region:     region,
 		Name:       s3CopyReq.S3DestinationBucket,
-		Permission: iot.CannedAccessControlListPublicRead,
+		Permission: s3.BucketCannedACLPublicRead,
 	}
 	destBucket, err := pail.NewS3MultiPartBucket(destOpts)
 	if err != nil {
