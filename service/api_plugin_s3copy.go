@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/pail"
